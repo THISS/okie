@@ -83,7 +83,6 @@ import {
   reduceSemanticLensSession,
   semanticLensBranchEntityIds,
   semanticLensCanonicalPathIds,
-  semanticLensPathIds,
   semanticLensSessionDetail,
   semanticLensSessionGhostEntities,
   semanticLensSessionPresentationState,
@@ -1189,7 +1188,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     event.currentTarget.setPointerCapture(event.pointerId);
     const viewportBounds = event.currentTarget.getBoundingClientRect();
     const screenPoint = { x: event.clientX - viewportBounds.left, y: event.clientY - viewportBounds.top };
-    const picked = rendererRef.current?.pick(screenPoint.x, screenPoint.y);
+    rendererRef.current?.pick(screenPoint.x, screenPoint.y);
     if (authoringEnabled && event.pointerType !== 'touch') {
       if (authoringTool === 'connect') {
         const portHit = [...authoringEntityIds].flatMap(entityId => {
@@ -1782,7 +1781,6 @@ export function App() {
   const activeLevelRef = useRef(initialNavigation.detail
     ? Math.max(0, semanticDetails.indexOf(initialNavigation.detail))
     : getLevel(initialNavigation.camera.zoom));
-  const baseLevel = Math.max(0, semanticDetails.indexOf(semanticLensSession.baseDetail));
   const activeLevel = Math.max(0, semanticDetails.indexOf(semanticLensSessionDetail(semanticLensSession)));
   const baseDetail = semanticLensSession.baseDetail;
   const activeDetail = semanticDetails[activeLevel];
@@ -4338,7 +4336,6 @@ export function App() {
           </div>}
 
           <div className="map-heading">
-            <div className="eyebrow"><span className="pulse-dot"/> FROZEN ARCHITECTURE · WORKTREE FIXTURE</div>
             <h1>{scene.title}</h1>
             <nav aria-label="Architecture ancestry" className="semantic-breadcrumb">
               {breadcrumbState.chain.map((entity, index) => <span key={entity.id}>{index > 0 && <ChevronIcon size={9}/>} {entity.id === navigationIdentity.rootEntityId ? <b aria-current="page">{entity.name}</b> : <button onClick={() => navigateRoot(entity.id)}>{entity.name}</button>}</span>)}
