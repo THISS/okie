@@ -1,7 +1,7 @@
-import { ArrowIcon, CloseIcon, FileIcon } from './icons';
+import { ArrowIcon, CloseIcon, FileIcon } from '../icons';
 import { MermaidDiagram, MermaidSourceDisclosure } from './MermaidDiagram';
 import type { DerivedDiagramSurface, DiagramSurfaceSession } from './diagramWorkspace';
-import type { AtlasScene, SceneEntity } from './renderer/types';
+import type { AtlasScene, SceneEntity } from '../renderer/types';
 import type { DynamicFlowArtifact } from '@okie/scene-compiler';
 
 export type SemanticDiagramInteraction = {

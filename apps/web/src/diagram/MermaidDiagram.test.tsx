@@ -11,7 +11,7 @@ import {
 } from './MermaidDiagram';
 
 const componentSource = readFileSync(new URL('./MermaidDiagram.tsx', import.meta.url), 'utf8');
-const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../app.css', import.meta.url), 'utf8');
 
 function declarations(source: string, selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

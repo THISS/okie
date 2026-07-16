@@ -21,7 +21,7 @@ import {
   InfoIcon, LayersIcon, PanelIcon, PauseIcon, PlayIcon, RestartIcon, SearchIcon, ShareIcon,
   SparkIcon, ZoomInIcon, ZoomOutIcon,
 } from './icons';
-import { copyViewLink } from './copyViewLink';
+import { copyViewLink } from './diagram/copyViewLink';
 import {
   MAIN_DIAGRAM_SURFACE_ID,
   activateDiagramSurface,
@@ -34,8 +34,8 @@ import {
   type DiagramSurface,
   type DiagramSurfaceSession,
   type DerivedDiagramSurface,
-} from './diagramWorkspace';
-import { SemanticDiagramSurface } from './SemanticDiagramSurface';
+} from './diagram/diagramWorkspace';
+import { SemanticDiagramSurface } from './diagram/SemanticDiagramSurface';
 import { createNavigationHistoryController, type NavigationHistoryController } from './navigation/historyController';
 import {
   canonicalNavigationState,
@@ -62,7 +62,7 @@ import { listenForWheel } from './renderer/wheelInput';
 import { presentBackend } from './renderer/backendPresentation';
 import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relationFocus';
-import { SourceViewer, type LocalWorkspaceContext } from './SourceViewer';
+import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
 import { clampInspectorWidth, defaultInspectorWidth, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, visibleSemanticRelationsForEntity } from './inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspectorHistory';
 import { readDemoQuery } from './renderer/query';

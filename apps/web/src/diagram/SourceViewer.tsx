@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { SceneSourceExcerpt } from './renderer/types';
+import type { SceneSourceExcerpt } from '../renderer/types';
 
 export type SourceLanguage = SceneSourceExcerpt['language'];
 export type SourceToken = { kind: 'plain' | 'comment' | 'string' | 'number' | 'keyword' | 'punctuation'; text: string };

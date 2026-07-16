@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { buildC4ProjectionBundle } from '@okie/architecture';
 import { compileC4DynamicFlowArtifact, goldenSnapshot, goldenStory, goldenView, serializeDynamicFlowMermaid } from '@okie/scene-compiler';
-import { createGoldenC4Scene } from './renderer/goldenC4Scene';
+import { createGoldenC4Scene } from '../renderer/goldenC4Scene';
 import { SemanticDiagramSurface, semanticDiagramPreview } from './SemanticDiagramSurface';
 import type { DerivedDiagramSurface } from './diagramWorkspace';
 

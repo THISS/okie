@@ -1,4 +1,4 @@
-import type { Camera } from './renderer/types';
+import type { Camera } from '../renderer/types';
 
 export const MAIN_DIAGRAM_SURFACE_ID = 'diagram:main';
 
