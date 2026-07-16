@@ -22,4 +22,4 @@ contracts, `*.test.ts` = unit.
 WasmRendererAdapter}.ts`; `story{Playback,Framing,Focus}.ts`. Their path+line
 windows are frozen in the golden fixture; edits near a pinned symbol require
 `pnpm generate:fixtures` + review. See root `CLAUDE.md` and
-`scratchpad/refactor-plan.md`.
+`docs/roadmap/deferred-refactors.md`.
