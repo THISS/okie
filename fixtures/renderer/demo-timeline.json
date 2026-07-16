@@ -1,0 +1,306 @@
+{
+  "protocolVersion": 1,
+  "timelineVersion": 2,
+  "id": "timeline:story:okie-context-to-code",
+  "sceneId": "scene:repo:okie-golden:c4",
+  "durationMs": 10600,
+  "looped": false,
+  "keyframes": [
+    {
+      "id": "step:context:arrival",
+      "atMs": 700,
+      "easing": "easeInOut",
+      "camera": {
+        "center": {
+          "x": 1060,
+          "y": 245
+        },
+        "zoom": 1.6
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:system:okie"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:context:visual-node%3Alineage%3Aactor%3Adeveloper>visual-node%3Alineage%3Asystem%3Aokie:uses"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 0,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:context:hold",
+      "atMs": 2450,
+      "easing": "linear",
+      "camera": {
+        "center": {
+          "x": 1060,
+          "y": 245
+        },
+        "zoom": 1.6
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:system:okie"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:context:visual-node%3Alineage%3Aactor%3Adeveloper>visual-node%3Alineage%3Asystem%3Aokie:uses"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 1,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:containers:arrival",
+      "atMs": 3150,
+      "easing": "easeInOut",
+      "camera": {
+        "center": {
+          "x": 912.347610629324,
+          "y": 218.2971141490088
+        },
+        "zoom": 2.651970585408055
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:container:architecture-model"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:container:visual-node%3Alineage%3Acontainer%3Aarchitecture-model>visual-node%3Alineage%3Acontainer%3Ascene-compiler:dependsOn"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 0,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:containers:hold",
+      "atMs": 5100,
+      "easing": "linear",
+      "camera": {
+        "center": {
+          "x": 912.347610629324,
+          "y": 218.2971141490088
+        },
+        "zoom": 2.651970585408055
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:container:architecture-model"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:container:visual-node%3Alineage%3Acontainer%3Aarchitecture-model>visual-node%3Alineage%3Acontainer%3Ascene-compiler:dependsOn"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 1,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:components:arrival",
+      "atMs": 5800,
+      "easing": "easeInOut",
+      "camera": {
+        "center": {
+          "x": 892.0532885574207,
+          "y": 237.49944338461282
+        },
+        "zoom": 5.27
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:component:model-scoping"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-scoping>visual-node%3Alineage%3Acomponent%3Amodel-normalized:uses"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 0,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:components:hold",
+      "atMs": 7750,
+      "easing": "linear",
+      "camera": {
+        "center": {
+          "x": 892.0532885574207,
+          "y": 237.49944338461282
+        },
+        "zoom": 5.27
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:component:model-scoping"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-scoping>visual-node%3Alineage%3Acomponent%3Amodel-normalized:uses"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 1,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:code:arrival",
+      "atMs": 8450,
+      "easing": "easeInOut",
+      "camera": {
+        "center": {
+          "x": 883.4573000187388,
+          "y": 240.2215064218621
+        },
+        "zoom": 13.96
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:code:model-scoping:select-scoped-view"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-scoped-view>visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-snapshot:calls"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 0,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:code:hold",
+      "atMs": 10600,
+      "easing": "linear",
+      "camera": {
+        "center": {
+          "x": 883.4573000187388,
+          "y": 240.2215064218621
+        },
+        "zoom": 13.96
+      },
+      "objectStates": [
+        {
+          "objectIds": [
+            "visual-node:lineage:code:model-scoping:select-scoped-view"
+          ],
+          "opacity": 1,
+          "emphasis": 1
+        }
+      ],
+      "pathStates": [
+        {
+          "pathIds": [
+            "visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-scoped-view>visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-snapshot:calls"
+          ],
+          "opacity": 1,
+          "emphasis": 1,
+          "flowSpeed": 1,
+          "color": [
+            1,
+            0.478,
+            0.271,
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

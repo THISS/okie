@@ -1,0 +1,539 @@
+{
+  "schemaVersion": 1,
+  "id": "view:okie-golden-hierarchy",
+  "snapshotId": "snapshot:okie-golden-worktree-v1",
+  "name": "Okie golden hierarchy",
+  "rootEntityId": "system:okie",
+  "entityIds": [
+    "actor:developer",
+    "system:okie",
+    "external:source-repository",
+    "external:browser-graphics",
+    "container:web-app",
+    "container:architecture-model",
+    "container:scene-compiler",
+    "container:rust-renderer",
+    "container:tooling",
+    "component:web-shell",
+    "component:web-navigation",
+    "component:web-renderer-host",
+    "component:web-stories",
+    "component:web-provenance",
+    "component:model-schema",
+    "component:model-normalized",
+    "component:model-scoping",
+    "component:model-validation",
+    "component:compiler-scene",
+    "component:compiler-story",
+    "component:compiler-normalized",
+    "component:compiler-protocol",
+    "component:renderer-protocol",
+    "component:renderer-engine",
+    "component:renderer-gpu",
+    "component:renderer-wasm",
+    "component:tooling-wasm",
+    "component:tooling-fixtures",
+    "component:tooling-stress",
+    "code:web-shell:app",
+    "code:web-shell:canvas-viewport",
+    "code:web-navigation:navigation-state",
+    "code:web-navigation:canonical-url",
+    "code:web-navigation:history-controller",
+    "code:web-renderer-host:create-renderer",
+    "code:web-renderer-host:wasm-adapter",
+    "code:web-renderer-host:canvas-renderer",
+    "code:web-stories:create-flight",
+    "code:web-stories:frame-entities",
+    "code:web-stories:focus-presentation",
+    "code:web-provenance:present-claim",
+    "code:model-schema:snapshot",
+    "code:model-schema:entity",
+    "code:model-schema:story",
+    "code:model-normalized:normalize",
+    "code:model-normalized:state",
+    "code:model-scoping:select-scoped-view",
+    "code:model-scoping:select-snapshot",
+    "code:model-validation:snapshot",
+    "code:model-validation:view",
+    "code:model-validation:story",
+    "code:compiler-scene:compile",
+    "code:compiler-story:compile",
+    "code:compiler-normalized:compile-scene",
+    "code:compiler-normalized:diff",
+    "code:compiler-protocol:snapshot",
+    "code:compiler-protocol:timeline",
+    "code:renderer-protocol:validate-scene",
+    "code:renderer-protocol:validate-patch",
+    "code:renderer-engine:protocol-engine",
+    "code:renderer-engine:lod-controller",
+    "code:renderer-engine:hit-test",
+    "code:renderer-gpu:renderer",
+    "code:renderer-gpu:build-mesh",
+    "code:renderer-gpu:glyph-atlas",
+    "code:renderer-wasm:atlas-renderer",
+    "code:renderer-wasm:create-renderer",
+    "code:tooling-wasm:build-script",
+    "code:tooling-fixtures:generator",
+    "code:tooling-stress:generator"
+  ],
+  "relationIds": [
+    "relation:developer-explores-okie",
+    "relation:okie-source-evidence",
+    "relation:okie-renders-browser",
+    "relation:model-to-compiler",
+    "relation:compiler-to-renderer",
+    "relation:web-controls-renderer",
+    "relation:tooling-builds-renderer",
+    "relation:tooling-generates-scenes",
+    "relation:web-shell-navigation",
+    "relation:web-shell-renderer-host",
+    "relation:web-shell-stories",
+    "relation:web-shell-provenance",
+    "relation:model-schema-normalized",
+    "relation:model-normalized-scoping",
+    "relation:model-validation-schema",
+    "relation:compiler-normalized-scene",
+    "relation:compiler-normalized-story",
+    "relation:compiler-scene-protocol",
+    "relation:renderer-engine-protocol",
+    "relation:renderer-gpu-engine",
+    "relation:renderer-wasm-engine",
+    "relation:renderer-wasm-gpu",
+    "relation:code-app-navigation-url",
+    "relation:code-app-create-renderer",
+    "relation:code-flight-frame",
+    "relation:code-normalize-select-scoped",
+    "relation:code-select-scoped-snapshot",
+    "relation:code-validation-view-snapshot",
+    "relation:code-compile-normalized-scene",
+    "relation:code-diff-scene",
+    "relation:code-engine-scene-validation",
+    "relation:code-gpu-build-mesh",
+    "relation:code-wasm-engine",
+    "relation:code-tooling-fixture-generator"
+  ],
+  "layout": {
+    "nodes": {
+      "actor:developer": {
+        "x": 120,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:compiler-normalized:compile-scene": {
+        "x": 450,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:compiler-normalized:diff": {
+        "x": 780,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:compiler-protocol:snapshot": {
+        "x": 1110,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:compiler-protocol:timeline": {
+        "x": 1440,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:compiler-scene:compile": {
+        "x": 1770,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:compiler-story:compile": {
+        "x": 2100,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-normalized:normalize": {
+        "x": 2430,
+        "y": 120,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-normalized:state": {
+        "x": 120,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-schema:entity": {
+        "x": 450,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-schema:snapshot": {
+        "x": 780,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-schema:story": {
+        "x": 1110,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-scoping:select-scoped-view": {
+        "x": 1440,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-scoping:select-snapshot": {
+        "x": 1770,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-validation:snapshot": {
+        "x": 2100,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-validation:story": {
+        "x": 2430,
+        "y": 330,
+        "width": 280,
+        "height": 140
+      },
+      "code:model-validation:view": {
+        "x": 120,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-engine:hit-test": {
+        "x": 450,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-engine:lod-controller": {
+        "x": 780,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-engine:protocol-engine": {
+        "x": 1110,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-gpu:build-mesh": {
+        "x": 1440,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-gpu:glyph-atlas": {
+        "x": 1770,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-gpu:renderer": {
+        "x": 2100,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-protocol:validate-patch": {
+        "x": 2430,
+        "y": 540,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-protocol:validate-scene": {
+        "x": 120,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-wasm:atlas-renderer": {
+        "x": 450,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:renderer-wasm:create-renderer": {
+        "x": 780,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:tooling-fixtures:generator": {
+        "x": 1110,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:tooling-stress:generator": {
+        "x": 1440,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:tooling-wasm:build-script": {
+        "x": 1770,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-navigation:canonical-url": {
+        "x": 2100,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-navigation:history-controller": {
+        "x": 2430,
+        "y": 750,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-navigation:navigation-state": {
+        "x": 120,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-provenance:present-claim": {
+        "x": 450,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-renderer-host:canvas-renderer": {
+        "x": 780,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-renderer-host:create-renderer": {
+        "x": 1110,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-renderer-host:wasm-adapter": {
+        "x": 1440,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-shell:app": {
+        "x": 1770,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-shell:canvas-viewport": {
+        "x": 2100,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-stories:create-flight": {
+        "x": 2430,
+        "y": 960,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-stories:focus-presentation": {
+        "x": 120,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "code:web-stories:frame-entities": {
+        "x": 450,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "component:compiler-normalized": {
+        "x": 780,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "component:compiler-protocol": {
+        "x": 1110,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "component:compiler-scene": {
+        "x": 1440,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "component:compiler-story": {
+        "x": 1770,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "component:model-normalized": {
+        "x": 2100,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "component:model-schema": {
+        "x": 2430,
+        "y": 1170,
+        "width": 280,
+        "height": 140
+      },
+      "component:model-scoping": {
+        "x": 120,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:model-validation": {
+        "x": 450,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:renderer-engine": {
+        "x": 780,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:renderer-gpu": {
+        "x": 1110,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:renderer-protocol": {
+        "x": 1440,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:renderer-wasm": {
+        "x": 1770,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:tooling-fixtures": {
+        "x": 2100,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:tooling-stress": {
+        "x": 2430,
+        "y": 1380,
+        "width": 280,
+        "height": 140
+      },
+      "component:tooling-wasm": {
+        "x": 120,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "component:web-navigation": {
+        "x": 450,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "component:web-provenance": {
+        "x": 780,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "component:web-renderer-host": {
+        "x": 1110,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "component:web-shell": {
+        "x": 1440,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "component:web-stories": {
+        "x": 1770,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "container:architecture-model": {
+        "x": 2100,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "container:rust-renderer": {
+        "x": 2430,
+        "y": 1590,
+        "width": 280,
+        "height": 140
+      },
+      "container:scene-compiler": {
+        "x": 120,
+        "y": 1800,
+        "width": 280,
+        "height": 140
+      },
+      "container:tooling": {
+        "x": 450,
+        "y": 1800,
+        "width": 280,
+        "height": 140
+      },
+      "container:web-app": {
+        "x": 780,
+        "y": 1800,
+        "width": 280,
+        "height": 140
+      },
+      "external:browser-graphics": {
+        "x": 1110,
+        "y": 1800,
+        "width": 280,
+        "height": 140
+      },
+      "external:source-repository": {
+        "x": 1440,
+        "y": 1800,
+        "width": 280,
+        "height": 140
+      },
+      "system:okie": {
+        "x": 1770,
+        "y": 1800,
+        "width": 280,
+        "height": 140
+      }
+    }
+  }
+}

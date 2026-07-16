@@ -1,0 +1,42 @@
+:root {
+  color-scheme: dark;
+  --atlas-bg: #070a0b;
+  --atlas-bg-raised: #0b1011;
+  --atlas-panel: rgba(13, 18, 19, 0.92);
+  --atlas-panel-solid: #0d1213;
+  --atlas-panel-soft: #111718;
+  --atlas-line: rgba(223, 239, 232, 0.1);
+  --atlas-line-strong: rgba(223, 239, 232, 0.19);
+  --atlas-text: #f1f7f4;
+  --atlas-muted: #97a5a0;
+  --atlas-quiet: #66736f;
+  --atlas-accent: #d9ff70;
+  --atlas-accent-strong: #bfee3e;
+  --atlas-accent-soft: rgba(217, 255, 112, 0.1);
+  --atlas-cyan: #79dfd4;
+  --atlas-blue: #7ca9ff;
+  --atlas-purple: #b9a1ff;
+  --atlas-orange: #ffae70;
+  --atlas-danger: #ff8d82;
+  --atlas-radius-sm: 8px;
+  --atlas-radius-md: 12px;
+  --atlas-radius-lg: 18px;
+  --atlas-shadow-panel: 0 22px 70px rgba(0, 0, 0, 0.38);
+  --atlas-shadow-float: 0 14px 42px rgba(0, 0, 0, 0.42);
+  --atlas-font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+  --atlas-font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --atlas-font-diagram-sans: var(--atlas-font-sans);
+  --atlas-font-diagram-mono: var(--atlas-font-mono);
+  --atlas-weight-body: 400;
+  --atlas-weight-label: 500;
+  --atlas-weight-title: 600;
+  --atlas-duration-fast: 130ms;
+  --atlas-duration-base: 220ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --atlas-duration-fast: 0ms;
+    --atlas-duration-base: 0ms;
+  }
+}

@@ -1,0 +1,126 @@
+import { readFileSync } from 'node:fs';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+import {
+  assertSafeMermaidSource,
+  assertSafeMermaidSvgText,
+  ATLAS_MERMAID_CONFIG,
+  MermaidDiagram,
+  MermaidSourceDisclosure,
+  stableMermaidRenderId,
+} from './MermaidDiagram';
+
+const componentSource = readFileSync(new URL('./MermaidDiagram.tsx', import.meta.url), 'utf8');
+const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
+
+function declarations(source: string, selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const matches = [...source.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))];
+  const match = matches.at(-1);
+  if (!match) throw new Error(`Missing CSS rule for ${selector}`);
+  return match[1]!;
+}
+
+describe('Mermaid diagram renderer boundary', () => {
+  it('uses a strict deterministic application-owned configuration', () => {
+    expect(ATLAS_MERMAID_CONFIG).toMatchObject({
+      deterministicIds: true,
+      deterministicIDSeed: 'okie-atlas-mermaid-v1',
+      htmlLabels: false,
+      maxEdges: 250,
+      securityLevel: 'strict',
+      startOnLoad: false,
+      suppressErrorRendering: true,
+      theme: 'base',
+      flowchart: { htmlLabels: false, useMaxWidth: true },
+    });
+    expect(ATLAS_MERMAID_CONFIG.secure).toEqual(expect.arrayContaining([
+      'securityLevel',
+      'htmlLabels',
+      'themeCSS',
+      'flowchart',
+    ]));
+  });
+
+  it('keeps Mermaid behind a dynamic import instead of the initial web bundle', () => {
+    expect(componentSource).toContain("import('mermaid')");
+    expect(componentSource).not.toMatch(/^import mermaid from 'mermaid'/mu);
+  });
+
+  it('derives stable source-specific render IDs', () => {
+    const source = 'flowchart LR\n  a["A"] --> b["B"]\n';
+    expect(stableMermaidRenderId(source)).toBe(stableMermaidRenderId(source));
+    expect(stableMermaidRenderId(source)).toMatch(/^okie-mermaid-[a-f0-9]{8}$/u);
+    expect(stableMermaidRenderId(source)).not.toBe(stableMermaidRenderId(`${source}  b --> c\n`));
+  });
+
+  it('accepts only bounded LR/TB flowcharts while allowing inert metadata comments', () => {
+    const source = [
+      '%% okie-entity {"semanticEntityId":"click bad style something"}',
+      'flowchart TB',
+      '  a["click bad style something"] --> b["B"]',
+      '',
+    ].join('\n');
+    expect(() => assertSafeMermaidSource(source)).not.toThrow();
+    expect(() => assertSafeMermaidSource('sequenceDiagram\n  A->>B: hello\n')).toThrow(/Only deterministic/u);
+    expect(() => assertSafeMermaidSource(`flowchart LR\n${'a'.repeat(40_001)}`)).toThrow(/render limit/u);
+  });
+
+  it.each([
+    'flowchart LR\n  click a "https://example.com"\n',
+    'flowchart LR\n  classDef bad fill:url(https://example.com/x)\n',
+    'flowchart LR\n  linkStyle 0 stroke:red\n',
+    '%%{init: {"securityLevel": "loose"}}%%\nflowchart LR\n  a --> b\n',
+    'flowchart LR\n  a["javascript:alert(1)"]\n',
+  ])('rejects unsupported active Mermaid source: %s', source => {
+    expect(() => assertSafeMermaidSource(source)).toThrow(/unsupported active directive/u);
+  });
+
+  it('accepts inert SVG with local marker references', () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><style>.edge{marker-end:url(#arrow)}</style><defs><marker id="arrow"><path d="M0 0L4 2"/></marker></defs><g><rect width="10" height="10"/><text>A</text></g></svg>';
+    expect(() => assertSafeMermaidSvgText(svg)).not.toThrow();
+  });
+
+  it.each([
+    '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><div>bad</div></foreignObject></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>',
+    '<svg xmlns="http://www.w3.org/2000/svg"><a href="https://example.com"><text>bad</text></a></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg"><path marker-end="url(https://example.com/marker)"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://example.com/x.css";</style></svg>',
+  ])('rejects active or externally linked SVG output: %s', svg => {
+    expect(() => assertSafeMermaidSvgText(svg)).toThrow();
+  });
+
+  it('server-renders an accessible loading fallback without executing the renderer', () => {
+    const markup = renderToStaticMarkup(<MermaidDiagram
+      source={'flowchart LR\n  a["A"] --> b["B"]\n'}
+      title="Request flow diagram"
+    />);
+    expect(markup).toContain('Request flow diagram');
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain('Rendering diagram');
+    expect(markup).toContain('aria-hidden="true"');
+    expect(markup).toContain('data-render-state="loading"');
+  });
+
+  it('keeps deterministic source behind a disclosure with a copy action', () => {
+    const markup = renderToStaticMarkup(<MermaidSourceDisclosure source={'flowchart LR\n  a --> b\n'}/>);
+    expect(markup).toContain('<details class="semantic-mermaid-source">');
+    expect(markup).toContain('Generated Mermaid source');
+    expect(markup).toContain('Copy source');
+    expect(markup).toContain('<pre><code>flowchart LR');
+  });
+
+  it('fits the complete SVG within the initial mobile canvas instead of forcing a wide discovery surface', () => {
+    const mobile = css.slice(css.indexOf('@media (max-width: 470px)'));
+    const host = declarations(mobile, '.semantic-mermaid-svg');
+    const svg = declarations(mobile, '.semantic-mermaid-svg > svg');
+
+    expect(host).toContain('min-width: 0');
+    expect(host).not.toContain('520px');
+    expect(svg).toContain('width: 100% !important');
+    expect(svg).toContain('max-width: 100% !important');
+    expect(svg).toContain('min-width: 0');
+  });
+});

@@ -1,0 +1,30 @@
+[package]
+name = "atlas-wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+atlas-engine = { path = "../atlas-engine" }
+atlas-gpu = { path = "../atlas-gpu" }
+atlas-protocol = { path = "../atlas-protocol" }
+serde.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+js-sys = "=0.3.99"
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "=0.2.122"
+wasm-bindgen-futures = "=0.4.72"
+web-sys = { version = "=0.3.99", features = ["HtmlCanvasElement", "Performance", "Window"] }
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"

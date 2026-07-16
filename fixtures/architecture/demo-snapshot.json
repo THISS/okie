@@ -1,0 +1,2910 @@
+{
+  "schemaVersion": 1,
+  "id": "snapshot:okie-golden-worktree-v1",
+  "repositoryId": "repo:okie-golden",
+  "commitSha": "golden-worktree-okie-2026-07-14-v1",
+  "generatedAt": "2026-07-14T00:00:00.000Z",
+  "entities": [
+    {
+      "id": "actor:developer",
+      "lineageId": "lineage:actor:developer",
+      "fingerprint": "golden:actor:developer:v1",
+      "kind": "person",
+      "name": "Developer / maintainer",
+      "responsibility": "Explores an unfamiliar codebase from system context to source evidence.",
+      "sourceRefs": [
+        {
+          "path": "README.md",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "Okie",
+          "startLine": 1,
+          "endLine": 5
+        },
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "App"
+        }
+      ]
+    },
+    {
+      "id": "system:okie",
+      "lineageId": "lineage:system:okie",
+      "fingerprint": "golden:system:okie:v1",
+      "kind": "softwareSystem",
+      "name": "Okie",
+      "responsibility": "Evidence-backed architecture atlas with semantic zoom and deterministic guided stories.",
+      "sourceRefs": [
+        {
+          "path": "README.md",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "Okie",
+          "startLine": 1,
+          "endLine": 5
+        },
+        {
+          "path": "docs/architecture/renderer.md",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "Product boundary"
+        }
+      ],
+      "technology": [
+        "TypeScript",
+        "Rust",
+        "WebAssembly",
+        "wgpu"
+      ]
+    },
+    {
+      "id": "external:source-repository",
+      "lineageId": "lineage:external:source-repository",
+      "fingerprint": "golden:external:source-repository:v1",
+      "kind": "externalSystem",
+      "name": "Source repository",
+      "responsibility": "Supplies source references used to support architecture claims.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "SourceRef"
+        },
+        {
+          "path": "packages/architecture/src/model.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "Evidence"
+        }
+      ]
+    },
+    {
+      "id": "external:browser-graphics",
+      "lineageId": "lineage:external:browser-graphics",
+      "fingerprint": "golden:external:browser-graphics:v1",
+      "kind": "externalSystem",
+      "name": "Browser graphics platform",
+      "responsibility": "Provides the canvas, WebAssembly runtime, and WebGPU or WebGL2 surface used to render the atlas.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-wasm/src/browser.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "create_atlas_renderer"
+        },
+        {
+          "path": "apps/web/src/renderer/createRenderer.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "createRenderer"
+        }
+      ]
+    },
+    {
+      "id": "container:web-app",
+      "lineageId": "lineage:container:web-app",
+      "fingerprint": "golden:container:web-app:v1",
+      "kind": "container",
+      "name": "Atlas web app",
+      "responsibility": "Owns the browser shell, navigation, inspection, search, camera controls, and guided-story experience.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "App"
+        },
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "CanvasViewport"
+        }
+      ],
+      "parentId": "system:okie",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "container:architecture-model",
+      "lineageId": "lineage:container:architecture-model",
+      "fingerprint": "golden:container:architecture-model:v1",
+      "kind": "container",
+      "name": "Architecture model",
+      "responsibility": "Defines versioned architecture claims, evidence, views, hierarchy, zoom policy, and story state.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        },
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "system:okie",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "container:scene-compiler",
+      "lineageId": "lineage:container:scene-compiler",
+      "fingerprint": "golden:container:scene-compiler:v1",
+      "kind": "container",
+      "name": "Scene compiler",
+      "responsibility": "Deterministically converts semantic architecture and stories into renderer scenes, patches, and timelines.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-scene.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileScene"
+        },
+        {
+          "path": "packages/scene-compiler/src/compile-story.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileStory"
+        }
+      ],
+      "parentId": "system:okie",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "container:rust-renderer",
+      "lineageId": "lineage:container:rust-renderer",
+      "fingerprint": "golden:container:rust-renderer:v1",
+      "kind": "container",
+      "name": "Rust / WASM renderer",
+      "responsibility": "Validates, culls, hit-tests, animates, and draws scene-protocol objects through GPU-backed browser rendering.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-engine/src/protocol_runtime.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "ProtocolEngine"
+        },
+        {
+          "path": "crates/atlas-gpu/src/surface.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "GpuRenderer"
+        }
+      ],
+      "parentId": "system:okie",
+      "technology": [
+        "Rust",
+        "WebAssembly",
+        "wgpu"
+      ]
+    },
+    {
+      "id": "container:tooling",
+      "lineageId": "lineage:container:tooling",
+      "fingerprint": "golden:container:tooling:v1",
+      "kind": "container",
+      "name": "Build and fixture tooling",
+      "responsibility": "Builds the WASM package and generates deterministic demo and stress fixtures.",
+      "sourceRefs": [
+        {
+          "path": "scripts/build-wasm.mjs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        },
+        {
+          "path": "scripts/generate-stress.mjs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        },
+        {
+          "path": "packages/scene-compiler/src/generate-fixtures.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "system:okie",
+      "technology": [
+        "Node.js",
+        "wasm-pack"
+      ]
+    },
+    {
+      "id": "component:web-shell",
+      "lineageId": "lineage:component:web-shell",
+      "fingerprint": "golden:component:web-shell:v1",
+      "kind": "component",
+      "name": "Application shell",
+      "responsibility": "Composes the canvas, level rail, search, inspector, diagnostics, and story controls.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "App"
+        }
+      ],
+      "parentId": "container:web-app",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:web-navigation",
+      "lineageId": "lineage:component:web-navigation",
+      "fingerprint": "golden:component:web-navigation:v1",
+      "kind": "component",
+      "name": "Navigation and history",
+      "responsibility": "Canonicalizes shareable URL state and separates pushed navigation from replaced selection and camera state.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/navigation/navigationState.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        },
+        {
+          "path": "apps/web/src/navigation/historyController.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:web-app",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:web-renderer-host",
+      "lineageId": "lineage:component:web-renderer-host",
+      "fingerprint": "golden:component:web-renderer-host:v1",
+      "kind": "component",
+      "name": "Renderer host",
+      "responsibility": "Creates GPU or Canvas2D backends and forwards scene, camera, input, and visibility state.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/renderer/createRenderer.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        },
+        {
+          "path": "apps/web/src/renderer/WasmRendererAdapter.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:web-app",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:web-stories",
+      "lineageId": "lineage:component:web-stories",
+      "fingerprint": "golden:component:web-stories:v1",
+      "kind": "component",
+      "name": "Guided story player",
+      "responsibility": "Frames story entities, interpolates camera flights, and presents deterministic focus and flow state.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/storyPlayback.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        },
+        {
+          "path": "apps/web/src/storyFraming.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:web-app",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:web-provenance",
+      "lineageId": "lineage:component:web-provenance",
+      "fingerprint": "golden:component:web-provenance:v1",
+      "kind": "component",
+      "name": "Evidence presentation",
+      "responsibility": "Distinguishes observed facts, deterministic inference, and AI-authored explanation.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/provenance/presentation.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "presentClaimProvenance"
+        }
+      ],
+      "parentId": "container:web-app",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:model-schema",
+      "lineageId": "lineage:component:model-schema",
+      "fingerprint": "golden:component:model-schema:v1",
+      "kind": "component",
+      "name": "Semantic schema",
+      "responsibility": "Defines entities, relations, evidence, snapshots, views, stories, and user overrides.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:architecture-model",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:model-normalized",
+      "lineageId": "lineage:component:model-normalized",
+      "fingerprint": "golden:component:model-normalized:v1",
+      "kind": "component",
+      "name": "Normalized state",
+      "responsibility": "Stores qualified identities and indexed rows for snapshots, hierarchy, layouts, zoom bands, and stories.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "NormalizedArchitecture"
+        }
+      ],
+      "parentId": "container:architecture-model",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:model-scoping",
+      "lineageId": "lineage:component:model-scoping",
+      "fingerprint": "golden:component:model-scoping:v1",
+      "kind": "component",
+      "name": "Hierarchy selectors",
+      "responsibility": "Reconstructs snapshots and selects a view scoped to a root entity.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "selectScopedView"
+        }
+      ],
+      "parentId": "container:architecture-model",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:model-validation",
+      "lineageId": "lineage:component:model-validation",
+      "fingerprint": "golden:component:model-validation:v1",
+      "kind": "component",
+      "name": "Architecture validation",
+      "responsibility": "Rejects invalid snapshots, views, stories, geometry, evidence, and overrides before compilation.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/validation.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "validateSnapshot"
+        }
+      ],
+      "parentId": "container:architecture-model",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:compiler-scene",
+      "lineageId": "lineage:component:compiler-scene",
+      "fingerprint": "golden:component:compiler-scene:v1",
+      "kind": "component",
+      "name": "Scene compilation",
+      "responsibility": "Maps visible semantic entities and relations to bounded renderer objects and paths.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-scene.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileScene"
+        }
+      ],
+      "parentId": "container:scene-compiler",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:compiler-story",
+      "lineageId": "lineage:component:compiler-story",
+      "fingerprint": "golden:component:compiler-story:v1",
+      "kind": "component",
+      "name": "Story compilation",
+      "responsibility": "Converts narrated focus steps into deterministic camera and emphasis keyframes.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-story.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileStory"
+        }
+      ],
+      "parentId": "container:scene-compiler",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:compiler-normalized",
+      "lineageId": "lineage:component:compiler-normalized",
+      "fingerprint": "golden:component:compiler-normalized:v1",
+      "kind": "component",
+      "name": "Scoped scene and patch compilation",
+      "responsibility": "Selects a root-scoped view and diffs retained scenes into revisioned patches.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileNormalizedScene"
+        }
+      ],
+      "parentId": "container:scene-compiler",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:compiler-protocol",
+      "lineageId": "lineage:component:compiler-protocol",
+      "fingerprint": "golden:component:compiler-protocol:v1",
+      "kind": "component",
+      "name": "TypeScript protocol mirror",
+      "responsibility": "Defines the TypeScript scene, patch, primitive, LOD, and timeline payloads sent to Rust.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/protocol.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "SceneSnapshot"
+        }
+      ],
+      "parentId": "container:scene-compiler",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "component:renderer-protocol",
+      "lineageId": "lineage:component:renderer-protocol",
+      "fingerprint": "golden:component:renderer-protocol:v1",
+      "kind": "component",
+      "name": "Versioned renderer protocol",
+      "responsibility": "Validates scene objects, representations, paths, patches, and timelines at the Rust boundary.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-protocol/src/scene.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        },
+        {
+          "path": "crates/atlas-protocol/src/patch.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:rust-renderer",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "component:renderer-engine",
+      "lineageId": "lineage:component:renderer-engine",
+      "fingerprint": "golden:component:renderer-engine:v1",
+      "kind": "component",
+      "name": "Scene engine",
+      "responsibility": "Owns retained scene state, semantic LOD, visibility, camera, culling, hit testing, patches, and timeline sampling.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-engine/src/protocol_runtime.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "ProtocolEngine"
+        }
+      ],
+      "parentId": "container:rust-renderer",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "component:renderer-gpu",
+      "lineageId": "lineage:component:renderer-gpu",
+      "fingerprint": "golden:component:renderer-gpu:v1",
+      "kind": "component",
+      "name": "GPU renderer",
+      "responsibility": "Builds mesh and glyph data, initializes WebGPU/WebGL2, and submits visible frame geometry.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-gpu/src/surface.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "GpuRenderer"
+        }
+      ],
+      "parentId": "container:rust-renderer",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "component:renderer-wasm",
+      "lineageId": "lineage:component:renderer-wasm",
+      "fingerprint": "golden:component:renderer-wasm:v1",
+      "kind": "component",
+      "name": "Browser WASM bridge",
+      "responsibility": "Deserializes host payloads and exposes scene, patch, camera, visibility, picking, and timeline controls to JavaScript.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-wasm/src/browser.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "WasmAtlasRenderer"
+        }
+      ],
+      "parentId": "container:rust-renderer",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "component:tooling-wasm",
+      "lineageId": "lineage:component:tooling-wasm",
+      "fingerprint": "golden:component:tooling-wasm:v1",
+      "kind": "component",
+      "name": "WASM build driver",
+      "responsibility": "Selects release, profiling, or debug wasm-pack builds and reports missing prerequisites.",
+      "sourceRefs": [
+        {
+          "path": "scripts/build-wasm.mjs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:tooling",
+      "technology": [
+        "Node.js",
+        "JavaScript"
+      ]
+    },
+    {
+      "id": "component:tooling-fixtures",
+      "lineageId": "lineage:component:tooling-fixtures",
+      "fingerprint": "golden:component:tooling-fixtures:v1",
+      "kind": "component",
+      "name": "Fixture generator",
+      "responsibility": "Compiles the checked semantic fixture into renderer scene and timeline JSON.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/generate-fixtures.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:tooling",
+      "technology": [
+        "Node.js",
+        "JavaScript"
+      ]
+    },
+    {
+      "id": "component:tooling-stress",
+      "lineageId": "lineage:component:tooling-stress",
+      "fingerprint": "golden:component:tooling-stress:v1",
+      "kind": "component",
+      "name": "Stress scene generator",
+      "responsibility": "Generates seeded large scenes for renderer profiling.",
+      "sourceRefs": [
+        {
+          "path": "scripts/generate-stress.mjs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1"
+        }
+      ],
+      "parentId": "container:tooling",
+      "technology": [
+        "Node.js",
+        "JavaScript"
+      ]
+    },
+    {
+      "id": "code:web-shell:app",
+      "lineageId": "lineage:code:web-shell:app",
+      "fingerprint": "golden:code:web-shell:app:v1",
+      "kind": "code",
+      "name": "App",
+      "responsibility": "Curated implementation entry point for Application shell.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "App",
+          "startLine": 1528,
+          "endLine": 1533
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "symbol": "App",
+          "language": "tsx",
+          "startLine": 1528,
+          "endLine": 1533,
+          "highlightLine": 1528,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function App() {",
+            "  const query = useMemo(() => readDemoQuery(window.location.search), []);",
+            "  const initialCameraExplicit = useMemo(() => {",
+            "    const params = new URLSearchParams(window.location.search);",
+            "    return params.has('cx') || params.has('cy') || params.has('z');",
+            "  }, []);"
+          ],
+          "text": "export function App() {\n  const query = useMemo(() => readDemoQuery(window.location.search), []);\n  const initialCameraExplicit = useMemo(() => {\n    const params = new URLSearchParams(window.location.search);\n    return params.has('cx') || params.has('cy') || params.has('z');\n  }, []);"
+        }
+      ],
+      "parentId": "component:web-shell",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-shell:canvas-viewport",
+      "lineageId": "lineage:code:web-shell:canvas-viewport",
+      "fingerprint": "golden:code:web-shell:canvas-viewport:v1",
+      "kind": "code",
+      "name": "CanvasViewport",
+      "responsibility": "Curated implementation entry point for Application shell.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "CanvasViewport",
+          "startLine": 4227,
+          "endLine": 4232
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "symbol": "CanvasViewport",
+          "language": "tsx",
+          "startLine": 4227,
+          "endLine": 4232,
+          "highlightLine": 4227,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "          <CanvasViewport",
+            "            activeRelationIds={activeRelationIds}",
+            "            animationActive={animationActive}",
+            "            authoringDetail={activeDetail}",
+            "            authoringEnabled={editingEnabled}",
+            "            authoringEntityIds={authoringEntityIds}"
+          ],
+          "text": "          <CanvasViewport\n            activeRelationIds={activeRelationIds}\n            animationActive={animationActive}\n            authoringDetail={activeDetail}\n            authoringEnabled={editingEnabled}\n            authoringEntityIds={authoringEntityIds}"
+        }
+      ],
+      "parentId": "component:web-shell",
+      "technology": [
+        "React",
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-navigation:navigation-state",
+      "lineageId": "lineage:code:web-navigation:navigation-state",
+      "fingerprint": "golden:code:web-navigation:navigation-state:v1",
+      "kind": "code",
+      "name": "NavigationState",
+      "responsibility": "Curated implementation entry point for Navigation and history.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/navigation/navigationState.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "NavigationState",
+          "startLine": 15,
+          "endLine": 20
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/navigation/navigationState.ts",
+          "symbol": "NavigationState",
+          "language": "typescript",
+          "startLine": 15,
+          "endLine": 20,
+          "highlightLine": 15,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export type NavigationState = {",
+            "  version: typeof NAVIGATION_URL_VERSION;",
+            "  repositoryId: string;",
+            "  snapshotId: string;",
+            "  viewId: string;",
+            "  rootEntityId: string;"
+          ],
+          "text": "export type NavigationState = {\n  version: typeof NAVIGATION_URL_VERSION;\n  repositoryId: string;\n  snapshotId: string;\n  viewId: string;\n  rootEntityId: string;"
+        }
+      ],
+      "parentId": "component:web-navigation",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-navigation:canonical-url",
+      "lineageId": "lineage:code:web-navigation:canonical-url",
+      "fingerprint": "golden:code:web-navigation:canonical-url:v1",
+      "kind": "code",
+      "name": "canonicalNavigationUrl()",
+      "responsibility": "Curated implementation entry point for Navigation and history.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/navigation/navigationState.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "canonicalNavigationUrl",
+          "startLine": 151,
+          "endLine": 156
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/navigation/navigationState.ts",
+          "symbol": "canonicalNavigationUrl",
+          "language": "typescript",
+          "startLine": 151,
+          "endLine": 156,
+          "highlightLine": 151,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function canonicalNavigationUrl(",
+            "  value: NavigationState,",
+            "  baseUrl: string | URL = window.location.href,",
+            "  options: NavigationUrlOptions = {},",
+            ") {",
+            "  assertWritableId(value.repositoryId, 'repository ID');"
+          ],
+          "text": "export function canonicalNavigationUrl(\n  value: NavigationState,\n  baseUrl: string | URL = window.location.href,\n  options: NavigationUrlOptions = {},\n) {\n  assertWritableId(value.repositoryId, 'repository ID');"
+        }
+      ],
+      "parentId": "component:web-navigation",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-navigation:history-controller",
+      "lineageId": "lineage:code:web-navigation:history-controller",
+      "fingerprint": "golden:code:web-navigation:history-controller:v1",
+      "kind": "code",
+      "name": "createNavigationHistoryController()",
+      "responsibility": "Curated implementation entry point for Navigation and history.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/navigation/historyController.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "createNavigationHistoryController",
+          "startLine": 58,
+          "endLine": 63
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/navigation/historyController.ts",
+          "symbol": "createNavigationHistoryController",
+          "language": "typescript",
+          "startLine": 58,
+          "endLine": 63,
+          "highlightLine": 58,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function createNavigationHistoryController(options: NavigationHistoryOptions): NavigationHistoryController {",
+            "  const adapter = options.adapter ?? browserAdapter();",
+            "  void options.cameraCoalesceMs;",
+            "  let state = canonicalNavigationState({}, options.defaults);",
+            "  let settledEpoch = 0;",
+            "  let restoreGeneration = 0;"
+          ],
+          "text": "export function createNavigationHistoryController(options: NavigationHistoryOptions): NavigationHistoryController {\n  const adapter = options.adapter ?? browserAdapter();\n  void options.cameraCoalesceMs;\n  let state = canonicalNavigationState({}, options.defaults);\n  let settledEpoch = 0;\n  let restoreGeneration = 0;"
+        }
+      ],
+      "parentId": "component:web-navigation",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-renderer-host:create-renderer",
+      "lineageId": "lineage:code:web-renderer-host:create-renderer",
+      "fingerprint": "golden:code:web-renderer-host:create-renderer:v1",
+      "kind": "code",
+      "name": "createRenderer()",
+      "responsibility": "Curated implementation entry point for Renderer host.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/renderer/createRenderer.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "createRenderer",
+          "startLine": 27,
+          "endLine": 32
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/renderer/createRenderer.ts",
+          "symbol": "createRenderer",
+          "language": "typescript",
+          "startLine": 27,
+          "endLine": 32,
+          "highlightLine": 27,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export async function createRenderer(host: HTMLElement, requestedBackend: string, signal?: AbortSignal): Promise<RendererSession> {",
+            "  if (requestedBackend === 'canvas2d') return createCanvasFallback(host, requestedBackend);",
+            "",
+            "  const attemptGpu = async (backend: 'webgpu' | 'webgl2') => {",
+            "    // Context choice is permanent for a canvas. Every GPU attempt receives a",
+            "    // node that has never been passed to another backend."
+          ],
+          "text": "export async function createRenderer(host: HTMLElement, requestedBackend: string, signal?: AbortSignal): Promise<RendererSession> {\n  if (requestedBackend === 'canvas2d') return createCanvasFallback(host, requestedBackend);\n\n  const attemptGpu = async (backend: 'webgpu' | 'webgl2') => {\n    // Context choice is permanent for a canvas. Every GPU attempt receives a\n    // node that has never been passed to another backend."
+        }
+      ],
+      "parentId": "component:web-renderer-host",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-renderer-host:wasm-adapter",
+      "lineageId": "lineage:code:web-renderer-host:wasm-adapter",
+      "fingerprint": "golden:code:web-renderer-host:wasm-adapter:v1",
+      "kind": "code",
+      "name": "WasmRendererAdapter",
+      "responsibility": "Curated implementation entry point for Renderer host.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/renderer/WasmRendererAdapter.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "WasmRendererAdapter",
+          "startLine": 32,
+          "endLine": 37
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/renderer/WasmRendererAdapter.ts",
+          "symbol": "WasmRendererAdapter",
+          "language": "typescript",
+          "startLine": 32,
+          "endLine": 37,
+          "highlightLine": 32,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export class WasmRendererAdapter implements AtlasRenderer {",
+            "  private scene?: AtlasScene;",
+            "  private protocolSceneId = '';",
+            "  private camera?: Camera;",
+            "  private renderStateKey = '';",
+            "  private transitionPositionMs = -1;"
+          ],
+          "text": "export class WasmRendererAdapter implements AtlasRenderer {\n  private scene?: AtlasScene;\n  private protocolSceneId = '';\n  private camera?: Camera;\n  private renderStateKey = '';\n  private transitionPositionMs = -1;"
+        }
+      ],
+      "parentId": "component:web-renderer-host",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-renderer-host:canvas-renderer",
+      "lineageId": "lineage:code:web-renderer-host:canvas-renderer",
+      "fingerprint": "golden:code:web-renderer-host:canvas-renderer:v1",
+      "kind": "code",
+      "name": "Canvas2DRenderer",
+      "responsibility": "Curated implementation entry point for Renderer host.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/renderer/Canvas2DRenderer.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "Canvas2DRenderer",
+          "startLine": 109,
+          "endLine": 114
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/renderer/Canvas2DRenderer.ts",
+          "symbol": "Canvas2DRenderer",
+          "language": "typescript",
+          "startLine": 109,
+          "endLine": 114,
+          "highlightLine": 109,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export class Canvas2DRenderer implements AtlasRenderer {",
+            "  readonly kind = 'canvas2d-preview';",
+            "  private context: CanvasRenderingContext2D;",
+            "  private scene?: AtlasScene;",
+            "  private camera: Camera = { x: 0, y: 0, zoom: 0.72 };",
+            "  private state: RenderState = { focusedIds: new Set(), activeRelationIds: new Set(), flowRelationIds: new Set(), reduceMotion: false, animate: false, visibilityMode: 'all' };"
+          ],
+          "text": "export class Canvas2DRenderer implements AtlasRenderer {\n  readonly kind = 'canvas2d-preview';\n  private context: CanvasRenderingContext2D;\n  private scene?: AtlasScene;\n  private camera: Camera = { x: 0, y: 0, zoom: 0.72 };\n  private state: RenderState = { focusedIds: new Set(), activeRelationIds: new Set(), flowRelationIds: new Set(), reduceMotion: false, animate: false, visibilityMode: 'all' };"
+        }
+      ],
+      "parentId": "component:web-renderer-host",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-stories:create-flight",
+      "lineageId": "lineage:code:web-stories:create-flight",
+      "fingerprint": "golden:code:web-stories:create-flight:v1",
+      "kind": "code",
+      "name": "createStoryFlight()",
+      "responsibility": "Curated implementation entry point for Guided story player.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/storyPlayback.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "createStoryFlight",
+          "startLine": 141,
+          "endLine": 146
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/storyPlayback.ts",
+          "symbol": "createStoryFlight",
+          "language": "typescript",
+          "startLine": 141,
+          "endLine": 146,
+          "highlightLine": 141,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function createStoryFlight(",
+            "  source: Camera,",
+            "  target: Camera,",
+            "  viewport: StoryViewport,",
+            "  nowMs: number,",
+            "  options: {"
+          ],
+          "text": "export function createStoryFlight(\n  source: Camera,\n  target: Camera,\n  viewport: StoryViewport,\n  nowMs: number,\n  options: {"
+        }
+      ],
+      "parentId": "component:web-stories",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-stories:frame-entities",
+      "lineageId": "lineage:code:web-stories:frame-entities",
+      "fingerprint": "golden:code:web-stories:frame-entities:v1",
+      "kind": "code",
+      "name": "frameEntities()",
+      "responsibility": "Curated implementation entry point for Guided story player.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/storyFraming.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "frameEntities",
+          "startLine": 119,
+          "endLine": 124
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/storyFraming.ts",
+          "symbol": "frameEntities",
+          "language": "typescript",
+          "startLine": 119,
+          "endLine": 124,
+          "highlightLine": 119,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function frameEntities(",
+            "  scene: AtlasScene,",
+            "  entityIds: readonly string[],",
+            "  viewport: ViewportSize,",
+            "  safeArea = storySafeArea(viewport),",
+            "  options: FrameEntitiesOptions = {},"
+          ],
+          "text": "export function frameEntities(\n  scene: AtlasScene,\n  entityIds: readonly string[],\n  viewport: ViewportSize,\n  safeArea = storySafeArea(viewport),\n  options: FrameEntitiesOptions = {},"
+        }
+      ],
+      "parentId": "component:web-stories",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-stories:focus-presentation",
+      "lineageId": "lineage:code:web-stories:focus-presentation",
+      "fingerprint": "golden:code:web-stories:focus-presentation:v1",
+      "kind": "code",
+      "name": "storyFocusPresentation()",
+      "responsibility": "Curated implementation entry point for Guided story player.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/storyFocus.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "storyFocusPresentation",
+          "startLine": 8,
+          "endLine": 13
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/storyFocus.ts",
+          "symbol": "storyFocusPresentation",
+          "language": "typescript",
+          "startLine": 8,
+          "endLine": 13,
+          "highlightLine": 8,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function storyFocusPresentation(",
+            "  selectedId: string,",
+            "  targetIds: readonly string[],",
+            "  targetRelationIds: readonly string[],",
+            "  options: {",
+            "    storyOpen: boolean;"
+          ],
+          "text": "export function storyFocusPresentation(\n  selectedId: string,\n  targetIds: readonly string[],\n  targetRelationIds: readonly string[],\n  options: {\n    storyOpen: boolean;"
+        }
+      ],
+      "parentId": "component:web-stories",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:web-provenance:present-claim",
+      "lineageId": "lineage:code:web-provenance:present-claim",
+      "fingerprint": "golden:code:web-provenance:present-claim:v1",
+      "kind": "code",
+      "name": "presentClaimProvenance()",
+      "responsibility": "Curated implementation entry point for Evidence presentation.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/provenance/presentation.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "presentClaimProvenance",
+          "startLine": 40,
+          "endLine": 45
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "apps/web/src/provenance/presentation.ts",
+          "symbol": "presentClaimProvenance",
+          "language": "typescript",
+          "startLine": 40,
+          "endLine": 45,
+          "highlightLine": 40,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function presentClaimProvenance(value: ClaimProvenance): ClaimProvenancePresentation {",
+            "  const count = normalizedEvidenceCount(value.evidenceCount);",
+            "  const evidence = evidenceLabel(count);",
+            "",
+            "  if (value.origin === 'observed') {",
+            "    const description = value.commitPinned"
+          ],
+          "text": "export function presentClaimProvenance(value: ClaimProvenance): ClaimProvenancePresentation {\n  const count = normalizedEvidenceCount(value.evidenceCount);\n  const evidence = evidenceLabel(count);\n\n  if (value.origin === 'observed') {\n    const description = value.commitPinned"
+        }
+      ],
+      "parentId": "component:web-provenance",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-schema:snapshot",
+      "lineageId": "lineage:code:model-schema:snapshot",
+      "fingerprint": "golden:code:model-schema:snapshot:v1",
+      "kind": "code",
+      "name": "ArchitectureSnapshot",
+      "responsibility": "Curated implementation entry point for Semantic schema.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "ArchitectureSnapshot",
+          "startLine": 101,
+          "endLine": 106
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "symbol": "ArchitectureSnapshot",
+          "language": "typescript",
+          "startLine": 101,
+          "endLine": 106,
+          "highlightLine": 101,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export interface ArchitectureSnapshot {",
+            "  schemaVersion: typeof ARCHITECTURE_SCHEMA_VERSION;",
+            "  id: SnapshotId;",
+            "  repositoryId: string;",
+            "  commitSha: string;",
+            "  generatedAt: string;"
+          ],
+          "text": "export interface ArchitectureSnapshot {\n  schemaVersion: typeof ARCHITECTURE_SCHEMA_VERSION;\n  id: SnapshotId;\n  repositoryId: string;\n  commitSha: string;\n  generatedAt: string;"
+        }
+      ],
+      "parentId": "component:model-schema",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-schema:entity",
+      "lineageId": "lineage:code:model-schema:entity",
+      "fingerprint": "golden:code:model-schema:entity:v1",
+      "kind": "code",
+      "name": "ArchitectureEntity",
+      "responsibility": "Curated implementation entry point for Semantic schema.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "ArchitectureEntity",
+          "startLine": 70,
+          "endLine": 75
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "symbol": "ArchitectureEntity",
+          "language": "typescript",
+          "startLine": 70,
+          "endLine": 75,
+          "highlightLine": 70,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export interface ArchitectureEntity {",
+            "  id: EntityId;",
+            "  /** Stable semantic identity used to reconcile this entity across immutable snapshots. */",
+            "  lineageId?: string;",
+            "  kind: EntityKind;",
+            "  parentId?: EntityId;"
+          ],
+          "text": "export interface ArchitectureEntity {\n  id: EntityId;\n  /** Stable semantic identity used to reconcile this entity across immutable snapshots. */\n  lineageId?: string;\n  kind: EntityKind;\n  parentId?: EntityId;"
+        }
+      ],
+      "parentId": "component:model-schema",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-schema:story",
+      "lineageId": "lineage:code:model-schema:story",
+      "fingerprint": "golden:code:model-schema:story:v1",
+      "kind": "code",
+      "name": "ArchitectureStory",
+      "responsibility": "Curated implementation entry point for Semantic schema.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "ArchitectureStory",
+          "startLine": 167,
+          "endLine": 172
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/model.ts",
+          "symbol": "ArchitectureStory",
+          "language": "typescript",
+          "startLine": 167,
+          "endLine": 172,
+          "highlightLine": 167,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export interface ArchitectureStory {",
+            "  schemaVersion: typeof ARCHITECTURE_SCHEMA_VERSION;",
+            "  id: StoryId;",
+            "  snapshotId: SnapshotId;",
+            "  viewId: ViewId;",
+            "  title: string;"
+          ],
+          "text": "export interface ArchitectureStory {\n  schemaVersion: typeof ARCHITECTURE_SCHEMA_VERSION;\n  id: StoryId;\n  snapshotId: SnapshotId;\n  viewId: ViewId;\n  title: string;"
+        }
+      ],
+      "parentId": "component:model-schema",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-normalized:normalize",
+      "lineageId": "lineage:code:model-normalized:normalize",
+      "fingerprint": "golden:code:model-normalized:normalize:v1",
+      "kind": "code",
+      "name": "normalizeArchitecture()",
+      "responsibility": "Curated implementation entry point for Normalized state.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "normalizeArchitecture",
+          "startLine": 219,
+          "endLine": 224
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "symbol": "normalizeArchitecture",
+          "language": "typescript",
+          "startLine": 219,
+          "endLine": 224,
+          "highlightLine": 219,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function normalizeArchitecture({ snapshot, views = [], stories = [] }: NormalizeArchitectureInput): NormalizedArchitecture {",
+            "  const repositoryById: Record<string, NormalizedRepository> = {",
+            "    [snapshot.repositoryId]: {",
+            "      id: snapshot.repositoryId,",
+            "      latestSnapshot: ident('snapshot', snapshot.id),",
+            "    },"
+          ],
+          "text": "export function normalizeArchitecture({ snapshot, views = [], stories = [] }: NormalizeArchitectureInput): NormalizedArchitecture {\n  const repositoryById: Record<string, NormalizedRepository> = {\n    [snapshot.repositoryId]: {\n      id: snapshot.repositoryId,\n      latestSnapshot: ident('snapshot', snapshot.id),\n    },"
+        }
+      ],
+      "parentId": "component:model-normalized",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-normalized:state",
+      "lineageId": "lineage:code:model-normalized:state",
+      "fingerprint": "golden:code:model-normalized:state:v1",
+      "kind": "code",
+      "name": "NormalizedArchitecture",
+      "responsibility": "Curated implementation entry point for Normalized state.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "NormalizedArchitecture",
+          "startLine": 148,
+          "endLine": 153
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "symbol": "NormalizedArchitecture",
+          "language": "typescript",
+          "startLine": 148,
+          "endLine": 153,
+          "highlightLine": 148,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export type NormalizedArchitecture = {",
+            "  schemaVersion: typeof NORMALIZED_ARCHITECTURE_VERSION;",
+            "  repositoryById: Record<string, NormalizedRepository>;",
+            "  snapshotById: Record<string, NormalizedSnapshot>;",
+            "  entityById: Record<string, NormalizedEntity>;",
+            "  relationById: Record<string, NormalizedRelation>;"
+          ],
+          "text": "export type NormalizedArchitecture = {\n  schemaVersion: typeof NORMALIZED_ARCHITECTURE_VERSION;\n  repositoryById: Record<string, NormalizedRepository>;\n  snapshotById: Record<string, NormalizedSnapshot>;\n  entityById: Record<string, NormalizedEntity>;\n  relationById: Record<string, NormalizedRelation>;"
+        }
+      ],
+      "parentId": "component:model-normalized",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-scoping:select-scoped-view",
+      "lineageId": "lineage:code:model-scoping:select-scoped-view",
+      "fingerprint": "golden:code:model-scoping:select-scoped-view:v1",
+      "kind": "code",
+      "name": "selectScopedView()",
+      "responsibility": "Curated implementation entry point for Hierarchy selectors.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "selectScopedView",
+          "startLine": 568,
+          "endLine": 573
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "symbol": "selectScopedView",
+          "language": "typescript",
+          "startLine": 568,
+          "endLine": 573,
+          "highlightLine": 568,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function selectScopedView(state: NormalizedArchitecture, viewId: string, rootEntityId: string): ArchitectureView {",
+            "  const view = selectArchitectureView(state, viewId);",
+            "  const snapshot = selectArchitectureSnapshot(state, view.snapshotId);",
+            "  const entityById = new Map(snapshot.entities.map(entity => [entity.id, entity]));",
+            "  if (!view.entityIds.includes(rootEntityId)) throw new Error(`Root ${rootEntityId} is outside normalized view ${viewId}`);",
+            "  const included = new Set<string>([rootEntityId]);"
+          ],
+          "text": "export function selectScopedView(state: NormalizedArchitecture, viewId: string, rootEntityId: string): ArchitectureView {\n  const view = selectArchitectureView(state, viewId);\n  const snapshot = selectArchitectureSnapshot(state, view.snapshotId);\n  const entityById = new Map(snapshot.entities.map(entity => [entity.id, entity]));\n  if (!view.entityIds.includes(rootEntityId)) throw new Error(`Root ${rootEntityId} is outside normalized view ${viewId}`);\n  const included = new Set<string>([rootEntityId]);"
+        }
+      ],
+      "parentId": "component:model-scoping",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-scoping:select-snapshot",
+      "lineageId": "lineage:code:model-scoping:select-snapshot",
+      "fingerprint": "golden:code:model-scoping:select-snapshot:v1",
+      "kind": "code",
+      "name": "selectArchitectureSnapshot()",
+      "responsibility": "Curated implementation entry point for Hierarchy selectors.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "selectArchitectureSnapshot",
+          "startLine": 455,
+          "endLine": 460
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "symbol": "selectArchitectureSnapshot",
+          "language": "typescript",
+          "startLine": 455,
+          "endLine": 460,
+          "highlightLine": 455,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function selectArchitectureSnapshot(state: NormalizedArchitecture, snapshotId: string): ArchitectureSnapshot {",
+            "  const snapshot = state.snapshotById[snapshotId];",
+            "  if (!snapshot) throw new Error(`Unknown normalized snapshot ${snapshotId}`);",
+            "  const entities: ArchitectureEntity[] = snapshot.entities.map(([, id]) => {",
+            "    const entity = state.entityById[id];",
+            "    if (!entity) throw new Error(`Missing normalized entity ${id}`);"
+          ],
+          "text": "export function selectArchitectureSnapshot(state: NormalizedArchitecture, snapshotId: string): ArchitectureSnapshot {\n  const snapshot = state.snapshotById[snapshotId];\n  if (!snapshot) throw new Error(`Unknown normalized snapshot ${snapshotId}`);\n  const entities: ArchitectureEntity[] = snapshot.entities.map(([, id]) => {\n    const entity = state.entityById[id];\n    if (!entity) throw new Error(`Missing normalized entity ${id}`);"
+        }
+      ],
+      "parentId": "component:model-scoping",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-validation:snapshot",
+      "lineageId": "lineage:code:model-validation:snapshot",
+      "fingerprint": "golden:code:model-validation:snapshot:v1",
+      "kind": "code",
+      "name": "validateSnapshot()",
+      "responsibility": "Curated implementation entry point for Architecture validation.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/validation.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "validateSnapshot",
+          "startLine": 168,
+          "endLine": 173
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/validation.ts",
+          "symbol": "validateSnapshot",
+          "language": "typescript",
+          "startLine": 168,
+          "endLine": 173,
+          "highlightLine": 168,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssue[] {",
+            "  const issues: ValidationIssue[] = [];",
+            "  if (snapshot.schemaVersion !== ARCHITECTURE_SCHEMA_VERSION) {",
+            "    issues.push({ path: \"schemaVersion\", message: `expected ${ARCHITECTURE_SCHEMA_VERSION}` });",
+            "  }",
+            ""
+          ],
+          "text": "export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssue[] {\n  const issues: ValidationIssue[] = [];\n  if (snapshot.schemaVersion !== ARCHITECTURE_SCHEMA_VERSION) {\n    issues.push({ path: \"schemaVersion\", message: `expected ${ARCHITECTURE_SCHEMA_VERSION}` });\n  }\n"
+        }
+      ],
+      "parentId": "component:model-validation",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-validation:view",
+      "lineageId": "lineage:code:model-validation:view",
+      "fingerprint": "golden:code:model-validation:view:v1",
+      "kind": "code",
+      "name": "validateView()",
+      "responsibility": "Curated implementation entry point for Architecture validation.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/validation.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "validateView",
+          "startLine": 247,
+          "endLine": 252
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/validation.ts",
+          "symbol": "validateView",
+          "language": "typescript",
+          "startLine": 247,
+          "endLine": 252,
+          "highlightLine": 247,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function validateView(snapshot: ArchitectureSnapshot, view: ArchitectureView): ValidationIssue[] {",
+            "  const issues: ValidationIssue[] = [];",
+            "  if (view.schemaVersion !== ARCHITECTURE_SCHEMA_VERSION) issues.push({ path: \"schemaVersion\", message: `expected ${ARCHITECTURE_SCHEMA_VERSION}` });",
+            "  if (view.snapshotId !== snapshot.id) issues.push({ path: \"snapshotId\", message: \"does not match snapshot\" });",
+            "  const entityIds = new Set(snapshot.entities.map((entity) => entity.id));",
+            "  const relationIds = new Set(snapshot.relations.map((relation) => relation.id));"
+          ],
+          "text": "export function validateView(snapshot: ArchitectureSnapshot, view: ArchitectureView): ValidationIssue[] {\n  const issues: ValidationIssue[] = [];\n  if (view.schemaVersion !== ARCHITECTURE_SCHEMA_VERSION) issues.push({ path: \"schemaVersion\", message: `expected ${ARCHITECTURE_SCHEMA_VERSION}` });\n  if (view.snapshotId !== snapshot.id) issues.push({ path: \"snapshotId\", message: \"does not match snapshot\" });\n  const entityIds = new Set(snapshot.entities.map((entity) => entity.id));\n  const relationIds = new Set(snapshot.relations.map((relation) => relation.id));"
+        }
+      ],
+      "parentId": "component:model-validation",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:model-validation:story",
+      "lineageId": "lineage:code:model-validation:story",
+      "fingerprint": "golden:code:model-validation:story:v1",
+      "kind": "code",
+      "name": "validateStory()",
+      "responsibility": "Curated implementation entry point for Architecture validation.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/validation.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "validateStory",
+          "startLine": 457,
+          "endLine": 462
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/architecture/src/validation.ts",
+          "symbol": "validateStory",
+          "language": "typescript",
+          "startLine": 457,
+          "endLine": 462,
+          "highlightLine": 457,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function validateStory(snapshot: ArchitectureSnapshot, view: ArchitectureView, story: ArchitectureStory): ValidationIssue[] {",
+            "  return validateStoryDocument(snapshot, view, story);",
+            "}",
+            "",
+            "export function validateOverrides(overrides: ArchitectureOverrides): ValidationIssue[] {",
+            "  const issues: ValidationIssue[] = [];"
+          ],
+          "text": "export function validateStory(snapshot: ArchitectureSnapshot, view: ArchitectureView, story: ArchitectureStory): ValidationIssue[] {\n  return validateStoryDocument(snapshot, view, story);\n}\n\nexport function validateOverrides(overrides: ArchitectureOverrides): ValidationIssue[] {\n  const issues: ValidationIssue[] = [];"
+        }
+      ],
+      "parentId": "component:model-validation",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:compiler-scene:compile",
+      "lineageId": "lineage:code:compiler-scene:compile",
+      "fingerprint": "golden:code:compiler-scene:compile:v1",
+      "kind": "code",
+      "name": "compileScene()",
+      "responsibility": "Curated implementation entry point for Scene compilation.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-scene.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileScene",
+          "startLine": 169,
+          "endLine": 174
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/scene-compiler/src/compile-scene.ts",
+          "symbol": "compileScene",
+          "language": "typescript",
+          "startLine": 169,
+          "endLine": 174,
+          "highlightLine": 169,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function compileScene(",
+            "  snapshot: ArchitectureSnapshot,",
+            "  view: ArchitectureView,",
+            "  options: CompileSceneOptions = {},",
+            "): SceneSnapshot {",
+            "  const issues = [...validateSnapshot(snapshot), ...validateView(snapshot, view)];"
+          ],
+          "text": "export function compileScene(\n  snapshot: ArchitectureSnapshot,\n  view: ArchitectureView,\n  options: CompileSceneOptions = {},\n): SceneSnapshot {\n  const issues = [...validateSnapshot(snapshot), ...validateView(snapshot, view)];"
+        }
+      ],
+      "parentId": "component:compiler-scene",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:compiler-story:compile",
+      "lineageId": "lineage:code:compiler-story:compile",
+      "fingerprint": "golden:code:compiler-story:compile:v1",
+      "kind": "code",
+      "name": "compileStory()",
+      "responsibility": "Curated implementation entry point for Story compilation.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-story.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileStory",
+          "startLine": 80,
+          "endLine": 85
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/scene-compiler/src/compile-story.ts",
+          "symbol": "compileStory",
+          "language": "typescript",
+          "startLine": 80,
+          "endLine": 85,
+          "highlightLine": 80,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function compileStory(",
+            "  snapshot: ArchitectureSnapshot,",
+            "  view: ArchitectureView,",
+            "  story: ArchitectureStory,",
+            "  scene: SceneSnapshot,",
+            "  options: CompileStoryOptions = {},"
+          ],
+          "text": "export function compileStory(\n  snapshot: ArchitectureSnapshot,\n  view: ArchitectureView,\n  story: ArchitectureStory,\n  scene: SceneSnapshot,\n  options: CompileStoryOptions = {},"
+        }
+      ],
+      "parentId": "component:compiler-story",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:compiler-normalized:compile-scene",
+      "lineageId": "lineage:code:compiler-normalized:compile-scene",
+      "fingerprint": "golden:code:compiler-normalized:compile-scene:v1",
+      "kind": "code",
+      "name": "compileNormalizedScene()",
+      "responsibility": "Curated implementation entry point for Scoped scene and patch compilation.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "compileNormalizedScene",
+          "startLine": 34,
+          "endLine": 39
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/scene-compiler/src/compile-normalized.ts",
+          "symbol": "compileNormalizedScene",
+          "language": "typescript",
+          "startLine": 34,
+          "endLine": 39,
+          "highlightLine": 34,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function compileNormalizedScene(",
+            "  state: NormalizedArchitecture,",
+            "  viewId: string,",
+            "  options: CompileNormalizedSceneOptions = {},",
+            "): SceneSnapshot {",
+            "  const view = options.rootEntityId"
+          ],
+          "text": "export function compileNormalizedScene(\n  state: NormalizedArchitecture,\n  viewId: string,\n  options: CompileNormalizedSceneOptions = {},\n): SceneSnapshot {\n  const view = options.rootEntityId"
+        }
+      ],
+      "parentId": "component:compiler-normalized",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:compiler-normalized:diff",
+      "lineageId": "lineage:code:compiler-normalized:diff",
+      "fingerprint": "golden:code:compiler-normalized:diff:v1",
+      "kind": "code",
+      "name": "diffSceneSnapshots()",
+      "responsibility": "Curated implementation entry point for Scoped scene and patch compilation.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "diffSceneSnapshots",
+          "startLine": 59,
+          "endLine": 64
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/scene-compiler/src/compile-normalized.ts",
+          "symbol": "diffSceneSnapshots",
+          "language": "typescript",
+          "startLine": 59,
+          "endLine": 64,
+          "highlightLine": 59,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export function diffSceneSnapshots(",
+            "  current: SceneSnapshot,",
+            "  target: SceneSnapshot,",
+            "  transition?: { durationMs: number; easing: Easing },",
+            "): ScenePatch {",
+            "  if (current.sceneId !== target.sceneId) throw new Error('Cannot diff snapshots from different scenes');"
+          ],
+          "text": "export function diffSceneSnapshots(\n  current: SceneSnapshot,\n  target: SceneSnapshot,\n  transition?: { durationMs: number; easing: Easing },\n): ScenePatch {\n  if (current.sceneId !== target.sceneId) throw new Error('Cannot diff snapshots from different scenes');"
+        }
+      ],
+      "parentId": "component:compiler-normalized",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:compiler-protocol:snapshot",
+      "lineageId": "lineage:code:compiler-protocol:snapshot",
+      "fingerprint": "golden:code:compiler-protocol:snapshot:v1",
+      "kind": "code",
+      "name": "SceneSnapshot",
+      "responsibility": "Curated implementation entry point for TypeScript protocol mirror.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/protocol.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "SceneSnapshot",
+          "startLine": 72,
+          "endLine": 77
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/scene-compiler/src/protocol.ts",
+          "symbol": "SceneSnapshot",
+          "language": "typescript",
+          "startLine": 72,
+          "endLine": 77,
+          "highlightLine": 72,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export interface SceneSnapshot {",
+            "  protocolVersion: typeof RENDERER_PROTOCOL_VERSION;",
+            "  sceneId: string;",
+            "  revision: number;",
+            "  worldBounds: Rect;",
+            "  objects: SceneObject[];"
+          ],
+          "text": "export interface SceneSnapshot {\n  protocolVersion: typeof RENDERER_PROTOCOL_VERSION;\n  sceneId: string;\n  revision: number;\n  worldBounds: Rect;\n  objects: SceneObject[];"
+        }
+      ],
+      "parentId": "component:compiler-protocol",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:compiler-protocol:timeline",
+      "lineageId": "lineage:code:compiler-protocol:timeline",
+      "fingerprint": "golden:code:compiler-protocol:timeline:v1",
+      "kind": "code",
+      "name": "Timeline",
+      "responsibility": "Curated implementation entry point for TypeScript protocol mirror.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/protocol.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "Timeline",
+          "startLine": 119,
+          "endLine": 124
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/scene-compiler/src/protocol.ts",
+          "symbol": "Timeline",
+          "language": "typescript",
+          "startLine": 119,
+          "endLine": 124,
+          "highlightLine": 119,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "export interface Timeline {",
+            "  protocolVersion: typeof RENDERER_PROTOCOL_VERSION;",
+            "  timelineVersion: 2;",
+            "  id: string;",
+            "  sceneId: string;",
+            "  durationMs: number;"
+          ],
+          "text": "export interface Timeline {\n  protocolVersion: typeof RENDERER_PROTOCOL_VERSION;\n  timelineVersion: 2;\n  id: string;\n  sceneId: string;\n  durationMs: number;"
+        }
+      ],
+      "parentId": "component:compiler-protocol",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:renderer-protocol:validate-scene",
+      "lineageId": "lineage:code:renderer-protocol:validate-scene",
+      "fingerprint": "golden:code:renderer-protocol:validate-scene:v1",
+      "kind": "code",
+      "name": "SceneSnapshot::validate()",
+      "responsibility": "Curated implementation entry point for Versioned renderer protocol.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-protocol/src/scene.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "SceneSnapshot::validate",
+          "startLine": 237,
+          "endLine": 242
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-protocol/src/scene.rs",
+          "symbol": "SceneSnapshot::validate",
+          "language": "rust",
+          "startLine": 237,
+          "endLine": 242,
+          "highlightLine": 237,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "    pub fn validate(&self) -> Result<(), ProtocolError> {",
+            "        if self.protocol_version != PROTOCOL_VERSION {",
+            "            return Err(ProtocolError::UnsupportedVersion(self.protocol_version));",
+            "        }",
+            "        if !self.world_bounds.is_valid() {",
+            "            return Err(ProtocolError::InvalidBounds(\"worldBounds\".into()));"
+          ],
+          "text": "    pub fn validate(&self) -> Result<(), ProtocolError> {\n        if self.protocol_version != PROTOCOL_VERSION {\n            return Err(ProtocolError::UnsupportedVersion(self.protocol_version));\n        }\n        if !self.world_bounds.is_valid() {\n            return Err(ProtocolError::InvalidBounds(\"worldBounds\".into()));"
+        }
+      ],
+      "parentId": "component:renderer-protocol",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-protocol:validate-patch",
+      "lineageId": "lineage:code:renderer-protocol:validate-patch",
+      "fingerprint": "golden:code:renderer-protocol:validate-patch:v1",
+      "kind": "code",
+      "name": "ScenePatch::validate_against()",
+      "responsibility": "Curated implementation entry point for Versioned renderer protocol.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-protocol/src/patch.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "ScenePatch::validate_against",
+          "startLine": 44,
+          "endLine": 49
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-protocol/src/patch.rs",
+          "symbol": "ScenePatch::validate_against",
+          "language": "rust",
+          "startLine": 44,
+          "endLine": 49,
+          "highlightLine": 44,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "    pub fn validate_against(&self, scene: &SceneSnapshot) -> Result<(), ProtocolError> {",
+            "        if self.protocol_version != PROTOCOL_VERSION {",
+            "            return Err(ProtocolError::UnsupportedVersion(self.protocol_version));",
+            "        }",
+            "        if self.scene_id != scene.scene_id {",
+            "            return Err(ProtocolError::SceneMismatch {"
+          ],
+          "text": "    pub fn validate_against(&self, scene: &SceneSnapshot) -> Result<(), ProtocolError> {\n        if self.protocol_version != PROTOCOL_VERSION {\n            return Err(ProtocolError::UnsupportedVersion(self.protocol_version));\n        }\n        if self.scene_id != scene.scene_id {\n            return Err(ProtocolError::SceneMismatch {"
+        }
+      ],
+      "parentId": "component:renderer-protocol",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-engine:protocol-engine",
+      "lineageId": "lineage:code:renderer-engine:protocol-engine",
+      "fingerprint": "golden:code:renderer-engine:protocol-engine:v1",
+      "kind": "code",
+      "name": "ProtocolEngine",
+      "responsibility": "Curated implementation entry point for Scene engine.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-engine/src/protocol_runtime.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "ProtocolEngine",
+          "startLine": 517,
+          "endLine": 522
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-engine/src/protocol_runtime.rs",
+          "symbol": "ProtocolEngine",
+          "language": "rust",
+          "startLine": 517,
+          "endLine": 522,
+          "highlightLine": 517,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub struct ProtocolEngine {",
+            "    snapshot: SceneSnapshot,",
+            "    camera: Camera,",
+            "    lod: ProtocolLodState,",
+            "    selected: Option<HitTarget>,",
+            "    timeline: Option<ProtocolTimelinePlayer>,"
+          ],
+          "text": "pub struct ProtocolEngine {\n    snapshot: SceneSnapshot,\n    camera: Camera,\n    lod: ProtocolLodState,\n    selected: Option<HitTarget>,\n    timeline: Option<ProtocolTimelinePlayer>,"
+        }
+      ],
+      "parentId": "component:renderer-engine",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-engine:lod-controller",
+      "lineageId": "lineage:code:renderer-engine:lod-controller",
+      "fingerprint": "golden:code:renderer-engine:lod-controller:v1",
+      "kind": "code",
+      "name": "LodController",
+      "responsibility": "Curated implementation entry point for Scene engine.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-engine/src/lod.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "LodController",
+          "startLine": 91,
+          "endLine": 96
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-engine/src/lod.rs",
+          "symbol": "LodController",
+          "language": "rust",
+          "startLine": 91,
+          "endLine": 96,
+          "highlightLine": 91,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub struct LodController {",
+            "    thresholds: LodThresholds,",
+            "    current: SemanticLevel,",
+            "    previous: Option<SemanticLevel>,",
+            "    transition_started_ms: f64,",
+            "}"
+          ],
+          "text": "pub struct LodController {\n    thresholds: LodThresholds,\n    current: SemanticLevel,\n    previous: Option<SemanticLevel>,\n    transition_started_ms: f64,\n}"
+        }
+      ],
+      "parentId": "component:renderer-engine",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-engine:hit-test",
+      "lineageId": "lineage:code:renderer-engine:hit-test",
+      "fingerprint": "golden:code:renderer-engine:hit-test:v1",
+      "kind": "code",
+      "name": "hit_test()",
+      "responsibility": "Curated implementation entry point for Scene engine.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-engine/src/hit_test.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "hit_test",
+          "startLine": 22,
+          "endLine": 27
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-engine/src/hit_test.rs",
+          "symbol": "hit_test",
+          "language": "rust",
+          "startLine": 22,
+          "endLine": 27,
+          "highlightLine": 22,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub fn hit_test(",
+            "    scene: &Scene,",
+            "    camera: &Camera,",
+            "    level: SemanticLevel,",
+            "    screen_point: Vec2,",
+            "    tolerance_px: f64,"
+          ],
+          "text": "pub fn hit_test(\n    scene: &Scene,\n    camera: &Camera,\n    level: SemanticLevel,\n    screen_point: Vec2,\n    tolerance_px: f64,"
+        }
+      ],
+      "parentId": "component:renderer-engine",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-gpu:renderer",
+      "lineageId": "lineage:code:renderer-gpu:renderer",
+      "fingerprint": "golden:code:renderer-gpu:renderer:v1",
+      "kind": "code",
+      "name": "GpuRenderer",
+      "responsibility": "Curated implementation entry point for GPU renderer.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-gpu/src/surface.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "GpuRenderer",
+          "startLine": 230,
+          "endLine": 235
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-gpu/src/surface.rs",
+          "symbol": "GpuRenderer",
+          "language": "rust",
+          "startLine": 230,
+          "endLine": 235,
+          "highlightLine": 230,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub struct GpuRenderer {",
+            "    _instance: wgpu::Instance,",
+            "    surface: wgpu::Surface<'static>,",
+            "    adapter_info: wgpu::AdapterInfo,",
+            "    device: wgpu::Device,",
+            "    queue: wgpu::Queue,"
+          ],
+          "text": "pub struct GpuRenderer {\n    _instance: wgpu::Instance,\n    surface: wgpu::Surface<'static>,\n    adapter_info: wgpu::AdapterInfo,\n    device: wgpu::Device,\n    queue: wgpu::Queue,"
+        }
+      ],
+      "parentId": "component:renderer-gpu",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-gpu:build-mesh",
+      "lineageId": "lineage:code:renderer-gpu:build-mesh",
+      "fingerprint": "golden:code:renderer-gpu:build-mesh:v1",
+      "kind": "code",
+      "name": "build_mesh()",
+      "responsibility": "Curated implementation entry point for GPU renderer.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-gpu/src/mesh.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "build_mesh",
+          "startLine": 146,
+          "endLine": 151
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-gpu/src/mesh.rs",
+          "symbol": "build_mesh",
+          "language": "rust",
+          "startLine": 146,
+          "endLine": 151,
+          "highlightLine": 146,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub fn build_mesh(snapshot: &SceneSnapshot, glyph_atlas: &GlyphAtlas) -> GpuMesh {",
+            "    let mut builder = MeshBuilder::with_capacity(",
+            "        snapshot.paths.len().saturating_mul(12) + snapshot.objects.len().saturating_mul(192),",
+            "    );",
+            "    let mut style_spans = Vec::with_capacity(snapshot.paths.len() + snapshot.objects.len() * 4);",
+            "    let mut path_style_spans = vec![Vec::new(); snapshot.paths.len()];"
+          ],
+          "text": "pub fn build_mesh(snapshot: &SceneSnapshot, glyph_atlas: &GlyphAtlas) -> GpuMesh {\n    let mut builder = MeshBuilder::with_capacity(\n        snapshot.paths.len().saturating_mul(12) + snapshot.objects.len().saturating_mul(192),\n    );\n    let mut style_spans = Vec::with_capacity(snapshot.paths.len() + snapshot.objects.len() * 4);\n    let mut path_style_spans = vec![Vec::new(); snapshot.paths.len()];"
+        }
+      ],
+      "parentId": "component:renderer-gpu",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-gpu:glyph-atlas",
+      "lineageId": "lineage:code:renderer-gpu:glyph-atlas",
+      "fingerprint": "golden:code:renderer-gpu:glyph-atlas:v1",
+      "kind": "code",
+      "name": "GlyphAtlas",
+      "responsibility": "Curated implementation entry point for GPU renderer.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-gpu/src/glyph.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "GlyphAtlas",
+          "startLine": 152,
+          "endLine": 157
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-gpu/src/glyph.rs",
+          "symbol": "GlyphAtlas",
+          "language": "rust",
+          "startLine": 152,
+          "endLine": 157,
+          "highlightLine": 152,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub struct GlyphAtlas {",
+            "    width: u32,",
+            "    height: u32,",
+            "    pixels: Vec<u8>,",
+            "    metrics: Vec<GlyphMetric>,",
+            "}"
+          ],
+          "text": "pub struct GlyphAtlas {\n    width: u32,\n    height: u32,\n    pixels: Vec<u8>,\n    metrics: Vec<GlyphMetric>,\n}"
+        }
+      ],
+      "parentId": "component:renderer-gpu",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-wasm:atlas-renderer",
+      "lineageId": "lineage:code:renderer-wasm:atlas-renderer",
+      "fingerprint": "golden:code:renderer-wasm:atlas-renderer:v1",
+      "kind": "code",
+      "name": "WasmAtlasRenderer",
+      "responsibility": "Curated implementation entry point for Browser WASM bridge.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-wasm/src/browser.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "WasmAtlasRenderer",
+          "startLine": 13,
+          "endLine": 18
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-wasm/src/browser.rs",
+          "symbol": "WasmAtlasRenderer",
+          "language": "rust",
+          "startLine": 13,
+          "endLine": 18,
+          "highlightLine": 13,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub struct WasmAtlasRenderer {",
+            "    canvas: HtmlCanvasElement,",
+            "    gpu: Option<GpuRenderer>,",
+            "    engine: Option<ProtocolEngine>,",
+            "    requested_backend: String,",
+            "    viewport: Viewport,"
+          ],
+          "text": "pub struct WasmAtlasRenderer {\n    canvas: HtmlCanvasElement,\n    gpu: Option<GpuRenderer>,\n    engine: Option<ProtocolEngine>,\n    requested_backend: String,\n    viewport: Viewport,"
+        }
+      ],
+      "parentId": "component:renderer-wasm",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:renderer-wasm:create-renderer",
+      "lineageId": "lineage:code:renderer-wasm:create-renderer",
+      "fingerprint": "golden:code:renderer-wasm:create-renderer:v1",
+      "kind": "code",
+      "name": "createAtlasRenderer()",
+      "responsibility": "Curated implementation entry point for Browser WASM bridge.",
+      "sourceRefs": [
+        {
+          "path": "crates/atlas-wasm/src/browser.rs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "create_atlas_renderer",
+          "startLine": 46,
+          "endLine": 51
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "crates/atlas-wasm/src/browser.rs",
+          "symbol": "create_atlas_renderer",
+          "language": "rust",
+          "startLine": 46,
+          "endLine": 51,
+          "highlightLine": 46,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "pub async fn create_atlas_renderer(",
+            "    canvas: HtmlCanvasElement,",
+            "    requested_backend: String,",
+            ") -> Result<WasmAtlasRenderer, JsValue> {",
+            "    console_error_panic_hook::set_once();",
+            "    let preference = BackendPreference::from_query(Some(&requested_backend));"
+          ],
+          "text": "pub async fn create_atlas_renderer(\n    canvas: HtmlCanvasElement,\n    requested_backend: String,\n) -> Result<WasmAtlasRenderer, JsValue> {\n    console_error_panic_hook::set_once();\n    let preference = BackendPreference::from_query(Some(&requested_backend));"
+        }
+      ],
+      "parentId": "component:renderer-wasm",
+      "technology": [
+        "Rust"
+      ]
+    },
+    {
+      "id": "code:tooling-wasm:build-script",
+      "lineageId": "lineage:code:tooling-wasm:build-script",
+      "fingerprint": "golden:code:tooling-wasm:build-script:v1",
+      "kind": "code",
+      "name": "scripts/build-wasm.mjs",
+      "responsibility": "Curated implementation entry point for WASM build driver.",
+      "sourceRefs": [
+        {
+          "path": "scripts/build-wasm.mjs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "startLine": 1,
+          "endLine": 6
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "scripts/build-wasm.mjs",
+          "language": "javascript",
+          "startLine": 1,
+          "endLine": 6,
+          "highlightLine": 1,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "#!/usr/bin/env node",
+            "import { spawnSync } from \"node:child_process\";",
+            "",
+            "const release = process.argv.includes(\"--release\");",
+            "const debug = process.argv.includes(\"--debug\");",
+            "if (release && debug) {"
+          ],
+          "text": "#!/usr/bin/env node\nimport { spawnSync } from \"node:child_process\";\n\nconst release = process.argv.includes(\"--release\");\nconst debug = process.argv.includes(\"--debug\");\nif (release && debug) {"
+        }
+      ],
+      "parentId": "component:tooling-wasm",
+      "technology": [
+        "Node.js",
+        "JavaScript"
+      ]
+    },
+    {
+      "id": "code:tooling-fixtures:generator",
+      "lineageId": "lineage:code:tooling-fixtures:generator",
+      "fingerprint": "golden:code:tooling-fixtures:generator:v1",
+      "kind": "code",
+      "name": "packages/scene-compiler/src/generate-fixtures.ts",
+      "responsibility": "Curated implementation entry point for Fixture generator.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/generate-fixtures.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "startLine": 1,
+          "endLine": 6
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "packages/scene-compiler/src/generate-fixtures.ts",
+          "language": "typescript",
+          "startLine": 1,
+          "endLine": 6,
+          "highlightLine": 1,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "import { readFile, writeFile } from 'node:fs/promises';",
+            "import { fileURLToPath } from 'node:url';",
+            "import { buildC4ProjectionBundle, validateSnapshot } from '@okie/architecture';",
+            "import { compileC4Scene, compileC4Timeline } from './compile-c4.js';",
+            "import { goldenSnapshot, goldenStory, goldenView } from './golden-fixture.js';",
+            ""
+          ],
+          "text": "import { readFile, writeFile } from 'node:fs/promises';\nimport { fileURLToPath } from 'node:url';\nimport { buildC4ProjectionBundle, validateSnapshot } from '@okie/architecture';\nimport { compileC4Scene, compileC4Timeline } from './compile-c4.js';\nimport { goldenSnapshot, goldenStory, goldenView } from './golden-fixture.js';\n"
+        }
+      ],
+      "parentId": "component:tooling-fixtures",
+      "technology": [
+        "TypeScript"
+      ]
+    },
+    {
+      "id": "code:tooling-stress:generator",
+      "lineageId": "lineage:code:tooling-stress:generator",
+      "fingerprint": "golden:code:tooling-stress:generator:v1",
+      "kind": "code",
+      "name": "scripts/generate-stress.mjs",
+      "responsibility": "Curated implementation entry point for Stress scene generator.",
+      "sourceRefs": [
+        {
+          "path": "scripts/generate-stress.mjs",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "startLine": 1,
+          "endLine": 6
+        }
+      ],
+      "sourceExcerpts": [
+        {
+          "path": "scripts/generate-stress.mjs",
+          "language": "javascript",
+          "startLine": 1,
+          "endLine": 6,
+          "highlightLine": 1,
+          "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
+          "lines": [
+            "#!/usr/bin/env node",
+            "import { mkdir, writeFile } from \"node:fs/promises\";",
+            "import { dirname, resolve } from \"node:path\";",
+            "",
+            "function readInteger(name, fallback) {",
+            "  const index = process.argv.indexOf(`--${name}`);"
+          ],
+          "text": "#!/usr/bin/env node\nimport { mkdir, writeFile } from \"node:fs/promises\";\nimport { dirname, resolve } from \"node:path\";\n\nfunction readInteger(name, fallback) {\n  const index = process.argv.indexOf(`--${name}`);"
+        }
+      ],
+      "parentId": "component:tooling-stress",
+      "technology": [
+        "Node.js",
+        "JavaScript"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "id": "relation:developer-explores-okie",
+      "lineageId": "lineage:relation:developer-explores-okie",
+      "fingerprint": "golden:relation:developer-explores-okie:v1",
+      "from": "actor:developer",
+      "to": "system:okie",
+      "kind": "uses",
+      "label": "explores architecture and source",
+      "evidence": [
+        {
+          "source": {
+            "path": "README.md",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "Okie",
+            "startLine": 1,
+            "endLine": 5
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:okie-source-evidence",
+      "lineageId": "lineage:relation:okie-source-evidence",
+      "fingerprint": "golden:relation:okie-source-evidence:v1",
+      "from": "system:okie",
+      "to": "external:source-repository",
+      "kind": "dependsOn",
+      "label": "links claims to source evidence",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/architecture/src/model.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "SourceRef"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:okie-renders-browser",
+      "lineageId": "lineage:relation:okie-renders-browser",
+      "fingerprint": "golden:relation:okie-renders-browser:v1",
+      "from": "system:okie",
+      "to": "external:browser-graphics",
+      "kind": "uses",
+      "label": "renders through WASM and WebGPU/WebGL2",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/renderer/createRenderer.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "createRenderer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:model-to-compiler",
+      "lineageId": "lineage:relation:model-to-compiler",
+      "fingerprint": "golden:relation:model-to-compiler:v1",
+      "from": "container:architecture-model",
+      "to": "container:scene-compiler",
+      "kind": "dependsOn",
+      "label": "provides snapshots, views, and stories",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/compile-scene.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "compileScene"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:compiler-to-renderer",
+      "lineageId": "lineage:relation:compiler-to-renderer",
+      "fingerprint": "golden:relation:compiler-to-renderer:v1",
+      "from": "container:scene-compiler",
+      "to": "container:rust-renderer",
+      "kind": "dependsOn",
+      "label": "emits protocol scenes, patches, and timelines",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/protocol.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:web-controls-renderer",
+      "lineageId": "lineage:relation:web-controls-renderer",
+      "fingerprint": "golden:relation:web-controls-renderer:v1",
+      "from": "container:web-app",
+      "to": "container:rust-renderer",
+      "kind": "calls",
+      "label": "sends scenes, camera input, visibility, and playback time",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/renderer/WasmRendererAdapter.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "WasmRendererAdapter"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:tooling-builds-renderer",
+      "lineageId": "lineage:relation:tooling-builds-renderer",
+      "fingerprint": "golden:relation:tooling-builds-renderer:v1",
+      "from": "container:tooling",
+      "to": "container:rust-renderer",
+      "kind": "dependsOn",
+      "label": "builds browser WASM",
+      "evidence": [
+        {
+          "source": {
+            "path": "scripts/build-wasm.mjs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:tooling-generates-scenes",
+      "lineageId": "lineage:relation:tooling-generates-scenes",
+      "fingerprint": "golden:relation:tooling-generates-scenes:v1",
+      "from": "container:tooling",
+      "to": "container:scene-compiler",
+      "kind": "calls",
+      "label": "generates checked deterministic fixtures",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/generate-fixtures.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:web-shell-navigation",
+      "lineageId": "lineage:relation:web-shell-navigation",
+      "fingerprint": "golden:relation:web-shell-navigation:v1",
+      "from": "component:web-shell",
+      "to": "component:web-navigation",
+      "kind": "uses",
+      "label": "uses canonical navigation state",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/App.tsx",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "App"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:web-shell-renderer-host",
+      "lineageId": "lineage:relation:web-shell-renderer-host",
+      "fingerprint": "golden:relation:web-shell-renderer-host:v1",
+      "from": "component:web-shell",
+      "to": "component:web-renderer-host",
+      "kind": "uses",
+      "label": "hosts the atlas renderer",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/App.tsx",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "CanvasViewport"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:web-shell-stories",
+      "lineageId": "lineage:relation:web-shell-stories",
+      "fingerprint": "golden:relation:web-shell-stories:v1",
+      "from": "component:web-shell",
+      "to": "component:web-stories",
+      "kind": "uses",
+      "label": "presents guided stories",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/App.tsx",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "App"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:web-shell-provenance",
+      "lineageId": "lineage:relation:web-shell-provenance",
+      "fingerprint": "golden:relation:web-shell-provenance:v1",
+      "from": "component:web-shell",
+      "to": "component:web-provenance",
+      "kind": "uses",
+      "label": "presents source provenance",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/App.tsx",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "App"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:model-schema-normalized",
+      "lineageId": "lineage:relation:model-schema-normalized",
+      "fingerprint": "golden:relation:model-schema-normalized:v1",
+      "from": "component:model-normalized",
+      "to": "component:model-schema",
+      "kind": "dependsOn",
+      "label": "uses semantic schema types",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/architecture/src/normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "NormalizedArchitecture"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:model-normalized-scoping",
+      "lineageId": "lineage:relation:model-normalized-scoping",
+      "fingerprint": "golden:relation:model-normalized-scoping:v1",
+      "from": "component:model-scoping",
+      "to": "component:model-normalized",
+      "kind": "uses",
+      "label": "queries indexed hierarchy",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/architecture/src/normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "selectScopedView"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:model-validation-schema",
+      "lineageId": "lineage:relation:model-validation-schema",
+      "fingerprint": "golden:relation:model-validation-schema:v1",
+      "from": "component:model-validation",
+      "to": "component:model-schema",
+      "kind": "dependsOn",
+      "label": "validates semantic records",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/architecture/src/validation.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "validateSnapshot"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:compiler-normalized-scene",
+      "lineageId": "lineage:relation:compiler-normalized-scene",
+      "fingerprint": "golden:relation:compiler-normalized-scene:v1",
+      "from": "component:compiler-normalized",
+      "to": "component:compiler-scene",
+      "kind": "calls",
+      "label": "compiles selected views",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/compile-normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "compileNormalizedScene"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:compiler-normalized-story",
+      "lineageId": "lineage:relation:compiler-normalized-story",
+      "fingerprint": "golden:relation:compiler-normalized-story:v1",
+      "from": "component:compiler-normalized",
+      "to": "component:compiler-story",
+      "kind": "calls",
+      "label": "compiles selected stories",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/compile-normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "compileNormalizedTimeline"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:compiler-scene-protocol",
+      "lineageId": "lineage:relation:compiler-scene-protocol",
+      "fingerprint": "golden:relation:compiler-scene-protocol:v1",
+      "from": "component:compiler-scene",
+      "to": "component:compiler-protocol",
+      "kind": "dependsOn",
+      "label": "emits scene protocol",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/compile-scene.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "compileScene"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:renderer-engine-protocol",
+      "lineageId": "lineage:relation:renderer-engine-protocol",
+      "fingerprint": "golden:relation:renderer-engine-protocol:v1",
+      "from": "component:renderer-engine",
+      "to": "component:renderer-protocol",
+      "kind": "dependsOn",
+      "label": "validates retained protocol state",
+      "evidence": [
+        {
+          "source": {
+            "path": "crates/atlas-engine/src/protocol_runtime.rs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "ProtocolEngine"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:renderer-gpu-engine",
+      "lineageId": "lineage:relation:renderer-gpu-engine",
+      "fingerprint": "golden:relation:renderer-gpu-engine:v1",
+      "from": "component:renderer-gpu",
+      "to": "component:renderer-engine",
+      "kind": "reads",
+      "label": "draws prepared frames",
+      "evidence": [
+        {
+          "source": {
+            "path": "crates/atlas-gpu/src/surface.rs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "GpuRenderer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:renderer-wasm-engine",
+      "lineageId": "lineage:relation:renderer-wasm-engine",
+      "fingerprint": "golden:relation:renderer-wasm-engine:v1",
+      "from": "component:renderer-wasm",
+      "to": "component:renderer-engine",
+      "kind": "calls",
+      "label": "forwards browser commands",
+      "evidence": [
+        {
+          "source": {
+            "path": "crates/atlas-wasm/src/browser.rs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "WasmAtlasRenderer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:renderer-wasm-gpu",
+      "lineageId": "lineage:relation:renderer-wasm-gpu",
+      "fingerprint": "golden:relation:renderer-wasm-gpu:v1",
+      "from": "component:renderer-wasm",
+      "to": "component:renderer-gpu",
+      "kind": "calls",
+      "label": "submits browser frames",
+      "evidence": [
+        {
+          "source": {
+            "path": "crates/atlas-wasm/src/browser.rs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "WasmAtlasRenderer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-app-navigation-url",
+      "lineageId": "lineage:relation:code-app-navigation-url",
+      "fingerprint": "golden:relation:code-app-navigation-url:v1",
+      "from": "code:web-shell:app",
+      "to": "code:web-navigation:history-controller",
+      "kind": "calls",
+      "label": "commits navigation through history",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/App.tsx",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "commitNavigation"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-app-create-renderer",
+      "lineageId": "lineage:relation:code-app-create-renderer",
+      "fingerprint": "golden:relation:code-app-create-renderer:v1",
+      "from": "code:web-shell:canvas-viewport",
+      "to": "code:web-renderer-host:create-renderer",
+      "kind": "calls",
+      "label": "creates the renderer",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/App.tsx",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "CanvasViewport"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-flight-frame",
+      "lineageId": "lineage:relation:code-flight-frame",
+      "fingerprint": "golden:relation:code-flight-frame:v1",
+      "from": "code:web-shell:app",
+      "to": "code:web-stories:create-flight",
+      "kind": "calls",
+      "label": "starts a deterministic camera flight",
+      "evidence": [
+        {
+          "source": {
+            "path": "apps/web/src/App.tsx",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "setStep"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-normalize-select-scoped",
+      "lineageId": "lineage:relation:code-normalize-select-scoped",
+      "fingerprint": "golden:relation:code-normalize-select-scoped:v1",
+      "from": "code:model-scoping:select-scoped-view",
+      "to": "code:model-normalized:state",
+      "kind": "dependsOn",
+      "label": "queries normalized state",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/architecture/src/normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "selectScopedView"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-select-scoped-snapshot",
+      "lineageId": "lineage:relation:code-select-scoped-snapshot",
+      "fingerprint": "golden:relation:code-select-scoped-snapshot:v1",
+      "from": "code:model-scoping:select-scoped-view",
+      "to": "code:model-scoping:select-snapshot",
+      "kind": "calls",
+      "label": "reconstructs the snapshot",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/architecture/src/normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "selectScopedView"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-validation-view-snapshot",
+      "lineageId": "lineage:relation:code-validation-view-snapshot",
+      "fingerprint": "golden:relation:code-validation-view-snapshot:v1",
+      "from": "code:model-validation:view",
+      "to": "code:model-schema:snapshot",
+      "kind": "reads",
+      "label": "validates snapshot references",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/architecture/src/validation.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "validateView"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-compile-normalized-scene",
+      "lineageId": "lineage:relation:code-compile-normalized-scene",
+      "fingerprint": "golden:relation:code-compile-normalized-scene:v1",
+      "from": "code:compiler-normalized:compile-scene",
+      "to": "code:compiler-scene:compile",
+      "kind": "calls",
+      "label": "compiles a scoped scene",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/compile-normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "compileNormalizedScene"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-diff-scene",
+      "lineageId": "lineage:relation:code-diff-scene",
+      "fingerprint": "golden:relation:code-diff-scene:v1",
+      "from": "code:compiler-normalized:diff",
+      "to": "code:compiler-protocol:snapshot",
+      "kind": "reads",
+      "label": "diffs renderer snapshots",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/compile-normalized.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "diffSceneSnapshots"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-engine-scene-validation",
+      "lineageId": "lineage:relation:code-engine-scene-validation",
+      "fingerprint": "golden:relation:code-engine-scene-validation:v1",
+      "from": "code:renderer-engine:protocol-engine",
+      "to": "code:renderer-protocol:validate-scene",
+      "kind": "calls",
+      "label": "validates scene input",
+      "evidence": [
+        {
+          "source": {
+            "path": "crates/atlas-engine/src/protocol_runtime.rs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "ProtocolEngine"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-gpu-build-mesh",
+      "lineageId": "lineage:relation:code-gpu-build-mesh",
+      "fingerprint": "golden:relation:code-gpu-build-mesh:v1",
+      "from": "code:renderer-gpu:renderer",
+      "to": "code:renderer-gpu:build-mesh",
+      "kind": "calls",
+      "label": "builds retained geometry",
+      "evidence": [
+        {
+          "source": {
+            "path": "crates/atlas-gpu/src/surface.rs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "GpuRenderer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-wasm-engine",
+      "lineageId": "lineage:relation:code-wasm-engine",
+      "fingerprint": "golden:relation:code-wasm-engine:v1",
+      "from": "code:renderer-wasm:atlas-renderer",
+      "to": "code:renderer-engine:protocol-engine",
+      "kind": "uses",
+      "label": "owns the scene engine",
+      "evidence": [
+        {
+          "source": {
+            "path": "crates/atlas-wasm/src/browser.rs",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1",
+            "symbol": "WasmAtlasRenderer"
+          }
+        }
+      ]
+    },
+    {
+      "id": "relation:code-tooling-fixture-generator",
+      "lineageId": "lineage:relation:code-tooling-fixture-generator",
+      "fingerprint": "golden:relation:code-tooling-fixture-generator:v1",
+      "from": "code:tooling-fixtures:generator",
+      "to": "code:compiler-scene:compile",
+      "kind": "calls",
+      "label": "generates checked scenes",
+      "evidence": [
+        {
+          "source": {
+            "path": "packages/scene-compiler/src/generate-fixtures.ts",
+            "commitSha": "golden-worktree-okie-2026-07-14-v1"
+          }
+        }
+      ]
+    }
+  ]
+}

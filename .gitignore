@@ -1,0 +1,14 @@
+node_modules/
+dist/
+target/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+.playwright-cli/
+
+# Generated wasm-pack output. Rebuild it from crates/atlas-wasm.
+crates/atlas-wasm/pkg/
+
+# Large deterministic benchmark scenes are generated on demand.
+fixtures/renderer/stress-*.json

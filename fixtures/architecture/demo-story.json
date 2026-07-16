@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "story:okie-context-to-code",
+  "snapshotId": "snapshot:okie-golden-worktree-v1",
+  "viewId": "view:okie-golden-hierarchy",
+  "title": "From Okie to selectScopedView()",
+  "steps": [
+    {
+      "id": "step:context",
+      "title": "Start with Okie",
+      "focusEntityIds": [
+        "system:okie"
+      ],
+      "traceRelationIds": [
+        "relation:developer-explores-okie"
+      ],
+      "reveal": "context",
+      "narration": "Okie helps a developer move from a system overview to source evidence.",
+      "durationMs": 1600
+    },
+    {
+      "id": "step:containers",
+      "title": "Find the architecture model",
+      "focusEntityIds": [
+        "container:architecture-model"
+      ],
+      "traceRelationIds": [
+        "relation:model-to-compiler"
+      ],
+      "reveal": "container",
+      "narration": "The architecture model owns the semantic hierarchy, evidence, views, and zoom policy.",
+      "durationMs": 1800
+    },
+    {
+      "id": "step:components",
+      "title": "Open model scoping",
+      "focusEntityIds": [
+        "component:model-scoping"
+      ],
+      "traceRelationIds": [
+        "relation:model-normalized-scoping"
+      ],
+      "reveal": "component",
+      "narration": "Hierarchy selectors reconstruct immutable snapshots and select a focused subgraph.",
+      "durationMs": 1800
+    },
+    {
+      "id": "step:code",
+      "title": "Read selectScopedView()",
+      "focusEntityIds": [
+        "code:model-scoping:select-scoped-view"
+      ],
+      "traceRelationIds": [
+        "relation:code-select-scoped-snapshot"
+      ],
+      "reveal": "code",
+      "narration": "selectScopedView is the curated source entry point for drilling into one architecture scope.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/normalized.ts",
+          "commitSha": "golden-worktree-okie-2026-07-14-v1",
+          "symbol": "selectScopedView"
+        }
+      ],
+      "durationMs": 2000
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "okie",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.10.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm prepare:generated:release && pnpm -r --if-present build",
+    "check": "pnpm prepare:generated && pnpm -r --if-present check",
+    "dev": "pnpm prepare:generated && pnpm --filter @okie/web dev",
+    "test": "pnpm -r --if-present test",
+    "generate:fixtures": "pnpm --filter @okie/scene-compiler generate:fixtures",
+    "generate:stress": "node scripts/generate-stress.mjs",
+    "generate:wasm": "node scripts/build-wasm.mjs",
+    "generate:wasm:debug": "node scripts/build-wasm.mjs --debug",
+    "generate:wasm:release": "node scripts/build-wasm.mjs --release",
+    "prepare:generated": "pnpm generate:stress && pnpm generate:wasm",
+    "prepare:generated:release": "pnpm generate:stress && pnpm generate:wasm:release"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}
