@@ -135,12 +135,6 @@ function expand(rect: Rect, padding: number): Rect {
   };
 }
 
-function midpoint(points: readonly { x: number; y: number }[]) {
-  const from = points[0] ?? { x: 0, y: 0 };
-  const to = points.at(-1) ?? from;
-  return { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
-}
-
 function presentation(
   node: VisualNode,
   entity: ArchitectureEntity,
