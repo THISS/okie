@@ -1,5 +1,5 @@
 import type { InspectorTab } from './inspectorPanel';
-import type { NavigationState } from './navigation/navigationState';
+import type { NavigationState } from '../navigation/navigationState';
 
 export type InspectorHistoryNavigation = Pick<NavigationState, 'camera' | 'detail' | 'lensPath'>;
 

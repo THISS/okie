@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistoryNavigation, type InspectorHistorySubject } from './inspectorHistory';
-import type { NavigationState } from './navigation/navigationState';
+import type { NavigationState } from '../navigation/navigationState';
 
 const entityNavigation: InspectorHistoryNavigation = {
   camera: { x: 120, y: 80, zoom: 5.15 },

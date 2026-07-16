@@ -3,7 +3,7 @@ import { compensateSemanticInspectorFlightCamera, getLevel, retargetCameraForSem
 import { createGoldenC4Scene } from './renderer/goldenC4Scene';
 import { ATLAS_CAMERA_BOUNDS, semanticDominantZoomIntervals, semanticFocusZooms, semanticLevelAtZoom } from './renderer/cameraBounds';
 import { zoomCameraAt } from './renderer/cameraController';
-import { inspectorTabForEntity } from './inspectorPanel';
+import { inspectorTabForEntity } from './inspector/inspectorPanel';
 import { semanticLensSessionDetail, semanticLensSessionGhostEntities, semanticLensSessionProjectionOverride, semanticLensSessionVisibleEntityIds } from './semantic/semanticLens';
 import type { Camera } from './renderer/types';
 
