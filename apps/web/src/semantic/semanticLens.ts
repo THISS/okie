@@ -1,6 +1,6 @@
-import type { AtlasScene, Camera, ProjectionOverride, SceneEntity, SemanticDetail } from './renderer/types';
-import { ATLAS_CAMERA_BOUNDS } from './renderer/cameraBounds';
-import type { SafeArea, ViewportSize } from './storyFraming';
+import type { AtlasScene, Camera, ProjectionOverride, SceneEntity, SemanticDetail } from '../renderer/types';
+import { ATLAS_CAMERA_BOUNDS } from '../renderer/cameraBounds';
+import type { SafeArea, ViewportSize } from '../storyFraming';
 
 export const SEMANTIC_LENS_POLICY = {
   armCoverage: { major: 0.42, minor: 0.18 },

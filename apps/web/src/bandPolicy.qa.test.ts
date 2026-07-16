@@ -4,7 +4,7 @@ import { createGoldenC4Scene } from './renderer/goldenC4Scene';
 import { ATLAS_CAMERA_BOUNDS, semanticDominantZoomIntervals, semanticFocusZooms, semanticLevelAtZoom } from './renderer/cameraBounds';
 import { zoomCameraAt } from './renderer/cameraController';
 import { inspectorTabForEntity } from './inspectorPanel';
-import { semanticLensSessionDetail, semanticLensSessionGhostEntities, semanticLensSessionProjectionOverride, semanticLensSessionVisibleEntityIds } from './semanticLens';
+import { semanticLensSessionDetail, semanticLensSessionGhostEntities, semanticLensSessionProjectionOverride, semanticLensSessionVisibleEntityIds } from './semantic/semanticLens';
 import type { Camera } from './renderer/types';
 
 const presets = [0.75, 1.99, 5.27, 13.96] as const;

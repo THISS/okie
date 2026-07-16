@@ -10,7 +10,7 @@ import {
   semanticLensSessionProjectionOverride,
   semanticLensSessionSilhouetteEntities,
   semanticLensSessionVisibleRelationIds,
-} from '../semanticLens';
+} from '../semantic/semanticLens';
 import { selectedRelationFocusPresentation } from '../relationFocus';
 
 function fakeCanvas() {

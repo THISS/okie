@@ -96,8 +96,8 @@ import {
   type SemanticLensPathEntry,
   type SemanticLensSession,
   type SemanticLensState,
-} from './semanticLens';
-import type { SemanticLensAssist } from './semanticLensAssist';
+} from './semantic/semanticLens';
+import type { SemanticLensAssist } from './semantic/semanticLensAssist';
 import { shouldOpenAskAtlas } from './shortcuts';
 import { relationshipFlowPolicy } from './relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';

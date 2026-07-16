@@ -13,7 +13,7 @@ import {
   semanticLensSessionProjectionOverride,
   semanticLensSessionSilhouetteEntities,
   type SemanticLensTarget,
-} from '../semanticLens';
+} from '../semantic/semanticLens';
 
 const bands = [
   { detail: 'context' as const, zoom: 0.62, entities: 4, relations: 3 },

@@ -1,4 +1,4 @@
-import type { Camera } from './renderer/types';
+import type { Camera } from '../renderer/types';
 import { SEMANTIC_LENS_POLICY } from './semanticLens';
 
 export type SemanticLensAssist = {

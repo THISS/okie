@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGoldenC4Scene } from './renderer/goldenC4Scene';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relationFocus';
-import { idleSemanticLens, semanticLensSessionProjectionOverride } from './semanticLens';
+import { idleSemanticLens, semanticLensSessionProjectionOverride } from './semantic/semanticLens';
 import { attachOrthogonalRouteEndpoints, authoringBoundsForDetail, orthogonalSegmentHandles } from './editor/relationshipInteraction';
 
 function ghostRelationFixture() {

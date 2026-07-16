@@ -12,8 +12,8 @@ import {
   type SemanticLensState,
   type SemanticLensTarget,
 } from './semanticLens';
-import type { AtlasScene, SceneEntity } from './renderer/types';
-import { createGoldenC4Scene } from './renderer/goldenC4Scene';
+import type { AtlasScene, SceneEntity } from '../renderer/types';
+import { createGoldenC4Scene } from '../renderer/goldenC4Scene';
 
 const target = (
   major: number,

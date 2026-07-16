@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { compensateSemanticMorphCamera } from '../semanticLens';
+import { compensateSemanticMorphCamera } from '../semantic/semanticLens';
 import { createCameraPublisher, focusCameraPreservingAnchor, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAroundWorldAnchor, zoomCameraAt } from './cameraController';
 
 describe('camera controls', () => {

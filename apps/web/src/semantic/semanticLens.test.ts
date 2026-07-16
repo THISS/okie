@@ -32,7 +32,7 @@ import {
   transferSemanticLensFocus,
   type SemanticLensTarget,
 } from './semanticLens';
-import { createGoldenC4Scene, semanticBounds } from './renderer/goldenC4Scene';
+import { createGoldenC4Scene, semanticBounds } from '../renderer/goldenC4Scene';
 
 const target = (major: number, minor: number, id = 'system:okie'): SemanticLensTarget => ({
   id,
