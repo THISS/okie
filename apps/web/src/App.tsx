@@ -61,7 +61,7 @@ import { listenForWebGlContextLoss } from './renderer/gpuLoss';
 import { listenForWheel } from './renderer/wheelInput';
 import { presentBackend } from './renderer/backendPresentation';
 import { presentClaimProvenance } from './provenance/presentation';
-import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relationFocus';
+import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
 import { clampInspectorWidth, defaultInspectorWidth, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, visibleSemanticRelationsForEntity } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
@@ -99,7 +99,7 @@ import {
 } from './semantic/semanticLens';
 import type { SemanticLensAssist } from './semantic/semanticLensAssist';
 import { shouldOpenAskAtlas } from './shortcuts';
-import { relationshipFlowPolicy } from './relationshipFlow';
+import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
 import { storyFocusPresentation } from './storyFocus';

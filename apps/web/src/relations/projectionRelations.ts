@@ -1,4 +1,4 @@
-import type { AtlasScene, SceneEntity, SceneRelation, SceneSourceRef } from './renderer/types';
+import type { AtlasScene, SceneEntity, SceneRelation, SceneSourceRef } from '../renderer/types';
 
 export type RelationDirection = 'outbound' | 'inbound' | 'self';
 

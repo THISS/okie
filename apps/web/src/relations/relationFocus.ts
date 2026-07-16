@@ -1,4 +1,4 @@
-import type { AtlasScene, ProjectionObjectOverride, ProjectionOverride, SceneRelation, SemanticDetail } from './renderer/types';
+import type { AtlasScene, ProjectionObjectOverride, ProjectionOverride, SceneRelation, SemanticDetail } from '../renderer/types';
 
 export type RelationFocusPresentation = {
   /** Canonical semantic endpoints temporarily promoted for selection presentation. */

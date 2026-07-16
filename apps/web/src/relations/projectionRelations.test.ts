@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { AtlasScene, SceneEntity, SceneRelation } from './renderer/types';
+import type { AtlasScene, SceneEntity, SceneRelation } from '../renderer/types';
 import {
   selectedRelationPresentation,
   selectedRelationPresentations,

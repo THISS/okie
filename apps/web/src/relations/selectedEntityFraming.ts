@@ -1,5 +1,5 @@
-import type { Camera } from './renderer/types';
-import type { SafeArea, ViewportSize } from './storyFraming';
+import type { Camera } from '../renderer/types';
+import type { SafeArea, ViewportSize } from '../storyFraming';
 
 export type EntityBounds = { x: number; y: number; width: number; height: number };
 export type ScreenRect = { left: number; top: number; right: number; bottom: number };

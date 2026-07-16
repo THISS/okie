@@ -11,7 +11,7 @@ import {
   semanticLensSessionSilhouetteEntities,
   semanticLensSessionVisibleRelationIds,
 } from '../semantic/semanticLens';
-import { selectedRelationFocusPresentation } from '../relationFocus';
+import { selectedRelationFocusPresentation } from '../relations/relationFocus';
 
 function fakeCanvas() {
   const calls = new Map<PropertyKey, ReturnType<typeof vi.fn>>();
