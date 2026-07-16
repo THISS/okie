@@ -431,6 +431,14 @@ kbd { padding: 3px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .zoom-controls button:last-child { border-right: 0; }
 .zoom-controls button:hover { background: rgba(255,255,255,.04); color: var(--atlas-text); }
 
+.minimap { position: absolute; z-index: 8; right: 18px; bottom: 66px; overflow: hidden; padding: 4px; border: 1px solid var(--atlas-line); border-radius: 10px; background: rgba(11,16,17,.86); box-shadow: var(--atlas-shadow-float); backdrop-filter: blur(14px); pointer-events: none; }
+.minimap svg { display: block; }
+.minimap-world { fill: rgba(255,255,255,.015); }
+.minimap-entity { fill: rgba(255,255,255,.05); stroke: rgba(255,255,255,.14); stroke-width: .75; }
+.minimap-entity.detail-context { fill: rgba(120,180,255,.10); stroke: rgba(120,180,255,.32); }
+.minimap-entity.detail-container { fill: rgba(217,255,112,.07); stroke: rgba(217,255,112,.24); }
+.minimap-viewport { fill: rgba(217,255,112,.07); stroke: var(--atlas-accent); stroke-width: 1.2; }
+
 .render-status {
   position: absolute;
   z-index: 8;
@@ -741,6 +749,7 @@ kbd { padding: 3px 6px; border: 1px solid var(--atlas-line); border-bottom-color
   .map-heading p { display: none; }
   .level-rail { top: auto; bottom: 105px; left: 12px; transform: none; }
   .zoom-controls { right: 12px; bottom: 14px; }
+  .minimap { right: 12px; bottom: 56px; }
   .render-status { bottom: 14px; left: 12px; min-width: 0; grid-template-columns: 8px 1fr; }
   .render-status > svg { display: none; }
   .render-status b { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -766,6 +775,10 @@ kbd { padding: 3px 6px; border: 1px solid var(--atlas-line); border-bottom-color
   .semantic-diagram-header { align-items: flex-start; }
   .semantic-diagram-layout.has-inspector { grid-template-columns: 1fr; }
   .semantic-diagram-inspector { position: static; }
+}
+
+@media (max-width: 390px) {
+  .minimap { display: none; }
 }
 
 @media (max-width: 470px) {

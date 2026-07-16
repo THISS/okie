@@ -256,6 +256,19 @@ describe('compact inspector presentation', () => {
   });
 });
 
+describe('canvas minimap', () => {
+  it('renders a non-interactive minimap inset near the zoom controls', () => {
+    expect(app).toContain('<Minimap camera={camera} scene={scene} viewport={viewport}/>');
+    expect(declarations(css, '.minimap')).toContain('pointer-events: none');
+    expect(declarations(css, '.minimap')).toContain('position: absolute');
+  });
+
+  it('hides the minimap on very narrow viewports', () => {
+    const narrow = css.slice(css.indexOf('@media (max-width: 390px)'));
+    expect(declarations(narrow, '.minimap')).toContain('display: none');
+  });
+});
+
 describe('canvas screenshot capture', () => {
   it('exposes a screenshot control near Share that offers copy and save', () => {
     expect(app).toContain('aria-label="Capture screenshot"');

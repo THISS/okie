@@ -22,6 +22,7 @@ import {
   SparkIcon, ZoomInIcon, ZoomOutIcon,
 } from './icons';
 import { captureSceneBlob, downloadBlob, screenshotFilename } from './renderer/sceneScreenshot';
+import { Minimap } from './minimap';
 import { copyViewLink } from './diagram/copyViewLink';
 import {
   MAIN_DIAGRAM_SURFACE_ID,
@@ -4358,6 +4359,8 @@ export function App() {
               navigateCamera(next, 'replace', 'Fit the current architecture scope');
             }}><FitIcon/></button>
           </div>
+
+          <Minimap camera={camera} scene={scene} viewport={viewport}/>
 
           {devMode && <button aria-expanded={diagnosticsOpen} aria-label={`Renderer backend: ${backendPresentation.title}`} className={`render-status backend-${backendPresentation.tone}`} data-active-backend={diagnostics.activeBackend} data-testid="renderer-status" onClick={() => setDiagnosticsOpen(open => !open)}>
             <span className="status-light"/><span><b>{backendPresentation.title}</b><small>{backendPresentation.detail} · {Math.round(diagnostics.lastFrameMs * 10) / 10}ms · {Math.round(camera.zoom * 100)}%</small></span><InfoIcon size={14}/>
