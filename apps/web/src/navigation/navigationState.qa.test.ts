@@ -7,12 +7,12 @@ import {
   serializeNavigationState,
   type NavigationDefaults,
   type NavigationState,
-} from './navigation/navigationState';
+} from './navigationState';
 import {
   createNavigationHistoryController,
   type NavigationHistoryAdapter,
-} from './navigation/historyController';
-import { ATLAS_CAMERA_BOUNDS } from './renderer/cameraBounds';
+} from './historyController';
+import { ATLAS_CAMERA_BOUNDS } from '../renderer/cameraBounds';
 
 const defaults: NavigationDefaults = {
   repositoryId: 'repo:commerce',
