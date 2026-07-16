@@ -256,6 +256,20 @@ describe('compact inspector presentation', () => {
   });
 });
 
+describe('canvas screenshot capture', () => {
+  it('exposes a screenshot control near Share that offers copy and save', () => {
+    expect(app).toContain('aria-label="Capture screenshot"');
+    expect(app).toContain("captureScreenshot('copy')");
+    expect(app).toContain("captureScreenshot('save')");
+  });
+
+  it('captures via the offscreen Canvas2D renderer seam with clipboard + download paths', () => {
+    expect(app).toContain('captureSceneBlob({');
+    expect(app).toContain("new ClipboardItem({ 'image/png': blob })");
+    expect(app).toContain('downloadBlob(blob, screenshotFilename(activeDiagramSurface.title');
+  });
+});
+
 describe('production dev-mode gate', () => {
   it('defaults dev mode off, persists it, and toggles with Shift+Alt+D', () => {
     expect(app).toContain("localStorage.getItem('okie.devMode') === '1'");

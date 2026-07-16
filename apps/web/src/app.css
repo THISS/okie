@@ -251,6 +251,13 @@ kbd { padding: 3px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .diagram-add-menu > div strong { color: var(--atlas-text); font-size: 9px; }
 .diagram-add-menu > div small { overflow: hidden; margin-top: 2px; color: var(--atlas-quiet); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 
+.screenshot-menu { display: flex; }
+.screenshot-menu summary { width: 34px; justify-content: center; padding: 0; }
+.screenshot-menu summary svg { color: var(--atlas-muted); }
+.screenshot-menu[open] summary svg { color: var(--atlas-text); }
+.screenshot-menu > div { top: 36px; width: 150px; }
+.screenshot-menu > div button { grid-template-columns: 1fr; color: var(--atlas-text); font-size: 10px; }
+
 .workspace {
   position: relative;
   min-height: 0;

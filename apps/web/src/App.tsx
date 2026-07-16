@@ -18,9 +18,10 @@ import {
 } from '@okie/scene-compiler';
 import {
   ActivityIcon, ArrowIcon, CheckIcon, ChevronIcon, CloseIcon, CodeIcon, FileIcon, FitIcon,
-  InfoIcon, LayersIcon, PanelIcon, PauseIcon, PlayIcon, RestartIcon, SearchIcon, ShareIcon,
+  ImageIcon, InfoIcon, LayersIcon, PanelIcon, PauseIcon, PlayIcon, RestartIcon, SearchIcon, ShareIcon,
   SparkIcon, ZoomInIcon, ZoomOutIcon,
 } from './icons';
+import { captureSceneBlob, downloadBlob, screenshotFilename } from './renderer/sceneScreenshot';
 import { copyViewLink } from './diagram/copyViewLink';
 import {
   MAIN_DIAGRAM_SURFACE_ID,
@@ -1568,6 +1569,7 @@ export function App() {
   const detailsOpenerRef = useRef<HTMLButtonElement | null>(null);
   const detailsPanelRef = useRef<HTMLElement | null>(null);
   const diagramAddMenuRef = useRef<HTMLDetailsElement | null>(null);
+  const screenshotMenuRef = useRef<HTMLDetailsElement | null>(null);
   const sourceTabRef = useRef<HTMLButtonElement | null>(null);
   const detailsTabRef = useRef<HTMLButtonElement | null>(null);
   const inspectorSelectionRef = useRef(initialNavigation.selectedId);
@@ -4012,6 +4014,42 @@ export function App() {
     }
   }
 
+  async function captureScreenshot(mode: 'copy' | 'save') {
+    screenshotMenuRef.current?.removeAttribute('open');
+    try {
+      const blob = await captureSceneBlob({
+        scene,
+        camera,
+        width: viewport.width,
+        height: viewport.height,
+        devicePixelRatio: window.devicePixelRatio,
+        renderState: {
+          selectedId: rendererSelectedId,
+          focusedIds,
+          relationFocusIds: relationFocus.endpointIds,
+          activeRelationIds,
+          flowRelationIds,
+          reduceMotion: true,
+          animate: false,
+          visibilityMode: effectiveVisibilityMode,
+          ...(relationFocus.projectionOverride ? { projectionOverride: relationFocus.projectionOverride } : {}),
+        },
+      });
+      const canCopy = mode === 'copy' && typeof ClipboardItem !== 'undefined' && typeof navigator.clipboard?.write === 'function';
+      if (canCopy) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        setLiveMessage('Copied a PNG of the current view to the clipboard.');
+      } else {
+        downloadBlob(blob, screenshotFilename(activeDiagramSurface.title, Date.now()));
+        setLiveMessage(mode === 'copy'
+          ? 'Clipboard image copy is unavailable in this browser; saved a PNG instead.'
+          : 'Saved a PNG of the current view.');
+      }
+    } catch (error) {
+      setLiveMessage(`Could not capture the canvas: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   function dismissShareFeedback() {
     setShareFeedback(undefined);
     window.setTimeout(() => shareButtonRef.current?.focus({ preventScroll: true }), 0);
@@ -4175,6 +4213,13 @@ export function App() {
         </div>
 
         <div className="top-actions">
+          <details className="diagram-add-menu screenshot-menu" ref={screenshotMenuRef}>
+            <summary aria-label="Capture screenshot" title="Capture screenshot"><ImageIcon size={16}/></summary>
+            <div>
+              <button onClick={() => { void captureScreenshot('copy'); }} type="button">Copy image</button>
+              <button onClick={() => { void captureScreenshot('save'); }} type="button">Save PNG</button>
+            </div>
+          </details>
           <button
             aria-describedby={shareFeedback ? 'share-view-feedback' : undefined}
             aria-label={shareFeedback?.tone === 'success' ? 'Current view link copied' : 'Copy current view link'}
