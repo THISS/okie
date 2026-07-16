@@ -1859,8 +1859,8 @@
           "path": "crates/atlas-engine/src/protocol_runtime.rs",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "ProtocolEngine",
-          "startLine": 517,
-          "endLine": 522
+          "startLine": 747,
+          "endLine": 752
         }
       ],
       "sourceExcerpts": [
@@ -1868,9 +1868,9 @@
           "path": "crates/atlas-engine/src/protocol_runtime.rs",
           "symbol": "ProtocolEngine",
           "language": "rust",
-          "startLine": 517,
-          "endLine": 522,
-          "highlightLine": 517,
+          "startLine": 747,
+          "endLine": 752,
+          "highlightLine": 747,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "pub struct ProtocolEngine {",
@@ -2023,8 +2023,8 @@
           "path": "crates/atlas-gpu/src/mesh.rs",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "build_mesh",
-          "startLine": 146,
-          "endLine": 151
+          "startLine": 150,
+          "endLine": 155
         }
       ],
       "sourceExcerpts": [
@@ -2032,9 +2032,9 @@
           "path": "crates/atlas-gpu/src/mesh.rs",
           "symbol": "build_mesh",
           "language": "rust",
-          "startLine": 146,
-          "endLine": 151,
-          "highlightLine": 146,
+          "startLine": 150,
+          "endLine": 155,
+          "highlightLine": 150,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "pub fn build_mesh(snapshot: &SceneSnapshot, glyph_atlas: &GlyphAtlas) -> GpuMesh {",
@@ -2064,8 +2064,8 @@
           "path": "crates/atlas-gpu/src/glyph.rs",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "GlyphAtlas",
-          "startLine": 152,
-          "endLine": 157
+          "startLine": 157,
+          "endLine": 162
         }
       ],
       "sourceExcerpts": [
@@ -2073,9 +2073,9 @@
           "path": "crates/atlas-gpu/src/glyph.rs",
           "symbol": "GlyphAtlas",
           "language": "rust",
-          "startLine": 152,
-          "endLine": 157,
-          "highlightLine": 152,
+          "startLine": 157,
+          "endLine": 162,
+          "highlightLine": 157,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "pub struct GlyphAtlas {",
