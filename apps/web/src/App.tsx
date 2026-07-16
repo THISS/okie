@@ -4141,7 +4141,6 @@ export function App() {
           <div className="brand-mark"><span /><span /><span /></div>
           <div>
             <div className="brand-line"><strong>Atlas</strong><span className="brand-product">PREVIEW</span></div>
-            <div className="repo-line"><span>local</span><ChevronIcon size={10}/><b>okie</b><span className="branch">frozen fixture</span></div>
           </div>
         </div>
 
@@ -4162,7 +4161,6 @@ export function App() {
         </div>
 
         <div className="top-actions">
-          <span className="snapshot-status"><CheckIcon size={13}/> Frozen worktree fixture</span>
           <button
             aria-describedby={shareFeedback ? 'share-view-feedback' : undefined}
             aria-label={shareFeedback?.tone === 'success' ? 'Current view link copied' : 'Copy current view link'}
@@ -4205,13 +4203,13 @@ export function App() {
       <nav aria-label="Diagram views" className="diagram-view-bar">
         <div aria-label="Open diagrams" className="diagram-tabs" onKeyDown={navigateDiagramTabs} role="tablist">
           {diagramSurfaces.map(surface => <div className={`diagram-tab-shell ${surface.id === diagramWorkspace.activeSurfaceId ? 'active' : ''}`} key={surface.id}>
-            <button aria-controls="diagram-workspace-panel" aria-label={surface.kind === 'main' ? 'Main diagram, pinned' : `${surface.title} ${surface.kind} diagram`} aria-selected={surface.id === diagramWorkspace.activeSurfaceId} className="diagram-tab" id={diagramTabDomId(surface.id)} onClick={() => activateDiagramView(surface.id)} role="tab" tabIndex={surface.id === diagramWorkspace.activeSurfaceId ? 0 : -1} type="button"><span aria-hidden="true" className={`diagram-kind-mark kind-${surface.kind}`}>{surface.kind === 'main' ? 'M' : surface.kind === 'flow' ? 'F' : surface.kind === 'mermaid' ? 'MR' : 'C'}</span><span>{surface.title}</span>{surface.kind === 'main' && <small>Pinned</small>}</button>
+            <button aria-controls="diagram-workspace-panel" aria-label={surface.kind === 'main' ? 'Main diagram, pinned' : `${surface.title} ${surface.kind} diagram`} aria-selected={surface.id === diagramWorkspace.activeSurfaceId} className="diagram-tab" id={diagramTabDomId(surface.id)} onClick={() => activateDiagramView(surface.id)} role="tab" tabIndex={surface.id === diagramWorkspace.activeSurfaceId ? 0 : -1} type="button">{surface.kind !== 'main' && <span aria-hidden="true" className={`diagram-kind-mark kind-${surface.kind}`}>{surface.kind === 'flow' ? 'F' : surface.kind === 'mermaid' ? 'MR' : 'C'}</span>}<span>{surface.title}</span></button>
             {surface.closable && <button aria-label={`Close ${surface.title} diagram`} className="diagram-tab-close" onClick={() => closeDiagramView(surface.id)} type="button"><CloseIcon size={12}/></button>}
           </div>)}
         </div>
 
         <div className="mobile-diagram-switcher">
-          <label><span>Views</span><select aria-label="Active diagram view" onChange={event => activateDiagramView(event.target.value)} value={diagramWorkspace.activeSurfaceId}>{diagramSurfaces.map(surface => <option key={surface.id} value={surface.id}>{surface.title}{surface.kind === 'main' ? ' · pinned' : ` · ${surface.kind}`}</option>)}</select></label>
+          <label><span>Views</span><select aria-label="Active diagram view" onChange={event => activateDiagramView(event.target.value)} value={diagramWorkspace.activeSurfaceId}>{diagramSurfaces.map(surface => <option key={surface.id} value={surface.id}>{surface.title}{surface.kind === 'main' ? '' : ` · ${surface.kind}`}</option>)}</select></label>
           {activeDiagramSurface.closable && <button aria-label={`Close ${activeDiagramSurface.title} diagram`} onClick={() => closeDiagramView(activeDiagramSurface.id)} type="button"><CloseIcon size={14}/></button>}
         </div>
 
@@ -4282,7 +4280,6 @@ export function App() {
           <div className="map-heading">
             <div className="eyebrow"><span className="pulse-dot"/> FROZEN ARCHITECTURE · WORKTREE FIXTURE</div>
             <h1>{scene.title}</h1>
-            <p>{activeProjectionEntityIds.length.toLocaleString()} visible entities · {activeProjectionRelationIds.length.toLocaleString()} relationships{query.fixture === 'stress' ? ' · deterministic benchmark' : ' · evidence-linked frozen fixture'}</p>
             <nav aria-label="Architecture ancestry" className="semantic-breadcrumb">
               {breadcrumbState.chain.map((entity, index) => <span key={entity.id}>{index > 0 && <ChevronIcon size={9}/>} {entity.id === navigationIdentity.rootEntityId ? <b aria-current="page">{entity.name}</b> : <button onClick={() => navigateRoot(entity.id)}>{entity.name}</button>}</span>)}
               {breadcrumbState.descendant && <span className="selected-descendant"><ChevronIcon size={9}/><em>{breadcrumbState.descendant.name}</em></span>}
@@ -4309,6 +4306,8 @@ export function App() {
           {diagnosticsOpen && <aside className="diagnostics-card" data-testid="diagnostics-panel">
             <div className="diagnostics-title"><ActivityIcon/><strong>Renderer diagnostics</strong><button aria-label="Close diagnostics" onClick={() => setDiagnosticsOpen(false)}><CloseIcon size={15}/></button></div>
             <dl>
+              <div><dt>Source</dt><dd>local › okie · frozen worktree fixture</dd></div>
+              <div><dt>Projection</dt><dd>{activeProjectionEntityIds.length.toLocaleString()} visible entities · {activeProjectionRelationIds.length.toLocaleString()} relationships{query.fixture === 'stress' ? ' · deterministic benchmark' : ' · evidence-linked'}</dd></div>
               <div><dt>Requested</dt><dd>{diagnostics.requestedBackend}</dd></div>
               <div><dt>Active backend</dt><dd>{diagnostics.activeBackend}</dd></div>
               <div><dt>Execution</dt><dd>{diagnostics.gpuAccelerated ? 'hardware accelerated' : 'compatibility / CPU'}</dd></div>

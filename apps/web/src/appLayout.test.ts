@@ -107,7 +107,11 @@ describe('view and edit interaction modes', () => {
 describe('multi-diagram workspace shell', () => {
   it('renders one active panel with a pinned Main tab and closable derived tabs', () => {
     expect(app).toContain('role="tablist"');
-    expect(app).toContain("surface.kind === 'main' && <small>Pinned</small>");
+    // Main tab shows no kind badge and no visible "Pinned" label (production chrome),
+    // but retains its pinned accessible name.
+    expect(app).not.toContain('<small>Pinned</small>');
+    expect(app).toContain("aria-label={surface.kind === 'main' ? 'Main diagram, pinned'");
+    expect(app).toContain("surface.kind !== 'main' && <span aria-hidden=\"true\" className={`diagram-kind-mark");
     expect(app).toContain('surface.closable && <button');
     expect(app).toContain("activeDiagramSurface.kind === 'main' ? <>");
     expect(app.match(/<CanvasViewport/g)).toHaveLength(1);
