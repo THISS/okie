@@ -28,6 +28,7 @@ Tools (parameterized queries):
 
 - `get_entity(snapshotId, entityId)` / `get_relation(snapshotId, relationId)` — the record plus its provenance: `Claim.origin`, `sourceRefs`, linked evidence, and a confidence *qualifier* (observed → none; inferred → `Inference confidence N%`; explanation → `Supporting-claim confidence N%`). Never a bare "AI confidence".
 - `get_scoped_view(snapshotId, viewId, rootEntityId)` — wraps `selectScopedView`.
+- `get_file_outline(snapshotId, path)` — what is in a file: its `code` entities (name, `codeKind`, symbol, line range, parent component) sorted by `startLine`, each linking to its evidence excerpt. Pure query over extractor facts — no parsing at request time. A file with no scanned symbols returns an explicit `unscanned`/`empty` distinction, never a silent empty success. The viewing platform's outline panel (inspector/SourceViewer) consumes the same query per the shared-query-layer rule.
 - `diff_snapshots(a, b)` — fingerprint-based `SnapshotLineage` (schema doc): `unchanged|changed|new|no-longer-observed`.
 - `export_diagram(snapshotId, { viewId | storyId }, format='mermaid')` — wraps `serializeDynamicFlowMermaid`; deterministic under randomized input, escapes labels/identifiers, honours active story/Isolate masks, and excludes prompts, secrets, absolute paths, and private excerpts.
 
