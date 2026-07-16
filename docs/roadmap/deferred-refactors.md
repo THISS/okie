@@ -55,3 +55,9 @@ The package `test` script is `pnpm build && node --test dist/*.test.js` — a **
 `allowBuilds` is the **current** pnpm key (added in pnpm v10.26); it supersedes `onlyBuiltDependencies`/`neverBuiltDependencies`. The file carried a half-finished migration to it — an unfilled placeholder value (`esbuild: set this to true or false`) still sitting alongside the deprecated `onlyBuiltDependencies: [esbuild]`. (An earlier draft of this catalogue mislabelled `allowBuilds` as non-standard; that was inverted — it is the modern key.)
 - **Resolution (backend, task #4).** Complete the migration: `allowBuilds: { esbuild: true }` and drop the deprecated `onlyBuiltDependencies`. No longer an architect-deferred item.
 - **Verify.** `pnpm install` resolves; `pnpm check` green.
+
+## 9. Enable `noUnusedLocals` / `noUnusedParameters`
+
+The task #4 dead-code sweep found exactly one dead helper (`midpoint` in `compile-c4.ts`) — surfaced by exactly these compiler flags, and the whole workspace already compiles clean under both (verified during that sweep). Enabling them makes the guardrail automatic instead of a manual audit.
+- **Precondition.** Add both flags to `tsconfig.base.json` (packages extend it) **and** `apps/web/tsconfig.json` (standalone; does not extend the base). Land as a dedicated commit so any new failure is attributable to the flags, not to feature work.
+- **Verify.** `pnpm check && pnpm test` green with zero source edits; if an edit is required, the flags found real dead code — remove it in the same commit.
