@@ -50,8 +50,8 @@ The package `test` script is `pnpm build && node --test dist/*.test.js` — a **
 - **Precondition.** If nesting is ever wanted, change the glob to `dist/**/*.test.js` in the **same** change that introduces the nesting. Until then, keep `packages/*/src` flat.
 - **Verify.** Confirm the test count before/after is unchanged (no silent drop).
 
-## 8. `pnpm-workspace.yaml` `allowBuilds` placeholder
+## 8. `pnpm-workspace.yaml` `allowBuilds` migration — resolved by backend
 
-The file carries a non-standard `allowBuilds:` block whose value is the literal placeholder `set this to true or false`.
-- **Precondition.** Config hygiene (already scoped to backend phase B0). Verify the key is spurious against the pinned pnpm version (11.10) before removing; keep `onlyBuiltDependencies: [esbuild]`.
+`allowBuilds` is the **current** pnpm key (added in pnpm v10.26); it supersedes `onlyBuiltDependencies`/`neverBuiltDependencies`. The file carried a half-finished migration to it — an unfilled placeholder value (`esbuild: set this to true or false`) still sitting alongside the deprecated `onlyBuiltDependencies: [esbuild]`. (An earlier draft of this catalogue mislabelled `allowBuilds` as non-standard; that was inverted — it is the modern key.)
+- **Resolution (backend, task #4).** Complete the migration: `allowBuilds: { esbuild: true }` and drop the deprecated `onlyBuiltDependencies`. No longer an architect-deferred item.
 - **Verify.** `pnpm install` resolves; `pnpm check` green.
