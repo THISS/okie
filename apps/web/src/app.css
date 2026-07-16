@@ -220,9 +220,7 @@ kbd { padding: 3px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .diagram-tab-shell.active { border-color: var(--atlas-line); background: rgba(255,255,255,.035); color: var(--atlas-text); }
 .diagram-tab { min-width: 0; height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 9px; border: 0; background: transparent; color: inherit; font-size: 9px; cursor: pointer; }
 .diagram-tab > span:nth-child(2) { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.diagram-tab small { padding: 2px 4px; border-radius: 4px; background: rgba(217,255,112,.055); color: #839360; font-family: var(--atlas-font-mono); font-size: 7px; text-transform: uppercase; }
 .diagram-kind-mark { min-width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid var(--atlas-line); border-radius: 5px; color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 7px; font-weight: 700; }
-.diagram-kind-mark.kind-main { border-color: rgba(217,255,112,.18); color: var(--atlas-accent); }
 .diagram-kind-mark.kind-flow { border-color: rgba(121,223,212,.2); color: var(--atlas-cyan); }
 .diagram-kind-mark.kind-mermaid { border-color: rgba(124,169,255,.2); color: var(--atlas-blue); }
 .diagram-kind-mark.kind-code { border-color: rgba(255,174,112,.2); color: var(--atlas-orange); }

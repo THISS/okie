@@ -6,9 +6,9 @@ Catalogued out of the agent-friendly refactor because each item either perturbs 
 
 Reminder that de-risks all of them: **entity IDs in the golden fixture are authored string literals, not path-derived** (`scene-compiler/golden-fixture.ts` `anchorDefinitions`). Moving or splitting a pinned file changes only its source-excerpt path/line anchors, never an ID or fingerprint. So every "pinned" item below is a *regenerate the excerpt*, not a *break the graph*.
 
-## 1. Split `apps/web/src/App.tsx` (4505 lines)
+## 1. Split `apps/web/src/App.tsx` (~4500 lines)
 
-Pinned anchors: `App` (L1528), `CanvasViewport` (L757); relations also cite `commitNavigation`, `setStep` in this file.
+Pinned anchors: `App`, `CanvasViewport`; relations also cite `commitNavigation` and `setStep` in this file. Read `golden-source-excerpts.ts` for current line numbers — they are regenerated data, not stable constants. Anchor gotcha for the split: the `CanvasViewport` excerpt is anchored at a short-lined **usage site** near the end of `App()`, not at the declaration — the declaration's destructured-props line exceeds the excerpt max-line-length, so the generator's `safeAnchorLine` falls back to a later occurrence. Moving the declaration alone therefore does not move that excerpt, but relocating the JSX usage (e.g. into an extracted subcomponent) does.
 - **Precondition.** Keep those symbols defined in `App.tsx`, or update `golden-fixture.ts` `anchorDefinitions` + `golden-source-excerpts.ts` and regenerate. Extract non-pinned subtrees (inspector wiring, story wiring, authoring overlay glue) into co-located modules; do not shift the anchor windows if avoiding regeneration.
 - **Handshake.** Backend owns the pin/regeneration; run only after the golden-34 source-excerpt fix is stable.
 - **Verify.** `pnpm --filter @okie/web check && test`; then `generate:source-excerpts` + `git diff --exit-code golden-source-excerpts.ts` (expect clean if anchors unmoved), else `pnpm generate:fixtures` + full suite.
