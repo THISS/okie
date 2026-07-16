@@ -256,6 +256,27 @@ describe('compact inspector presentation', () => {
   });
 });
 
+describe('production dev-mode gate', () => {
+  it('defaults dev mode off, persists it, and toggles with Shift+Alt+D', () => {
+    expect(app).toContain("localStorage.getItem('okie.devMode') === '1'");
+    expect(app).toContain("localStorage.setItem('okie.devMode', devMode ? '1' : '0')");
+    expect(app).toContain('shouldToggleDevMode(event)');
+    expect(app).toContain('setDevMode(value => !value)');
+    expect(app).toContain("data-dev-mode={devMode ? 'true' : 'false'}");
+  });
+
+  it('forces view mode and closes diagnostics when dev mode is off', () => {
+    expect(app).toContain("if (!devMode) { setInteractionMode('view'); setDiagnosticsOpen(false); }");
+  });
+
+  it('gates the renderer pill, diagnostics panel, mode toggle, and create-diagram menu behind dev mode', () => {
+    expect(app).toContain('{devMode && <button aria-expanded={diagnosticsOpen}');
+    expect(app).toContain('{devMode && diagnosticsOpen && <aside className="diagnostics-card"');
+    expect(app).toContain('{devMode && <div aria-label="Diagram interaction mode"');
+    expect(app).toContain('{devMode && <details className="diagram-add-menu"');
+  });
+});
+
 describe('selected relationship focus wiring', () => {
   it('keeps transient endpoint/path promotion behind story selection ownership', () => {
     expect(app).toContain("currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pickedRelationId : undefined");

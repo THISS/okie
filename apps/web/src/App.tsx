@@ -98,7 +98,7 @@ import {
   type SemanticLensState,
 } from './semantic/semanticLens';
 import type { SemanticLensAssist } from './semantic/semanticLensAssist';
-import { shouldOpenAskAtlas } from './shortcuts';
+import { shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
@@ -1631,6 +1631,12 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  // Diagnostics/dev mode: hidden by default, toggled with Shift+Alt+D, persisted across
+  // reloads. When off, the shell hides the renderer pill/diagnostics, the Edit/View mode
+  // toggle (authoring stays view-only), and the Create-diagram menu.
+  const [devMode, setDevMode] = useState(() => {
+    try { return localStorage.getItem('okie.devMode') === '1'; } catch { return false; }
+  });
   const [diagnostics, setDiagnostics] = useState<RendererDiagnostics>({ requestedBackend: query.backend, activeBackend: 'initializing', gpuAccelerated: false, entityCount: 0, relationCount: 0, lastFrameMs: 0, message: 'Renderer is initializing.' });
   const [storyStep, setStoryStep] = useState(() => initialNavigation.story?.id === storyId
     ? Math.min(story.steps.length - 1, initialNavigation.story.step)
@@ -1678,6 +1684,10 @@ export function App() {
   const activeDiagramSurface = diagramWorkspace.surfaces[diagramWorkspace.activeSurfaceId]!;
   const mainDiagramActive = activeDiagramSurface.kind === 'main';
   const [interactionMode, setInteractionMode] = useState<'view' | 'edit'>('view');
+  useEffect(() => {
+    try { localStorage.setItem('okie.devMode', devMode ? '1' : '0'); } catch { /* storage unavailable */ }
+    if (!devMode) { setInteractionMode('view'); setDiagnosticsOpen(false); }
+  }, [devMode]);
   const [authoringTool, setAuthoringTool] = useState<'select' | 'connect'>('select');
   const [authoringHistory, setAuthoringHistory] = useState<GestureHistory<ArchitectureAuthoringDocument>>(
     () => createGestureHistory(createArchitectureAuthoringDocument(initialNavigation.repositoryId)),
@@ -3908,6 +3918,10 @@ export function App() {
         setSearchOpen(true);
         window.setTimeout(() => document.getElementById('atlas-search')?.focus(), 0);
       }
+      if (!typing && shouldToggleDevMode(event)) {
+        event.preventDefault();
+        setDevMode(value => !value);
+      }
       if (shouldOpenAskAtlas(event, storyStep >= 0)) {
         event.preventDefault();
         if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
@@ -4134,7 +4148,7 @@ export function App() {
   const storyControlActive = storyPlaying || storyPhase === 'flight' || storyPhase === 'arrival';
 
   return (
-    <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
+    <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-dev-mode={devMode ? 'true' : 'false'} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
       <a className="skip-link" href={mainDiagramActive ? '#entity-explorer' : '#derived-diagram-content'}>{mainDiagramActive ? 'Skip to entity explorer' : 'Skip to active diagram'}</a>
       <header className="topbar">
         <div className="brand-block" aria-label="Atlas home">
@@ -4213,10 +4227,10 @@ export function App() {
           {activeDiagramSurface.closable && <button aria-label={`Close ${activeDiagramSurface.title} diagram`} onClick={() => closeDiagramView(activeDiagramSurface.id)} type="button"><CloseIcon size={14}/></button>}
         </div>
 
-        <details className="diagram-add-menu" ref={diagramAddMenuRef}>
+        {devMode && <details className="diagram-add-menu" ref={diagramAddMenuRef}>
           <summary aria-label="Create diagram" title="Create diagram"><span aria-hidden="true">+</span><em>Diagram</em></summary>
           <div><button onClick={() => openDerivedDiagram('flow')} type="button"><ActivityIcon size={14}/><span><strong>Dynamic flow</strong><small>Interactions around {selected.name}</small></span></button><button onClick={() => openDerivedDiagram('mermaid')} type="button"><LayersIcon size={14}/><span><strong>Mermaid</strong><small>Semantic structure preview</small></span></button><button onClick={() => openDerivedDiagram('code')} type="button"><CodeIcon size={14}/><span><strong>Code diagram</strong><small>Source-oriented structure</small></span></button></div>
-        </details>
+        </details>}
       </nav>
 
       <main aria-label={`${activeDiagramSurface.title} diagram workspace`} aria-labelledby={diagramTabDomId(activeDiagramSurface.id)} className={`workspace ${mainDiagramActive && detailsOpen ? 'has-details' : ''}`} id="diagram-workspace-panel" role="tabpanel" style={{ '--details-width': `${detailsWidth}px` } as CSSProperties}>
@@ -4260,7 +4274,7 @@ export function App() {
             visibilityMode={effectiveVisibilityMode}
           />
 
-          <div aria-label="Diagram interaction mode" className={`authoring-toolbar mode-${interactionMode}`} data-enabled={editingEnabled ? 'true' : 'false'} role="toolbar">
+          {devMode && <div aria-label="Diagram interaction mode" className={`authoring-toolbar mode-${interactionMode}`} data-enabled={editingEnabled ? 'true' : 'false'} role="toolbar">
             <div aria-label="Interaction mode" className="diagram-mode-toggle" role="group">
               <button aria-pressed={interactionMode === 'view'} className={interactionMode === 'view' ? 'active' : ''} data-testid="interaction-mode-view" onClick={() => changeInteractionMode('view')} title="Inspect architecture without editing" type="button"><span aria-hidden="true" className="mode-indicator"/>View</button>
               <button aria-pressed={interactionMode === 'edit'} className={interactionMode === 'edit' ? 'active' : ''} data-testid="interaction-mode-edit" onClick={() => changeInteractionMode('edit')} title="Reveal relationship authoring tools" type="button"><span aria-hidden="true" className="mode-indicator"/>Edit</button>
@@ -4275,7 +4289,7 @@ export function App() {
               <button data-testid="relationship-reset-route" disabled={!authoringEnabled || !selectedRouteOverride} onClick={resetSelectedRelationshipRoute} title="Return the selected relationship to automatic routing" type="button">Auto route</button>
               <button data-testid="relationship-delete" disabled={!authoringEnabled || !pickedRelationId} onClick={deleteSelectedRelationship} title="Delete selected relationship" type="button">Delete</button>
             </div>}
-          </div>
+          </div>}
 
           <div className="map-heading">
             <div className="eyebrow"><span className="pulse-dot"/> FROZEN ARCHITECTURE · WORKTREE FIXTURE</div>
@@ -4300,10 +4314,10 @@ export function App() {
             }}><FitIcon/></button>
           </div>
 
-          <button aria-expanded={diagnosticsOpen} aria-label={`Renderer backend: ${backendPresentation.title}`} className={`render-status backend-${backendPresentation.tone}`} data-active-backend={diagnostics.activeBackend} data-testid="renderer-status" onClick={() => setDiagnosticsOpen(open => !open)}>
+          {devMode && <button aria-expanded={diagnosticsOpen} aria-label={`Renderer backend: ${backendPresentation.title}`} className={`render-status backend-${backendPresentation.tone}`} data-active-backend={diagnostics.activeBackend} data-testid="renderer-status" onClick={() => setDiagnosticsOpen(open => !open)}>
             <span className="status-light"/><span><b>{backendPresentation.title}</b><small>{backendPresentation.detail} · {Math.round(diagnostics.lastFrameMs * 10) / 10}ms · {Math.round(camera.zoom * 100)}%</small></span><InfoIcon size={14}/>
-          </button>
-          {diagnosticsOpen && <aside className="diagnostics-card" data-testid="diagnostics-panel">
+          </button>}
+          {devMode && diagnosticsOpen && <aside className="diagnostics-card" data-testid="diagnostics-panel">
             <div className="diagnostics-title"><ActivityIcon/><strong>Renderer diagnostics</strong><button aria-label="Close diagnostics" onClick={() => setDiagnosticsOpen(false)}><CloseIcon size={15}/></button></div>
             <dl>
               <div><dt>Source</dt><dd>local › okie · frozen worktree fixture</dd></div>
