@@ -115,7 +115,7 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
 // import.meta.glob tolerates a missing fixtures/scan/ at build time (it resolves
 // to an empty map) — unlike a static import(), which would break `pnpm build`
 // on a fresh checkout where the gitignored scan output has not been generated.
-const scanDocLoaders = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/*.json');
+const scanDocLoaders = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/{snapshot,view,story}.json');
 
 async function fetchScanDoc(name: 'snapshot' | 'view' | 'story'): Promise<unknown> {
   const key = Object.keys(scanDocLoaders).find(path => path.endsWith(`/${name}.json`));

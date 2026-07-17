@@ -49,6 +49,7 @@ import {
   type SemanticDetail,
 } from './navigation/navigationState';
 import { createGoldenC4Scene, goldenAppStory, semanticBounds, type AppStoryPlanStep } from './renderer/goldenC4Scene';
+import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
 import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
 import {
@@ -151,7 +152,21 @@ const levels = [
   { name: 'Code', short: 'L4', zoom: levelFocusZooms[3]! },
 ];
 
-const story = goldenAppStory;
+// A scanned snapshot (fixture=scan) is fetched, validated and compiled before App
+// is imported (see main.tsx); when present it drives the app through the same
+// slots as the golden fixture. Undefined for the golden/stress fixtures.
+const scanFixture = getActiveScanFixture();
+const activeSnapshot = scanFixture?.snapshot ?? goldenSnapshot;
+const activeView = scanFixture?.view ?? goldenView;
+const story = scanFixture?.story ?? goldenAppStory;
+
+// Recompiles the active fixture for a new focus/root (drill-in, restore). Scanned
+// snapshots are read-only in R1, so the dev-mode authoring overlay stays golden-only.
+function activeCreateScene(focusEntityId: string, previous?: AtlasScene, authoring?: ArchitectureAuthoringDocument): AtlasScene {
+  return scanFixture
+    ? scanFixture.createScene(focusEntityId, previous)
+    : createGoldenC4Scene(focusEntityId, previous, authoring);
+}
 
 const defaultCamera: Camera = { x: 1_080, y: 375, zoom: levels[0]!.zoom };
 const storyId = story.id;
@@ -1534,18 +1549,20 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     return params.has('cx') || params.has('cy') || params.has('z');
   }, []);
-  const goldenScene = useMemo(() => createGoldenC4Scene(), []);
-  const navigationDefaults = useMemo<NavigationDefaults>(() => ({
-    repositoryId: query.fixture === 'stress' ? 'repo:renderer-stress' : 'repo:okie-golden',
-    snapshotId: query.fixture === 'stress' ? `snapshot:stress:${query.seed}` : 'snapshot:okie-golden-worktree-v1',
-    viewId: query.fixture === 'stress' ? 'view:stress:overview' : 'view:okie-golden-hierarchy',
-    rootEntityId: query.fixture === 'stress' ? 'stress-loading' : 'system:okie',
-    selectedId: query.fixture === 'stress' ? 'stress-loading' : 'system:okie',
-    camera: defaultCamera,
-    detail: semanticDetails[getLevel(defaultCamera.zoom)],
-    minZoom: ATLAS_CAMERA_BOUNDS.minZoom,
-    maxZoom: ATLAS_CAMERA_BOUNDS.maxZoom,
-  }), [query.fixture, query.seed]);
+  const goldenScene = useMemo(() => activeCreateScene(scanFixture?.navigation.rootEntityId ?? 'system:okie'), []);
+  const navigationDefaults = useMemo<NavigationDefaults>(() => {
+    const identity = query.fixture === 'stress'
+      ? { repositoryId: 'repo:renderer-stress', snapshotId: `snapshot:stress:${query.seed}`, viewId: 'view:stress:overview', rootEntityId: 'stress-loading' }
+      : scanFixture?.navigation ?? { repositoryId: 'repo:okie-golden', snapshotId: 'snapshot:okie-golden-worktree-v1', viewId: 'view:okie-golden-hierarchy', rootEntityId: 'system:okie' };
+    return {
+      ...identity,
+      selectedId: identity.rootEntityId,
+      camera: defaultCamera,
+      detail: semanticDetails[getLevel(defaultCamera.zoom)],
+      minZoom: ATLAS_CAMERA_BOUNDS.minZoom,
+      maxZoom: ATLAS_CAMERA_BOUNDS.maxZoom,
+    };
+  }, [query.fixture, query.seed]);
   const navigationUrlOptions = useMemo(() => {
     const demoEntityIds = query.fixture === 'stress'
       ? undefined
@@ -1707,7 +1724,7 @@ export function App() {
     const baseDetail = baseIndex >= 0 ? semanticDetails[baseIndex] : 'context';
     const lensScene = query.fixture === 'stress'
       ? goldenScene
-      : createGoldenC4Scene(initialNavigation.rootEntityId, goldenScene);
+      : activeCreateScene(initialNavigation.rootEntityId, goldenScene);
     const settled = validateSemanticLensPath(lensScene, baseDetail, initialNavigation.lensPath ?? []).entries;
     return { baseDetail, settled, active: idleSemanticLens() };
   });
@@ -1807,8 +1824,8 @@ export function App() {
         : activeDerivedScope.id
     : semanticLensSession.settled.at(-1)?.targetId ?? navigationIdentity.rootEntityId;
   const notationDiagnostics = useMemo(() => query.fixture === 'stress' ? [] : validateC4NotationCompleteness({
-    snapshot: goldenSnapshot,
-    view: goldenView,
+    snapshot: activeSnapshot,
+    view: activeView,
     diagramType: activeDiagramDetail,
     title: activeDiagramSurface.kind === 'main' ? scene.title : activeDiagramSurface.title,
     scopeEntityId: activeDiagramScopeId,
@@ -1816,16 +1833,16 @@ export function App() {
   const activeDynamicFlowArtifact = useMemo(() => {
     if (query.fixture === 'stress' || activeDiagramSurface.kind === 'main' || activeDiagramSurface.kind === 'code') return undefined;
     const scopeEntityId = activeDiagramSurface.entityIds[0];
-    const scopeEntity = goldenSnapshot.entities.find(entity => entity.id === scopeEntityId);
+    const scopeEntity = activeSnapshot.entities.find(entity => entity.id === scopeEntityId);
     if (!scopeEntity) return undefined;
-    const traceRelationIds = goldenSnapshot.relations
+    const traceRelationIds = activeSnapshot.relations
       .filter(relation => relation.from === scopeEntityId || relation.to === scopeEntityId)
       .map(relation => relation.id);
     const dynamicStory: ArchitectureStory = {
       schemaVersion: 1,
       id: `story:dynamic:${scopeEntityId}`,
-      snapshotId: goldenSnapshot.id,
-      viewId: goldenView.id,
+      snapshotId: activeSnapshot.id,
+      viewId: activeView.id,
       title: `${scopeEntity.name} dynamic flow`,
       steps: [{
         id: `step:dynamic:${scopeEntityId}`,
@@ -1837,12 +1854,12 @@ export function App() {
         sourceRefs: scopeEntity.sourceRefs,
       }],
     };
-    const projections = buildC4ProjectionBundle(goldenSnapshot, {
-      rootEntityId: goldenView.rootEntityId,
+    const projections = buildC4ProjectionBundle(activeSnapshot, {
+      rootEntityId: activeView.rootEntityId,
       focusEntityId: scopeEntityId,
       familyId: `view-family:dynamic:${scopeEntityId}`,
     });
-    return compileC4DynamicFlowArtifact(goldenSnapshot, goldenView, dynamicStory, projections);
+    return compileC4DynamicFlowArtifact(activeSnapshot, activeView, dynamicStory, projections);
   }, [activeDiagramDetail, activeDerivedScopeId, activeDiagramSurface.kind, query.fixture]);
   const activeMermaidSource = activeDiagramSurface.kind === 'mermaid' && activeDynamicFlowArtifact
     ? serializeDynamicFlowMermaid(activeDynamicFlowArtifact)
@@ -2287,7 +2304,7 @@ export function App() {
         const restoredBaseDetail = semanticDetails[restoredLevel];
         const restoredScene = query.fixture === 'stress'
           ? goldenScene
-          : createGoldenC4Scene(next.rootEntityId, goldenScene, authoringHistoryRef.current.present);
+          : activeCreateScene(next.rootEntityId, goldenScene, authoringHistoryRef.current.present);
         const validatedLensPath = validateSemanticLensPath(restoredScene, restoredBaseDetail, next.lensPath ?? []);
         const restoredSettled = validatedLensPath.entries;
         installSemanticSession({ baseDetail: restoredBaseDetail, settled: restoredSettled, active: idleSemanticLens() });
@@ -3104,7 +3121,7 @@ export function App() {
   }
 
   function authoredScene(document: ArchitectureAuthoringDocument, currentScene: AtlasScene) {
-    return createGoldenC4Scene(navigationIdentity.rootEntityId, currentScene, document);
+    return activeCreateScene(navigationIdentity.rootEntityId, currentScene, document);
   }
 
   function installAuthoringHistory(
@@ -3490,7 +3507,7 @@ export function App() {
     const target = scene.entities.find(entity => entity.id === entityId);
     if (!target) return;
     interruptStory(`Returned to ${target.name}`);
-    const nextScene = createGoldenC4Scene(target.id, scene, authoringHistoryRef.current.present);
+    const nextScene = activeCreateScene(target.id, scene, authoringHistoryRef.current.present);
     const nextCamera = frameProjectionScope(nextScene, target.id, baseDetail, viewport, measureCurrentMapSafeArea())
       ?? (() => {
         const bounds = semanticBounds(nextScene, target.id, baseDetail) ?? target;

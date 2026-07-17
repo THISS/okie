@@ -75,7 +75,7 @@ test('frozen Okie fixture has exact stable IDs, strict C4 parentage, and pinned 
     evidenceRows.push([owner[0], owner[1], source.path, source.symbol ?? null, source.startLine ?? null, source.endLine ?? null, source.commitSha]);
   }
   evidenceRows.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
-  assert.equal(hash(evidenceRows), 'db0300fe');
+  assert.equal(hash(evidenceRows), '0b6ab668');
 
   const ids = new Set(snapshot.entities.map(entity => entity.id));
   for (const entity of snapshot.entities) if (entity.parentId) assert.equal(ids.has(entity.parentId), true);

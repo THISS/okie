@@ -1,7 +1,18 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { absoluteSourcePath, editorSourceUri, tokenizeSourceLine, tokenizeSourceLines, validRelativeSourcePath } from './SourceViewer';
+import { absoluteSourcePath, editorSourceUri, SourceViewer, tokenizeSourceLine, tokenizeSourceLines, validRelativeSourcePath } from './SourceViewer';
 
 describe('source viewer helpers', () => {
+  it('degrades gracefully when a scanned entity has source refs but no frozen excerpt', () => {
+    // Scanned code entities (R1) carry sourceRefs but no portable frozen excerpt,
+    // so selectedExcerpt is undefined — the viewer must present a clean state, not error.
+    const markup = renderToStaticMarkup(createElement(SourceViewer, { excerpt: undefined, onFeedback: () => undefined }));
+    expect(markup).toContain('Source excerpt unavailable');
+    expect(markup).toContain('no portable frozen source excerpt');
+    expect(markup).toContain('role="status"');
+  });
+
   it('tokenizes source deterministically without changing its text', () => {
     const line = 'export const answer: number = 42; // frozen';
     const tokens = tokenizeSourceLine(line, 'typescript');
