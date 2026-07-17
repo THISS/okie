@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   SOURCE_EXCERPT_LIMITS,
+  STORY_AUTHORING_LIMITS,
   type ArchitectureOverrides,
   type ArchitectureSnapshot,
   type ArchitectureStory,
   type ArchitectureView,
   type SourceExcerpt,
+  type StoryStep,
 } from "./model.js";
-import { validateOverrides, validateSnapshot, validateStory, validateStoryDocument, validateView } from "./validation.js";
+import { validateOverrides, validateSnapshot, validateStory, validateStoryDocument, validateView, type ValidationIssue } from "./validation.js";
 
 const snapshot: ArchitectureSnapshot = {
   schemaVersion: 1,
@@ -18,7 +20,13 @@ const snapshot: ArchitectureSnapshot = {
   generatedAt: "2026-07-14T00:00:00.000Z",
   entities: [
     { id: "system:test", kind: "softwareSystem", name: "Test", sourceRefs: [] },
-    { id: "container:api", kind: "container", parentId: "system:test", name: "API", sourceRefs: [] },
+    {
+      id: "container:api",
+      kind: "container",
+      parentId: "system:test",
+      name: "API",
+      sourceRefs: [{ path: "src/api.ts", commitSha: "abc123", symbol: "ApiServer", startLine: 10, endLine: 40 }],
+    },
   ],
   relations: [],
 };
@@ -315,7 +323,11 @@ test("strictly validates untrusted LLM story documents and semantic catalog refe
       focusEntityIds: ["container:api"],
       reveal: "container",
       narration: "The API owns the request boundary.",
-      sourceRefs: [{ path: "src/api.ts", commitSha: snapshot.commitSha }],
+      sourceRefs: [
+        // Cites evidence container:api owns: a range-less path/commit match, and a symbol + contained range.
+        { path: "src/api.ts", commitSha: snapshot.commitSha },
+        { path: "src/api.ts", commitSha: snapshot.commitSha, symbol: "ApiServer", startLine: 15, endLine: 20 },
+      ],
     }],
   };
   assert.deepEqual(validateStoryDocument(snapshot, view, valid), []);
@@ -340,4 +352,54 @@ test("strictly validates untrusted LLM story documents and semantic catalog refe
   assert.ok(issues.some(issue => issue.path.endsWith(".reveal") && issue.message.includes("shallower")));
   assert.ok(issues.some(issue => issue.path.endsWith(".commitSha") && issue.message.includes("snapshot")));
   assert.ok(issues.some(issue => issue.path === "steps" && issue.message.includes("duplicate step")));
+});
+
+test("resolves story source references to snapshot evidence and caps authored hold duration", () => {
+  const view: ArchitectureView = {
+    schemaVersion: 1,
+    id: "view:test",
+    snapshotId: snapshot.id,
+    name: "Test",
+    rootEntityId: "system:test",
+    entityIds: ["system:test", "container:api"],
+    relationIds: [],
+    layout: {
+      nodes: {
+        "system:test": { x: 0, y: 0, width: 200, height: 100 },
+        "container:api": { x: 20, y: 20, width: 100, height: 60 },
+      },
+    },
+  };
+  const base: ArchitectureStory = {
+    schemaVersion: 1,
+    id: "story:test",
+    snapshotId: snapshot.id,
+    viewId: view.id,
+    title: "Evidence story",
+    steps: [{
+      id: "step:api",
+      title: "Open the API",
+      focusEntityIds: ["container:api"],
+      reveal: "container",
+      narration: "The API owns the request boundary.",
+    }],
+  };
+  const withStep = (patch: Partial<StoryStep>): ArchitectureStory => ({ ...base, steps: [{ ...base.steps[0]!, ...patch }] });
+  const citesEvidenceIssue = (found: ValidationIssue[]): boolean =>
+    found.some(issue => issue.path === "steps[0].sourceRefs[0]" && issue.message.includes("does not cite snapshot evidence"));
+
+  // FIX 1 — a well-formed ref that the snapshot does not own must NOT pass as evidence.
+  assert.ok(citesEvidenceIssue(validateStoryDocument(snapshot, view, withStep({ sourceRefs: [{ path: "src/ghost.ts", commitSha: snapshot.commitSha }] }))), "unowned file");
+  assert.ok(citesEvidenceIssue(validateStoryDocument(snapshot, view, withStep({ sourceRefs: [{ path: "src/api.ts", commitSha: snapshot.commitSha, symbol: "GhostSymbol" }] }))), "symbol mismatch");
+  assert.ok(citesEvidenceIssue(validateStoryDocument(snapshot, view, withStep({ sourceRefs: [{ path: "src/api.ts", commitSha: snapshot.commitSha, startLine: 100, endLine: 200 }] }))), "out-of-range lines");
+  // ...but a symbol match with a contained line range resolves cleanly.
+  assert.deepEqual(validateStoryDocument(snapshot, view, withStep({ sourceRefs: [{ path: "src/api.ts", commitSha: snapshot.commitSha, symbol: "ApiServer", startLine: 12, endLine: 40 }] })), []);
+
+  // FIX 4 — authored holds are capped to the compiler's narration ceiling.
+  assert.deepEqual(validateStoryDocument(snapshot, view, withStep({ durationMs: STORY_AUTHORING_LIMITS.maxStepDurationMs })), []);
+  assert.ok(
+    validateStoryDocument(snapshot, view, withStep({ durationMs: STORY_AUTHORING_LIMITS.maxStepDurationMs + 1 }))
+      .some(issue => issue.path === "steps[0].durationMs" && issue.message.includes("exceed")),
+    "over-limit hold is rejected",
+  );
 });

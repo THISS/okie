@@ -21,7 +21,7 @@ type StoryCamera = { center: { x: number; y: number }; zoom: number };
 
 const maximumFlightMs = 1_100;
 const minimumNarrationHoldMs = 4_200;
-const maximumNarrationHoldMs = 12_000;
+export const maximumNarrationHoldMs = 12_000; // Mirror of STORY_AUTHORING_LIMITS.maxStepDurationMs (@okie/architecture); keep in sync.
 
 function narrationHoldDurationMs(narration: string): number {
   const words = narration.trim() ? narration.trim().split(/\s+/u).length : 0;

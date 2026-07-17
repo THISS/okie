@@ -150,6 +150,9 @@ export const STORY_AUTHORING_LIMITS = {
   maxFocusEntitiesPerStep: 8,
   maxTraceRelationsPerStep: 16,
   maxSourceRefsPerStep: 16,
+  // Ceiling for an authored narration hold; mirrors the scene compiler's
+  // `maximumNarrationHoldMs` in packages/scene-compiler/src/compile-story.ts (keep in sync).
+  maxStepDurationMs: 12_000,
 } as const;
 
 export interface StoryStep {

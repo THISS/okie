@@ -341,6 +341,60 @@ function storyDetailForKind(kind: ArchitectureSnapshot["entities"][number]["kind
   return "context";
 }
 
+type EvidenceLocator = {
+  path: string;
+  commitSha: string;
+  symbol?: string | undefined;
+  startLine?: number | undefined;
+  endLine?: number | undefined;
+};
+
+/**
+ * Union of every source location the snapshot itself observes: each entity sourceRef,
+ * each frozen entity sourceExcerpt (keyed by its frozenRevision), and each relation
+ * evidence source. A story step may only cite locations found here.
+ */
+function collectSnapshotEvidence(snapshot: ArchitectureSnapshot): EvidenceLocator[] {
+  const evidence: EvidenceLocator[] = [];
+  for (const entity of snapshot.entities) {
+    for (const ref of entity.sourceRefs) {
+      evidence.push({ path: ref.path, commitSha: ref.commitSha, symbol: ref.symbol, startLine: ref.startLine, endLine: ref.endLine });
+    }
+    for (const excerpt of entity.sourceExcerpts ?? []) {
+      evidence.push({ path: excerpt.path, commitSha: excerpt.frozenRevision, symbol: excerpt.symbol, startLine: excerpt.startLine, endLine: excerpt.endLine });
+    }
+  }
+  for (const relation of snapshot.relations) {
+    for (const { source } of relation.evidence) {
+      evidence.push({ path: source.path, commitSha: source.commitSha, symbol: source.symbol, startLine: source.startLine, endLine: source.endLine });
+    }
+  }
+  return evidence;
+}
+
+/**
+ * Interim host-side resolution: a story step's sourceRef "cites" snapshot evidence only
+ * if some evidence location shares its path and commit, has the same symbol when the ref
+ * names one, and — when the ref names a line range — encloses that range (a range-less ref
+ * resolves to any path/commit/symbol match). This is deliberately strict so an LLM cannot
+ * present invented references as "Evidence" until first-class claims land
+ * (see docs/roadmap/structured-data-schema.md).
+ */
+function citesSnapshotEvidence(ref: SourceRef, evidence: readonly EvidenceLocator[]): boolean {
+  const refHasRange = ref.startLine !== undefined || ref.endLine !== undefined;
+  const refStart = ref.startLine ?? ref.endLine;
+  const refEnd = ref.endLine ?? ref.startLine;
+  return evidence.some(entry => {
+    if (entry.path !== ref.path || entry.commitSha !== ref.commitSha) return false;
+    if (ref.symbol !== undefined && entry.symbol !== ref.symbol) return false;
+    if (!refHasRange) return true;
+    const entryStart = entry.startLine ?? entry.endLine;
+    const entryEnd = entry.endLine ?? entry.startLine;
+    if (entryStart === undefined || entryEnd === undefined) return false;
+    return entryStart <= (refStart as number) && (refEnd as number) <= entryEnd;
+  });
+}
+
 /** Strict runtime validation for untrusted/LLM-authored story JSON. */
 export function validateStoryDocument(
   snapshot: ArchitectureSnapshot,
@@ -360,6 +414,7 @@ export function validateStoryDocument(
   const visibleRelations = new Set(view.relationIds);
   const entityById = new Map(snapshot.entities.map(entity => [entity.id, entity]));
   const relationById = new Map(snapshot.relations.map(relation => [relation.id, relation]));
+  const snapshotEvidence = collectSnapshotEvidence(snapshot);
   if (!Array.isArray(story.steps)) {
     issues.push({ path: "steps", message: "must be an array" });
     return issues;
@@ -418,8 +473,12 @@ export function validateStoryDocument(
         issues.push({ path: `${path}.reveal`, message: "is shallower than a focused entity" });
       }
     }
-    if (step.durationMs !== undefined && (!Number.isSafeInteger(step.durationMs) || (step.durationMs as number) <= 0)) {
-      issues.push({ path: `${path}.durationMs`, message: "must be a finite positive integer" });
+    if (step.durationMs !== undefined) {
+      if (!Number.isSafeInteger(step.durationMs) || (step.durationMs as number) <= 0) {
+        issues.push({ path: `${path}.durationMs`, message: "must be a finite positive integer" });
+      } else if ((step.durationMs as number) > STORY_AUTHORING_LIMITS.maxStepDurationMs) {
+        issues.push({ path: `${path}.durationMs`, message: `must not exceed ${STORY_AUTHORING_LIMITS.maxStepDurationMs} milliseconds` });
+      }
     }
     if (step.sourceRefs !== undefined) {
       if (!Array.isArray(step.sourceRefs)) {
@@ -441,6 +500,9 @@ export function validateStoryDocument(
           validateSourceRef(typed, sourcePath, issues);
           if (source.commitSha !== snapshot.commitSha) {
             issues.push({ path: `${sourcePath}.commitSha`, message: "does not match snapshot commit" });
+          }
+          if (!citesSnapshotEvidence(typed, snapshotEvidence)) {
+            issues.push({ path: sourcePath, message: "does not cite snapshot evidence" });
           }
           sourceKeys.push([source.path, source.symbol, source.startLine, source.endLine, source.commitSha].join("\u0000"));
         });

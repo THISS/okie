@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import type { ArchitectureSnapshot, ArchitectureStory, ArchitectureView } from "@okie/architecture";
+import { STORY_AUTHORING_LIMITS, type ArchitectureSnapshot, type ArchitectureStory, type ArchitectureView } from "@okie/architecture";
 import { compileScene } from "./compile-scene.js";
-import { compileStory } from "./compile-story.js";
+import { compileStory, maximumNarrationHoldMs } from "./compile-story.js";
 import { defaultTheme } from "./theme.js";
 
 const fixture = (path: string): string => fileURLToPath(new URL(`../../../fixtures/${path}`, import.meta.url));
@@ -112,4 +112,11 @@ test("uses authoritative authored holds and reading-time fallback only when abse
   const fallbackHold = fallback.keyframes[1];
   assert.ok(fallbackArrival && fallbackHold);
   assert.equal(fallbackHold.atMs - fallbackArrival.atMs, 150 + 7_200);
+});
+
+test("narration hold cap stays within the validator's authored duration ceiling", () => {
+  // Cross-package invariant: the compiler auto-hold must never exceed what the
+  // validator (@okie/architecture) will accept as an authored step.durationMs,
+  // so a fallback hold cannot outlast an explicit one. Catches drift if either moves.
+  assert.ok(maximumNarrationHoldMs <= STORY_AUTHORING_LIMITS.maxStepDurationMs);
 });
