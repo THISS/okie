@@ -184,7 +184,9 @@ function presentation(
       {
         kind: 'roundedRect',
         rect: bounds,
-        radius: (boundary ? 20 : band === 'code' ? 7 : 14) * visualScale,
+        // Clamp to the protocol rule (radius <= min(w,h)/2): tiny scanned file cells
+        // would otherwise emit a radius the Rust validator rejects, losing the GPU surface.
+        radius: Math.max(0, Math.min((boundary ? 20 : band === 'code' ? 7 : 14) * visualScale, bounds.width / 2, bounds.height / 2)),
         fill: bodyFill,
         stroke: { color: [Math.min(1, fill[0] + 0.18), Math.min(1, fill[1] + 0.18), Math.min(1, fill[2] + 0.18), boundary ? 0.62 : 0.94], width: (boundary ? 1.5 : 2) * visualScale },
       },

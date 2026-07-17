@@ -52,7 +52,7 @@ function objectRepresentations(entity: ArchitectureEntity, bounds: NodeLayout, t
       {
         kind: "roundedRect",
         rect: bounds,
-        radius: entity.kind === "code" ? 6 : 14,
+        radius: Math.max(0, Math.min(entity.kind === "code" ? 6 : 14, bounds.width / 2, bounds.height / 2)),
         fill,
         stroke: {
           color: [Math.min(1, fill[0] + 0.16), Math.min(1, fill[1] + 0.16), Math.min(1, fill[2] + 0.16), 0.9],
@@ -79,7 +79,7 @@ function objectRepresentations(entity: ArchitectureEntity, bounds: NodeLayout, t
       {
         kind: "roundedRect",
         rect: bounds,
-        radius: entity.kind === "code" ? 6 : 14,
+        radius: Math.max(0, Math.min(entity.kind === "code" ? 6 : 14, bounds.width / 2, bounds.height / 2)),
         fill,
         stroke: {
           color: [Math.min(1, fill[0] + 0.18), Math.min(1, fill[1] + 0.18), Math.min(1, fill[2] + 0.18), 1],
