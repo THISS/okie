@@ -267,6 +267,13 @@ describe('canvas minimap', () => {
     const narrow = css.slice(css.indexOf('@media (max-width: 390px)'));
     expect(declarations(narrow, '.minimap')).toContain('display: none');
   });
+
+  it('publishes the per-frame rendered camera so the minimap can track gestures in real time', () => {
+    // React `camera` state is throttled/settled, so the render loop broadcasts the live camera
+    // to the minimap via the per-frame bridge (imperative, no 60fps React re-render).
+    expect(app).toContain('publishLiveCamera(liveCameraRef.current)');
+    expect(app).toContain("import { publishLiveCamera } from './liveCameraBridge'");
+  });
 });
 
 describe('canvas screenshot capture', () => {

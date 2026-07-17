@@ -1,8 +1,11 @@
+import { useEffect, useRef } from 'react';
 import type { AtlasScene, Camera, SemanticDetail } from './renderer/types';
 import type { ViewportSize } from './storyFraming';
+import { subscribeLiveCamera } from './liveCameraBridge';
 
 export type MinimapRect = { x: number; y: number; width: number; height: number };
 export type MinimapEntityRect = { detail: SemanticDetail; rect: MinimapRect };
+export type MinimapProjector = (rect: MinimapRect) => MinimapRect;
 
 /**
  * World-space rectangle currently visible for `camera` in a `viewport`-sized surface. The map
@@ -39,7 +42,7 @@ export function unionRect(rects: readonly MinimapRect[]): MinimapRect | undefine
 }
 
 /** Uniform world→inset projection that fits `world` inside `insetWidth`×`insetHeight`, centred. */
-export function minimapProjector(world: MinimapRect, insetWidth: number, insetHeight: number): (rect: MinimapRect) => MinimapRect {
+export function minimapProjector(world: MinimapRect, insetWidth: number, insetHeight: number): MinimapProjector {
   const scale = Math.min(insetWidth / world.width, insetHeight / world.height);
   const offsetX = (insetWidth - world.width * scale) / 2;
   const offsetY = (insetHeight - world.height * scale) / 2;
@@ -52,9 +55,22 @@ export function minimapProjector(world: MinimapRect, insetWidth: number, insetHe
 }
 
 /**
- * Non-interactive overview inset: world bounds, simplified L1/L2 entity rectangles, and a live
- * viewport rectangle tracking the camera. Pure indicator — no pointer handlers, aria-hidden, and
- * it simply re-renders when `camera` changes (so it trivially respects reduced motion).
+ * Inset-space viewport rectangle for `camera`, floored to a visible minimum size. Pure and
+ * projector-injectable so the live-update path is unit-testable with mid-gesture cameras.
+ */
+export function projectedViewportRect(camera: Camera, viewport: ViewportSize, project: MinimapProjector): MinimapRect {
+  const projected = project(worldViewportRect(camera, viewport));
+  return { x: projected.x, y: projected.y, width: Math.max(2, projected.width), height: Math.max(2, projected.height) };
+}
+
+/**
+ * Non-interactive overview inset: world bounds, simplified L1/L2 entity rectangles, and a viewport
+ * rectangle tracking the camera. Pure indicator — no pointer handlers, aria-hidden.
+ *
+ * The viewport rectangle tracks the camera IN REAL TIME during continuous gestures: React `camera`
+ * state only updates on the throttled/settled publisher, so the rect subscribes to the per-frame
+ * `liveCameraBridge` and updates its SVG attributes imperatively — no App/minimap re-render 60×/sec.
+ * The React-rendered rect (from the `camera` prop) covers the settled state and the initial paint.
  */
 export function Minimap({ scene, camera, viewport, insetWidth = 168 }: {
   scene: AtlasScene;
@@ -62,13 +78,31 @@ export function Minimap({ scene, camera, viewport, insetWidth = 168 }: {
   viewport: ViewportSize;
   insetWidth?: number;
 }) {
+  const viewportRectRef = useRef<SVGRectElement | null>(null);
+  const projectionRef = useRef<{ project: MinimapProjector; viewport: ViewportSize } | null>(null);
+
   const entityRects = minimapEntityRects(scene);
   const world = unionRect(entityRects.map(entry => entry.rect));
-  if (!world || world.width <= 0 || world.height <= 0) return null;
+  const ready = !!world && world.width > 0 && world.height > 0;
+  const insetHeight = ready ? Math.round(insetWidth * Math.min(1.3, Math.max(0.42, world!.height / world!.width))) : 0;
+  const project = ready ? minimapProjector(world!, insetWidth, insetHeight) : null;
+  // Keep the latest projection available to the (once-subscribed) live-camera listener without
+  // re-subscribing on every render — the listener reads whatever the current render computed.
+  projectionRef.current = project ? { project, viewport } : null;
 
-  const insetHeight = Math.round(insetWidth * Math.min(1.3, Math.max(0.42, world.height / world.width)));
-  const project = minimapProjector(world, insetWidth, insetHeight);
-  const view = project(worldViewportRect(camera, viewport));
+  useEffect(() => subscribeLiveCamera(liveCamera => {
+    const projection = projectionRef.current;
+    const element = viewportRectRef.current;
+    if (!projection || !element) return;
+    const rect = projectedViewportRect(liveCamera, projection.viewport, projection.project);
+    element.setAttribute('x', String(rect.x));
+    element.setAttribute('y', String(rect.y));
+    element.setAttribute('width', String(rect.width));
+    element.setAttribute('height', String(rect.height));
+  }), []);
+
+  if (!ready || !project) return null;
+  const view = projectedViewportRect(camera, viewport, project);
 
   return (
     <div aria-hidden="true" className="minimap" data-testid="minimap">
@@ -78,7 +112,7 @@ export function Minimap({ scene, camera, viewport, insetWidth = 168 }: {
           const projected = project(entry.rect);
           return <rect className={`minimap-entity detail-${entry.detail}`} height={Math.max(1, projected.height)} key={index} rx={1.5} width={Math.max(1, projected.width)} x={projected.x} y={projected.y}/>;
         })}
-        <rect className="minimap-viewport" height={Math.max(2, view.height)} width={Math.max(2, view.width)} x={view.x} y={view.y}/>
+        <rect className="minimap-viewport" height={view.height} ref={viewportRectRef} width={view.width} x={view.x} y={view.y}/>
       </svg>
     </div>
   );

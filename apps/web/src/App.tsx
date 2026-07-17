@@ -23,6 +23,7 @@ import {
 } from './icons';
 import { captureSceneBlob, downloadBlob, screenshotFilename } from './renderer/sceneScreenshot';
 import { Minimap } from './minimap';
+import { publishLiveCamera } from './liveCameraBridge';
 import { copyViewLink } from './diagram/copyViewLink';
 import {
   MAIN_DIAGRAM_SURFACE_ID,
@@ -908,6 +909,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
           ...(current.cinematicTransition ? { cinematicTransition: current.cinematicTransition } : {}),
         });
         renderer.render(time);
+        publishLiveCamera(liveCameraRef.current);
         const lodState = renderer.lodState();
         onLodStateRef.current(lodState);
         if (lodState?.transitioning && !current.reduceMotion) schedulerRef.current?.wake();
