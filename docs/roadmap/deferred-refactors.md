@@ -56,8 +56,13 @@ The package `test` script is `pnpm build && node --test dist/*.test.js` — a **
 - **Resolution (backend, task #4).** Complete the migration: `allowBuilds: { esbuild: true }` and drop the deprecated `onlyBuiltDependencies`. No longer an architect-deferred item.
 - **Verify.** `pnpm install` resolves; `pnpm check` green.
 
-## 9. Enable `noUnusedLocals` / `noUnusedParameters`
+## 9. Reduce static-mesh corner-tessellation memory
 
-The task #4 dead-code sweep found exactly one dead helper (`midpoint` in `compile-c4.ts`) — surfaced by exactly these compiler flags, and the whole workspace already compiles clean under both (verified during that sweep). Enabling them makes the guardrail automatic instead of a manual audit.
-- **Precondition.** Add both flags to `tsconfig.base.json` (packages extend it) **and** `apps/web/tsconfig.json` (standalone; does not extend the base). Land as a dedicated commit so any new failure is attributable to the flags, not to feature work.
-- **Verify.** `pnpm check && pnpm test` green with zero source edits; if an edit is required, the flags found real dead code — remove it in the same commit.
+Measured at 5k nodes / 15k edges (QA stress profile, 2026-07-17): the retained static mesh is a 96 MB single GPU buffer of which **~70% (~67 MB) is rounded-corner arc tessellation** (`ROUNDED_RECT_SAMPLES_PER_CORNER = 11` → 132 vertices/rect), amplified **2×** because both LOD representations' geometrically identical fill rings are baked for all nodes (10,000 rects for 5,000 nodes). Cost is entirely upfront memory — warm frames are 0.5–2.3 ms with one draw call — so this matters only as node counts grow (linear scaling ⇒ ~1 GB at 50k nodes).
+- **Two independent ~2× wins.** (a) Lower the per-corner sample count within the documented chord-error budget (mesh.rs's 0.18 CSS px at 32× comment is the constraint to re-derive); (b) dedupe the two LOD reps' identical rounded-rect fill geometry (share vertices, differ by style/draw-range).
+- **Precondition.** `mesh.rs` is dogfooding-pinned; changes follow the regen flow. Re-run the QA stress profile after to verify the win and unchanged visuals (golden scenes + z32 chord-error acceptance).
+- **Verify.** `cargo test --workspace` (projection/font/mesh qa tests); stress profile shows the expected buffer reduction; no visual diff at max zoom on golden captures.
+
+## 10. Enable `noUnusedLocals` / `noUnusedParameters` — resolved
+
+Enabled in `tsconfig.base.json` and `apps/web/tsconfig.json` (commit `7f5523a`). The flags immediately surfaced three real unused locals in `App.tsx`, removed in the same commit with the pinned-file regen flow. No longer deferred; kept here as the record.
