@@ -42,7 +42,10 @@ export function toProtocolScene(scene: AtlasScene) {
           {
             kind: 'roundedRect' as const,
             rect: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
-            radius: 13,
+            // Protocol rule: roundedRect radius must be <= min(w, h) / 2. Clamp so
+            // tiny entities never emit protocol-invalid primitives (golden cells are
+            // large enough that this is a no-op for them).
+            radius: Math.max(0, Math.min(13, entity.width / 2, entity.height / 2)),
             fill: fills[entity.kind],
             stroke: { color: [0.31, 0.43, 0.4, 0.8] as Rgba, width: 1.3 },
           },
@@ -64,7 +67,10 @@ export function toProtocolScene(scene: AtlasScene) {
           {
             kind: 'roundedRect' as const,
             rect: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
-            radius: 13,
+            // Protocol rule: roundedRect radius must be <= min(w, h) / 2. Clamp so
+            // tiny entities never emit protocol-invalid primitives (golden cells are
+            // large enough that this is a no-op for them).
+            radius: Math.max(0, Math.min(13, entity.width / 2, entity.height / 2)),
             fill: fills[entity.kind],
             stroke: { color: [0.31, 0.43, 0.4, 0.8] as Rgba, width: 1.3 },
           },
