@@ -30,6 +30,8 @@ Read those first. Every recommendation below is tied to a current file or symbol
 | Self-map fixture | `scene-compiler/golden-fixture.ts` (hand-authored) | not machine-produced; maintained by the dogfooding pin | scraper (M1) |
 | Canonical serialization + hash domains | — | RFC 8785 profile + the 8 named hashes | scraper |
 | Rescan / diff | — | `unchanged\|changed\|new\|no-longer-observed` | schema + scraper |
+| Incremental rescan | — | commit-diff-scoped re-extraction + incremental≡full equivalence gate | scraper |
+| Tiered specs (summary → deep dive) | — | `SpecDocument` sections, claim-grounded, assistant-retrievable | schema + mcp |
 | Enrichment (LLM) | — (`extraction.ts` is the ready validation gate) | packet redaction, replay, cache | scraper |
 | Overrides / corrections | `architecture/authoring.ts` · `create/apply/materializeArchitectureAuthoring` | conflict surfacing vs new observations | schema |
 | Normalized store | `architecture/normalized.ts` · 14 tables, in-memory | persistence; cross-snapshot reference rules | schema + mcp |

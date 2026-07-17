@@ -89,6 +89,37 @@ export interface SnapshotLineage {
 
 Add `'claim'`, `'explanation'`, `'claimLineage'` to `normalized.ts` `NormalizedTable`; claims normalize like relations (snapshot-qualified `id`, `logicalId`, `Ident` foreign keys to subject and input claims).
 
+## Tiered specs (reverse-engineered, progressively disclosed)
+
+Each explorable entity can carry a generated spec: a `summary` tier shown by default in the atlas, and `deepDive` sections opened on demand. A spec is presentation of provenance, never new evidence — and its sections are what an assistant retrieves when answering questions about the system, grounded through claim citations rather than prose.
+
+```ts
+export interface SpecDocument {
+  id: string;
+  snapshotId: SnapshotId;
+  subjectId: EntityId;
+  summary: SpecSection;          // default display
+  deepDive: SpecSection[];       // opened on demand
+}
+
+export interface SpecSection {
+  kind: 'responsibilities' | 'interfaces' | 'dependencies' | 'dataFlow' | 'invariants' | 'narrative';
+  origin: 'derived' | 'ai-explanation';   // derived = deterministic rendering of claims
+  text?: string;                          // prose; ai-explanation only
+  supportingClaimLogicalIds: string[];    // grounding; required, non-empty
+  generation?: Explanation['generation']; // present iff ai-explanation
+  review?: Explanation['review'];
+  fingerprint: string;                    // kind + sorted supporting fingerprints + prompt policy
+}
+```
+
+Rules:
+
+- `derived` sections (interface tables, dependency lists) are deterministic renderings of observed/inferred claims — regenerated on any input change, never reviewed, never billed.
+- `ai-explanation` sections follow the full `Explanation` lifecycle: unreviewed until accepted, carried forward only when every supporting claim fingerprint and the prompt policy are unchanged, staled otherwise.
+- The section `fingerprint` keys the enrichment cache, so a rescan regenerates only sections whose supporting claims changed — unchanged code costs nothing to refresh.
+- Assistant/knowledge-graph consumption goes through `supportingClaimLogicalIds`: an answer cites claims and their evidence, not spec prose. Empty grounding is a validation failure, not a publishable section.
+
 ## Confidence and fingerprint rules (enforce in validators)
 
 - Observed claims: `confidence` must be **absent**. Inferred: finite and in `[0,1]`. This is the `validateSnapshot`-level rule matching the inspector policy.
@@ -118,4 +149,4 @@ Discipline:
 
 - **M1 — claims as an additive projection.** Add `Claim`/`Explanation` types, optional snapshot arrays, normalized tables, and validator rules. `adaptArchitectureExtraction` also emits observed `Claim`s for each entity/relation fact. The golden fixture stays hand-authored but now carries observed claims for its anchors. *Acceptance:* existing `pnpm check`/`pnpm test`/`cargo test` stay green (additive only); a snapshot with `claims` round-trips through `normalizeArchitecture` → `selectArchitectureSnapshot` unchanged; observed claims carry no confidence.
 - **M2 — rescan lifecycle.** Compute `SnapshotLineage` by matching `logicalId`/`fingerprint` across two snapshots; recompute inferred claims when an input fingerprint or rule version changes. *Acceptance:* the `ingestion-golden-tests.md` "Rescan unchanged" and "Rescan change" rows — unchanged facts keep fingerprints and only audit time differs; a changed source/value/rule flips exactly the dependent fingerprints and marks dependents stale, unrelated claims untouched.
-- **M3 — explanations and review.** Add the `Explanation` review lifecycle and carry-forward. *Acceptance:* a changed/disappeared supporting fingerprint invalidates or stales its explanation; an accepted explanation is carried forward only when all supporting fingerprints and the prompt policy are unchanged, and records that it was carried forward.
+- **M3 — explanations and review.** Add the `Explanation` review lifecycle and carry-forward, and deliver `SpecDocument` tiers (summary default, deep-dive on demand) as the enrichment product. *Acceptance:* a changed/disappeared supporting fingerprint invalidates or stales its explanation/spec section; an accepted explanation is carried forward only when all supporting fingerprints and the prompt policy are unchanged, and records that it was carried forward; every published spec section has non-empty claim grounding.

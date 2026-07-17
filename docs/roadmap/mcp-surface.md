@@ -30,6 +30,7 @@ Tools (parameterized queries):
 - `get_scoped_view(snapshotId, viewId, rootEntityId)` — wraps `selectScopedView`.
 - `get_file_outline(snapshotId, path)` — what is in a file: its `code` entities (name, `codeKind`, symbol, line range, parent component) sorted by `startLine`, each linking to its evidence excerpt. Pure query over extractor facts — no parsing at request time. A file with no scanned symbols returns an explicit `unscanned`/`empty` distinction, never a silent empty success. The viewing platform's outline panel (inspector/SourceViewer) consumes the same query per the shared-query-layer rule.
 - `diff_snapshots(a, b)` — fingerprint-based `SnapshotLineage` (schema doc): `unchanged|changed|new|no-longer-observed`.
+- `get_spec(snapshotId, entityId, tier?)` — the entity's `SpecDocument` (schema doc "Tiered specs"): `summary` by default, `deepDive` sections on request. Sections return their `supportingClaimLogicalIds` so an assistant grounds answers to claims and evidence rather than prose; the redaction gate applies to every section.
 - `export_diagram(snapshotId, { viewId | storyId }, format='mermaid')` — wraps `serializeDynamicFlowMermaid`; deterministic under randomized input, escapes labels/identifiers, honours active story/Isolate masks, and excludes prompts, secrets, absolute paths, and private excerpts.
 
 Every read is deterministic: identical `(query, snapshot)` yields byte-identical output. Sets are sorted by stable ID; cursors are snapshot-qualified.
