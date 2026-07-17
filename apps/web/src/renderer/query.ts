@@ -9,7 +9,7 @@ export function readDemoQuery(search: string): DemoQuery {
   const params = new URLSearchParams(search);
   const warnings: string[] = [];
   const requestedFixture = params.get('fixture') ?? 'okie';
-  const fixture = ['okie', 'stress'].includes(requestedFixture) ? requestedFixture : 'okie';
+  const fixture = ['okie', 'stress', 'scan'].includes(requestedFixture) ? requestedFixture : 'okie';
   if (fixture !== requestedFixture) warnings.push(`Unknown fixture “${requestedFixture}”; using Okie.`);
 
   const rawSeed = params.get('seed') ?? '42';

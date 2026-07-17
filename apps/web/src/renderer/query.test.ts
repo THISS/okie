@@ -14,6 +14,10 @@ describe('readDemoQuery', () => {
     expect(readDemoQuery('?fixture=stress&seed=42&backend=auto')).toMatchObject({ fixture: 'stress', seed: 42, backend: 'auto', warnings: [] });
   });
 
+  it('accepts the scanned-snapshot fixture', () => {
+    expect(readDemoQuery('?fixture=scan')).toMatchObject({ fixture: 'scan', seed: 42, backend: 'auto', warnings: [] });
+  });
+
   it('bounds and reports unsupported values', () => {
     const result = readDemoQuery('?fixture=other&seed=nope&backend=metal');
     expect(result).toMatchObject({ fixture: 'okie', seed: 42, backend: 'auto' });

@@ -154,26 +154,42 @@ export function compileAppStoryPlan(
 
 export const goldenAppStory = compileAppStoryPlan(goldenSnapshot, goldenView, goldenStory);
 
-export function createGoldenC4Scene(
-  focusEntityId = 'system:okie',
-  previous?: AtlasScene,
-  authoring?: ArchitectureAuthoringDocument,
-): AtlasScene {
+export type C4SceneOptions = {
+  baseSnapshot: ArchitectureSnapshot;
+  rootEntityId: string;
+  focusEntityId: string;
+  familyId: string;
+  sceneId: string;
+  title: string;
+  subtitle: string;
+  frozenRevision: string;
+  previous?: AtlasScene;
+  authoring?: ArchitectureAuthoringDocument;
+};
+
+/**
+ * Compiles an architecture snapshot into the renderer scene + projection bundle.
+ * Shared by the golden fixture and any live-loaded fixture (e.g. scanned
+ * snapshots); fixture-specific labels/ids arrive through options so the compile
+ * path (buildC4ProjectionBundle → compileC4Scene) stays identical for both.
+ */
+export function createC4Scene(options: C4SceneOptions): AtlasScene {
+  const { baseSnapshot, authoring, previous } = options;
   const snapshot = authoring
-    ? materializeArchitectureAuthoring(goldenSnapshot, authoring)
-    : goldenSnapshot;
+    ? materializeArchitectureAuthoring(baseSnapshot, authoring)
+    : baseSnapshot;
   const buildOptions = {
-    rootEntityId: 'system:okie',
-    focusEntityId,
-    familyId: `view-family:okie-golden:${focusEntityId}`,
+    rootEntityId: options.rootEntityId,
+    focusEntityId: options.focusEntityId,
+    familyId: options.familyId,
   };
   const authoredProjections = buildC4ProjectionBundle(snapshot, buildOptions);
   const previousSnapshot = previous?.protocolSnapshot as SceneSnapshot | undefined;
-  const revision = previousSnapshot && previousSnapshot.sceneId === `scene:${goldenSnapshot.repositoryId}:c4`
+  const revision = previousSnapshot && previousSnapshot.sceneId === `scene:${baseSnapshot.repositoryId}:c4`
     ? previousSnapshot.revision + 1
     : 1;
   const compiled = authoring
-    ? compileAuthoredC4Scene(goldenSnapshot, authoring, buildOptions, { revision })
+    ? compileAuthoredC4Scene(baseSnapshot, authoring, buildOptions, { revision })
     : compileC4Scene(snapshot, authoredProjections, { revision });
   const projections = compiled.projections;
   const semanticToVisualEntityId = Object.fromEntries(Object.entries(projections.index.visualNodeIdsByEntityId)
@@ -245,11 +261,11 @@ export function createGoldenC4Scene(
     return [entity.id, Object.fromEntries(transitions)];
   }));
   const scene: AtlasScene = {
-    id: 'okie-golden-c4',
-    title: 'Okie architecture atlas',
-    subtitle: `frozen worktree fixture · ${GOLDEN_WORKTREE_REVISION}`,
-    rootEntityId: focusEntityId,
-    frozenRevision: GOLDEN_WORKTREE_REVISION,
+    id: options.sceneId,
+    title: options.title,
+    subtitle: options.subtitle,
+    rootEntityId: options.focusEntityId,
+    frozenRevision: options.frozenRevision,
     entities,
     relations: snapshot.relations.map(relation => ({
       id: relation.id,
@@ -286,6 +302,25 @@ export function createGoldenC4Scene(
     scene.protocolPatch = diffSceneSnapshots(previousSnapshot, compiled.scene);
   }
   return scene;
+}
+
+export function createGoldenC4Scene(
+  focusEntityId = 'system:okie',
+  previous?: AtlasScene,
+  authoring?: ArchitectureAuthoringDocument,
+): AtlasScene {
+  return createC4Scene({
+    baseSnapshot: goldenSnapshot,
+    rootEntityId: 'system:okie',
+    focusEntityId,
+    familyId: `view-family:okie-golden:${focusEntityId}`,
+    sceneId: 'okie-golden-c4',
+    title: 'Okie architecture atlas',
+    subtitle: `frozen worktree fixture · ${GOLDEN_WORKTREE_REVISION}`,
+    frozenRevision: GOLDEN_WORKTREE_REVISION,
+    previous,
+    authoring,
+  });
 }
 
 export function semanticBounds(scene: AtlasScene, entityId: string, detail: SemanticDetail) {
