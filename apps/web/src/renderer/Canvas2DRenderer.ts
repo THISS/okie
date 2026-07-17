@@ -316,10 +316,10 @@ export class Canvas2DRenderer implements AtlasRenderer {
     this.camera = camera;
     const order: SemanticDetail[] = ['context', 'container', 'component', 'code'];
     const bands = this.scene?.projection?.zoomPolicy?.bands;
-    const handoffs = order.slice(1).map((detail, index) =>
-      bands?.find(band => band.detail === detail)?.enterZoom ?? [1.16, 3.35, 7.10][index]!);
-    const hysteresis = order.slice(1).map((detail, index) =>
-      bands?.find(band => band.detail === detail)?.hysteresis ?? [0.08, 0.23, 0.50][index]!);
+    const handoffs = order.slice(1).map(detail =>
+      bands?.find(band => band.detail === detail)?.enterZoom ?? C4_ZOOM_BANDS.find(band => band.detail === detail)!.enterZoom);
+    const hysteresis = order.slice(1).map(detail =>
+      bands?.find(band => band.detail === detail)?.hysteresis ?? C4_ZOOM_BANDS.find(band => band.detail === detail)!.hysteresis);
     let detailIndex = order.indexOf(this.semanticDetail);
     while (detailIndex < 3 && camera.zoom >= handoffs[detailIndex]! + hysteresis[detailIndex]!) detailIndex += 1;
     while (detailIndex > 0 && camera.zoom < handoffs[detailIndex - 1]! - hysteresis[detailIndex - 1]!) detailIndex -= 1;
