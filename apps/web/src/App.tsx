@@ -101,6 +101,7 @@ import {
   type SemanticLensState,
 } from './semantic/semanticLens';
 import type { SemanticLensAssist } from './semantic/semanticLensAssist';
+import { defaultSearchSuggestions } from './searchSuggestions';
 import { shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
@@ -1957,8 +1958,12 @@ export function App() {
     const normalizedSearch = search.trim().toLowerCase();
     return normalizedSearch
       ? scene.entities.filter(entity => `${entity.name} ${entity.kind} ${entity.responsibility} ${entity.source ?? ''}`.toLowerCase().includes(normalizedSearch)).slice(0, 7)
-      : scene.entities.slice(0, 5);
-  }, [scene.entities, search]);
+      : defaultSearchSuggestions(scene, {
+        selectedId,
+        rootId: navigationIdentity.rootEntityId,
+        breadcrumbIds: breadcrumbState.chain.map(entity => entity.id),
+      });
+  }, [breadcrumbState, navigationIdentity.rootEntityId, scene, search, selectedId]);
   const explorerEntities = useMemo(() => {
     if (scene.entities.length > 200) {
       return [selected, ...searchResults].filter((entity, index, all) => all.findIndex(candidate => candidate.id === entity.id) === index);
@@ -4221,7 +4226,7 @@ export function App() {
           {searchOpen && (
             <div className="search-popover" role="dialog" aria-label="Search architecture">
               <div className="search-input-row"><SearchIcon/><input autoFocus id="atlas-search" onChange={event => setSearch(event.target.value)} placeholder="Search architecture and code" value={search}/><button aria-label="Close search" onClick={() => setSearchOpen(false)}><CloseIcon/></button></div>
-              <p className="popover-label">{search ? `${searchResults.length} MATCHES` : 'SUGGESTED'}</p>
+              <p className="popover-label">{search ? `${searchResults.length} MATCHES` : 'ON THIS MAP'}</p>
               <div className="search-results" role="listbox">
                 {searchResults.map(entity => <button aria-selected={entity.id === selectedId} key={entity.id} onClick={() => focusEntity(entity, 'push', 'frame')} role="option"><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{entity.kindLabel ?? entity.kind} · {entity.source ?? entity.responsibility}</small></span><span className="result-enter">↵</span></button>)}
                 {!searchResults.length && <p className="empty-state">No architecture entities match that query.</p>}
