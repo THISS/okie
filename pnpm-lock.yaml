@@ -32,6 +32,9 @@ importers:
       '@okie/theme':
         specifier: workspace:*
         version: link:../../packages/theme
+      dompurify:
+        specifier: ^3.4.12
+        version: 3.4.12
       mermaid:
         specifier: 11.16.0
         version: 11.16.0

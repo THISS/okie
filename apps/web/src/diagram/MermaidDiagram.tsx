@@ -5,6 +5,14 @@ const MAX_MERMAID_SOURCE_LENGTH = 40_000;
 const MAX_MERMAID_SVG_LENGTH = 2_000_000;
 const MERMAID_RENDER_SEED = 'okie-atlas-mermaid-v1';
 
+/**
+ * Elements/attributes forbidden in rendered SVG. Single source of truth applied
+ * twice: inside mermaid's own DOMPurify pass (ATLAS_MERMAID_CONFIG.dompurifyConfig)
+ * and again in an independent post-render DOMPurify pass (parseSafeMermaidSvg).
+ */
+const MERMAID_SVG_FORBID_TAGS = ['a', 'foreignObject', 'iframe', 'image', 'script', 'use'];
+const MERMAID_SVG_FORBID_ATTR = ['href', 'xlink:href'];
+
 export const ATLAS_MERMAID_CONFIG: Readonly<MermaidConfig> = {
   startOnLoad: false,
   securityLevel: 'strict',
@@ -66,8 +74,8 @@ export const ATLAS_MERMAID_CONFIG: Readonly<MermaidConfig> = {
     diagramPadding: 16,
   },
   dompurifyConfig: {
-    FORBID_TAGS: ['a', 'foreignObject', 'iframe', 'image', 'script', 'use'],
-    FORBID_ATTR: ['href', 'xlink:href'],
+    FORBID_TAGS: [...MERMAID_SVG_FORBID_TAGS],
+    FORBID_ATTR: [...MERMAID_SVG_FORBID_ATTR],
   },
 };
 
@@ -97,6 +105,23 @@ export function loadMermaid(): Promise<MermaidApi> {
   // "Retry render" would keep re-receiving the same cached failure forever.
   pending.catch(() => { if (mermaidModulePromise === pending) mermaidModulePromise = undefined; });
   mermaidModulePromise = pending;
+  return pending;
+}
+
+type DompurifyApi = typeof import('dompurify')['default'];
+
+let dompurifyPromise: Promise<DompurifyApi> | undefined;
+
+/**
+ * DOMPurify is loaded lazily — it ships inside mermaid's dynamic chunk, so this
+ * adds ~0 to the initial bundle — and cached with the same reject-clears-cache
+ * discipline as loadMermaid so a failed chunk load can recover on Retry.
+ */
+function loadDompurify(): Promise<DompurifyApi> {
+  if (dompurifyPromise) return dompurifyPromise;
+  const pending = import('dompurify').then(module => module.default);
+  pending.catch(() => { if (dompurifyPromise === pending) dompurifyPromise = undefined; });
+  dompurifyPromise = pending;
   return pending;
 }
 
@@ -134,6 +159,30 @@ function assertLocalUrlReferences(value: string): void {
       throw new Error('Rendered Mermaid SVG contains an external URL');
     }
   }
+}
+
+/**
+ * Decodes CSS escape sequences (`\XX` hex + optional trailing space, or `\<char>`)
+ * so escape-obfuscated payloads — `url\28 …\29`, `\68ttp:`, `@im\70 ort` — are
+ * normalized before the substring checks. DOMPurify intentionally leaves CSS
+ * untouched (`style` is URI-safe-listed), so this decode-then-check is the
+ * authoritative defense for CSS, replacing the previous raw-regex inspection.
+ */
+function decodeCssEscapes(css: string): string {
+  return css.replace(/\\(?:([0-9a-fA-F]{1,6})[ \t\r\n\f]?|([^\r\n\f0-9a-fA-F]))/gu, (_full, hex: string | undefined, literal: string | undefined) => {
+    if (hex === undefined) return literal ?? '';
+    const codePoint = Number.parseInt(hex, 16);
+    if (codePoint === 0 || codePoint > 0x10_ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) return '\uFFFD';
+    return String.fromCodePoint(codePoint);
+  });
+}
+
+export function assertSafeCssText(css: string): void {
+  const normalized = decodeCssEscapes(css.replace(/\/\*[^]*?\*\//gu, ''));
+  if (/javascript\s*:|data\s*:\s*text\/html|@import\b|expression\s*\(/iu.test(normalized)) {
+    throw new Error('Rendered Mermaid SVG contains active styles');
+  }
+  assertLocalUrlReferences(normalized);
 }
 
 export function assertSafeMermaidSvgText(svg: string): void {
@@ -176,13 +225,23 @@ const allowedSvgElements = new Set([
   'tspan',
 ]);
 
-function parseSafeMermaidSvg(svg: string, ownerDocument: Document): SVGSVGElement {
+function parseSafeMermaidSvg(svg: string, ownerDocument: Document, purify: DompurifyApi): SVGSVGElement {
   assertSafeMermaidSvgText(svg);
-  const Parser = ownerDocument.defaultView?.DOMParser ?? DOMParser;
-  const parsed = new Parser().parseFromString(svg, 'image/svg+xml');
-  if (parsed.querySelector('parsererror')) throw new Error('Rendered Mermaid SVG is malformed');
-  const root = parsed.documentElement;
-  if (root.localName.toLowerCase() !== 'svg' || root.namespaceURI !== 'http://www.w3.org/2000/svg') {
+
+  // Independent hardened sanitizer over the rendered output: DOMPurify parses the
+  // markup with a real HTML/SVG parser (defeating markup-level obfuscation the raw
+  // text checks can miss) and drops the shared forbid list. DOMPurify deliberately
+  // does NOT sanitize CSS (`style` is URI-safe-listed), so assertSafeCssText below
+  // remains the authoritative defense for url()/@import in styles and <style>.
+  const fragment = purify.sanitize(svg, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    FORBID_TAGS: [...MERMAID_SVG_FORBID_TAGS],
+    FORBID_ATTR: [...MERMAID_SVG_FORBID_ATTR],
+    RETURN_DOM_FRAGMENT: true,
+  });
+
+  const root = fragment.querySelector('svg');
+  if (!root || root.namespaceURI !== 'http://www.w3.org/2000/svg') {
     throw new Error('Mermaid did not return a standalone SVG');
   }
 
@@ -196,17 +255,17 @@ function parseSafeMermaidSvg(svg: string, ownerDocument: Document): SVGSVGElemen
       if (normalized.startsWith('on') || normalized === 'href' || normalized === 'xlink:href') {
         throw new Error('Rendered Mermaid SVG contains an active attribute');
       }
+      if (normalized === 'style') {
+        assertSafeCssText(value);
+        continue;
+      }
       if (/javascript\s*:|data\s*:\s*text\/html|@import\b/iu.test(value)) {
         throw new Error('Rendered Mermaid SVG contains active content');
       }
       assertLocalUrlReferences(value);
     }
     if (element.localName.toLowerCase() === 'style') {
-      const css = element.textContent ?? '';
-      if (/javascript\s*:|data\s*:\s*text\/html|@import\b/iu.test(css)) {
-        throw new Error('Rendered Mermaid SVG contains active styles');
-      }
-      assertLocalUrlReferences(css);
+      assertSafeCssText(element.textContent ?? '');
     }
   }
 
@@ -241,11 +300,11 @@ export function MermaidDiagram({ source, title }: MermaidDiagramProps) {
     void (async () => {
       try {
         assertSafeMermaidSource(source);
-        const mermaid = await loadMermaid();
+        const [mermaid, purify] = await Promise.all([loadMermaid(), loadDompurify()]);
         if (cancelled || request !== requestRef.current) return;
         const result = await mermaid.render(stableMermaidRenderId(source), source);
         if (cancelled || request !== requestRef.current) return;
-        const safeSvg = parseSafeMermaidSvg(result.svg, host.ownerDocument);
+        const safeSvg = parseSafeMermaidSvg(result.svg, host.ownerDocument, purify);
         if (cancelled || request !== requestRef.current) return;
         host.replaceChildren(safeSvg);
         setState('ready');

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  assertSafeCssText,
   assertSafeMermaidSource,
   assertSafeMermaidSvgText,
   ATLAS_MERMAID_CONFIG,
@@ -116,6 +117,33 @@ describe('Mermaid diagram renderer boundary', () => {
     '<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://example.com/x.css";</style></svg>',
   ])('rejects active or externally linked SVG output: %s', svg => {
     expect(() => assertSafeMermaidSvgText(svg)).toThrow();
+  });
+
+  it('neutralizes CSS-escaped external url() in a style attribute value', () => {
+    // Escaped parens (url\28 …\29) evade a raw url() regex but decode to a real url.
+    expect(() => assertSafeCssText('fill:url\\28 https://evil.example/x\\29')).toThrow(/external URL/u);
+    // Hex-escaped scheme (\68 = 'h') hides the external target from a naive scan.
+    expect(() => assertSafeCssText('background:url(\\68 ttps://evil.example/x)')).toThrow(/external URL/u);
+  });
+
+  it('neutralizes CSS-escaped external url() inside a <style> block body', () => {
+    expect(() => assertSafeCssText('.node rect{fill:url(\\68 ttps://evil.example/x)}')).toThrow(/external URL/u);
+    expect(() => assertSafeCssText('.edgePath{stroke:url\\28 https://evil.example\\29}')).toThrow(/external URL/u);
+  });
+
+  it('preserves legitimate internal marker references, including an escaped "#"', () => {
+    expect(() => assertSafeCssText('marker-end:url(#arrow)')).not.toThrow();
+    expect(() => assertSafeCssText('.edge{marker-end:url(#arrow)}')).not.toThrow();
+    // \000023 decodes to '#', so this remains an internal fragment reference.
+    expect(() => assertSafeCssText('marker-end:url(\\000023 arrow)')).not.toThrow();
+    expect(() => assertSafeCssText('/* themed */ fill:#162022; stroke-width:1px')).not.toThrow();
+  });
+
+  it('rejects escaped @import and IE expression() payloads in CSS', () => {
+    expect(() => assertSafeCssText('@import "https://evil.example/x.css"')).toThrow(/active styles/u);
+    // \70 = 'p' — reconstructs @import after decoding.
+    expect(() => assertSafeCssText('@im\\70 ort url(https://evil.example)')).toThrow();
+    expect(() => assertSafeCssText('width:expression(alert(1))')).toThrow(/active styles/u);
   });
 
   it('server-renders an accessible loading fallback without executing the renderer', () => {
