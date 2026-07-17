@@ -4364,7 +4364,7 @@ export function App() {
 
           <nav aria-label="Architecture detail level" className="level-rail">
             <div className="rail-icon"><LayersIcon/></div>
-            {levels.map((level, index) => <button aria-current={activeLevel === index ? 'true' : undefined} aria-label={`${level.short} ${level.name}`} className={activeLevel === index ? 'active' : ''} key={level.name} onClick={() => selectLevel(index)}><span>{level.short}</span><em>{level.name}</em></button>)}
+            {levels.map((level, index) => <button aria-current={activeLevel === index ? 'true' : undefined} aria-label={`${level.name} level`} className={activeLevel === index ? 'active' : ''} key={level.name} onClick={() => selectLevel(index)}><span>{level.short}</span><em>{level.name}</em></button>)}
           </nav>
 
           <div className="zoom-controls" aria-label="Map controls">
@@ -4413,7 +4413,7 @@ export function App() {
           <button aria-controls="architecture-inspector" aria-expanded={detailsOpen} className="details-toggle" aria-label={detailsOpen ? 'Close details panel' : 'Open details panel'} onClick={toggleDetails} ref={detailsOpenerRef}><PanelIcon/></button>
 
           <details className="entity-explorer">
-            <summary id="entity-explorer"><LayersIcon size={15}/><span>Entity list</span></summary>
+            <summary aria-label="Toggle entity list" id="entity-explorer"><LayersIcon size={15}/><span>Entity list</span></summary>
             <div className="entity-explorer-list" aria-label="Architecture entities">
               <p>KEYBOARD EXPLORER · {visibleExplorerEntities.length.toLocaleString()} ENTITIES</p>
               {visibleExplorerEntities.map(entity => <button aria-current={entity.id === selectedId ? 'true' : undefined} key={entity.id} onClick={() => focusEntity(entity)}><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{entity.kindLabel ?? entity.kind} · {entity.responsibility}</small></span></button>)}
