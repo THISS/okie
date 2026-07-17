@@ -66,6 +66,22 @@ importers:
 
   packages/architecture: {}
 
+  packages/scan:
+    dependencies:
+      '@okie/architecture':
+        specifier: workspace:*
+        version: link:../architecture
+      '@okie/scene-compiler':
+        specifier: workspace:*
+        version: link:../scene-compiler
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.0
+        version: 22.20.1
+
   packages/scene-compiler:
     dependencies:
       '@okie/architecture':

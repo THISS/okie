@@ -1,0 +1,156 @@
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
+import {
+  adaptArchitectureExtraction,
+  buildC4ProjectionBundle,
+  validateSnapshot,
+  validateStory,
+  validateView,
+  type ArchitectureExtraction,
+  type ArchitectureSnapshot,
+  type ArchitectureStory,
+  type ArchitectureView,
+  type ArchitectureExtractionSnapshotMetadata,
+  type NodeLayout,
+} from "@okie/architecture";
+import { compileC4Scene, compileC4Timeline, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
+import { discoverRepository, type Discovery } from "./discover.js";
+import { extractArchitecture } from "./extract.js";
+import { pinRepository, type RepositoryPin } from "./pin.js";
+import { slug, typedId } from "./ids.js";
+
+export interface ScanOptions {
+  systemName?: string;
+  repositorySlug?: string;
+}
+
+export interface ScanArtifacts {
+  pin: RepositoryPin;
+  extraction: ArchitectureExtraction;
+  snapshot: ArchitectureSnapshot;
+  view: ArchitectureView;
+  story: ArchitectureStory;
+  scene: SceneSnapshot;
+  timeline: Timeline;
+}
+
+/** Deterministic legacy grid: the C4 renderer lays out intrinsically, so these
+ *  node rects exist ONLY to satisfy validateView and carry story membership. */
+function syntheticLayout(snapshot: ArchitectureSnapshot): Record<string, NodeLayout> {
+  return Object.fromEntries([...snapshot.entities]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((entity, index) => [entity.id, {
+      x: 120 + (index % 8) * 330,
+      y: 120 + Math.floor(index / 8) * 210,
+      width: 280,
+      height: 140,
+    }]));
+}
+
+function buildView(snapshot: ArchitectureSnapshot, systemId: string, repositorySlug: string, systemName: string): ArchitectureView {
+  return {
+    schemaVersion: 1,
+    id: typedId("view", repositorySlug, "hierarchy"),
+    snapshotId: snapshot.id,
+    name: `${systemName} scan`,
+    rootEntityId: systemId,
+    entityIds: snapshot.entities.map(entity => entity.id),
+    relationIds: snapshot.relations.map(relation => relation.id),
+    layout: { nodes: syntheticLayout(snapshot) },
+  };
+}
+
+function buildOverviewStory(
+  snapshot: ArchitectureSnapshot,
+  view: ArchitectureView,
+  systemId: string,
+  repositorySlug: string,
+  systemName: string,
+): ArchitectureStory {
+  return {
+    schemaVersion: 1,
+    id: typedId("story", repositorySlug, "overview"),
+    snapshotId: snapshot.id,
+    viewId: view.id,
+    title: `${systemName} overview`,
+    // One context step on the system root. It cites NO sourceRefs, so it trivially
+    // satisfies the host-side evidence-resolution rule (validateStoryDocument).
+    steps: [{
+      id: "step:overview",
+      title: `Start with ${systemName}`,
+      focusEntityIds: [systemId],
+      reveal: "context",
+      narration: `${systemName}, scanned at commit ${snapshot.commitSha.slice(0, 12)}.`,
+    }],
+  };
+}
+
+export interface BuildScanArtifactsParams {
+  discovery: Discovery;
+  pin: RepositoryPin;
+  readFile: (repoRelativePath: string) => string;
+  repositorySlug: string;
+  systemName: string;
+}
+
+/** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
+export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifacts {
+  const { discovery, pin, readFile, repositorySlug, systemName } = params;
+  const systemSlug = slug(systemName);
+
+  const extraction = extractArchitecture({ discovery, readFile, systemName, systemSlug });
+
+  const metadata: ArchitectureExtractionSnapshotMetadata = {
+    snapshotId: typedId("snapshot", repositorySlug, pin.commitSha.slice(0, 12)),
+    repositoryId: typedId("repo", repositorySlug),
+    commitSha: pin.commitSha,
+    generatedAt: pin.generatedAt,
+  };
+  const snapshot = adaptArchitectureExtraction(extraction, metadata);
+  const snapshotIssues = validateSnapshot(snapshot);
+  if (snapshotIssues.length) {
+    throw new Error(`Scanned snapshot failed validation:\n${snapshotIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
+  }
+
+  const system = snapshot.entities.find(entity => entity.kind === "softwareSystem");
+  if (!system) throw new Error("Scanned snapshot has no softwareSystem root");
+
+  const view = buildView(snapshot, system.id, repositorySlug, systemName);
+  const viewIssues = validateView(snapshot, view);
+  if (viewIssues.length) {
+    throw new Error(`Scanned view failed validation:\n${viewIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
+  }
+
+  const story = buildOverviewStory(snapshot, view, system.id, repositorySlug, systemName);
+  const storyIssues = validateStory(snapshot, view, story);
+  if (storyIssues.length) {
+    throw new Error(`Scanned story failed validation:\n${storyIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
+  }
+
+  const familyId = typedId("view-family", repositorySlug, "system-root");
+  const bundle = buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId });
+  const compiled = compileC4Scene(snapshot, bundle);
+  const timeline = compileC4Timeline(snapshot, story, compiled);
+
+  return { pin, extraction, snapshot, view, story, scene: compiled.scene, timeline };
+}
+
+/** Scans a local git working tree at HEAD into the full artifact set. */
+export function scanRepository(sourceRoot: string, options: ScanOptions = {}): ScanArtifacts {
+  const repositorySlug = options.repositorySlug ?? slug(basename(sourceRoot));
+  const systemName = options.systemName ?? (repositorySlug.charAt(0).toUpperCase() + repositorySlug.slice(1));
+  const pin = pinRepository(sourceRoot);
+  const discovery = discoverRepository(sourceRoot);
+  return buildScanArtifacts({
+    discovery,
+    pin,
+    readFile: (repoRelativePath: string) => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8"),
+    repositorySlug,
+    systemName,
+  });
+}
+
+/** Canonical, byte-stable JSON serialization (trailing newline, 2-space indent). */
+export function stableJson(value: unknown): string {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}

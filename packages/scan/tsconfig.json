@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "esModuleInterop": true
+  },
+  "references": [
+    { "path": "../architecture" },
+    { "path": "../scene-compiler" }
+  ],
+  "include": ["src/**/*.ts"]
+}

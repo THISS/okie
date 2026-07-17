@@ -12,3 +12,6 @@ crates/atlas-wasm/pkg/
 
 # Large deterministic benchmark scenes are generated on demand.
 fixtures/renderer/stress-*.json
+
+# Deterministic scan output (regenerate with `okie-scan`).
+fixtures/scan/
