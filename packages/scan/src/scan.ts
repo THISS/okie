@@ -16,22 +16,28 @@ import {
 import { compileC4Scene, compileC4Timeline, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
 import { discoverRepository, type Discovery } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
+import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
 import { pinRepository, type RepositoryPin } from "./pin.js";
 import { slug, typedId } from "./ids.js";
 
 export interface ScanOptions {
   systemName?: string;
   repositorySlug?: string;
+  /** container id -> enrichment document (any JSON); accepted docs re-group that scope. */
+  enrichmentDocs?: ReadonlyMap<string, unknown>;
 }
 
 export interface ScanArtifacts {
   pin: RepositoryPin;
+  /** The deterministic (pre-enrichment) extraction — the source for enrichment packets. */
+  baseExtraction: ArchitectureExtraction;
   extraction: ArchitectureExtraction;
   snapshot: ArchitectureSnapshot;
   view: ArchitectureView;
   story: ArchitectureStory;
   scene: SceneSnapshot;
   timeline: Timeline;
+  enrichmentReport?: EnrichmentReport;
 }
 
 /** Deterministic legacy grid: the C4 renderer lays out intrinsically, so these
@@ -91,6 +97,7 @@ export interface BuildScanArtifactsParams {
   readFile: (repoRelativePath: string) => string;
   repositorySlug: string;
   systemName: string;
+  enrichmentDocs?: ReadonlyMap<string, unknown>;
 }
 
 /** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
@@ -98,7 +105,14 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   const { discovery, pin, readFile, repositorySlug, systemName } = params;
   const systemSlug = slug(systemName);
 
-  const extraction = extractArchitecture({ discovery, readFile, systemName, systemSlug });
+  const baseExtraction = extractArchitecture({ discovery, readFile, systemName, systemSlug });
+  let extraction = baseExtraction;
+  let enrichmentReport: EnrichmentReport | undefined;
+  if (params.enrichmentDocs && params.enrichmentDocs.size > 0) {
+    const outcome = mergeEnrichment(baseExtraction, params.enrichmentDocs);
+    extraction = outcome.extraction;
+    enrichmentReport = outcome.report;
+  }
 
   const metadata: ArchitectureExtractionSnapshotMetadata = {
     snapshotId: typedId("snapshot", repositorySlug, pin.commitSha.slice(0, 12)),
@@ -132,7 +146,17 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   const compiled = compileC4Scene(snapshot, bundle);
   const timeline = compileC4Timeline(snapshot, story, compiled);
 
-  return { pin, extraction, snapshot, view, story, scene: compiled.scene, timeline };
+  return {
+    pin,
+    baseExtraction,
+    extraction,
+    snapshot,
+    view,
+    story,
+    scene: compiled.scene,
+    timeline,
+    ...(enrichmentReport ? { enrichmentReport } : {}),
+  };
 }
 
 /** Scans a local git working tree at HEAD into the full artifact set. */
@@ -147,6 +171,7 @@ export function scanRepository(sourceRoot: string, options: ScanOptions = {}): S
     readFile: (repoRelativePath: string) => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8"),
     repositorySlug,
     systemName,
+    ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
   });
 }
 

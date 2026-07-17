@@ -57,3 +57,43 @@ Output is byte-identical across shuffled discovery order: IDs derive from canoni
 identity (path/symbol) with collision suffixes assigned by canonical sort, and
 `adaptArchitectureExtraction` + `compileC4Scene` re-sort everything by ID. `git ls-files`
 order, filesystem order, and iteration order cannot affect the bytes.
+
+## Enrichment (R2a — agents propose, validators dispose)
+
+R1 produces file-components (deterministic structural truth). R2 lets bounded-scope agents
+regroup a container's files into **logical components** without ever touching observed facts.
+
+- `okie-scan --emit-packets <dir>` writes one bounded, **redacted** packet per code-bearing
+  container (`container__<id>.json`) plus a content-addressed `manifest.json`. A packet contains
+  only that container's scope — its file-components, code entities (id/name/symbol/line ranges),
+  touching relations, and capped file headers. Never a byte from outside the scope.
+- `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per container and merges the
+  accepted ones, emitting `enrichment-report.json`. See [`enrichment-prompt.md`](./enrichment-prompt.md)
+  for the agent contract (`okie-enrichment/v1`).
+
+Each document is validated **atomically** — any failure leaves that scope on the deterministic
+file-component base (deterministic always publishes):
+
+1. **Gate** — `validateArchitectureExtraction` must return `[]`.
+2. **Scope** — every cited path is inside the packet's scope.
+3. **Observed-facts immutability** — every code entity must exist in the base with byte-identical
+   `name` + `sourceRefs` (path/symbol/lines). Only `parentId` may change; components may carry new
+   prose. Any observed-value diff rejects the whole document.
+4. **Coverage** — the document must re-parent exactly the container's code entities (total partition).
+
+### Chosen representations (documented per the extraction-gate contract)
+
+- **Full-subtree restatement.** The gate resolves parents within the document, so a proposal
+  restates `{system, container, proposed components, re-parented code}`. System/container are
+  structural anchors (id-matched, content ignored — the base wins).
+- **File cohesion.** All code entities of one path must share a proposed parent (group whole files,
+  never split a file's symbols). This is the natural logical granularity **and** makes the
+  file→logical mapping a function, so the merge can remap the deterministic intra-container
+  file→file import edges to **logical→logical** (dedup + drop self-loops), preserving the dependency
+  graph. `container→container` edges pass through unchanged.
+- **Empty components** (files with no top-level declaration, e.g. `vite.config.ts`) are not
+  enrichment targets; they remain deterministic file-components.
+
+Merging is order-independent (accepted proposals apply in canonical container-id order; entities
+and relations re-sort by id) and reads no wall-clock/randomness, so the same base + documents
+always yield byte-identical output (recorded-replay class).
