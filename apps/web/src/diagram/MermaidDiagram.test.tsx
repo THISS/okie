@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   assertSafeMermaidSource,
   assertSafeMermaidSvgText,
   ATLAS_MERMAID_CONFIG,
+  loadMermaid,
   MermaidDiagram,
   MermaidSourceDisclosure,
+  setMermaidModuleLoaderForTests,
   stableMermaidRenderId,
 } from './MermaidDiagram';
 
@@ -45,6 +47,30 @@ describe('Mermaid diagram renderer boundary', () => {
   it('keeps Mermaid behind a dynamic import instead of the initial web bundle', () => {
     expect(componentSource).toContain("import('mermaid')");
     expect(componentSource).not.toMatch(/^import mermaid from 'mermaid'/mu);
+  });
+
+  it('recovers on retry after a failed Mermaid import instead of caching the rejection', async () => {
+    let attempts = 0;
+    const initialize = vi.fn();
+    setMermaidModuleLoaderForTests(() => {
+      attempts += 1;
+      return attempts === 1
+        ? Promise.reject(new Error('network down'))
+        : Promise.resolve({
+            default: { initialize, render: async () => ({ svg: '<svg/>', diagramType: 'flowchart' }) },
+          });
+    });
+    try {
+      // First attempt fails; the module-level cache must not retain the rejection.
+      await expect(loadMermaid()).rejects.toThrow('network down');
+      // Retry re-imports (attempt 2), initializes with the app config, and resolves.
+      const api = await loadMermaid();
+      expect(attempts).toBe(2);
+      expect(initialize).toHaveBeenCalledWith(ATLAS_MERMAID_CONFIG);
+      expect(api).toHaveProperty('render');
+    } finally {
+      setMermaidModuleLoaderForTests();
+    }
   });
 
   it('derives stable source-specific render IDs', () => {

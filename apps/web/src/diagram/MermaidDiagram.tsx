@@ -72,15 +72,32 @@ export const ATLAS_MERMAID_CONFIG: Readonly<MermaidConfig> = {
 };
 
 type MermaidApi = Pick<typeof import('mermaid')['default'], 'render'>;
+type MermaidModule = { default: Pick<typeof import('mermaid')['default'], 'initialize' | 'render'> };
 
+let importMermaidModule: () => Promise<MermaidModule> = () => import('mermaid');
 let mermaidModulePromise: Promise<MermaidApi> | undefined;
 
-function loadMermaid(): Promise<MermaidApi> {
-  mermaidModulePromise ??= import('mermaid').then(({ default: mermaid }) => {
+/**
+ * Test seam: swap the Mermaid loader and reset the cached module promise so the
+ * fail-then-retry path can be exercised deterministically. Called with no
+ * argument it restores the real dynamic import.
+ */
+export function setMermaidModuleLoaderForTests(loader?: () => Promise<MermaidModule>): void {
+  importMermaidModule = loader ?? (() => import('mermaid'));
+  mermaidModulePromise = undefined;
+}
+
+export function loadMermaid(): Promise<MermaidApi> {
+  if (mermaidModulePromise) return mermaidModulePromise;
+  const pending = importMermaidModule().then(({ default: mermaid }) => {
     mermaid.initialize(ATLAS_MERMAID_CONFIG);
     return mermaid;
   });
-  return mermaidModulePromise;
+  // A rejected import must not poison the cache: otherwise the error UI's
+  // "Retry render" would keep re-receiving the same cached failure forever.
+  pending.catch(() => { if (mermaidModulePromise === pending) mermaidModulePromise = undefined; });
+  mermaidModulePromise = pending;
+  return pending;
 }
 
 export function stableMermaidRenderId(source: string): string {
