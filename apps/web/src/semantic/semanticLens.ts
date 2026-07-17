@@ -1,3 +1,4 @@
+import { C4_ZOOM_BANDS } from '@okie/scene-compiler';
 import type { AtlasScene, Camera, ProjectionOverride, SceneEntity, SemanticDetail } from '../renderer/types';
 import { ATLAS_CAMERA_BOUNDS } from '../renderer/cameraBounds';
 import type { SafeArea, ViewportSize } from '../storyFraming';
@@ -19,10 +20,18 @@ export const SEMANTIC_LENS_POLICY = {
   mobileIntentRatio: 0.12,
 } as const;
 
+// Derived from the compiler's zoom policy so the lens fallback can never drift from it
+// (review finding: fallback zoom-policy copies). Values are identical to the previous literals.
+const enterZoomForBand = (detail: Exclude<SemanticDetail, 'context'>): number => {
+  const band = C4_ZOOM_BANDS.find(candidate => candidate.detail === detail);
+  if (!band) throw new Error(`C4 zoom policy is missing the ${detail} band`);
+  return band.enterZoom;
+};
+
 export const SEMANTIC_LENS_ENTER_ZOOM: Record<Exclude<SemanticDetail, 'context'>, number> = {
-  container: 1.16,
-  component: 3.35,
-  code: 7.10,
+  container: enterZoomForBand('container'),
+  component: enterZoomForBand('component'),
+  code: enterZoomForBand('code'),
 };
 
 export type LensCoverage = { major: number; minor: number };
