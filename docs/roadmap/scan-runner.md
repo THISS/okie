@@ -40,7 +40,7 @@ Stages: pin → acquire → discover → extract (deterministic) → [agent enri
 
 ## Build order
 
-- **R1 — `okie-scan` local mode + TS syntax extractor.** Scan Okie itself; snapshot passes `validateSnapshot`; entity/relation IDs are a superset of the golden anchors; byte-identical across shuffled discovery orders. App loads the scanned snapshot.
+- **R1 — `okie-scan` local mode + TS syntax extractor. SHIPPED.** `packages/scan` scans Okie itself (commit+tree pinned, `generatedAt` = committer date); output passes the full gate untouched, covers 31/31 TS golden anchors, and is byte-identical across shuffled discovery orders and independent runs. The app loads it via `?fixture=scan` (pre-mount bootstrap, fail-closed validation errors). Dogfooding immediately paid: the first real scan exposed an unclamped corner-radius compiler bug that silently forced Canvas2D fallback — fixed at every emission site with an invariant sweep test.
 - **R2 — agent enrichment pass.** Bounded-scope agent proposals through the gate; enrichment optional and async; deterministic base publishes regardless.
 - **R3 — GitHub acquisition + cadence.** `gh`/App tarball acquisition, webhook/cron triggers, then diff-scoped incremental with the equivalence gate.
 

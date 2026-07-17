@@ -25,9 +25,9 @@ Read those first. Every recommendation below is tied to a current file or symbol
 | Semantic model | `architecture/model.ts` · `ArchitectureSnapshot/Entity/Relation/View/Story/Overrides` (v1) | facts embed flat `sourceRefs` + `confidence?`; no `Claim`/`Explanation` | schema |
 | Provenance classes | `apps/web/provenance/presentation.ts` · `ClaimOrigin` (**presentation only**) | not stored; UI re-derives `observed/inferred/ai-explanation` at render time | schema |
 | Identity / lineage | `model.ts` · `lineageId?`,`fingerprint?`; `normalized.ts` · `logicalId` + snapshot-qualified row `id` | no diff-status lifecycle; no reconciliation runtime | schema |
-| Extraction boundary | `architecture/extraction.ts` · `ArchitectureExtraction`, `validateArchitectureExtraction`, `adaptArchitectureExtraction`, `ArchitectureExtractionReconciliation` | schema exists; **no producers**, no pinning/hashing | scraper |
-| Deterministic extractors (TS/Rust) | — | the entire scan mechanism | scraper |
-| Self-map fixture | `scene-compiler/golden-fixture.ts` (hand-authored) | not machine-produced; maintained by the dogfooding pin | scraper (M1) |
+| Extraction boundary | `architecture/extraction.ts` · `ArchitectureExtraction`, `validateArchitectureExtraction`, `adaptArchitectureExtraction`, `ArchitectureExtractionReconciliation` | producer shipped (`@okie/scan`); no dependency pinning/hash domains yet | scraper |
+| Deterministic extractors (TS/Rust) | `packages/scan` · `okie-scan` — TS syntax extractor, commit-pinned, shuffle-deterministic, 31/31 golden TS anchors; loads via `?fixture=scan` | Rust extractor; type-aware depth; per-file outlines need exported+top-level coverage review | scraper |
+| Self-map fixture | `scene-compiler/golden-fixture.ts` (hand-authored) + machine scan (`fixtures/scan/`, gitignored) | golden fixture still hand-authored (M1 stretch: retire it) | scraper (M1) |
 | Canonical serialization + hash domains | — | RFC 8785 profile + the 8 named hashes | scraper |
 | Rescan / diff | — | `unchanged\|changed\|new\|no-longer-observed` | schema + scraper |
 | Incremental rescan | — | commit-diff-scoped re-extraction + incremental≡full equivalence gate | scraper |
