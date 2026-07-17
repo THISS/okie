@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { compensateSemanticInspectorFlightCamera, getLevel, retargetCameraForSemanticBand, semanticEntityFrameCamera, semanticInspectorFlightKind, semanticInspectorFlightProgress, semanticInspectorFlightSession, semanticInspectorHierarchyPlan, semanticInspectorRawCameraTarget, semanticLevelSession, semanticOpenNextLayer, semanticPanFocusPlan, semanticSourceSession } from './App';
+import { getLevel } from './App';
+import { compensateSemanticInspectorFlightCamera, retargetCameraForSemanticBand, semanticEntityFrameCamera, semanticInspectorFlightKind, semanticInspectorFlightProgress, semanticInspectorFlightSession, semanticInspectorHierarchyPlan, semanticInspectorRawCameraTarget, semanticLevelSession, semanticOpenNextLayer, semanticPanFocusPlan, semanticSourceSession } from './semantic/semanticLensEngine';
 import { createGoldenC4Scene } from './renderer/goldenC4Scene';
 import { ATLAS_CAMERA_BOUNDS, semanticDominantZoomIntervals, semanticFocusZooms, semanticLevelAtZoom } from './renderer/cameraBounds';
 import { zoomCameraAt } from './renderer/cameraController';

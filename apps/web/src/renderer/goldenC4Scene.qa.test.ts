@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Canvas2DRenderer, canvasEntityPresentationMetrics } from './Canvas2DRenderer';
 import { createGoldenC4Scene, goldenAppStory } from './goldenC4Scene';
-import { semanticLevelSession, semanticSourceSession } from '../App';
+import { semanticLevelSession, semanticSourceSession } from '../semantic/semanticLensEngine';
 import type { Camera, RenderState, SemanticDetail } from './types';
 import {
   idleSemanticLens,
