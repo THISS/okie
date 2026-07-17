@@ -1,0 +1,47 @@
+# Scan runner
+
+Status: proposed roadmap (operational layer).
+
+The executable that turns a repository into atlas data. [`scraper-pipeline.md`](./scraper-pipeline.md) defines the stages and guardrails; this document decides how the stages actually run: source access, checkout, refresh cadence, and where agents fan out. Today no scanner exists — the atlas renders the hand-authored fixture via `pnpm generate:fixtures`, and `extraction.ts` (the intake gate) has no producers.
+
+## Source access options
+
+| Option | Fit | Notes |
+|---|---|---|
+| Local path | **first** (dogfood) | Point at a working tree/clone. No auth. Pin = `git rev-parse HEAD` + tree hash. |
+| PAT / `gh` CLI | early remote repos | Runs wherever the operator's credentials live. Fine for one user; not shareable. |
+| GitHub App | **hosted product** | The Vercel pattern: installable per repo/org, read-only `contents` + `metadata` permissions, short-lived installation tokens, push webhooks trigger rescans. No user PATs; revocable. |
+
+Design rule: source acquisition is a pluggable stage. The runner sees `acquire(pin) → immutable file tree`; local path, `gh`, and App tokens are interchangeable providers.
+
+## Checkout strategy
+
+Ephemeral, always pinned: fetch the tree at one commit into a temp directory, verify the tree hash, scan, discard. For GitHub the tarball-at-SHA endpoint beats a git clone (one archive, no history); locally, `git worktree add --detach` gives the same isolation for free. Nothing long-lived; the snapshot's `commitSha`/tree hash is the identity, not the checkout.
+
+Trade-off to decide per extractor: syntax-level extraction (imports, exports, symbols, containment) needs only the tree; full type-aware TS extraction wants `node_modules` (an install step — slow, network, lockfile-pinned). M1 starts syntax-level: deterministic, install-free, and enough for entities/relations/anchors.
+
+## Refresh cadence
+
+1. **Full rescan** (first): every run scans the whole tree at the new pin. Simple, deterministic, and the baseline the equivalence gate needs.
+2. **Diff-scoped incremental** (optimization, already designed): `git diff A..B` (or the GitHub compare API) → dirty scopes → re-extract only those, reuse the rest by content hash — see "Incremental rescan" in `scraper-pipeline.md`. Only allowed because incremental ≡ full is enforced by a golden gate.
+3. **Triggers**: manual CLI now; webhook push events (App) or cron later. Every trigger resolves to the same call: `scan(repo, commit)`.
+
+## Where agents fan out
+
+Deterministic extractors produce the observed base (structure, anchors, imports). Agents add what parsers cannot — responsibilities, conceptual containers, stories, spec prose — each given one bounded scope of the ephemeral checkout and required to return an `ArchitectureExtraction` document. `validateArchitectureExtraction` disposes; reconciliation assigns identity; canonical-sort merge makes agent completion order irrelevant. An agent failure loses that scope's enrichment, never the deterministic base.
+
+## Proposed CLI shape
+
+```
+okie-scan --source <path | gh:owner/repo> [--commit <sha>] [--enrich] --out <dir>
+```
+
+Stages: pin → acquire → discover → extract (deterministic) → [agent enrich] → validate → adapt → `ArchitectureSnapshot` + generated `ArchitectureView` JSON → compile via `@okie/scene-compiler` → renderer scene/timeline JSON. Output is the same shape as `fixtures/`; the web app needs one new loading path for scanned snapshots alongside the demo/stress query modes.
+
+## Build order
+
+- **R1 — `okie-scan` local mode + TS syntax extractor.** Scan Okie itself; snapshot passes `validateSnapshot`; entity/relation IDs are a superset of the golden anchors; byte-identical across shuffled discovery orders. App loads the scanned snapshot.
+- **R2 — agent enrichment pass.** Bounded-scope agent proposals through the gate; enrichment optional and async; deterministic base publishes regardless.
+- **R3 — GitHub acquisition + cadence.** `gh`/App tarball acquisition, webhook/cron triggers, then diff-scoped incremental with the equivalence gate.
+
+Acceptance for each ties back to the `scraper-pipeline.md` milestones (R1≈M1, R3⊃M2).
