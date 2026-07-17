@@ -178,8 +178,15 @@ function decodeCssEscapes(css: string): string {
 }
 
 export function assertSafeCssText(css: string): void {
-  const normalized = decodeCssEscapes(css.replace(/\/\*[^]*?\*\//gu, ''));
-  if (/javascript\s*:|data\s*:\s*text\/html|@import\b|expression\s*\(/iu.test(normalized)) {
+  // Normalize BEFORE matching: strip CSS comments, decode CSS escapes, then
+  // collapse whitespace — so comment-split (url(/**/…)), escape-obfuscated
+  // (\75rl, \68ttp) and whitespace tricks all reduce to canonical text first.
+  const normalized = decodeCssEscapes(css.replace(/\/\*[^]*?\*\//gu, '')).replace(/\s+/gu, ' ');
+  // Allowlist, not blocklist: @import is never permitted (no remote stylesheets)
+  // and IE expression() is an execution vector url() allowlisting cannot cover.
+  // Deliberately no scheme enumeration (javascript:/data:) — every url() token is
+  // required to be a local #fragment below, which is what actually closes the hole.
+  if (/@import\b|expression\s*\(/iu.test(normalized)) {
     throw new Error('Rendered Mermaid SVG contains active styles');
   }
   assertLocalUrlReferences(normalized);

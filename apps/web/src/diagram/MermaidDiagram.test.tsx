@@ -146,6 +146,20 @@ describe('Mermaid diagram renderer boundary', () => {
     expect(() => assertSafeCssText('width:expression(alert(1))')).toThrow(/active styles/u);
   });
 
+  it('normalizes comment-split, case-variant, and escaped-"url" obfuscation before allowlisting', () => {
+    // comment-split: url(/**/http…) collapses to url(http…) after comment strip.
+    expect(() => assertSafeCssText('background:url(/**/https://evil.example/x)')).toThrow(/external URL/u);
+    // uppercase / mixed-case URL( still matched (case-insensitive).
+    expect(() => assertSafeCssText('fill:URL(https://evil.example/x)')).toThrow(/external URL/u);
+    // the "url" keyword itself hex-escaped: \75 = 'u' -> url(
+    expect(() => assertSafeCssText('fill:\\75rl(https://evil.example/x)')).toThrow(/external URL/u);
+    // hex escape with a whitespace terminator inside the scheme still fails closed.
+    expect(() => assertSafeCssText('fill:url(\\68 ttp://evil.example)')).toThrow(/external URL/u);
+    // comments + whitespace around a legit internal ref remain allowed (both forms).
+    expect(() => assertSafeCssText('marker-end: url( /* ok */ #arrow )')).not.toThrow();
+    expect(() => assertSafeCssText('.edge {\n  marker-end:\turl(#arrow) ;\n}')).not.toThrow();
+  });
+
   it('server-renders an accessible loading fallback without executing the renderer', () => {
     const markup = renderToStaticMarkup(<MermaidDiagram
       source={'flowchart LR\n  a["A"] --> b["B"]\n'}
