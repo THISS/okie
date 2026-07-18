@@ -29,6 +29,7 @@ function base() {
       ["pkg/b/src/main.ts", "pkg/b"], ["pkg/c/src/config.ts", "pkg/c"],
     ]),
     unitByPackageName: new Map([["@acme/a", "pkg/a"], ["@acme/b", "pkg/b"], ["@acme/c", "pkg/c"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
   };
   return extractArchitecture({ discovery, readFile: read, systemName: "Acme", systemSlug: "acme" });
 }

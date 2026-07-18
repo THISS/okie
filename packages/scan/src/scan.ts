@@ -14,7 +14,7 @@ import {
   type NodeLayout,
 } from "@okie/architecture";
 import { compileC4Scene, compileC4Timeline, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
-import { discoverRepository, type Discovery } from "./discover.js";
+import { discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
 import { pinRepository, type RepositoryPin } from "./pin.js";
@@ -23,6 +23,8 @@ import { slug, typedId } from "./ids.js";
 export interface ScanOptions {
   systemName?: string;
   repositorySlug?: string;
+  /** Scan fixture/example/playground/e2e workspace members too (default: skip them). */
+  includeAllMembers?: boolean;
   /** container id -> enrichment document (any JSON); accepted docs re-group that scope. */
   enrichmentDocs?: ReadonlyMap<string, unknown>;
 }
@@ -37,7 +39,17 @@ export interface ScanArtifacts {
   story: ArchitectureStory;
   scene: SceneSnapshot;
   timeline: Timeline;
+  discoverySummary: DiscoverySummary;
   enrichmentReport?: EnrichmentReport;
+}
+
+function rootPackageName(sourceRoot: string): string | undefined {
+  try {
+    const pkg = JSON.parse(readFileSync(`${sourceRoot}/package.json`, "utf8")) as { name?: string };
+    return typeof pkg.name === "string" && pkg.name.trim() ? pkg.name : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Deterministic legacy grid: the C4 renderer lays out intrinsically, so these
@@ -155,16 +167,19 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     story,
     scene: compiled.scene,
     timeline,
+    discoverySummary: discovery.summary,
     ...(enrichmentReport ? { enrichmentReport } : {}),
   };
 }
 
 /** Scans a local git working tree at HEAD into the full artifact set. */
 export function scanRepository(sourceRoot: string, options: ScanOptions = {}): ScanArtifacts {
-  const repositorySlug = options.repositorySlug ?? slug(basename(sourceRoot));
-  const systemName = options.systemName ?? (repositorySlug.charAt(0).toUpperCase() + repositorySlug.slice(1));
+  const packageName = rootPackageName(sourceRoot);
+  const fallbackName = basename(sourceRoot);
+  const repositorySlug = options.repositorySlug ?? slug(packageName ?? fallbackName);
+  const systemName = options.systemName ?? packageName ?? (fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1));
   const pin = pinRepository(sourceRoot);
-  const discovery = discoverRepository(sourceRoot);
+  const discovery = discoverRepository(sourceRoot, options.includeAllMembers ? { includeAllMembers: true } : {});
   return buildScanArtifacts({
     discovery,
     pin,

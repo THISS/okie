@@ -51,6 +51,26 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
   The dogfooding gate is about **evidence coverage** (every golden `.ts/.tsx/.mjs` `path`+`symbol`
   anchor appears among scan `code` entities), not ID equality. Rust anchors are excluded.
 
+## Coverage & repository shapes
+
+Discovery generalizes beyond Okie's own layout (validated against third-party clones):
+
+- **Single-package repos** (no pnpm workspace) become **one root container**, named and
+  evidenced from the root `package.json` (falling back to the directory name). The synthetic
+  `tooling` container only appears when non-member scripts sit beside real workspace members.
+- **Extensions:** `.ts/.tsx/.mts/.cts/.mjs/.cjs/.jsx` are always scanned. `.js` is scanned
+  **only for a genuinely pure-JS repo** (no root tsconfig *and* no TypeScript source) — otherwise
+  `.js` files are skipped and **counted in the scan summary**, never dropped silently.
+- **Excluded** (a named, tested list): `*.d.ts`, `dist/`, `*.test.*`, `*.spec.*`, `*.bench.*`,
+  `__tests__/`, `__mocks__/`.
+- **Fixture members** whose path matches `playground/example/e2e/fixtures/demo/sandbox` are skipped
+  by default (with a summary count); pass `--include-members` to scan them.
+- **System name** comes from the root `package.json` `name` (fallback: directory basename).
+
+The scan prints a summary of everything it left out (skipped `.js` count, skipped members) so
+omissions are always visible. Large repos currently stress the *scene compile* (edge routing),
+not the deterministic extraction — scoped compilation is tracked separately.
+
 ## Determinism
 
 Output is byte-identical across shuffled discovery order: IDs derive from canonical source

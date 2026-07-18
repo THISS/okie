@@ -39,6 +39,7 @@ function discovery(): Discovery {
       ["pkg/b/src/main.ts", "pkg/b"], ["pkg/c/src/config.ts", "pkg/c"],
     ]),
     unitByPackageName: new Map([["@acme/a", "pkg/a"], ["@acme/b", "pkg/b"], ["@acme/c", "pkg/c"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
   };
 }
 function base(): ArchitectureExtraction {
@@ -216,6 +217,7 @@ test("collapsing edges unions their evidence; dropped self-loops are counted in 
     units: [{ kind: "member", dir: "m", name: "@m/m", packageName: "@m/m", evidencePath: "m" }],
     unitByFile: new Map([["m/src/a.ts", "m"], ["m/src/b.ts", "m"], ["m/src/c.ts", "m"]]),
     unitByPackageName: new Map([["@m/m", "m"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
   };
   const ext = extractArchitecture({ discovery: localDiscovery, readFile: localRead, systemName: "M", systemSlug: "m" });
   const system = ext.entities.find(entity => entity.kind === "softwareSystem")!;

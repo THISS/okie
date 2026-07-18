@@ -27,6 +27,7 @@ function printUsage(): void {
     "                      container (plus manifest.json) to <d>",
     "  --enrich-from <d>   read enrichment docs (<containerId>.json) from <d>, merge accepted",
     "                      proposals, and emit an enrichment-report.json",
+    "  --include-members   scan fixture/example/playground/e2e workspace members too",
     "",
   ].join("\n"));
 }
@@ -52,6 +53,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       case "--repo": options.repositorySlug = next(); break;
       case "--emit-packets": emitPacketsDir = next(); break;
       case "--enrich-from": enrichFromDir = next(); break;
+      case "--include-members": options.includeAllMembers = true; break;
       case "--help": case "-h": printUsage(); process.exit(0); break;
       default: throw new Error(`Unknown argument: ${arg}`);
     }
@@ -108,15 +110,23 @@ function main(): void {
     writeFileSync(`${args.emitPacketsDir}/manifest.json`, stableJson(manifest));
   }
 
-  const { snapshot, pin, enrichmentReport } = artifacts;
+  const { snapshot, pin, enrichmentReport, discoverySummary } = artifacts;
   const enrichedNote = enrichmentReport
     ? `  enriched ${enrichmentReport.enrichedContainers.length}/${enrichmentReport.results.length} containers (see enrichment-report.json)\n`
     : "";
   const packetNote = args.emitPacketsDir ? `  wrote enrichment packets to ${args.emitPacketsDir}\n` : "";
+  // Never hide what was left out — surface the redaction/omission decisions.
+  const modeNote = discoverySummary.singlePackage ? "  single-package repo (no workspace) -> one root container\n" : "";
+  const jsNote = discoverySummary.skippedJsFiles > 0
+    ? `  skipped ${discoverySummary.skippedJsFiles} .js file(s) (TypeScript repo; use a pure-JS repo to include them)\n`
+    : "";
+  const membersNote = discoverySummary.skippedMembers.length > 0
+    ? `  skipped ${discoverySummary.skippedMembers.length} fixture/example member(s): ${discoverySummary.skippedMembers.slice(0, 5).join(", ")}${discoverySummary.skippedMembers.length > 5 ? " ..." : ""} (--include-members to scan)\n`
+    : "";
   process.stdout.write(
     `okie-scan: ${snapshot.entities.length} entities, ${snapshot.relations.length} relations\n` +
     `  commit ${pin.commitSha}\n  tree   ${pin.treeHash}\n` +
-    enrichedNote + packetNote +
+    modeNote + jsNote + membersNote + enrichedNote + packetNote +
     `  wrote snapshot/view/story/scene/timeline to ${args.out}\n`,
   );
 }
