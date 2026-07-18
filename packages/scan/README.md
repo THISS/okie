@@ -32,9 +32,29 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
 | C4 level | Derived from |
 |---|---|
 | `softwareSystem` | the repository (one) |
+| `externalSystem` | the **top-N most-imported third-party runtime dependencies** (system context / L1) |
 | `container` | each workspace member with source, a synthetic **tooling** container for non-member scripts, and each Rust crate |
 | `component` | **one per source file** |
 | `code` | **one per top-level named declaration** (exported or not), anchored `path`+`symbol`+line range |
+
+### System context (L1) — external dependencies
+
+The top level must show how the system meets the world. The scan derives `externalSystem` entities
+deterministically from **third-party runtime dependencies**:
+
+- **Allowlist = runtime `dependencies`** (never `devDependencies`) declared by the root and every
+  workspace member. Local protocols (`workspace:`/`file:`/`link:`) are first-party and excluded — so a
+  CSS-only member like `@okie/theme` never appears. A bare import counts only if its package is on
+  the allowlist, which also drops node builtins and type-only/dev tooling.
+- **Selection** is the top `MAX_EXTERNAL_SYSTEMS` (8) by `(import-site count desc, package name asc)` —
+  a documented, deterministic constant. Evidence is a capped canonical selection of the real import
+  statements (`path`+line) plus the `package.json` declaration line.
+- **Relations** are `container → externalSystem` (`dependsOn`), so at **L1** they collapse to
+  `system → externalSystem` interactions and at **L2** they attribute the dependency to the importing
+  container. Persons/externalSystems are laid out in the context band by the C4 projection automatically.
+- Scanning Okie yields e.g. `react`, `@fontsource/ibm-plex-sans`, `mermaid`, `react-dom`, `typescript`.
+- **Rust crate dependencies** (`Cargo.toml`, e.g. `wgpu`) are a documented follow-up: R1 does not parse
+  `.rs`, so there is no import-frequency evidence to rank or anchor them.
 
 ### Deliberate calls (do not "fix" without reading this)
 
@@ -86,10 +106,24 @@ regroup a container's files into **logical components** without ever touching ob
 - `okie-scan --emit-packets <dir>` writes one bounded, **redacted** packet per code-bearing
   container (`container__<id>.json`) plus a content-addressed `manifest.json`. A packet contains
   only that container's scope — its file-components, code entities (id/name/symbol/line ranges),
-  touching relations, and capped file headers. Never a byte from outside the scope.
-- `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per container and merges the
-  accepted ones, emitting `enrichment-report.json`. See [`enrichment-prompt.md`](./enrichment-prompt.md)
-  for the agent contract (`okie-enrichment/v1`).
+  touching relations, and capped file headers. Never a byte from outside the scope. It also writes
+  one repo-wide **system packet** (`system__<id>.json`, see below).
+- `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per container (and, optionally,
+  one keyed by the **system id**) and merges the accepted ones, emitting `enrichment-report.json`.
+  See [`enrichment-prompt.md`](./enrichment-prompt.md) for the agent contract (`okie-enrichment/v2`).
+
+### System-scope enrichment (R2b — top-level actors)
+
+Track A derives external *systems* deterministically, but the **persons** at the edge (User,
+Developer, AI Agent (MCP), CI…) are judgement, not parsing. The **system packet** carries the
+top-level shape — the container list, the deterministic external systems, and short README
+teasers — with a `scopePaths` allowlist (the READMEs + container evidence anchors). A system-scope
+document (keyed by the system id) may **only ADD `person` entities and person-touching relations**
+to the system/containers/externals; it may **not** add or mutate any container, component, code, or
+external entity, and it may not author non-person (structural) edges. Any violation rejects the
+**whole** document atomically (the deterministic base still publishes). Restated structural
+entities are id-matched anchors whose content is ignored. Accepted actors render in the L1
+system-context band alongside the external systems. Merge is order-independent and replay-stable.
 
 Each document is validated **atomically** — any failure leaves that scope on the deterministic
 file-component base (deterministic always publishes):

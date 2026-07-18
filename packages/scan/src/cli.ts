@@ -102,10 +102,13 @@ function main(): void {
   }
 
   if (args.emitPacketsDir) {
-    const { packets, manifest } = buildEnrichmentPackets(artifacts.baseExtraction, readFile);
+    const { packets, systemPacket, manifest } = buildEnrichmentPackets(artifacts.baseExtraction, readFile);
     mkdirSync(args.emitPacketsDir, { recursive: true });
     for (const packet of packets) {
       writeFileSync(`${args.emitPacketsDir}/${packetFileName(packet.containerId)}`, stableJson(packet));
+    }
+    if (systemPacket) {
+      writeFileSync(`${args.emitPacketsDir}/${packetFileName(systemPacket.systemId)}`, stableJson(systemPacket));
     }
     writeFileSync(`${args.emitPacketsDir}/manifest.json`, stableJson(manifest));
   }
@@ -113,6 +116,11 @@ function main(): void {
   const { snapshot, pin, enrichmentReport, discoverySummary } = artifacts;
   const enrichedNote = enrichmentReport
     ? `  enriched ${enrichmentReport.enrichedContainers.length}/${enrichmentReport.results.length} containers (see enrichment-report.json)\n`
+    : "";
+  const systemScopeNote = enrichmentReport?.systemScope
+    ? (enrichmentReport.systemScope.accepted
+      ? `  system-scope: added ${enrichmentReport.systemScope.persons} actor(s) + ${enrichmentReport.systemScope.relations} relation(s)\n`
+      : `  system-scope: rejected (${enrichmentReport.systemScope.reasons.length} reason(s), see enrichment-report.json)\n`)
     : "";
   const packetNote = args.emitPacketsDir ? `  wrote enrichment packets to ${args.emitPacketsDir}\n` : "";
   // Never hide what was left out — surface the redaction/omission decisions.
@@ -126,7 +134,7 @@ function main(): void {
   process.stdout.write(
     `okie-scan: ${snapshot.entities.length} entities, ${snapshot.relations.length} relations\n` +
     `  commit ${pin.commitSha}\n  tree   ${pin.treeHash}\n` +
-    modeNote + jsNote + membersNote + enrichedNote + packetNote +
+    modeNote + jsNote + membersNote + enrichedNote + systemScopeNote + packetNote +
     `  wrote snapshot/view/story/scene/timeline to ${args.out}\n`,
   );
 }
