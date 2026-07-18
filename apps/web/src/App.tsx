@@ -71,7 +71,7 @@ import { loadStressFixture } from './renderer/stressFixture';
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation } from './renderer/types';
 import type { ProjectionOverride } from './renderer/types';
 import {
-  compensateSemanticMorphCamera,
+  composeSemanticZoomCamera, type SemanticZoomFraming,
   containSemanticOwnerCamera,
   advanceSemanticLensFocusTransfer,
   findSemanticLensTarget,
@@ -2355,32 +2355,28 @@ export function App() {
     const presentation = nextSession.active.phase !== 'idle'
       ? nextSession.active
       : semanticMorphStateRef.current;
-    let renderedCamera = sample.camera;
-    let ownerBounds: ReturnType<typeof semanticBounds> = undefined;
+    // Build the owner framing, then let composeSemanticZoomCamera decide how much of
+    // it reaches the camera: a LIVE wheel/pinch gesture stays cursor-anchored (the
+    // owner-morph reflow pin still applies, but safe-viewport containment — the
+    // recentre the user reported as a "snap to the parent, then back" — is withheld
+    // until the gesture settles). (task #32)
+    let framing: SemanticZoomFraming | undefined;
     if (presentation?.targetId && presentation.currentDetail && presentation.nextDetail) {
       const sourceBounds = semanticBounds(scene, presentation.targetId, presentation.currentDetail);
       const targetBounds = semanticBounds(scene, presentation.targetId, presentation.nextDetail);
       if (sourceBounds && targetBounds) {
-        // Compatibility bridge: golden projections still reflow owner boundaries between
-        // representations. Keep their screen center stable until compiler geometry is persistent.
-        renderedCamera = compensateSemanticMorphCamera(
-          sample.camera,
-          sourceBounds,
-          targetBounds,
-          presentation.progress,
-          semanticMorphBaselineRef.current,
-        );
-        ownerBounds = interpolateSemanticOwnerBounds(sourceBounds, targetBounds, presentation.progress);
+        framing = {
+          ownerBounds: interpolateSemanticOwnerBounds(sourceBounds, targetBounds, presentation.progress),
+          morph: { sourceBounds, targetBounds, progress: presentation.progress, baselineProgress: semanticMorphBaselineRef.current },
+        };
       }
     }
-    if (!ownerBounds) {
+    if (!framing) {
       const deepestOwner = nextSession.settled.at(-1);
-      if (deepestOwner) ownerBounds = semanticBounds(scene, deepestOwner.targetId, deepestOwner.nextDetail);
+      const ownerBounds = deepestOwner ? semanticBounds(scene, deepestOwner.targetId, deepestOwner.nextDetail) : undefined;
+      if (ownerBounds) framing = { ownerBounds };
     }
-    if (ownerBounds) {
-      renderedCamera = containSemanticOwnerCamera(renderedCamera, ownerBounds, viewport, safeArea);
-    }
-    // Structural compensation is mandatory; optional safe-center attraction uses q = 0.
+    const renderedCamera = composeSemanticZoomCamera(sample.camera, sample.gestureSettled, framing, viewport, safeArea);
     semanticLensAssistRef.current = undefined;
     const navigation = canonicalNavigationState({
       ...navigationRef.current,

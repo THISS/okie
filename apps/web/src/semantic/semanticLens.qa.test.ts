@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   SEMANTIC_LENS_POLICY,
+  composeSemanticZoomCamera,
+  containSemanticOwnerCamera,
   findSemanticLensTarget,
   idleSemanticLens,
   reduceSemanticLens,
@@ -59,6 +61,26 @@ describe('semantic lens acceptance contract', () => {
       maxSettledZoomCorrection: 0.06,
       mobileIntentRatio: 0.12,
     });
+  });
+
+  // Sanctioned product-feel change (task #32, direct user feedback): a wheel/pinch
+  // zoom must scale around the pointer and NEVER recentre on an owner mid-gesture.
+  // The previous behaviour pulled an oversized owner to the viewport centre while the
+  // gesture was live (felt as "snap to the parent, then snap back to the child").
+  // Owner containment is now a settle-frame landing only; the lens still arms/reveals.
+  it('holds the cursor anchor through a live zoom and lands owner containment only at settle', () => {
+    const viewport = { width: 1_000, height: 800 };
+    const safeArea = { left: 100, right: 150, top: 50, bottom: 100 };
+    const owner = { x: 0, y: 0, width: 10, height: 10 };
+    // Camera whose zoom makes the owner overflow the right+bottom safe edges (would recentre).
+    const cursor = { x: (viewport.width / 2 - 760) / 10, y: (viewport.height / 2 - 620) / 10, zoom: 10 };
+
+    // Live gesture: the rendered camera IS the cursor-anchored camera — no recentre.
+    expect(composeSemanticZoomCamera(cursor, false, { ownerBounds: owner }, viewport, safeArea)).toBe(cursor);
+    // Settle: containment lands the owner back inside the safe viewport (a one-time landing).
+    const landed = composeSemanticZoomCamera(cursor, true, { ownerBounds: owner }, viewport, safeArea);
+    expect(landed).toEqual(containSemanticOwnerCamera(cursor, owner, viewport, safeArea));
+    expect(landed).not.toEqual(cursor);
   });
 
   it('arms only on inward intent with at least 24px target containment', () => {

@@ -307,6 +307,47 @@ export function interpolateSemanticOwnerBounds(
   };
 }
 
+/** Owner framing inputs for a semantic zoom sample (task #32). */
+export type SemanticZoomFraming = {
+  /** Owner bounds kept inside the safe viewport — the settle-frame landing target. */
+  ownerBounds: LensBounds;
+  /** Owner-morph endpoints, present only while a representation morph is in flight. */
+  morph?: { sourceBounds: LensBounds; targetBounds: LensBounds; progress: number; baselineProgress: number };
+};
+
+/**
+ * The camera a semantic wheel/pinch zoom sample renders at.
+ *
+ * The user's anchor is authoritative during a LIVE gesture: the view scales around
+ * the pointer and is never recentred on an owner. Safe-viewport containment — which
+ * pulls an owner to the middle once it outgrows the viewport (the user-reported
+ * "snap to the parent centre, then snap back to the child") — is a settle-frame
+ * landing ONLY, applied when `gestureSettled` is true. Owner-morph compensation is a
+ * smooth reflow pin (not a recentre): it keeps the entity under the pointer visually
+ * stable as its representation bounds reflow between bands, so it preserves the
+ * user's view angle and applies throughout the gesture. Pure. (task #32)
+ */
+export function composeSemanticZoomCamera(
+  cursorCamera: Camera,
+  gestureSettled: boolean,
+  framing: SemanticZoomFraming | undefined,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): Camera {
+  if (!framing) return cursorCamera;
+  const pinned = framing.morph
+    ? compensateSemanticMorphCamera(
+        cursorCamera,
+        framing.morph.sourceBounds,
+        framing.morph.targetBounds,
+        framing.morph.progress,
+        framing.morph.baselineProgress,
+      )
+    : cursorCamera;
+  if (!gestureSettled) return pinned;
+  return containSemanticOwnerCamera(pinned, framing.ownerBounds, viewport, safeArea);
+}
+
 /** Removes one branch's structural morph offset at the start of a new gesture. */
 export function rebaseSemanticMorphCamera(
   rendered: Camera,
