@@ -22,6 +22,16 @@ export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a c
 
 export type ScanScopedOptions = { maxBand?: C4Band; maxEdgesPerBand?: number; maxGridNodes?: number };
 
+/**
+ * Mode-level compile options for scan mode (task #30). Unlike ScanScopedOptions these
+ * are NOT gated by the scoped-compile size threshold — they apply to every scan compile
+ * at any repo size, because the tall-container problem (a system packing into one narrow
+ * column) shows up on repos well below the scoped-compile gate (e.g. Okie's own scan).
+ * `targetAspect` is chosen once by the client at bootstrap (device orientation) and is a
+ * deterministic compile input, never the live viewport.
+ */
+export type ScanModeOptions = { targetAspect?: number };
+
 // Per-focus-kind scoped options, applied only above the size gate.
 const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>> = {
   person: { maxBand: 'container' },
@@ -173,6 +183,9 @@ export type ScanFixture = {
    *  those direct-`buildC4ProjectionBundle` bypass paths stay scoped too. {} below
    *  the gate — identical to an unbounded compile for Okie-sized snapshots. */
   scopeCompileOptions: (focusEntityId: string) => ScanScopedOptions;
+  /** The mode-level aspect target applied to every compile (task #30); introspectable
+   *  so derived projections and diagnostics can reuse the same deterministic value. */
+  targetAspect?: number;
   navigation: ScanNavigationDefaults;
 };
 
@@ -212,7 +225,7 @@ function scopedValidate(label: string, validate: () => ValidationIssue[]): Valid
  * a partial fixture, so an invalid scan can never render silently. Pure (fetch is
  * separate), so it is exercised directly in tests with the demo fixtures as input.
  */
-export function compileScanFixture(raw: RawScanTrio): ScanFixture {
+export function compileScanFixture(raw: RawScanTrio, options: ScanModeOptions = {}): ScanFixture {
   const shapeIssues: ValidationIssue[] = [];
   if (!isRecord(raw.snapshot)) shapeIssues.push({ path: 'snapshot', message: 'must be a JSON object' });
   if (!isRecord(raw.view)) shapeIssues.push({ path: 'view', message: 'must be a JSON object' });
@@ -251,6 +264,9 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
       frozenRevision: snapshot.commitSha,
       previous,
       ...scoped,
+      // Aspect target is a per-MODE input applied at every size — deliberately NOT part
+      // of `scoped` (which is size-gated), so Okie's below-gate scan still repacks.
+      ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
     });
     return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;
@@ -262,6 +278,7 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
     story,
     createScene,
     scopeCompileOptions: (focusEntityId: string) => scanScopeCompileOptions(snapshot, focusEntityId),
+    ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
     navigation: {
       repositoryId: snapshot.repositoryId,
       snapshotId: snapshot.id,
@@ -293,7 +310,10 @@ async function fetchScanDoc(name: 'snapshot' | 'view' | 'story'): Promise<unknow
  * dev server, like the stress fixture) and compiles it. The loader is injectable
  * so tests can drive the validate/error path without real files on disk.
  */
-export async function loadScanFixture(load: ScanTrioLoader = fetchScanDoc): Promise<ScanFixture> {
+export async function loadScanFixture(
+  load: ScanTrioLoader = fetchScanDoc,
+  options: ScanModeOptions = {},
+): Promise<ScanFixture> {
   const [snapshot, view, story] = await Promise.all([load('snapshot'), load('view'), load('story')]);
-  return compileScanFixture({ snapshot, view, story });
+  return compileScanFixture({ snapshot, view, story }, options);
 }

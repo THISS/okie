@@ -37,6 +37,22 @@ describe('scan fixture loader', () => {
     expect(fixture.scopeCompileOptions(scene.entities[1]!.id)).toEqual({});
   });
 
+  it('applies the mode-level aspect target below the scoped-compile size gate (task #30)', () => {
+    const base = compileScanFixture(validTrio());
+    const landscape = compileScanFixture(validTrio(), { targetAspect: 1.6 });
+    // The demo scan (70 entities) is far below the 2000-entity scoped-compile gate, yet the
+    // aspect target still reshapes its geometry — the whole point of the per-mode correction:
+    // Okie's own scan sits below the gate, so a size-gated preset would never reach it.
+    expect(landscape.targetAspect).toBe(1.6);
+    expect(base.targetAspect).toBeUndefined();
+    const root = base.navigation.rootEntityId;
+    const off = JSON.stringify(base.createScene(root).protocolSnapshot);
+    const on = JSON.stringify(landscape.createScene(root).protocolSnapshot);
+    expect(on).not.toEqual(off);
+    // Aspect is independent of the size-gated scoped options: those stay {} below the gate.
+    expect(landscape.scopeCompileOptions(root)).toEqual({});
+  });
+
   it('throws ScanFixtureError listing issues for an invalid snapshot', () => {
     const trio = validTrio();
     const entities = (trio.snapshot as { entities: unknown[] }).entities;

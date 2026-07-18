@@ -7,11 +7,24 @@ import '@fontsource/ibm-plex-mono/latin-400.css';
 import '@fontsource/ibm-plex-mono/latin-600.css';
 import '@okie/theme/tokens.css';
 import './app.css';
+import { ASPECT_PRESET_TARGET } from '@okie/architecture';
 import { readDemoQuery } from './renderer/query';
 import { setActiveScanFixture } from './renderer/fixtureBundle';
 import { loadScanFixture, ScanFixtureError, type ScanFixture } from './renderer/scanFixture';
 
 const root = createRoot(document.getElementById('root')!);
+
+/**
+ * Deterministic per-session aspect target for scan mode (task #30): the device
+ * orientation at bootstrap picks one discrete preset ONCE. It is a compile input,
+ * NOT the live viewport, so the compiled scene stays deterministic and shareable —
+ * re-orienting the device is an explicit reload/recompile, not a continuous reflow.
+ */
+function bootstrapScanAspect(): number {
+  const portrait = window.matchMedia?.('(orientation: portrait)')?.matches
+    ?? window.innerHeight > window.innerWidth;
+  return portrait ? ASPECT_PRESET_TARGET.portrait : ASPECT_PRESET_TARGET.landscape;
+}
 
 function ScanErrorScreen({ error }: { error: unknown }) {
   const issues = error instanceof ScanFixtureError ? error.issues : [];
@@ -32,7 +45,7 @@ async function boot() {
   if (readDemoQuery(window.location.search).fixture === 'scan') {
     let fixture: ScanFixture;
     try {
-      fixture = await loadScanFixture();
+      fixture = await loadScanFixture(undefined, { targetAspect: bootstrapScanAspect() });
     } catch (error) {
       root.render(<StrictMode><ScanErrorScreen error={error} /></StrictMode>);
       return;

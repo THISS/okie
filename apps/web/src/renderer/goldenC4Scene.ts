@@ -171,6 +171,10 @@ export type C4SceneOptions = {
   maxBand?: C4Band;
   maxEdgesPerBand?: number;
   maxGridNodes?: number;
+  /** Aspect-aware packing target (scan mode, task #30); omitted for the golden fixture
+   *  so its compile stays byte-identical. Applied at all repo sizes (a per-mode opt-in,
+   *  independent of the scoped-compile size gates). */
+  targetAspect?: number;
   /** Size gate value for the dev diagnostics line (scan mode); display-only. */
   bandDepthThreshold?: number;
 };
@@ -223,6 +227,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     ...(options.maxBand ? { maxBand: options.maxBand } : {}),
     ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
+    ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
   };
   const authoredProjections = buildC4ProjectionBundle(snapshot, buildOptions);
   const previousSnapshot = previous?.protocolSnapshot as SceneSnapshot | undefined;
@@ -233,6 +238,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
   const compileOptions = {
     revision,
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
+    ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
   };
   const compiled = authoring
     ? compileAuthoredC4Scene(baseSnapshot, authoring, buildOptions, compileOptions)

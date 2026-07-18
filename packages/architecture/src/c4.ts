@@ -160,6 +160,13 @@ export type BuildC4ProjectionOptions = {
    * route (instead of hanging). Default: 20000 (byte-identical).
    */
   maxGridNodes?: number;
+  /**
+   * Aspect-aware packing target (opt-in, task #30). Forwarded to every owner grid so
+   * a dense owner packs toward this width/height ratio instead of a fixed 3-column
+   * column that grows unboundedly tall. Absent → historical packing (byte-identical).
+   * See {@link ASPECT_PRESET_TARGET} for the discrete client-chosen presets.
+   */
+  targetAspect?: number;
 };
 
 /**
@@ -182,6 +189,21 @@ export const C4_INTRINSIC_LAYOUT = {
   },
 } as const;
 
+/**
+ * Discrete, compile-time aspect targets for grid packing. The CLIENT picks one at
+ * compile-request time (e.g. from device orientation at bootstrap) and it travels
+ * with the compiled scene as a deterministic parameter — the live viewport never
+ * feeds layout, so a shared or restored scene reproduces byte-for-byte. `landscape`
+ * is ~16:10, `portrait` its inverse, `square` = 1.
+ */
+export type AspectPreset = 'landscape' | 'portrait' | 'square';
+
+export const ASPECT_PRESET_TARGET: Readonly<Record<AspectPreset, number>> = Object.freeze({
+  landscape: 1.6,
+  portrait: 0.625,
+  square: 1,
+});
+
 export type C4GridItem = {
   id: string;
   width: number;
@@ -195,6 +217,14 @@ export type C4GridMetrics = {
   paddingTop: number;
   paddingBottom: number;
   maxColumns?: number;
+  /**
+   * Opt-in aspect-aware packing (task #30). When set (> 0), the column count is
+   * chosen so the measured grid box lands closest to this width/height ratio,
+   * overriding the fixed `maxColumns` cap — this is what stops a dense owner (50+
+   * children) from stacking into one very tall column. Absent → the historical
+   * `min(maxColumns, ceil(sqrt(n)))` formula runs unchanged (byte-identical).
+   */
+  targetAspect?: number;
 };
 
 export type C4GridMeasurement = {
@@ -208,16 +238,63 @@ export type C4GridMeasurement = {
   height: number;
 };
 
+/**
+ * Deterministic column count for a compact grid. Default (no `targetAspect`) is the
+ * historical `min(maxColumns, ceil(sqrt(n)))`. With a `targetAspect`, seeds the
+ * closed-form column count that hits the target width/height ratio, then refines ±1
+ * against the exactly-measured box (which accounts for gap/padding/header) and keeps
+ * the log-closest to the target — landscape and portrait are treated symmetrically,
+ * ties break to the smaller column count. Order-independent: the representative cell
+ * uses the max item width/height, mirroring how `measureC4Grid` sizes columns/rows.
+ */
+export function chooseColumns(items: readonly C4GridItem[], metrics: C4GridMetrics): number {
+  const n = items.length;
+  if (n <= 1) return n;
+  const target = metrics.targetAspect;
+  if (target === undefined || !(target > 0)) {
+    const maximumColumns = Math.max(1, metrics.maxColumns ?? C4_INTRINSIC_LAYOUT.maxColumns);
+    return Math.min(maximumColumns, Math.max(1, Math.ceil(Math.sqrt(n))));
+  }
+  // Representative cell = max width/height over the items (loop, not spread, so a very
+  // dense owner cannot overflow the call-argument limit). Mirrors how measureC4Grid
+  // sizes columns/rows by their max, so the choice is order-independent.
+  let cellWidth = 1;
+  let cellHeight = 1;
+  for (const item of items) {
+    if (item.width > cellWidth) cellWidth = item.width;
+    if (item.height > cellHeight) cellHeight = item.height;
+  }
+  const paddingX = metrics.paddingLeft + metrics.paddingRight;
+  const paddingY = metrics.paddingTop + metrics.paddingBottom;
+  const aspectFor = (columns: number): number => {
+    const rows = Math.ceil(n / columns);
+    const width = columns * cellWidth + metrics.gap * (columns - 1) + paddingX;
+    const height = rows * cellHeight + metrics.gap * (rows - 1) + paddingY;
+    return width / height;
+  };
+  // Closed-form seed C ≈ sqrt(target · n · cellH / cellW), then an exact ±1 refine.
+  const seed = Math.round(Math.sqrt((target * n * cellHeight) / cellWidth));
+  const clampedSeed = Math.min(n, Math.max(1, seed));
+  const candidates = [clampedSeed - 1, clampedSeed, clampedSeed + 1].filter(value => value >= 1 && value <= n);
+  let best = candidates[0]!;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const columns of candidates) {
+    const score = Math.abs(Math.log(aspectFor(columns)) - Math.log(target));
+    if (score < bestScore) {
+      best = columns;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 /** Deterministically measures a compact row-major hierarchy grid. */
 export function measureC4Grid(
   items: readonly C4GridItem[],
   metrics: C4GridMetrics,
 ): C4GridMeasurement {
   const ordered = [...items].sort((left, right) => left.id.localeCompare(right.id));
-  const maximumColumns = Math.max(1, metrics.maxColumns ?? C4_INTRINSIC_LAYOUT.maxColumns);
-  const columns = ordered.length === 0
-    ? 0
-    : Math.min(maximumColumns, Math.max(1, Math.ceil(Math.sqrt(ordered.length))));
+  const columns = chooseColumns(ordered, metrics);
   const rows = columns === 0 ? 0 : Math.ceil(ordered.length / columns);
   const columnWidths = Array.from({ length: columns }, (_, column) => Math.max(
     0,
@@ -378,6 +455,7 @@ function layoutTree(
   nodeId: string,
   childrenByVisualId: ReadonlyMap<string, readonly string[]>,
   nodeById: Readonly<Record<string, VisualNode>>,
+  targetAspect?: number,
 ): LocalTreeLayout {
   const node = nodeById[nodeId];
   if (!node) throw new Error(`Missing visual node ${nodeId}`);
@@ -391,7 +469,7 @@ function layoutTree(
     };
   }
 
-  const childLayouts = children.map(childId => ({ id: childId, layout: layoutTree(childId, childrenByVisualId, nodeById) }));
+  const childLayouts = children.map(childId => ({ id: childId, layout: layoutTree(childId, childrenByVisualId, nodeById, targetAspect) }));
   const gap = 44;
   const paddingX = 48;
   const paddingTop = 86;
@@ -406,6 +484,7 @@ function layoutTree(
     paddingRight: paddingX,
     paddingTop,
     paddingBottom,
+    ...(targetAspect !== undefined ? { targetAspect } : {}),
   });
   const { columns, columnWidths, rowHeights } = measurement;
   const width = Math.max(minimum.width, measurement.width);
@@ -598,6 +677,7 @@ function layoutProjection(
   visualNodeById: Readonly<Record<string, VisualNode>>,
   visualEdgeById: Readonly<Record<string, VisualEdge>>,
   maxGridNodes = 20_000,
+  targetAspect?: number,
 ): BandLayout {
   const visible = new Set(projection.visualNodeIds);
   const childrenByVisualId = new Map<string, string[]>();
@@ -630,7 +710,7 @@ function layoutProjection(
   let hierarchyX = Math.max(520, leftContextRight + contextRouteCorridor);
   let maximumBottom = 0;
   for (const rootId of hierarchyRoots) {
-    const tree = layoutTree(rootId, childrenByVisualId, visualNodeById);
+    const tree = layoutTree(rootId, childrenByVisualId, visualNodeById, targetAspect);
     Object.assign(nodes, shiftNodes(tree.nodes, hierarchyX, 120));
     hierarchyX += tree.width + 100;
     maximumBottom = Math.max(maximumBottom, 120 + tree.height);
@@ -731,7 +811,7 @@ export function buildC4ProjectionBundle(
         visualNodeIds: [], visualEdgeIds: [], contextNodeIds: [], layoutId: emptyLayoutId,
       };
       projectionById[projectionId] = emptyProjection;
-      bandLayoutById[emptyLayoutId] = layoutProjection(emptyProjection, visualNodeById, visualEdgeById, options.maxGridNodes);
+      bandLayoutById[emptyLayoutId] = layoutProjection(emptyProjection, visualNodeById, visualEdgeById, options.maxGridNodes, options.targetAspect);
       continue;
     }
     const includedEntities = new Map<string, ArchitectureEntity>();
@@ -861,7 +941,7 @@ export function buildC4ProjectionBundle(
       layoutId,
     };
     projectionById[projectionId] = projection;
-    bandLayoutById[layoutId] = layoutProjection(projection, visualNodeById, visualEdgeById, options.maxGridNodes);
+    bandLayoutById[layoutId] = layoutProjection(projection, visualNodeById, visualEdgeById, options.maxGridNodes, options.targetAspect);
   }
 
   const index: ProjectionIndex = {

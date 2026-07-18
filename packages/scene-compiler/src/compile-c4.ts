@@ -99,6 +99,14 @@ export type CompileC4SceneOptions = {
   routeOverrides?: readonly RelationRouteOverride[];
   /** Routing grid-node budget; lower degrades gracefully to direct edges. Default 20000 (byte-identical). */
   maxGridNodes?: number;
+  /**
+   * Aspect-aware packing target (opt-in, task #30). Passed to every owner grid in the
+   * intrinsic-geometry pass so a dense container/component packs toward this width/height
+   * ratio rather than one very tall column. Absent → historical geometry (byte-identical).
+   * Must match the `targetAspect` used to build the projection bundle so both layout
+   * stages agree (the intrinsic size is `max(stage-1 baseline, stage-2 grid)`).
+   */
+  targetAspect?: number;
 };
 
 export type CompileAuthoredC4SceneOptions = Omit<CompileC4SceneOptions, 'routeOverrides'>;
@@ -417,7 +425,7 @@ function semanticBandForEntity(entity: ArchitectureEntity): C4Band {
 
 type IntrinsicSize = { width: number; height: number };
 
-function intrinsicMetricsForOwner(entity: ArchitectureEntity): C4GridMetrics | undefined {
+function intrinsicMetricsForOwner(entity: ArchitectureEntity, targetAspect?: number): C4GridMetrics | undefined {
   const contract = C4_INTRINSIC_LAYOUT;
   const focusZoom = entity.kind === 'component'
     ? C4_ZOOM_BANDS[3]!.focusZoom
@@ -439,6 +447,9 @@ function intrinsicMetricsForOwner(entity: ArchitectureEntity): C4GridMetrics | u
     paddingTop: header / focusZoom,
     paddingBottom: contract.bottomPadding / focusZoom,
     maxColumns: contract.maxColumns,
+    // A ratio is scale-invariant, so it is NOT divided by focusZoom. When set it
+    // overrides the fixed maxColumns cap inside chooseColumns.
+    ...(targetAspect !== undefined ? { targetAspect } : {}),
   };
 }
 
@@ -464,6 +475,7 @@ function applyIntrinsicOwnerGeometry(
   routeOverrides: readonly RelationRouteOverride[],
   routeDiagnostics: C4RouteOverrideDiagnostic[],
   maxGridNodes: number,
+  targetAspect?: number,
 ): void {
   const rootId = bundle.family.rootEntity.logicalId;
   const childrenByOwner = new Map<string, ArchitectureEntity[]>();
@@ -499,7 +511,7 @@ function applyIntrinsicOwnerGeometry(
         height: Math.max(required.height, C4_INTRINSIC_LAYOUT.leaf.code.height / focusZoom),
       };
     } else {
-      const metrics = intrinsicMetricsForOwner(entity);
+      const metrics = intrinsicMetricsForOwner(entity, targetAspect);
       const children = childrenByOwner.get(entity.id) ?? [];
       if (metrics && children.length) {
         const measurement = measureC4Grid(children.map(child => ({ id: child.id, ...requiredFor(child) })), metrics);
@@ -530,7 +542,7 @@ function applyIntrinsicOwnerGeometry(
   const placeChildren = (owner: ArchitectureEntity): void => {
     const ownerBounds = canonical.get(owner.id);
     const children = childrenByOwner.get(owner.id) ?? [];
-    const metrics = intrinsicMetricsForOwner(owner);
+    const metrics = intrinsicMetricsForOwner(owner, targetAspect);
     if (!ownerBounds || !metrics || !children.length) return;
     const items = children.map(child => ({ id: child.id, ...requiredByEntityId.get(child.id)! }));
     const measurement = measureC4Grid(items, metrics);
@@ -597,6 +609,7 @@ export function normalizeC4OwnerGeometry(
   routeOverrides: readonly RelationRouteOverride[] = [],
   routeDiagnostics: C4RouteOverrideDiagnostic[] = [],
   maxGridNodes = 20_000,
+  targetAspect?: number,
 ): C4ProjectionBundle {
   const bundle: C4ProjectionBundle = {
     ...source,
@@ -716,7 +729,7 @@ export function normalizeC4OwnerGeometry(
       });
     }
   }
-  applyIntrinsicOwnerGeometry(snapshot, bundle, entityById, routeOverrides, routeDiagnostics, maxGridNodes);
+  applyIntrinsicOwnerGeometry(snapshot, bundle, entityById, routeOverrides, routeDiagnostics, maxGridNodes, targetAspect);
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
     const layout = bundle.bandLayoutById[projection.layoutId]!;
@@ -736,7 +749,7 @@ export function compileC4Scene(
 ): CompiledC4Scene {
   if (bundle.family.snapshotId !== snapshot.id) throw new Error('C4 projection bundle does not match snapshot');
   const routeDiagnostics: C4RouteOverrideDiagnostic[] = [];
-  bundle = normalizeC4OwnerGeometry(snapshot, bundle, options.routeOverrides ?? [], routeDiagnostics, options.maxGridNodes);
+  bundle = normalizeC4OwnerGeometry(snapshot, bundle, options.routeOverrides ?? [], routeDiagnostics, options.maxGridNodes, options.targetAspect);
   const theme = options.theme ?? defaultTheme;
   const entityObjects = Object.values(bundle.visualNodeById)
     .sort((left, right) => left.id.localeCompare(right.id))
