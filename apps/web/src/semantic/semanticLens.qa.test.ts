@@ -366,6 +366,61 @@ describe('semantic lens acceptance contract', () => {
     expect(externalPath).toEqual({ pathId: external!.id, sourceOpacity: 1, targetOpacity: 0 });
   });
 
+  // Task #37 O3 (sanctioned scan product-feel change): under aspect packing an owner shell can
+  // dwarf its children, so a wheel zoom often lands the cursor in the PADDING between children —
+  // no child contains it and the band used to stall (blank zoom). On scan (scene.targetAspect
+  // set) the lens now SNAPS to the nearest child when the pointer sits within the children's
+  // collective extent (the owner interior). It never reaches across empty space, and the golden
+  // (no-targetAspect) path is byte-identical: a padding pointer still yields no target.
+  it('scan snap-to-nearest: a padding pointer advances toward the nearest child; golden path unchanged', () => {
+    const entities = [
+      entity('system:root'),
+      entity('container:c', 'system:root'),
+      entity('component:a', 'container:c'),
+      entity('component:b', 'container:c'),
+      entity('code:a1', 'component:a'),
+      entity('code:b1', 'component:b'),
+    ];
+    const projection = {
+      semanticToVisualEntityId: {},
+      visualToSemanticEntityId: {},
+      semanticToVisualRelationIds: {},
+      visualToSemanticRelationIds: {},
+      boundsByEntityIdAndDetail: {
+        // Persistent owner shells: a component keeps identical bounds at its component and code bands.
+        'component:a': { component: { x: 0, y: 0, width: 100, height: 100 }, code: { x: 0, y: 0, width: 100, height: 100 } },
+        'component:b': { component: { x: 300, y: 0, width: 100, height: 100 }, code: { x: 300, y: 0, width: 100, height: 100 } },
+        'code:a1': { code: { x: 20, y: 20, width: 20, height: 20 } },
+        'code:b1': { code: { x: 320, y: 20, width: 20, height: 20 } },
+      },
+      entityIdsByDetail: {
+        context: ['system:root'],
+        container: ['system:root', 'container:c'],
+        component: ['system:root', 'container:c', 'component:a', 'component:b'],
+        code: ['code:a1', 'code:b1'],
+      },
+      relationIdsByDetail: { context: [], container: [], component: [], code: [] },
+      projectedRelationsByDetail: { context: [], container: [], component: [], code: [] },
+    };
+    const viewport = { width: 1_000, height: 800 };
+    const safeArea = { top: 0, right: 0, bottom: 0, left: 0 };
+    const camera = { x: 200, y: 50, zoom: 2 };
+    // Screen: component:a x∈[100,300], component:b x∈[700,900], y∈[300,500]. This pointer sits
+    // in the gap between them (inside the union) and is nearer a's right edge than b's left edge.
+    const paddingPointer = { x: 450, y: 400 };
+
+    const scan: AtlasScene = { id: 's', title: 's', subtitle: 's', entities, relations: [], regions: [], targetAspect: 1.6, projection };
+    const snapped = findSemanticLensTarget(scan, 'component', camera, viewport, safeArea, paddingPointer);
+    expect(snapped?.id).toBe('component:a');
+    // The snapped child reports at least the inset containment so armEligible/resolveRetarget accept it.
+    expect(snapped!.containmentPx).toBeGreaterThanOrEqual(SEMANTIC_LENS_POLICY.retargetContainmentPx);
+    // Never reach across empty space to a distant child: a pointer outside the children's extent snaps to nothing.
+    expect(findSemanticLensTarget(scan, 'component', camera, viewport, safeArea, { x: 990, y: 790 })).toBeUndefined();
+    // Golden/demo (no targetAspect): the same padding pointer yields no target — byte-identical legacy behaviour.
+    const golden: AtlasScene = { ...scan, targetAspect: undefined };
+    expect(findSemanticLensTarget(golden, 'component', camera, viewport, safeArea, paddingPointer)).toBeUndefined();
+  });
+
   it('cannot target a hidden sibling branch from its authored off-branch component geometry', () => {
     const scene = createGoldenC4Scene();
     const containers = scene.entities.filter(candidate => candidate.detail === 'container');

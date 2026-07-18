@@ -1088,6 +1088,54 @@ export function findSemanticLensTarget(
       };
     }
   }
+  // O3 snap-to-nearest (task #37, scan-mode): under aspect packing an owner shell can be far
+  // larger than a child, so a continuous wheel zoom often lands the cursor in the interior
+  // PADDING between children — no candidate contains it, the band never advances, and the user
+  // zooms into blank space. When the primary probe sits INSIDE the collective extent of the
+  // eligible children (i.e. within the owner interior, just off a child), advance toward the
+  // NEAREST child instead of stalling. Deterministic: nearest by squared probe→rect distance,
+  // ties broken by the pre-sorted candidate order. The snapped child reports containmentPx =
+  // its pointer-inset so armEligible/resolveRetarget accept it; enterZoom/coverage are computed
+  // identically, so the reveal threshold is unchanged. Gated to scan (scene.targetAspect set),
+  // so the golden/demo lens behaviour is byte-identical.
+  const snapProbe = probes[0];
+  if (scene.targetAspect !== undefined && snapProbe) {
+    let union: { minX: number; minY: number; maxX: number; maxY: number } | undefined;
+    let nearest: { entity: SceneEntity; currentBounds: LensBounds; currentRect: LensBounds; distanceSq: number } | undefined;
+    for (const entity of candidates) {
+      const currentBounds = scene.projection.boundsByEntityIdAndDetail[entity.id]?.[currentDetail];
+      const nextBounds = scene.projection.boundsByEntityIdAndDetail[entity.id]?.[nextDetail];
+      if (!currentBounds || !nextBounds) continue;
+      const rect = screenRect(currentBounds, camera, viewport);
+      union = union
+        ? {
+            minX: Math.min(union.minX, rect.x),
+            minY: Math.min(union.minY, rect.y),
+            maxX: Math.max(union.maxX, rect.x + rect.width),
+            maxY: Math.max(union.maxY, rect.y + rect.height),
+          }
+        : { minX: rect.x, minY: rect.y, maxX: rect.x + rect.width, maxY: rect.y + rect.height };
+      const dx = Math.max(rect.x - snapProbe.x, 0, snapProbe.x - (rect.x + rect.width));
+      const dy = Math.max(rect.y - snapProbe.y, 0, snapProbe.y - (rect.y + rect.height));
+      const distanceSq = dx * dx + dy * dy;
+      if (!nearest || distanceSq < nearest.distanceSq) nearest = { entity, currentBounds, currentRect: rect, distanceSq };
+    }
+    if (nearest && union
+      && snapProbe.x >= union.minX && snapProbe.x <= union.maxX
+      && snapProbe.y >= union.minY && snapProbe.y <= union.maxY) {
+      const zoomPolicy = semanticLensTargetZoomPolicy(scene, nearest.entity.id, nextDetail, nearest.currentBounds, safeWidth, safeHeight);
+      const pointerInset = zoomPolicy.policy?.pointerInsetPx ?? SEMANTIC_LENS_POLICY.retargetContainmentPx;
+      return {
+        id: nearest.entity.id,
+        currentDetail,
+        nextDetail,
+        ...zoomPolicy,
+        coverage: semanticLensCoverage(nearest.currentRect.width, nearest.currentRect.height, safeWidth, safeHeight),
+        coverageTolerance: 0.5 / Math.max(1, Math.min(safeWidth, safeHeight)),
+        containmentPx: Math.max(pointerInset, containmentPx(nearest.currentRect, snapProbe)),
+      };
+    }
+  }
   return undefined;
 }
 
