@@ -128,6 +128,65 @@ function lodFor(band: C4Band): LodRange {
   };
 }
 
+/**
+ * Coverage-based children reveal (task #33). Children fade in when their owner covers
+ * `start` of the viewport and are fully shown by `full` — the user's 50%/70% product
+ * contract. `hysteresis` is a fraction of the fade window. Opt-in via `targetAspect`
+ * (scan mode); the demo/golden path keeps the uniform band LODs (byte-identical).
+ */
+export const COVERAGE_REVEAL = Object.freeze({ start: 0.5, full: 0.7, hysteresis: 0.15 });
+
+/**
+ * Deterministic nominal viewport (CSS px) for coverage math, shaped by the aspect preset —
+ * NEVER the live viewport, so a shared/restored scene reproduces byte-for-byte. Landscape
+ * widens it, portrait heightens it (same discrete presets #30 packs against).
+ */
+function coverageNominalViewport(targetAspect: number): { width: number; height: number } {
+  const major = 1440;
+  return targetAspect >= 1
+    ? { width: major, height: Math.max(1, major / targetAspect) }
+    : { width: Math.max(1, major * targetAspect), height: major };
+}
+
+/**
+ * Per-owner children-reveal LOD. `owner` is the box whose coverage gates the reveal (the
+ * parent for a child card; the owner itself for its boundary shell). A larger owner reveals
+ * its children at a LOWER zoom — the fix for "a container fills the screen but stays opaque".
+ * Clamped so reveal is never LATER than the band's own enter/fade window: this preserves the
+ * crossfade overlap (and byte-identical behaviour for reference-sized owners) while letting
+ * big owners reveal early. That clamp also disarms the deep-nesting trap — a tiny nested
+ * owner simply falls back to its band LOD instead of demanding unreachable zoom.
+ */
+function coverageRevealLod(owner: NodeLayout, band: C4Band, targetAspect: number): LodRange {
+  const base = lodFor(band);
+  const viewport = coverageNominalViewport(targetAspect);
+  const fit = Math.min(
+    viewport.width / Math.max(1, owner.width),
+    viewport.height / Math.max(1, owner.height),
+  );
+  const start = Math.min(COVERAGE_REVEAL.start * fit, base.minZoom);
+  const full = Math.min(COVERAGE_REVEAL.full * fit, base.minZoom + base.fadeWidth);
+  return {
+    minZoom: start,
+    maxZoom: base.maxZoom,
+    fadeWidth: Math.max(full - start, base.fadeWidth),
+    hysteresis: base.hysteresis,
+  };
+}
+
+const semanticBandForKind = (kind: VisualNode['kind']): C4Band => {
+  if (kind === 'component') return 'component';
+  if (kind === 'container' || kind === 'dataStore' || kind === 'queue') return 'container';
+  if (kind === 'code') return 'code';
+  return 'context';
+};
+
+/** The band at which an owner of this kind first reveals its direct children as cards. */
+function childRevealBand(kind: VisualNode['kind']): C4Band | undefined {
+  const index = C4_BANDS.indexOf(semanticBandForKind(kind));
+  return index >= 0 && index + 1 < C4_BANDS.length ? C4_BANDS[index + 1] : undefined;
+}
+
 function union(rects: readonly Rect[]): Rect {
   const left = Math.min(...rects.map(rect => rect.x));
   const top = Math.min(...rects.map(rect => rect.y));
@@ -152,6 +211,7 @@ function presentation(
   band: C4Band,
   boundary: boolean,
   theme: SceneTheme,
+  revealLod?: LodRange,
 ): Representation {
   const visualScale = visualScaleByBand[band];
   const fill = theme.entityFill[node.kind];
@@ -188,7 +248,7 @@ function presentation(
     : undefined;
   return {
     id: `${node.id}:${band}`,
-    lod: lodFor(band),
+    lod: revealLod ?? lodFor(band),
     bounds: { ...bounds },
     primitives: [
       {
@@ -249,15 +309,30 @@ function objectForNode(
   bundle: C4ProjectionBundle,
   node: VisualNode,
   theme: SceneTheme,
+  targetAspect?: number,
 ): SceneObject | undefined {
   const entity = snapshot.entities.find(candidate => candidate.id === node.entity.logicalId);
   if (!entity) return undefined;
-  const appearances: Array<{ band: C4Band; bounds: NodeLayout; boundary: boolean }> = [];
+  const appearances: Array<{ band: C4Band; bounds: NodeLayout; boundary: boolean; revealLod?: LodRange }> = [];
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
     const layout = bundle.bandLayoutById[projection.layoutId]!;
     const bounds = layout.nodes[node.id];
-    if (bounds) appearances.push({ band, bounds, boundary: visibleChildren(projection, bundle).has(node.id) });
+    if (!bounds) continue;
+    const boundary = visibleChildren(projection, bundle).has(node.id);
+    // Coverage reveal (opt-in): a child card reveals when its PARENT crosses the coverage
+    // target; an owner's boundary shell reveals when ITS OWN box does, at the band where its
+    // direct children first appear. Both key off the same owner box → one reveal moment.
+    let revealLod: LodRange | undefined;
+    if (targetAspect !== undefined) {
+      if (boundary && band === childRevealBand(node.kind)) {
+        revealLod = coverageRevealLod(bounds, band, targetAspect);
+      } else if (!boundary && band === semanticBandForKind(node.kind) && node.parentVisualId) {
+        const parentBounds = layout.nodes[node.parentVisualId];
+        if (parentBounds) revealLod = coverageRevealLod(parentBounds, band, targetAspect);
+      }
+    }
+    appearances.push({ band, bounds, boundary, ...(revealLod ? { revealLod } : {}) });
   }
   if (!appearances.length) return undefined;
   const bounds = union(appearances.map(value => value.bounds));
@@ -267,7 +342,7 @@ function objectForNode(
     zIndex: node.kind === 'softwareSystem' ? -4 : node.kind === 'container' || node.kind === 'dataStore' || node.kind === 'queue' ? -3 : node.kind === 'component' ? -2 : 1,
     bounds,
     pickable: true,
-    representations: appearances.map(value => presentation(node, entity, value.bounds, value.band, value.boundary, theme)),
+    representations: appearances.map(value => presentation(node, entity, value.bounds, value.band, value.boundary, theme, value.revealLod)),
   };
 }
 
@@ -417,10 +492,7 @@ type OwnerTransform = {
 };
 
 function semanticBandForEntity(entity: ArchitectureEntity): C4Band {
-  if (entity.kind === 'container' || entity.kind === 'dataStore' || entity.kind === 'queue') return 'container';
-  if (entity.kind === 'component') return 'component';
-  if (entity.kind === 'code') return 'code';
-  return 'context';
+  return semanticBandForKind(entity.kind);
 }
 
 type IntrinsicSize = { width: number; height: number };
@@ -753,7 +825,7 @@ export function compileC4Scene(
   const theme = options.theme ?? defaultTheme;
   const entityObjects = Object.values(bundle.visualNodeById)
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(node => objectForNode(snapshot, bundle, node, theme))
+    .map(node => objectForNode(snapshot, bundle, node, theme, options.targetAspect))
     .filter((object): object is SceneObject => object !== undefined);
   const paths: ScenePath[] = [];
   const labelObjects: SceneObject[] = [];
