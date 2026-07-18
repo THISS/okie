@@ -75,6 +75,16 @@ export type OmittedRelation = {
   evidencePaths: string[];
 };
 
+/** Dev-mode observability for the scan scoped compile (absent when unbounded). */
+export type ScopedCompileInfo = {
+  maxBand?: SemanticDetail;
+  maxEdgesPerBand?: number;
+  maxGridNodes?: number;
+  entityCount: number;
+  bandDepthThreshold: number;
+  directFallbackCount: number;
+};
+
 export type AtlasScene = {
   id: string;
   title: string;
@@ -90,6 +100,8 @@ export type AtlasScene = {
   frozenRevision?: string;
   /** Relations dropped from routing under a scan-mode edge budget (absent otherwise). */
   omittedRelations?: OmittedRelation[];
+  /** Scan-mode scoped-compile decision, surfaced in the dev diagnostics panel. */
+  scopedCompile?: ScopedCompileInfo;
   projection?: {
     /** Compiler projection-family identifier used to scope durable route intent. */
     familyId?: string;

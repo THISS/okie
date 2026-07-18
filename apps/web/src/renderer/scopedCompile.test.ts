@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { ArchitectureEntity, ArchitectureRelation, ArchitectureSnapshot, C4ProjectionBundle, EntityKind } from '@okie/architecture';
 import {
   SCAN_BAND_DEPTH_MIN_ENTITIES,
-  SCAN_EDGE_BUDGET_MIN_SCOPE_RELATIONS,
-  SCAN_EDGE_BUDGET_PER_BAND,
+  SCAN_CONTAINER_EDGE_BUDGET,
+  SCAN_CONTAINER_GRID_NODES,
   scanScopeCompileOptions,
 } from './scanFixture';
 import { resolveOmittedRelations } from './goldenC4Scene';
@@ -24,7 +24,7 @@ function snapshot(entities: ArchitectureEntity[], relations: ArchitectureRelatio
   return { schemaVersion: 1, id: 'snapshot:test', repositoryId: 'repo:test', commitSha: 'sha', generatedAt: '2026-01-01T00:00:00Z', entities, relations };
 }
 
-describe('scanScopeCompileOptions — drill mapping (large repo)', () => {
+describe('scanScopeCompileOptions — per-kind mapping above the size gate (large repo)', () => {
   const big = snapshot([
     entity('system:root', 'softwareSystem'),
     entity('container:c', 'container', 'system:root'),
@@ -32,11 +32,15 @@ describe('scanScopeCompileOptions — drill mapping (large repo)', () => {
     ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
   ]);
 
-  it('maps focus kind to band depth: system→container, container→component, component/code→unbounded', () => {
-    expect(scanScopeCompileOptions(big, 'system:root').maxBand).toBe('container');
-    expect(scanScopeCompileOptions(big, 'container:c').maxBand).toBe('component');
-    expect(scanScopeCompileOptions(big, 'component:x').maxBand).toBeUndefined();
-    expect(scanScopeCompileOptions(big, 'code:0').maxBand).toBeUndefined();
+  it('system→container; container→component + edge budget + grid cap; component→code; code→unbounded', () => {
+    expect(scanScopeCompileOptions(big, 'system:root')).toEqual({ maxBand: 'container' });
+    expect(scanScopeCompileOptions(big, 'container:c')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect(scanScopeCompileOptions(big, 'component:x')).toEqual({ maxBand: 'code' });
+    expect(scanScopeCompileOptions(big, 'code:0')).toEqual({});
   });
 
   it('is deterministic (pure function of snapshot + focus)', () => {
@@ -45,23 +49,14 @@ describe('scanScopeCompileOptions — drill mapping (large repo)', () => {
   });
 });
 
-describe('scanScopeCompileOptions — size gates keep small/sparse repos unbounded (Okie stays identical)', () => {
-  it('returns no options for a small sparse snapshot', () => {
+describe('scanScopeCompileOptions — size gate keeps small repos unbounded (Okie stays identical)', () => {
+  it('returns {} below the size gate regardless of focus kind', () => {
     const small = snapshot(
       [entity('system:root', 'softwareSystem'), entity('container:c', 'container', 'system:root')],
       [relation('r1', 'system:root', 'container:c')],
     );
     expect(scanScopeCompileOptions(small, 'system:root')).toEqual({});
-  });
-});
-
-describe('scanScopeCompileOptions — edge budget only for dense scopes', () => {
-  it('enables maxEdgesPerBand when scope relations exceed the density threshold', () => {
-    const containers = Array.from({ length: 40 }, (_, index) => entity(`c:${index}`, 'container', 'system:root'));
-    const relations = Array.from({ length: SCAN_EDGE_BUDGET_MIN_SCOPE_RELATIONS + 1 }, (_, index) =>
-      relation(`r:${index}`, `c:${index % 40}`, `c:${(index + 1) % 40}`));
-    const dense = snapshot([entity('system:root', 'softwareSystem'), ...containers], relations);
-    expect(scanScopeCompileOptions(dense, 'system:root').maxEdgesPerBand).toBe(SCAN_EDGE_BUDGET_PER_BAND);
+    expect(scanScopeCompileOptions(small, 'container:c')).toEqual({});
   });
 });
 

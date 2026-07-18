@@ -12,63 +12,42 @@ import {
 import { compileAppStoryPlan, createC4Scene, type AppStoryPlan } from './goldenC4Scene';
 import type { AtlasScene } from './types';
 
-// Scan-mode scoped-compile thresholds (documented; Okie's scan sits under all of
-// them, so its scenes/interactions stay identical to an unbounded compile).
-export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;        // repo-size gate for band depth
-export const SCAN_EDGE_BUDGET_MIN_SCOPE_RELATIONS = 250; // scope-density gate for the edge budget
-export const SCAN_EDGE_BUDGET_PER_BAND = 20;             // routed edges per band once dense
+// Scan-mode scoped-compile levers (documented; Okie's scan sits under the size
+// gate, so scanScopeCompileOptions returns {} → identical to an unbounded compile).
+// Scoping exists FOR large repos; small repos keep the uninterrupted full-band
+// zoom that is the product's signature feel.
+export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000; // size gate — below this, no scoping
+export const SCAN_CONTAINER_EDGE_BUDGET = 24;     // routed edges per band at a container drill-in
+export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a container drill-in
 
-const SCAN_MAX_BAND_BY_KIND: Partial<Record<EntityKind, C4Band>> = {
-  person: 'container',
-  softwareSystem: 'container',
-  externalSystem: 'container',
-  boundary: 'container',
-  container: 'component',
-  dataStore: 'component',
-  queue: 'component',
-  // component / code focus stays unbounded (its deepest bands already route)
+export type ScanScopedOptions = { maxBand?: C4Band; maxEdgesPerBand?: number; maxGridNodes?: number };
+
+// Per-focus-kind scoped options, applied only above the size gate.
+const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>> = {
+  person: { maxBand: 'container' },
+  softwareSystem: { maxBand: 'container' },
+  externalSystem: { maxBand: 'container' },
+  boundary: { maxBand: 'container' },
+  container: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
+  dataStore: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
+  queue: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
+  component: { maxBand: 'code' },
+  // code focus → {} (deepest bands already route; no caps)
 };
 
-/** Relations fully inside the focus subtree — the deterministic density signal. */
-function scanScopeRelationCount(snapshot: ArchitectureSnapshot, focusEntityId: string): number {
-  const childrenByParent = new Map<string, string[]>();
-  for (const entity of snapshot.entities) {
-    if (!entity.parentId) continue;
-    const siblings = childrenByParent.get(entity.parentId) ?? [];
-    siblings.push(entity.id);
-    childrenByParent.set(entity.parentId, siblings);
-  }
-  const subtree = new Set<string>();
-  const stack = [focusEntityId];
-  while (stack.length) {
-    const id = stack.pop()!;
-    if (subtree.has(id)) continue;
-    subtree.add(id);
-    for (const child of childrenByParent.get(id) ?? []) stack.push(child);
-  }
-  return snapshot.relations.filter(relation => subtree.has(relation.from) && subtree.has(relation.to)).length;
-}
-
 /**
- * Deterministic scoped-compile options for a scan-mode focus: band depth (drill
- * mapping) only for large repos so small repos like Okie stay unbounded/identical,
- * and a per-band edge budget only when the focused scope is dense. Both gates
- * derive from snapshot/scope stats, never from timing.
+ * Deterministic scoped-compile options for a scan-mode focus. A single repo-size
+ * gate (entity count > threshold) turns scoping ON for large repos; below it,
+ * small repos like Okie stay fully unbounded and render identically to today.
+ * Above the gate, options follow the focus kind: system→container band; container
+ * drill-in→component band + edge budget + router grid cap; component→code band.
+ * Pure function of snapshot + focus (never timing).
  */
-export function scanScopeCompileOptions(
-  snapshot: ArchitectureSnapshot,
-  focusEntityId: string,
-): { maxBand?: C4Band; maxEdgesPerBand?: number } {
-  const options: { maxBand?: C4Band; maxEdgesPerBand?: number } = {};
-  if (snapshot.entities.length > SCAN_BAND_DEPTH_MIN_ENTITIES) {
-    const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
-    const maxBand = focus && SCAN_MAX_BAND_BY_KIND[focus.kind];
-    if (maxBand) options.maxBand = maxBand;
-  }
-  if (scanScopeRelationCount(snapshot, focusEntityId) > SCAN_EDGE_BUDGET_MIN_SCOPE_RELATIONS) {
-    options.maxEdgesPerBand = SCAN_EDGE_BUDGET_PER_BAND;
-  }
-  return options;
+export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEntityId: string): ScanScopedOptions {
+  if (snapshot.entities.length <= SCAN_BAND_DEPTH_MIN_ENTITIES) return {};
+  const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
+  const scoped = focus && SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind];
+  return scoped ? { ...scoped } : {};
 }
 
 export type ScanNavigationDefaults = {
@@ -147,18 +126,22 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
     throw new ScanFixtureError([{ path: 'story', message: error instanceof Error ? error.message : String(error) }]);
   }
 
-  const createScene = (focusEntityId: string, previous?: AtlasScene): AtlasScene => createC4Scene({
-    baseSnapshot: snapshot,
-    rootEntityId: view.rootEntityId,
-    focusEntityId,
-    familyId: `view-family:${snapshot.repositoryId}:${focusEntityId}`,
-    sceneId: `scan:${snapshot.repositoryId}:c4`,
-    title: view.name,
-    subtitle: `scanned snapshot · ${snapshot.commitSha.slice(0, 12)}`,
-    frozenRevision: snapshot.commitSha,
-    previous,
-    ...scanScopeCompileOptions(snapshot, focusEntityId),
-  });
+  const createScene = (focusEntityId: string, previous?: AtlasScene): AtlasScene => {
+    const scoped = scanScopeCompileOptions(snapshot, focusEntityId);
+    return createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: view.rootEntityId,
+      focusEntityId,
+      familyId: `view-family:${snapshot.repositoryId}:${focusEntityId}`,
+      sceneId: `scan:${snapshot.repositoryId}:c4`,
+      title: view.name,
+      subtitle: `scanned snapshot · ${snapshot.commitSha.slice(0, 12)}`,
+      frozenRevision: snapshot.commitSha,
+      previous,
+      ...scoped,
+      ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
+    });
+  };
 
   return {
     snapshot,

@@ -23,7 +23,7 @@ import {
   goldenView,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
-import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedRelation, SceneEntity, SceneRelation, SemanticDetail } from './types';
+import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
 
@@ -170,6 +170,9 @@ export type C4SceneOptions = {
    *  compile stays byte-identical. */
   maxBand?: C4Band;
   maxEdgesPerBand?: number;
+  maxGridNodes?: number;
+  /** Size gate value for the dev diagnostics line (scan mode); display-only. */
+  bandDepthThreshold?: number;
 };
 
 /**
@@ -219,15 +222,25 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     familyId: options.familyId,
     ...(options.maxBand ? { maxBand: options.maxBand } : {}),
     ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
+    ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
   };
   const authoredProjections = buildC4ProjectionBundle(snapshot, buildOptions);
   const previousSnapshot = previous?.protocolSnapshot as SceneSnapshot | undefined;
   const revision = previousSnapshot && previousSnapshot.sceneId === `scene:${baseSnapshot.repositoryId}:c4`
     ? previousSnapshot.revision + 1
     : 1;
+  const scoped = options.maxBand !== undefined || options.maxEdgesPerBand !== undefined || options.maxGridNodes !== undefined;
+  const compileOptions = {
+    revision,
+    ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
+  };
   const compiled = authoring
-    ? compileAuthoredC4Scene(baseSnapshot, authoring, buildOptions, { revision })
-    : compileC4Scene(snapshot, authoredProjections, { revision });
+    ? compileAuthoredC4Scene(baseSnapshot, authoring, buildOptions, compileOptions)
+    // routeOverrides:[] is a no-op for routing but makes compileC4Scene return route
+    // diagnostics, so the scan diagnostics line can surface the direct-fallback count.
+    : compileC4Scene(snapshot, authoredProjections, scoped ? { ...compileOptions, routeOverrides: [] } : compileOptions);
+  const directFallbackCount = (compiled.routeDiagnostics ?? [])
+    .filter(diagnostic => diagnostic.routerDiagnostic === 'direct-fallback').length;
   const projections = compiled.projections;
   const semanticToVisualEntityId = Object.fromEntries(Object.entries(projections.index.visualNodeIdsByEntityId)
     .flatMap(([entityId, visualIds]) => visualIds[0] ? [[entityId, visualIds[0]]] : []));
@@ -298,6 +311,14 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     return [entity.id, Object.fromEntries(transitions)];
   }));
   const omittedRelations = resolveOmittedRelations(authoredProjections, snapshot);
+  const scopedCompile: ScopedCompileInfo | undefined = scoped ? {
+    ...(options.maxBand !== undefined ? { maxBand: options.maxBand } : {}),
+    ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
+    ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
+    entityCount: snapshot.entities.length,
+    bandDepthThreshold: options.bandDepthThreshold ?? 0,
+    directFallbackCount,
+  } : undefined;
   const scene: AtlasScene = {
     id: options.sceneId,
     title: options.title,
@@ -305,6 +326,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     rootEntityId: options.focusEntityId,
     frozenRevision: options.frozenRevision,
     ...(omittedRelations.length ? { omittedRelations } : {}),
+    ...(scopedCompile ? { scopedCompile } : {}),
     entities,
     relations: snapshot.relations.map(relation => ({
       id: relation.id,

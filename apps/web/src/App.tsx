@@ -3982,6 +3982,7 @@ export function App() {
               {diagnostics.glyphQuads !== undefined && <div><dt>Glyph quads</dt><dd>{diagnostics.glyphQuads.toLocaleString()}</dd></div>}
               {(diagnostics.deferredTextPrimitives !== undefined || diagnostics.deferredIconPrimitives !== undefined) && <div><dt>Deferred text / icons</dt><dd>{(diagnostics.deferredTextPrimitives ?? 0).toLocaleString()} / {(diagnostics.deferredIconPrimitives ?? 0).toLocaleString()}</dd></div>}
               <div><dt>Fixture / seed</dt><dd>{query.fixture} / {query.seed}</dd></div>
+              {scene.scopedCompile && <div><dt>Scoped compile</dt><dd>bands→{scene.scopedCompile.maxBand ?? 'code'} · {scene.scopedCompile.entityCount.toLocaleString()} entities &gt; {scene.scopedCompile.bandDepthThreshold.toLocaleString()} threshold{scene.scopedCompile.maxEdgesPerBand ? ` · ≤${scene.scopedCompile.maxEdgesPerBand} edges/band` : ''}{scene.scopedCompile.maxGridNodes ? ` · grid ${scene.scopedCompile.maxGridNodes.toLocaleString()}` : ''}{scene.scopedCompile.directFallbackCount ? ` · ${scene.scopedCompile.directFallbackCount} direct-fallback` : ''}</dd></div>}
             </dl>
             <p>{diagnostics.message}</p>
             {query.warnings.map(warning => <p className="diagnostic-warning" key={warning}>{warning}</p>)}
