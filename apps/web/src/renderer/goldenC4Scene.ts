@@ -387,3 +387,19 @@ export function createGoldenC4Scene(
 export function semanticBounds(scene: AtlasScene, entityId: string, detail: SemanticDetail) {
   return scene.projection?.boundsByEntityIdAndDetail[entityId]?.[detail];
 }
+
+/**
+ * The band a scan-mode "Open inside" must recompile into when the target's deeper
+ * scope was scoped OUT of the current scene, or undefined when a plain lens drill
+ * suffices. Returns undefined for a leaf (no deeper band), a childless target, or a
+ * target whose deeper band is ALREADY laid out — so below the size gate (full
+ * compile, every band present) it is always undefined and the drill stays the
+ * signature uninterrupted lens zoom (Okie/golden untouched). Pure — reads only the
+ * scene's entities + projection bounds, never compiles.
+ */
+export function scanDrillDeeperDetail(scene: AtlasScene, target: SceneEntity): SemanticDetail | undefined {
+  const deeper = bands[bands.indexOf(target.detail ?? 'context') + 1];
+  if (!deeper) return undefined;
+  if (!scene.entities.some(entity => entity.parentId === target.id)) return undefined;
+  return semanticBounds(scene, target.id, deeper) ? undefined : deeper;
+}

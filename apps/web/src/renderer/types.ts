@@ -99,6 +99,16 @@ export type ScanGuardRefusal = {
   fallbackFocusId: string;
 };
 
+/** Set when a scan-mode "Open inside" re-entered the guarded compile seam because
+ *  the target's deeper band was scoped out of the top scene (so a lens drill would
+ *  dead-end). Dev-diagnostics only; absent on every below-gate/lens drill. */
+export type ScanDrillRecompile = {
+  /** The entity drilled into (now the recompiled scene's focus/root). */
+  targetId: string;
+  /** The band that was absent and is now compiled. */
+  deeperDetail: SemanticDetail;
+};
+
 export type AtlasScene = {
   id: string;
   title: string;
@@ -119,6 +129,9 @@ export type AtlasScene = {
   /** Present when the scan compile guard refused the requested focus and fell
    *  back to a safe scene (dev diagnostics only; absent normally). */
   scanGuardRefusal?: ScanGuardRefusal;
+  /** Present when a scan drill recompiled a scoped-out deeper scope (dev
+   *  diagnostics only; absent on lens drills and below the gate). */
+  scanDrillRecompile?: ScanDrillRecompile;
   projection?: {
     /** Compiler projection-family identifier used to scope durable route intent. */
     familyId?: string;

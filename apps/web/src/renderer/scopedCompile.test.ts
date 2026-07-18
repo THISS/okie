@@ -8,7 +8,8 @@ import {
   scanScopeCompileOptions,
   scanScopeStats,
 } from './scanFixture';
-import { resolveOmittedRelations } from './goldenC4Scene';
+import { resolveOmittedRelations, scanDrillDeeperDetail } from './goldenC4Scene';
+import type { AtlasScene, SceneEntity } from './types';
 
 function entity(id: string, kind: EntityKind, parentId?: string): ArchitectureEntity {
   return { id, name: id, kind, sourceRefs: [], ...(parentId ? { parentId } : {}) };
@@ -199,5 +200,36 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
       expect(decision).toEqual({ focusEntityId: focus, options: {} });
       expect(decision.refusal).toBeUndefined();
     }
+  });
+});
+
+describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper scope', () => {
+  const bounds = { x: 0, y: 0, width: 1, height: 1 };
+  const sceneEntities: SceneEntity[] = [
+    { id: 'system:root', name: 'root', kind: 'system', detail: 'context', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+    { id: 'container:c', parentId: 'system:root', name: 'c', kind: 'container', detail: 'container', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+    { id: 'component:x', parentId: 'container:c', name: 'x', kind: 'component', detail: 'component', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+  ];
+  const sceneWith = (boundsByEntityIdAndDetail: Record<string, Record<string, typeof bounds>>): AtlasScene =>
+    ({ id: 's', title: '', subtitle: '', entities: sceneEntities, relations: [], regions: [], projection: { boundsByEntityIdAndDetail } } as unknown as AtlasScene);
+  const container = sceneEntities[1]!;
+
+  it('returns the next band when the target has children but its deeper band was scoped out', () => {
+    // Scoped top scene (maxBand: container): the container has no `component` bounds.
+    const scoped = sceneWith({ 'system:root': { context: bounds, container: bounds }, 'container:c': { container: bounds } });
+    expect(scanDrillDeeperDetail(scoped, container)).toBe('component');
+  });
+
+  it('returns undefined when the deeper band is already laid out (full / below-gate scene)', () => {
+    const full = sceneWith({ 'container:c': { container: bounds, component: bounds } });
+    expect(scanDrillDeeperDetail(full, container)).toBeUndefined();
+  });
+
+  it('returns undefined for a leaf (no deeper band) and for a childless target', () => {
+    const scene = sceneWith({ 'component:x': { component: bounds } });
+    const codeLeaf: SceneEntity = { id: 'code:a', parentId: 'component:x', name: 'a', kind: 'component', detail: 'code', responsibility: '', x: 0, y: 0, width: 1, height: 1 };
+    expect(scanDrillDeeperDetail(scene, codeLeaf)).toBeUndefined();
+    // component:x has no children in the scene → nothing deeper to compile.
+    expect(scanDrillDeeperDetail(scene, sceneEntities[2]!)).toBeUndefined();
   });
 });

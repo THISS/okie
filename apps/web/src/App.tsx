@@ -48,7 +48,7 @@ import {
   type NavigationState,
   type SemanticDetail,
 } from './navigation/navigationState';
-import { createGoldenC4Scene, goldenAppStory, semanticBounds, type AppStoryPlanStep } from './renderer/goldenC4Scene';
+import { createGoldenC4Scene, goldenAppStory, scanDrillDeeperDetail, semanticBounds, type AppStoryPlanStep } from './renderer/goldenC4Scene';
 import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
 import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
@@ -3036,7 +3036,7 @@ export function App() {
   }
 
   function openInside(entityId = selected.id, inspectorNavigation: 'external' | 'preserve' = 'external') {
-    abortInspectorCameraFlight();
+    const liveCamera = abortInspectorCameraFlight();
     updateInspectorHistoryForNavigation(inspectorNavigation);
     if (query.fixture === 'stress') return;
     const target = scene.entities.find(entity => entity.id === entityId) ?? selected;
@@ -3045,6 +3045,36 @@ export function App() {
       setLiveMessage(target.sourceExcerpts?.length
         ? `${target.name} source opened at its frozen evidence range.`
         : `${target.name} has no portable frozen source excerpt.`);
+      return;
+    }
+    // Scan scoped compile: the top scene carries bands only down to its focus's
+    // depth, so a deeper scope can be absent and a lens drill would dead-end. When
+    // it is, re-enter the guarded compile seam (activeCreateScene → guardScanCompile)
+    // for the target scope, reset the now-stale lens session, and frame in. Below
+    // the gate every band is present so this never fires (Okie/golden untouched).
+    // Inspector-history mode was already applied above, so 'preserve' survives.
+    const drillDetail = scanFixture ? scanDrillDeeperDetail(scene, target) : undefined;
+    if (drillDetail) {
+      interruptStory(`Opened ${target.name}`);
+      cancelSemanticLensAt('scan drill recompile', liveCamera);
+      const nextScene = activeCreateScene(target.id, scene, authoringHistoryRef.current.present);
+      const nextCamera = frameProjectionScope(nextScene, target.id, baseDetail, viewport, measureCurrentMapSafeArea())
+        ?? (() => {
+          const bounds = semanticBounds(nextScene, target.id, baseDetail) ?? target;
+          return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2, zoom: levels[activeLevel].zoom };
+        })();
+      setScene({ ...nextScene, scanDrillRecompile: { targetId: target.id, deeperDetail: drillDetail } });
+      setSelectedId(target.id);
+      setNavigationIdentity(current => ({ ...current, rootEntityId: target.id }));
+      updateCamera(nextCamera);
+      commitNavigation(canonicalNavigationState({
+        ...navigationRef.current,
+        rootEntityId: target.id,
+        selectedId: target.id,
+        camera: nextCamera,
+        detail: baseDetail,
+      }, navigationDefaults), 'push');
+      setLiveMessage(`${target.name} opened. Compiled its deeper ${levels[semanticDetails.indexOf(drillDetail)]?.name ?? drillDetail} scope.`);
       return;
     }
     const plan = semanticOpenNextLayer(
@@ -3990,6 +4020,7 @@ export function App() {
               <div><dt>Fixture / seed</dt><dd>{query.fixture} / {query.seed}</dd></div>
               {scene.scopedCompile && <div><dt>Scoped compile</dt><dd>bands→{scene.scopedCompile.maxBand ?? 'code'} · {scene.scopedCompile.entityCount.toLocaleString()} entities &gt; {scene.scopedCompile.bandDepthThreshold.toLocaleString()} threshold{scene.scopedCompile.maxEdgesPerBand ? ` · ≤${scene.scopedCompile.maxEdgesPerBand} edges/band` : ''}{scene.scopedCompile.maxGridNodes ? ` · grid ${scene.scopedCompile.maxGridNodes.toLocaleString()}` : ''}{scene.scopedCompile.directFallbackCount ? ` · ${scene.scopedCompile.directFallbackCount} direct-fallback` : ''}</dd></div>}
               {scene.scanGuardRefusal && <div><dt>Scan guard</dt><dd>unscoped compile of {scene.scanGuardRefusal.requestedFocusId} refused ({scene.scanGuardRefusal.entityCount.toLocaleString()} entities · {scene.scanGuardRefusal.relationCount.toLocaleString()} relations) → fell back to {scene.scanGuardRefusal.fallbackFocusId}</dd></div>}
+              {scene.scanDrillRecompile && <div><dt>Drill recompile</dt><dd>{scene.scanDrillRecompile.targetId} · deeper band {scene.scanDrillRecompile.deeperDetail} absent → recompiled via guarded seam</dd></div>}
             </dl>
             <p>{diagnostics.message}</p>
             {query.warnings.map(warning => <p className="diagnostic-warning" key={warning}>{warning}</p>)}
