@@ -32,7 +32,7 @@ Read those first. Every recommendation below is tied to a current file or symbol
 | Rescan / diff | — | `unchanged\|changed\|new\|no-longer-observed` | schema + scraper |
 | Incremental rescan | — | commit-diff-scoped re-extraction + incremental≡full equivalence gate | scraper |
 | Tiered specs (summary → deep dive) | — | `SpecDocument` sections, claim-grounded, assistant-retrievable | schema + mcp |
-| Enrichment (LLM) | — (`extraction.ts` is the ready validation gate) | packet redaction, replay, cache | scraper |
+| Enrichment (LLM) | `packages/scan` · `--emit-packets`/`--enrich-from` — bounded redacted packets, recorded-replay merge, atomic per-container gate; dogfooded 5/5 on Okie (34 logical components) | live-call adapter, response capture, hash-domain cache | scraper |
 | Overrides / corrections | `architecture/authoring.ts` · `create/apply/materializeArchitectureAuthoring` | conflict surfacing vs new observations | schema |
 | Normalized store | `architecture/normalized.ts` · 14 tables, in-memory | persistence; cross-snapshot reference rules | schema + mcp |
 | Query layer | `normalized.ts` · `selectArchitectureSnapshot/View`, `selectScopedView`; `scene-compiler` · `serializeDynamicFlowMermaid` | not exposed to agents | mcp |
