@@ -257,10 +257,15 @@ describe('compact inspector presentation', () => {
 });
 
 describe('canvas minimap', () => {
-  it('renders a non-interactive minimap inset near the zoom controls', () => {
-    expect(app).toContain('<Minimap camera={camera} scene={scene} viewport={viewport}/>');
+  it('renders an interactive minimap inset that pans the camera through the canvas path', () => {
+    // Drag/click on the inset routes camera writes through the same primitives as canvas pan:
+    // live moves via setCamera, and settle/click via navigateCamera(..., 'replace') so story +
+    // flight cancellation, bounds and replace-not-push URL semantics stay on one path.
+    expect(app).toContain("onPan={(next, phase) => phase === 'move' ? setCamera(() => next) : navigateCamera(next, 'replace', 'Panned the map overview')}");
+    // The container stays inert; the inset SVG is the sole pointer hit target.
     expect(declarations(css, '.minimap')).toContain('pointer-events: none');
     expect(declarations(css, '.minimap')).toContain('position: absolute');
+    expect(declarations(css, '.minimap svg')).toContain('pointer-events: auto');
   });
 
   it('hides the minimap on very narrow viewports', () => {
