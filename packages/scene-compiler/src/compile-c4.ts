@@ -97,6 +97,8 @@ export type CompileC4SceneOptions = {
   worldPadding?: number;
   theme?: SceneTheme;
   routeOverrides?: readonly RelationRouteOverride[];
+  /** Routing grid-node budget; lower degrades gracefully to direct edges. Default 20000 (byte-identical). */
+  maxGridNodes?: number;
 };
 
 export type CompileAuthoredC4SceneOptions = Omit<CompileC4SceneOptions, 'routeOverrides'>;
@@ -461,6 +463,7 @@ function applyIntrinsicOwnerGeometry(
   entityById: ReadonlyMap<string, ArchitectureEntity>,
   routeOverrides: readonly RelationRouteOverride[],
   routeDiagnostics: C4RouteOverrideDiagnostic[],
+  maxGridNodes: number,
 ): void {
   const rootId = bundle.family.rootEntity.logicalId;
   const childrenByOwner = new Map<string, ArchitectureEntity[]>();
@@ -574,7 +577,7 @@ function applyIntrinsicOwnerGeometry(
         clearance: 8 / focusZoom,
         laneSpacing: 10 / focusZoom,
         maxPoints: 16,
-        maxGridNodes: 20_000,
+        maxGridNodes,
         routeOverrides,
       },
     );
@@ -593,6 +596,7 @@ export function normalizeC4OwnerGeometry(
   source: C4ProjectionBundle,
   routeOverrides: readonly RelationRouteOverride[] = [],
   routeDiagnostics: C4RouteOverrideDiagnostic[] = [],
+  maxGridNodes = 20_000,
 ): C4ProjectionBundle {
   const bundle: C4ProjectionBundle = {
     ...source,
@@ -712,7 +716,7 @@ export function normalizeC4OwnerGeometry(
       });
     }
   }
-  applyIntrinsicOwnerGeometry(snapshot, bundle, entityById, routeOverrides, routeDiagnostics);
+  applyIntrinsicOwnerGeometry(snapshot, bundle, entityById, routeOverrides, routeDiagnostics, maxGridNodes);
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
     const layout = bundle.bandLayoutById[projection.layoutId]!;
@@ -732,7 +736,7 @@ export function compileC4Scene(
 ): CompiledC4Scene {
   if (bundle.family.snapshotId !== snapshot.id) throw new Error('C4 projection bundle does not match snapshot');
   const routeDiagnostics: C4RouteOverrideDiagnostic[] = [];
-  bundle = normalizeC4OwnerGeometry(snapshot, bundle, options.routeOverrides ?? [], routeDiagnostics);
+  bundle = normalizeC4OwnerGeometry(snapshot, bundle, options.routeOverrides ?? [], routeDiagnostics, options.maxGridNodes);
   const theme = options.theme ?? defaultTheme;
   const entityObjects = Object.values(bundle.visualNodeById)
     .sort((left, right) => left.id.localeCompare(right.id))

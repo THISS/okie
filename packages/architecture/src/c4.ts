@@ -154,6 +154,12 @@ export type BuildC4ProjectionOptions = {
    * Default: unbounded (byte-identical).
    */
   maxEdgesPerBand?: number;
+  /**
+   * Routing grid-node budget (opt-in). Lower values make dense bands route faster and
+   * degrade gracefully to a direct edge when a tight grid can't find an obstacle-safe
+   * route (instead of hanging). Default: 20000 (byte-identical).
+   */
+  maxGridNodes?: number;
 };
 
 /**
@@ -591,6 +597,7 @@ function layoutProjection(
   projection: BandProjection,
   visualNodeById: Readonly<Record<string, VisualNode>>,
   visualEdgeById: Readonly<Record<string, VisualEdge>>,
+  maxGridNodes = 20_000,
 ): BandLayout {
   const visible = new Set(projection.visualNodeIds);
   const childrenByVisualId = new Map<string, string[]>();
@@ -650,6 +657,7 @@ function layoutProjection(
   const edges = routeC4BandEdges(projection, visualNodeById, visualEdgeById, nodes, {
     clearance: 12,
     laneSpacing: 12,
+    maxGridNodes,
   });
   void maximumBottom;
   return {
@@ -723,7 +731,7 @@ export function buildC4ProjectionBundle(
         visualNodeIds: [], visualEdgeIds: [], contextNodeIds: [], layoutId: emptyLayoutId,
       };
       projectionById[projectionId] = emptyProjection;
-      bandLayoutById[emptyLayoutId] = layoutProjection(emptyProjection, visualNodeById, visualEdgeById);
+      bandLayoutById[emptyLayoutId] = layoutProjection(emptyProjection, visualNodeById, visualEdgeById, options.maxGridNodes);
       continue;
     }
     const includedEntities = new Map<string, ArchitectureEntity>();
@@ -853,7 +861,7 @@ export function buildC4ProjectionBundle(
       layoutId,
     };
     projectionById[projectionId] = projection;
-    bandLayoutById[layoutId] = layoutProjection(projection, visualNodeById, visualEdgeById);
+    bandLayoutById[layoutId] = layoutProjection(projection, visualNodeById, visualEdgeById, options.maxGridNodes);
   }
 
   const index: ProjectionIndex = {

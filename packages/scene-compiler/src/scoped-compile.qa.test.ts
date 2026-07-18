@@ -90,3 +90,16 @@ test("default path is byte-identical and carries no omittedEdgeIds", () => {
   const unbounded = buildC4ProjectionBundle(snapshot, { ...rootFocus, maxEdgesPerBand: 100000 });
   assert.equal(JSON.stringify(unbounded), JSON.stringify(first), "over-budget == default (opt-in never changes small graphs)");
 });
+
+test("maxGridNodes cap degrades gracefully (never throws) and stays deterministic; default byte-identical", () => {
+  const snapshot = denseSnapshot(40);
+  // A tiny grid budget must NOT throw — edges that can't route obstacle-safe fall back to a direct L.
+  const compileTight = () => compileC4Scene(snapshot, buildC4ProjectionBundle(snapshot, { ...rootFocus, maxEdgesPerBand: 30, maxGridNodes: 64 }), { maxGridNodes: 64 }).scene;
+  const first = compileTight();
+  assert.ok(first.paths.length > 0, "compiles under a tight grid budget");
+  assert.equal(JSON.stringify(first), JSON.stringify(compileTight()), "deterministic under a grid cap");
+  // default (no maxGridNodes) equals the explicit 20000 default — opt-in never changes the default path.
+  const dflt = compileC4Scene(snapshot, buildC4ProjectionBundle(snapshot, rootFocus)).scene;
+  const explicit = compileC4Scene(snapshot, buildC4ProjectionBundle(snapshot, { ...rootFocus, maxGridNodes: 20_000 }), { maxGridNodes: 20_000 }).scene;
+  assert.equal(JSON.stringify(dflt), JSON.stringify(explicit), "default == maxGridNodes 20000 (byte-identical)");
+});

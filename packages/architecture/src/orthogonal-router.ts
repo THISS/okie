@@ -7,7 +7,7 @@ export type OrthogonalObstacle = {
   bounds: NodeLayout;
 };
 
-export type OrthogonalRouteDiagnostic = 'grid' | 'exterior-corridor';
+export type OrthogonalRouteDiagnostic = 'grid' | 'exterior-corridor' | 'direct-fallback';
 
 export type OrthogonalRouteResult = {
   points: Point[];
@@ -464,7 +464,20 @@ export function routeOrthogonal(options: OrthogonalRouteOptions): OrthogonalRout
     maxPoints,
   );
   if (exterior) return { points: exterior, diagnostic: 'exterior-corridor', exploredStates };
-  throw new Error(`Unable to find obstacle-safe orthogonal route within ${maxGridNodes} grid nodes`);
+  // Graceful degradation: when a tight grid budget prevents an obstacle-safe route,
+  // emit a deterministic direct L (may cross obstacles) instead of throwing, so a
+  // scoped compile with a capped grid always terminates. At the default budget this
+  // path is unreachable (grid/exterior always succeed), so it never alters output.
+  const sourcePort = sourcePorts[0]!;
+  const targetPort = targetPorts[0]!;
+  const direct = simplifyOrthogonalPoints([
+    sourcePort.endpoint,
+    sourcePort.stub,
+    { x: targetPort.stub.x, y: sourcePort.stub.y },
+    targetPort.stub,
+    targetPort.endpoint,
+  ]);
+  return { points: direct, diagnostic: 'direct-fallback', exploredStates };
 }
 
 /**
