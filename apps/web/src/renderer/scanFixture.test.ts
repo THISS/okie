@@ -28,6 +28,13 @@ describe('scan fixture loader', () => {
     const refocused = fixture.createScene(scene.entities[1]!.id, scene);
     expect(refocused.id).toBe(scene.id);
     expect(refocused.entities).toHaveLength(demoSnapshot.entities.length);
+
+    // Below the size gate the anti-hang guard is a provable no-op: an Okie-sized
+    // scan compile is never refused, and the derived-flow scope stays unbounded.
+    expect(fixture.createScene(fixture.navigation.rootEntityId).scanGuardRefusal).toBeUndefined();
+    expect(refocused.scanGuardRefusal).toBeUndefined();
+    expect(fixture.scopeCompileOptions(fixture.navigation.rootEntityId)).toEqual({});
+    expect(fixture.scopeCompileOptions(scene.entities[1]!.id)).toEqual({});
   });
 
   it('throws ScanFixtureError listing issues for an invalid snapshot', () => {

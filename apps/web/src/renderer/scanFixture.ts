@@ -10,7 +10,7 @@ import {
   type ValidationIssue,
 } from '@okie/architecture';
 import { compileAppStoryPlan, createC4Scene, type AppStoryPlan } from './goldenC4Scene';
-import type { AtlasScene } from './types';
+import type { AtlasScene, ScanGuardRefusal } from './types';
 
 // Scan-mode scoped-compile levers (documented; Okie's scan sits under the size
 // gate, so scanScopeCompileOptions returns {} → identical to an unbounded compile).
@@ -50,6 +50,110 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
   return scoped ? { ...scoped } : {};
 }
 
+/**
+ * True when these options bound the routed node set for ANY repo size — so the
+ * compile can never route the whole graph. A router-grid cap bounds the layout
+ * outright; without one, only the shallow bands (context/container) hold a
+ * bounded node set (deeper component/code bands can pull in the entire tree, so
+ * they must carry a grid cap). This is the property the guard requires above the
+ * gate; it is intentionally independent of the compile respecting the options, so
+ * a stale (pre-scoping) package build cannot make it lie.
+ */
+function optionsBoundRouting(options: ScanScopedOptions): boolean {
+  if (options.maxGridNodes !== undefined) return true;
+  return options.maxBand === 'context' || options.maxBand === 'container';
+}
+
+/**
+ * Cheap, deterministic size of a focus scope WITHOUT compiling: the entities that
+ * are descendant-or-self of the focus (the set a full-depth `code`-band compile
+ * routes), plus the relations that touch them. O(entities + relations). Used by
+ * the guard to decide whether an unbounded compile is safe. Returns zeros for an
+ * unknown focus (the compile itself will reject it — never a hang).
+ */
+export function scanScopeStats(
+  snapshot: ArchitectureSnapshot,
+  focusEntityId: string,
+): { entityCount: number; relationCount: number } {
+  if (!snapshot.entities.some(entity => entity.id === focusEntityId)) {
+    return { entityCount: 0, relationCount: 0 };
+  }
+  const childrenByParent = new Map<string, string[]>();
+  for (const entity of snapshot.entities) {
+    if (entity.parentId === undefined) continue;
+    const siblings = childrenByParent.get(entity.parentId);
+    if (siblings) siblings.push(entity.id);
+    else childrenByParent.set(entity.parentId, [entity.id]);
+  }
+  const inScope = new Set<string>();
+  const stack = [focusEntityId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (inScope.has(id)) continue;
+    inScope.add(id);
+    for (const child of childrenByParent.get(id) ?? []) stack.push(child);
+  }
+  let relationCount = 0;
+  for (const relation of snapshot.relations) {
+    if (inScope.has(relation.from) || inScope.has(relation.to)) relationCount += 1;
+  }
+  return { entityCount: inScope.size, relationCount };
+}
+
+export type ScanGuardDecision = {
+  /** The focus that will actually be compiled — the fallback when refused. */
+  focusEntityId: string;
+  /** Scoped-compile options for `focusEntityId` (always bounded when refused). */
+  options: ScanScopedOptions;
+  /** Present only when the requested focus was refused. */
+  refusal?: ScanGuardRefusal;
+};
+
+/**
+ * The hard anti-hang guard for scan-mode compiles, and the single choke point all
+ * scan compiles pass through. Derives scoped options for the requested focus and,
+ * ABOVE the size gate, refuses any focus whose scope exceeds the gate when no
+ * option bounds the routing (an unbounded full-graph compile — the deep-link hang
+ * vector, and the failure mode a stale package build reintroduces on every path).
+ * On refusal it substitutes the scoped fallback focus (the view root), forcing a
+ * guaranteed-bounded band if even the fallback derives no constraint, so the app
+ * renders a safe scene instead of freezing.
+ *
+ * A provable no-op below the gate: options are always {} there and the gate check
+ * short-circuits before any scope walk, so Okie-sized snapshots are never touched.
+ * Pure — counts entities/relations, never compiles.
+ */
+export function guardScanCompile(
+  snapshot: ArchitectureSnapshot,
+  requestedFocusId: string,
+  fallbackFocusId: string,
+): ScanGuardDecision {
+  const options = scanScopeCompileOptions(snapshot, requestedFocusId);
+  if (snapshot.entities.length <= SCAN_BAND_DEPTH_MIN_ENTITIES) {
+    return { focusEntityId: requestedFocusId, options };
+  }
+  if (optionsBoundRouting(options)) {
+    return { focusEntityId: requestedFocusId, options };
+  }
+  const stats = scanScopeStats(snapshot, requestedFocusId);
+  if (stats.entityCount <= SCAN_BAND_DEPTH_MIN_ENTITIES) {
+    // Unbounded options, but a genuinely small scope (e.g. a `code` leaf) never
+    // explodes — compile it as requested.
+    return { focusEntityId: requestedFocusId, options };
+  }
+  const fallbackOptions = scanScopeCompileOptions(snapshot, fallbackFocusId);
+  return {
+    focusEntityId: fallbackFocusId,
+    options: optionsBoundRouting(fallbackOptions) ? fallbackOptions : { maxBand: 'context' },
+    refusal: {
+      requestedFocusId,
+      entityCount: stats.entityCount,
+      relationCount: stats.relationCount,
+      fallbackFocusId,
+    },
+  };
+}
+
 export type ScanNavigationDefaults = {
   repositoryId: string;
   snapshotId: string;
@@ -62,8 +166,13 @@ export type ScanFixture = {
   snapshot: ArchitectureSnapshot;
   view: ArchitectureView;
   story: AppStoryPlan;
-  /** Recompiles the scan snapshot for a new focus/root (drill-in, restore). */
+  /** Recompiles the scan snapshot for a new focus/root (drill-in, restore).
+   *  Routed through the anti-hang guard, so no path can compile the whole graph. */
   createScene: (focusEntityId: string, previous?: AtlasScene) => AtlasScene;
+  /** Scoped-compile options for a derived (flow/Mermaid) projection of a focus, so
+   *  those direct-`buildC4ProjectionBundle` bypass paths stay scoped too. {} below
+   *  the gate — identical to an unbounded compile for Okie-sized snapshots. */
+  scopeCompileOptions: (focusEntityId: string) => ScanScopedOptions;
   navigation: ScanNavigationDefaults;
 };
 
@@ -127,12 +236,15 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
   }
 
   const createScene = (focusEntityId: string, previous?: AtlasScene): AtlasScene => {
-    const scoped = scanScopeCompileOptions(snapshot, focusEntityId);
-    return createC4Scene({
+    // The guard is the single choke point: it derives the scoped options AND, above
+    // the size gate, swaps a would-hang unbounded focus for the safe fallback focus.
+    const decision = guardScanCompile(snapshot, focusEntityId, view.rootEntityId);
+    const scoped = decision.options;
+    const scene = createC4Scene({
       baseSnapshot: snapshot,
       rootEntityId: view.rootEntityId,
-      focusEntityId,
-      familyId: `view-family:${snapshot.repositoryId}:${focusEntityId}`,
+      focusEntityId: decision.focusEntityId,
+      familyId: `view-family:${snapshot.repositoryId}:${decision.focusEntityId}`,
       sceneId: `scan:${snapshot.repositoryId}:c4`,
       title: view.name,
       subtitle: `scanned snapshot · ${snapshot.commitSha.slice(0, 12)}`,
@@ -141,6 +253,7 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
       ...scoped,
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
     });
+    return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;
   };
 
   return {
@@ -148,6 +261,7 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
     view,
     story,
     createScene,
+    scopeCompileOptions: (focusEntityId: string) => scanScopeCompileOptions(snapshot, focusEntityId),
     navigation: {
       repositoryId: snapshot.repositoryId,
       snapshotId: snapshot.id,

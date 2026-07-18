@@ -4,7 +4,9 @@ import {
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_EDGE_BUDGET,
   SCAN_CONTAINER_GRID_NODES,
+  guardScanCompile,
   scanScopeCompileOptions,
+  scanScopeStats,
 } from './scanFixture';
 import { resolveOmittedRelations } from './goldenC4Scene';
 
@@ -99,5 +101,103 @@ describe('resolveOmittedRelations — "+N more" enumeration', () => {
 
   it('returns [] when no band carries omittedEdgeIds', () => {
     expect(resolveOmittedRelations(bundleWith([]), snap)).toEqual([]);
+  });
+});
+
+describe('scanScopeStats — cheap in-scope count (no compile)', () => {
+  const snap = snapshot([
+    entity('system:root', 'softwareSystem'),
+    entity('container:c', 'container', 'system:root'),
+    entity('component:x', 'component', 'container:c'),
+    entity('code:a', 'code', 'component:x'),
+    entity('code:b', 'code', 'component:x'),
+  ], [
+    relation('r1', 'code:a', 'code:b'),
+    relation('r2', 'system:root', 'container:c'),
+  ]);
+
+  it('counts descendant-or-self entities and relations touching the scope', () => {
+    expect(scanScopeStats(snap, 'system:root')).toEqual({ entityCount: 5, relationCount: 2 });
+    expect(scanScopeStats(snap, 'component:x')).toEqual({ entityCount: 3, relationCount: 1 });
+    expect(scanScopeStats(snap, 'code:a')).toEqual({ entityCount: 1, relationCount: 1 });
+  });
+
+  it('returns zero for an unknown focus (the compile rejects it — never a hang)', () => {
+    expect(scanScopeStats(snap, 'nope')).toEqual({ entityCount: 0, relationCount: 0 });
+  });
+});
+
+describe('guardScanCompile — anti-hang choke point above the size gate', () => {
+  // Above-gate repo: system → container → component → many code leaves.
+  const aboveGate = snapshot([
+    entity('system:root', 'softwareSystem'),
+    entity('container:c', 'container', 'system:root'),
+    entity('component:x', 'component', 'container:c'),
+    ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
+  ]);
+
+  it('passes a mapped focus through scoped, never refusing it (restored-from-URL root shapes)', () => {
+    // The deep-link restore compiles the URL `root` (e.g. system root while the
+    // restored detail is `code`); the guard keeps that focus, scoped to container.
+    const system = guardScanCompile(aboveGate, 'system:root', 'system:root');
+    expect(system).toEqual({ focusEntityId: 'system:root', options: { maxBand: 'container' } });
+    expect(system.refusal).toBeUndefined();
+
+    // A container drill carries a router-grid cap → bounded → passed through.
+    const container = guardScanCompile(aboveGate, 'container:c', 'system:root');
+    expect(container.focusEntityId).toBe('container:c');
+    expect(container.options.maxGridNodes).toBe(SCAN_CONTAINER_GRID_NODES);
+    expect(container.refusal).toBeUndefined();
+  });
+
+  it('compiles a genuinely small unbounded scope (a code leaf) as requested', () => {
+    const leaf = guardScanCompile(aboveGate, 'code:0', 'system:root');
+    expect(leaf).toEqual({ focusEntityId: 'code:0', options: {} });
+    expect(leaf.refusal).toBeUndefined();
+  });
+
+  it('REFUSES an unbounded above-gate scope and falls back to the scoped view root', () => {
+    // A `code` root with a huge nested subtree derives empty options (unbounded)
+    // yet a whole-graph scope — the deep-link hang vector, and the shape a stale
+    // pre-scoping package build reintroduces on any path.
+    const deepCode = snapshot([
+      entity('system:root', 'softwareSystem'),
+      entity('code:root', 'code', 'system:root'),
+      ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'code:root')),
+    ]);
+    const decision = guardScanCompile(deepCode, 'code:root', 'system:root');
+    expect(decision.focusEntityId).toBe('system:root');
+    expect(decision.options).toEqual({ maxBand: 'container' });
+    expect(decision.refusal).toEqual({
+      requestedFocusId: 'code:root',
+      fallbackFocusId: 'system:root',
+      entityCount: SCAN_BAND_DEPTH_MIN_ENTITIES + 1,
+      relationCount: 0,
+    });
+  });
+
+  it('forces a guaranteed-bounded band when even the fallback derives no constraint', () => {
+    // Degenerate: the view root itself is a `code` node (empty options). The guard
+    // clamps the fallback to the shallowest band so it can never hang either.
+    const rootless = snapshot([
+      entity('code:root', 'code'),
+      ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'code:root')),
+    ]);
+    const decision = guardScanCompile(rootless, 'code:root', 'code:root');
+    expect(decision.options).toEqual({ maxBand: 'context' });
+    expect(decision.refusal?.requestedFocusId).toBe('code:root');
+  });
+
+  it('is a provable no-op below the gate — never refuses, always empty options (Okie)', () => {
+    const small = snapshot([
+      entity('system:root', 'softwareSystem'),
+      entity('code:root', 'code', 'system:root'),
+      ...Array.from({ length: 10 }, (_, index) => entity(`code:${index}`, 'code', 'code:root')),
+    ]);
+    for (const focus of ['system:root', 'code:root', 'code:5']) {
+      const decision = guardScanCompile(small, focus, 'system:root');
+      expect(decision).toEqual({ focusEntityId: focus, options: {} });
+      expect(decision.refusal).toBeUndefined();
+    }
   });
 });

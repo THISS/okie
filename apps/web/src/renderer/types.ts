@@ -85,6 +85,20 @@ export type ScopedCompileInfo = {
   directFallbackCount: number;
 };
 
+/** Set when the scan-mode compile guard refused an unbounded above-gate focus
+ *  (a full-graph compile — the deep-link hang vector) and substituted a safe
+ *  scoped scene. Dev-diagnostics only; absent on every below-gate/normal compile. */
+export type ScanGuardRefusal = {
+  /** The focus the caller asked for (would have compiled the whole graph). */
+  requestedFocusId: string;
+  /** Entities in the requested focus scope (cheaply counted, no compile). */
+  entityCount: number;
+  /** Relations touching the requested focus scope. */
+  relationCount: number;
+  /** The safe focus actually compiled instead (the scoped top scene). */
+  fallbackFocusId: string;
+};
+
 export type AtlasScene = {
   id: string;
   title: string;
@@ -102,6 +116,9 @@ export type AtlasScene = {
   omittedRelations?: OmittedRelation[];
   /** Scan-mode scoped-compile decision, surfaced in the dev diagnostics panel. */
   scopedCompile?: ScopedCompileInfo;
+  /** Present when the scan compile guard refused the requested focus and fell
+   *  back to a safe scene (dev diagnostics only; absent normally). */
+  scanGuardRefusal?: ScanGuardRefusal;
   projection?: {
     /** Compiler projection-family identifier used to scope durable route intent. */
     familyId?: string;

@@ -1427,10 +1427,16 @@ export function App() {
         sourceRefs: scopeEntity.sourceRefs,
       }],
     };
+    // Derived flow/Mermaid projections build the bundle directly (not via the
+    // scan createScene seam), so scope them through the same per-focus options —
+    // {} below the gate (golden unchanged), bounded above it so this bypass path
+    // can never compile the full graph either.
+    const scoped = scanFixture?.scopeCompileOptions(scopeEntityId) ?? {};
     const projections = buildC4ProjectionBundle(activeSnapshot, {
       rootEntityId: activeView.rootEntityId,
       focusEntityId: scopeEntityId,
       familyId: `view-family:dynamic:${scopeEntityId}`,
+      ...scoped,
     });
     return compileC4DynamicFlowArtifact(activeSnapshot, activeView, dynamicStory, projections);
   }, [activeDiagramDetail, activeDerivedScopeId, activeDiagramSurface.kind, query.fixture]);
@@ -3983,6 +3989,7 @@ export function App() {
               {(diagnostics.deferredTextPrimitives !== undefined || diagnostics.deferredIconPrimitives !== undefined) && <div><dt>Deferred text / icons</dt><dd>{(diagnostics.deferredTextPrimitives ?? 0).toLocaleString()} / {(diagnostics.deferredIconPrimitives ?? 0).toLocaleString()}</dd></div>}
               <div><dt>Fixture / seed</dt><dd>{query.fixture} / {query.seed}</dd></div>
               {scene.scopedCompile && <div><dt>Scoped compile</dt><dd>bands→{scene.scopedCompile.maxBand ?? 'code'} · {scene.scopedCompile.entityCount.toLocaleString()} entities &gt; {scene.scopedCompile.bandDepthThreshold.toLocaleString()} threshold{scene.scopedCompile.maxEdgesPerBand ? ` · ≤${scene.scopedCompile.maxEdgesPerBand} edges/band` : ''}{scene.scopedCompile.maxGridNodes ? ` · grid ${scene.scopedCompile.maxGridNodes.toLocaleString()}` : ''}{scene.scopedCompile.directFallbackCount ? ` · ${scene.scopedCompile.directFallbackCount} direct-fallback` : ''}</dd></div>}
+              {scene.scanGuardRefusal && <div><dt>Scan guard</dt><dd>unscoped compile of {scene.scanGuardRefusal.requestedFocusId} refused ({scene.scanGuardRefusal.entityCount.toLocaleString()} entities · {scene.scanGuardRefusal.relationCount.toLocaleString()} relations) → fell back to {scene.scanGuardRefusal.fallbackFocusId}</dd></div>}
             </dl>
             <p>{diagnostics.message}</p>
             {query.warnings.map(warning => <p className="diagnostic-warning" key={warning}>{warning}</p>)}
