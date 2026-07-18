@@ -18,6 +18,8 @@ Read those first. Every recommendation below is tied to a current file or symbol
 3. [`mcp-surface.md`](./mcp-surface.md) — expose the structured data to agents over one shared query layer.
 4. [`deferred-refactors.md`](./deferred-refactors.md) — maintainability work intentionally deferred out of the agent-friendly refactor, with each precondition.
 
+Operational / distribution layer (how scans run and reach users): [`scan-runner.md`](./scan-runner.md) — source access, checkout, refresh cadence; [`embed-hosting.md`](./embed-hosting.md) — hosting the atlases and the docs-site embed growth loop.
+
 ## Status: today vs proposed
 
 | Capability | Today (file · symbol) | Gap | Doc |
@@ -37,6 +39,8 @@ Read those first. Every recommendation below is tied to a current file or symbol
 | Normalized store | `architecture/normalized.ts` · 14 tables, in-memory | persistence; cross-snapshot reference rules | schema + mcp |
 | Query layer | `normalized.ts` · `selectArchitectureSnapshot/View`, `selectScopedView`; `scene-compiler` · `serializeDynamicFlowMermaid` | not exposed to agents | mcp |
 | MCP server | — | read resources + extraction-submission write | mcp |
+| GitHub acquisition + multi-repo serving | `packages/scan` · `scanGithubRepository`, `discoverExtractedTree`, `manifest.ts`; `apps/web` · `?fixture=scan:<slug>` | webhook/cron freshness; diff-scoped incremental | scan-runner (R3) |
+| Embed / hosting | `apps/web` static `vite build`; `scanFixture.ts` per-repo trios (build-time `import.meta.glob`) | runtime-fetch loader, `/r/*` + `/embed` routes, object-store hosting, commit-pinned caching | embed-hosting |
 | Ingestion golden tests | renderer/compiler golden tests only | the `ingestion-golden-tests.md` matrix is unimplemented | scraper |
 
 ## Non-goals (unchanged from `renderer.md`)
