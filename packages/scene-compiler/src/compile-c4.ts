@@ -537,6 +537,71 @@ function expectedChildKind(owner: ArchitectureEntity, child: ArchitectureEntity)
 }
 
 /**
+ * Context-peer flanking geometry (task #35). Persons/externalSystems sit in columns to the
+ * LEFT and RIGHT of the system rectangle, deriving their x from the system's ACTUAL settled
+ * bounds (never a stage-1 width guess) plus a fixed clearance — so an aspect-packed system
+ * that settles much wider than the stage-1 layout assumed can no longer grow into them.
+ */
+const CONTEXT_PEER_LAYOUT = Object.freeze({
+  systemClearance: 260, // world-unit gap between a system edge and the nearest peer column
+  columnGap: 80,        // gap between stacked peer columns on one side
+  rowGap: 70,           // gap between peer rows (matches the stage-1 context row pitch)
+});
+
+export type ContextPeerItem = { id: string; width: number; height: number };
+
+/**
+ * Places context peers (persons/externalSystems) in balanced left/right columns around the
+ * settled system rectangle. Deterministic (canonical id order in, alternating left/right), and
+ * collision-free BY CONSTRUCTION: every peer clears the system by `systemClearance`, rows are
+ * spaced by `rowGap`, and columns by `columnGap`. Each flank is kept about as tall as the system
+ * and wraps into additional OUTWARD columns as the peer count grows, so ~12+ peers stay laid out
+ * beside the system instead of stacking off-screen. Returns entity-id → bounds; the caller folds
+ * it into the canonical map so every band inherits the same peer geometry. Exported for direct
+ * geometric testing (like measureC4Grid) — the wide-system case is hard to force through the
+ * full intrinsic-packing pipeline but is the exact contract this must uphold.
+ */
+export function layoutContextPeersAroundSystem(
+  system: NodeLayout,
+  peers: readonly ContextPeerItem[],
+): Map<string, NodeLayout> {
+  const placed = new Map<string, NodeLayout>();
+  if (!peers.length) return placed;
+  const { systemClearance, columnGap, rowGap } = CONTEXT_PEER_LAYOUT;
+  const systemCenterY = system.y + system.height / 2;
+  // Sort by id so the placement is order-independent (like measureC4Grid): a shuffled peer
+  // list yields byte-identical geometry, which is what keeps a shared/restored scene stable.
+  const ordered = [...peers].sort((left, right) => left.id.localeCompare(right.id));
+  const left: ContextPeerItem[] = [];
+  const right: ContextPeerItem[] = [];
+  ordered.forEach((peer, index) => (index % 2 === 0 ? left : right).push(peer));
+
+  const placeSide = (side: readonly ContextPeerItem[], isLeft: boolean): void => {
+    if (!side.length) return;
+    const columnWidth = side.reduce((max, peer) => Math.max(max, peer.width), 0);
+    const rowHeight = side.reduce((max, peer) => Math.max(max, peer.height), 0);
+    // Keep each flank about as tall as the system, then wrap the overflow into outward columns.
+    const maxRows = Math.max(1, Math.round(system.height / (rowHeight + rowGap)));
+    const columns = Math.max(1, Math.ceil(side.length / maxRows));
+    const rowsPerColumn = Math.ceil(side.length / columns);
+    side.forEach((peer, index) => {
+      const column = Math.floor(index / rowsPerColumn);
+      const row = index % rowsPerColumn;
+      const rowsInColumn = Math.min(rowsPerColumn, side.length - column * rowsPerColumn);
+      const stackHeight = rowsInColumn * rowHeight + (rowsInColumn - 1) * rowGap;
+      const y = systemCenterY - stackHeight / 2 + row * (rowHeight + rowGap);
+      const x = isLeft
+        ? system.x - systemClearance - (column + 1) * columnWidth - column * columnGap
+        : system.x + system.width + systemClearance + column * (columnWidth + columnGap);
+      placed.set(peer.id, { x, y, width: peer.width, height: peer.height });
+    });
+  };
+  placeSide(left, true);
+  placeSide(right, false);
+  return placed;
+}
+
+/**
  * Grows the squeeze-normalized hierarchy from its leaves upward, then reflows
  * every direct-child grid inside the resulting persistent owner shells.
  */
@@ -642,6 +707,30 @@ function applyIntrinsicOwnerGeometry(
     });
   };
   placeChildren(root);
+
+  // Context peers (persons/externalSystems) are siblings of the system, not descendants, so
+  // placeChildren never touches them — they keep the stage-1 columns that assumed a stage-1
+  // system width. Under aspect packing the system settles much wider, so re-derive the peer
+  // columns from the system's ACTUAL settled bounds. Opt-in via targetAspect: the golden/demo
+  // path keeps the stage-1 layoutProjection placement byte-identical.
+  if (targetAspect !== undefined) {
+    const systemBounds = canonical.get(root.id);
+    if (systemBounds) {
+      const peers = snapshot.entities
+        .filter(entity => (entity.kind === 'person' || entity.kind === 'externalSystem') && entity.id !== root.id)
+        .map(entity => {
+          const size = boundsFor(entity);
+          return size && bundle.index.visualNodeIdsByEntityId[entity.id]?.[0]
+            ? { id: entity.id, width: size.width, height: size.height }
+            : undefined;
+        })
+        .filter((value): value is ContextPeerItem => value !== undefined)
+        .sort((left, right) => left.id.localeCompare(right.id));
+      for (const [entityId, bounds] of layoutContextPeersAroundSystem(systemBounds, peers)) {
+        canonical.set(entityId, bounds);
+      }
+    }
+  }
 
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
