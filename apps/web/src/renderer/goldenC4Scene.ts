@@ -333,6 +333,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     frozenRevision: options.frozenRevision,
     ...(omittedRelations.length ? { omittedRelations } : {}),
     ...(scopedCompile ? { scopedCompile } : {}),
+    ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
     entities,
     relations: snapshot.relations.map(relation => ({
       id: relation.id,

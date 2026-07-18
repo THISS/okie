@@ -126,6 +126,10 @@ export type AtlasScene = {
   omittedRelations?: OmittedRelation[];
   /** Scan-mode scoped-compile decision, surfaced in the dev diagnostics panel. */
   scopedCompile?: ScopedCompileInfo;
+  /** Aspect-preset target the scene was compiled with (scan mode, tasks #30/#33). Present
+   *  ⇒ coverage-based reveal is active, so explicit framings land the focus at its
+   *  children's reveal coverage instead of the band floor. Absent for demo/golden. */
+  targetAspect?: number;
   /** Present when the scan compile guard refused the requested focus and fell
    *  back to a safe scene (dev diagnostics only; absent normally). */
   scanGuardRefusal?: ScanGuardRefusal;

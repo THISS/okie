@@ -1,4 +1,6 @@
+import { COVERAGE_REVEAL } from '@okie/scene-compiler';
 import {
+  ATLAS_CAMERA_BOUNDS,
   ATLAS_SEMANTIC_ZOOM_BANDS,
   semanticDominantZoomIntervals,
   semanticFocusZooms,
@@ -151,6 +153,22 @@ export function projectionScopeEntityIds(scene: AtlasScene, rootEntityId: string
   return [...scoped].sort();
 }
 
+/**
+ * Zoom at which `bounds` covers COVERAGE_REVEAL.full of the safe viewport — the landing
+ * that shows a focus's coverage-revealed children on arrival (tasks #30/#33). Clamped to
+ * the camera envelope. Pure; uses the real safe viewport so the framing is exact on screen.
+ */
+function coverageRevealLandingZoom(
+  bounds: { width: number; height: number },
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): number {
+  const safeWidth = Math.max(80, viewport.width - safeArea.left - safeArea.right);
+  const safeHeight = Math.max(80, viewport.height - safeArea.top - safeArea.bottom);
+  const fill = Math.min(safeWidth / Math.max(1, bounds.width), safeHeight / Math.max(1, bounds.height));
+  return Math.max(ATLAS_CAMERA_BOUNDS.minZoom, Math.min(ATLAS_CAMERA_BOUNDS.maxZoom, COVERAGE_REVEAL.full * fill));
+}
+
 export function frameProjectionScope(
   scene: AtlasScene,
   rootEntityId: string,
@@ -169,18 +187,28 @@ export function frameProjectionScope(
   const level = semanticDetails.indexOf(detail);
   const interval = bandDominantIntervals[Math.max(0, level)]!;
   const activeBand = ATLAS_SEMANTIC_ZOOM_BANDS[Math.max(0, level)]!;
-  const ownershipFloor = forceBandOwnership && level > 0
+  const rootBounds = scene.projection?.boundsByEntityIdAndDetail[rootEntityId]?.[detail];
+  // Coverage-reveal landing (scan mode only): frame the focus at COVERAGE_REVEAL.full
+  // coverage so its coverage-revealed children are visible on arrival, instead of clamping
+  // up to the band floor (which overframes a large scope and hides its interior). Demo/golden
+  // (no targetAspect) keep the band-floor landing → byte-identical, bandPolicy.qa unchanged.
+  const coverageLanding = scene.targetAspect !== undefined && rootBounds
+    ? coverageRevealLandingZoom(rootBounds, viewport, safeArea)
+    : undefined;
+  const ownershipFloor = coverageLanding ?? (forceBandOwnership && level > 0
     ? activeBand.enterZoom + activeBand.hysteresis + 0.001
-    : interval.min;
+    : interval.min);
   const fitted = frameEntities({ ...scene, entities }, ids, viewport, safeArea, {
     screenPadding: 24,
     minZoom: ownershipFloor,
     maxZoom: interval.max,
   });
   if (!fitted || !preferReadableRoot) return fitted;
-  const rootBounds = scene.projection?.boundsByEntityIdAndDetail[rootEntityId]?.[detail];
   if (!rootBounds) return fitted;
-  const focusZoom = scene.projection?.zoomPolicy?.bands.find(band => band.detail === detail)?.focusZoom
+  // The rail's readable-root target is the reveal-coverage zoom in scan mode (frame the focus
+  // at its children's reveal coverage), else the band focus preset (unchanged for the demo).
+  const focusZoom = coverageLanding
+    ?? scene.projection?.zoomPolicy?.bands.find(band => band.detail === detail)?.focusZoom
     ?? levels[Math.max(0, level)]!.zoom;
   return readableRootCamera(fitted, rootBounds, focusZoom, viewport, safeArea);
 }
