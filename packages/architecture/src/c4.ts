@@ -53,6 +53,9 @@ export type BandProjection = {
   visualNodeIds: string[];
   visualEdgeIds: string[];
   contextNodeIds: string[];
+  /** Present only under an edge budget: visual edges kept out of routing but still
+   *  enumerable via the bundle index (the "+N more" set). */
+  omittedEdgeIds?: string[];
   layoutId: string;
 };
 
@@ -137,6 +140,20 @@ export type BuildC4ProjectionOptions = {
   zoomPolicyId?: string;
   /** User-owned relations may connect any two nodes already visible in-band. */
   authoredRelationIds?: readonly RelationId[];
+  /**
+   * Deepest band to populate (opt-in scoped compile). Bands deeper than this are
+   * left empty so a large-repo top scene compiles without routing every component/code
+   * edge; the app re-compiles a deeper focus on drill-in. Default: all bands.
+   */
+  maxBand?: C4Band;
+  /**
+   * Routed-edge budget per band (opt-in). When a band has more visual edges than this,
+   * only the top-N by (aggregate count desc, id asc) are routed; the remainder are
+   * recorded on `BandProjection.omittedEdgeIds` (their VisualEdge records — and thus
+   * relation ids/evidence — stay in the bundle index for `+N more` enumeration).
+   * Default: unbounded (byte-identical).
+   */
+  maxEdgesPerBand?: number;
 };
 
 /**
@@ -697,6 +714,18 @@ export function buildC4ProjectionBundle(
   for (const band of C4_BANDS) {
     const rank = bandRank[band];
     const projectionId = projectionIds[band];
+    if (options.maxBand !== undefined && bandRank[band] > bandRank[options.maxBand]) {
+      // Scoped compile: leave deeper bands empty so the top scene never routes them.
+      const emptyLayoutId = `band-layout:${projectionId}:v2-font-metrics-label-policy`;
+      const emptyProjection: BandProjection = {
+        id: projectionId, familyId, snapshotId: snapshot.id, band,
+        rootEntity: entityRef(snapshot, root), focusEntity: entityRef(snapshot, focus),
+        visualNodeIds: [], visualEdgeIds: [], contextNodeIds: [], layoutId: emptyLayoutId,
+      };
+      projectionById[projectionId] = emptyProjection;
+      bandLayoutById[emptyLayoutId] = layoutProjection(emptyProjection, visualNodeById, visualEdgeById);
+      continue;
+    }
     const includedEntities = new Map<string, ArchitectureEntity>();
     const focusAncestors = new Set(ancestors(focus.id, entityById).map(entity => entity.id));
     for (const entity of snapshot.entities) {
@@ -795,6 +824,17 @@ export function buildC4ProjectionBundle(
       };
       return id;
     });
+    // Edge budget (opt-in): route only the top-N edges by (aggregate count desc, id asc);
+    // the rest stay enumerable via omittedEdgeIds + the bundle index ("+N more").
+    let routedEdgeIds = visualEdgeIds;
+    let omittedEdgeIds: string[] = [];
+    if (options.maxEdgesPerBand !== undefined && visualEdgeIds.length > options.maxEdgesPerBand) {
+      const ranked = [...visualEdgeIds].sort((left, right) =>
+        visualEdgeById[right]!.aggregate.count - visualEdgeById[left]!.aggregate.count || left.localeCompare(right));
+      const kept = new Set(ranked.slice(0, options.maxEdgesPerBand));
+      routedEdgeIds = visualEdgeIds.filter(id => kept.has(id));
+      omittedEdgeIds = visualEdgeIds.filter(id => !kept.has(id));
+    }
     const layoutId = `band-layout:${projectionId}:v2-font-metrics-label-policy`;
     const projection: BandProjection = {
       id: projectionId,
@@ -804,11 +844,12 @@ export function buildC4ProjectionBundle(
       rootEntity: entityRef(snapshot, root),
       focusEntity: entityRef(snapshot, focus),
       visualNodeIds,
-      visualEdgeIds,
+      visualEdgeIds: routedEdgeIds,
       contextNodeIds: visualNodeIds.filter(id => {
         const entityId = visualNodeById[id]!.entity.logicalId;
         return !isDescendantOrSelf(entityId, focus.id, entityById) && !focusAncestors.has(entityId);
       }),
+      ...(omittedEdgeIds.length ? { omittedEdgeIds } : {}),
       layoutId,
     };
     projectionById[projectionId] = projection;

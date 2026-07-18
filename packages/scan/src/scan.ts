@@ -153,8 +153,15 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     throw new Error(`Scanned story failed validation:\n${storyIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
   }
 
+  // scene.json is a debug artifact — the app compiles per-focus live. A big snapshot's
+  // full-graph compile would not terminate (edge routing is superlinear in edges), so
+  // above a deterministic relation threshold we bound it to the container-band top scene
+  // with an edge budget. Okie (well below the threshold) stays a full, byte-identical scene.
+  const SCENE_RELATION_BUDGET = 400;
   const familyId = typedId("view-family", repositorySlug, "system-root");
-  const bundle = buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId });
+  const bundle = snapshot.relations.length > SCENE_RELATION_BUDGET
+    ? buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId, maxBand: "container", maxEdgesPerBand: 64 })
+    : buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId });
   const compiled = compileC4Scene(snapshot, bundle);
   const timeline = compileC4Timeline(snapshot, story, compiled);
 
