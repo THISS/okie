@@ -239,6 +239,17 @@ export type C4GridMeasurement = {
 };
 
 /**
+ * O2 owner-aspect safety clamp (task #37): the most extreme width/height ratio a single owner may
+ * pack to under an aspect target, in EITHER orientation (an owner is kept within [1/cap, cap]).
+ * A sparse owner (few children → coarse achievable ratios) could otherwise pack pathologically
+ * wide/tall and over-widen the world. Chosen just beyond the 1.6 landscape / 0.625 portrait
+ * presets so it is a BACKSTOP, not the primary shaper — context-peer hugging (O1) does the bulk
+ * of the world-aspect work; on Okie's own scan this cap changes a single owner. Only consulted on
+ * the targetAspect path, so the default/golden packing is byte-identical.
+ */
+export const MAX_OWNER_ASPECT = 2.2;
+
+/**
  * Deterministic column count for a compact grid. Default (no `targetAspect`) is the
  * historical `min(maxColumns, ceil(sqrt(n)))`. With a `targetAspect`, seeds the
  * closed-form column count that hits the target width/height ratio, then refines ±1
@@ -246,6 +257,8 @@ export type C4GridMeasurement = {
  * the log-closest to the target — landscape and portrait are treated symmetrically,
  * ties break to the smaller column count. Order-independent: the representative cell
  * uses the max item width/height, mirroring how `measureC4Grid` sizes columns/rows.
+ * Finally, {@link MAX_OWNER_ASPECT} clamps the result so no owner packs more extreme than
+ * the cap when a within-cap column count exists (a scan-mode backstop; golden never reaches it).
  */
 export function chooseColumns(items: readonly C4GridItem[], metrics: C4GridMetrics): number {
   const n = items.length;
@@ -284,6 +297,27 @@ export function chooseColumns(items: readonly C4GridItem[], metrics: C4GridMetri
       best = columns;
       bestScore = score;
     }
+  }
+  // O2 backstop (task #37): if the target-closest choice still lands outside [1/cap, cap]
+  // (coarse achievable ratios for a small owner), fall back to the within-cap column count
+  // closest to the target. Full 1..n scan only on this rare path; the common in-cap case
+  // returns `best` unchanged, so the pinned column counts (c4-aspect.test) are untouched.
+  const withinCap = (columns: number): boolean => {
+    const aspect = aspectFor(columns);
+    return aspect <= MAX_OWNER_ASPECT && aspect >= 1 / MAX_OWNER_ASPECT;
+  };
+  if (!withinCap(best)) {
+    let capped: number | undefined;
+    let cappedScore = Number.POSITIVE_INFINITY;
+    for (let columns = 1; columns <= n; columns += 1) {
+      if (!withinCap(columns)) continue;
+      const score = Math.abs(Math.log(aspectFor(columns)) - Math.log(target));
+      if (score < cappedScore) {
+        capped = columns;
+        cappedScore = score;
+      }
+    }
+    if (capped !== undefined) return capped;
   }
   return best;
 }

@@ -543,9 +543,18 @@ function expectedChildKind(owner: ArchitectureEntity, child: ArchitectureEntity)
  * that settles much wider than the stage-1 layout assumed can no longer grow into them.
  */
 const CONTEXT_PEER_LAYOUT = Object.freeze({
-  systemClearance: 260, // world-unit gap between a system edge and the nearest peer column
+  // Peers must HUG the system so context (L1) does not blow the world aspect wide (task #37 O1):
+  // clearance is the tightest gap that still keeps a real >100u margin (context-peers.qa) between
+  // an aspect-packed system and its nearest peer. Was 260 (which, with outward column wrapping,
+  // flung the okie scan's peers ~1300u per side → a ~5:1 world). See stackHeightBudget below.
+  systemClearance: 120, // world-unit gap between a system edge and the nearest peer column
   columnGap: 80,        // gap between stacked peer columns on one side
   rowGap: 70,           // gap between peer rows (matches the stage-1 context row pitch)
+  // A single peer column may stack up to this multiple of the system height before wrapping into
+  // an OUTWARD column. >1 so a short/wide (landscape) system keeps its few peers in ONE narrow
+  // column per side instead of fanning out horizontally — width, not height, is what over-widens
+  // the scan world, and a taller peer stack actually pulls the world aspect back toward square.
+  stackHeightBudget: 2,
 });
 
 export type ContextPeerItem = { id: string; width: number; height: number };
@@ -554,9 +563,10 @@ export type ContextPeerItem = { id: string; width: number; height: number };
  * Places context peers (persons/externalSystems) in balanced left/right columns around the
  * settled system rectangle. Deterministic (canonical id order in, alternating left/right), and
  * collision-free BY CONSTRUCTION: every peer clears the system by `systemClearance`, rows are
- * spaced by `rowGap`, and columns by `columnGap`. Each flank is kept about as tall as the system
- * and wraps into additional OUTWARD columns as the peer count grows, so ~12+ peers stay laid out
- * beside the system instead of stacking off-screen. Returns entity-id → bounds; the caller folds
+ * spaced by `rowGap`, and columns by `columnGap`. Each flank hugs the system in as FEW columns as
+ * possible (one column until a stack would exceed `stackHeightBudget`× the system height), then
+ * wraps into additional OUTWARD columns, so a large peer count stays beside the system without
+ * fanning the world wide. Returns entity-id → bounds; the caller folds
  * it into the canonical map so every band inherits the same peer geometry. Exported for direct
  * geometric testing (like measureC4Grid) — the wide-system case is hard to force through the
  * full intrinsic-packing pipeline but is the exact contract this must uphold.
@@ -567,7 +577,7 @@ export function layoutContextPeersAroundSystem(
 ): Map<string, NodeLayout> {
   const placed = new Map<string, NodeLayout>();
   if (!peers.length) return placed;
-  const { systemClearance, columnGap, rowGap } = CONTEXT_PEER_LAYOUT;
+  const { systemClearance, columnGap, rowGap, stackHeightBudget } = CONTEXT_PEER_LAYOUT;
   const systemCenterY = system.y + system.height / 2;
   // Sort by id so the placement is order-independent (like measureC4Grid): a shuffled peer
   // list yields byte-identical geometry, which is what keeps a shared/restored scene stable.
@@ -580,8 +590,10 @@ export function layoutContextPeersAroundSystem(
     if (!side.length) return;
     const columnWidth = side.reduce((max, peer) => Math.max(max, peer.width), 0);
     const rowHeight = side.reduce((max, peer) => Math.max(max, peer.height), 0);
-    // Keep each flank about as tall as the system, then wrap the overflow into outward columns.
-    const maxRows = Math.max(1, Math.round(system.height / (rowHeight + rowGap)));
+    // Prefer the FEWEST columns (peers hug the system) while capping each column's stack at
+    // `stackHeightBudget`× the system height. A short/wide landscape system therefore keeps its
+    // peers in one narrow column per side instead of fanning outward and over-widening the world.
+    const maxRows = Math.max(1, Math.floor((system.height * stackHeightBudget + rowGap) / (rowHeight + rowGap)));
     const columns = Math.max(1, Math.ceil(side.length / maxRows));
     const rowsPerColumn = Math.ceil(side.length / columns);
     side.forEach((peer, index) => {

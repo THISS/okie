@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   ASPECT_PRESET_TARGET,
   chooseColumns,
+  MAX_OWNER_ASPECT,
   measureC4Grid,
   type C4GridItem,
   type C4GridMetrics,
@@ -79,6 +80,29 @@ test('heterogeneous cell sizes use the max cell and stay order-independent', () 
   ];
   const target = ASPECT_PRESET_TARGET.landscape;
   assert.equal(chooseColumns(mixed, metrics(target)), chooseColumns([...mixed].reverse(), metrics(target)));
+});
+
+test('O2 backstop: an owner never packs more extreme than MAX_OWNER_ASPECT (task #37)', () => {
+  // The cap is a documented constant, deliberately beyond the landscape/portrait presets.
+  assert.equal(MAX_OWNER_ASPECT, 2.2);
+  // An absurd target would otherwise pack a small owner far too wide; the clamp pulls the
+  // measured box back inside [1/cap, cap] whenever a within-cap column count exists.
+  const extremeTarget = 5;
+  for (const n of [2, 3, 4, 5, 8, 13]) {
+    const grid = measureC4Grid(items(n), metrics(extremeTarget));
+    const aspect = grid.width / grid.height;
+    assert.ok(
+      aspect <= MAX_OWNER_ASPECT + 1e-9 && aspect >= 1 / MAX_OWNER_ASPECT - 1e-9,
+      `n=${n}: aspect ${aspect.toFixed(3)} must be clamped within [${(1 / MAX_OWNER_ASPECT).toFixed(3)}, ${MAX_OWNER_ASPECT}]`,
+    );
+  }
+});
+
+test('O2 clamp is inert within the presets — pinned landscape counts are unchanged', () => {
+  // 1.6 < cap, so the target-closest choice is already within band and the clamp never fires:
+  // the exact column counts pinned above must survive the clamp untouched.
+  assert.equal(chooseColumns(items(50), metrics(ASPECT_PRESET_TARGET.landscape)), 7);
+  assert.equal(chooseColumns(items(139), metrics(ASPECT_PRESET_TARGET.landscape)), 11);
 });
 
 test('presets are frozen and ordered landscape > square > portrait', () => {
