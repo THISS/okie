@@ -93,7 +93,6 @@ import {
   type SemanticLensSession,
   type SemanticLensState,
 } from './semantic/semanticLens';
-import type { SemanticLensAssist } from './semantic/semanticLensAssist';
 import { defaultSearchSuggestions } from './searchSuggestions';
 import { shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
@@ -1303,7 +1302,6 @@ export function App() {
   });
   const semanticLensSessionRef = useRef(semanticLensSession);
   semanticLensSessionRef.current = semanticLensSession;
-  const semanticLensAssistRef = useRef<SemanticLensAssist | undefined>(undefined);
   const semanticFocusTransferRafRef = useRef<number | undefined>(undefined);
   const semanticMorphStateRef = useRef<SemanticLensState | undefined>(undefined);
   const semanticMorphBaselineRef = useRef(0);
@@ -1733,9 +1731,7 @@ export function App() {
   }
 
   function installSemanticSession(session: SemanticLensSession) {
-    semanticLensSessionRef.current = session;
-    semanticLensAssistRef.current = undefined;
-    semanticMorphStateRef.current = undefined;
+    semanticLensSessionRef.current = session;    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
     setSemanticLensSession(session);
   }
@@ -2200,9 +2196,7 @@ export function App() {
     const current = semanticLensSessionRef.current;
     if (current.active.phase === 'idle' && current.settled.length === 0) return;
     const idle = idleSemanticLensSession(current.baseDetail);
-    semanticLensSessionRef.current = idle;
-    semanticLensAssistRef.current = undefined;
-    setSemanticLensSession(idle);
+    semanticLensSessionRef.current = idle;    setSemanticLensSession(idle);
     updateCamera(reachedCamera);
     const next = canonicalNavigationState({
       ...navigationRef.current,
@@ -2245,9 +2239,7 @@ export function App() {
       160,
     );
     const nextSession = plan.session;
-    semanticLensSessionRef.current = nextSession;
-    semanticLensAssistRef.current = undefined;
-    setSemanticLensSession(nextSession);
+    semanticLensSessionRef.current = nextSession;    setSemanticLensSession(nextSession);
     const lensPath = semanticLensCanonicalPathIds(nextSession);
     const next = canonicalNavigationState({
       ...navigationRef.current,
@@ -2261,9 +2253,7 @@ export function App() {
     animateSemanticFocusTransfer(nextSession.focusTransfer.targetId);
   }
 
-  function beginSemanticZoomBurst(reachedCamera: Camera): Camera {
-    semanticLensAssistRef.current = undefined;
-    semanticMorphStateRef.current = undefined;
+  function beginSemanticZoomBurst(reachedCamera: Camera): Camera {    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
     return reachedCamera;
   }
@@ -2376,9 +2366,7 @@ export function App() {
       const ownerBounds = deepestOwner ? semanticBounds(scene, deepestOwner.targetId, deepestOwner.nextDetail) : undefined;
       if (ownerBounds) framing = { ownerBounds };
     }
-    const renderedCamera = composeSemanticZoomCamera(sample.camera, sample.gestureSettled, framing, viewport, safeArea);
-    semanticLensAssistRef.current = undefined;
-    const navigation = canonicalNavigationState({
+    const renderedCamera = composeSemanticZoomCamera(sample.camera, sample.gestureSettled, framing, viewport, safeArea);    const navigation = canonicalNavigationState({
       ...navigationRef.current,
       camera: renderedCamera,
       detail: nextSession.baseDetail,
@@ -2575,9 +2563,7 @@ export function App() {
       ? semanticSourceSession(scene, currentSession, entity.id)
       : currentSession;
     if (nextSession !== currentSession) {
-      semanticLensSessionRef.current = nextSession;
-      semanticLensAssistRef.current = undefined;
-      semanticMorphStateRef.current = undefined;
+      semanticLensSessionRef.current = nextSession;      semanticMorphStateRef.current = undefined;
       semanticMorphBaselineRef.current = 0;
       setSemanticLensSession(nextSession);
       activeLevelRef.current = semanticDetails.indexOf('code');
@@ -3001,9 +2987,7 @@ export function App() {
     const targetBounds = semanticBounds(scene, targetAnchorId, detail)
       ?? semanticBounds(scene, navigationIdentity.rootEntityId, detail)
       ?? selected;
-    semanticLensSessionRef.current = nextSession;
-    semanticLensAssistRef.current = undefined;
-    semanticMorphStateRef.current = undefined;
+    semanticLensSessionRef.current = nextSession;    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
     setSemanticLensSession(nextSession);
     activeLevelRef.current = index;
@@ -3089,9 +3073,7 @@ export function App() {
     }
     interruptStory(`Opened ${target.name}`);
     setSelectedId(target.id);
-    semanticLensSessionRef.current = plan.session;
-    semanticLensAssistRef.current = undefined;
-    semanticMorphStateRef.current = undefined;
+    semanticLensSessionRef.current = plan.session;    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
     setSemanticLensSession(plan.session);
     if (plan.session.focusTransfer) animateSemanticFocusTransfer(plan.session.focusTransfer.targetId);
