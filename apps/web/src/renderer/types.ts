@@ -65,6 +65,16 @@ export type SceneRegion = {
   height: number;
 };
 
+/** A relation the scan-mode scoped compile kept out of routing (over the per-band
+ *  edge budget), still enumerable for the inspector "+N more" affordance. */
+export type OmittedRelation = {
+  relationId: string;
+  fromName: string;
+  toName: string;
+  label: string;
+  evidencePaths: string[];
+};
+
 export type AtlasScene = {
   id: string;
   title: string;
@@ -78,6 +88,8 @@ export type AtlasScene = {
   protocolPatch?: unknown;
   rootEntityId?: string;
   frozenRevision?: string;
+  /** Relations dropped from routing under a scan-mode edge budget (absent otherwise). */
+  omittedRelations?: OmittedRelation[];
   projection?: {
     /** Compiler projection-family identifier used to scope durable route intent. */
     familyId?: string;

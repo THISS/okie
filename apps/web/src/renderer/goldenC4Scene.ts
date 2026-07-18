@@ -3,6 +3,7 @@ import {
   materializeArchitectureAuthoring,
   selectC4BandProjection,
   validateStory,
+  type C4ProjectionBundle,
   type ArchitectureSnapshot,
   type ArchitectureAuthoringDocument,
   type ArchitectureEntity,
@@ -22,7 +23,7 @@ import {
   goldenView,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
-import type { AtlasScene, EntityKind as AtlasEntityKind, SceneEntity, SceneRelation, SemanticDetail } from './types';
+import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedRelation, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
 
@@ -165,7 +166,41 @@ export type C4SceneOptions = {
   frozenRevision: string;
   previous?: AtlasScene;
   authoring?: ArchitectureAuthoringDocument;
+  /** Scoped-compile options (scan mode); omitted for the golden fixture so its
+   *  compile stays byte-identical. */
+  maxBand?: C4Band;
+  maxEdgesPerBand?: number;
 };
+
+/**
+ * Resolves the relations dropped from routing under an edge budget into an
+ * enumerable "+N more" list (from/to names + unioned evidence paths). Empty when
+ * no band carries omittedEdgeIds (the golden fixture and any unbounded scope).
+ */
+export function resolveOmittedRelations(bundle: C4ProjectionBundle, snapshot: ArchitectureSnapshot): OmittedRelation[] {
+  const omittedEdgeIds = [...new Set(Object.values(bundle.projectionById).flatMap(projection => projection.omittedEdgeIds ?? []))].sort();
+  if (!omittedEdgeIds.length) return [];
+  const nameById = new Map(snapshot.entities.map(entity => [entity.id, entity.name]));
+  const relationById = new Map(snapshot.relations.map(relation => [relation.id, relation]));
+  const byRelationId = new Map<string, OmittedRelation>();
+  for (const edgeId of omittedEdgeIds) {
+    const edge = bundle.visualEdgeById[edgeId];
+    for (const relationId of bundle.index.relationIdsByVisualEdgeId[edgeId] ?? []) {
+      if (byRelationId.has(relationId)) continue;
+      const relation = relationById.get(relationId);
+      const fromId = (edge && bundle.index.entityIdByVisualNodeId[edge.fromVisualId]) ?? relation?.from ?? '';
+      const toId = (edge && bundle.index.entityIdByVisualNodeId[edge.toVisualId]) ?? relation?.to ?? '';
+      byRelationId.set(relationId, {
+        relationId,
+        fromName: nameById.get(fromId) ?? fromId,
+        toName: nameById.get(toId) ?? toId,
+        label: relation?.label ?? edge?.label ?? relation?.kind ?? 'relates to',
+        evidencePaths: [...new Set((relation?.evidence ?? []).map(evidence => evidence.source.path))].sort(),
+      });
+    }
+  }
+  return [...byRelationId.values()].sort((left, right) => left.relationId.localeCompare(right.relationId));
+}
 
 /**
  * Compiles an architecture snapshot into the renderer scene + projection bundle.
@@ -182,6 +217,8 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     rootEntityId: options.rootEntityId,
     focusEntityId: options.focusEntityId,
     familyId: options.familyId,
+    ...(options.maxBand ? { maxBand: options.maxBand } : {}),
+    ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
   };
   const authoredProjections = buildC4ProjectionBundle(snapshot, buildOptions);
   const previousSnapshot = previous?.protocolSnapshot as SceneSnapshot | undefined;
@@ -260,12 +297,14 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     });
     return [entity.id, Object.fromEntries(transitions)];
   }));
+  const omittedRelations = resolveOmittedRelations(authoredProjections, snapshot);
   const scene: AtlasScene = {
     id: options.sceneId,
     title: options.title,
     subtitle: options.subtitle,
     rootEntityId: options.focusEntityId,
     frozenRevision: options.frozenRevision,
+    ...(omittedRelations.length ? { omittedRelations } : {}),
     entities,
     relations: snapshot.relations.map(relation => ({
       id: relation.id,

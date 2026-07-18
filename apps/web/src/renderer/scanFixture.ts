@@ -5,10 +5,71 @@ import {
   type ArchitectureSnapshot,
   type ArchitectureStory,
   type ArchitectureView,
+  type C4Band,
+  type EntityKind,
   type ValidationIssue,
 } from '@okie/architecture';
 import { compileAppStoryPlan, createC4Scene, type AppStoryPlan } from './goldenC4Scene';
 import type { AtlasScene } from './types';
+
+// Scan-mode scoped-compile thresholds (documented; Okie's scan sits under all of
+// them, so its scenes/interactions stay identical to an unbounded compile).
+export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;        // repo-size gate for band depth
+export const SCAN_EDGE_BUDGET_MIN_SCOPE_RELATIONS = 250; // scope-density gate for the edge budget
+export const SCAN_EDGE_BUDGET_PER_BAND = 20;             // routed edges per band once dense
+
+const SCAN_MAX_BAND_BY_KIND: Partial<Record<EntityKind, C4Band>> = {
+  person: 'container',
+  softwareSystem: 'container',
+  externalSystem: 'container',
+  boundary: 'container',
+  container: 'component',
+  dataStore: 'component',
+  queue: 'component',
+  // component / code focus stays unbounded (its deepest bands already route)
+};
+
+/** Relations fully inside the focus subtree — the deterministic density signal. */
+function scanScopeRelationCount(snapshot: ArchitectureSnapshot, focusEntityId: string): number {
+  const childrenByParent = new Map<string, string[]>();
+  for (const entity of snapshot.entities) {
+    if (!entity.parentId) continue;
+    const siblings = childrenByParent.get(entity.parentId) ?? [];
+    siblings.push(entity.id);
+    childrenByParent.set(entity.parentId, siblings);
+  }
+  const subtree = new Set<string>();
+  const stack = [focusEntityId];
+  while (stack.length) {
+    const id = stack.pop()!;
+    if (subtree.has(id)) continue;
+    subtree.add(id);
+    for (const child of childrenByParent.get(id) ?? []) stack.push(child);
+  }
+  return snapshot.relations.filter(relation => subtree.has(relation.from) && subtree.has(relation.to)).length;
+}
+
+/**
+ * Deterministic scoped-compile options for a scan-mode focus: band depth (drill
+ * mapping) only for large repos so small repos like Okie stay unbounded/identical,
+ * and a per-band edge budget only when the focused scope is dense. Both gates
+ * derive from snapshot/scope stats, never from timing.
+ */
+export function scanScopeCompileOptions(
+  snapshot: ArchitectureSnapshot,
+  focusEntityId: string,
+): { maxBand?: C4Band; maxEdgesPerBand?: number } {
+  const options: { maxBand?: C4Band; maxEdgesPerBand?: number } = {};
+  if (snapshot.entities.length > SCAN_BAND_DEPTH_MIN_ENTITIES) {
+    const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
+    const maxBand = focus && SCAN_MAX_BAND_BY_KIND[focus.kind];
+    if (maxBand) options.maxBand = maxBand;
+  }
+  if (scanScopeRelationCount(snapshot, focusEntityId) > SCAN_EDGE_BUDGET_MIN_SCOPE_RELATIONS) {
+    options.maxEdgesPerBand = SCAN_EDGE_BUDGET_PER_BAND;
+  }
+  return options;
+}
 
 export type ScanNavigationDefaults = {
   repositoryId: string;
@@ -96,6 +157,7 @@ export function compileScanFixture(raw: RawScanTrio): ScanFixture {
     subtitle: `scanned snapshot · ${snapshot.commitSha.slice(0, 12)}`,
     frozenRevision: snapshot.commitSha,
     previous,
+    ...scanScopeCompileOptions(snapshot, focusEntityId),
   });
 
   return {
