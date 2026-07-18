@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename } from "node:path";
 import { slug } from "./ids.js";
 
@@ -53,10 +53,15 @@ function git(sourceRoot: string, args: readonly string[]): string[] {
 
 // Always scanned. `.js` is added only for pure-JS repos (no root tsconfig).
 const ALWAYS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".jsx"] as const;
-const CANDIDATE_GLOBS = ["*.ts", "*.tsx", "*.mts", "*.cts", "*.mjs", "*.cjs", "*.jsx", "*.js"] as const;
 
 // Members that are test scaffolding, not architecture.
 const FIXTURE_MEMBER_PATTERN = /(^|\/)(playground|playgrounds|examples?|example-.*|e2e|fixtures?|__fixtures__|demos?|sandbox)(\/|$)/i;
+
+// Directories that never hold tracked source; skipped by the tarball walk. `.git`
+// is absent from a tarball anyway (the whole point of the extract-scan-discard
+// strategy); `node_modules` is never tracked, but excluded defensively so a stray
+// vendored copy can never balloon the walk or leak into discovery.
+const TARBALL_SKIP_DIRS = new Set([".git", "node_modules"]);
 
 /** Test/generated files excluded from every scan (a named, tested list). */
 function isExcludedPath(path: string): boolean {
@@ -109,9 +114,63 @@ function workspaceGlobs(sourceRoot: string): string[] {
   return globs;
 }
 
-/** Deterministically discovers source files, containers, tooling, and Rust crates. */
-export function discoverRepository(sourceRoot: string, options: DiscoverOptions = {}): Discovery {
-  const candidates = git(sourceRoot, ["ls-files", "--", ...CANDIDATE_GLOBS]);
+/**
+ * pnpm workspace glob -> anchored RegExp over a POSIX directory path. `*` matches a
+ * single path segment (pnpm's `packages/*` = direct children); `**` matches one or
+ * more segments. Kept deliberately small — it only has to cover the pnpm glob shapes
+ * that appear in a `pnpm-workspace.yaml` packages list.
+ */
+function workspaceGlobToRegExp(glob: string): RegExp {
+  const source = glob.split("/").map(segment =>
+    segment === "**"
+      ? "[^/]+(?:/[^/]+)*"
+      : segment.replace(/[.+^${}()|[\]\\?]/g, "\\$&").replace(/\*/g, "[^/]*"),
+  ).join("/");
+  return new RegExp(`^${source}$`);
+}
+
+function isWorkspaceMemberDir(dir: string, globs: readonly string[]): boolean {
+  return globs.some(glob => workspaceGlobToRegExp(glob).test(dir));
+}
+
+/** All tracked files at the current index/HEAD (gitignore-aware), repo-relative POSIX. */
+function listTrackedFiles(sourceRoot: string): string[] {
+  return git(sourceRoot, ["ls-files"]);
+}
+
+/**
+ * Recursively lists every file under an extracted tree, repo-relative POSIX. A
+ * GitHub codeload tarball already contains exactly the committed tree at the SHA
+ * (untracked/gitignored content was never archived), so a plain walk reproduces
+ * `git ls-files` for that commit — no `.gitignore` parsing required. Divergence to
+ * note: `git archive` honors `.gitattributes export-ignore`, so a rare export-ignored
+ * (but tracked) path is present under `git ls-files` yet absent from the tarball.
+ */
+function walkExtractedTree(root: string): string[] {
+  const files: string[] = [];
+  const visit = (relativeDir: string): void => {
+    const absoluteDir = relativeDir ? `${root}/${relativeDir}` : root;
+    for (const entry of readdirSync(absoluteDir, { withFileTypes: true })) {
+      if (entry.isDirectory() && TARBALL_SKIP_DIRS.has(entry.name)) continue;
+      const relative = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) visit(relative);
+      else if (entry.isFile()) files.push(relative);
+      // symlinks and other non-regular entries are ignored (not source)
+    }
+  };
+  visit("");
+  return files;
+}
+
+/**
+ * Pure discovery core over an already-listed set of repository-relative file paths
+ * plus an `fs`-readable root (for `package.json`/`tsconfig`/`pnpm-workspace.yaml`).
+ * Both the git (`git ls-files`) and tarball (`fs` walk) providers feed the SAME core,
+ * so a repo scanned either way yields identical containers/units/sort — the property
+ * the byte-identical determinism contract needs.
+ */
+export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[], options: DiscoverOptions = {}): Discovery {
+  const candidates = allFiles.filter(path => hasExtension(path, true));
   // `.js` is scanned only for a genuinely pure-JS repo: no root tsconfig AND no TS
   // source anywhere (a monorepo can be TS without a root tsconfig).
   const hasTypeScriptSource = candidates.some(path => /\.(ts|tsx|mts|cts)$/.test(path) && !isExcludedPath(path));
@@ -119,13 +178,16 @@ export function discoverRepository(sourceRoot: string, options: DiscoverOptions 
   const sourceCandidates = candidates.filter(path => hasExtension(path, includedJs) && !isExcludedPath(path));
   const skippedJsFiles = includedJs ? 0 : candidates.filter(path => path.endsWith(".js") && !isExcludedPath(path)).length;
 
+  const globs = workspaceGlobs(sourceRoot);
   const memberDirs = new Set<string>();
-  for (const glob of workspaceGlobs(sourceRoot)) {
-    for (const manifest of git(sourceRoot, ["ls-files", "--", `${glob}/package.json`])) {
-      memberDirs.add(manifest.replace(/\/package\.json$/, ""));
-    }
+  for (const path of allFiles) {
+    if (!path.endsWith("/package.json") && path !== "package.json") continue;
+    if (path === "package.json") continue; // the root manifest is not a workspace member
+    const dir = path.slice(0, -"/package.json".length);
+    if (isWorkspaceMemberDir(dir, globs)) memberDirs.add(dir);
   }
-  const rustCrateDirs = git(sourceRoot, ["ls-files", "--", "crates/*/Cargo.toml"])
+  const rustCrateDirs = allFiles
+    .filter(path => /^crates\/[^/]+\/Cargo\.toml$/.test(path))
     .map(manifest => manifest.replace(/\/Cargo\.toml$/, "")).sort();
 
   const allMembers = [...memberDirs].sort();
@@ -186,4 +248,22 @@ export function discoverRepository(sourceRoot: string, options: DiscoverOptions 
     unitByPackageName,
     summary: { singlePackage, includedJs, skippedJsFiles, skippedMembers },
   };
+}
+
+/**
+ * Deterministically discovers source files, containers, tooling, and Rust crates
+ * from a local git working tree (gitignore-aware via `git ls-files`).
+ */
+export function discoverRepository(sourceRoot: string, options: DiscoverOptions = {}): Discovery {
+  return discoverFromFiles(sourceRoot, listTrackedFiles(sourceRoot), options);
+}
+
+/**
+ * Discovery for an extracted GitHub tarball: no `.git`, so files come from an `fs`
+ * walk of the committed tree instead of `git ls-files`. Runs the identical core, so
+ * the same repository content yields byte-identical discovery whether reached via a
+ * local clone or a `gh:` tarball.
+ */
+export function discoverExtractedTree(root: string, options: DiscoverOptions = {}): Discovery {
+  return discoverFromFiles(root, walkExtractedTree(root), options);
 }

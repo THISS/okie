@@ -291,29 +291,83 @@ export function compileScanFixture(raw: RawScanTrio, options: ScanModeOptions = 
 // import.meta.glob tolerates a missing fixtures/scan/ at build time (it resolves
 // to an empty map) — unlike a static import(), which would break `pnpm build`
 // on a fresh checkout where the gitignored scan output has not been generated.
-const scanDocLoaders = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/{snapshot,view,story}.json');
+// The ROOT trio (fixtures/scan/{snapshot,view,story}.json) is the Okie self-scan,
+// loaded by `?fixture=scan`. PER-REPO trios live one directory deeper
+// (fixtures/scan/<slug>/…), loaded by `?fixture=scan:<slug>`; `*` matches a single
+// path segment so the two globs never overlap.
+type ScanDocGlob = Record<string, () => Promise<{ default: unknown }>>;
+const rootScanLoaders: ScanDocGlob = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/{snapshot,view,story}.json');
+const repoScanLoaders: ScanDocGlob = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/*/{snapshot,view,story}.json');
 
-async function fetchScanDoc(name: 'snapshot' | 'view' | 'story'): Promise<unknown> {
-  const key = Object.keys(scanDocLoaders).find(path => path.endsWith(`/${name}.json`));
+/** Sorted slugs of scanned repos present in a per-repo glob map (the loadable set). */
+function slugsFromGlob(repo: ScanDocGlob): string[] {
+  const slugs = new Set<string>();
+  for (const path of Object.keys(repo)) {
+    const match = /\/fixtures\/scan\/([^/]+)\/(?:snapshot|view|story)\.json$/.exec(path);
+    if (match) slugs.add(match[1]!);
+  }
+  return [...slugs].sort();
+}
+
+/**
+ * Sorted slugs of scanned repositories present under fixtures/scan/<slug>/ — derived
+ * from what actually built (the ground truth for the fail-closed unknown-slug error),
+ * not from the manifest, so a stale index.json can never claim a slug the app cannot load.
+ */
+export function availableScanRepoSlugs(): string[] {
+  return slugsFromGlob(repoScanLoaders);
+}
+
+/**
+ * Pure resolution of which document loader serves (name, slug) from the root and
+ * per-repo glob maps. No slug → the root Okie self-scan; a slug → fixtures/scan/<slug>/,
+ * failing closed with a ScanFixtureError that lists the available slugs. Exported so the
+ * multi-repo selection + unknown-slug paths are unit-tested with fake maps (no disk).
+ */
+export function resolveScanDocLoader(
+  name: 'snapshot' | 'view' | 'story',
+  slug: string | undefined,
+  maps: { root: ScanDocGlob; repo: ScanDocGlob },
+): () => Promise<{ default: unknown }> {
+  if (slug) {
+    const key = Object.keys(maps.repo).find(path => path.endsWith(`/fixtures/scan/${slug}/${name}.json`));
+    if (!key) {
+      const available = slugsFromGlob(maps.repo);
+      const message = available.includes(slug)
+        ? `Scanned repository “${slug}” is missing ${name}.json — re-run okie-scan for it.`
+        : available.length
+          ? `No scanned repository “${slug}”. Available: ${available.join(', ')}. Re-run okie-scan --source gh:owner/repo.`
+          : `No scanned repository “${slug}”, and none are available. Run okie-scan --source gh:owner/repo to create one.`;
+      throw new ScanFixtureError([{ path: name, message }]);
+    }
+    return maps.repo[key]!;
+  }
+  const key = Object.keys(maps.root).find(path => path.endsWith(`/${name}.json`));
   if (!key) {
     throw new ScanFixtureError([{
       path: name,
       message: `fixtures/scan/${name}.json was not found — run okie-scan to generate the snapshot trio`,
     }]);
   }
-  const module = await scanDocLoaders[key]!();
-  return module.default;
+  return maps.root[key]!;
+}
+
+async function fetchScanDoc(name: 'snapshot' | 'view' | 'story', slug?: string): Promise<unknown> {
+  return (await resolveScanDocLoader(name, slug, { root: rootScanLoaders, repo: repoScanLoaders })()).default;
 }
 
 /**
  * Fetches the scanned trio from the gitignored fixtures/scan/ path (served by the
- * dev server, like the stress fixture) and compiles it. The loader is injectable
- * so tests can drive the validate/error path without real files on disk.
+ * dev server, like the stress fixture) and compiles it. `slug` selects a per-repo
+ * scan (fixtures/scan/<slug>/); omitted, it loads the root Okie self-scan. The loader
+ * is injectable so tests can drive the validate/error path without real files on disk.
  */
 export async function loadScanFixture(
-  load: ScanTrioLoader = fetchScanDoc,
+  load?: ScanTrioLoader,
   options: ScanModeOptions = {},
+  slug?: string,
 ): Promise<ScanFixture> {
-  const [snapshot, view, story] = await Promise.all([load('snapshot'), load('view'), load('story')]);
+  const loader: ScanTrioLoader = load ?? (name => fetchScanDoc(name, slug));
+  const [snapshot, view, story] = await Promise.all([loader('snapshot'), loader('view'), loader('story')]);
   return compileScanFixture({ snapshot, view, story }, options);
 }

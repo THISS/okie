@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, loadScanFixture, ScanFixtureError, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, loadScanFixture, resolveScanDocLoader, ScanFixtureError, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -72,5 +72,56 @@ describe('scan fixture loader', () => {
     const load: ScanTrioLoader = async name =>
       name === 'snapshot' ? { not: 'a snapshot' } : name === 'view' ? demoView : demoStory;
     await expect(loadScanFixture(load)).rejects.toBeInstanceOf(ScanFixtureError);
+  });
+});
+
+describe('multi-repo scan doc resolution', () => {
+  // Fake glob maps standing in for import.meta.glob's build-time output.
+  const marker = (label: string) => () => Promise.resolve({ default: label });
+  const root = {
+    '../../../../fixtures/scan/snapshot.json': marker('root-snapshot'),
+    '../../../../fixtures/scan/view.json': marker('root-view'),
+    '../../../../fixtures/scan/story.json': marker('root-story'),
+  };
+  const repo = {
+    '../../../../fixtures/scan/colinhacks__zod/snapshot.json': marker('zod-snapshot'),
+    '../../../../fixtures/scan/colinhacks__zod/view.json': marker('zod-view'),
+    '../../../../fixtures/scan/colinhacks__zod/story.json': marker('zod-story'),
+    '../../../../fixtures/scan/acme__app/snapshot.json': marker('app-snapshot'),
+    '../../../../fixtures/scan/acme__app/view.json': marker('app-view'),
+    '../../../../fixtures/scan/acme__app/story.json': marker('app-story'),
+  };
+
+  it('no slug resolves the root self-scan trio (back-compat path unchanged)', async () => {
+    expect((await resolveScanDocLoader('snapshot', undefined, { root, repo })()).default).toBe('root-snapshot');
+    expect((await resolveScanDocLoader('view', undefined, { root, repo })()).default).toBe('root-view');
+    // The root resolver never crosses into a per-repo directory.
+    expect((await resolveScanDocLoader('story', undefined, { root, repo: {} })()).default).toBe('root-story');
+  });
+
+  it('a slug selects exactly that repo directory', async () => {
+    expect((await resolveScanDocLoader('snapshot', 'colinhacks__zod', { root, repo })()).default).toBe('zod-snapshot');
+    expect((await resolveScanDocLoader('view', 'acme__app', { root, repo })()).default).toBe('app-view');
+  });
+
+  it('fails closed on an unknown slug, listing the available slugs sorted', () => {
+    try {
+      resolveScanDocLoader('snapshot', 'missing__repo', { root, repo });
+      throw new Error('expected a ScanFixtureError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ScanFixtureError);
+      const message = (error as ScanFixtureError).issues[0]!.message;
+      expect(message).toContain('No scanned repository “missing__repo”');
+      expect(message).toContain('acme__app, colinhacks__zod');
+    }
+  });
+
+  it('reports an incomplete slug directory distinctly from an unknown one', () => {
+    const partial = { '../../../../fixtures/scan/half__done/snapshot.json': marker('x') };
+    expect(() => resolveScanDocLoader('view', 'half__done', { root, repo: partial })).toThrow(/missing view\.json/u);
+  });
+
+  it('fails closed with guidance when no repos are available at all', () => {
+    expect(() => resolveScanDocLoader('snapshot', 'anything', { root, repo: {} })).toThrow(/none are available/u);
   });
 });

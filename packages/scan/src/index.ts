@@ -5,4 +5,6 @@ export * from "./extract.js";
 export * from "./scope.js";
 export * from "./packet.js";
 export * from "./enrich.js";
+export * from "./github.js";
+export * from "./manifest.js";
 export * from "./scan.js";

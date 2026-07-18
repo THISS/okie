@@ -15,7 +15,21 @@ describe('readDemoQuery', () => {
   });
 
   it('accepts the scanned-snapshot fixture', () => {
-    expect(readDemoQuery('?fixture=scan')).toMatchObject({ fixture: 'scan', seed: 42, backend: 'auto', warnings: [] });
+    const root = readDemoQuery('?fixture=scan');
+    expect(root).toMatchObject({ fixture: 'scan', seed: 42, backend: 'auto', warnings: [] });
+    expect(root.scanRepo).toBeUndefined();
+  });
+
+  it('selects a per-repo scan via fixture=scan:<slug> without warnings', () => {
+    const result = readDemoQuery('?fixture=scan:colinhacks__zod');
+    expect(result).toMatchObject({ fixture: 'scan', scanRepo: 'colinhacks__zod', warnings: [] });
+  });
+
+  it('treats an empty scan:<slug> selector as the root self-scan', () => {
+    const result = readDemoQuery('?fixture=scan:');
+    expect(result.fixture).toBe('scan');
+    expect(result.scanRepo).toBeUndefined();
+    expect(result.warnings).toEqual([]);
   });
 
   it('bounds and reports unsupported values', () => {

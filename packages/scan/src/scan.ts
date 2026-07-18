@@ -14,10 +14,17 @@ import {
   type NodeLayout,
 } from "@okie/architecture";
 import { compileC4Scene, compileC4Timeline, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
-import { discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
+import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
 import { pinRepository, type RepositoryPin } from "./pin.js";
+import {
+  acquireGithubTree,
+  createDefaultGithubClient,
+  resolveGithubCommit,
+  type GithubClient,
+  type GithubSourceRef,
+} from "./github.js";
 import { slug, typedId } from "./ids.js";
 
 export interface ScanOptions {
@@ -27,6 +34,13 @@ export interface ScanOptions {
   includeAllMembers?: boolean;
   /** container id -> enrichment document (any JSON); accepted docs re-group that scope. */
   enrichmentDocs?: ReadonlyMap<string, unknown>;
+}
+
+export interface GithubScanOptions extends ScanOptions {
+  /** Transport for GitHub reads (default: anonymous HTTPS + `gh` fallback). Injected in tests. */
+  client?: GithubClient;
+  /** Cap on the downloaded tarball; a clearer error fires above it. */
+  maxTarballBytes?: number;
 }
 
 export interface ScanArtifacts {
@@ -195,6 +209,53 @@ export function scanRepository(sourceRoot: string, options: ScanOptions = {}): S
     systemName,
     ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
   });
+}
+
+export interface GithubScanResult {
+  source: GithubSourceRef;
+  commitSha: string;
+  artifacts: ScanArtifacts;
+}
+
+/**
+ * Scans a GitHub repository by `gh:owner/repo[@ref]`: resolves the ref to an immutable
+ * commit (SHA + committer date + tree SHA), fetches the codeload tarball at that SHA
+ * into a temp dir, walks the extracted tree, and runs the SAME deterministic pipeline
+ * as a local scan — then discards the checkout. `generatedAt` is the commit's committer
+ * date (never wall-clock), so two scans of the same source at the same SHA are
+ * byte-identical. Defaults `repositorySlug`/`systemName` from the repo identity; the
+ * extracted `package.json` name refines the display name when present.
+ */
+export async function scanGithubRepository(source: GithubSourceRef, options: GithubScanOptions = {}): Promise<GithubScanResult> {
+  const client = options.client ?? createDefaultGithubClient();
+  const commit = await resolveGithubCommit(source, client);
+  const acquired = await acquireGithubTree(source, commit.sha, client, options.maxTarballBytes);
+  try {
+    const readFile = (repoRelativePath: string): string => readFileSync(`${acquired.root}/${repoRelativePath}`, "utf8");
+    const packageName = rootPackageName(acquired.root);
+    const repositorySlug = options.repositorySlug ?? slug(`${source.owner}-${source.repo}`);
+    const systemName = options.systemName ?? packageName ?? source.repo;
+    const pin: RepositoryPin = { commitSha: commit.sha, treeHash: commit.treeSha, generatedAt: commit.generatedAt };
+    const discovery = discoverExtractedTree(acquired.root, options.includeAllMembers ? { includeAllMembers: true } : {});
+    if (discovery.sourceFiles.length === 0) {
+      throw new Error(
+        `No scannable source files in ${source.owner}/${source.repo} at ${commit.sha.slice(0, 12)}. ` +
+        "The scanner extracts .ts/.tsx/.mts/.cts/.mjs/.cjs/.jsx (and .js only for a pure-JS repo); " +
+        "this looks like a non-TypeScript/JavaScript repository.",
+      );
+    }
+    const artifacts = buildScanArtifacts({
+      discovery,
+      pin,
+      readFile,
+      repositorySlug,
+      systemName,
+      ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
+    });
+    return { source, commitSha: commit.sha, artifacts };
+  } finally {
+    acquired.cleanup();
+  }
 }
 
 /** Canonical, byte-stable JSON serialization (trailing newline, 2-space indent). */

@@ -42,10 +42,13 @@ function ScanErrorScreen({ error }: { error: unknown }) {
 async function boot() {
   // A scanned fixture is fetched, validated and compiled BEFORE App is imported,
   // so App reads the compiled scene/story synchronously (like the golden fixture).
-  if (readDemoQuery(window.location.search).fixture === 'scan') {
+  // `?fixture=scan` loads the Okie self-scan; `?fixture=scan:<slug>` loads the
+  // matching per-repo trio (fixtures/scan/<slug>/), failing closed on an unknown slug.
+  const query = readDemoQuery(window.location.search);
+  if (query.fixture === 'scan') {
     let fixture: ScanFixture;
     try {
-      fixture = await loadScanFixture(undefined, { targetAspect: bootstrapScanAspect() });
+      fixture = await loadScanFixture(undefined, { targetAspect: bootstrapScanAspect() }, query.scanRepo);
     } catch (error) {
       root.render(<StrictMode><ScanErrorScreen error={error} /></StrictMode>);
       return;

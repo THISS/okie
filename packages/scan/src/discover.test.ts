@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { discoverRepository } from "./discover.js";
+import { discoverExtractedTree, discoverRepository } from "./discover.js";
 import { scanRepository } from "./scan.js";
 
 /** Builds a tiny staged git repo (git ls-files sees staged files — no commit needed). */
@@ -125,5 +125,85 @@ test("system name derives from root package.json name (fix 6)", () => {
     execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "x", "--no-gpg-sign"], { cwd: dir });
     const artifacts = scanRepository(dir);
     assert.equal(artifacts.snapshot.entities.find(entity => entity.kind === "softwareSystem")?.name, "cool-lib");
+  });
+});
+
+/** Writes a plain (non-git) directory tree — the shape an extracted tarball has (no .git). */
+function withTree(files: Record<string, string>, run: (dir: string) => void): void {
+  const dir = mkdtempSync(join(tmpdir(), "okie-scan-tree-"));
+  try {
+    for (const [relative, content] of Object.entries(files)) {
+      const full = join(dir, relative);
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, content);
+    }
+    run(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function comparableDiscovery(discovery: ReturnType<typeof discoverRepository>) {
+  return {
+    sourceFiles: discovery.sourceFiles,
+    units: discovery.units,
+    unitByFile: [...discovery.unitByFile.entries()].sort(),
+    unitByPackageName: [...discovery.unitByPackageName.entries()].sort(),
+    summary: discovery.summary,
+  };
+}
+
+test("tarball walk (discoverExtractedTree) equals git discovery on identical content — provider parity", () => {
+  // A workspace repo exercising members, tooling (a non-member script), and a Rust crate.
+  const files = {
+    "pnpm-workspace.yaml": "packages:\n  - 'apps/*'\n  - 'packages/*'\n",
+    "package.json": JSON.stringify({ name: "root" }),
+    "tsconfig.json": "{}",
+    "apps/web/package.json": JSON.stringify({ name: "@x/web" }),
+    "apps/web/src/main.tsx": "export const App = 1;\n",
+    "packages/core/package.json": JSON.stringify({ name: "@x/core" }),
+    "packages/core/src/index.ts": "export const x = 1;\n",
+    "scripts/build.mjs": "export const build = 1;\n",
+    "crates/engine/Cargo.toml": "[package]\nname = \"engine\"\n",
+    "crates/engine/src/lib.rs": "pub fn f() {}\n",
+  };
+  withRepo(files, dir => {
+    // Same directory: git sees tracked files; the walk skips .git and sees the same set.
+    assert.deepEqual(comparableDiscovery(discoverExtractedTree(dir)), comparableDiscovery(discoverRepository(dir)));
+    const tarball = discoverExtractedTree(dir);
+    assert.ok(tarball.units.some(unit => unit.dir === "apps/web"), "member from tarball walk");
+    assert.ok(tarball.units.some(unit => unit.kind === "tooling"), "tooling from tarball walk");
+    assert.ok(tarball.units.some(unit => unit.kind === "rust" && unit.dir === "crates/engine"), "rust crate from tarball walk");
+  });
+});
+
+test("tarball walk applies the same extension/exclusion filters and skips node_modules", () => {
+  withTree({
+    "package.json": JSON.stringify({ name: "lib" }),
+    "tsconfig.json": "{}",
+    "src/index.ts": "export const x = 1;\n",
+    "src/index.spec.ts": "1;\n",
+    "src/legacy.js": "module.exports = 1;\n",
+    "dist/index.js": "1;\n",
+    "types.d.ts": "export {};\n",
+    "node_modules/dep/index.ts": "export const dep = 1;\n",
+  }, dir => {
+    const discovery = discoverExtractedTree(dir);
+    assert.deepEqual(discovery.sourceFiles, ["src/index.ts"]);
+    assert.equal(discovery.summary.skippedJsFiles, 1, ".js counted, not silently dropped");
+    assert.ok(!discovery.sourceFiles.some(f => f.startsWith("node_modules/")), "node_modules never walked");
+  });
+});
+
+test("tarball walk supports a single-package (non-workspace) repo", () => {
+  withTree({
+    "package.json": JSON.stringify({ name: "solo" }),
+    "tsconfig.json": "{}",
+    "index.ts": "export const x = 1;\n",
+  }, dir => {
+    const discovery = discoverExtractedTree(dir);
+    assert.equal(discovery.summary.singlePackage, true);
+    assert.equal(discovery.units.find(unit => unit.kind === "root")?.name, "solo");
+    assert.deepEqual(discovery.sourceFiles, ["index.ts"]);
   });
 });

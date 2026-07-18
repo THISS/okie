@@ -98,6 +98,48 @@ identity (path/symbol) with collision suffixes assigned by canonical sort, and
 `adaptArchitectureExtraction` + `compileC4Scene` re-sort everything by ID. `git ls-files`
 order, filesystem order, and iteration order cannot affect the bytes.
 
+## GitHub acquisition (R3 — paste a repo, get an atlas)
+
+`okie-scan --source gh:owner/repo[@ref]` scans a public repository with no local clone:
+
+1. **Resolve** the ref to an immutable commit via the GitHub REST API (unauthenticated).
+   No ref → the repo's `default_branch`. Falls back to the `gh` CLI transparently on a
+   rate-limit/403/private-404 (uses the operator's stored auth). **No tokens are read from
+   env or embedded, and messages are scrubbed before logging.**
+2. **Fetch** the codeload `tar.gz` at that SHA into a temp dir (capped — default 150 MB,
+   `--max-tarball-mb`), extract, scan, **discard**. Nothing long-lived; the commit/tree SHA
+   is the identity (the [scan-runner](../../docs/roadmap/scan-runner.md) checkout strategy).
+3. **Pin** `commitSha` + `treeSha` from the API; `generatedAt` = the commit's **committer
+   date** (never wall-clock), so two scans of the same source at the same SHA are
+   **byte-identical** across all six artifacts.
+
+A tarball has no `.git`, so discovery walks the extracted tree (`discoverExtractedTree`)
+through the **same** filter/assembly core as the `git ls-files` path (`discoverFromFiles`).
+A GitHub archive already contains exactly the committed tree at the SHA (untracked/gitignored
+content was never archived), so a plain walk reproduces gitignore-aware discovery without
+parsing `.gitignore`. **Divergence to note:** `git archive` honors `.gitattributes
+export-ignore`, so a rare export-ignored-but-tracked path is present under a local scan yet
+absent from a tarball. Failure modes are explicit and non-fatal to the CLI: repo/ref not
+found, rate-limited (with the `gh`-fallback hint), tarball over cap, and a non-TS/JS repo
+(0 candidate files → a message naming the extension policy).
+
+## Multi-repo output + serving
+
+A local scan still writes to `fixtures/scan/` (the Okie self-scan — unchanged, back-compat).
+A `gh:` scan writes to **`fixtures/scan/<owner>__<repo>/`** and (re)writes a deterministic
+**`fixtures/scan/index.json`** manifest — a slug-sorted list of
+`{slug, repositoryId, commitSha, generatedAt, entityCount}` over every per-repo slot, so
+multiple scanned repos coexist.
+
+The web app selects a scanned repo on the already-preserved `fixture` query param:
+`?fixture=scan` loads the root self-scan; **`?fixture=scan:<slug>`** loads
+`fixtures/scan/<slug>/`. Riding the `fixture` param (rather than a new `repo=` key, which
+would collide with the reserved navigation `repo` = repositoryId) keeps the selector in the
+URL across reload/share **without touching the pinned navigation machinery**. An unknown slug
+fails closed to the full-page scan error listing the available slugs. This per-repo
+storage/URL shape is what a future hosted embed (a static app build + per-repo trio assets +
+manifest picker) builds on.
+
 ## Enrichment (R2a — agents propose, validators dispose)
 
 R1 produces file-components (deterministic structural truth). R2 lets bounded-scope agents
