@@ -198,6 +198,58 @@ test("replay is byte-identical for the same base + docs", () => {
   assert.equal(JSON.stringify(first), JSON.stringify(second));
 });
 
+test("collapsing edges unions their evidence; dropped self-loops are counted in the report", () => {
+  // a.ts and b.ts each import c.ts — two file->file edges into c.
+  const localFiles: Record<string, string> = {
+    "README.md": "# M",
+    "m/src/a.ts": "export function a() {}\nimport './c.js';\n",
+    "m/src/b.ts": "export function b() {}\nimport './c.js';\n",
+    "m/src/c.ts": "export function c() {}\n",
+  };
+  const localRead = (path: string): string => {
+    const text = localFiles[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const localDiscovery: Discovery = {
+    sourceFiles: ["m/src/a.ts", "m/src/b.ts", "m/src/c.ts"],
+    units: [{ kind: "member", dir: "m", name: "@m/m", packageName: "@m/m", evidencePath: "m" }],
+    unitByFile: new Map([["m/src/a.ts", "m"], ["m/src/b.ts", "m"], ["m/src/c.ts", "m"]]),
+    unitByPackageName: new Map([["@m/m", "m"]]),
+  };
+  const ext = extractArchitecture({ discovery: localDiscovery, readFile: localRead, systemName: "M", systemSlug: "m" });
+  const system = ext.entities.find(entity => entity.kind === "softwareSystem")!;
+  const importers = "component:m-importers";
+  const core = "component:m-core";
+
+  // group {a,b} -> importers, {c} -> core: both a->c and b->c collapse to ONE importers->core edge.
+  const splitDoc: Doc = {
+    schemaVersion: 1,
+    entities: [
+      { id: system.id, kind: "softwareSystem", name: system.name, sourceRefs: [] },
+      { id: "container:m", kind: "container", parentId: system.id, name: "M", sourceRefs: [] },
+      { id: importers, kind: "component", parentId: "container:m", name: "Importers", responsibility: "x", sourceRefs: [] },
+      { id: core, kind: "component", parentId: "container:m", name: "Core", responsibility: "x", sourceRefs: [] },
+      ...containerCode(ext, "container:m").map(entity => ({
+        id: entity.id, kind: "code", name: entity.name,
+        parentId: entity.sourceRefs[0]!.path === "m/src/c.ts" ? core : importers,
+        sourceRefs: entity.sourceRefs.map(ref => ({ ...ref })),
+      })),
+    ],
+    relations: [],
+  };
+  const { extraction: merged } = mergeEnrichment(ext, new Map([["container:m", splitDoc]]));
+  const edge = merged.relations.find(relation => relation.from === importers && relation.to === core)!;
+  assert.ok(edge, "collapsed logical edge exists");
+  assert.equal(edge.evidence.length, 2, "evidence unioned from both a->c and b->c imports");
+  assert.deepEqual(edge.evidence.map(item => item.source.path).sort(), ["m/src/a.ts", "m/src/b.ts"]);
+
+  // grouping ALL three files into one component turns both edges into self-loops (dropped, but counted).
+  const onePer = mergeEnrichment(ext, new Map([["container:m", validDoc(ext, "container:m")]]));
+  assert.equal(onePer.report.collapsedSelfEdges, 2);
+  assert.equal(onePer.report.results.find(result => result.containerId === "container:m")?.collapsedSelfEdges, 2);
+});
+
 test("end-to-end: enriching a real Okie container yields a valid, compiling snapshot", () => {
   const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const baseArtifacts = scanRepository(repoRoot, { systemName: "Okie", repositorySlug: "okie" });
