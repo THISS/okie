@@ -122,9 +122,9 @@ Propose the TOP-LEVEL ACTORS (people or external roles) that interact with this 
 1. Restate exactly one softwareSystem entity with the packet's systemId (name unchanged, no parentId).
 2. Add 1–3 person entities: kind "person", NO parentId, id "person:<kebab-slug>", a human name (e.g. "Library user", "Maintainer"), a one-sentence "responsibility", and sourceRefs citing ONLY paths from the packet's scopePaths (usually a README).
 3. Add relations connecting each person to the system, a container, or an external system: kind "uses", id "relation:<from-local>-<to-local>", a short label ("integrates the library", "maintains releases"), and evidence whose source.path is in scopePaths.
-4. Do NOT add or modify containers, components, or code — restated container/external entities are only allowed as untouched anchors, and it is safer to not restate them at all unless a relation needs the endpoint.
+4. Restate each container from the packet with its exact id, parented to the system, name unchanged, sourceRefs [] — and give each a one-sentence "responsibility" saying what it is for. This matters MOST for containers with no visible code (native/Rust crates, generated packages): the reader sees an empty box otherwise, so explain its role in the system (e.g. "Rust renderer core compiled to WASM", "wire protocol contract shared with the renderer"). Do NOT add or modify components or code, and never invent containers not in the packet.
 
-Ground the actors in what the README actually says the project is for.`;
+Ground everything in what the README actually says the project is for.`;
 
 function anthropicGenerator(client: Anthropic): EnrichmentGenerator {
   return async (packet, kind, systemId) => {

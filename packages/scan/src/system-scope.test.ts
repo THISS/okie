@@ -205,3 +205,26 @@ test("system-scope merge replays byte-identically", () => {
   const second = mergeEnrichment(base(), new Map([[SYSTEM_ID, validSystemDoc()]])).extraction;
   assert.equal(JSON.stringify(first), JSON.stringify(second));
 });
+
+test("carries judgement prose on restated container anchors (how opaque crates get described)", () => {
+  const doc = validSystemDoc() as { entities: Array<Record<string, unknown>> };
+  doc.entities.push({
+    id: "container:pkg-b",
+    kind: "container",
+    parentId: SYSTEM_ID,
+    name: "container:pkg-b",
+    responsibility: "Downstream consumer package exercising the public API.",
+    sourceRefs: [],
+  });
+
+  const { extraction: merged, report } = mergeEnrichment(base(), new Map([[SYSTEM_ID, doc]]));
+  assert.equal(report.systemScope?.accepted, true, `reasons=${report.systemScope?.reasons.join("; ")}`);
+  assert.deepEqual(validateArchitectureExtraction(merged), []);
+
+  const container = merged.entities.find(entity => entity.id === "container:pkg-b")!;
+  assert.equal(container.responsibility, "Downstream consumer package exercising the public API.");
+  // Structure stays base-owned: the doc's name field never wins over the observed one.
+  const baseContainer = base().entities.find(entity => entity.id === "container:pkg-b")!;
+  assert.equal(container.name, baseContainer.name);
+  assert.deepEqual(container.sourceRefs, baseContainer.sourceRefs);
+});
