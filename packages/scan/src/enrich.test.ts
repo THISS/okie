@@ -264,3 +264,26 @@ test("end-to-end: enriching a real Okie container yields a valid, compiling snap
   assert.ok(enriched.snapshot.entities.some(entity => entity.id === "component:tooling-core"));
   assert.ok(enriched.scene.objects.length > 0, "scene compiled");
 });
+
+test("carries code-entity judgement fields (responsibility) through the merge; observed facts still win", () => {
+  const extraction = base();
+  const doc = validDoc(extraction, "container:pkg-a") as { entities: Array<Record<string, unknown>> };
+  const alpha = doc.entities.find(entity => typeof entity.id === "string" && (entity.id as string).endsWith(":alpha"))!;
+  alpha.responsibility = "Standalone entry point consumed by downstream repos (island: nothing in-repo calls it).";
+  alpha.tags = ["island"];
+
+  const { extraction: merged, report } = mergeEnrichment(extraction, new Map([["container:pkg-a", doc]]));
+  assert.equal(report.results.find(result => result.containerId === "container:pkg-a")?.accepted, true);
+  assert.deepEqual(validateArchitectureExtraction(merged), []);
+
+  const mergedAlpha = merged.entities.find(entity => entity.id === (alpha.id as string))!;
+  assert.equal(mergedAlpha.responsibility, "Standalone entry point consumed by downstream repos (island: nothing in-repo calls it).");
+  assert.deepEqual(mergedAlpha.tags, ["island"]);
+  // Observed facts are the base's, byte-identical — judgement is purely additive.
+  const baseAlpha = extraction.entities.find(entity => entity.id === (alpha.id as string))!;
+  assert.equal(mergedAlpha.name, baseAlpha.name);
+  assert.deepEqual(mergedAlpha.sourceRefs, baseAlpha.sourceRefs);
+  // A code entity WITHOUT judgement stays untouched apart from its new parent.
+  const other = merged.entities.find(entity => entity.kind === "code" && entity.id !== (alpha.id as string) && entity.parentId === "component:pkg-a-core");
+  assert.ok(other && other.responsibility === undefined);
+});

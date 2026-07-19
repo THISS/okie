@@ -109,7 +109,8 @@ Propose LOGICAL COMPONENTS that regroup this container's files by responsibility
 2. Restate exactly one container entity: the packet's containerId, parented to the system id, name unchanged. You may add a one-sentence "responsibility".
 3. Add your proposed components: kind "component", parentId = the containerId, id namespaced "component:<container-local-slug>-<your-slug>" where <container-local-slug> is the containerId with its "container:" prefix removed. Ids are lowercase kebab-case. Give each a clear human name and a 1–2 sentence "responsibility" describing what it does for the system (plain prose, no marketing). sourceRefs: [] (they are derived from the code you assign).
 4. Restate EVERY code entity from the packet — total coverage, none omitted — changing ONLY parentId to one of your proposed component ids. id, kind, name, and sourceRefs must be copied byte-for-byte from the packet. All code entities from the same file path must land in the same component (file cohesion).
-5. relations must be [] — relations are deterministic and not yours to propose.
+5. Give each code entity a one-sentence "responsibility": what this public symbol does and what callers use it for. The packet's relations list shows the observed usage graph — a code entity that appears in NO relation is an island, and its responsibility MUST explain why it stands alone (for example: entry-point API consumed by downstream repos, a config constant read at build time, a type-only export, a re-exported convenience). Never leave an island undescribed.
+6. relations must be [] — relations are deterministic and not yours to propose.
 
 Group by domain responsibility (what the code is FOR), not by file-name similarity. Prefer fewer, well-named components over many thin ones.`;
 
