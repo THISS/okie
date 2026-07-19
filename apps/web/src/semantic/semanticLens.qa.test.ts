@@ -83,6 +83,24 @@ describe('semantic lens acceptance contract', () => {
     expect(landed).not.toEqual(cursor);
   });
 
+  // Sanctioned product-feel change (direct user feedback): once an owner outgrows the
+  // safe viewport the user is INSIDE it, and a settle must not recentre it — the zoom
+  // anchor stays exactly where the user left it (the Google-Maps rule). Containment
+  // then only closes dead-space gaps beyond an owner edge, edge-to-edge.
+  it('keeps the zoom anchor inside an oversized owner at settle and only closes edge gaps', () => {
+    const viewport = { width: 1_000, height: 800 };
+    const safeArea = { left: 100, right: 150, top: 50, bottom: 100 };
+    const owner = { x: 0, y: 0, width: 100, height: 100 };
+    // Owner screen box spans 0..1000 on both axes at zoom 10 — covers the padded safe window.
+    const covering = { x: 50, y: 40, zoom: 10 };
+    expect(composeSemanticZoomCamera(covering, true, { ownerBounds: owner }, viewport, safeArea)).toBe(covering);
+    // A left-edge gap (owner left at 200 > padded safe left 124) closes edge-to-edge; the
+    // former behaviour recentred the owner (x would have moved to 52.5, not 37.6).
+    const withGap = { x: 30, y: 40, zoom: 10 };
+    expect(composeSemanticZoomCamera(withGap, true, { ownerBounds: owner }, viewport, safeArea))
+      .toEqual({ x: 37.6, y: 40, zoom: 10 });
+  });
+
   it('arms only on inward intent with at least 24px target containment', () => {
     const eligible = target(0.62, 0.28);
     expect(reduceSemanticLens(idleSemanticLens(), {

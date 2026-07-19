@@ -256,7 +256,14 @@ function containmentScreenShift(
   safeMaximum: number,
 ): number {
   if (maximum - minimum > safeMaximum - safeMinimum) {
-    return (safeMinimum + safeMaximum - minimum - maximum) / 2;
+    // An owner larger than the safe window is a surface the user is INSIDE, not a
+    // card to frame. Recentring it on settle yanked the view away from whatever the
+    // user had zoomed toward (direct user feedback; the Google-Maps rule: a zoom
+    // never moves your anchor). Only close a gap that would show dead space beyond
+    // an owner edge, by the exact edge-to-edge amount — a covering owner stays put.
+    if (minimum > safeMinimum) return safeMinimum - minimum;
+    if (maximum < safeMaximum) return safeMaximum - maximum;
+    return 0;
   }
   if (minimum < safeMinimum) return safeMinimum - minimum;
   if (maximum > safeMaximum) return safeMaximum - maximum;
@@ -265,8 +272,10 @@ function containmentScreenShift(
 
 /**
  * Translates a camera by the smallest amount required to keep one semantic
- * owner inside the measured safe viewport. Zoom is deliberately never changed.
- * Callers opt in from semantic zoom/framing paths; ordinary pan remains free.
+ * owner inside the measured safe viewport — or, when the owner outgrows the
+ * viewport, to keep the viewport inside the OWNER (gap-closing only, never a
+ * recentre). Zoom is deliberately never changed. Callers opt in from semantic
+ * zoom/framing paths; ordinary pan remains free.
  */
 export function containSemanticOwnerCamera(
   camera: Camera,
@@ -1157,7 +1166,12 @@ export function measureSemanticLensTarget(
   const safeWidth = Math.max(1, viewport.width - safeArea.left - safeArea.right);
   const safeHeight = Math.max(1, viewport.height - safeArea.top - safeArea.bottom);
   const currentRect = screenRect(currentBounds, camera, viewport);
-  const probe = pointer ?? {
+  // The pointer gates containment only while it is actually INSIDE the locked target.
+  // A cursor-anchored zoom can grow the target past the whole viewport while the
+  // pointer world-point stays just outside its rect; measuring containment against
+  // that pointer left an armed lens uncommittable forever (zoomed into a blank
+  // interior). Outside the rect, the target's own centre is the honest probe.
+  const probe = pointer && containsPoint(currentRect, pointer) ? pointer : {
     x: currentRect.x + currentRect.width / 2,
     y: currentRect.y + currentRect.height / 2,
   };

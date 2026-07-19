@@ -97,7 +97,7 @@ import { defaultSearchSuggestions } from './searchSuggestions';
 import { shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
-import { createCameraFlightController, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
+import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
 import { storyFocusPresentation } from './storyFocus';
 import { RelationshipAuthoringOverlay } from './editor/RelationshipAuthoringOverlay';
 import { commitGesture, createGestureHistory, redoGesture, undoGesture, type GestureHistory } from './editor/gestureHistory';
@@ -362,6 +362,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
   const semanticAssistRafRef = useRef<number | undefined>(undefined);
   const semanticAssistUntilRef = useRef(0);
   const semanticAssistSampleRef = useRef<{ pointer: LensPoint; mobile: boolean; gestureStartZoom?: number } | undefined>(undefined);
+  const settleGlideRafRef = useRef<number | undefined>(undefined);
   const semanticZoomBurstActiveRef = useRef(false);
   const sizeRef = useRef({ width: 1, height: 1 });
   const [overlaySize, setOverlaySize] = useState({ width: 1, height: 1 });
@@ -556,6 +557,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
           window.clearTimeout(panSettleTimerRef.current);
           panSettleTimerRef.current = undefined;
         }
+        cancelSettleGlide();
         if (semanticZoomSettleTimer === undefined) {
           onCameraFlightCancelRef.current();
           cancelAssistAnimation();
@@ -581,6 +583,10 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
         if (semanticZoomSettleTimer !== undefined) window.clearTimeout(semanticZoomSettleTimer);
         semanticZoomSettleTimer = window.setTimeout(() => {
           if (!lastSemanticPointer) return;
+          // The settle landing must be the gesture's only remaining camera writer:
+          // with the assist loop still running, its next frame re-applied the
+          // uncontained raw camera and reverted the landing (end-of-zoom flicker).
+          cancelAssistAnimation();
           const settled = onSemanticZoomRef.current({
             camera: rawCameraRef.current,
             renderedCamera: liveCameraRef.current,
@@ -589,7 +595,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
             gestureSettled: true,
             mobile: false,
           });
-          applyLiveCameraRef.current(settled);
+          animateSettleGlide(settled);
           semanticZoomSettleTimer = undefined;
         }, 120);
       });
@@ -661,6 +667,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     applyLiveCameraRef.current = applyLiveCamera;
     syncExternalCameraRef.current = next => {
       publisher.cancel();
+      cancelSettleGlide();
       const zoomChanged = Math.abs(next.zoom - liveCameraRef.current.zoom) > Number.EPSILON;
       liveCameraRef.current = { ...next };
       if (shouldAdoptExternalCameraAsRaw(
@@ -726,6 +733,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     if (pinchSettleTimerRef.current !== undefined) window.clearTimeout(pinchSettleTimerRef.current);
     if (panSettleTimerRef.current !== undefined) window.clearTimeout(panSettleTimerRef.current);
     if (semanticAssistRafRef.current !== undefined) window.cancelAnimationFrame(semanticAssistRafRef.current);
+    if (settleGlideRafRef.current !== undefined) window.cancelAnimationFrame(settleGlideRafRef.current);
   }, []);
 
   useEffect(() => {
@@ -740,6 +748,46 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     semanticAssistUntilRef.current = 0;
     semanticAssistSampleRef.current = undefined;
     semanticZoomBurstActiveRef.current = false;
+  }
+
+  function cancelSettleGlide() {
+    if (settleGlideRafRef.current !== undefined) window.cancelAnimationFrame(settleGlideRafRef.current);
+    settleGlideRafRef.current = undefined;
+  }
+
+  /**
+   * Eases the camera onto a gesture-settle landing (owner containment). The settle
+   * correction used to be applied as a hard cut while the assist loop kept writing the
+   * uncontained camera — a one-frame jump that immediately reverted (user report:
+   * "flickers of layout shift at the end of the zoom"). The caller must stop the
+   * assist loop first so this glide is the gesture's only remaining camera writer.
+   */
+  function animateSettleGlide(target: Camera) {
+    cancelSettleGlide();
+    const from = { ...liveCameraRef.current };
+    const screenShift = Math.hypot(target.x - from.x, target.y - from.y) * target.zoom;
+    if (stateRef.current.reduceMotion || (screenShift < 1 && Math.abs(Math.log(target.zoom / from.zoom)) < 0.001)) {
+      applyLiveCameraRef.current(target);
+      rawCameraRef.current = { ...target };
+      return;
+    }
+    const startedAtMs = performance.now();
+    const durationMs = 200;
+    const tick = (nowMs: number) => {
+      const eased = easeCameraFlight((nowMs - startedAtMs) / durationMs);
+      applyLiveCameraRef.current({
+        x: from.x + (target.x - from.x) * eased,
+        y: from.y + (target.y - from.y) * eased,
+        zoom: from.zoom * Math.exp(Math.log(target.zoom / from.zoom) * eased),
+      });
+      if (nowMs - startedAtMs >= durationMs) {
+        settleGlideRafRef.current = undefined;
+        rawCameraRef.current = { ...liveCameraRef.current };
+        return;
+      }
+      settleGlideRafRef.current = window.requestAnimationFrame(tick);
+    };
+    settleGlideRafRef.current = window.requestAnimationFrame(tick);
   }
 
   function animateSemanticAssist(pointer: LensPoint, mobile: boolean, gestureStartZoom?: number) {
@@ -774,6 +822,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       window.clearTimeout(panSettleTimerRef.current);
       panSettleTimerRef.current = undefined;
     }
+    cancelSettleGlide();
     event.currentTarget.setPointerCapture(event.pointerId);
     const viewportBounds = event.currentTarget.getBoundingClientRect();
     const screenPoint = { x: event.clientX - viewportBounds.left, y: event.clientY - viewportBounds.top };
@@ -1028,9 +1077,13 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
           const pointer = { x: wasPinching.centroid.x - bounds.left, y: wasPinching.centroid.y - bounds.top };
           if (pinchSettleTimerRef.current !== undefined) window.clearTimeout(pinchSettleTimerRef.current);
           pinchSettleTimerRef.current = window.setTimeout(() => {
+            // Same single-writer rule as the wheel settle: stop the assist loop, then
+            // glide onto the landing. The publisher commits after the glide's last frame,
+            // so the previous explicit flush (which would recall the pre-glide camera
+            // through the external sync and cancel the glide) is no longer wanted.
+            cancelAssistAnimation();
             const next = onSemanticZoomRef.current({ camera: rawCameraRef.current, renderedCamera: liveCameraRef.current, pointer, direction: 'none', gestureSettled: true, mobile: true, gestureStartZoom: wasPinching.startZoom });
-            applyLiveCameraRef.current(next);
-            cameraPublisherRef.current?.flush();
+            animateSettleGlide(next);
             pinchSettleTimerRef.current = undefined;
           }, 120);
           pinchRef.current = undefined;
