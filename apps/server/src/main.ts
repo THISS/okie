@@ -25,7 +25,7 @@ const repoRoot = resolve(here, "../../..");
 const scanRoot = process.env.OKIE_SCAN_ROOT
   ? resolve(process.env.OKIE_SCAN_ROOT)
   : join(repoRoot, "fixtures/scan");
-const port = Number.parseInt(process.env.OKIE_SERVER_PORT ?? "4175", 10);
+const port = Number.parseInt(process.env.OKIE_SERVER_PORT ?? "4180", 10);
 const enrich = process.env.OKIE_SCAN_ENRICH === "0"
   ? "off"
   : process.env.OKIE_SCAN_ENRICH === "1"

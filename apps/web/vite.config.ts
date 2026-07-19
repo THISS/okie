@@ -5,8 +5,8 @@ import react from '@vitejs/plugin-react';
 // /scan (published trio objects + manifest). Dev and preview proxy both there so
 // the app's runtime-fetch loader sees the same paths a hosted deployment serves.
 const scanServiceProxy = {
-  '/api': 'http://localhost:4175',
-  '/scan': 'http://localhost:4175',
+  '/api': 'http://localhost:4180',
+  '/scan': 'http://localhost:4180',
 };
 
 export default defineConfig({
