@@ -260,8 +260,12 @@ describe('canvas minimap', () => {
   it('renders an interactive minimap inset that pans the camera through the canvas path', () => {
     // Drag/click on the inset routes camera writes through the same primitives as canvas pan:
     // live moves via setCamera, and settle/click via navigateCamera(..., 'replace') so story +
-    // flight cancellation, bounds and replace-not-push URL semantics stay on one path.
-    expect(app).toContain("onPan={(next, phase) => phase === 'move' ? setCamera(() => next) : navigateCamera(next, 'replace', 'Panned the map overview')}");
+    // flight cancellation, bounds and replace-not-push URL semantics stay on one path. A
+    // finished pan also runs the same stationary-pan lens handoff as a canvas drag, so the
+    // node the user panned to takes lens ownership and reveals its interior.
+    expect(app).toContain("navigateCamera(next, 'replace', 'Panned the map overview');");
+    expect(app).toContain("if (phase === 'settle') stabilizeSemanticLensForPan(next);");
+    expect(app.slice(app.indexOf('<Minimap'))).toContain("if (phase === 'move') {");
     // The container stays inert; the inset SVG is the sole pointer hit target.
     expect(declarations(css, '.minimap')).toContain('pointer-events: none');
     expect(declarations(css, '.minimap')).toContain('position: absolute');

@@ -4020,7 +4020,17 @@ export function App() {
             }}><FitIcon/></button>
           </div>
 
-          <Minimap camera={camera} onPan={(next, phase) => phase === 'move' ? setCamera(() => next) : navigateCamera(next, 'replace', 'Panned the map overview')} scene={scene} viewport={viewport}/>
+          <Minimap camera={camera} onPan={(next, phase) => {
+            if (phase === 'move') {
+              setCamera(() => next);
+              return;
+            }
+            navigateCamera(next, 'replace', 'Panned the map overview');
+            // A finished minimap pan gets the same stationary-pan lens handoff as a
+            // canvas drag: the sibling now under the safe centre takes lens ownership,
+            // so the node the user panned to reveals its interior.
+            if (phase === 'settle') stabilizeSemanticLensForPan(next);
+          }} scene={scene} viewport={viewport}/>
 
           {devMode && <button aria-expanded={diagnosticsOpen} aria-label={`Renderer backend: ${backendPresentation.title}`} className={`render-status backend-${backendPresentation.tone}`} data-active-backend={diagnostics.activeBackend} data-testid="renderer-status" onClick={() => setDiagnosticsOpen(open => !open)}>
             <span className="status-light"/><span><b>{backendPresentation.title}</b><small>{backendPresentation.detail} · {Math.round(diagnostics.lastFrameMs * 10) / 10}ms · {Math.round(camera.zoom * 100)}%</small></span><InfoIcon size={14}/>
