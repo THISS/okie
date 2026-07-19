@@ -319,6 +319,44 @@ export function availableScanRepoSlugs(): string[] {
 }
 
 /**
+ * Runtime-fetch trio loader (embed-hosting §1's "one required app change"): reads
+ * /scan/<slug>/{snapshot,view,story}.json from the serving origin — objects a scan
+ * worker published AFTER this bundle was built, which the build-time glob can never
+ * see. In dev the vite proxy forwards /scan/* to the scan server; hosted, the same
+ * paths come from object storage behind the CDN. Fails closed like the glob path:
+ * a missing or invalid object raises ScanFixtureError, never a partial fixture.
+ */
+export function fetchScanTrioLoader(slug?: string, fetchImpl: typeof fetch = fetch): ScanTrioLoader {
+  return async name => {
+    const path = slug
+      ? `/scan/${encodeURIComponent(slug)}/${name}.json`
+      : `/scan/${name}.json`;
+    let response: Response;
+    try {
+      response = await fetchImpl(path);
+    } catch (error) {
+      throw new ScanFixtureError([{
+        path: name,
+        message: `Could not reach the scan service for ${path} (${error instanceof Error ? error.message : String(error)}).`,
+      }]);
+    }
+    if (!response.ok) {
+      throw new ScanFixtureError([{
+        path: name,
+        message: response.status === 404
+          ? `No scanned repository is published at ${path}. Paste the repository on the scan page to create it.`
+          : `Failed to load ${path} (HTTP ${response.status}).`,
+      }]);
+    }
+    try {
+      return await response.json() as unknown;
+    } catch {
+      throw new ScanFixtureError([{ path: name, message: `${path} is not valid JSON.` }]);
+    }
+  };
+}
+
+/**
  * Pure resolution of which document loader serves (name, slug) from the root and
  * per-repo glob maps. No slug → the root Okie self-scan; a slug → fixtures/scan/<slug>/,
  * failing closed with a ScanFixtureError that lists the available slugs. Exported so the

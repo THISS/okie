@@ -9,8 +9,16 @@ import '@okie/theme/tokens.css';
 import './app.css';
 import { ASPECT_PRESET_TARGET } from '@okie/architecture';
 import { readDemoQuery } from './renderer/query';
+import { parseAppRoute } from './renderer/route';
 import { setActiveScanFixture } from './renderer/fixtureBundle';
-import { loadScanFixture, ScanFixtureError, type ScanFixture } from './renderer/scanFixture';
+import {
+  availableScanRepoSlugs,
+  fetchScanTrioLoader,
+  loadScanFixture,
+  ScanFixtureError,
+  type ScanFixture,
+  type ScanTrioLoader,
+} from './renderer/scanFixture';
 
 const root = createRoot(document.getElementById('root')!);
 
@@ -39,21 +47,44 @@ function ScanErrorScreen({ error }: { error: unknown }) {
   </main>;
 }
 
+async function bootScanFixture(load: ScanTrioLoader | undefined, slug: string | undefined): Promise<boolean> {
+  let fixture: ScanFixture;
+  try {
+    fixture = await loadScanFixture(load, { targetAspect: bootstrapScanAspect() }, slug);
+  } catch (error) {
+    root.render(<StrictMode><ScanErrorScreen error={error} /></StrictMode>);
+    return false;
+  }
+  setActiveScanFixture(fixture);
+  return true;
+}
+
 async function boot() {
   // A scanned fixture is fetched, validated and compiled BEFORE App is imported,
   // so App reads the compiled scene/story synchronously (like the golden fixture).
-  // `?fixture=scan` loads the Okie self-scan; `?fixture=scan:<slug>` loads the
-  // matching per-repo trio (fixtures/scan/<slug>/), failing closed on an unknown slug.
-  const query = readDemoQuery(window.location.search);
-  if (query.fixture === 'scan') {
-    let fixture: ScanFixture;
-    try {
-      fixture = await loadScanFixture(undefined, { targetAspect: bootstrapScanAspect() }, query.scanRepo);
-    } catch (error) {
-      root.render(<StrictMode><ScanErrorScreen error={error} /></StrictMode>);
-      return;
+  //
+  // Selection, in order:
+  //   /new                       → the paste-a-repo landing (no atlas machinery)
+  //   /r/<owner>/<repo>          → that repo's published trio, runtime-fetched
+  //   ?fixture=scan[:<slug>]     → the R3a query form (bundled glob; runtime-fetch
+  //                                fallback for a slug published after this build)
+  const route = parseAppRoute(window.location.pathname);
+  if (route.kind === 'landing') {
+    const { ScanLandingScreen } = await import('./scanLanding');
+    root.render(<StrictMode><ScanLandingScreen /></StrictMode>);
+    return;
+  }
+  if (route.kind === 'repo') {
+    // The hosted clean path always reads the serving origin: the published objects
+    // are the source of truth there, independent of what this bundle globbed in.
+    if (!await bootScanFixture(fetchScanTrioLoader(route.slug), route.slug)) return;
+  } else {
+    const query = readDemoQuery(window.location.search);
+    if (query.fixture === 'scan') {
+      const bundled = query.scanRepo === undefined || availableScanRepoSlugs().includes(query.scanRepo);
+      const load = bundled ? undefined : fetchScanTrioLoader(query.scanRepo);
+      if (!await bootScanFixture(load, query.scanRepo)) return;
     }
-    setActiveScanFixture(fixture);
   }
   const { App } = await import('./App');
   root.render(<StrictMode><App /></StrictMode>);
