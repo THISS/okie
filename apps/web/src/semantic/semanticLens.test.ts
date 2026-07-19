@@ -783,55 +783,34 @@ describe('semantic projection ownership', () => {
   });
 });
 
-describe('composeSemanticZoomCamera — cursor-anchored live gesture, framing lands only at settle (task #32)', () => {
+describe('composeSemanticZoomCamera — a zoom never moves the camera (anchor invariance)', () => {
   const viewport = { width: 1_000, height: 800 };
-  const safeArea = { left: 100, right: 150, top: 50, bottom: 100 };
-  const owner = { x: 0, y: 0, width: 10, height: 10 };
-  // Places the 10x10 owner's top-left at screen (left, top) at zoom 10.
+  // Places a 10x10 owner's top-left at screen (left, top) at zoom 10.
   const cameraForRect = (left: number, top: number) => ({ x: (viewport.width / 2 - left) / 10, y: (viewport.height / 2 - top) / 10, zoom: 10 });
-  // Owner pokes past the right + bottom safe edges → containment WOULD recentre it (the reported snap).
-  const overflowing = cameraForRect(760, 620);
 
-  it('keeps a LIVE wheel/pinch camera exactly cursor-anchored, and lands containment only at settle', () => {
-    const live = composeSemanticZoomCamera(overflowing, false, { ownerBounds: owner }, viewport, safeArea);
-    expect(live).toBe(overflowing); // zero lateral snap while the gesture streams
-    const settled = composeSemanticZoomCamera(overflowing, true, { ownerBounds: owner }, viewport, safeArea);
-    expect(settled).toEqual(containSemanticOwnerCamera(overflowing, owner, viewport, safeArea));
-    expect(settled).not.toEqual(overflowing); // the deferred landing only moves after the wheel stops
-  });
-
-  it('keeps the owner-morph reflow pin live (view angle preserved) but withholds containment until settle', () => {
-    const morph = { sourceBounds: { x: 0, y: 0, width: 10, height: 10 }, targetBounds: { x: 50, y: 30, width: 10, height: 10 }, progress: .5, baselineProgress: 0 };
-    const framing = { ownerBounds: interpolateSemanticOwnerBounds(morph.sourceBounds, morph.targetBounds, morph.progress), morph };
-    const pinned = compensateSemanticMorphCamera(overflowing, morph.sourceBounds, morph.targetBounds, morph.progress, morph.baselineProgress);
-    expect(composeSemanticZoomCamera(overflowing, false, framing, viewport, safeArea)).toEqual(pinned);
-    expect(composeSemanticZoomCamera(overflowing, true, framing, viewport, safeArea))
-      .toEqual(containSemanticOwnerCamera(pinned, framing.ownerBounds, viewport, safeArea));
-  });
-
-  it('passes the cursor camera through untouched when no owner is in scope', () => {
-    const cursor = cameraForRect(300, 300);
-    expect(composeSemanticZoomCamera(cursor, false, undefined, viewport, safeArea)).toBe(cursor);
-    expect(composeSemanticZoomCamera(cursor, true, undefined, viewport, safeArea)).toBe(cursor);
-  });
-
-  it('a wheel stream toward an off-centre target stays purely cursor-anchored across every live frame', () => {
-    // The contained owner flips parent→child mid-stream (the two snaps the user saw:
-    // "snap to the parent centre, then back to the child"). Every LIVE frame must equal
-    // its cursor-anchored input exactly — no lateral jump either time.
-    const child = { x: 0, y: 0, width: 3, height: 3 };
-    const stream = [
-      { cursor: cameraForRect(700, 560), framing: { ownerBounds: owner } }, // pre-arm: fallback owner = parent
-      { cursor: cameraForRect(740, 590), framing: { ownerBounds: owner } },
-      { cursor: cameraForRect(780, 620), framing: { ownerBounds: child } }, // armed: owner = child
-      { cursor: cameraForRect(820, 650), framing: { ownerBounds: child } },
-    ];
-    for (const frame of stream) {
-      expect(composeSemanticZoomCamera(frame.cursor, false, frame.framing, viewport, safeArea)).toBe(frame.cursor);
+  it('passes every cursor camera through untouched when no morph is in flight', () => {
+    // Includes the cases earlier revisions corrected at settle: a small owner past the
+    // safe edges (task #32 pull-in) and an oversized owner with a dead-space gap (the
+    // v1 edge-close). A zoom sample is now identity everywhere.
+    for (const cursor of [cameraForRect(760, 620), cameraForRect(300, 300), { x: 30, y: 40, zoom: 10 }]) {
+      expect(composeSemanticZoomCamera(cursor)).toBe(cursor);
     }
-    const last = stream.at(-1)!;
-    expect(composeSemanticZoomCamera(last.cursor, true, last.framing, viewport, safeArea))
-      .toEqual(containSemanticOwnerCamera(last.cursor, child, viewport, safeArea));
+  });
+
+  it('applies exactly the owner-morph reflow pin while a reveal is in flight', () => {
+    const overflowing = cameraForRect(760, 620);
+    const morph = { sourceBounds: { x: 0, y: 0, width: 10, height: 10 }, targetBounds: { x: 50, y: 30, width: 10, height: 10 }, progress: .5, baselineProgress: 0 };
+    const pinned = compensateSemanticMorphCamera(overflowing, morph.sourceBounds, morph.targetBounds, morph.progress, morph.baselineProgress);
+    expect(composeSemanticZoomCamera(overflowing, morph)).toEqual(pinned);
+    // The pin cancels bounds reflow only — zoom is never touched.
+    expect(composeSemanticZoomCamera(overflowing, morph).zoom).toBe(overflowing.zoom);
+  });
+
+  it('a wheel stream toward an off-centre target is identity at every frame, settle included', () => {
+    const stream = [cameraForRect(700, 560), cameraForRect(740, 590), cameraForRect(780, 620), cameraForRect(820, 650)];
+    for (const cursor of stream) {
+      expect(composeSemanticZoomCamera(cursor)).toBe(cursor);
+    }
   });
 });
 

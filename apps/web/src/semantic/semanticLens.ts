@@ -316,45 +316,35 @@ export function interpolateSemanticOwnerBounds(
   };
 }
 
-/** Owner framing inputs for a semantic zoom sample (task #32). */
-export type SemanticZoomFraming = {
-  /** Owner bounds kept inside the safe viewport — the settle-frame landing target. */
-  ownerBounds: LensBounds;
-  /** Owner-morph endpoints, present only while a representation morph is in flight. */
-  morph?: { sourceBounds: LensBounds; targetBounds: LensBounds; progress: number; baselineProgress: number };
+/** Owner-morph endpoints for one semantic zoom sample (present only mid-reveal). */
+export type SemanticZoomMorph = {
+  sourceBounds: LensBounds;
+  targetBounds: LensBounds;
+  progress: number;
+  baselineProgress: number;
 };
 
 /**
  * The camera a semantic wheel/pinch zoom sample renders at.
  *
- * The user's anchor is authoritative during a LIVE gesture: the view scales around
- * the pointer and is never recentred on an owner. Safe-viewport containment — which
- * pulls an owner to the middle once it outgrows the viewport (the user-reported
- * "snap to the parent centre, then snap back to the child") — is a settle-frame
- * landing ONLY, applied when `gestureSettled` is true. Owner-morph compensation is a
- * smooth reflow pin (not a recentre): it keeps the entity under the pointer visually
- * stable as its representation bounds reflow between bands, so it preserves the
- * user's view angle and applies throughout the gesture. Pure. (task #32)
+ * The user's anchor is authoritative for the WHOLE gesture, settle included: a
+ * zoom never translates the camera (the Google-Maps rule — direct user feedback,
+ * superseding task #32's settle-frame containment landing, whose residual
+ * pull-in/gap-close still read as "auto pan after zooming"). The only adjustment
+ * is the owner-morph reflow pin — not a recentre: it keeps the entity under the
+ * pointer visually stable as its representation bounds reflow between bands.
+ * Owner containment (containSemanticOwnerCamera) remains an EXPLICIT-navigation
+ * affordance — band rail, drills, framing — and no zoom path applies it. Pure.
  */
-export function composeSemanticZoomCamera(
-  cursorCamera: Camera,
-  gestureSettled: boolean,
-  framing: SemanticZoomFraming | undefined,
-  viewport: ViewportSize,
-  safeArea: SafeArea,
-): Camera {
-  if (!framing) return cursorCamera;
-  const pinned = framing.morph
-    ? compensateSemanticMorphCamera(
-        cursorCamera,
-        framing.morph.sourceBounds,
-        framing.morph.targetBounds,
-        framing.morph.progress,
-        framing.morph.baselineProgress,
-      )
-    : cursorCamera;
-  if (!gestureSettled) return pinned;
-  return containSemanticOwnerCamera(pinned, framing.ownerBounds, viewport, safeArea);
+export function composeSemanticZoomCamera(cursorCamera: Camera, morph?: SemanticZoomMorph): Camera {
+  if (!morph) return cursorCamera;
+  return compensateSemanticMorphCamera(
+    cursorCamera,
+    morph.sourceBounds,
+    morph.targetBounds,
+    morph.progress,
+    morph.baselineProgress,
+  );
 }
 
 /** Removes one branch's structural morph offset at the start of a new gesture. */

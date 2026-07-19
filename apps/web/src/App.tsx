@@ -71,13 +71,12 @@ import { loadStressFixture } from './renderer/stressFixture';
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation } from './renderer/types';
 import type { ProjectionOverride } from './renderer/types';
 import {
-  composeSemanticZoomCamera, type SemanticZoomFraming,
+  composeSemanticZoomCamera, type SemanticZoomMorph,
   containSemanticOwnerCamera,
   advanceSemanticLensFocusTransfer,
   findSemanticLensTarget,
   idleSemanticLens,
   idleSemanticLensSession,
-  interpolateSemanticOwnerBounds,
   measureSemanticLensTarget,
   reduceSemanticLensSession,
   semanticLensBranchEntityIds,
@@ -2398,28 +2397,20 @@ export function App() {
     const presentation = nextSession.active.phase !== 'idle'
       ? nextSession.active
       : semanticMorphStateRef.current;
-    // Build the owner framing, then let composeSemanticZoomCamera decide how much of
-    // it reaches the camera: a LIVE wheel/pinch gesture stays cursor-anchored (the
-    // owner-morph reflow pin still applies, but safe-viewport containment — the
-    // recentre the user reported as a "snap to the parent, then back" — is withheld
-    // until the gesture settles). (task #32)
-    let framing: SemanticZoomFraming | undefined;
+    // The morph reflow pin is the ONLY camera adjustment a zoom sample gets: it keeps
+    // the branch under the pointer visually stable while its representation bounds
+    // reflow between bands. Settle applies no landing at all — a zoom never moves the
+    // user's anchor (direct user feedback; supersedes the task #32 settle-frame
+    // containment, whose residual pull-in read as "auto pan after zooming").
+    let morph: SemanticZoomMorph | undefined;
     if (presentation?.targetId && presentation.currentDetail && presentation.nextDetail) {
       const sourceBounds = semanticBounds(scene, presentation.targetId, presentation.currentDetail);
       const targetBounds = semanticBounds(scene, presentation.targetId, presentation.nextDetail);
       if (sourceBounds && targetBounds) {
-        framing = {
-          ownerBounds: interpolateSemanticOwnerBounds(sourceBounds, targetBounds, presentation.progress),
-          morph: { sourceBounds, targetBounds, progress: presentation.progress, baselineProgress: semanticMorphBaselineRef.current },
-        };
+        morph = { sourceBounds, targetBounds, progress: presentation.progress, baselineProgress: semanticMorphBaselineRef.current };
       }
     }
-    if (!framing) {
-      const deepestOwner = nextSession.settled.at(-1);
-      const ownerBounds = deepestOwner ? semanticBounds(scene, deepestOwner.targetId, deepestOwner.nextDetail) : undefined;
-      if (ownerBounds) framing = { ownerBounds };
-    }
-    const renderedCamera = composeSemanticZoomCamera(sample.camera, sample.gestureSettled, framing, viewport, safeArea);    const navigation = canonicalNavigationState({
+    const renderedCamera = composeSemanticZoomCamera(sample.camera, morph);    const navigation = canonicalNavigationState({
       ...navigationRef.current,
       camera: renderedCamera,
       detail: nextSession.baseDetail,

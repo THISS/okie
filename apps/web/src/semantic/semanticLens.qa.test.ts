@@ -63,42 +63,39 @@ describe('semantic lens acceptance contract', () => {
     });
   });
 
-  // Sanctioned product-feel change (task #32, direct user feedback): a wheel/pinch
-  // zoom must scale around the pointer and NEVER recentre on an owner mid-gesture.
-  // The previous behaviour pulled an oversized owner to the viewport centre while the
-  // gesture was live (felt as "snap to the parent, then snap back to the child").
-  // Owner containment is now a settle-frame landing only; the lens still arms/reveals.
-  it('holds the cursor anchor through a live zoom and lands owner containment only at settle', () => {
+  // Sanctioned product-feel change v2 (direct user feedback, supersedes the task #32
+  // settle-frame landing and its v1 gap-close softening): a wheel/pinch zoom NEVER
+  // moves the camera — not while the gesture streams and not at settle. No pull-in,
+  // no gap-close, no recentre; the anchor the user zoomed at is exactly where they
+  // land (the Google-Maps rule). The one permitted adjustment is the owner-morph
+  // reflow pin, which cancels representation-bounds reflow so the branch under the
+  // pointer stays visually put — never a translation of the user's view. Owner
+  // containment survives ONLY as an explicit-navigation affordance (band rail,
+  // drills, framing) via containSemanticOwnerCamera, outside every zoom path.
+  it('never moves the camera for a zoom — the anchor lands exactly where the user left it', () => {
     const viewport = { width: 1_000, height: 800 };
     const safeArea = { left: 100, right: 150, top: 50, bottom: 100 };
-    const owner = { x: 0, y: 0, width: 10, height: 10 };
-    // Camera whose zoom makes the owner overflow the right+bottom safe edges (would recentre).
-    const cursor = { x: (viewport.width / 2 - 760) / 10, y: (viewport.height / 2 - 620) / 10, zoom: 10 };
-
-    // Live gesture: the rendered camera IS the cursor-anchored camera — no recentre.
-    expect(composeSemanticZoomCamera(cursor, false, { ownerBounds: owner }, viewport, safeArea)).toBe(cursor);
-    // Settle: containment lands the owner back inside the safe viewport (a one-time landing).
-    const landed = composeSemanticZoomCamera(cursor, true, { ownerBounds: owner }, viewport, safeArea);
-    expect(landed).toEqual(containSemanticOwnerCamera(cursor, owner, viewport, safeArea));
-    expect(landed).not.toEqual(cursor);
-  });
-
-  // Sanctioned product-feel change (direct user feedback): once an owner outgrows the
-  // safe viewport the user is INSIDE it, and a settle must not recentre it — the zoom
-  // anchor stays exactly where the user left it (the Google-Maps rule). Containment
-  // then only closes dead-space gaps beyond an owner edge, edge-to-edge.
-  it('keeps the zoom anchor inside an oversized owner at settle and only closes edge gaps', () => {
-    const viewport = { width: 1_000, height: 800 };
-    const safeArea = { left: 100, right: 150, top: 50, bottom: 100 };
-    const owner = { x: 0, y: 0, width: 100, height: 100 };
-    // Owner screen box spans 0..1000 on both axes at zoom 10 — covers the padded safe window.
-    const covering = { x: 50, y: 40, zoom: 10 };
-    expect(composeSemanticZoomCamera(covering, true, { ownerBounds: owner }, viewport, safeArea)).toBe(covering);
-    // A left-edge gap (owner left at 200 > padded safe left 124) closes edge-to-edge; the
-    // former behaviour recentred the owner (x would have moved to 52.5, not 37.6).
+    // The task #32 case (small owner poking past safe edges — used to pull in at settle)
+    // and the v1 case (oversized owner with a dead-space gap — used to close edge-to-edge):
+    // both now pass through IDENTITY, gesture live or settled.
+    const overflowing = { x: (viewport.width / 2 - 760) / 10, y: (viewport.height / 2 - 620) / 10, zoom: 10 };
     const withGap = { x: 30, y: 40, zoom: 10 };
-    expect(composeSemanticZoomCamera(withGap, true, { ownerBounds: owner }, viewport, safeArea))
-      .toEqual({ x: 37.6, y: 40, zoom: 10 });
+    expect(composeSemanticZoomCamera(overflowing)).toBe(overflowing);
+    expect(composeSemanticZoomCamera(withGap)).toBe(withGap);
+
+    // The morph reflow pin still applies while a reveal is in flight — it offsets the
+    // camera by exactly the bounds-centre drift, keeping the on-screen anchor fixed.
+    const morph = {
+      sourceBounds: { x: 0, y: 0, width: 10, height: 10 },
+      targetBounds: { x: 20, y: 6, width: 10, height: 10 },
+      progress: 0.5,
+      baselineProgress: 0,
+    };
+    expect(composeSemanticZoomCamera({ x: 0, y: 0, zoom: 1 }, morph)).toEqual({ x: 10, y: 3, zoom: 1 });
+
+    // Containment still exists — for explicit navigation only — and still translates.
+    const owner = { x: 0, y: 0, width: 10, height: 10 };
+    expect(containSemanticOwnerCamera(overflowing, owner, viewport, safeArea)).not.toEqual(overflowing);
   });
 
   it('arms only on inward intent with at least 24px target containment', () => {
