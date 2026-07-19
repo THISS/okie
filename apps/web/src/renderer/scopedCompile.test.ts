@@ -4,6 +4,8 @@ import {
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_EDGE_BUDGET,
   SCAN_CONTAINER_GRID_NODES,
+  SCAN_RELATION_EDGE_BUDGET,
+  SCAN_RELATION_EDGE_MIN,
   guardScanCompile,
   scanScopeCompileOptions,
   scanScopeStats,
@@ -231,5 +233,71 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
     expect(scanDrillDeeperDetail(scene, codeLeaf)).toBeUndefined();
     // component:x has no children in the scene → nothing deeper to compile.
     expect(scanDrillDeeperDetail(scene, sceneEntities[2]!)).toBeUndefined();
+  });
+});
+
+describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` graphs)', () => {
+  const manyRelations = (count: number) =>
+    Array.from({ length: count }, (_, index) => relation(`r${index}`, 'code:a', 'code:b'));
+  const smallEntities = [
+    entity('system:root', 'softwareSystem'),
+    entity('container:c', 'container', 'system:root'),
+    entity('component:x', 'component', 'container:c'),
+    entity('code:a', 'code', 'component:x'),
+    entity('code:b', 'code', 'component:x'),
+  ];
+
+  it('budgets routed edges + router grid above the relation gate, at every focus, without dropping bands', () => {
+    const dense = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN + 1));
+    for (const focus of ['system:root', 'container:c', 'component:x', 'code:a']) {
+      expect(scanScopeCompileOptions(dense, focus)).toEqual({
+        maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+        maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      });
+    }
+  });
+
+  it('stays untouched at or below the relation gate', () => {
+    const sparse = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN));
+    expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({});
+  });
+
+  it('composes with the entity gate: per-kind options win where set, budgets fill the gaps', () => {
+    const big = snapshot(
+      [
+        ...smallEntities,
+        ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
+      ],
+      manyRelations(SCAN_RELATION_EDGE_MIN + 1),
+    );
+    // Container keeps its OWN tighter budget; system/component/code gain the relation budgets.
+    expect(scanScopeCompileOptions(big, 'container:c')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect(scanScopeCompileOptions(big, 'system:root')).toEqual({
+      maxBand: 'container',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect(scanScopeCompileOptions(big, 'code:a')).toEqual({
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+  });
+
+  it('guardScanCompile accepts relation-gated options as bounded (no refusal on deep links)', () => {
+    const big = snapshot(
+      [
+        ...smallEntities,
+        ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
+      ],
+      manyRelations(SCAN_RELATION_EDGE_MIN + 1),
+    );
+    const decision = guardScanCompile(big, 'code:a', 'system:root');
+    expect(decision.refusal).toBeUndefined();
+    expect(decision.focusEntityId).toBe('code:a');
+    expect(decision.options.maxGridNodes).toBe(SCAN_CONTAINER_GRID_NODES);
   });
 });

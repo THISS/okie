@@ -13,12 +13,22 @@ import { compileAppStoryPlan, createC4Scene, type AppStoryPlan } from './goldenC
 import type { AtlasScene, ScanGuardRefusal } from './types';
 
 // Scan-mode scoped-compile levers (documented; Okie's scan sits under the size
-// gate, so scanScopeCompileOptions returns {} → identical to an unbounded compile).
-// Scoping exists FOR large repos; small repos keep the uninterrupted full-band
-// zoom that is the product's signature feel.
-export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000; // size gate — below this, no scoping
+// gate, so band scoping never applies to it). Scoping exists FOR large repos;
+// small repos keep the uninterrupted full-band zoom that is the product's
+// signature feel.
+export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000; // size gate — below this, no band scoping
 export const SCAN_CONTAINER_EDGE_BUDGET = 24;     // routed edges per band at a container drill-in
 export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a container drill-in
+
+// Relation-pressure gate: the symbol-level `uses` graph makes edge ROUTING the
+// dominant cost even when the entity count sits far under the band-depth gate
+// (okie's own public scan: 850 entities but ~1.7k relations → a two-minute
+// unbounded compile). Above this relation count every compile takes an edge
+// budget — every band stays present (no maxBand), only routing is bounded, and
+// dropped edges stay enumerable via omittedEdgeIds ("+N more"). Below both
+// gates the compile is untouched.
+export const SCAN_RELATION_EDGE_MIN = 600;   // relation gate — above this, budget the routed edges
+export const SCAN_RELATION_EDGE_BUDGET = 64; // routed edges per band under the relation gate
 
 export type ScanScopedOptions = { maxBand?: C4Band; maxEdgesPerBand?: number; maxGridNodes?: number };
 
@@ -46,18 +56,29 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
 };
 
 /**
- * Deterministic scoped-compile options for a scan-mode focus. A single repo-size
- * gate (entity count > threshold) turns scoping ON for large repos; below it,
- * small repos like Okie stay fully unbounded and render identically to today.
- * Above the gate, options follow the focus kind: system→container band; container
- * drill-in→component band + edge budget + router grid cap; component→code band.
- * Pure function of snapshot + focus (never timing).
+ * Deterministic scoped-compile options for a scan-mode focus. Two independent
+ * gates, both pure functions of the snapshot (never timing):
+ * - Entity gate (> SCAN_BAND_DEPTH_MIN_ENTITIES): band scoping by focus kind —
+ *   system→container band; container drill-in→component band + edge budget +
+ *   router grid cap; component→code band.
+ * - Relation gate (> SCAN_RELATION_EDGE_MIN): a per-band routed-edge budget plus a
+ *   router grid cap wherever the options don't already carry one — the symbol-level
+ *   `uses` graph makes edge routing the dominant cost at every repo size (okie's own
+ *   public scan: 127s unbounded → ~1s with budget 64 + grid 1500; the grid overflow
+ *   degrades gracefully to direct edges). Bands are never dropped by this gate.
+ * Below both gates the options are {} and small repos render identically to today.
  */
 export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEntityId: string): ScanScopedOptions {
-  if (snapshot.entities.length <= SCAN_BAND_DEPTH_MIN_ENTITIES) return {};
+  const aboveEntityGate = snapshot.entities.length > SCAN_BAND_DEPTH_MIN_ENTITIES;
+  const aboveRelationGate = snapshot.relations.length > SCAN_RELATION_EDGE_MIN;
   const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
-  const scoped = focus && SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind];
-  return scoped ? { ...scoped } : {};
+  const scoped = aboveEntityGate && focus ? SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind] : undefined;
+  const options: ScanScopedOptions = scoped ? { ...scoped } : {};
+  if (aboveRelationGate) {
+    options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
+    options.maxGridNodes ??= SCAN_CONTAINER_GRID_NODES;
+  }
+  return options;
 }
 
 /**
