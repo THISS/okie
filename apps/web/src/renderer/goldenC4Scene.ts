@@ -17,6 +17,7 @@ import {
   GOLDEN_WORKTREE_REVISION,
   compileAuthoredC4Scene,
   compileC4Scene,
+  coverageRevealZoomWindow,
   diffSceneSnapshots,
   goldenSnapshot,
   goldenStory,
@@ -293,6 +294,16 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
       const nextBand = compiled.zoomPolicy.bands.find(band => band.detail === nextDetail)!;
       const largestTargetText = target.primitives.reduce((largest, primitive) =>
         primitive.kind === 'text' ? Math.max(largest, primitive.fontSize) : largest, 0);
+      // Scan mode (targetAspect set): the reveal runway follows the coverage contract —
+      // children start revealing when the owner's expanded box would cover
+      // COVERAGE_REVEAL.start of the nominal viewport, never later than the band's own
+      // enter/fade window. A large scanned owner otherwise outgrows the screen long
+      // before the fixed band runway begins (user report: "empty node past full screen").
+      // Same box and math as the compiler's coverageRevealLod → one reveal moment.
+      // Golden/demo (no targetAspect) keeps the band runway byte-identically.
+      const revealWindow = options.targetAspect !== undefined
+        ? coverageRevealZoomWindow(nextBounds, nextDetail, options.targetAspect)
+        : undefined;
       return [[nextDetail, {
         currentDetail,
         nextDetail,
@@ -306,8 +317,11 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
           width: Math.max(320, largestTargetText * 10),
           height: Math.max(180, largestTargetText * 4),
         },
-        minZoom: nextBand.enterZoom,
-        fullZoom: Math.min(compiled.zoomPolicy.maxZoom, nextBand.enterZoom + nextBand.fadeWidth),
+        minZoom: revealWindow?.minZoom ?? nextBand.enterZoom,
+        fullZoom: Math.min(
+          compiled.zoomPolicy.maxZoom,
+          revealWindow?.fullZoom ?? nextBand.enterZoom + nextBand.fadeWidth,
+        ),
         hysteresis: nextBand.hysteresis,
         transitionMs: 180,
         dwellMs: 80,

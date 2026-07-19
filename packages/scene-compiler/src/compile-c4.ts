@@ -149,6 +149,31 @@ function coverageNominalViewport(targetAspect: number): { width: number; height:
 }
 
 /**
+ * Camera-zoom window over which an owner's children reveal under the coverage
+ * contract: reveal starts when `owner` would cover COVERAGE_REVEAL.start of the
+ * nominal viewport and completes at COVERAGE_REVEAL.full, each clamped so the
+ * window is never LATER than the band's own enter/fade runway. `minZoom` is
+ * strictly below `fullZoom` by construction. Shared by the native reveal LOD and
+ * the shell's semantic-lens transitions so both reveal at the same camera zoom.
+ */
+export function coverageRevealZoomWindow(
+  owner: { width: number; height: number },
+  band: C4Band,
+  targetAspect: number,
+): { minZoom: number; fullZoom: number } {
+  const base = lodFor(band);
+  const viewport = coverageNominalViewport(targetAspect);
+  const fit = Math.min(
+    viewport.width / Math.max(1, owner.width),
+    viewport.height / Math.max(1, owner.height),
+  );
+  return {
+    minZoom: Math.min(COVERAGE_REVEAL.start * fit, base.minZoom),
+    fullZoom: Math.min(COVERAGE_REVEAL.full * fit, base.minZoom + base.fadeWidth),
+  };
+}
+
+/**
  * Per-owner children-reveal LOD. `owner` is the box whose coverage gates the reveal (the
  * parent for a child card; the owner itself for its boundary shell). A larger owner reveals
  * its children at a LOWER zoom — the fix for "a container fills the screen but stays opaque".
@@ -159,17 +184,11 @@ function coverageNominalViewport(targetAspect: number): { width: number; height:
  */
 function coverageRevealLod(owner: NodeLayout, band: C4Band, targetAspect: number): LodRange {
   const base = lodFor(band);
-  const viewport = coverageNominalViewport(targetAspect);
-  const fit = Math.min(
-    viewport.width / Math.max(1, owner.width),
-    viewport.height / Math.max(1, owner.height),
-  );
-  const start = Math.min(COVERAGE_REVEAL.start * fit, base.minZoom);
-  const full = Math.min(COVERAGE_REVEAL.full * fit, base.minZoom + base.fadeWidth);
+  const window = coverageRevealZoomWindow(owner, band, targetAspect);
   return {
-    minZoom: start,
+    minZoom: window.minZoom,
     maxZoom: base.maxZoom,
-    fadeWidth: Math.max(full - start, base.fadeWidth),
+    fadeWidth: Math.max(window.fullZoom - window.minZoom, base.fadeWidth),
     hysteresis: base.hysteresis,
   };
 }

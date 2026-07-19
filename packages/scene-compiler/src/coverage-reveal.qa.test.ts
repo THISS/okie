@@ -8,7 +8,7 @@ import {
   type ArchitectureSnapshot,
   type C4Band,
 } from '@okie/architecture';
-import { C4_ZOOM_BANDS, COVERAGE_REVEAL, compileC4Scene } from './compile-c4.js';
+import { C4_ZOOM_BANDS, COVERAGE_REVEAL, compileC4Scene, coverageRevealZoomWindow } from './compile-c4.js';
 
 // Coverage-based children reveal (task #33). Opt-in via targetAspect (scan mode): a child's
 // reveal LOD keys off its OWNER's on-screen coverage, so a large owner reveals its children
@@ -100,6 +100,25 @@ test('coverage reveal is deterministic under reversed entity order', () => {
   const reversedSnapshot = { ...snapshot, entities: [...snapshot.entities].reverse() };
   const reversed = compileC4Scene(reversedSnapshot, build(reversedSnapshot, target), { targetAspect: target }).scene;
   assert.equal(JSON.stringify(forward), JSON.stringify(reversed), 'reveal LODs must be insertion-order invariant');
+});
+
+test('coverageRevealZoomWindow is the single reveal moment shared with the compiled LOD', () => {
+  const snapshot = denseContainer(40);
+  const target = ASPECT_PRESET_TARGET.landscape;
+  const compiled = compileC4Scene(snapshot, build(snapshot, target), { targetAspect: target });
+
+  // The window must be computed from the NORMALIZED projections the compile returns
+  // (persistent owner shells + intrinsic geometry), not the stage-1 input bundle.
+  const containerId = compiled.projections.index.visualNodeIdsByEntityId['container:c']![0]!;
+  const ownerBounds = compiled.projections.index.boundsByEntityIdAndBand['container:c']!.component!;
+  const window = coverageRevealZoomWindow(ownerBounds, 'component', target);
+
+  assert.equal(repMinZoom(compiled.scene, containerId, 'component'), window.minZoom,
+    'the shared window must start exactly where the owner shell reveal LOD starts');
+  assert.ok(window.minZoom < window.fullZoom, 'the reveal window must have positive width');
+  const band = C4_ZOOM_BANDS.find(candidate => candidate.detail === 'component')!;
+  assert.ok(window.minZoom <= band.enterZoom + 1e-9 && window.fullZoom <= band.enterZoom + band.fadeWidth + 1e-9,
+    'the window must never fall later than the band enter/fade runway');
 });
 
 test('a taller owner reveals its children earlier than a shorter one (coverage monotonic in size)', () => {
