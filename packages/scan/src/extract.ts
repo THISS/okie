@@ -28,6 +28,8 @@ export interface TopLevelDeclaration {
   name: string;
   startLine: number;
   endLine: number;
+  /** Exported from its module (direct modifier, `export {…}` list, `export default`/`export =`). */
+  exported: boolean;
 }
 
 export interface ModuleImport {
@@ -47,27 +49,58 @@ export function parseSource(path: string, text: string): ts.SourceFile {
   return ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, scriptKind(path));
 }
 
+/** Local names exported indirectly: `export { a, b as c }` (no specifier), `export default x`, `export = x`. */
+function indirectlyExportedNames(sourceFile: ts.SourceFile): Set<string> {
+  const names = new Set<string>();
+  for (const statement of sourceFile.statements) {
+    if (ts.isExportDeclaration(statement) && !statement.moduleSpecifier
+      && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+      for (const element of statement.exportClause.elements) {
+        names.add((element.propertyName ?? element.name).text);
+      }
+    } else if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
+      names.add(statement.expression.text);
+    }
+  }
+  return names;
+}
+
+function hasExportModifier(statement: ts.Statement): boolean {
+  return ts.canHaveModifiers(statement)
+    ? (ts.getModifiers(statement) ?? []).some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)
+    : false;
+}
+
 /**
  * Every top-level named declaration — exported OR not. Non-exported top-level
  * symbols matter: e.g. `CanvasViewport` in App.tsx is a local function yet a
- * pinned golden anchor, so an exports-only walk would under-report.
+ * pinned golden anchor, so an exports-only walk would under-report. Each
+ * declaration carries `exported` so a public-API scan (`codeSurface: 'public'`)
+ * can keep only the module's export surface.
  */
 export function topLevelDeclarations(sourceFile: ts.SourceFile): TopLevelDeclaration[] {
   const declarations: TopLevelDeclaration[] = [];
+  const indirect = indirectlyExportedNames(sourceFile);
   const lineOf = (position: number): number => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
-  const push = (name: string, node: ts.Node): void => {
-    declarations.push({ name, startLine: lineOf(node.getStart(sourceFile)), endLine: lineOf(node.getEnd()) });
+  const push = (name: string, node: ts.Node, direct: boolean): void => {
+    declarations.push({
+      name,
+      startLine: lineOf(node.getStart(sourceFile)),
+      endLine: lineOf(node.getEnd()),
+      exported: direct || indirect.has(name),
+    });
   };
   for (const statement of sourceFile.statements) {
-    if (ts.isFunctionDeclaration(statement) && statement.name) push(statement.name.text, statement);
-    else if (ts.isClassDeclaration(statement) && statement.name) push(statement.name.text, statement);
-    else if (ts.isInterfaceDeclaration(statement)) push(statement.name.text, statement);
-    else if (ts.isTypeAliasDeclaration(statement)) push(statement.name.text, statement);
-    else if (ts.isEnumDeclaration(statement)) push(statement.name.text, statement);
-    else if (ts.isModuleDeclaration(statement) && ts.isIdentifier(statement.name)) push(statement.name.text, statement);
+    const direct = hasExportModifier(statement);
+    if (ts.isFunctionDeclaration(statement) && statement.name) push(statement.name.text, statement, direct);
+    else if (ts.isClassDeclaration(statement) && statement.name) push(statement.name.text, statement, direct);
+    else if (ts.isInterfaceDeclaration(statement)) push(statement.name.text, statement, direct);
+    else if (ts.isTypeAliasDeclaration(statement)) push(statement.name.text, statement, direct);
+    else if (ts.isEnumDeclaration(statement)) push(statement.name.text, statement, direct);
+    else if (ts.isModuleDeclaration(statement) && ts.isIdentifier(statement.name)) push(statement.name.text, statement, direct);
     else if (ts.isVariableStatement(statement)) {
       for (const declaration of statement.declarationList.declarations) {
-        if (ts.isIdentifier(declaration.name)) push(declaration.name.text, declaration);
+        if (ts.isIdentifier(declaration.name)) push(declaration.name.text, declaration, direct);
       }
     }
   }
@@ -207,6 +240,13 @@ export interface ExtractInput {
   readFile: (repoRelativePath: string) => string;
   systemName?: string;
   systemSlug?: string;
+  /**
+   * Which top-level declarations become L4 code entities. 'all' (default) keeps every
+   * top-level declaration — required for the Okie self-scan's golden-anchor coverage.
+   * 'public' keeps only the module's export surface: the readable public API of the
+   * repo, with private helpers left to the file card (the hosted paste-a-repo posture).
+   */
+  codeSurface?: "all" | "public";
 }
 
 function finalizeEvidence(evidence: readonly ArchitectureExtractionEvidence[]): ArchitectureExtractionEvidence[] {
@@ -395,7 +435,10 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     });
 
     const sourceFile = parseSource(file, readFile(file));
-    topLevelDeclarations(sourceFile).forEach((declaration, index) => {
+    const declarations = input.codeSurface === "public"
+      ? topLevelDeclarations(sourceFile).filter(declaration => declaration.exported)
+      : topLevelDeclarations(sourceFile);
+    declarations.forEach((declaration, index) => {
       entityDescriptors.push({
         naturalKey: `${file}#${index}`,
         desiredId: typedId("code", file, declaration.name),

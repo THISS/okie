@@ -127,3 +127,57 @@ test("extractArchitecture is independent of source-file order", () => {
   });
   assert.equal(JSON.stringify(forward), JSON.stringify(reversed));
 });
+
+test("topLevelDeclarations marks the export surface, including export-list and default forms", () => {
+  const source = parseSource("m.ts", [
+    "export function pub() {}",
+    "function internalHelper() {}",
+    "const secret = 1;",
+    "const listed = 2;",
+    "class DefaultThing {}",
+    "export { listed };",
+    "export default DefaultThing;",
+  ].join("\n"));
+  assert.deepEqual(
+    topLevelDeclarations(source).map(d => [d.name, d.exported]),
+    [["pub", true], ["internalHelper", false], ["secret", false], ["listed", true], ["DefaultThing", true]],
+  );
+});
+
+test("topLevelDeclarations does not mark local names for re-exports from other modules", () => {
+  const source = parseSource("m.ts", [
+    "const shadow = 1;",
+    "export { shadow } from './elsewhere.js';",
+  ].join("\n"));
+  // The re-export exports ANOTHER module's symbol; the local `shadow` stays private.
+  assert.deepEqual(topLevelDeclarations(source).map(d => [d.name, d.exported]), [["shadow", false]]);
+});
+
+test("codeSurface 'public' keeps only exported declarations as code entities; default keeps all", () => {
+  const files: Record<string, string> = {
+    ...syntheticFiles,
+    "pkg/a/src/index.ts": "export function alpha() {}\nfunction hidden() {}\nexport const A = 1;\n",
+  };
+  const readFile = (path: string): string => {
+    const text = files[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const everything = extractArchitecture({ discovery: syntheticDiscovery(), readFile, systemName: "Acme", systemSlug: "acme" });
+  const publicOnly = extractArchitecture({
+    discovery: syntheticDiscovery(),
+    readFile,
+    systemName: "Acme",
+    systemSlug: "acme",
+    codeSurface: "public",
+  });
+  assert.deepEqual(validateArchitectureExtraction(publicOnly), []);
+  const codeNames = (extraction: typeof everything): string[] => extraction.entities
+    .filter(entity => entity.kind === "code" && entity.parentId === "component:pkg-a-src-index-ts")
+    .map(entity => entity.name)
+    .sort();
+  assert.deepEqual(codeNames(everything), ["A", "alpha", "hidden"]);
+  assert.deepEqual(codeNames(publicOnly), ["A", "alpha"]);
+  // The file component itself survives either way — only private symbols fold into it.
+  assert.ok(publicOnly.entities.some(entity => entity.id === "component:pkg-a-src-index-ts"));
+});

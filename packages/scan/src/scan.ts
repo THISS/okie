@@ -17,6 +17,7 @@ import { compileC4Scene, compileC4Timeline, type SceneSnapshot, type Timeline } 
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
+import { buildEnrichmentPackets, type EmittedPackets } from "./packet.js";
 import { pinRepository, type RepositoryPin } from "./pin.js";
 import {
   acquireGithubTree,
@@ -34,6 +35,8 @@ export interface ScanOptions {
   includeAllMembers?: boolean;
   /** container id -> enrichment document (any JSON); accepted docs re-group that scope. */
   enrichmentDocs?: ReadonlyMap<string, unknown>;
+  /** L4 code surface: 'all' (default, every top-level declaration) or 'public' (export surface only). */
+  codeSurface?: "all" | "public";
 }
 
 export interface GithubScanOptions extends ScanOptions {
@@ -41,6 +44,14 @@ export interface GithubScanOptions extends ScanOptions {
   client?: GithubClient;
   /** Cap on the downloaded tarball; a clearer error fires above it. */
   maxTarballBytes?: number;
+  /**
+   * Live enrichment adapter (M3): called with the bounded packets while the ephemeral
+   * checkout is still on disk; returns container-id-keyed docs to merge through the
+   * gate. Used only when no pre-recorded `enrichmentDocs` were supplied. The adapter
+   * owns its own resilience — per-scope failures simply omit that scope's doc, and the
+   * deterministic base always publishes (an empty map means no enrichment).
+   */
+  enrichWithPackets?: (packets: EmittedPackets) => Promise<ReadonlyMap<string, unknown>>;
 }
 
 export interface ScanArtifacts {
@@ -124,6 +135,13 @@ export interface BuildScanArtifactsParams {
   repositorySlug: string;
   systemName: string;
   enrichmentDocs?: ReadonlyMap<string, unknown>;
+  codeSurface?: "all" | "public";
+  /**
+   * A base extraction already computed over the SAME inputs (used by the live-enrichment
+   * path to avoid extracting twice while the checkout is alive). Must be byte-equal to
+   * what extractArchitecture would produce here; callers never mutate it.
+   */
+  baseExtraction?: ArchitectureExtraction;
 }
 
 /** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
@@ -131,7 +149,13 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   const { discovery, pin, readFile, repositorySlug, systemName } = params;
   const systemSlug = slug(systemName);
 
-  const baseExtraction = extractArchitecture({ discovery, readFile, systemName, systemSlug });
+  const baseExtraction = params.baseExtraction ?? extractArchitecture({
+    discovery,
+    readFile,
+    systemName,
+    systemSlug,
+    ...(params.codeSurface ? { codeSurface: params.codeSurface } : {}),
+  });
   let extraction = baseExtraction;
   let enrichmentReport: EnrichmentReport | undefined;
   if (params.enrichmentDocs && params.enrichmentDocs.size > 0) {
@@ -208,6 +232,7 @@ export function scanRepository(sourceRoot: string, options: ScanOptions = {}): S
     repositorySlug,
     systemName,
     ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
+    ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
   });
 }
 
@@ -244,13 +269,31 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
         "this looks like a non-TypeScript/JavaScript repository.",
       );
     }
+    // Live enrichment (M3) must run inside this window: packets read source bytes from
+    // the ephemeral checkout, which the finally below discards.
+    let baseExtraction: ArchitectureExtraction | undefined;
+    let enrichmentDocs = options.enrichmentDocs;
+    if ((!enrichmentDocs || enrichmentDocs.size === 0) && options.enrichWithPackets) {
+      baseExtraction = extractArchitecture({
+        discovery,
+        readFile,
+        systemName,
+        systemSlug: slug(systemName),
+        ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
+      });
+      const packets = buildEnrichmentPackets(baseExtraction, readFile);
+      const generated = await options.enrichWithPackets(packets);
+      enrichmentDocs = generated.size > 0 ? generated : undefined;
+    }
     const artifacts = buildScanArtifacts({
       discovery,
       pin,
       readFile,
       repositorySlug,
       systemName,
-      ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
+      ...(enrichmentDocs ? { enrichmentDocs } : {}),
+      ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
+      ...(baseExtraction ? { baseExtraction } : {}),
     });
     return { source, commitSha: commit.sha, artifacts };
   } finally {

@@ -35,6 +35,7 @@ function printUsage(): void {
     "  --emit-packets <d>  (local only) write bounded, redacted enrichment packets to <d>",
     "  --enrich-from <d>   read enrichment docs (<containerId>.json) from <d>, merge accepted",
     "  --include-members   scan fixture/example/playground/e2e workspace members too",
+    "  --public-api        L4 code entities cover only the export surface (hosted posture)",
     "",
   ].join("\n"));
 }
@@ -68,6 +69,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       case "--emit-packets": emitPacketsDir = next(); break;
       case "--enrich-from": enrichFromDir = next(); break;
       case "--include-members": options.includeAllMembers = true; break;
+      case "--public-api": options.codeSurface = "public"; break;
       case "--help": case "-h": printUsage(); process.exit(0); break;
       default: throw new Error(`Unknown argument: ${arg}`);
     }
