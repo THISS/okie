@@ -3,6 +3,7 @@ import test from "node:test";
 import { validateArchitectureExtraction } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import {
+  cargoPathDependencies,
   extractArchitecture,
   moduleImports,
   parseSource,
@@ -264,4 +265,105 @@ test("symbol relations are independent of source-file order", () => {
     systemSlug: "acme",
   });
   assert.equal(JSON.stringify(forward), JSON.stringify(reversed));
+});
+
+test("component names are container-relative while ids and evidence keep the full path", () => {
+  const extraction = extractArchitecture({
+    discovery: syntheticDiscovery(),
+    readFile: readSynthetic,
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  const component = extraction.entities.find(entity => entity.id === "component:pkg-a-src-index-ts")!;
+  assert.equal(component.name, "src/index.ts");
+  assert.equal(component.sourceRefs[0]!.path, "pkg/a/src/index.ts");
+});
+
+test("a relative import escaping the discovered set maps to the owning unit as a container edge", () => {
+  const discovery: Discovery = {
+    sourceFiles: ["apps/web/src/adapter.ts"],
+    units: [
+      { kind: "member", dir: "apps/web", name: "@acme/web", packageName: "@acme/web", evidencePath: "apps/web" },
+      { kind: "rust", dir: "crates/engine-wasm", name: "engine-wasm", evidencePath: "crates/engine-wasm" },
+    ],
+    unitByFile: new Map([["apps/web/src/adapter.ts", "apps/web"]]),
+    unitByPackageName: new Map([["@acme/web", "apps/web"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "apps/web/src/adapter.ts": "import init from '../../../crates/engine-wasm/pkg/engine_wasm.js';\nexport const boot = init;\n",
+  };
+  const extraction = extractArchitecture({
+    discovery,
+    readFile: path => {
+      const text = files[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    },
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  const edge = extraction.relations.find(relation =>
+    relation.from === "container:apps-web" && relation.to === "container:crates-engine-wasm");
+  assert.ok(edge, "expected apps/web → crates/engine-wasm container edge from the escaped relative import");
+  assert.equal(edge!.evidence[0]!.source.path, "apps/web/src/adapter.ts");
+});
+
+test("cargoPathDependencies reads inline tables, subsections, and target-scoped sections; skips dev deps", () => {
+  const manifest = [
+    "[package]",
+    'name = "engine-wasm"',
+    "",
+    "[dependencies]",
+    'engine-core = { path = "../engine-core" }',
+    "serde.workspace = true",
+    "",
+    "[dependencies.protocol]",
+    'path = "../protocol"',
+    "",
+    "[target.'cfg(target_arch = \"wasm32\")'.dependencies]",
+    'bindgen-helper = { version = "1", path = "../bindgen-helper" }',
+    "",
+    "[dev-dependencies]",
+    'test-util = { path = "../test-util" }',
+  ].join("\n");
+  assert.deepEqual(cargoPathDependencies(manifest).map(dep => [dep.name, dep.path]), [
+    ["engine-core", "../engine-core"],
+    ["protocol", "../protocol"],
+    ["bindgen-helper", "../bindgen-helper"],
+  ]);
+});
+
+test("Cargo path dependencies become container edges between crate units", () => {
+  const discovery: Discovery = {
+    sourceFiles: [],
+    units: [
+      { kind: "rust", dir: "crates/engine-wasm", name: "engine-wasm", evidencePath: "crates/engine-wasm" },
+      { kind: "rust", dir: "crates/engine-core", name: "engine-core", evidencePath: "crates/engine-core" },
+    ],
+    unitByFile: new Map(),
+    unitByPackageName: new Map(),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "crates/engine-wasm/Cargo.toml": '[dependencies]\nengine-core = { path = "../engine-core" }\n',
+    "crates/engine-core/Cargo.toml": "[dependencies]\n",
+  };
+  const extraction = extractArchitecture({
+    discovery,
+    readFile: path => {
+      const text = files[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    },
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  const edge = extraction.relations.find(relation =>
+    relation.from === "container:crates-engine-wasm" && relation.to === "container:crates-engine-core");
+  assert.ok(edge, "expected engine-wasm → engine-core edge from Cargo path dependency");
+  assert.equal(edge!.evidence[0]!.source.path, "crates/engine-wasm/Cargo.toml");
+  assert.equal(edge!.evidence[0]!.source.startLine, 2);
 });

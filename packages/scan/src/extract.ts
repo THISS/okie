@@ -245,6 +245,69 @@ export function resolveRelativeImport(fromFile: string, specifier: string, fileS
   return relativeCandidates(base).find(candidate => fileSet.has(candidate));
 }
 
+/**
+ * Maps a relative specifier that escapes the discovered file set onto the unit
+ * whose directory contains it — the cross-boundary import case, e.g. the web
+ * shell importing the generated WASM pkg (`../../../../crates/atlas-wasm/pkg/…`).
+ * The file itself is generated/undiscovered, but the OWNING unit is a container,
+ * so the dependency is still an observable container→container fact.
+ */
+export function resolveRelativeUnitImport(
+  fromFile: string,
+  specifier: string,
+  unitDirs: readonly string[],
+): string | undefined {
+  const baseDir = fromFile.includes("/") ? fromFile.slice(0, fromFile.lastIndexOf("/")) : "";
+  const target = normalizeRepoPath(baseDir, specifier);
+  return [...unitDirs]
+    .filter(dir => dir.length > 0 && (target === dir || target.startsWith(`${dir}/`)))
+    .sort((left, right) => right.length - left.length)[0];
+}
+
+export interface CargoPathDependency {
+  name: string;
+  /** The dependency's `path` value, as written (relative to the crate dir). */
+  path: string;
+  /** 1-based line of the declaration (evidence anchor). */
+  line: number;
+}
+
+/**
+ * `path = "…"` dependencies from a Cargo manifest — the deterministic edge source
+ * for otherwise-opaque Rust crates (R1 parses no .rs, but the workspace wiring is
+ * right there in Cargo.toml). Covers `[dependencies]` and target-scoped
+ * `[target.….dependencies]` sections — inline-table form and `[dependencies.name]`
+ * subsections — and ignores dev/build dependency sections.
+ */
+export function cargoPathDependencies(manifestText: string): CargoPathDependency[] {
+  const dependencies: CargoPathDependency[] = [];
+  const lines = manifestText.split(/\r?\n/);
+  let inDependencySection = false;
+  let subsectionName: string | undefined;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    const header = /^\s*\[(.+)\]\s*$/.exec(line);
+    if (header) {
+      const section = header[1]!;
+      const isDependencies = /(^|\.)dependencies(\.|$)/.test(section)
+        && !/dev-dependencies|build-dependencies/.test(section);
+      inDependencySection = isDependencies;
+      const subsection = /(?:^|\.)dependencies\.([A-Za-z0-9_-]+)$/.exec(section);
+      subsectionName = isDependencies && subsection ? subsection[1] : undefined;
+      continue;
+    }
+    if (!inDependencySection) continue;
+    if (subsectionName) {
+      const pathValue = /^\s*path\s*=\s*"([^"]+)"/.exec(line);
+      if (pathValue) dependencies.push({ name: subsectionName, path: pathValue[1]!, line: index + 1 });
+      continue;
+    }
+    const inline = /^\s*([A-Za-z0-9_-]+)\s*=\s*\{[^}]*\bpath\s*=\s*"([^"]+)"/.exec(line);
+    if (inline) dependencies.push({ name: inline[1]!, path: inline[2]!, line: index + 1 });
+  }
+  return dependencies;
+}
+
 /** Maps a bare `@okie/*` specifier to the owning workspace-member unit dir, or undefined. */
 export function resolvePackageImport(specifier: string, unitByPackageName: ReadonlyMap<string, string>): string | undefined {
   for (const [name, dir] of unitByPackageName) {
@@ -528,13 +591,18 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
   }
   const fileScans: FileScan[] = [];
 
+  const unitDirs = discovery.units.map(unit => unit.dir);
+
   for (const file of discovery.sourceFiles) {
     const unitDir = discovery.unitByFile.get(file)!;
     entityDescriptors.push({
       naturalKey: file,
       desiredId: typedId("component", file),
       kind: "component",
-      name: file,
+      // The container already carries the path prefix, so the card reads by its
+      // DISTINCTIVE tail (`src/compile-c4.ts`), not a truncated common prefix.
+      // The full path stays on sourceRefs — identity and evidence are unchanged.
+      name: file.startsWith(`${unitDir}/`) ? file.slice(unitDir.length + 1) : file,
       parentKey: unitDir,
       sourceRefs: [{ path: file }],
     });
@@ -566,6 +634,13 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
         const target = resolveRelativeImport(file, dependency.specifier, fileSet);
         if (target && target !== file) {
           addRelation(file, target, typedId("relation", file, target), `comp:${file}->${target}`, evidence);
+        } else if (!target) {
+          // A relative import escaping the discovered set (e.g. the generated WASM
+          // pkg) still names its owning unit — keep the container-level fact.
+          const targetUnit = resolveRelativeUnitImport(file, dependency.specifier, unitDirs);
+          if (targetUnit && targetUnit !== unitDir) {
+            addRelation(unitDir, targetUnit, typedId("relation", unitDir, targetUnit), `unit:${unitDir}->${targetUnit}`, evidence);
+          }
         }
       } else {
         const targetUnit = resolvePackageImport(dependency.specifier, discovery.unitByPackageName);
@@ -625,6 +700,27 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
         );
       }
     });
+  }
+
+  // Rust crates are opaque at R1 (no .rs parsing), but their workspace wiring is an
+  // observed fact in Cargo.toml — `path = "…"` dependencies become container edges,
+  // so a crate is never a mystery island in the container band.
+  for (const unit of discovery.units) {
+    if (unit.kind !== "rust") continue;
+    const manifestPath = `${unit.dir}/Cargo.toml`;
+    let manifestText: string;
+    try { manifestText = readFile(manifestPath); } catch { continue; }
+    for (const dependency of cargoPathDependencies(manifestText)) {
+      const targetDir = resolveRelativeUnitImport(`${unit.dir}/Cargo.toml`, dependency.path, unitDirs);
+      if (!targetDir || targetDir === unit.dir) continue;
+      addRelation(
+        unit.dir,
+        targetDir,
+        typedId("relation", unit.dir, targetDir),
+        `unit:${unit.dir}->${targetDir}`,
+        { source: { path: manifestPath, startLine: dependency.line, endLine: dependency.line } },
+      );
+    }
   }
 
   emitExternalSystems({ discovery, readFile, externalUsagesByPackage, entityDescriptors, addRelation });
