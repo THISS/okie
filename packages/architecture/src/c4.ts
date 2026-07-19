@@ -946,13 +946,25 @@ export function buildC4ProjectionBundle(
       };
       return id;
     });
-    // Edge budget (opt-in): route only the top-N edges by (aggregate count desc, id asc);
-    // the rest stay enumerable via omittedEdgeIds + the bundle index ("+N more").
+    // Edge budget (opt-in): route only the top-N edges, focus-first — an edge touching
+    // the focus subtree outranks every global heavy-hitter, so a drilled scope always
+    // shows ITS OWN wiring before the repo's loudest edges; within each tier, rank by
+    // (aggregate count desc, id asc). The rest stay enumerable via omittedEdgeIds +
+    // the bundle index ("+N more").
     let routedEdgeIds = visualEdgeIds;
     let omittedEdgeIds: string[] = [];
     if (options.maxEdgesPerBand !== undefined && visualEdgeIds.length > options.maxEdgesPerBand) {
+      const touchesFocus = (id: string): number => {
+        const edge = visualEdgeById[id]!;
+        const fromEntityId = visualNodeById[edge.fromVisualId]!.entity.logicalId;
+        const toEntityId = visualNodeById[edge.toVisualId]!.entity.logicalId;
+        return isDescendantOrSelf(fromEntityId, focus.id, entityById)
+          || isDescendantOrSelf(toEntityId, focus.id, entityById) ? 1 : 0;
+      };
       const ranked = [...visualEdgeIds].sort((left, right) =>
-        visualEdgeById[right]!.aggregate.count - visualEdgeById[left]!.aggregate.count || left.localeCompare(right));
+        touchesFocus(right) - touchesFocus(left)
+        || visualEdgeById[right]!.aggregate.count - visualEdgeById[left]!.aggregate.count
+        || left.localeCompare(right));
       const kept = new Set(ranked.slice(0, options.maxEdgesPerBand));
       routedEdgeIds = visualEdgeIds.filter(id => kept.has(id));
       omittedEdgeIds = visualEdgeIds.filter(id => !kept.has(id));

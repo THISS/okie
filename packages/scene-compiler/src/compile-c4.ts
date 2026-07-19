@@ -687,6 +687,23 @@ function applyIntrinsicOwnerGeometry(
           width: Math.max(required.width, measurement.width),
           height: Math.max(required.height, measurement.height),
         };
+      } else if (targetAspect !== undefined && metrics && children.length === 0) {
+        // Scan mode: a childless owner (a no-export file, an opaque crate) otherwise
+        // shrinks to its tiny stage-1 baseline while siblings grow with content —
+        // below label legibility ("pac…"). Floor it at one readable leaf card at its
+        // OWN band's focus zoom. Demo/golden (no targetAspect) keeps byte-identical
+        // geometry.
+        const ownBandFocusZoom = entity.kind === "component"
+          ? C4_ZOOM_BANDS[2]!.focusZoom
+          : entity.kind === "container" || entity.kind === "dataStore" || entity.kind === "queue"
+            ? C4_ZOOM_BANDS[1]!.focusZoom
+            : undefined;
+        if (ownBandFocusZoom !== undefined) {
+          required = {
+            width: Math.max(required.width, C4_INTRINSIC_LAYOUT.leaf.code.width / ownBandFocusZoom * 2),
+            height: Math.max(required.height, C4_INTRINSIC_LAYOUT.leaf.code.height / ownBandFocusZoom * 2),
+          };
+        }
       }
     }
     measuring.delete(entity.id);
