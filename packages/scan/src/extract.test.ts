@@ -181,3 +181,87 @@ test("codeSurface 'public' keeps only exported declarations as code entities; de
   // The file component itself survives either way — only private symbols fold into it.
   assert.ok(publicOnly.entities.some(entity => entity.id === "component:pkg-a-src-index-ts"));
 });
+
+function symbolDiscovery(): Discovery {
+  return {
+    sourceFiles: ["pkg/a/src/a.ts", "pkg/a/src/b.ts"],
+    units: [{ kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" }],
+    unitByFile: new Map([["pkg/a/src/a.ts", "pkg/a"], ["pkg/a/src/b.ts", "pkg/a"]]),
+    unitByPackageName: new Map([["@acme/a", "pkg/a"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+}
+
+const symbolFiles: Record<string, string> = {
+  "README.md": "# Acme",
+  "pkg/a/src/a.ts": [
+    "export function alpha() { return helper(); }",
+    "export function gamma() {}",
+    "function helper() { return 1; }",
+  ].join("\n"),
+  "pkg/a/src/b.ts": [
+    "import { alpha as al } from './a.js';",
+    "export function beta() { return al() + al(); }",
+    "export function delta(input: { alpha: number }) { return input.alpha; }",
+    "export const shorthand = { al };",
+  ].join("\n"),
+};
+
+const readSymbolFile = (path: string): string => {
+  const text = symbolFiles[path];
+  if (text === undefined) throw new Error(`missing ${path}`);
+  return text;
+};
+
+test("symbol pass derives same-file and named-import code→code 'uses' relations with reference evidence", () => {
+  const extraction = extractArchitecture({
+    discovery: symbolDiscovery(),
+    readFile: readSymbolFile,
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  const uses = extraction.relations.filter(relation => relation.kind === "uses");
+  const pairs = uses.map(relation => [relation.from, relation.to]);
+  // Same-file: alpha → helper. Cross-file: beta and shorthand → alpha (through the alias).
+  assert.deepEqual(pairs.sort(), [
+    ["code:pkg-a-src-a-ts:alpha", "code:pkg-a-src-a-ts:helper"],
+    ["code:pkg-a-src-b-ts:beta", "code:pkg-a-src-a-ts:alpha"],
+    ["code:pkg-a-src-b-ts:shorthand", "code:pkg-a-src-a-ts:alpha"],
+  ].sort());
+  // `input.alpha` (property access) and the parameter binding never count as references.
+  assert.ok(!pairs.some(([from]) => from === "code:pkg-a-src-b-ts:delta"));
+  // beta references al twice on one line → evidence dedups to the reference site.
+  const beta = uses.find(relation => relation.from === "code:pkg-a-src-b-ts:beta")!;
+  assert.equal(beta.evidence[0]!.source.path, "pkg/a/src/b.ts");
+  assert.equal(beta.evidence[0]!.source.startLine, 2);
+});
+
+test("public surface drops relations whose endpoint folded away, keeping the public↔public graph", () => {
+  const extraction = extractArchitecture({
+    discovery: symbolDiscovery(),
+    readFile: readSymbolFile,
+    systemName: "Acme",
+    systemSlug: "acme",
+    codeSurface: "public",
+  });
+  const uses = extraction.relations.filter(relation => relation.kind === "uses");
+  const pairs = uses.map(relation => [relation.from, relation.to]);
+  // helper is private → alpha→helper disappears; the public cross-file edges stay.
+  assert.deepEqual(pairs.sort(), [
+    ["code:pkg-a-src-b-ts:beta", "code:pkg-a-src-a-ts:alpha"],
+    ["code:pkg-a-src-b-ts:shorthand", "code:pkg-a-src-a-ts:alpha"],
+  ].sort());
+});
+
+test("symbol relations are independent of source-file order", () => {
+  const base = symbolDiscovery();
+  const forward = extractArchitecture({ discovery: base, readFile: readSymbolFile, systemName: "Acme", systemSlug: "acme" });
+  const reversed = extractArchitecture({
+    discovery: { ...base, sourceFiles: [...base.sourceFiles].reverse() },
+    readFile: readSymbolFile,
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  assert.equal(JSON.stringify(forward), JSON.stringify(reversed));
+});

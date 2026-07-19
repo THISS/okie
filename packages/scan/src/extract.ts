@@ -8,7 +8,7 @@ import type {
   ArchitectureExtractionSourceRef,
 } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
-import { resolveCollisions, typedId } from "./ids.js";
+import { pathSlug, resolveCollisions, slug, typedId } from "./ids.js";
 
 /** Max import sites retained as evidence on one aggregated relation. */
 const MAX_EVIDENCE_PER_RELATION = 24;
@@ -30,6 +30,8 @@ export interface TopLevelDeclaration {
   endLine: number;
   /** Exported from its module (direct modifier, `export {…}` list, `export default`/`export =`). */
   exported: boolean;
+  /** The declaring statement/declarator — the subtree symbol references are walked in. */
+  node: ts.Node;
 }
 
 export interface ModuleImport {
@@ -88,6 +90,7 @@ export function topLevelDeclarations(sourceFile: ts.SourceFile): TopLevelDeclara
       startLine: lineOf(node.getStart(sourceFile)),
       endLine: lineOf(node.getEnd()),
       exported: direct || indirect.has(name),
+      node,
     });
   };
   for (const statement of sourceFile.statements) {
@@ -105,6 +108,84 @@ export function topLevelDeclarations(sourceFile: ts.SourceFile): TopLevelDeclara
     }
   }
   return declarations;
+}
+
+/** Local name → the module specifier + exported name it binds (named relative imports only). */
+export interface NamedImportBinding {
+  specifier: string;
+  exportedName: string;
+}
+
+/**
+ * Named import bindings (`import { a, b as c } from './x'`) — the only import form
+ * whose SYMBOL identity is syntactically knowable. Default and namespace imports
+ * stay at file granularity (the existing component→component relation covers them).
+ */
+export function namedImportBindings(sourceFile: ts.SourceFile): Map<string, NamedImportBinding> {
+  const bindings = new Map<string, NamedImportBinding>();
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const named = statement.importClause?.namedBindings;
+    if (!named || !ts.isNamedImports(named)) continue;
+    for (const element of named.elements) {
+      bindings.set(element.name.text, {
+        specifier: statement.moduleSpecifier.text,
+        exportedName: (element.propertyName ?? element.name).text,
+      });
+    }
+  }
+  return bindings;
+}
+
+/** True when this identifier occurrence NAMES a declaration/member rather than referencing a value or type. */
+function isDeclarationName(node: ts.Identifier): boolean {
+  const parent = node.parent;
+  if (ts.isPropertyAccessExpression(parent) && parent.name === node) return true;
+  if (ts.isQualifiedName(parent) && parent.right === node) return true;
+  if (ts.isPropertyAssignment(parent) && parent.name === node) return true;
+  if (ts.isImportSpecifier(parent) || ts.isExportSpecifier(parent)) return true;
+  // Anything that "declares" this identifier: functions, classes, variables,
+  // parameters, members, enum members, binding elements, type members…
+  // (Shorthand properties `{ compareText }` are deliberately NOT here — they read.)
+  const declares = (ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent)
+    || ts.isClassDeclaration(parent) || ts.isClassExpression(parent)
+    || ts.isInterfaceDeclaration(parent) || ts.isTypeAliasDeclaration(parent)
+    || ts.isEnumDeclaration(parent) || ts.isEnumMember(parent) || ts.isModuleDeclaration(parent)
+    || ts.isVariableDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent)
+    || ts.isPropertyDeclaration(parent) || ts.isMethodDeclaration(parent)
+    || ts.isPropertySignature(parent) || ts.isMethodSignature(parent)
+    || ts.isGetAccessorDeclaration(parent) || ts.isSetAccessorDeclaration(parent)
+    || ts.isTypeParameterDeclaration(parent) || ts.isNamespaceImport(parent) || ts.isImportClause(parent));
+  return declares && (parent as { name?: ts.Node }).name === node;
+}
+
+export interface SymbolReference {
+  name: string;
+  line: number;
+}
+
+/**
+ * Identifier references inside one top-level declaration whose names are in
+ * `candidates` — the syntax-level "uses" signal. Deliberately name-based (no type
+ * checker, per R1): a local shadowing a candidate name over-reports, a property
+ * access under-reports; both are acceptable for an evidence-anchored usage graph.
+ */
+export function symbolReferencesIn(
+  sourceFile: ts.SourceFile,
+  declaration: TopLevelDeclaration,
+  candidates: ReadonlySet<string>,
+): SymbolReference[] {
+  const references: SymbolReference[] = [];
+  const lineOf = (position: number): number => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
+  const visit = (node: ts.Node): void => {
+    if (ts.isIdentifier(node) && candidates.has(node.text) && !isDeclarationName(node)) {
+      references.push({ name: node.text, line: lineOf(node.getStart(sourceFile)) });
+    }
+    ts.forEachChild(node, visit);
+  };
+  // Walk the declaration body, skipping its own name identifier via isDeclarationName.
+  visit(declaration.node);
+  return references;
 }
 
 /** Static `import ... from` and `export ... from` module specifiers with line spans. */
@@ -232,7 +313,20 @@ interface RelationDescriptor {
   desiredId: string;
   fromKey: string;
   toKey: string;
+  kind?: "uses";
   evidence: ArchitectureExtractionEvidence[];
+}
+
+/**
+ * One bounded, pattern-legal relation-id group for a (path, symbol) pair. Ids are
+ * length-capped by the extraction gate; two full path slugs would overflow it, so
+ * the group keeps the TAIL of `<pathSlug>-<nameSlug>` — the basename + symbol end,
+ * the most distinctive part. Collisions are handled by resolveCollisions as usual.
+ */
+function symbolRelationGroup(path: string, name: string): string {
+  const combined = `${pathSlug(path)}-${slug(name)}`;
+  const bounded = combined.length > 72 ? combined.slice(combined.length - 72) : combined;
+  return bounded.replace(/^-+|-+$/g, "") || "x";
 }
 
 export interface ExtractInput {
@@ -410,10 +504,11 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     desiredId: string,
     naturalKey: string,
     evidence: ArchitectureExtractionEvidence,
+    kind?: "uses",
   ): void => {
     let descriptor = relationDescriptors.get(naturalKey);
     if (!descriptor) {
-      descriptor = { naturalKey, desiredId, fromKey, toKey, evidence: [] };
+      descriptor = { naturalKey, desiredId, fromKey, toKey, ...(kind ? { kind } : {}), evidence: [] };
       relationDescriptors.set(naturalKey, descriptor);
     }
     descriptor.evidence.push(evidence);
@@ -422,6 +517,16 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
   // Per third-party package: every static import site + the container it lives in. Aggregated
   // after the walk into top-N externalSystem entities (see below).
   const externalUsagesByPackage = new Map<string, Array<{ container: string; source: ArchitectureExtractionSourceRef }>>();
+
+  interface FileScan {
+    file: string;
+    sourceFile: ts.SourceFile;
+    kept: TopLevelDeclaration[];
+    /** Declaration name → its entity naturalKey (first declaration wins on overloads). */
+    keyByName: Map<string, string>;
+    imports: Map<string, NamedImportBinding>;
+  }
+  const fileScans: FileScan[] = [];
 
   for (const file of discovery.sourceFiles) {
     const unitDir = discovery.unitByFile.get(file)!;
@@ -438,16 +543,20 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     const declarations = input.codeSurface === "public"
       ? topLevelDeclarations(sourceFile).filter(declaration => declaration.exported)
       : topLevelDeclarations(sourceFile);
+    const keyByName = new Map<string, string>();
     declarations.forEach((declaration, index) => {
+      const naturalKey = `${file}#${index}`;
       entityDescriptors.push({
-        naturalKey: `${file}#${index}`,
+        naturalKey,
         desiredId: typedId("code", file, declaration.name),
         kind: "code",
         name: declaration.name,
         parentKey: file,
         sourceRefs: [{ path: file, symbol: declaration.name, startLine: declaration.startLine, endLine: declaration.endLine }],
       });
+      if (!keyByName.has(declaration.name)) keyByName.set(declaration.name, naturalKey);
     });
+    fileScans.push({ file, sourceFile, kept: declarations, keyByName, imports: namedImportBindings(sourceFile) });
 
     for (const dependency of moduleImports(sourceFile)) {
       const evidence: ArchitectureExtractionEvidence = {
@@ -477,6 +586,47 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     }
   }
 
+  // Symbol-level usage pass (needs every file's declaration table, hence second pass):
+  // each retained declaration's identifier references resolve against (a) the same
+  // file's retained declarations and (b) named relative imports whose exported name
+  // is a retained declaration of the target file. This is the L4 "how is it used"
+  // graph — code→code `uses` relations with reference-site evidence. Default and
+  // namespace imports, cross-package imports, and property accesses stay at the
+  // file/container granularity the import relations above already carry.
+  const scanByFile = new Map(fileScans.map(scan => [scan.file, scan]));
+  for (const scan of fileScans) {
+    if (scan.kept.length === 0) continue;
+    const candidates = new Set([...scan.keyByName.keys(), ...scan.imports.keys()]);
+    if (candidates.size === 0) continue;
+    scan.kept.forEach((declaration, index) => {
+      const fromKey = `${scan.file}#${index}`;
+      for (const reference of symbolReferencesIn(scan.sourceFile, declaration, candidates)) {
+        let toKey: string | undefined;
+        let target: { file: string; name: string } | undefined;
+        const binding = scan.imports.get(reference.name);
+        if (binding) {
+          if (!binding.specifier.startsWith(".")) continue;
+          const targetFile = resolveRelativeImport(scan.file, binding.specifier, fileSet);
+          if (!targetFile || targetFile === scan.file) continue;
+          toKey = scanByFile.get(targetFile)?.keyByName.get(binding.exportedName);
+          target = { file: targetFile, name: binding.exportedName };
+        } else {
+          toKey = scan.keyByName.get(reference.name);
+          target = { file: scan.file, name: reference.name };
+        }
+        if (!toKey || toKey === fromKey) continue;
+        addRelation(
+          fromKey,
+          toKey,
+          typedId("relation", symbolRelationGroup(scan.file, declaration.name), symbolRelationGroup(target.file, target.name)),
+          `sym:${fromKey}->${toKey}`,
+          { source: { path: scan.file, startLine: reference.line, endLine: reference.line } },
+          "uses",
+        );
+      }
+    });
+  }
+
   emitExternalSystems({ discovery, readFile, externalUsagesByPackage, entityDescriptors, addRelation });
 
   // Assign collision-free IDs in a fully canonical order (independent of discovery order).
@@ -500,7 +650,7 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     id: relationIds[index]!,
     from: idByKey.get(descriptor.fromKey)!,
     to: idByKey.get(descriptor.toKey)!,
-    kind: "dependsOn",
+    kind: descriptor.kind ?? "dependsOn",
     evidence: finalizeEvidence(descriptor.evidence),
   }));
 
