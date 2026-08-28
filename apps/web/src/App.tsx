@@ -63,6 +63,7 @@ import { listenForWheel } from './renderer/wheelInput';
 import { presentBackend } from './renderer/backendPresentation';
 import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
+import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
 import { clampInspectorWidth, defaultInspectorWidth, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, visibleSemanticRelationsForEntity } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
@@ -2887,6 +2888,43 @@ export function App() {
     installAuthoringHistory(redoGesture(authoringHistoryRef.current), 'Redid relationship edit.');
   }
 
+  /**
+   * Frames a selected relationship's flow: a camera flight to a scope that contains BOTH
+   * endpoints. Siblings inside the same component get a gentle local frame (may zoom in);
+   * endpoints in diverging containers zoom OUT to the scope that contains both, showcasing
+   * the path (direction derived from the endpoints' containment distance). Deferred past the
+   * inspector panel opening so the measured safe area/viewport reflect the settled layout,
+   * then driven through the shared inspector camera flight (same easing + cancel/history
+   * wiring as parent-level and inspector-history navigation; an unchanged lens session makes
+   * it a pure camera move). Falls back to the plain owner reframe when either endpoint has
+   * no resolvable bounds.
+   */
+  function frameSelectedRelationFlow(relation: SceneRelation, fallbackOwner: SceneEntity) {
+    const generation = inspectorReframeGenerationRef.current + 1;
+    inspectorReframeGenerationRef.current = generation;
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      if (generation !== inspectorReframeGenerationRef.current) return;
+      const canvas = document.querySelector<HTMLElement>('[data-testid="atlas-canvas"]');
+      if (!canvas) return;
+      const canvasRect = canvas.getBoundingClientRect();
+      const nextViewport = { width: Math.max(1, canvasRect.width), height: Math.max(1, canvasRect.height) };
+      const session = semanticLensSessionRef.current;
+      const detail = semanticLensSessionDetail(session);
+      const plan = relationFramingPlan(scene, relation, detail, nextViewport, measureCurrentMapSafeArea());
+      if (!plan) {
+        reframeEntityAfterInspectorChange(fallbackOwner);
+        return;
+      }
+      startInspectorCameraFlight({
+        targetId: fallbackOwner.id,
+        targetSession: session,
+        targetCamera: plan.camera,
+        navigation: navigationRef.current,
+        historyMode: 'replace',
+      });
+    }));
+  }
+
   function inspectRelation(
     relation: SceneRelation,
     inspectorNavigation: 'external' | 'panel' | 'history' | 'preserve' = 'external',
@@ -2903,7 +2941,7 @@ export function App() {
     setInspectorTab('details');
     setDetailsOpen(true);
     setSafeAreaEpoch(epoch => epoch + 1);
-    reframeEntityAfterInspectorChange(owner);
+    frameSelectedRelationFlow(relation, owner);
     const endpoints = from && to ? ` from ${from.name} to ${to.name}` : '';
     setLiveMessage(`${relationName} relationship selected${endpoints}.`);
   }
