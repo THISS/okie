@@ -4,6 +4,7 @@ import { validateArchitectureExtraction } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import {
   cargoPathDependencies,
+  dynamicImports,
   extractArchitecture,
   moduleImports,
   parseSource,
@@ -47,6 +48,25 @@ test("moduleImports collects import and re-export specifiers", () => {
     "const dynamic = 1;",
   ].join("\n"));
   assert.deepEqual(moduleImports(source).map(i => i.specifier), ["./a.js", "../b.js", "./c.js", "side-effect"]);
+  // Static pass ignores dynamic import expressions.
+  const dynamic = parseSource("m.ts", ["const load = () => import('./lazy.js');"].join("\n"));
+  assert.deepEqual(moduleImports(dynamic).map(i => i.specifier), []);
+});
+
+test("dynamicImports collects import('…') specifiers and skips type-level / computed forms", () => {
+  const source = parseSource("m.tsx", [
+    "async function boot() {",
+    "  const { App } = await import('./App');",
+    "  return App;",
+    "}",
+    "const dompurify = import('dompurify').then(m => m.default);",
+    "type Api = typeof import('mermaid')['default'];", // ImportTypeNode — not a call
+    "const name = 'x';",
+    "const bad = import(name);", // computed specifier — no syntactic identity
+  ].join("\n"));
+  assert.deepEqual(dynamicImports(source).map(i => i.specifier), ["./App", "dompurify"]);
+  // Anchored to the call expression's line (1-based).
+  assert.equal(dynamicImports(source).find(i => i.specifier === "./App")!.startLine, 2);
 });
 
 test("resolveRelativeImport maps .js/.jsx/extensionless specifiers onto discovered files", () => {
@@ -115,6 +135,53 @@ test("extractArchitecture emits a gate-clean document with C4 hierarchy and impo
     [["container:pkg-b", "container:pkg-a", "dependsOn"]],
   );
   assert.ok(extraction.relations[0]!.evidence.length >= 1);
+});
+
+test("extractArchitecture derives edges from dynamic import('…') the static pass misses", () => {
+  // pkg/b reaches pkg/a's entry ONLY through a code-split `await import(...)` — the
+  // real-world shape (web shell → './App'/'./scanLanding'). Both the cross-unit
+  // package import and a relative same-unit dynamic import must become observed edges.
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "pkg/a/src/index.ts": "export function alpha() {}\nexport const A = 1;\n",
+    "pkg/b/src/main.ts": [
+      "async function boot() {",
+      "  const a = await import('@acme/a');", // cross-unit → container→container
+      "  const local = await import('./panel.js');", // same-unit relative → component→component
+      "  return a.alpha ?? local;",
+      "}",
+      "export class Beta {}",
+    ].join("\n"),
+    "pkg/b/src/panel.ts": "export function panel() {}\n",
+  };
+  const discovery: Discovery = {
+    sourceFiles: ["pkg/a/src/index.ts", "pkg/b/src/main.ts", "pkg/b/src/panel.ts"],
+    units: [
+      { kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" },
+      { kind: "member", dir: "pkg/b", name: "@acme/b", packageName: "@acme/b", evidencePath: "pkg/b" },
+    ],
+    unitByFile: new Map([
+      ["pkg/a/src/index.ts", "pkg/a"], ["pkg/b/src/main.ts", "pkg/b"], ["pkg/b/src/panel.ts", "pkg/b"],
+    ]),
+    unitByPackageName: new Map([["@acme/a", "pkg/a"], ["@acme/b", "pkg/b"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  const readFile = (path: string): string => {
+    const text = files[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const extraction = extractArchitecture({ discovery, readFile, systemName: "Acme", systemSlug: "acme" });
+  assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  const edges = extraction.relations.map(r => [r.from, r.to, r.kind]);
+  assert.ok(
+    edges.some(e => e[0] === "container:pkg-b" && e[1] === "container:pkg-a" && e[2] === "dependsOn"),
+    "cross-unit dynamic import → container→container edge",
+  );
+  assert.ok(
+    edges.some(e => e[0] === "component:pkg-b-src-main-ts" && e[1] === "component:pkg-b-src-panel-ts"),
+    "same-unit relative dynamic import → component→component edge",
+  );
 });
 
 test("extractArchitecture is independent of source-file order", () => {

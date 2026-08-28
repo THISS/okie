@@ -207,6 +207,38 @@ export function moduleImports(sourceFile: ts.SourceFile): ModuleImport[] {
   return imports;
 }
 
+/**
+ * Dynamic `import('…')` specifiers (string-literal argument) found anywhere in the
+ * module — code-split routes and lazily-loaded entrypoints. These are real, observed
+ * module dependencies the static `import … from` pass misses: e.g. the web shell
+ * reaches its landing screen and app root ONLY through `await import('./scanLanding')`
+ * / `await import('./App')`, so without this those targets render as false islands.
+ * Returned in source order; folded into the same relation pass as static imports, so
+ * a target imported both ways just unions its evidence.
+ *
+ * Deliberately excluded (no syntactic module identity): type-level `import('…')`
+ * (an `ImportTypeNode`, not a call) and computed/non-literal specifiers.
+ */
+export function dynamicImports(sourceFile: ts.SourceFile): ModuleImport[] {
+  const imports: ModuleImport[] = [];
+  const lineOf = (position: number): number => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node)
+      && node.expression.kind === ts.SyntaxKind.ImportKeyword
+      && node.arguments.length > 0
+      && ts.isStringLiteralLike(node.arguments[0]!)) {
+      imports.push({
+        specifier: node.arguments[0]!.text,
+        startLine: lineOf(node.getStart(sourceFile)),
+        endLine: lineOf(node.getEnd()),
+      });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return imports;
+}
+
 function normalizeRepoPath(baseDir: string, relative: string): string {
   const parts = (baseDir ? baseDir.split("/") : []).concat(relative.split("/"));
   const stack: string[] = [];
@@ -626,7 +658,7 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     });
     fileScans.push({ file, sourceFile, kept: declarations, keyByName, imports: namedImportBindings(sourceFile) });
 
-    for (const dependency of moduleImports(sourceFile)) {
+    for (const dependency of [...moduleImports(sourceFile), ...dynamicImports(sourceFile)]) {
       const evidence: ArchitectureExtractionEvidence = {
         source: { path: file, startLine: dependency.startLine, endLine: dependency.endLine },
       };
