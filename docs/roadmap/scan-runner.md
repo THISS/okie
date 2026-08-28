@@ -2,7 +2,7 @@
 
 Status: proposed roadmap (operational layer).
 
-The executable that turns a repository into atlas data. [`scraper-pipeline.md`](./scraper-pipeline.md) defines the stages and guardrails; this document decides how the stages actually run: source access, checkout, refresh cadence, and where agents fan out. Today no scanner exists — the atlas renders the hand-authored fixture via `pnpm generate:fixtures`, and `extraction.ts` (the intake gate) has no producers.
+The executable that turns a repository into atlas data. [`scraper-pipeline.md`](./scraper-pipeline.md) defines the stages and guardrails; this document decides how the stages actually run: source access, checkout, refresh cadence, and where agents fan out. The end-to-end product journey these stages power — paste/connect, the scan-progress moment, then the hosted atlas and embed — is in [`../product/arrival-to-embed.md`](../product/arrival-to-embed.md). Today no scanner exists — the atlas renders the hand-authored fixture via `pnpm generate:fixtures`, and `extraction.ts` (the intake gate) has no producers.
 
 ## Source access options
 

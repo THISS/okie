@@ -16,7 +16,8 @@ Read those first. Every recommendation below is tied to a current file or symbol
 1. [`structured-data-schema.md`](./structured-data-schema.md) — evolve the stored model toward first-class provenance, claims, explanations, and a rescan lifecycle.
 2. [`scraper-pipeline.md`](./scraper-pipeline.md) — produce snapshots deterministically; how agents propose and validators dispose.
 3. [`mcp-surface.md`](./mcp-surface.md) — expose the structured data to agents over one shared query layer.
-4. [`deferred-refactors.md`](./deferred-refactors.md) — maintainability work intentionally deferred out of the agent-friendly refactor, with each precondition.
+4. [`scan-static-analysis-and-agent-swarm.md`](./scan-static-analysis-and-agent-swarm.md) — evolve the scan into a multi-language static-analysis layer (SourceGraph-style reference graph + per-file code outlines) and a hierarchical code-ownership agent swarm.
+5. [`deferred-refactors.md`](./deferred-refactors.md) — maintainability work intentionally deferred out of the agent-friendly refactor, with each precondition.
 
 Operational / distribution layer (how scans run and reach users): [`scan-runner.md`](./scan-runner.md) — source access, checkout, refresh cadence; [`embed-hosting.md`](./embed-hosting.md) — hosting the atlases and the docs-site embed growth loop.
 
@@ -29,6 +30,8 @@ Operational / distribution layer (how scans run and reach users): [`scan-runner.
 | Identity / lineage | `model.ts` · `lineageId?`,`fingerprint?`; `normalized.ts` · `logicalId` + snapshot-qualified row `id` | no diff-status lifecycle; no reconciliation runtime | schema |
 | Extraction boundary | `architecture/extraction.ts` · `ArchitectureExtraction`, `validateArchitectureExtraction`, `adaptArchitectureExtraction`, `ArchitectureExtractionReconciliation` | producer shipped (`@okie/scan`); no dependency pinning/hash domains yet | scraper |
 | Deterministic extractors (TS/Rust) | `packages/scan` · `okie-scan` — TS syntax extractor, commit-pinned, shuffle-deterministic, 31/31 golden TS anchors; loads via `?fixture=scan` | Rust extractor; type-aware depth; per-file outlines need exported+top-level coverage review | scraper |
+| Multi-language static analysis + outlines | `packages/scan` · `extract.ts` (TS-only, top-level `code` entities, no `codeKind`/signature/nesting) | tree-sitter outline layer (TS/JS/Python/Rust/Go/Java), symbol-level reference graph, `codeKind`/`signature`/`code`-under-`code` on `model.ts` | static-analysis |
+| Code-ownership agent swarm | `packages/scan` · `enrich.ts` (flat, per-container) | hierarchical fan-out (system→container→component→code), bubble-up report synthesis, tiered specs per zoom band | static-analysis |
 | Self-map fixture | `scene-compiler/golden-fixture.ts` (hand-authored) + machine scan (`fixtures/scan/`, gitignored) | golden fixture still hand-authored (M1 stretch: retire it) | scraper (M1) |
 | Canonical serialization + hash domains | — | RFC 8785 profile + the 8 named hashes | scraper |
 | Rescan / diff | — | `unchanged\|changed\|new\|no-longer-observed` | schema + scraper |

@@ -6,6 +6,8 @@ The growth flow the product is aimed at: **paste an open-source repo → get a h
 
 Design rule: the **app build is immutable**; a repo's atlas is **data added beside it**, never a rebuild. That single rule drives every decision below.
 
+The user-facing journey these hosting decisions sit inside — arrival, intake, the waiting experience, and the deliverable — is narrated in [`../product/arrival-to-embed.md`](../product/arrival-to-embed.md); this doc owns the hosting/embed mechanism it links to.
+
 ## What exists today (the substrate)
 
 | Capability | Today (file · symbol) | Gap for hosting |
