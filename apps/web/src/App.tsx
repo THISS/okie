@@ -4266,11 +4266,6 @@ export function App() {
                 {canvasRelations.hiddenInternalCount > 0 && <p className="empty-inspector-section" data-inspector-hidden-internal-count={canvasRelations.hiddenInternalCount} data-testid="relationships-hidden-internal">Hiding {canvasRelations.hiddenInternalCount} relationship{canvasRelations.hiddenInternalCount === 1 ? '' : 's'} between parts of {selected.name} — both ends land on this card. Open inside to see them.</p>}</div>
               </section>
 
-              {selected.id === navigationIdentity.rootEntityId && scene.omittedRelations?.length ? <section className="detail-section relationships-section omitted-relations-section" data-testid="omitted-relations">
-                <div className="section-title"><h3>Not drawn at this zoom</h3><span>{scene.omittedRelations.length}</span></div>
-                <div className="relations-list"><p className="empty-inspector-section">{scene.omittedRelations.length} relation{scene.omittedRelations.length === 1 ? '' : 's'} aggregated out of the routed view for this dense scope — still evidence-backed:</p>{scene.omittedRelations.map(omitted => <div className="source-card static" data-omitted-relation-id={omitted.relationId} key={omitted.relationId}><span><strong>{omitted.fromName} → {omitted.toName}</strong><small>{omitted.label}{omitted.evidencePaths.length ? ` · ${omitted.evidencePaths.length} evidence file${omitted.evidencePaths.length === 1 ? '' : 's'}` : ''}</small></span></div>)}</div>
-              </section> : null}
-
               <section className="detail-section evidence-section">
                 <div className="section-title"><h3>Source evidence</h3><span>{selected.sourceRefs?.length ?? 0}</span></div>
                 <div className="source-list">{selected.sourceRefs?.length ? selected.sourceRefs.map((source, index) => {
