@@ -94,7 +94,7 @@ import {
   type SemanticLensState,
 } from './semantic/semanticLens';
 import { defaultSearchSuggestions } from './searchSuggestions';
-import { shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
+import { keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
@@ -1124,7 +1124,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onDoubleClick={event => { const picked = pickAt(event); if (picked?.kind === 'entity') { onPick(picked); onOpenInside(picked.id); } }}
-      onKeyDown={event => {
+      onKeyDown={event => { if (searchOwnsKeystrokes(event.target)) return; // search keystrokes are never canvas intent
         if (event.key === 'Escape') { cancelAssistAnimation(); onLensCancelRef.current('escape', liveCameraRef.current); return; }
         if (event.key === 'Enter' && selectedId) { event.preventDefault(); onOpenInside(selectedId); }
       }}
@@ -3620,7 +3620,7 @@ export function App() {
 
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
-      const typing = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || (event.target instanceof HTMLElement && event.target.isContentEditable);
+      const typing = keystrokeOwnedByTextEntry(event.target);
       if (!typing && editingEnabled && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         if (event.shiftKey) redoAuthoringGesture();
@@ -3648,11 +3648,11 @@ export function App() {
         window.setTimeout(() => askInputRef.current?.focus(), 0);
       }
       if (event.key === 'Escape') {
+        if (searchOwnsKeystrokes(event.target)) { setSearchOpen(false); return; }
         const shouldCloseInspector = detailsOpen && !searchOpen && !askOpen && detailsPanelRef.current?.contains(document.activeElement);
         cancelSemanticLens('escape');
         setAuthoringTool('select');
-        setSearchOpen(false);
-        setAskOpen(false);
+        setSearchOpen(false); setAskOpen(false);
         if (askOpen) window.setTimeout(() => askButtonRef.current?.focus(), 0);
         if (shouldCloseInspector) closeDetails();
       }
@@ -3919,7 +3919,7 @@ export function App() {
           </button>
           {searchOpen && (
             <div className="search-popover" role="dialog" aria-label="Search architecture">
-              <div className="search-input-row"><SearchIcon/><input autoFocus id="atlas-search" onChange={event => setSearch(event.target.value)} placeholder="Search architecture and code" value={search}/><button aria-label="Close search" onClick={() => setSearchOpen(false)}><CloseIcon/></button></div>
+              <div className="search-input-row"><SearchIcon/><input autoFocus id="atlas-search" onChange={event => setSearch(event.target.value)} onKeyDown={event => event.stopPropagation()} onKeyPress={event => event.stopPropagation()} placeholder="Search architecture and code" value={search}/><button aria-label="Close search" onClick={() => setSearchOpen(false)}><CloseIcon/></button></div>
               <p className="popover-label">{search ? `${searchResults.length} MATCHES` : 'ON THIS MAP'}</p>
               <div className="search-results" role="listbox">
                 {searchResults.map(entity => <button aria-selected={entity.id === selectedId} key={entity.id} onClick={() => focusEntity(entity, 'push', 'frame')} role="option"><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{entity.kindLabel ?? entity.kind} · {entity.source ?? entity.responsibility}</small></span><span className="result-enter">↵</span></button>)}
