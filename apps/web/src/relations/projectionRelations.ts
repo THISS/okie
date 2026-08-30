@@ -1,6 +1,13 @@
-import type { AtlasScene, SceneEntity, SceneRelation, SceneSourceRef } from '../renderer/types';
+import type { AtlasScene, SceneEntity, SceneRelation, SceneSourceRef, SemanticDetail } from '../renderer/types';
 
 export type RelationDirection = 'outbound' | 'inbound' | 'self';
+
+const SEMANTIC_DETAILS: readonly SemanticDetail[] = ['context', 'container', 'component', 'code'];
+
+function detailRank(detail: SemanticDetail | undefined): number {
+  const index = detail ? SEMANTIC_DETAILS.indexOf(detail) : -1;
+  return index < 0 ? 0 : index;
+}
 
 export type SelectedRelationPresentation = {
   id: string;
@@ -120,4 +127,165 @@ export function selectedRelationPresentations(
       const presentation = selectedRelationPresentation(scene, relation, selectedEntityId);
       return presentation ? [presentation] : [];
     });
+}
+
+/** One inspector row per edge the canvas draws on the selected card. */
+export type CanvasRelationRow = {
+  /** Visual-edge identity: the row is the edge, not one of its collapsed relations. */
+  id: string;
+  /** Representative canonical relation — the same one a canvas pick on this edge returns. */
+  relationId: string;
+  direction: Exclude<RelationDirection, 'self'>;
+  directionLabel: 'OUT' | 'IN';
+  counterpart: SceneEntity;
+  /** Collapsed edge label (`3 calls` when the underlying labels disagree). */
+  label: string;
+  kindLabel?: string;
+  protocol?: string;
+  /** Canonical relations collapsed into this edge (≥ 1). */
+  count: number;
+  semanticIds: string[];
+};
+
+export type CanvasRelationsPresentation = {
+  rows: CanvasRelationRow[];
+  /**
+   * Relations whose endpoints both project onto the selected node at this band.
+   * The canvas suppresses the resulting self-edge, so this is the only count the
+   * inspector may honestly report as hidden.
+   */
+  hiddenInternalCount: number;
+  /** Edges a scoped compile kept out of routing, so the canvas never drew them. */
+  omittedEdgeCount: number;
+  /** Canonical relations collapsed into those unrouted edges. */
+  omittedRelationCount: number;
+};
+
+/**
+ * Resolves the visible visual edges touching one entity.
+ *
+ * The inspector follows the canvas: a band projects descendant relations onto
+ * their nearest visible ancestor, so canonical `from`/`to` filtering would drop
+ * every projected edge the band actually draws. Rows are therefore keyed by
+ * visual edge and carry the collapsed label plus the underlying relation count.
+ * Scenes without a projection fall back to canonical relation identity.
+ */
+export function canvasRelationRowsForEntity(
+  scene: AtlasScene,
+  visibleVisualRelationIds: readonly string[],
+  selectedEntityId: string,
+): CanvasRelationRow[] {
+  const entityById = new Map(scene.entities.map(entity => [entity.id, entity]));
+  const canonicalById = new Map(scene.relations.map(relation => [relation.id, relation]));
+  const visible = new Set(visibleVisualRelationIds);
+  const projected = scene.projection?.projectedRelationsByDetail;
+  const edges = projected
+    ? SEMANTIC_DETAILS.flatMap(detail => (projected[detail] ?? []).filter(edge => visible.has(edge.id)))
+    : scene.relations.filter(relation => visible.has(relation.id));
+
+  const rows: CanvasRelationRow[] = [];
+  const seen = new Set<string>();
+  for (const edge of edges) {
+    if (seen.has(edge.id)) continue;
+    // A self-edge is never drawn; its relations are reported as hidden internals.
+    if (edge.from === edge.to) continue;
+    if (edge.from !== selectedEntityId && edge.to !== selectedEntityId) continue;
+    const outbound = edge.from === selectedEntityId;
+    const counterpart = entityById.get(outbound ? edge.to : edge.from);
+    if (!counterpart) continue;
+    seen.add(edge.id);
+    const semanticIds = edge.semanticIds?.length ? [...edge.semanticIds] : [edge.id];
+    const only = semanticIds.length === 1 ? canonicalById.get(semanticIds[0]!) : undefined;
+    const kindLabel = (edge.kindLabel ?? only?.kindLabel)?.trim() || undefined;
+    const label = edge.label?.trim() || only?.label?.trim() || kindLabel || 'Relationship';
+    const protocol = (edge.protocol ?? only?.protocol)?.trim() || undefined;
+    rows.push({
+      id: edge.id,
+      relationId: only?.id ?? semanticIds[0]!,
+      direction: outbound ? 'outbound' : 'inbound',
+      directionLabel: outbound ? 'OUT' : 'IN',
+      counterpart,
+      label,
+      ...(kindLabel ? { kindLabel } : {}),
+      ...(protocol ? { protocol } : {}),
+      count: semanticIds.length,
+      semanticIds,
+    });
+  }
+  return rows;
+}
+
+/** Mirrors the projection's nearest-visible-ancestor rule for one endpoint. */
+export function projectedEntityIdForDetail(
+  entityById: ReadonlyMap<string, SceneEntity>,
+  entityId: string,
+  detail: SemanticDetail,
+): string | undefined {
+  const rank = detailRank(detail);
+  let current = entityById.get(entityId);
+  const visited = new Set<string>();
+  while (current && !visited.has(current.id)) {
+    if (detailRank(current.detail) <= rank) return current.id;
+    visited.add(current.id);
+    current = current.parentId ? entityById.get(current.parentId) : undefined;
+  }
+  return current?.id;
+}
+
+/**
+ * Counts the relations the band collapsed into a suppressed self-edge on this
+ * node — the compiler drops a projected edge whose endpoints resolve to the same
+ * visible entity. Nothing else may be reported as hidden: every other relation is
+ * either drawn (a row) or unrouted (`+N more`).
+ */
+export function selfProjectedRelationCount(
+  scene: AtlasScene,
+  selectedEntityId: string,
+  detail: SemanticDetail,
+): number {
+  const entityById = new Map(scene.entities.map(entity => [entity.id, entity]));
+  const rank = detailRank(detail);
+  const projectedCache = new Map<string, string | undefined>();
+  const projectedId = (entityId: string) => {
+    if (!projectedCache.has(entityId)) {
+      projectedCache.set(entityId, projectedEntityIdForDetail(entityById, entityId, detail));
+    }
+    return projectedCache.get(entityId);
+  };
+
+  let count = 0;
+  for (const relation of scene.relations) {
+    const from = entityById.get(relation.from);
+    const to = entityById.get(relation.to);
+    if (!from || !to) continue;
+    // Coarser authored summaries never reach a finer band, so they cannot be
+    // hidden by it either.
+    if (Math.max(detailRank(from.detail), detailRank(to.detail)) < rank) continue;
+    if (projectedId(relation.from) !== selectedEntityId) continue;
+    if (projectedId(relation.to) !== selectedEntityId) continue;
+    count += 1;
+  }
+  return count;
+}
+
+/** The inspector's Relationships section for one selected entity. */
+export function canvasRelationsForEntity(
+  scene: AtlasScene,
+  visibleVisualRelationIds: readonly string[],
+  selectedEntityId: string,
+  detail: SemanticDetail,
+): CanvasRelationsPresentation {
+  // Band-scoped: "+N more" claims what this zoom failed to route, and an edge
+  // omitted in several bands must not be counted several times.
+  const omitted = (scene.omittedEdges ?? []).filter(edge => edge.detail === detail
+    && (edge.fromId === selectedEntityId || edge.toId === selectedEntityId));
+  // Remainder is only unrouted visual edges. Never fall back to
+  // scene.omittedRelations — on live L1 those ids are already counted as
+  // hidden internals (or drawn rows), and stacking them as +N more is a dump.
+  return {
+    rows: canvasRelationRowsForEntity(scene, visibleVisualRelationIds, selectedEntityId),
+    hiddenInternalCount: selfProjectedRelationCount(scene, selectedEntityId, detail),
+    omittedEdgeCount: omitted.length,
+    omittedRelationCount: omitted.reduce((total, edge) => total + edge.relationCount, 0),
+  };
 }

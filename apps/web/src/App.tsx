@@ -65,7 +65,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { clampInspectorWidth, defaultInspectorWidth, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, visibleSemanticRelationsForEntity } from './inspector/inspectorSupport';
+import { canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1558,7 +1558,14 @@ export function App() {
     () => new Set([...storyFocus.relationIds, ...relationFocus.relationIds]),
     [relationFocus.relationIds, storyFocus.relationIds],
   );
-  const related = useMemo(() => visibleSemanticRelationsForEntity(scene, activeProjectionRelationIds, selected.id), [activeProjectionRelationIds, scene, selected.id]);
+  // The inspector follows the canvas: one row per drawn edge on the selected card
+  // (including descendant relations this band projected onto it), plus the two
+  // honest remainders — internals the canvas dropped, and edges it never routed.
+  const canvasRelations = useMemo(
+    () => canvasRelationsForEntity(scene, activeProjectionRelationIds, selected.id, activeDetail),
+    [activeDetail, activeProjectionRelationIds, scene, selected.id],
+  );
+  const related = canvasRelations.rows;
   const breadcrumbState = useMemo(() => {
     const byId = new Map(scene.entities.map(entity => [entity.id, entity]));
     const chain: SceneEntity[] = [];
@@ -1624,7 +1631,7 @@ export function App() {
   );
   const visibleRelated = useMemo(
     () => visibilityMode === 'isolate' && !storyTraveling
-      ? related.filter(relation => isolatedRelationIdSet.has(relation.id))
+      ? related.filter(row => row.semanticIds.some(id => isolatedRelationIdSet.has(id)))
       : related,
     [isolatedRelationIdSet, related, storyTraveling, visibilityMode],
   );
@@ -2632,7 +2639,12 @@ export function App() {
       lensPath: semanticLensCanonicalPathIds(nextSession),
     }, navigationDefaults), historyMode);
     setLiveMessage(`${entity.name} selected. ${entity.responsibility}`);
-    reframeEntityAfterInspectorChange(entity, nextInspectorTab === 'source');
+    // Selection never moves the camera, even when the card sits off-screen or
+    // behind the inspector: only an explicit camera intent ("Show on map",
+    // "Open source", search framing) may reframe. See
+    // docs/product/interaction-semantics.md ("Spatial continuity and drill-down").
+    const explicitCameraIntent = cameraIntent === 'frame' || inspectorIntent === 'source';
+    if (explicitCameraIntent) reframeEntityAfterInspectorChange(entity, nextInspectorTab === 'source');
   }
 
   function navigateInspectorHierarchy(entity: SceneEntity) {
@@ -2944,6 +2956,20 @@ export function App() {
     frameSelectedRelationFlow(relation, owner);
     const endpoints = from && to ? ` from ${from.name} to ${to.name}` : '';
     setLiveMessage(`${relationName} relationship selected${endpoints}.`);
+  }
+
+  /**
+   * Inspects one drawn edge from the selected card. A collapsed edge resolves to
+   * the same representative relation a canvas pick on that edge returns, so the
+   * list and the map open the identical subject.
+   */
+  function inspectCanvasRelation(row: CanvasRelationRow) {
+    const relation = scene.relations.find(candidate => candidate.id === row.relationId);
+    if (!relation) {
+      setLiveMessage(`${row.label} is no longer available as a canonical relationship.`);
+      return;
+    }
+    inspectRelation(relation, 'panel');
   }
 
   function restoreInspectorHistoryNavigation(subject: InspectorHistorySubject) {
@@ -4231,20 +4257,14 @@ export function App() {
 
               <section className="detail-section relationships-section">
                 <div className="section-title"><h3>Relationships</h3><span>{visibleRelated.length}</span></div>
-                <div className="relations-list">{visibleRelated.length > 0 ? visibleRelated.map(relation => {
-                  const outbound = relation.from === selected.id;
-                  const otherId = outbound ? relation.to : relation.from;
-                  const other = scene.entities.find(entity => entity.id === otherId);
-                  if (!other) return null;
-                  const relationshipLabel = relation.label ?? relation.kindLabel ?? 'Relationship';
-                  return <button aria-label={`${outbound ? 'Outbound' : 'Inbound'} ${relationshipLabel} ${outbound ? 'to' : 'from'} ${other.name}`} data-inspector-presentation="relation-summary" data-inspector-relation-id={relation.id} key={relation.id} onClick={() => inspectRelation(relation, 'panel')}><span aria-hidden="true" className="relation-direction">{outbound ? '→' : '←'}</span><span><strong>{other.name}</strong><small>{relationshipLabel}{relation.protocol ? ` · ${relation.protocol}` : ''}</small></span><ChevronIcon size={15}/></button>;
-                }) : <div className="empty-inspector-section">No explicit relationships at this level.</div>}</div>
+                <div className="relations-list">{visibleRelated.length > 0 ? visibleRelated.map(row => {
+                  const outbound = row.direction === 'outbound';
+                  const collapsed = row.count > 1 ? ` · ${row.count} relationships` : '';
+                  return <button aria-label={`${outbound ? 'Outbound' : 'Inbound'} ${row.label} ${outbound ? 'to' : 'from'} ${row.counterpart.name}${row.count > 1 ? `, ${row.count} collapsed relationships` : ''}`} data-inspector-presentation="relation-summary" data-inspector-relation-count={row.count} data-inspector-relation-edge-id={row.id} data-inspector-relation-id={row.relationId} key={row.id} onClick={() => inspectCanvasRelation(row)}><span aria-hidden="true" className="relation-direction">{outbound ? '→' : '←'}</span><span><strong>{row.counterpart.name}</strong><small>{row.label}{collapsed}{row.protocol ? ` · ${row.protocol}` : ''}</small></span><ChevronIcon size={15}/></button>;
+                }) : <div className="empty-inspector-section">No relationship is drawn on this card at this level.</div>}
+                {canvasRelations.omittedEdgeCount > 0 && <p className="empty-inspector-section" data-inspector-omitted-edge-count={canvasRelations.omittedEdgeCount} data-inspector-omitted-relation-count={canvasRelations.omittedRelationCount} data-testid="relationships-omitted-more">+{canvasRelations.omittedRelationCount} more not routed at this zoom</p>}
+                {canvasRelations.hiddenInternalCount > 0 && <p className="empty-inspector-section" data-inspector-hidden-internal-count={canvasRelations.hiddenInternalCount} data-testid="relationships-hidden-internal">Hiding {canvasRelations.hiddenInternalCount} relationship{canvasRelations.hiddenInternalCount === 1 ? '' : 's'} between parts of {selected.name} — both ends land on this card. Open inside to see them.</p>}</div>
               </section>
-
-              {selected.id === navigationIdentity.rootEntityId && scene.omittedRelations?.length ? <section className="detail-section relationships-section omitted-relations-section" data-testid="omitted-relations">
-                <div className="section-title"><h3>Not drawn at this zoom</h3><span>{scene.omittedRelations.length}</span></div>
-                <div className="relations-list"><p className="empty-inspector-section">{scene.omittedRelations.length} relation{scene.omittedRelations.length === 1 ? '' : 's'} aggregated out of the routed view for this dense scope — still evidence-backed:</p>{scene.omittedRelations.map(omitted => <div className="source-card static" data-omitted-relation-id={omitted.relationId} key={omitted.relationId}><span><strong>{omitted.fromName} → {omitted.toName}</strong><small>{omitted.label}{omitted.evidencePaths.length ? ` · ${omitted.evidencePaths.length} evidence file${omitted.evidencePaths.length === 1 ? '' : 's'}` : ''}</small></span></div>)}</div>
-              </section> : null}
 
               <section className="detail-section evidence-section">
                 <div className="section-title"><h3>Source evidence</h3><span>{selected.sourceRefs?.length ?? 0}</span></div>

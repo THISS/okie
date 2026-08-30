@@ -164,9 +164,11 @@ describe('compact inspector presentation', () => {
 
   it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {
     expect(app).toContain('data-inspector-presentation="relation-summary"');
-    expect(app).toContain('data-inspector-relation-id={relation.id}');
-    expect(app).toContain('<strong>{other.name}</strong><small>{relationshipLabel}');
-    expect(app).toContain("onClick={() => inspectRelation(relation, 'panel')}");
+    expect(app).toContain('data-inspector-relation-id={row.relationId}');
+    expect(app).toContain('data-inspector-relation-edge-id={row.id}');
+    expect(app).toContain('<strong>{row.counterpart.name}</strong><small>{row.label}');
+    expect(app).toContain('onClick={() => inspectCanvasRelation(row)}');
+    expect(app).toContain("inspectRelation(relation, 'panel');");
   });
 
   it('swaps selected edges into a dedicated relationship inspector with endpoint and editing actions', () => {
@@ -180,7 +182,35 @@ describe('compact inspector presentation', () => {
     expect(evidence).toBeGreaterThan(endpoints);
     expect(editing).toBeGreaterThan(evidence);
     expect(app).toContain('selectedRelationPresentation(scene, pickedRelation, pickedRelation.from)');
-    expect(app).toContain('visibleSemanticRelationsForEntity(scene, activeProjectionRelationIds, selected.id)');
+    expect(app).toContain('canvasRelationsForEntity(scene, activeProjectionRelationIds, selected.id, activeDetail)');
+  });
+
+  it('follows the canvas in Relationships and keeps both remainders honest', () => {
+    const relationships = app.indexOf('<h3>Relationships</h3>');
+    const omitted = app.indexOf('data-testid="relationships-omitted-more"', relationships);
+    const hidden = app.indexOf('data-testid="relationships-hidden-internal"', relationships);
+
+    expect(omitted).toBeGreaterThan(relationships);
+    expect(hidden).toBeGreaterThan(relationships);
+    // "+N more" only when omittedEdges actually contributed; "Hiding N" is internals.
+    expect(app).toContain('canvasRelations.omittedEdgeCount > 0 &&');
+    expect(app).toContain('+{canvasRelations.omittedRelationCount} more not routed at this zoom');
+    expect(app).toContain('canvasRelations.hiddenInternalCount > 0 &&');
+    expect(app).toContain('const collapsed = row.count > 1 ? ` · ${row.count} relationships` : \'\';');
+    expect(app).not.toContain('data-testid="omitted-relations"');
+    expect(app).not.toContain('Not drawn at this zoom');
+    expect(app).not.toContain('aggregated out of the routed view');
+  });
+
+  it('never moves the camera on selection, only on an explicit camera intent', () => {
+    const focusStart = app.indexOf('function focusEntity(');
+    const focusEnd = app.indexOf('function navigateInspectorHierarchy', focusStart);
+    const implementation = app.slice(focusStart, focusEnd);
+
+    expect(implementation).toContain("const explicitCameraIntent = cameraIntent === 'frame' || inspectorIntent === 'source';");
+    expect(implementation).toContain("if (explicitCameraIntent) reframeEntityAfterInspectorChange(entity, nextInspectorTab === 'source');");
+    expect(implementation).toContain("const nextCamera = cameraIntent === 'frame'");
+    expect(implementation.match(/reframeEntityAfterInspectorChange\(/g)).toHaveLength(1);
   });
 
   it('uses a panel-local Back stack only for inspector-originated subject traversal', () => {
