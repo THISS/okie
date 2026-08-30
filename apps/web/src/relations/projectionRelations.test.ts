@@ -256,22 +256,22 @@ describe('honest remainders beside the drawn rows', () => {
     expect(canvasRelationsForEntity(scene, ['edge:context:app>db'], 'external:db', 'context').omittedEdgeCount).toBe(0);
   });
 
-  it('attributes leftover omittedRelations to the scene root when omittedEdges is empty', () => {
+  it('does not let leftover omittedRelations inflate omittedRelationCount when they overlap hidden internals', () => {
     const leftover = projectedScene();
     leftover.rootEntityId = 'system:app';
     leftover.omittedEdges = [];
     leftover.omittedRelations = [
-      { relationId: 'rel:x', fromName: 'A', toName: 'B', label: 'uses', evidencePaths: [] },
-      { relationId: 'rel:y', fromName: 'C', toName: 'D', label: 'calls', evidencePaths: [] },
-      { relationId: 'rel:z', fromName: 'E', toName: 'F', label: 'reads', evidencePaths: [] },
+      { relationId: 'rel:w1-w2', fromName: 'w1', toName: 'w2', label: 'calls', evidencePaths: [] },
+      { relationId: 'rel:w1-a1', fromName: 'w1', toName: 'a1', label: 'uses', evidencePaths: [] },
+      { relationId: 'rel:w2-a1', fromName: 'w2', toName: 'a1', label: 'uses', evidencePaths: [] },
+      { relationId: 'rel:a1-db', fromName: 'a1', toName: 'DB', label: 'reads', evidencePaths: [] },
     ];
 
     const root = canvasRelationsForEntity(leftover, ['edge:context:app>db'], 'system:app', 'context');
-    const other = canvasRelationsForEntity(leftover, ['edge:context:app>db'], 'external:db', 'context');
 
+    expect(root.rows.map(row => row.semanticIds)).toEqual([['rel:a1-db']]);
+    expect(root.hiddenInternalCount).toBe(3);
     expect(root.omittedEdgeCount).toBe(0);
-    expect(root.omittedRelationCount).toBe(3);
-    expect(other.omittedEdgeCount).toBe(0);
-    expect(other.omittedRelationCount).toBe(0);
+    expect(root.omittedRelationCount).toBe(0);
   });
 });

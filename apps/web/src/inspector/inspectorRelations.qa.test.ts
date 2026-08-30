@@ -143,11 +143,36 @@ describe('L1 inspector follows the canvas', () => {
     ]);
     expect(okie.rows.every(row => row.count === 1)).toBe(true);
     expect(okie.omittedEdgeCount).toBe(0);
-    // No fake +N more: golden only reports leftover omittedRelations when the scene actually has them.
-    expect(okie.omittedRelationCount).toBe(scene.omittedRelations?.length ?? 0);
+    // No fake +N more: leftover omittedRelations are not a second remainder.
+    expect(okie.omittedRelationCount).toBe(0);
     // The golden fixture keeps 31 evidence-backed internal relations below L1.
     expect(okie.hiddenInternalCount).toBe(scene.relations.length - okie.rows.length);
     expect(okie.hiddenInternalCount).toBe(31);
+  });
+
+  it('does not stack leftover omittedRelations on top of hidden internals', () => {
+    const scene = scanScene();
+    scene.rootEntityId = 'system:app';
+    scene.omittedEdges = [];
+    const drawn = drawnEdgeIds(scene, 'context');
+    const l1 = canvasRelationsForEntity(scene, drawn, 'system:app', 'context');
+    // Live L1 leftover dump is (most of) the internals, not a second set.
+    scene.omittedRelations = scene.relations
+      .filter(relation => !l1.rows.some(row => row.semanticIds.includes(relation.id)))
+      .map(relation => ({
+        relationId: relation.id,
+        fromName: relation.from,
+        toName: relation.to,
+        label: relation.label ?? 'uses',
+        evidencePaths: [],
+      }));
+
+    const stacked = canvasRelationsForEntity(scene, drawn, 'system:app', 'context');
+    expect(stacked.rows).toHaveLength(1);
+    expect(stacked.hiddenInternalCount).toBe(3);
+    expect(stacked.omittedEdgeCount).toBe(0);
+    expect(stacked.omittedRelationCount).toBe(0);
+    expect(stacked.rows.length + stacked.hiddenInternalCount).toBe(scene.relations.length);
   });
 
   it('shows relations and evidence with empty enrich copy', () => {

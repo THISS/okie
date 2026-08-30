@@ -192,8 +192,8 @@ describe('compact inspector presentation', () => {
 
     expect(omitted).toBeGreaterThan(relationships);
     expect(hidden).toBeGreaterThan(relationships);
-    // "+N more" counts omitted relations (edges plus leftover root dump); "Hiding N" is internals.
-    expect(app).toContain('canvasRelations.omittedRelationCount > 0 &&');
+    // "+N more" only when omittedEdges actually contributed; "Hiding N" is internals.
+    expect(app).toContain('canvasRelations.omittedEdgeCount > 0 &&');
     expect(app).toContain('+{canvasRelations.omittedRelationCount} more not routed at this zoom');
     expect(app).toContain('canvasRelations.hiddenInternalCount > 0 &&');
     expect(app).toContain('const collapsed = row.count > 1 ? ` · ${row.count} relationships` : \'\';');
