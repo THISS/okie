@@ -157,7 +157,11 @@ export type CanvasRelationsPresentation = {
   hiddenInternalCount: number;
   /** Edges a scoped compile kept out of routing, so the canvas never drew them. */
   omittedEdgeCount: number;
-  /** Canonical relations collapsed into those unrouted edges. */
+  /**
+   * Canonical relations collapsed into those unrouted edges, plus leftover
+   * `scene.omittedRelations` attributed to the scene root when omittedEdges
+   * does not already account for them.
+   */
   omittedRelationCount: number;
 };
 
@@ -279,10 +283,17 @@ export function canvasRelationsForEntity(
   // omitted in several bands must not be counted several times.
   const omitted = (scene.omittedEdges ?? []).filter(edge => edge.detail === detail
     && (edge.fromId === selectedEntityId || edge.toId === selectedEntityId));
+  const omittedFromEdges = omitted.reduce((total, edge) => total + edge.relationCount, 0);
+  // Live L1 scans can leave omittedRelations populated while omittedEdges is
+  // empty after the band+card filter. Attribute that leftover to the root only,
+  // matching the old dump, and skip it when omittedEdges already covers them.
+  const leftoverOmittedRelations = omittedFromEdges === 0 && selectedEntityId === scene.rootEntityId
+    ? (scene.omittedRelations?.length ?? 0)
+    : 0;
   return {
     rows: canvasRelationRowsForEntity(scene, visibleVisualRelationIds, selectedEntityId),
     hiddenInternalCount: selfProjectedRelationCount(scene, selectedEntityId, detail),
     omittedEdgeCount: omitted.length,
-    omittedRelationCount: omitted.reduce((total, edge) => total + edge.relationCount, 0),
+    omittedRelationCount: omittedFromEdges + leftoverOmittedRelations,
   };
 }
