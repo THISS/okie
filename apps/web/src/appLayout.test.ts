@@ -196,6 +196,9 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('canvasRelations.omittedEdgeCount > 0 &&');
     expect(app).toContain('canvasRelations.hiddenInternalCount > 0 &&');
     expect(app).toContain('const collapsed = row.count > 1 ? ` · ${row.count} relationships` : \'\';');
+    expect(app).not.toContain('data-testid="omitted-relations"');
+    expect(app).not.toContain('Not drawn at this zoom');
+    expect(app).not.toContain('aggregated out of the routed view');
   });
 
   it('never moves the camera on selection, only on an explicit camera intent', () => {
