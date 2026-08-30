@@ -24,7 +24,7 @@ import {
   goldenView,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
-import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
+import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedEdge, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
 
@@ -211,6 +211,37 @@ export function resolveOmittedRelations(bundle: C4ProjectionBundle, snapshot: Ar
 }
 
 /**
+ * Resolves the same drop as {@link resolveOmittedRelations}, keyed by visual edge
+ * and band instead of by relation. The inspector needs the projected endpoint IDs
+ * to attribute "+N more" to the selected card; the relation-keyed list only carries
+ * display names and collapses an edge omitted in several bands into one row.
+ */
+export function resolveOmittedEdges(bundle: C4ProjectionBundle, snapshot: ArchitectureSnapshot): OmittedEdge[] {
+  const nameById = new Map(snapshot.entities.map(entity => [entity.id, entity.name]));
+  const relationById = new Map(snapshot.relations.map(relation => [relation.id, relation]));
+  return bands.flatMap(band => {
+    const projection = bundle.projectionById[bundle.family.projectionIds[band]];
+    return [...(projection?.omittedEdgeIds ?? [])].sort().flatMap(edgeId => {
+      const edge = bundle.visualEdgeById[edgeId];
+      if (!edge) return [];
+      const relationIds = bundle.index.relationIdsByVisualEdgeId[edgeId] ?? [];
+      const fromId = bundle.index.entityIdByVisualNodeId[edge.fromVisualId] ?? '';
+      const toId = bundle.index.entityIdByVisualNodeId[edge.toVisualId] ?? '';
+      return [{
+        edgeId,
+        detail: band as SemanticDetail,
+        fromId,
+        toId,
+        fromName: nameById.get(fromId) ?? fromId,
+        toName: nameById.get(toId) ?? toId,
+        label: edge.label || relationById.get(relationIds[0] ?? '')?.kind || 'relates to',
+        relationCount: relationIds.length,
+      }];
+    });
+  });
+}
+
+/**
  * Compiles an architecture snapshot into the renderer scene + projection bundle.
  * Shared by the golden fixture and any live-loaded fixture (e.g. scanned
  * snapshots); fixture-specific labels/ids arrive through options so the compile
@@ -331,6 +362,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     return [entity.id, Object.fromEntries(transitions)];
   }));
   const omittedRelations = resolveOmittedRelations(authoredProjections, snapshot);
+  const omittedEdges = resolveOmittedEdges(authoredProjections, snapshot);
   const scopedCompile: ScopedCompileInfo | undefined = scoped ? {
     ...(options.maxBand !== undefined ? { maxBand: options.maxBand } : {}),
     ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
@@ -346,6 +378,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     rootEntityId: options.focusEntityId,
     frozenRevision: options.frozenRevision,
     ...(omittedRelations.length ? { omittedRelations } : {}),
+    ...(omittedEdges.length ? { omittedEdges } : {}),
     ...(scopedCompile ? { scopedCompile } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
     entities,
