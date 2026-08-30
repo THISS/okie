@@ -5,5 +5,10 @@ export {
   inspectorWidthRange,
   inspectorWidthStorageKey,
 } from './inspectorPanel';
-export { selectedRelationPresentation, visibleSemanticRelationsForEntity } from '../relations/projectionRelations';
+export {
+  canvasRelationsForEntity,
+  selectedRelationPresentation,
+  type CanvasRelationRow,
+  type CanvasRelationsPresentation,
+} from '../relations/projectionRelations';
 export { selectedEntityReframePlan } from '../relations/selectedEntityFraming';
