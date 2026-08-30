@@ -75,6 +75,21 @@ export type OmittedRelation = {
   evidencePaths: string[];
 };
 
+/** The unrouted counterpart of a drawn edge: same band, same projected endpoints,
+ *  but over the per-band edge budget so the canvas never drew it. Endpoint IDs let
+ *  the selected card report exactly its own "+N more". */
+export type OmittedEdge = {
+  edgeId: string;
+  detail: SemanticDetail;
+  fromId: string;
+  toId: string;
+  fromName: string;
+  toName: string;
+  label: string;
+  /** Canonical relations collapsed into this edge. */
+  relationCount: number;
+};
+
 /** Dev-mode observability for the scan scoped compile (absent when unbounded). */
 export type ScopedCompileInfo = {
   maxBand?: SemanticDetail;
@@ -124,6 +139,8 @@ export type AtlasScene = {
   frozenRevision?: string;
   /** Relations dropped from routing under a scan-mode edge budget (absent otherwise). */
   omittedRelations?: OmittedRelation[];
+  /** The same drop, keyed by visual edge and projected endpoints (absent otherwise). */
+  omittedEdges?: OmittedEdge[];
   /** Scan-mode scoped-compile decision, surfaced in the dev diagnostics panel. */
   scopedCompile?: ScopedCompileInfo;
   /** Aspect-preset target the scene was compiled with (scan mode, tasks #30/#33). Present
