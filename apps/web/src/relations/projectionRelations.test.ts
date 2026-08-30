@@ -255,4 +255,23 @@ describe('honest remainders beside the drawn rows', () => {
     // A container-band drop is not another band's "+N more".
     expect(canvasRelationsForEntity(scene, ['edge:context:app>db'], 'external:db', 'context').omittedEdgeCount).toBe(0);
   });
+
+  it('attributes leftover omittedRelations to the scene root when omittedEdges is empty', () => {
+    const leftover = projectedScene();
+    leftover.rootEntityId = 'system:app';
+    leftover.omittedEdges = [];
+    leftover.omittedRelations = [
+      { relationId: 'rel:x', fromName: 'A', toName: 'B', label: 'uses', evidencePaths: [] },
+      { relationId: 'rel:y', fromName: 'C', toName: 'D', label: 'calls', evidencePaths: [] },
+      { relationId: 'rel:z', fromName: 'E', toName: 'F', label: 'reads', evidencePaths: [] },
+    ];
+
+    const root = canvasRelationsForEntity(leftover, ['edge:context:app>db'], 'system:app', 'context');
+    const other = canvasRelationsForEntity(leftover, ['edge:context:app>db'], 'external:db', 'context');
+
+    expect(root.omittedEdgeCount).toBe(0);
+    expect(root.omittedRelationCount).toBe(3);
+    expect(other.omittedEdgeCount).toBe(0);
+    expect(other.omittedRelationCount).toBe(0);
+  });
 });

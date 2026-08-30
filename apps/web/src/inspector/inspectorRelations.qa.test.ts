@@ -143,6 +143,8 @@ describe('L1 inspector follows the canvas', () => {
     ]);
     expect(okie.rows.every(row => row.count === 1)).toBe(true);
     expect(okie.omittedEdgeCount).toBe(0);
+    // No fake +N more: golden only reports leftover omittedRelations when the scene actually has them.
+    expect(okie.omittedRelationCount).toBe(scene.omittedRelations?.length ?? 0);
     // The golden fixture keeps 31 evidence-backed internal relations below L1.
     expect(okie.hiddenInternalCount).toBe(scene.relations.length - okie.rows.length);
     expect(okie.hiddenInternalCount).toBe(31);
