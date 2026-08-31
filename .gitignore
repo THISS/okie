@@ -15,3 +15,13 @@ fixtures/renderer/stress-*.json
 
 # Deterministic scan output (regenerate with `okie-scan`).
 fixtures/scan/
+
+# Local env files and credential artifacts — never commit real keys.
+.env
+.env.*
+*.pem
+*.key
+id_rsa
+id_ed25519
+.npmrc
+
