@@ -1957,7 +1957,7 @@ export function App() {
           window.queueMicrotask(() => controller.replace(corrected));
           setLiveMessage('Invalid or unrelated semantic lens path was truncated to the deepest valid branch.');
         }
-        initialMapFitAppliedRef.current = source === 'popstate' || initialCameraExplicit;
+        initialMapFitAppliedRef.current = true;
         storyOriginAvailableRef.current = source === 'popstate' && Boolean(next.story);
         setNavigationIdentity({
           repositoryId: next.repositoryId,
@@ -2034,8 +2034,8 @@ export function App() {
         if (navigationRestoreGenerationRef.current !== restoreGeneration) return;
         restoringNavigationRef.current = false;
         if (source === 'initialize' && !initialCameraExplicit) {
-          initialMapFitAppliedRef.current = false;
-          setSafeAreaEpoch(epoch => epoch + 1);
+          initialMapFitAppliedRef.current = true;
+          // CLA-11: do not bump safeAreaEpoch; that delayed-fit after load.
         }
       },
       onCommit(commit) {
@@ -3444,8 +3444,8 @@ export function App() {
       }, navigationDefaults), 'replace');
     });
     return () => window.cancelAnimationFrame(frame);
-    // Readable framing may intentionally crop remote context. Resize/chrome changes
-    // must preserve that map camera; only the initial load auto-frames.
+    // Readable framing may intentionally crop remote context. Resize/chrome/load-restore
+    // must preserve that map camera; CLA-11: do not re-arm this fit after initialize.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailsOpen, navigationIdentity.rootEntityId, query.fixture, safeAreaEpoch, scene, storyStep, viewport.height, viewport.width]);
 
