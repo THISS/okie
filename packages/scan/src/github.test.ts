@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   acquireGithubTree,
   commitApiPath,
+  createAnonymousGithubClient,
   GithubAcquisitionError,
   interpretCommitResponse,
   interpretRepoResponse,
@@ -156,6 +157,41 @@ test("acquireGithubTree extracts the single top-level dir, exposes the root, and
     fixture.cleanup();
   }
   assert.ok(!existsSync(acquired.root), "cleanup discards the ephemeral checkout");
+});
+
+test("createAnonymousGithubClient fails closed on a private-repo 404 and never mentions gh", async () => {
+  const client = createAnonymousGithubClient({
+    fetch: async () => new Response("Not Found", { status: 404, headers: { "content-type": "application/json" } }),
+  });
+  const json = await client.getJson("/repos/acme/secret");
+  assert.equal(json.ok, false);
+  if (json.ok) throw new Error("expected failure");
+  assert.equal(json.status, 404);
+  assert.equal(json.rateLimited, false);
+  assert.doesNotMatch(json.message, /\bgh\b/i);
+
+  await assert.rejects(
+    resolveGithubCommit({ owner: "acme", repo: "secret", dirSlug: "acme__secret" }, client),
+    /not found.*public/i,
+  );
+
+  const dest = join(mkdtempSync(join(tmpdir(), "okie-anon-")), "repo.tar.gz");
+  await assert.rejects(client.downloadTarball("acme", "secret", "deadbeef", dest, 1024), /status 404/);
+});
+
+test("createAnonymousGithubClient reports anonymous rate-limits without a gh fallback hint", async () => {
+  const client = createAnonymousGithubClient({
+    fetch: async () => new Response("rate limited", {
+      status: 403,
+      headers: { "x-ratelimit-remaining": "0" },
+    }),
+  });
+  const json = await client.getJson("/repos/acme/public");
+  assert.equal(json.ok, false);
+  if (json.ok) throw new Error("expected failure");
+  assert.equal(json.rateLimited, true);
+  assert.match(json.message, /anonymous access/i);
+  assert.doesNotMatch(json.message, /\bgh\b/i);
 });
 
 // Live end-to-end resolution against the real GitHub API — offline-safe: skipped

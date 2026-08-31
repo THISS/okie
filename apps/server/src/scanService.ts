@@ -1,10 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  createAnonymousGithubClient,
   regenerateScanManifest,
   scanGithubRepository,
   stableJson,
   type EmittedPackets,
+  type GithubClient,
   type GithubSourceRef,
   type ScanArtifacts,
 } from "@okie/scan";
@@ -24,6 +26,13 @@ export interface ScanServiceOptions {
   enrich?: "auto" | "force" | "off";
   /** Injectable enrichment factory (tests). Returning undefined skips enrichment. */
   enricherFactory?: (onProgress: (note: string) => void) => EnrichmentHook | undefined;
+  /**
+   * GitHub transport for HTTP scans. Defaults to anonymous HTTPS with no `gh`
+   * CLI fallback — an unauthenticated POST /api/scans must not inherit the
+   * operator's credentials (CLA-18). The operator CLI still uses
+   * `createDefaultGithubClient()`.
+   */
+  githubClient?: GithubClient;
   log?: (line: string) => void;
 }
 
@@ -76,6 +85,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const enrichMode = options.enrich ?? "auto";
   const enricherFactory = options.enricherFactory
     ?? (enrichMode === "off" ? () => undefined : defaultEnricherFactory(enrichMode));
+  const githubClient = options.githubClient ?? createAnonymousGithubClient();
 
   return async (job, update) => {
     const source: GithubSourceRef = {
@@ -85,6 +95,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
       dirSlug: job.slug,
     };
     const scanOptions = {
+      client: githubClient,
       codeSurface: "public" as const,
       ...(options.maxTarballBytes ? { maxTarballBytes: options.maxTarballBytes } : {}),
     };

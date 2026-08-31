@@ -104,16 +104,20 @@ export type GithubJsonResult =
   | { ok: false; status: number; rateLimited: boolean; message: string };
 
 /**
- * Transport for GitHub reads. The default implementation calls the REST API
- * unauthenticated and transparently falls back to the `gh` CLI (which carries the
- * operator's auth) on rate-limit/403/404 — so public repos need no token and private
- * ones work wherever `gh` is logged in. Injected in tests to exercise resolution and
- * fallback logic offline against recorded fixtures.
+ * Transport for GitHub reads. Injected in tests to exercise resolution offline
+ * against recorded fixtures. Production constructors:
+ * - `createAnonymousGithubClient` — HTTPS only (HTTP/server path; no operator `gh`)
+ * - `createDefaultGithubClient` — anonymous HTTPS, then `gh` CLI fallback (operator CLI)
  */
 export interface GithubClient {
   getJson(apiPath: string): Promise<GithubJsonResult>;
   /** Downloads the repo tarball at `sha` into `destFile`; returns bytes written. */
   downloadTarball(owner: string, repo: string, sha: string, destFile: string, maxBytes: number): Promise<number>;
+}
+
+/** Optional `fetch` injection so tests can fail closed without hitting the network. */
+export interface GithubClientOptions {
+  fetch?: typeof fetch;
 }
 
 function ghAvailable(): boolean {
@@ -131,9 +135,17 @@ function ghApiJson(apiPath: string): unknown {
   return JSON.parse(out);
 }
 
+function ghDownloadTarball(owner: string, repo: string, sha: string, maxBytes: number): Buffer {
+  return execFileSync("gh", ["api", `repos/${owner}/${repo}/tarball/${sha}`], {
+    encoding: "buffer",
+    maxBuffer: maxBytes + 1,
+  });
+}
+
 const GITHUB_HEADERS = {
   // GitHub requires a User-Agent; Accept pins the v3 JSON media type. No auth header —
-  // tokens are never read from env or embedded; `gh` handles auth in the fallback path.
+  // tokens are never read from env or embedded. Operator `gh` auth is only used by
+  // `createDefaultGithubClient` (CLI), never by the anonymous HTTP client.
   "User-Agent": "okie-scan",
   Accept: "application/vnd.github+json",
   "X-GitHub-Api-Version": "2022-11-28",
@@ -144,25 +156,33 @@ function isRateLimited(status: number, headers: Headers): boolean {
   return status === 403 && headers.get("x-ratelimit-remaining") === "0";
 }
 
-/** The production client: anonymous HTTPS first, `gh` CLI fallback for auth/limits. */
-export function createDefaultGithubClient(): GithubClient {
+function resolveFetch(options: GithubClientOptions | undefined): typeof fetch {
+  return options?.fetch ?? ((input, init) => globalThis.fetch(input, init));
+}
+
+function createGithubClient(options: GithubClientOptions & { allowGhFallback: boolean }): GithubClient {
+  const fetchImpl = resolveFetch(options);
+  const allowGhFallback = options.allowGhFallback;
+
   return {
     async getJson(apiPath) {
       let anonStatus = 0;
       let anonRateLimited = false;
+      let anonMessage = "GitHub API request failed (network error).";
       try {
-        const response = await fetch(`https://api.github.com${apiPath}`, { headers: GITHUB_HEADERS });
+        const response = await fetchImpl(`https://api.github.com${apiPath}`, { headers: GITHUB_HEADERS });
         if (response.ok) return { ok: true, json: await response.json() };
         anonStatus = response.status;
         anonRateLimited = isRateLimited(response.status, response.headers);
-      } catch (error) {
-        // Network failure — fall through to gh if available, else report it.
+        anonMessage = anonRateLimited
+          ? "GitHub API rate limit reached for anonymous access."
+          : `GitHub API request failed (status ${anonStatus}).`;
+      } catch {
         anonStatus = 0;
-        void error;
       }
-      // Fall back to gh for rate-limits, auth walls (403/401), private-repo 404s, or a
-      // network hiccup — anything the anonymous call could not satisfy on its own.
-      if (ghAvailable()) {
+      // Operator CLI only: fall back to `gh` for rate-limits, auth walls, private-repo
+      // 404s, or a network hiccup. The HTTP server path must not take this branch.
+      if (allowGhFallback && ghAvailable()) {
         try {
           return { ok: true, json: ghApiJson(apiPath) };
         } catch (error) {
@@ -174,16 +194,15 @@ export function createDefaultGithubClient(): GithubClient {
         ok: false,
         status: anonStatus || 502,
         rateLimited: anonRateLimited,
-        message: anonRateLimited
+        message: allowGhFallback && anonRateLimited
           ? "GitHub API rate limit reached for anonymous access and the gh CLI is not available (install/auth `gh`)."
-          : `GitHub API request failed (status ${anonStatus || "network error"}).`,
+          : anonMessage,
       };
     },
 
     async downloadTarball(owner, repo, sha, destFile, maxBytes) {
-      // Anonymous codeload first.
       try {
-        const response = await fetch(tarballUrl(owner, repo, sha), { headers: { "User-Agent": GITHUB_HEADERS["User-Agent"] } });
+        const response = await fetchImpl(tarballUrl(owner, repo, sha), { headers: { "User-Agent": GITHUB_HEADERS["User-Agent"] } });
         if (response.ok && response.body) {
           const declared = Number(response.headers.get("content-length") ?? "");
           if (Number.isFinite(declared) && declared > maxBytes) {
@@ -191,26 +210,49 @@ export function createDefaultGithubClient(): GithubClient {
           }
           return await streamToFileWithCap(response.body, destFile, maxBytes);
         }
-        if (!isRateLimited(response.status, response.headers) && response.status !== 403 && response.status !== 404) {
-          throw new GithubAcquisitionError(`Tarball download failed (status ${response.status}).`);
+        const rateLimited = isRateLimited(response.status, response.headers);
+        const fallbackWorthy = rateLimited || response.status === 403 || response.status === 404;
+        if (!fallbackWorthy || !allowGhFallback) {
+          throw new GithubAcquisitionError(
+            rateLimited
+              ? "GitHub tarball download rate-limited for anonymous access."
+              : `Tarball download failed (status ${response.status}).`,
+          );
         }
       } catch (error) {
         if (error instanceof GithubAcquisitionError) throw error;
-        // network error — try gh below
+        if (!allowGhFallback) {
+          throw new GithubAcquisitionError("Could not download tarball anonymously.");
+        }
+        // network error on the CLI path — try gh below
       }
-      // gh fallback: `gh api .../tarball/{sha}` streams the archive with auth.
-      if (ghAvailable()) {
-        const buffer = execFileSync("gh", ["api", `repos/${owner}/${repo}/tarball/${sha}`], {
-          encoding: "buffer",
-          maxBuffer: maxBytes + 1,
-        });
+      if (allowGhFallback && ghAvailable()) {
+        const buffer = ghDownloadTarball(owner, repo, sha, maxBytes);
         if (buffer.length > maxBytes) throw new GithubAcquisitionError(tooBigMessage(buffer.length, maxBytes));
         await pipeline(Readable.from(buffer), createWriteStream(destFile));
         return buffer.length;
       }
-      throw new GithubAcquisitionError("Could not download tarball anonymously and the gh CLI is not available.");
+      throw new GithubAcquisitionError(
+        allowGhFallback
+          ? "Could not download tarball anonymously and the gh CLI is not available."
+          : "Could not download tarball anonymously.",
+      );
     },
   };
+}
+
+/**
+ * HTTPS-only GitHub client for the HTTP scan API. Never shells out to `gh`, so an
+ * unauthenticated `POST /api/scans` cannot inherit the operator's GitHub identity.
+ * Private repos (GitHub 404 when anonymous) fail closed.
+ */
+export function createAnonymousGithubClient(options: GithubClientOptions = {}): GithubClient {
+  return createGithubClient({ ...options, allowGhFallback: false });
+}
+
+/** Operator CLI client: anonymous HTTPS first, `gh` CLI fallback for auth/limits. */
+export function createDefaultGithubClient(options: GithubClientOptions = {}): GithubClient {
+  return createGithubClient({ ...options, allowGhFallback: true });
 }
 
 function tooBigMessage(bytes: number, maxBytes: number): string {
