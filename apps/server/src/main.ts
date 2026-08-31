@@ -4,20 +4,22 @@ import { join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_MAX_TARBALL_BYTES } from "@okie/scan";
 import { createScanJobQueue, createSubmitLimiter, type ScanJob } from "./jobs.js";
+import { healthzBody, resolveListenHost } from "./localDefaults.js";
 import { normalizeRepoInput } from "./repoUrl.js";
 import { createScanJobRunner } from "./scanService.js";
 
 /**
- * The paste-a-repo scan service (embed-hosting design, v2 self-serve):
+ * Local-only paste-a-repo scan process (unauthenticated — not a public API):
  *
  *   POST /api/scans {url}   validate GitHub URL → dedupe → enqueue a worker job
  *   GET  /api/scans/:id     job status with stage + enrichment progress
  *   GET  /api/scans         recent jobs (dev visibility)
  *   GET  /scan/*            the published trio objects + index.json manifest
  *
- * The vite dev server proxies /api and /scan here; hosted deployments put the
- * same routes behind the CDN. State on disk (the scan root) is the durable
- * output; job rows are ephemeral progress.
+ * Vite proxies /api and /scan here during `pnpm dev`. This process has no auth
+ * and must not be treated as deployable: it binds loopback by default (CLA-17)
+ * and GitHub reads are anonymous HTTPS only (CLA-18). State on disk (the scan
+ * root) is the durable output; job rows are ephemeral progress.
  */
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -26,6 +28,7 @@ const scanRoot = process.env.OKIE_SCAN_ROOT
   ? resolve(process.env.OKIE_SCAN_ROOT)
   : join(repoRoot, "fixtures/scan");
 const port = Number.parseInt(process.env.OKIE_SERVER_PORT ?? "4180", 10);
+const bind = resolveListenHost();
 const enrich = process.env.OKIE_SCAN_ENRICH === "0"
   ? "off"
   : process.env.OKIE_SCAN_ENRICH === "1"
@@ -167,15 +170,15 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   }
 
   if (request.method === "GET" && (pathname === "/" || pathname === "/healthz")) {
-    sendJson(response, 200, { service: "okie-scan-server", scanRoot, enrich });
+    sendJson(response, 200, healthzBody({ enrich, bind }));
     return;
   }
 
   sendJson(response, 404, { error: "not found" });
 }
 
-server.listen(port, () => {
-  log(`listening on http://localhost:${port}`);
+server.listen(port, bind, () => {
+  log(`listening on http://${bind}:${port} (no auth; local operator tool, not a public service)`);
   log(`scan root: ${scanRoot}`);
   log(`enrichment: ${enrich === "off"
     ? "disabled (OKIE_SCAN_ENRICH=0)"
