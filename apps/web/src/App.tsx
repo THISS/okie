@@ -65,7 +65,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1365,7 +1365,7 @@ export function App() {
   const pickedRelation = useMemo(() => pickedRelationId ? scene.relations.find(relation => relation.id === pickedRelationId) : undefined, [pickedRelationId, scene.relations]);
   const pickedRelationPresentation = useMemo(() => pickedRelation ? selectedRelationPresentation(scene, pickedRelation, pickedRelation.from) : undefined, [pickedRelation, scene]);
   const selectedExcerpt = selected.sourceExcerpts?.[0];
-  const sourceAvailable = !pickedRelation && selected.detail === 'code' && Boolean(selectedExcerpt);
+  const sourceAvailable = inspectorCanShowSource(selected, { pickedRelation: Boolean(pickedRelation) });
   const localWorkspace = useMemo<LocalWorkspaceContext | undefined>(() => {
     const injected = (window as Window & { __OKIE_LOCAL_WORKSPACE__?: LocalWorkspaceContext }).__OKIE_LOCAL_WORKSPACE__;
     return injected ?? (configuredRepositoryRoot ? { repositoryRoot: configuredRepositoryRoot } : undefined);
@@ -1390,8 +1390,8 @@ export function App() {
   useEffect(() => {
     if (inspectorSelectionRef.current === selected.id) return;
     inspectorSelectionRef.current = selected.id;
-    setInspectorTab(selected.detail === 'code' && selected.sourceExcerpts?.length ? 'source' : 'details');
-  }, [selected.detail, selected.id, selected.sourceExcerpts]);
+    setInspectorTab(inspectorTabForEntity(inspectorCanShowSource(selected)));
+  }, [selected.detail, selected.id, selected.sourceExcerpts, selected.sourceRefs]);
   useEffect(() => () => inspectorCameraFlightControllerRef.current?.dispose(), []);
   useEffect(() => {
     setDetailsWidth(current => clampInspectorWidth(current, window.innerWidth));
@@ -2484,8 +2484,7 @@ export function App() {
   }
 
   function inspectorTabFor(entity: SceneEntity, intent: 'auto' | 'source' | 'details' = 'auto') {
-    const canShowSource = entity.detail === 'code' && Boolean(entity.sourceExcerpts?.length);
-    return inspectorTabForEntity(canShowSource, intent);
+    return inspectorTabForEntity(inspectorCanShowSource(entity), intent);
   }
 
   function selectInspectorTab(tab: 'source' | 'details', focus = true) {

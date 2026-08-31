@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   clampInspectorWidth,
   defaultInspectorWidth,
+  inspectorCanShowSource,
   inspectorTabForEntity,
   inspectorWidthRange,
   inspectorWidthStorageKey,
 } from './inspectorPanel';
+import { createGoldenC4Scene } from '../renderer/goldenC4Scene';
 
 describe('inspector panel sizing', () => {
   it('defaults to a compact 376–416px pane and uses 360px at the compact breakpoint', () => {
@@ -33,5 +35,45 @@ describe('inspector panel sizing', () => {
     expect(inspectorTabForEntity(true, 'details')).toBe('details');
     expect(inspectorTabForEntity(false, 'source')).toBe('details');
     expect(inspectorTabForEntity(false, 'auto')).toBe('details');
+  });
+});
+
+describe('inspector Source tab enablement', () => {
+  const excerpt = { path: 'src/model.ts', lines: ['export const x = 1;'] };
+  const sourceRef = { path: 'src/model.ts', revision: 'abc123' };
+  const codeWithExcerpt = { detail: 'code' as const, sourceExcerpts: [excerpt], sourceRefs: [sourceRef] };
+  const codeWithRefsOnly = { detail: 'code' as const, sourceRefs: [sourceRef] };
+  const codeWithoutEvidence = { detail: 'code' as const };
+  const componentWithRefs = { detail: 'component' as const, sourceRefs: [sourceRef], sourceExcerpts: [excerpt] };
+
+  it('enables Source on a code entity with frozen excerpts or source refs', () => {
+    expect(inspectorCanShowSource(codeWithExcerpt)).toBe(true);
+    expect(inspectorCanShowSource(codeWithRefsOnly)).toBe(true);
+    expect(inspectorTabForEntity(inspectorCanShowSource(codeWithExcerpt))).toBe('source');
+    expect(inspectorTabForEntity(inspectorCanShowSource(codeWithRefsOnly))).toBe('source');
+  });
+
+  it('keeps Source disabled when the selected entity has no source evidence', () => {
+    expect(inspectorCanShowSource(codeWithoutEvidence)).toBe(false);
+    expect(inspectorCanShowSource({ detail: 'code', sourceExcerpts: [], sourceRefs: [] })).toBe(false);
+    expect(inspectorCanShowSource(componentWithRefs)).toBe(false);
+    expect(inspectorCanShowSource(codeWithExcerpt, { pickedRelation: true })).toBe(false);
+    expect(inspectorTabForEntity(inspectorCanShowSource(codeWithoutEvidence))).toBe('details');
+  });
+
+  it('enables Source on golden L4 entities from excerpts or refs, and not without evidence', () => {
+    const scene = createGoldenC4Scene();
+    const code = scene.entities.find(entity => entity.id === 'code:model-scoping:select-scoped-view')!;
+    const parent = scene.entities.find(entity => entity.id === 'component:model-scoping')!;
+    const system = scene.entities.find(entity => entity.id === 'system:okie')!;
+
+    expect(code.detail).toBe('code');
+    expect(code.sourceExcerpts?.length).toBeGreaterThan(0);
+    expect(code.sourceRefs?.length).toBeGreaterThan(0);
+    expect(inspectorCanShowSource(code)).toBe(true);
+    expect(inspectorCanShowSource({ ...code, sourceExcerpts: undefined })).toBe(true);
+    expect(inspectorCanShowSource({ ...code, sourceExcerpts: undefined, sourceRefs: undefined })).toBe(false);
+    expect(inspectorCanShowSource(parent)).toBe(false);
+    expect(inspectorCanShowSource(system)).toBe(false);
   });
 });

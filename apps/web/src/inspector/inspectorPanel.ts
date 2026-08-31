@@ -37,6 +37,28 @@ export function inspectorWidthStorageKey(repositoryId: string): string {
 export type InspectorTab = 'source' | 'details';
 export type InspectorIntent = 'auto' | 'source' | 'details';
 
+/** Minimal entity shape used to decide whether the inspector Source tab can open. */
+export type InspectorSourceEntity = {
+  detail?: string;
+  sourceExcerpts?: readonly unknown[];
+  sourceRefs?: readonly unknown[];
+};
+
+/**
+ * Source is available when the selected subject is a code-detail entity with
+ * frozen excerpts and/or source refs. Scanned L4 entities often carry refs
+ * without a portable excerpt; the tab still opens and SourceViewer degrades.
+ * Relations and entities with no source evidence keep Source disabled.
+ */
+export function inspectorCanShowSource(
+  entity: InspectorSourceEntity,
+  options: { pickedRelation?: boolean } = {},
+): boolean {
+  if (options.pickedRelation) return false;
+  if (entity.detail !== 'code') return false;
+  return Boolean(entity.sourceExcerpts?.length || entity.sourceRefs?.length);
+}
+
 export function inspectorTabForEntity(canShowSource: boolean, intent: InspectorIntent = 'auto'): InspectorTab {
   if (intent === 'details') return 'details';
   return canShowSource ? 'source' : 'details';
