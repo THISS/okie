@@ -4,7 +4,7 @@ import { compensateSemanticInspectorFlightCamera, retargetCameraForSemanticBand,
 import { createGoldenC4Scene } from './renderer/goldenC4Scene';
 import { ATLAS_CAMERA_BOUNDS, semanticDominantZoomIntervals, semanticFocusZooms, semanticLevelAtZoom } from './renderer/cameraBounds';
 import { zoomCameraAt } from './renderer/cameraController';
-import { inspectorTabForEntity } from './inspector/inspectorPanel';
+import { inspectorCanShowSource, inspectorTabForEntity } from './inspector/inspectorPanel';
 import { semanticLensSessionDetail, semanticLensSessionGhostEntities, semanticLensSessionProjectionOverride, semanticLensSessionVisibleEntityIds } from './semantic/semanticLens';
 import type { Camera } from './renderer/types';
 
@@ -337,6 +337,9 @@ describe('inspector hierarchy semantic navigation', () => {
     const withoutSourcePlan = semanticInspectorHierarchyPlan(withoutExcerpt, targetId, viewport, safeArea)!;
 
     expect(target.sourceExcerpts?.length).toBeGreaterThan(0);
+    expect(inspectorCanShowSource(target)).toBe(true);
+    expect(inspectorCanShowSource({ ...target, sourceExcerpts: undefined })).toBe(true);
+    expect(inspectorCanShowSource({ ...target, sourceExcerpts: undefined, sourceRefs: undefined })).toBe(false);
     expect(inspectorTabForEntity(Boolean(target.sourceExcerpts?.length))).toBe('source');
     expect(inspectorTabForEntity(false)).toBe('details');
     expect(semanticLensSessionDetail(withSourcePlan.session)).toBe('code');

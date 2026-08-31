@@ -162,6 +162,14 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('selected.sourceRefs.map((source, index) =>');
   });
 
+  it('enables the Source tab from inspectorCanShowSource rather than a hardcoded disable', () => {
+    expect(app).toContain('inspectorCanShowSource(selected, { pickedRelation: Boolean(pickedRelation) })');
+    expect(app).toContain('inspectorTabForEntity(inspectorCanShowSource(entity), intent)');
+    expect(app).toContain('disabled={!sourceAvailable} id="source-tab"');
+    expect(app).not.toContain("selected.detail === 'code' && Boolean(selectedExcerpt)");
+    expect(app).not.toContain("entity.detail === 'code' && Boolean(entity.sourceExcerpts?.length)");
+  });
+
   it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {
     expect(app).toContain('data-inspector-presentation="relation-summary"');
     expect(app).toContain('data-inspector-relation-id={row.relationId}');
