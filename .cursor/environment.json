@@ -1,0 +1,20 @@
+{
+  "name": "Okie",
+  "install": "command -v wasm-pack >/dev/null 2>&1 || (curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh) && pnpm install --frozen-lockfile && pnpm -r --if-present build",
+  "terminals": [
+    {
+      "name": "scan-server",
+      "command": "node apps/server/dist/main.js",
+      "description": "@okie/server paste-a-repo scan service on http://localhost:4180 (proxied by the web dev server at /api and /scan). Optional Anthropic enrichment activates only when ANTHROPIC_API_KEY is set."
+    },
+    {
+      "name": "web",
+      "command": "pnpm dev",
+      "description": "@okie/web Vite dev server on http://localhost:4173. Regenerates the profiling WASM package and 5k-node stress fixture before Vite starts."
+    }
+  ],
+  "ports": [
+    { "name": "web", "port": 4173 },
+    { "name": "scan-server", "port": 4180 }
+  ]
+}
