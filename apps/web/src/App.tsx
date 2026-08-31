@@ -94,7 +94,7 @@ import {
   type SemanticLensState,
 } from './semantic/semanticLens';
 import { defaultSearchSuggestions } from './searchSuggestions';
-import { keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
+import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
@@ -1125,6 +1125,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       onPointerUp={handlePointerUp}
       onDoubleClick={event => { const picked = pickAt(event); if (picked?.kind === 'entity') { onPick(picked); onOpenInside(picked.id); } }}
       onKeyDown={event => { if (searchOwnsKeystrokes(event.target)) return; // search keystrokes are never canvas intent
+        if (event.key === 'Escape' && (askOwnsKeystrokes(event.target) || askOverlayPresent(document))) return; // Ask overlay owns Escape
         if (event.key === 'Escape') { cancelAssistAnimation(); onLensCancelRef.current('escape', liveCameraRef.current); return; }
         if (event.key === 'Enter' && selectedId) { event.preventDefault(); onOpenInside(selectedId); }
       }}
@@ -3649,6 +3650,7 @@ export function App() {
       }
       if (event.key === 'Escape') {
         if (searchOwnsKeystrokes(event.target)) { setSearchOpen(false); return; }
+        if (askOpen || askOwnsKeystrokes(event.target)) { setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); return; }
         const shouldCloseInspector = detailsOpen && !searchOpen && !askOpen && detailsPanelRef.current?.contains(document.activeElement);
         cancelSemanticLens('escape');
         setAuthoringTool('select');
@@ -4151,7 +4153,7 @@ export function App() {
             <div className="story-launcher">
               <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>
               <button className="saved-story" onClick={() => setStep(0, true, 'push')}><PlayIcon size={14}/> {story.title} <span>{storyDurationLabel}</span></button>
-              {askOpen && <form className="ask-popover" onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label><textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>Live Q&amp;A is not connected in this renderer slice. Submitting plays the evidence-linked Okie explanation.</p><button disabled={!question.trim()} type="submit">Preview explanation <ArrowIcon size={15}/></button></form>}
+              {askOpen && <form className="ask-popover" onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label><textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>Live Q&amp;A is not connected in this renderer slice. Submitting plays the evidence-linked Okie explanation.</p><button disabled={!question.trim()} type="submit">Preview explanation <ArrowIcon size={15}/></button></form>}
             </div>
           )}
 
