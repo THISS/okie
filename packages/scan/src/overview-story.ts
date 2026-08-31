@@ -173,7 +173,7 @@ export function buildOverviewStory(
       reveal: "container",
       narration: `${systemName}'s containers include ${joinEnglish(containerFocus.map(entity => entity.name))}.`,
       durationMs: 1_800,
-      evidenceFrom: featuredContainer,
+      ...(featuredContainer ? { evidenceFrom: featuredContainer } : {}),
     }));
   }
 
