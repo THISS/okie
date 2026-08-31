@@ -2940,7 +2940,7 @@ export function App() {
 
   function inspectRelation(
     relation: SceneRelation,
-    inspectorNavigation: 'external' | 'panel' | 'history' | 'preserve' = 'external',
+    inspectorNavigation: 'external' | 'panel' | 'history' | 'preserve' = 'external', cameraIntent: 'preserve' | 'frame' = 'frame',
   ) {
     abortInspectorCameraFlight();
     updateInspectorHistoryForNavigation(inspectorNavigation);
@@ -2954,7 +2954,7 @@ export function App() {
     setInspectorTab('details');
     setDetailsOpen(true);
     setSafeAreaEpoch(epoch => epoch + 1);
-    frameSelectedRelationFlow(relation, owner);
+    if (cameraIntent === 'frame') frameSelectedRelationFlow(relation, owner); else inspectorReframeGenerationRef.current += 1;
     const endpoints = from && to ? ` from ${from.name} to ${to.name}` : '';
     setLiveMessage(`${relationName} relationship selected${endpoints}.`);
   }
@@ -2962,7 +2962,7 @@ export function App() {
   /**
    * Inspects one drawn edge from the selected card. A collapsed edge resolves to
    * the same representative relation a canvas pick on that edge returns, so the
-   * list and the map open the identical subject.
+   * list and the map open the identical subject. Selects without framing; Show on map pans.
    */
   function inspectCanvasRelation(row: CanvasRelationRow) {
     const relation = scene.relations.find(candidate => candidate.id === row.relationId);
@@ -2970,7 +2970,7 @@ export function App() {
       setLiveMessage(`${row.label} is no longer available as a canonical relationship.`);
       return;
     }
-    inspectRelation(relation, 'panel');
+    inspectRelation(relation, 'panel', 'preserve');
   }
 
   function restoreInspectorHistoryNavigation(subject: InspectorHistorySubject) {
@@ -4187,9 +4187,10 @@ export function App() {
                   <span>{pickedRelationPresentation.kindLabel ?? 'Relationship'}</span>
                   {pickedRelationPresentation.protocol && <span className="signal">{pickedRelationPresentation.protocol}</span>}
                 </div>
-                <div aria-label="Relationship endpoint actions" className="detail-actions" role="group">
+                <div aria-label="Relationship actions" className="detail-actions" role="group">
                   <button className="primary-detail-action" onClick={() => focusEntity(pickedRelationPresentation.source, 'replace', 'frame', 'details', 'panel')}>Inspect source</button>
                   <button className="secondary-detail-action" onClick={() => focusEntity(pickedRelationPresentation.target, 'replace', 'frame', 'details', 'panel')}>Inspect target</button>
+                  <button className="secondary-detail-action" onClick={() => pickedRelation && frameSelectedRelationFlow(pickedRelation, selected)}><FitIcon size={15}/> Show on map</button>
                 </div>
               </header>
 

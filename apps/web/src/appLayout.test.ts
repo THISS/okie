@@ -168,7 +168,7 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('data-inspector-relation-edge-id={row.id}');
     expect(app).toContain('<strong>{row.counterpart.name}</strong><small>{row.label}');
     expect(app).toContain('onClick={() => inspectCanvasRelation(row)}');
-    expect(app).toContain("inspectRelation(relation, 'panel');");
+    expect(app).toContain("inspectRelation(relation, 'panel', 'preserve');");
   });
 
   it('swaps selected edges into a dedicated relationship inspector with endpoint and editing actions', () => {
@@ -213,6 +213,28 @@ describe('compact inspector presentation', () => {
     expect(implementation.match(/reframeEntityAfterInspectorChange\(/g)).toHaveLength(1);
   });
 
+  it('selects a Relationships row without framing; Show on map frames the flow', () => {
+    const inspectStart = app.indexOf('function inspectRelation(');
+    const inspectCanvasStart = app.indexOf('function inspectCanvasRelation');
+    const inspectEnd = app.indexOf('function restoreInspectorHistoryNavigation', inspectStart);
+    const handlePickStart = app.indexOf('function handlePick(');
+    const handlePickEnd = app.indexOf('function closeDetails(', handlePickStart);
+    const inspectImplementation = app.slice(inspectStart, inspectCanvasStart);
+    const inspectCanvasImplementation = app.slice(inspectCanvasStart, inspectEnd);
+    const handlePickImplementation = app.slice(handlePickStart, handlePickEnd);
+
+    expect(inspectImplementation).toContain("cameraIntent: 'preserve' | 'frame' = 'frame'");
+    expect(inspectImplementation).toContain("if (cameraIntent === 'frame') frameSelectedRelationFlow(relation, owner); else inspectorReframeGenerationRef.current += 1;");
+    expect(inspectImplementation.match(/frameSelectedRelationFlow\(/g)).toHaveLength(1);
+    expect(inspectCanvasImplementation).toContain("inspectRelation(relation, 'panel', 'preserve')");
+    expect(inspectCanvasImplementation).not.toContain("cameraIntent === 'frame'");
+    expect(app).toContain('onClick={() => inspectCanvasRelation(row)}');
+    expect(app).toContain('onClick={() => pickedRelation && frameSelectedRelationFlow(pickedRelation, selected)}');
+    expect(app.match(/<FitIcon size=\{15\}\/> Show on map/g)).toHaveLength(2);
+    expect(handlePickImplementation).toContain('inspectRelation(relation);');
+    expect(handlePickImplementation).not.toContain('inspectRelation(relation,');
+  });
+
   it('uses a panel-local Back stack only for inspector-originated subject traversal', () => {
     const restoreStart = app.indexOf('function restoreInspectorHistoryNavigation');
     const backStart = app.indexOf('function navigateInspectorBack()');
@@ -228,7 +250,7 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('semanticInspectorHierarchyPlan(');
     expect(app).toContain('detail: plan.session.baseDetail');
     expect(app).toContain('lensPath: semanticLensCanonicalPathIds(plan.session)');
-    expect(app).toContain("inspectRelation(relation, 'panel')");
+    expect(app).toContain("inspectRelation(relation, 'panel', 'preserve')");
     expect(app).toContain('camera: { ...currentNavigation.camera }');
     expect(restoreImplementation).toContain('inspectorHistoryRestorePlan(navigationRef.current, subject)');
     expect(restoreImplementation).toContain('startInspectorCameraFlight({');
