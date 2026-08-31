@@ -16,8 +16,17 @@ export function shouldOpenAskAtlas(event: AskShortcutEvent, storyActive: boolean
 }
 
 const SEARCH_INPUT_ID = 'atlas-search';
+const ASK_INPUT_ID = 'atlas-question';
+const ASK_POPOVER_SELECTOR = '.ask-popover';
 
-const SEARCH_KEYSTROKE_SELECTOR = `#${SEARCH_INPUT_ID}, .search-popover`;
+function popoverOwnsKeystrokes(target: EventTarget | null, inputId: string, popoverSelector: string) {
+  if (!target || typeof target !== 'object') return false;
+  const element = target as Element;
+  if (element.id === inputId) return true;
+  const closest = element.closest;
+  if (typeof closest !== 'function') return false;
+  return Boolean(closest.call(element, `#${inputId}, ${popoverSelector}`));
+}
 
 /**
  * The search field owns every keystroke aimed at it: the `#atlas-search` input itself and any
@@ -28,12 +37,24 @@ const SEARCH_KEYSTROKE_SELECTOR = `#${SEARCH_INPUT_ID}, .search-popover`;
  * deliberate act and may still frame its destination.
  */
 export function searchOwnsKeystrokes(target: EventTarget | null) {
-  if (!target || typeof target !== 'object') return false;
-  const element = target as Element;
-  if (element.id === SEARCH_INPUT_ID) return true;
-  const closest = element.closest;
-  if (typeof closest !== 'function') return false;
-  return Boolean(closest.call(element, SEARCH_KEYSTROKE_SELECTOR));
+  return popoverOwnsKeystrokes(target, SEARCH_INPUT_ID, '.search-popover');
+}
+
+/**
+ * The Ask overlay owns Escape the same way search does: `#atlas-question` and any control inside
+ * `.ask-popover`. Dismissing Ask is not a camera intent (CLA-14). The overlay being open is a
+ * separate gate in the window/canvas handlers so Escape still closes Ask when the canvas has focus.
+ */
+export function askOwnsKeystrokes(target: EventTarget | null) {
+  return popoverOwnsKeystrokes(target, ASK_INPUT_ID, ASK_POPOVER_SELECTOR);
+}
+
+/**
+ * True when the Ask popover is mounted. Canvas Escape must not cancel the semantic lens while Ask
+ * is open, even if focus has moved back to the map (CLA-14).
+ */
+export function askOverlayPresent(root: { querySelector(selector: string): unknown } | null | undefined) {
+  return Boolean(root?.querySelector(ASK_POPOVER_SELECTOR));
 }
 
 /**
@@ -43,7 +64,7 @@ export function searchOwnsKeystrokes(target: EventTarget | null) {
  * and realm-independent in the browser.
  */
 export function keystrokeOwnedByTextEntry(target: EventTarget | null) {
-  if (searchOwnsKeystrokes(target)) return true;
+  if (searchOwnsKeystrokes(target) || askOwnsKeystrokes(target)) return true;
   if (!target || typeof target !== 'object') return false;
   const element = target as Element & { isContentEditable?: boolean };
   const tagName = typeof element.tagName === 'string' ? element.tagName.toUpperCase() : '';
