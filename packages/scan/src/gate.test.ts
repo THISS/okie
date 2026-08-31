@@ -19,6 +19,7 @@ test("scanning Okie passes every architecture gate cleanly", () => {
     assert.ok(kinds.has(kind as never), `snapshot is missing a ${kind} entity`);
   }
   assert.equal(snapshot.entities.filter(entity => entity.kind === "softwareSystem").length, 1, "exactly one system root");
-  // The overview story cites no sourceRefs, so it cannot invent evidence.
-  assert.equal(story.steps[0]!.sourceRefs, undefined);
+  // Evidence-backed steps may cite sourceRefs; validateStory already rejects invented ones.
+  assert.ok(story.steps.every(step => step.sourceRefs === undefined || step.sourceRefs.length > 0));
+  assert.ok(story.steps.length > 1, "overview must be a multi-step tour");
 });

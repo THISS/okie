@@ -13,7 +13,8 @@ import {
   type ArchitectureExtractionSnapshotMetadata,
   type NodeLayout,
 } from "@okie/architecture";
-import { compileC4Scene, compileC4Timeline, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
+import { compileC4Scene, compileC4Timeline, type CompiledC4Scene, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
+import { buildOverviewStory } from "./overview-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
@@ -103,29 +104,22 @@ function buildView(snapshot: ArchitectureSnapshot, systemId: string, repositoryS
   };
 }
 
-function buildOverviewStory(
-  snapshot: ArchitectureSnapshot,
-  view: ArchitectureView,
-  systemId: string,
-  repositorySlug: string,
-  systemName: string,
-): ArchitectureStory {
-  return {
-    schemaVersion: 1,
-    id: typedId("story", repositorySlug, "overview"),
-    snapshotId: snapshot.id,
-    viewId: view.id,
-    title: `${systemName} overview`,
-    // One context step on the system root. It cites NO sourceRefs, so it trivially
-    // satisfies the host-side evidence-resolution rule (validateStoryDocument).
-    steps: [{
-      id: "step:overview",
-      title: `Start with ${systemName}`,
-      focusEntityIds: [systemId],
-      reveal: "context",
-      narration: `${systemName}, scanned at commit ${snapshot.commitSha.slice(0, 12)}.`,
-    }],
-  };
+/** Keep timeline compilation aligned with the (possibly band-capped) debug scene. */
+function storyStepsVisibleInScene(
+  compiled: CompiledC4Scene,
+  story: ArchitectureStory,
+): ArchitectureStory["steps"] {
+  const sceneObjectIds = new Set(compiled.scene.objects.map(object => object.id));
+  return story.steps.filter(step => {
+    const band = step.reveal ?? "context";
+    const projection = compiled.projections.projectionById[compiled.projections.family.projectionIds[band]];
+    if (!projection) return false;
+    const layout = compiled.projections.bandLayoutById[projection.layoutId];
+    if (!layout) return false;
+    return step.focusEntityIds.some(entityId =>
+      (compiled.projections.index.visualNodeIdsByEntityId[entityId] ?? [])
+        .some(id => sceneObjectIds.has(id) && layout.nodes[id]));
+  });
 }
 
 export interface BuildScanArtifactsParams {
@@ -201,7 +195,11 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     ? buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId, maxBand: "container", maxEdgesPerBand: 64 })
     : buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId });
   const compiled = compileC4Scene(snapshot, bundle);
-  const timeline = compileC4Timeline(snapshot, story, compiled);
+  const visibleSteps = storyStepsVisibleInScene(compiled, story);
+  if (!visibleSteps.length) {
+    throw new Error("Scanned overview story has no steps visible in the compiled scene");
+  }
+  const timeline = compileC4Timeline(snapshot, { ...story, steps: visibleSteps }, compiled);
 
   return {
     pin,
