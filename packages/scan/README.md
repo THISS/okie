@@ -24,8 +24,10 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
 4. **Gate** — build one `ArchitectureExtraction` → `validateArchitectureExtraction` →
    `adaptArchitectureExtraction` → `ArchitectureSnapshot` (identity defaults: lineageId =
    stable ID, fingerprint = content hash).
-5. **View + compile** — synthesize a validator-satisfying view, a one-step overview story,
-   then `buildC4ProjectionBundle` → `compileC4Scene`/`compileC4Timeline`.
+5. **View + compile** — synthesize a validator-satisfying view, a deterministic multi-step
+   C4 overview story (system → containers → a representative component/code descent;
+   `overview-story.ts` `buildOverviewStory`), then `buildC4ProjectionBundle` →
+   `compileC4Scene`/`compileC4Timeline`.
 
 ## Structure mapping (R1 — deterministic truth layer)
 

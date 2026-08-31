@@ -97,7 +97,7 @@ A semantic-zoom C4 atlas from system context (L1) down to the public API of ever
 
 ### Guided stories (the deep-dive)
 
-A deterministic, cinematic tour — camera flights, focus, narration — of a chosen path through the system ([`interaction-semantics.md`](./interaction-semantics.md) "Story camera flights"). Every scan ships at least an overview story (`scan.ts` `buildOverviewStory`); enrichment and authoring can add curated deep-dives. Stories are the **marketing-gold** surface an embed can autoplay-off and a reader can launch — a system explains itself without a maintainer narrating.
+A deterministic, cinematic tour — camera flights, focus, narration — of a chosen path through the system ([`interaction-semantics.md`](./interaction-semantics.md) "Story camera flights"). Every scan ships at least an overview story (`overview-story.ts` `buildOverviewStory`); enrichment and authoring can add curated deep-dives. Stories are the **marketing-gold** surface an embed can autoplay-off and a reader can launch — a system explains itself without a maintainer narrating.
 
 ### Knowledge-graph summaries at each level
 
