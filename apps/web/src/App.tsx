@@ -94,7 +94,7 @@ import {
   type SemanticLensState,
 } from './semantic/semanticLens';
 import { defaultSearchSuggestions } from './searchSuggestions';
-import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
+import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldOpenSearch, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
@@ -3635,6 +3635,7 @@ export function App() {
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        if (!shouldOpenSearch(event)) return;
         setSearchOpen(true);
         window.setTimeout(() => document.getElementById('atlas-search')?.focus(), 0);
       }

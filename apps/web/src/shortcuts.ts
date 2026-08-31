@@ -1,4 +1,5 @@
-type AskShortcutEvent = Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'repeat' | 'target'>;
+type ShortcutChordEvent = Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'repeat' | 'target'>;
+type AskShortcutEvent = ShortcutChordEvent;
 
 function isFormControlTarget(target: EventTarget | null) {
   if (!target || typeof target !== 'object') return false;
@@ -33,11 +34,24 @@ function popoverOwnsKeystrokes(target: EventTarget | null, inputId: string, popo
  * control inside the search popover. Keyboard events name their focused element as `target`, so
  * this is exactly "search is focused". Canvas and camera hotkeys — zoom, authoring tools, select,
  * Enter-to-open-inside, and Escape's semantic-lens cancel — must not fire for those keystrokes:
- * typing a query is not a camera intent (CLA-6). Jumping to a search *result* is a separate,
- * deliberate act and may still frame its destination.
+ * typing a query is not a camera intent (CLA-6). The Cmd/Ctrl+K open-search chord is in that
+ * set too: it must not re-fire while search is focused (CLA-15). Jumping to a search *result*
+ * is a separate, deliberate act and may still frame its destination.
  */
 export function searchOwnsKeystrokes(target: EventTarget | null) {
   return popoverOwnsKeystrokes(target, SEARCH_INPUT_ID, '.search-popover');
+}
+
+/**
+ * Cmd/Ctrl+K opens search from the canvas. Search already owns its keystrokes (CLA-6); the
+ * open-search chord must not toggle, re-open, or re-focus while `#atlas-search` / `.search-popover`
+ * is focused (CLA-15).
+ */
+export function shouldOpenSearch(event: ShortcutChordEvent) {
+  return !event.repeat
+    && event.key.toLowerCase() === 'k'
+    && (event.metaKey || event.ctrlKey)
+    && !searchOwnsKeystrokes(event.target);
 }
 
 /**
