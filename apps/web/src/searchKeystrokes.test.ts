@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { keystrokeOwnedByTextEntry, searchOwnsKeystrokes } from './shortcuts';
+import { keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenSearch } from './shortcuts';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 
@@ -149,7 +149,7 @@ describe('typing in search never reaches the canvas or the camera', () => {
   });
 
   it('stops search key events from propagating into canvas handlers', () => {
-    expect(searchInputMarkup).toContain("onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setSearchOpen(false); } }}");
+    expect(searchInputMarkup).toContain("onKeyDown={event => { event.stopPropagation(); if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); return; } if (event.key === 'Escape') { event.preventDefault(); setSearchOpen(false); } }}");
     expect(searchInputMarkup).toContain('onKeyPress={event => event.stopPropagation()}');
     expect(searchInputMarkup).not.toContain('cancelSemanticLens');
     expect(canvasKeyHandler).toContain('if (searchOwnsKeystrokes(event.target)) return;');
@@ -168,5 +168,31 @@ describe('typing in search never reaches the canvas or the camera', () => {
     // Product spec (docs/product/interaction-semantics.md): a search jump may frame its
     // destination. That is selecting a result, not typing a query.
     expect(app).toContain("onClick={() => focusEntity(entity, 'push', 'frame')}");
+  });
+});
+
+describe('Cmd+K does not re-fire while typing in search', () => {
+  const searchChordBranch = (() => {
+    const branch = topLevelBranches(shortcutBody).find(candidate =>
+      candidate.includes("event.key.toLowerCase() === 'k'") || candidate.includes('shouldOpenSearch(event)')
+    );
+    if (!branch) throw new Error('Missing the window Cmd+K search shortcut branch');
+    return branch;
+  })();
+
+  it('opens search from Cmd/Ctrl+K when search is not focused', () => {
+    expect(shouldOpenSearch({ key: 'k', metaKey: true, ctrlKey: false, repeat: false, target: canvas })).toBe(true);
+    expect(shouldOpenSearch({ key: 'k', metaKey: false, ctrlKey: true, repeat: false, target: body })).toBe(true);
+    expect(shouldOpenSearch({ key: 'K', metaKey: true, ctrlKey: false, repeat: false, target: null })).toBe(true);
+    expect(searchChordBranch).toContain('setSearchOpen(true)');
+    expect(searchChordBranch).toContain("document.getElementById('atlas-search')?.focus()");
+  });
+
+  it('does not toggle, re-open, or re-focus search while #atlas-search or the popover is focused', () => {
+    expect(shouldOpenSearch({ key: 'k', metaKey: true, ctrlKey: false, repeat: false, target: searchInput })).toBe(false);
+    expect(shouldOpenSearch({ key: 'k', metaKey: false, ctrlKey: true, repeat: false, target: searchResult })).toBe(false);
+    expect(shouldOpenSearch({ key: 'k', metaKey: true, ctrlKey: false, repeat: false, target: searchClose })).toBe(false);
+    expect(searchChordBranch).toContain('if (!shouldOpenSearch(event)) return;');
+    expect(searchChordBranch.indexOf('shouldOpenSearch(event)')).toBeLessThan(searchChordBranch.indexOf('setSearchOpen(true)'));
   });
 });

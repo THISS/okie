@@ -94,7 +94,7 @@ import {
   type SemanticLensState,
 } from './semantic/semanticLens';
 import { defaultSearchSuggestions } from './searchSuggestions';
-import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldToggleDevMode } from './shortcuts';
+import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldOpenSearch, shouldToggleDevMode } from './shortcuts';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
@@ -3635,6 +3635,7 @@ export function App() {
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        if (!shouldOpenSearch(event)) return;
         setSearchOpen(true);
         window.setTimeout(() => document.getElementById('atlas-search')?.focus(), 0);
       }
@@ -3921,7 +3922,7 @@ export function App() {
           </button>
           {searchOpen && (
             <div className="search-popover" role="dialog" aria-label="Search architecture">
-              <div className="search-input-row"><SearchIcon/><input autoFocus id="atlas-search" onChange={event => setSearch(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setSearchOpen(false); } }} onKeyPress={event => event.stopPropagation()} placeholder="Search architecture and code" value={search}/><button aria-label="Close search" onClick={() => setSearchOpen(false)}><CloseIcon/></button></div>
+              <div className="search-input-row"><SearchIcon/><input autoFocus id="atlas-search" onChange={event => setSearch(event.target.value)} onKeyDown={event => { event.stopPropagation(); if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); return; } if (event.key === 'Escape') { event.preventDefault(); setSearchOpen(false); } }} onKeyPress={event => event.stopPropagation()} placeholder="Search architecture and code" value={search}/><button aria-label="Close search" onClick={() => setSearchOpen(false)}><CloseIcon/></button></div>
               <p className="popover-label">{search ? `${searchResults.length} MATCHES` : 'ON THIS MAP'}</p>
               <div className="search-results" role="listbox">
                 {searchResults.map(entity => <button aria-selected={entity.id === selectedId} key={entity.id} onClick={() => focusEntity(entity, 'push', 'frame')} role="option"><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{entity.kindLabel ?? entity.kind} · {entity.source ?? entity.responsibility}</small></span><span className="result-enter">↵</span></button>)}
