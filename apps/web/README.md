@@ -5,7 +5,7 @@ deterministic C4 scene, guided stories, semantic-lens navigation, and
 inspector/authoring surfaces.
 
 ## Commands — all `pnpm --filter @okie/web …`
-`dev` (Vite; not for agents/CI) · `check` (`tsc -b`) · `test` (`vitest run`).
+`dev` (Vite on localhost; not for agents/CI) · `check` (`tsc -b`) · `test` (`vitest run`).
 
 ## Layout (`src/`)
 Feature folders: `semantic/` (lens policy) · `diagram/` (surfaces, Mermaid,
