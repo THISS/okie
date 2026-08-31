@@ -149,7 +149,7 @@ describe('typing in search never reaches the canvas or the camera', () => {
   });
 
   it('stops search key events from propagating into canvas handlers', () => {
-    expect(searchInputMarkup).toContain("onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setSearchOpen(false); } }}");
+    expect(searchInputMarkup).toContain("onKeyDown={event => { event.stopPropagation(); if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); return; } if (event.key === 'Escape') { event.preventDefault(); setSearchOpen(false); } }}");
     expect(searchInputMarkup).toContain('onKeyPress={event => event.stopPropagation()}');
     expect(searchInputMarkup).not.toContain('cancelSemanticLens');
     expect(canvasKeyHandler).toContain('if (searchOwnsKeystrokes(event.target)) return;');
