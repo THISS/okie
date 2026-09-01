@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { slug } from "./ids.js";
+import { scrubGithubTokens } from "./redact.js";
 
 /**
  * A parsed `gh:owner/repo[@ref]` source. `ref` may be a branch, tag, or SHA and can
@@ -187,7 +188,7 @@ function createGithubClient(options: GithubClientOptions & { allowGhFallback: bo
           return { ok: true, json: ghApiJson(apiPath) };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          return { ok: false, status: anonStatus || 502, rateLimited: anonRateLimited, message: `gh api failed: ${scrub(message)}` };
+          return { ok: false, status: anonStatus || 502, rateLimited: anonRateLimited, message: `gh api failed: ${scrubGithubTokens(message)}` };
         }
       }
       return {
@@ -259,13 +260,6 @@ function tooBigMessage(bytes: number, maxBytes: number): string {
   return `Tarball is ${(bytes / 1024 / 1024).toFixed(1)} MB, over the ${(maxBytes / 1024 / 1024).toFixed(0)} MB cap (raise with --max-tarball-mb).`;
 }
 
-/** Redacts anything token-shaped from a message before it can reach a log. */
-function scrub(message: string): string {
-  return message
-    .replace(/gh[pousr]_[A-Za-z0-9]{20,}/g, "[redacted-token]")
-    .replace(/github_pat_[A-Za-z0-9_]{20,}/g, "[redacted-token]");
-}
-
 async function streamToFileWithCap(body: ReadableStream<Uint8Array>, destFile: string, maxBytes: number): Promise<number> {
   let total = 0;
   const capper = new Transform({
@@ -282,7 +276,7 @@ async function streamToFileWithCap(body: ReadableStream<Uint8Array>, destFile: s
     await pipeline(Readable.fromWeb(body as Parameters<typeof Readable.fromWeb>[0]), capper, createWriteStream(destFile));
   } catch (error) {
     rmSync(destFile, { force: true });
-    throw error instanceof GithubAcquisitionError ? error : new GithubAcquisitionError(`Tarball download failed: ${scrub(String(error))}`);
+    throw error instanceof GithubAcquisitionError ? error : new GithubAcquisitionError(`Tarball download failed: ${scrubGithubTokens(String(error))}`);
   }
   return total;
 }
@@ -336,7 +330,7 @@ export async function acquireGithubTree(src: GithubSourceRef, sha: string, clien
     try {
       execFileSync("tar", ["-xzf", tarPath, "-C", extractDir], { stdio: "ignore" });
     } catch (error) {
-      throw new GithubAcquisitionError(`Failed to extract tarball (is it a gzip archive?): ${scrub(String(error))}`);
+      throw new GithubAcquisitionError(`Failed to extract tarball (is it a gzip archive?): ${scrubGithubTokens(String(error))}`);
     }
     // GitHub archives contain a single top-level dir: `{repo}-{sha}` (or similar).
     const entries = readdirSync(extractDir, { withFileTypes: true }).filter(entry => entry.isDirectory());

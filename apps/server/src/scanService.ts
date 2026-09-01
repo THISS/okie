@@ -16,7 +16,7 @@ import {
   createLlmGatewayClient,
   hasLlmCredentials,
   isUsableModelId,
-  redactLlmSecret,
+  redactGatewayText,
   resolveEnrichmentBudget,
   resolveLlmGatewayConfig,
   type LlmGatewayConfig,
@@ -134,92 +134,96 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const enricherFactory = options.enricherFactory
     ?? (enrichMode === "off" ? () => undefined : createDefaultEnricherFactory(enrichMode, env, llmLocal));
   const githubClient = options.githubClient ?? createAnonymousGithubClient();
-  const redact = (line: string): string => redactLlmSecret(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
+  const redact = (line: string): string => redactGatewayText(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
 
   return async (job, update) => {
-    const source: GithubSourceRef = {
-      owner: job.owner,
-      repo: job.repo,
-      ...(job.ref ? { ref: job.ref } : {}),
-      dirSlug: job.slug,
-    };
-    const scanOptions = {
-      client: githubClient,
-      codeSurface: "public" as const,
-      ...(options.maxTarballBytes ? { maxTarballBytes: options.maxTarballBytes } : {}),
-    };
-
-    update({ stage: "scanning" });
-    log(redact(`${job.id}: scanning gh:${job.owner}/${job.repo}${job.ref ? `@${job.ref}` : ""}`));
-    const deterministic = await scanGithubRepository(source, scanOptions);
-    update({
-      stage: "publishing",
-      commitSha: deterministic.commitSha,
-      entityCount: deterministic.artifacts.snapshot.entities.length,
-      relationCount: deterministic.artifacts.snapshot.relations.length,
-    });
-    publishArtifacts(options.scanRoot, job.slug, deterministic.artifacts);
-    update({ atlasReady: true });
-    log(redact(`${job.id}: deterministic atlas published (${deterministic.artifacts.snapshot.entities.length} entities @ ${deterministic.commitSha.slice(0, 12)})`));
-
-    if (enrichMode === "off") {
-      update({ enrichment: { state: "skipped", note: "enrichment disabled" } });
-      return;
-    }
-
-    const config = resolveLlmGatewayConfig(env, llmLocal);
-    if (shouldAttemptEnrichment(enrichMode, config) && !isUsableModelId(config.modelId)) {
-      update({
-        enrichment: { state: "failed", note: EMPTY_MODEL_NOTE },
-      });
-      log(redact(`${job.id}: enrichment failed (${EMPTY_MODEL_NOTE}); deterministic atlas stands`));
-      return;
-    }
-
-    const enricher = enricherFactory(note => log(redact(`${job.id}: ${note}`)));
-    if (!enricher) {
-      update({
-        enrichment: {
-          state: "skipped",
-          note: skipNote(config),
-        },
-      });
-      return;
-    }
-
-    update({ stage: "enriching", enrichment: { state: "running" } });
     try {
-      // Pin the enrichment pass to the exact commit the deterministic pass
-      // resolved, so both passes describe one tree and the republish is a pure
-      // upgrade of the same sha (never a silent version bump mid-job).
-      const enriched = await scanGithubRepository(
-        { ...source, ref: deterministic.commitSha },
-        { ...scanOptions, enrichWithPackets: enricher },
-      );
-      publishArtifacts(options.scanRoot, job.slug, enriched.artifacts);
-      const report = enriched.artifacts.enrichmentReport;
+      const source: GithubSourceRef = {
+        owner: job.owner,
+        repo: job.repo,
+        ...(job.ref ? { ref: job.ref } : {}),
+        dirSlug: job.slug,
+      };
+      const scanOptions = {
+        client: githubClient,
+        codeSurface: "public" as const,
+        ...(options.maxTarballBytes ? { maxTarballBytes: options.maxTarballBytes } : {}),
+      };
+
+      update({ stage: "scanning" });
+      log(redact(`${job.id}: scanning gh:${job.owner}/${job.repo}${job.ref ? `@${job.ref}` : ""}`));
+      const deterministic = await scanGithubRepository(source, scanOptions);
       update({
-        entityCount: enriched.artifacts.snapshot.entities.length,
-        relationCount: enriched.artifacts.snapshot.relations.length,
-        enrichment: {
-          state: "complete",
-          enrichedContainers: report?.enrichedContainers.length ?? 0,
-          ...(report && report.results.some(result => !result.accepted)
-            ? { note: `${report.results.filter(result => !result.accepted).length} scope(s) rejected by the gate; they stay deterministic` }
-            : {}),
-        },
+        stage: "publishing",
+        commitSha: deterministic.commitSha,
+        entityCount: deterministic.artifacts.snapshot.entities.length,
+        relationCount: deterministic.artifacts.snapshot.relations.length,
       });
-      log(redact(`${job.id}: enriched atlas republished (${report?.enrichedContainers.length ?? 0} containers)`));
+      publishArtifacts(options.scanRoot, job.slug, deterministic.artifacts);
+      update({ atlasReady: true });
+      log(redact(`${job.id}: deterministic atlas published (${deterministic.artifacts.snapshot.entities.length} entities @ ${deterministic.commitSha.slice(0, 12)})`));
+
+      if (enrichMode === "off") {
+        update({ enrichment: { state: "skipped", note: "enrichment disabled" } });
+        return;
+      }
+
+      const config = resolveLlmGatewayConfig(env, llmLocal);
+      if (shouldAttemptEnrichment(enrichMode, config) && !isUsableModelId(config.modelId)) {
+        update({
+          enrichment: { state: "failed", note: EMPTY_MODEL_NOTE },
+        });
+        log(redact(`${job.id}: enrichment failed (${EMPTY_MODEL_NOTE}); deterministic atlas stands`));
+        return;
+      }
+
+      const enricher = enricherFactory(note => log(redact(`${job.id}: ${note}`)));
+      if (!enricher) {
+        update({
+          enrichment: {
+            state: "skipped",
+            note: skipNote(config),
+          },
+        });
+        return;
+      }
+
+      update({ stage: "enriching", enrichment: { state: "running" } });
+      try {
+        // Pin the enrichment pass to the exact commit the deterministic pass
+        // resolved, so both passes describe one tree and the republish is a pure
+        // upgrade of the same sha (never a silent version bump mid-job).
+        const enriched = await scanGithubRepository(
+          { ...source, ref: deterministic.commitSha },
+          { ...scanOptions, enrichWithPackets: enricher },
+        );
+        publishArtifacts(options.scanRoot, job.slug, enriched.artifacts);
+        const report = enriched.artifacts.enrichmentReport;
+        update({
+          entityCount: enriched.artifacts.snapshot.entities.length,
+          relationCount: enriched.artifacts.snapshot.relations.length,
+          enrichment: {
+            state: "complete",
+            enrichedContainers: report?.enrichedContainers.length ?? 0,
+            ...(report && report.results.some(result => !result.accepted)
+              ? { note: `${report.results.filter(result => !result.accepted).length} scope(s) rejected by the gate; they stay deterministic` }
+              : {}),
+          },
+        });
+        log(redact(`${job.id}: enriched atlas republished (${report?.enrichedContainers.length ?? 0} containers)`));
+      } catch (error) {
+        // The deterministic atlas is already live — record the downgrade, don't fail the job.
+        const note = redact(error instanceof Error ? error.message : String(error));
+        update({
+          enrichment: {
+            state: "failed",
+            note,
+          },
+        });
+        log(redact(`${job.id}: enrichment failed (${note}); deterministic atlas stands`));
+      }
     } catch (error) {
-      // The deterministic atlas is already live — record the downgrade, don't fail the job.
-      const note = redact(error instanceof Error ? error.message : String(error));
-      update({
-        enrichment: {
-          state: "failed",
-          note,
-        },
-      });
-      log(redact(`${job.id}: enrichment failed (${note}); deterministic atlas stands`));
+      throw new Error(redact(error instanceof Error ? error.message : String(error)));
     }
   };
 }

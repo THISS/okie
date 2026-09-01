@@ -1,5 +1,6 @@
 import type { ArchitectureExtraction } from "@okie/architecture";
 import { containerScopes } from "./scope.js";
+import { scrubGithubTokens } from "./redact.js";
 
 /** Prompt/packet contract version — the promptVersion of the future hash domains. */
 export const ENRICHMENT_PROMPT_VERSION = "okie-enrichment/v2";
@@ -147,7 +148,7 @@ export function buildEnrichmentPackets(
       ...scope.code.map(code => code.id),
     ]);
     const excerpts: PacketExcerpt[] = scope.scopePaths.map(path => {
-      const lines = readFile(path).replace(/\r\n/g, "\n").split("\n").slice(0, MAX_HEADER_LINES);
+      const lines = scrubGithubTokens(readFile(path).replace(/\r\n/g, "\n")).split("\n").slice(0, MAX_HEADER_LINES);
       return { path, startLine: 1, endLine: lines.length, lines };
     });
 
@@ -209,7 +210,7 @@ function systemReadmeExcerpts(
 ): SystemReadmeExcerpt[] {
   const readTeaser = (path: string, max: number): SystemReadmeExcerpt | undefined => {
     try {
-      const lines = readFile(path).replace(/\r\n/g, "\n").split("\n").slice(0, max);
+      const lines = scrubGithubTokens(readFile(path).replace(/\r\n/g, "\n")).split("\n").slice(0, max);
       return lines.some(line => line.trim().length > 0) ? { path, lines } : undefined;
     } catch {
       return undefined;

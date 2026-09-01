@@ -21,6 +21,7 @@ import {
   publicLlmGatewayView,
   readGatewayUsage,
   readLlmGatewayLocalConfigFile,
+  redactGatewayText,
   redactLlmSecret,
   requireUsableModelId,
   resolveEnrichmentBudget,
@@ -32,6 +33,8 @@ import {
 /** Distinctive fake — never a real key. Must not appear in healthz/logs/inspect. */
 const FAKE_GATEWAY_KEY = "okie-test-llm-key-cla20-fake";
 const FAKE_ANTHROPIC_KEY = "okie-test-anthropic-key-cla20-fake";
+/** Obviously fake GitHub-shaped token for planted-secret tests (existing `gho_` scrub). */
+const PLANTED_SOURCE_SECRET = "gho_okieTestPlantedSecretCla25xxxx";
 
 test("defaults suit OpenRouter: base URL and documented model id", () => {
   const config = resolveLlmGatewayConfig({});
@@ -183,7 +186,7 @@ test("chatCompletions posts to the OpenAI-compatible path and redacts the key on
         authorization: headers.get("authorization"),
         body: JSON.parse(String(init?.body)),
       });
-      return new Response(`${FAKE_GATEWAY_KEY} leaked in body`, { status: 401 });
+      return new Response(`${FAKE_GATEWAY_KEY} leaked ${PLANTED_SOURCE_SECRET} in body`, { status: 401 });
     },
   });
   assert.ok(client);
@@ -193,7 +196,9 @@ test("chatCompletions posts to the OpenAI-compatible path and redacts the key on
     (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       assert.doesNotMatch(message, new RegExp(FAKE_GATEWAY_KEY));
+      assert.equal(message.includes(PLANTED_SOURCE_SECRET), false);
       assert.match(message, /\[redacted-llm-key\]/);
+      assert.match(message, /\[redacted-token\]/);
       assert.match(message, /401/);
       return true;
     },
@@ -202,6 +207,33 @@ test("chatCompletions posts to the OpenAI-compatible path and redacts the key on
   assert.equal(calls[0]!.url, "https://example.gateway/v1/chat/completions");
   assert.equal(calls[0]!.authorization, `Bearer ${FAKE_GATEWAY_KEY}`);
   assert.equal((calls[0]!.body as { model: string }).model, "acme/fast");
+});
+
+test("chatCompletions scrubs a planted token out of the outbound JSON body", async () => {
+  const config = resolveLlmGatewayConfig({
+    OPENAI_BASE_URL: "https://example.gateway/v1",
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: "acme/fast",
+  });
+  const bodies: string[] = [];
+  const client = createLlmGatewayClient(config, {
+    fetch: async (_input, init) => {
+      bodies.push(String(init?.body));
+      return new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+  assert.ok(client);
+  await client.chatCompletions({
+    messages: [{ role: "user", content: `packet ${PLANTED_SOURCE_SECRET} ${FAKE_GATEWAY_KEY}` }],
+  });
+  assert.equal(bodies.length, 1);
+  assert.equal(bodies[0]!.includes(PLANTED_SOURCE_SECRET), false);
+  assert.equal(bodies[0]!.includes(FAKE_GATEWAY_KEY), false);
+  assert.match(bodies[0]!, /\[redacted-token\]/);
+  assert.match(bodies[0]!, /\[redacted-llm-key\]/);
 });
 
 test("chatCompletions always sends the configured model id, even if body.model is set", async () => {
@@ -260,6 +292,15 @@ test("empty modelId in local config file is preserved as empty, not dropped", ()
 test("redactLlmSecret is a no-op without a secret and never logs the key", () => {
   assert.equal(redactLlmSecret("ok", undefined), "ok");
   assert.equal(redactLlmSecret(`used ${FAKE_GATEWAY_KEY}`, FAKE_GATEWAY_KEY), "used [redacted-llm-key]");
+});
+
+test("redactGatewayText applies the existing GitHub token scrub and the operator key", () => {
+  const mixed = `quota ${PLANTED_SOURCE_SECRET} key ${FAKE_GATEWAY_KEY}`;
+  const redacted = redactGatewayText(mixed, FAKE_GATEWAY_KEY);
+  assert.equal(redacted.includes(PLANTED_SOURCE_SECRET), false);
+  assert.equal(redacted.includes(FAKE_GATEWAY_KEY), false);
+  assert.match(redacted, /\[redacted-token\]/);
+  assert.match(redacted, /\[redacted-llm-key\]/);
 });
 
 test("describeEnrichmentMode never includes the key", () => {

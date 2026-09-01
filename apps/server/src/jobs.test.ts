@@ -56,6 +56,20 @@ test("a runner throw fails that job and the queue keeps going", async () => {
   assert.equal(bySlug.get("good__good")!.stage, "complete");
 });
 
+test("job.error scrubs GitHub-shaped tokens from a runner throw", async () => {
+  const planted = "gho_okieTestPlantedSecretCla25xxxx";
+  const queue = createScanJobQueue(async () => {
+    throw new Error(`llm gateway 401: ${planted}`);
+  });
+  queue.submit(request("bad__bad"));
+  await queue.idle();
+  const job = queue.list()[0]!;
+  assert.equal(job.stage, "failed");
+  assert.equal((job.error ?? "").includes(planted), false);
+  assert.match(job.error ?? "", /\[redacted-token\]/);
+  assert.match(job.error ?? "", /llm gateway 401/);
+});
+
 test("a runner that marks failure itself is not overwritten to complete", async () => {
   const queue = createScanJobQueue(async (_job: ScanJob, update) => {
     update({ stage: "failed", error: "explicit" });
