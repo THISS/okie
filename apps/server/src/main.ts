@@ -29,6 +29,7 @@ import { createScanJobRunner } from "./scanService.js";
  *   GET  /scan/*            the published trio objects + index.json manifest
  *
  * Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (no login wall).
+ * Docs-site oEmbed (`GET /oembed?url=`) is served by the web origin, not here.
  * Vite proxies /api and /scan here during `pnpm dev`. This process still has no
  * HTTP auth and binds loopback by default (CLA-17). Anonymous POST /api/scans
  * uses HTTPS-only GitHub reads — never operator `gh` (CLA-18/30). State on disk

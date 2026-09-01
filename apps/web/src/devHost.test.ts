@@ -29,6 +29,7 @@ describe('published Vite host default (CLA-17)', () => {
       rewrites: Array<{ source: string; destination: string }>;
     };
     expect(vercel.rewrites).toEqual(expect.arrayContaining([
+      { source: '/oembed', destination: '/api/oembed' },
       { source: '/r/:path*', destination: '/index.html' },
       { source: '/new', destination: '/index.html' },
     ]));

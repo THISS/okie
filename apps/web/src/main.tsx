@@ -9,6 +9,7 @@ import '@okie/theme/tokens.css';
 import './app.css';
 import { ASPECT_PRESET_TARGET } from '@okie/architecture';
 import { hostedAtlasBootPlan } from './hostedAtlas';
+import { installPublicAtlasOembedDiscovery } from './oembed';
 import { readDemoQuery } from './renderer/query';
 import { parseAppRoute } from './renderer/route';
 import { setActiveScanFixture } from './renderer/fixtureBundle';
@@ -88,6 +89,8 @@ async function boot() {
     return;
   }
   if (route.kind === 'repo') {
+    // Public share URL (no login). oEmbed discovery points docs sites at /oembed.
+    installPublicAtlasOembedDiscovery(window.location.href);
     const plan = hostedAtlasBootPlan(route, { bundledSlugs: availableScanRepoSlugs() });
     let lastError: unknown;
     let atlasReady = false;

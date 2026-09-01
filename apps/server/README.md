@@ -9,7 +9,7 @@ Local paste-a-repo scan process used by `pnpm dev` (Vite proxies `/api` and `/sc
 - Listen bind is loopback (`127.0.0.1:4180`). Override with `OKIE_SERVER_HOST` / `OKIE_SERVER_PORT` only when LAN access is intentional — that still has no auth.
 - `GET /healthz` (and `GET /`) reports `{ service, ok, public: false, bind, enrich }`. It does not return `scanRoot`, filesystem paths, or LLM keys.
 - GitHub acquisition on this HTTP path is anonymous HTTPS (no operator `gh` auth, no `GITHUB_TOKEN` / `GH_TOKEN`). The CLI scanner is a separate, operator-local tool. `githubAccess.ts` is the seam for a later Vercel-like GitHub OAuth/App identity — private trees stay closed until that lands.
-- Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (CLA-30). They have no login wall. `/r/THISS/okie` is the dogfood share URL (published scan, bundled self-scan, or the golden demo).
+- Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (CLA-30). They have no login wall. `/r/THISS/okie` is the dogfood share URL (published scan, bundled self-scan, or the golden demo). Docs sites embed those views via the web origin's `GET /oembed?url=` (JSON iframe payload); this scan process does not serve oEmbed.
 
 Do not expose this process on a public interface, a reverse proxy, or a hosted deployment until it has real auth.
 
