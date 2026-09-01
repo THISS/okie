@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan";
 import { createEnricher, enrichmentStreamParams, MAX_ENRICHABLE_CODE_ENTITIES, resolveEnrichmentPassModelId } from "./enrichment.js";
+import { createLlmGatewayClient, LlmGatewayError, resolveLlmGatewayConfig } from "./llmGateway.js";
 
 const containerPacket = (containerId: string, codeCount = 2): EnrichmentPacket => ({
   promptVersion: "okie-enrichment/v2",
@@ -40,6 +42,22 @@ const packets = (overrides: Partial<EmittedPackets> = {}): EmittedPackets => ({
   ...overrides,
 });
 
+async function listenFakeGateway(
+  handler: (request: IncomingMessage, response: ServerResponse) => void,
+): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  const server = createServer(handler);
+  await new Promise<void>(resolve => { server.listen(0, "127.0.0.1", () => resolve()); });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("fake gateway has no port");
+  return {
+    baseUrl: `http://127.0.0.1:${address.port}/v1`,
+    close: () => new Promise((resolve, reject) => {
+      server.closeAllConnections();
+      server.close(error => { if (error) reject(error); else resolve(); });
+    }),
+  };
+}
+
 test("enricher requests one doc per container plus the system scope, threading the system id", async () => {
   const calls: Array<{ id: string; kind: string; systemId: string }> = [];
   const enrich = createEnricher({
@@ -48,7 +66,7 @@ test("enricher requests one doc per container plus the system scope, threading t
         ? (packet as EnrichmentPacket).containerId
         : (packet as SystemPacket).systemId;
       calls.push({ id, kind, systemId });
-      return { doc: id };
+      return { document: { doc: id } };
     },
   });
   const docs = await enrich(packets({
@@ -66,7 +84,7 @@ test("a per-scope failure omits only that scope and never throws", async () => {
       if (kind === "container" && (packet as EnrichmentPacket).containerId === "container:pkg-b") {
         throw new Error("rate limited");
       }
-      return { ok: true };
+      return { document: { ok: true } };
     },
   });
   const docs = await enrich(packets({
@@ -80,7 +98,7 @@ test("oversized scopes are skipped with a visible note, not silently", async () 
   const notes: string[] = [];
   const enrich = createEnricher({
     onProgress: note => notes.push(note),
-    generate: async () => ({ ok: true }),
+    generate: async () => ({ document: { ok: true } }),
   });
   const docs = await enrich(packets({
     packets: [containerPacket("container:huge", MAX_ENRICHABLE_CODE_ENTITIES + 1)],
@@ -92,7 +110,7 @@ test("oversized scopes are skipped with a visible note, not silently", async () 
 
 test("no system packet means no enrichment at all (no gate anchor)", async () => {
   let called = 0;
-  const enrich = createEnricher({ generate: async () => { called += 1; return {}; } });
+  const enrich = createEnricher({ generate: async () => { called += 1; return { document: {} }; } });
   const docs = await enrich({
     packets: [containerPacket("container:pkg-a")],
     manifest: { promptVersion: "okie-enrichment/v2", packets: [] },
@@ -107,7 +125,7 @@ test("gateway progress notes never include the API key", async () => {
   const enrich = createEnricher({
     onProgress: note => notes.push(note),
     gateway: { baseUrl: "https://openrouter.ai/api/v1", modelId: "acme/fast" },
-    generate: async () => ({ ok: true }),
+    generate: async () => ({ document: { ok: true } }),
   });
   await enrich(packets());
   assert.ok(notes.some(note => note.includes("llm gateway") && note.includes("acme/fast")));
@@ -145,7 +163,7 @@ test("configured model id appears in progress notes when the pass runs", async (
   const enrich = createEnricher({
     modelId: "openai/gpt-4o-mini",
     onProgress: note => notes.push(note),
-    generate: async () => ({ ok: true }),
+    generate: async () => ({ document: { ok: true } }),
   });
   await enrich(packets());
   assert.ok(notes.some(note => note.includes("model openai/gpt-4o-mini")));
@@ -162,4 +180,225 @@ test("total failure (e.g. bad credentials) throws instead of reporting empty suc
     () => enrich(packets()),
     /all 2 enrichment scope\(s\) failed — first error: Could not resolve authentication method\./,
   );
+});
+
+test("scan-level max scopes skips remaining scopes without throwing", async () => {
+  const notes: string[] = [];
+  const called: string[] = [];
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    budget: { maxScopes: 1 },
+    onProgress: note => notes.push(note),
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      called.push(id);
+      return { document: { ok: id } };
+    },
+  });
+  const docs = await enrich(packets({
+    packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+  }));
+  assert.deepEqual(called, ["container:pkg-a"]);
+  assert.deepEqual([...docs.keys()], ["container:pkg-a"]);
+  assert.ok(notes.some(note => note.includes("max scopes") && note.includes("skipping")));
+  assert.ok(notes.every(note => !note.includes("okie-test-llm-key")));
+});
+
+test("scan-level max tokens skips remaining scopes after usage is reported", async () => {
+  const called: string[] = [];
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    budget: { maxTokens: 100 },
+    onProgress: note => notes.push(note),
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      called.push(id);
+      return { document: { ok: id }, usage: { totalTokens: 100 } };
+    },
+  });
+  const docs = await enrich(packets({
+    packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+  }));
+  assert.deepEqual(called, ["container:pkg-a"]);
+  assert.deepEqual([...docs.keys()], ["container:pkg-a"]);
+  assert.ok(notes.some(note => note.includes("max tokens")));
+});
+
+test("scan-level max dollars applies only when the gateway reports cost", async () => {
+  const withCost: string[] = [];
+  const costEnrich = createEnricher({
+    maxConcurrent: 1,
+    budget: { maxDollars: 0.5 },
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      withCost.push(id);
+      return { document: { ok: id }, usage: { totalTokens: 10, costUsd: 0.5 } };
+    },
+  });
+  const costDocs = await costEnrich(packets({
+    packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+  }));
+  assert.deepEqual(withCost, ["container:pkg-a"]);
+  assert.deepEqual([...costDocs.keys()], ["container:pkg-a"]);
+
+  const withoutCost: string[] = [];
+  const noCostEnrich = createEnricher({
+    maxConcurrent: 1,
+    budget: { maxDollars: 0.01 },
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      withoutCost.push(id);
+      return { document: { ok: id }, usage: { totalTokens: 10 } };
+    },
+  });
+  const noCostDocs = await noCostEnrich(packets({
+    packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+  }));
+  assert.deepEqual(withoutCost.sort(), ["container:pkg-a", "container:pkg-b", "system:acme"]);
+  assert.equal(noCostDocs.size, 3);
+});
+
+test("a per-request timeout omits that scope and continues the others", async () => {
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    maxConcurrent: 2,
+    budget: { requestTimeoutMs: 40 },
+    onProgress: note => notes.push(note),
+    generate: async (packet, kind) => {
+      if (kind === "container" && (packet as EnrichmentPacket).containerId === "container:pkg-a") {
+        await new Promise(() => {});
+      }
+      return { document: { ok: true } };
+    },
+  });
+  const docs = await enrich(packets({
+    packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+  }));
+  assert.equal(docs.has("container:pkg-a"), false);
+  assert.equal(docs.has("container:pkg-b"), true);
+  assert.equal(docs.has("system:acme"), true);
+  assert.ok(notes.some(note => note.includes("container:pkg-a") && note.includes("timeout")));
+});
+
+test("gateway 429 skips remaining scopes and throws so the job can record enrichment failed", async () => {
+  const called: string[] = [];
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    onProgress: note => notes.push(note),
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      called.push(id);
+      if (id === "container:pkg-b") {
+        throw new LlmGatewayError("llm gateway 429: too many requests", { kind: "rate_limit", status: 429 });
+      }
+      return { document: { ok: id } };
+    },
+  });
+  await assert.rejects(
+    () => enrich(packets({
+      packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b"), containerPacket("container:pkg-c")],
+    })),
+    /enrichment failed \(llm gateway 429: too many requests\); remaining scopes skipped/,
+  );
+  assert.deepEqual(called, ["container:pkg-a", "container:pkg-b"]);
+  assert.ok(notes.some(note => note.includes("skipping") && note.includes("remaining")));
+});
+
+test("gateway 5xx skips remaining scopes and throws", async () => {
+  const called: string[] = [];
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      called.push(id);
+      if (id === "container:pkg-a") {
+        throw new Error("llm gateway 503: unavailable");
+      }
+      return { document: { ok: id } };
+    },
+  });
+  await assert.rejects(
+    () => enrich(packets({
+      packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+    })),
+    /remaining scopes skipped/,
+  );
+  assert.deepEqual(called, ["container:pkg-a"]);
+});
+
+test("fake HTTP gateway: 429 skips remaining scopes and redacts the key", async () => {
+  const fakeKey = "okie-test-llm-key-cla20-fake";
+  const hits: number[] = [];
+  const fake = await listenFakeGateway((request, response) => {
+    hits.push(Date.now());
+    if (request.url !== "/v1/chat/completions") {
+      response.writeHead(404);
+      response.end("no");
+      return;
+    }
+    if (hits.length === 1) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, cost: 0.02 },
+      }));
+      return;
+    }
+    if (hits.length === 2) {
+      response.writeHead(429, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: { message: `rate limited ${fakeKey}` } }));
+      return;
+    }
+    response.writeHead(500);
+    response.end("should not be called");
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const notes: string[] = [];
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      onProgress: note => notes.push(note),
+      generate: async () => {
+        const result = await client.chatCompletions({ messages: [{ role: "user", content: "packet" }] });
+        return result.usage
+          ? { document: result.json, usage: result.usage }
+          : { document: result.json };
+      },
+    });
+    await assert.rejects(
+      () => enrich(packets({
+        packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b"), containerPacket("container:pkg-c")],
+      })),
+      (error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        assert.match(message, /llm gateway 429/);
+        assert.match(message, /remaining scopes skipped/);
+        assert.doesNotMatch(message, new RegExp(fakeKey));
+        return true;
+      },
+    );
+    assert.equal(hits.length, 2, "third scope must not hit the gateway after 429");
+    assert.ok(notes.every(note => !note.includes(fakeKey)));
+  } finally {
+    await fake.close();
+  }
 });

@@ -35,3 +35,14 @@ An `apiKey` field in that file is ignored. `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH
 No key: enrichment is skipped and the deterministic atlas still publishes. Auto enrichment is also skipped when `OKIE_SCAN_ENRICH=0`.
 
 The enrichment pass uses the configured model id as an opaque string (no hardcoded model table beyond the default above). Change the env var or `okie.local.json` — no code change. A present-but-empty model (`OPENROUTER_MODEL=""`, or `"modelId": ""` in local config) or a provider-rejected id fails **the enrichment pass only**: the job still completes with the deterministic atlas and an enrichment failed note.
+
+Enrichment is bounded so a paste-a-repo job cannot run unbounded:
+
+| Setting | Env | Default |
+|---|---|---|
+| Per-request timeout | `OKIE_LLM_TIMEOUT_MS` | `60000` (60s) |
+| Max scopes per scan | `OKIE_LLM_MAX_SCOPES` | `16` |
+| Max tokens per scan | `OKIE_LLM_MAX_TOKENS` | `200000` (from gateway `usage` when present) |
+| Max dollars per scan | `OKIE_LLM_MAX_DOLLARS` | `1` (enforced only if the gateway returns cost) |
+
+A per-scope timeout omits that scope and continues. Hitting a scan-level cap skips remaining scopes; the deterministic atlas stays live. HTTP 429 or 5xx skips remaining scopes, records **enrichment failed**, and leaves the atlas up. Invalid env values keep the defaults. These numbers are not on `/healthz`.

@@ -17,6 +17,7 @@ import {
   hasLlmCredentials,
   isUsableModelId,
   redactLlmSecret,
+  resolveEnrichmentBudget,
   resolveLlmGatewayConfig,
   type LlmGatewayConfig,
   type LlmGatewayLocalConfig,
@@ -82,8 +83,10 @@ function shouldAttemptEnrichment(mode: "auto" | "force", config: LlmGatewayConfi
 /**
  * Default factory for the live enricher. Auto mode skips when no gateway or
  * Anthropic key is visible so the deterministic atlas still publishes. The
- * OpenAI-compatible client is constructed here when a gateway key is present;
- * packet HTTP still uses the Anthropic SDK until CLA-23.
+ * OpenAI-compatible client is constructed here when a gateway key is present
+ * (with the configured per-request timeout). Packet HTTP still uses the
+ * Anthropic SDK until CLA-23; the enricher still applies the same timeout,
+ * scan-level budget, and 429/5xx fail-soft around that generator.
  */
 export function createDefaultEnricherFactory(
   mode: "auto" | "force",
@@ -101,10 +104,12 @@ export function createDefaultEnricherFactory(
       };
     }
     try {
-      const gateway = createLlmGatewayClient(config);
+      const budget = resolveEnrichmentBudget(env);
+      const gateway = createLlmGatewayClient(config, { timeoutMs: budget.requestTimeoutMs });
       return createEnricher({
         onProgress,
         modelId: config.modelId,
+        budget,
         ...(gateway ? { gateway } : {}),
       });
     } catch {
