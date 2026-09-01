@@ -19,6 +19,7 @@ fixtures/scan/
 # Local env files and credential artifacts — never commit real keys.
 .env
 .env.*
+okie.local.json
 *.pem
 *.key
 id_rsa

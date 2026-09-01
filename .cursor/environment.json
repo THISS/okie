@@ -5,7 +5,7 @@
     {
       "name": "scan-server",
       "command": "node apps/server/dist/main.js",
-      "description": "@okie/server paste-a-repo scan service on http://localhost:4180 (proxied by the web dev server at /api and /scan). Optional Anthropic enrichment activates only when ANTHROPIC_API_KEY is set."
+      "description": "@okie/server paste-a-repo scan service on http://localhost:4180 (proxied by the web dev server at /api and /scan). Optional OpenAI-compatible enrichment activates when OKIE_LLM_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY is set (ANTHROPIC_API_KEY remains a fallback)."
     },
     {
       "name": "web",
