@@ -8,8 +8,9 @@ import { parseAppRoute } from './renderer/route';
  * `html` iframe points at that same public view (no login wall). The payload
  * is a pure function of the atlas URL — no scan objects, no secrets.
  *
- * Iframe origins are allowlisted (loopback plus operator/Vercel public hosts).
- * A forged `Host` / `X-Forwarded-Host` cannot become the embed target.
+ * Iframe origins are allowlisted (loopback only for loopback requests, plus
+ * exact operator/Vercel public origins). A forged Host cannot become the embed
+ * target; invalid Host headers 404 instead of falling back.
  */
 
 export const OEMBED_PATH = '/oembed';
@@ -20,7 +21,6 @@ export const OEMBED_MIN_HEIGHT = 140;
 export const OEMBED_PROVIDER_NAME = 'Okie';
 export const OEMBED_CACHE_AGE_SECONDS = 300;
 export const OEMBED_JSON_TYPE = 'application/json+oembed';
-export const OEMBED_FALLBACK_ORIGIN = 'http://localhost:4173';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1']);
@@ -50,7 +50,7 @@ export type OembedHttpInput = {
   method: string;
   requestOrigin: string;
   searchParams: URLSearchParams;
-  allowedHosts?: readonly string[];
+  allowedOrigins?: readonly string[];
 };
 
 export type OembedHttpOutput = {
@@ -95,45 +95,73 @@ export function sanitizeOembedOrigin(raw: string): string | undefined {
   }
 }
 
+export function effectiveOembedPort(url: URL): string {
+  if (url.port) return url.port;
+  return url.protocol === 'https:' ? '443' : '80';
+}
+
 /**
- * Extra public hostnames (not secrets) from operator/Vercel origin env.
+ * Extra public origins (not secrets) from operator/Vercel origin env.
  * Callers pass `process.env` from Node (Vite plugin / serverless); this module
  * does not read process.env itself so the browser bundle stays env-free.
  */
-export function oembedAllowedHostsFromEnv(
+export function oembedAllowedOriginsFromEnv(
   env: Record<string, string | undefined>,
 ): string[] {
-  const hosts = new Set<string>();
+  const origins = new Set<string>();
   for (const key of PUBLIC_ORIGIN_ENV) {
     const raw = env[key]?.trim();
     if (!raw) continue;
     const origin = sanitizeOembedOrigin(raw.includes('://') ? raw : `https://${raw}`);
-    if (!origin) continue;
-    hosts.add(new URL(origin).hostname.toLowerCase());
+    if (origin) origins.add(origin);
   }
-  return [...hosts];
+  return [...origins];
 }
 
-export function isAllowedOembedHostname(
-  hostname: string,
-  allowedHosts: readonly string[] = [],
+export function isAllowedOembedRequestOrigin(
+  requestOrigin: string,
+  allowedOrigins: readonly string[] = [],
 ): boolean {
-  const host = hostname.toLowerCase();
-  if (isLoopbackHostname(host)) return true;
-  return allowedHosts.some(allowed => allowed.toLowerCase() === host);
+  const request = sanitizeOembedOrigin(requestOrigin);
+  if (!request) return false;
+  const url = new URL(request);
+  if (isLoopbackHostname(url.hostname)) return true;
+  return allowedOrigins.includes(request);
 }
 
 /**
- * Public origin of the atlas host. Rejects credentialed / path-shaped Host
- * headers rather than echoing them into iframe src.
+ * Page origin may be used as iframe src only when the request is trusted and
+ * the page origin is either the same loopback service (scheme+port) or an
+ * exact configured public origin.
  */
-export function oembedRequestOrigin(headers: OembedHeaderBag): string {
+export function isAllowedOembedPageOrigin(
+  pageOrigin: string,
+  requestOrigin: string,
+  allowedOrigins: readonly string[] = [],
+): boolean {
+  if (!isAllowedOembedRequestOrigin(requestOrigin, allowedOrigins)) return false;
+  const page = sanitizeOembedOrigin(pageOrigin);
+  const request = sanitizeOembedOrigin(requestOrigin);
+  if (!page || !request) return false;
+  const pageUrl = new URL(page);
+  const requestUrl = new URL(request);
+  if (isLoopbackHostname(pageUrl.hostname)) {
+    return isLoopbackHostname(requestUrl.hostname)
+      && pageUrl.protocol === requestUrl.protocol
+      && effectiveOembedPort(pageUrl) === effectiveOembedPort(requestUrl);
+  }
+  return allowedOrigins.includes(page) && page === request;
+}
+
+/**
+ * Public origin of the atlas host. Invalid / credentialed Host headers are
+ * rejected (undefined) rather than echoed or rewritten to localhost.
+ */
+export function oembedRequestOrigin(headers: OembedHeaderBag): string | undefined {
   const proto = firstHeader(headers['x-forwarded-proto']) === 'https' ? 'https' : 'http';
-  const host = firstHeader(headers['x-forwarded-host'])
-    ?? firstHeader(headers.host)
-    ?? 'localhost:4173';
-  if (/[@\\/\s]/.test(host) || host.includes('://')) return OEMBED_FALLBACK_ORIGIN;
-  return sanitizeOembedOrigin(`${proto}://${host}`) ?? OEMBED_FALLBACK_ORIGIN;
+  const host = firstHeader(headers['x-forwarded-host']) ?? firstHeader(headers.host);
+  if (!host || /[@\\/\s]/.test(host) || host.includes('://')) return undefined;
+  return sanitizeOembedOrigin(`${proto}://${host}`);
 }
 
 function escapeAttribute(value: string): string {
@@ -197,23 +225,20 @@ function parseAtlasRoute(pathname: string): ReturnType<typeof parseAppRoute> | u
 export function parsePublicAtlasOembedUrl(
   raw: string,
   requestOrigin: string,
-  allowedHosts: readonly string[] = [],
+  allowedOrigins: readonly string[] = [],
 ): PublicAtlasOembedTarget | undefined {
   if (raw.length > 2048) return undefined;
   const pageOrigin = sanitizeOembedOrigin(raw);
   const reqOrigin = sanitizeOembedOrigin(requestOrigin);
   if (!pageOrigin || !reqOrigin) return undefined;
   let page: URL;
-  let request: URL;
   try {
     page = new URL(raw);
-    request = new URL(reqOrigin);
   } catch {
     return undefined;
   }
   if (page.username || page.password) return undefined;
-  if (!isAllowedOembedHostname(page.hostname, allowedHosts)) return undefined;
-  if (!isAllowedOembedHostname(request.hostname, allowedHosts)) return undefined;
+  if (!isAllowedOembedPageOrigin(pageOrigin, reqOrigin, allowedOrigins)) return undefined;
   const route = parseAtlasRoute(page.pathname);
   if (!route || route.kind !== 'repo') return undefined;
   if (!GITHUB_NAME.test(route.owner) || !GITHUB_NAME.test(route.repo)) return undefined;
@@ -336,7 +361,7 @@ export function handleOembedRequest(input: OembedHttpInput): OembedHttpOutput {
   if (!rawUrl) {
     return jsonBody(400, { error: 'url query parameter is required' });
   }
-  const target = parsePublicAtlasOembedUrl(rawUrl, input.requestOrigin, input.allowedHosts);
+  const target = parsePublicAtlasOembedUrl(rawUrl, input.requestOrigin, input.allowedOrigins);
   if (!target) {
     return jsonBody(404, { error: 'not a public atlas URL' });
   }

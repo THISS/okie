@@ -8,7 +8,7 @@ import {
   buildOembedRichResponse,
   handleOembedRequest,
   installPublicAtlasOembedDiscovery,
-  oembedAllowedHostsFromEnv,
+  oembedAllowedOriginsFromEnv,
   oembedRequestOrigin,
   parsePublicAtlasOembedUrl,
   publicAtlasOembedHref,
@@ -86,8 +86,7 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(forged.body).not.toContain('evil.example');
     expect(forged.body).not.toContain('user:pass');
     const credentialedHost = oembedRequestOrigin({ host: 'user:pass@evil.example' });
-    expect(credentialedHost).toBe('http://localhost:4173');
-    expect(credentialedHost).not.toContain('evil.example');
+    expect(credentialedHost).toBeUndefined();
   });
 
   it('returns 404 for malformed percent-encoding instead of throwing', () => {
@@ -96,20 +95,38 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(request(`url=${encodeURIComponent(`${ORIGIN}/r/%/okie`)}`).status).toBe(404);
   });
 
-  it('allows a configured public host and still rejects unknown hosts', () => {
-    const allowed = ['atlas.example.test'];
+  it('allows a configured public origin and still rejects unknown hosts', () => {
+    const allowed = ['https://atlas.example.test'];
     const publicUrl = 'https://atlas.example.test/r/THISS/okie';
-    expect(parsePublicAtlasOembedUrl(publicUrl, publicUrl, allowed)?.origin).toBe('https://atlas.example.test');
+    expect(parsePublicAtlasOembedUrl(publicUrl, 'https://atlas.example.test', allowed)?.origin).toBe('https://atlas.example.test');
     const result = handleOembedRequest({
       method: 'GET',
       requestOrigin: 'https://atlas.example.test',
       searchParams: new URLSearchParams({ url: publicUrl, format: 'json' }),
-      allowedHosts: allowed,
+      allowedOrigins: allowed,
     });
     expect(result.status).toBe(200);
     const body = JSON.parse(result.body) as { html: string };
     expect(body.html).toContain('src="https://atlas.example.test/r/THISS/okie"');
     expect(body.html).not.toMatch(/@/);
+  });
+
+  it('does not allow loopback or off-scheme/off-port origins from a public request', () => {
+    const allowed = ['https://okie.vercel.app'];
+    expect(parsePublicAtlasOembedUrl(
+      'http://127.0.0.1:9999/r/THISS/okie',
+      'https://okie.vercel.app',
+      allowed,
+    )).toBeUndefined();
+    expect(parsePublicAtlasOembedUrl(
+      'http://okie.vercel.app:8080/r/THISS/okie',
+      'https://okie.vercel.app',
+      allowed,
+    )).toBeUndefined();
+    expect(parsePublicAtlasOembedUrl(
+      'http://127.0.0.1:9999/r/THISS/okie',
+      ORIGIN,
+    )).toBeUndefined();
   });
 
   it('rejects missing, xml, and non-atlas URLs', () => {
@@ -147,13 +164,13 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(attrs.get('href')).toBe(publicAtlasOembedHref(DOGFOOD));
   });
 
-  it('derives extra public hosts from origin env only, never API keys', () => {
-    expect(oembedAllowedHostsFromEnv({
+  it('derives extra public origins from origin env only, never API keys', () => {
+    expect(oembedAllowedOriginsFromEnv({
       OKIE_PUBLIC_ORIGIN: 'https://atlas.example.test',
       VERCEL_URL: 'okie.vercel.app',
       OPENROUTER_API_KEY: 'okie-test-llm-key-cla30-fake',
       GITHUB_TOKEN: 'gho_okieTestPlantedSecretCla30xxxx',
-    })).toEqual(['atlas.example.test', 'okie.vercel.app']);
+    })).toEqual(['https://atlas.example.test', 'https://okie.vercel.app']);
   });
 
   it('derives the atlas origin from Host, never a scan-process bind', () => {
@@ -179,8 +196,8 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     ]));
     const fn = readFileSync(new URL('../api/oembed.ts', import.meta.url), 'utf8');
     expect(fn).toContain('handleOembedRequest');
-    expect(fn).toContain('oembedAllowedHostsFromEnv');
+    expect(fn).toContain('oembedAllowedOriginsFromEnv');
     expect(fn).not.toMatch(/apiKey|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
-    expect(viteConfig).toContain('oembedAllowedHostsFromEnv');
+    expect(viteConfig).toContain('oembedAllowedOriginsFromEnv');
   });
 });
