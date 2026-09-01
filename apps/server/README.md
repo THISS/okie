@@ -24,6 +24,8 @@ Optional enrichment talks to an OpenAI-compatible gateway. Defaults suit OpenRou
 
 Keys live in `.env` / process env only (gitignored). Put the key in a repo-root `.env`; the server loads it at startup without overriding variables already in the environment. Do not commit a key. There is no `.env.example` (CLA-16).
 
+Ask Atlas (`GET`/`POST /api/ask`) uses the same gateway. `GET /api/ask` returns `{ connected: true|false }` with no key, base URL, or model id. Without a gateway key, Ask stays disconnected: the web shell plays the deterministic explanation and does not wait on a model. With a key, `POST /api/ask` answers one question from the client-supplied packets and accepted summaries for the selected (or isolated) scopes — never a silent whole-repo dump. Citations are filtered to those scope ids. Anthropic fallback keys do not connect Ask; the OpenAI-compatible gateway is the path.
+
 Non-secret overlay (base URL / model id only) can live in `okie.local.json` at the repo root, or in a JSON file pointed at by `OKIE_LLM_CONFIG`:
 
 ```json

@@ -178,6 +178,20 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain('<p className="responsibility">{selected.responsibility}</p>');
   });
 
+  it('grounds Ask Atlas in selected or isolated packets and keeps the disconnected explanation path', () => {
+    expect(app).toContain("data-ask-connected={askConnected ? 'true' : 'false'}");
+    expect(app).toContain('data-ask-state={askState}');
+    expect(app).toContain('buildAskContext(');
+    expect(app).toContain('probeAskConnection');
+    expect(app).toContain("isolateActive: visibilityMode === 'isolate'");
+    expect(app).toContain('playDisconnectedAsk()');
+    expect(app).toContain('ASK_NOT_CONNECTED_LIVE_MESSAGE');
+    expect(app).toContain('ASK_NOT_CONNECTED_COPY');
+    expect(app).toContain('ASK_CONNECTED_COPY');
+    expect(app).toContain('shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)');
+    expect(app).toContain('currentAskScopeKey');
+  });
+
   it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {
     expect(app).toContain('data-inspector-presentation="relation-summary"');
     expect(app).toContain('data-inspector-relation-id={row.relationId}');

@@ -95,6 +95,18 @@ import {
 } from './semantic/semanticLens';
 import { defaultSearchSuggestions } from './searchSuggestions';
 import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldOpenSearch, shouldToggleDevMode } from './shortcuts';
+import {
+  ASK_CONNECTED_COPY,
+  ASK_NOT_CONNECTED_COPY,
+  ASK_NOT_CONNECTED_LIVE_MESSAGE,
+  ASK_PROBE_TIMEOUT_MS,
+  ASK_REQUEST_TIMEOUT_MS,
+  askScopeKey,
+  buildAskContext,
+  probeAskConnection,
+  shouldCommitAskAnswer,
+  submitAskQuestion,
+} from './ask/askAtlas';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
@@ -1221,6 +1233,8 @@ export function App() {
   const inspectorReframeGenerationRef = useRef(0);
   const askButtonRef = useRef<HTMLButtonElement | null>(null);
   const askInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const askAbortRef = useRef<AbortController | undefined>(undefined);
+  const askScopeKeyRef = useRef('');
   const shareButtonRef = useRef<HTMLButtonElement | null>(null);
   const visibilityControlRef = useRef<HTMLButtonElement | null>(null);
   const shareFallbackRef = useRef<HTMLInputElement | null>(null);
@@ -1315,6 +1329,11 @@ export function App() {
   const [liveMessage, setLiveMessage] = useState('Okie architecture atlas loaded. Okie selected.');
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState('');
+  const [askConnected, setAskConnected] = useState(false);
+  const [askPending, setAskPending] = useState(false);
+  const [askAnswer, setAskAnswer] = useState<string>();
+  const [askCitations, setAskCitations] = useState<string[]>([]);
+  const [askError, setAskError] = useState<string>();
   const [viewport, setViewport] = useState<ViewportSize>(() => ({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight - 68) }));
   const [measuredSafeArea, setMeasuredSafeArea] = useState<SafeArea>(() => storySafeArea({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight - 68) }));
   const [safeAreaEpoch, setSafeAreaEpoch] = useState(0);
@@ -1622,6 +1641,12 @@ export function App() {
     () => scene.entities.filter(entity => visibilityFocusIds.has(entity.id)).map(entity => entity.id),
     [scene.entities, visibilityFocusIds],
   );
+  const currentAskScopeKey = askScopeKey({
+    selectedId,
+    isolateActive: visibilityMode === 'isolate',
+    isolatedIds: isolatedEntityIds,
+  });
+  askScopeKeyRef.current = currentAskScopeKey;
   const isolatedEntityIdSet = useMemo(() => new Set(isolatedEntityIds), [isolatedEntityIds]);
   const isolatedRelationIds = useMemo(
     () => scene.relations
@@ -3680,13 +3705,96 @@ export function App() {
     return () => window.removeEventListener('keydown', shortcut);
   }, [askOpen, camera, detailsOpen, editingEnabled, mainDiagramActive, navigationIdentity.rootEntityId, pickedRelationId, searchOpen, semanticLensSession, storyStep, viewport]);
 
-  function submitQuestion(event: FormEvent) {
-    event.preventDefault();
-    if (!question.trim()) return;
+  useEffect(() => {
+    if (!askOpen) {
+      askAbortRef.current?.abort();
+      askAbortRef.current = undefined;
+      setAskPending(false);
+      setAskAnswer(undefined);
+      setAskCitations([]);
+      setAskError(undefined);
+      return;
+    }
+    const controller = new AbortController();
+    void probeAskConnection({ signal: controller.signal, timeoutMs: ASK_PROBE_TIMEOUT_MS }).then(connected => {
+      if (!controller.signal.aborted) setAskConnected(connected);
+    });
+    return () => controller.abort();
+  }, [askOpen]);
+
+  useEffect(() => {
+    if (!askOpen) return;
+    askAbortRef.current?.abort();
+    askAbortRef.current = undefined;
+    setAskPending(false);
+    setAskAnswer(undefined);
+    setAskCitations([]);
+    setAskError(undefined);
+  }, [askOpen, currentAskScopeKey]);
+
+  const askState = askPending ? 'asking' : askError ? 'error' : askAnswer ? 'answered' : askConnected ? 'ready' : 'disconnected';
+
+  function playDisconnectedAsk() {
     setQuestion('');
     setAskOpen(false);
+    setAskAnswer(undefined);
+    setAskCitations([]);
+    setAskError(undefined);
     setStep(0, true, 'push');
-    setLiveMessage('Playing the saved Okie context-to-source explanation. Live repository Q&A is not connected yet.');
+    setLiveMessage(ASK_NOT_CONNECTED_LIVE_MESSAGE);
+  }
+
+  async function submitQuestion(event: FormEvent) {
+    event.preventDefault();
+    const text = question.trim();
+    if (!text || askPending) return;
+    const context = buildAskContext({
+      entities: scene.entities,
+      relations: scene.relations.map(relation => ({
+        id: relation.id,
+        from: relation.from,
+        to: relation.to,
+        ...(relation.label ? { label: relation.label } : {}),
+      })),
+      selectedId,
+      isolateActive: visibilityMode === 'isolate',
+      isolatedIds: isolatedEntityIds,
+    });
+    askAbortRef.current?.abort();
+    const controller = new AbortController();
+    askAbortRef.current = controller;
+    const submittedScopeKey = currentAskScopeKey;
+    setAskPending(true);
+    setAskAnswer(undefined);
+    setAskCitations([]);
+    setAskError(undefined);
+    try {
+      const result = await submitAskQuestion(text, context, {
+        signal: controller.signal,
+        timeoutMs: ASK_REQUEST_TIMEOUT_MS,
+      });
+      if (controller.signal.aborted) return;
+      if (!shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)) return;
+      if (!result.connected) {
+        playDisconnectedAsk();
+        return;
+      }
+      if ('error' in result && result.error) {
+        setAskError(result.error);
+        setAskAnswer(undefined);
+        setAskCitations([]);
+        setLiveMessage(result.error);
+        return;
+      }
+      if ('answer' in result) {
+        setAskAnswer(result.answer);
+        setAskCitations(result.citations);
+        setLiveMessage(result.answer);
+      }
+    } finally {
+      if (askAbortRef.current === controller) askAbortRef.current = undefined;
+      setAskPending(false);
+    }
   }
 
   async function copyCurrentView() {
@@ -4160,7 +4268,7 @@ export function App() {
             <div className="story-launcher">
               <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>
               <button className="saved-story" onClick={() => setStep(0, true, 'push')}><PlayIcon size={14}/> {story.title} <span>{storyDurationLabel}</span></button>
-              {askOpen && <form className="ask-popover" onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label><textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>Live Q&amp;A is not connected in this renderer slice. Submitting plays the evidence-linked Okie explanation.</p><button disabled={!question.trim()} type="submit">Preview explanation <ArrowIcon size={15}/></button></form>}
+              {askOpen && <form className="ask-popover" data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label><textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? 'Ask' : 'Preview explanation'}{askPending ? null : <ArrowIcon size={15}/>}</button></form>}
             </div>
           )}
 
