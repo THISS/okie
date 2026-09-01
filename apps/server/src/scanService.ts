@@ -84,9 +84,9 @@ function shouldAttemptEnrichment(mode: "auto" | "force", config: LlmGatewayConfi
  * Default factory for the live enricher. Auto mode skips when no gateway or
  * Anthropic key is visible so the deterministic atlas still publishes. The
  * OpenAI-compatible client is constructed here when a gateway key is present
- * (with the configured per-request timeout). Packet HTTP still uses the
- * Anthropic SDK until CLA-23; the enricher still applies the same timeout,
- * scan-level budget, and 429/5xx fail-soft around that generator.
+ * (with the configured per-request timeout). Packet HTTP POSTs each bounded
+ * packet to `chatCompletions`; `ANTHROPIC_*` stays on the Anthropic SDK.
+ * The hook still runs only inside `scanGithubRepository`'s checkout window.
  */
 export function createDefaultEnricherFactory(
   mode: "auto" | "force",

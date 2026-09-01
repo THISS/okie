@@ -418,8 +418,8 @@ export class LlmGatewayClient {
 
   /**
    * POST `{baseUrl}/chat/completions` with a per-request timeout.
-   * Packet enrichment will drive this in CLA-23; CLA-22 adds the deadline
-   * and usage parse so a paste-a-repo job cannot hang or run unbounded.
+   * Packet enrichment drives this (CLA-23). The deadline and usage parse
+   * keep a paste-a-repo job from hanging or running unbounded (CLA-22).
    */
   async chatCompletions(body: Record<string, unknown>): Promise<LlmChatCompletionResult> {
     // Configured model id always wins — body must not override it (CLA-21).
