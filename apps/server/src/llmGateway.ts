@@ -329,37 +329,54 @@ export function safeGatewayProvider(baseUrl: string): string | undefined {
 }
 
 /**
- * Provider label for job/UI: Anthropic fallback is named, otherwise the
- * gateway hostname. Never a URL, never a key.
+ * Provider label for job/UI. Anthropic fallback and force-without-gateway-key
+ * (profile auth) are named "anthropic". A gateway key uses the hostname only.
+ * Never a URL, never a key.
  */
-export function enrichmentProviderLabel(config: LlmGatewayConfig): string | undefined {
+export function enrichmentProviderLabel(
+  config: LlmGatewayConfig,
+  mode: "off" | "force" | "auto" = "auto",
+): string | undefined {
   if (config.keySource === "anthropic-fallback") return "anthropic";
+  if (config.keySource === "gateway") return safeGatewayProvider(config.baseUrl);
+  if (mode === "force") return "anthropic";
   return safeGatewayProvider(config.baseUrl);
 }
 
-/** Configured model id when non-empty. Never the API key. */
+/**
+ * Configured model id when non-empty and not a secret. If the operator pasted
+ * a key or tokenized URL into the model field, omit it rather than publish it.
+ */
 export function enrichmentModelId(config: LlmGatewayConfig): string | undefined {
-  return isUsableModelId(config.modelId) ? config.modelId.trim() : undefined;
+  if (!isUsableModelId(config.modelId)) return undefined;
+  const trimmed = config.modelId.trim();
+  const redacted = redactGatewayText(trimmed, config.apiKey);
+  return redacted === trimmed ? trimmed : undefined;
 }
 
 /**
  * Strip userinfo, query, and fragment from http(s) URLs in `text`. Tokens in
  * `https://user:token@host/path?api_key=` must not reach logs, job.error, or UI.
+ * Trailing sentence punctuation is preserved; commas inside userinfo are not
+ * treated as URL terminators.
  */
 export function redactTokenizedUrls(text: string): string {
-  return text.replace(/https?:\/\/[^\s"'<>\\),]+/gi, url => {
+  return text.replace(/https?:\/\/[^\s"'<>]+/gi, raw => {
+    const trailingMatch = /[.,;:!?)]+$/.exec(raw);
+    const core = trailingMatch ? raw.slice(0, trailingMatch.index) : raw;
+    const suffix = trailingMatch ? trailingMatch[0] : "";
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(core);
       if (!parsed.username && !parsed.password && !parsed.search && !parsed.hash) {
-        return url;
+        return raw;
       }
       parsed.username = "";
       parsed.password = "";
       parsed.search = "";
       parsed.hash = "";
-      return parsed.toString();
+      return `${parsed.toString()}${suffix}`;
     } catch {
-      return "[redacted-url]";
+      return `[redacted-url]${suffix}`;
     }
   });
 }
@@ -550,18 +567,21 @@ export function describeEnrichmentMode(
   config: LlmGatewayConfig,
 ): string {
   if (mode === "off") return "disabled (OKIE_SCAN_ENRICH=0)";
-  const modelNote = isUsableModelId(config.modelId)
-    ? `model ${config.modelId}`
-    : "empty model id (enrichment pass will fail; atlas still publishes)";
-  const provider = enrichmentProviderLabel(config) ?? "configured";
+  const modelId = enrichmentModelId(config);
+  const modelNote = modelId
+    ? `model ${modelId}`
+    : isUsableModelId(config.modelId)
+      ? "model [redacted]"
+      : "empty model id (enrichment pass will fail; atlas still publishes)";
+  const provider = enrichmentProviderLabel(config, mode) ?? "configured";
   if (mode === "force") {
-    return `forced (OKIE_SCAN_ENRICH=1) gateway ${provider} ${modelNote}`;
+    return `forced (OKIE_SCAN_ENRICH=1) ${config.keySource === "gateway" ? "gateway" : "provider"} ${provider} ${modelNote}`;
   }
   if (!hasLlmCredentials(config)) {
     return `auto (no key; enrichment skipped) gateway ${provider} ${modelNote}`;
   }
   if (config.keySource === "anthropic-fallback") {
-    return `auto (ANTHROPIC_* fallback) gateway ${provider} ${modelNote}`;
+    return `auto (ANTHROPIC_* fallback) provider ${provider} ${modelNote}`;
   }
   return `auto gateway ${provider} ${modelNote}`;
 }

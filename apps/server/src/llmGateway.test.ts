@@ -360,6 +360,44 @@ test("redactGatewayText strips tokenized gateway URLs and the operator key", () 
   assert.equal(redactTokenizedUrls("plain https://openrouter.ai/api/v1 ok"), "plain https://openrouter.ai/api/v1 ok");
 });
 
+test("redactTokenizedUrls does not stop at a comma inside userinfo", () => {
+  const password = "okie-test-secret-part-a,okie-test-secret-part-b";
+  const query = "okie-test-query-token-cla29-fake";
+  const url = `https://okietest:${password}@example.invalid/v1?api_key=${query}`;
+  const redacted = redactTokenizedUrls(`llm gateway 401 from ${url}`);
+  assert.equal(redacted.includes(password), false);
+  assert.equal(redacted.includes(query), false);
+  assert.match(redacted, /example\.invalid/);
+  assert.doesNotMatch(redacted, /api_key=/);
+});
+
+test("enrichmentModelId omits a model field that is the API key or a tokenized URL", () => {
+  const keyed = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: FAKE_GATEWAY_KEY,
+  });
+  assert.equal(enrichmentModelId(keyed), undefined);
+  const described = describeEnrichmentMode("auto", keyed);
+  assert.match(described, /model \[redacted\]/);
+  assert.doesNotMatch(described, new RegExp(FAKE_GATEWAY_KEY));
+
+  const tokenized = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: TOKENIZED_GATEWAY_URL,
+  });
+  assert.equal(enrichmentModelId(tokenized), undefined);
+  assert.doesNotMatch(describeEnrichmentMode("auto", tokenized), new RegExp(FAKE_URL_USERINFO));
+});
+
+test("force without a gateway key names anthropic, not the unused OpenRouter host", () => {
+  const none = resolveLlmGatewayConfig({});
+  assert.equal(enrichmentProviderLabel(none, "force"), "anthropic");
+  assert.equal(enrichmentProviderLabel(none, "auto"), "openrouter.ai");
+  const forced = describeEnrichmentMode("force", none);
+  assert.match(forced, /provider anthropic model /);
+  assert.doesNotMatch(forced, /openrouter\.ai/);
+});
+
 test("resolveEnrichmentBudget reads env and keeps documented defaults", () => {
   assert.deepEqual(resolveEnrichmentBudget({}), {
     requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,

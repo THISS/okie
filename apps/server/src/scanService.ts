@@ -83,9 +83,12 @@ function shouldAttemptEnrichment(mode: "auto" | "force", config: LlmGatewayConfi
 }
 
 /** Provider host + model id when enrichment was attempted. Never a key or URL. */
-function enrichmentIdentity(config: LlmGatewayConfig): Pick<ScanJobEnrichment, "modelId" | "provider"> {
+function enrichmentIdentity(
+  config: LlmGatewayConfig,
+  mode: "auto" | "force",
+): Pick<ScanJobEnrichment, "modelId" | "provider"> {
   const modelId = enrichmentModelId(config);
-  const provider = enrichmentProviderLabel(config);
+  const provider = enrichmentProviderLabel(config, mode);
   return {
     ...(modelId ? { modelId } : {}),
     ...(provider ? { provider } : {}),
@@ -181,7 +184,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
       }
 
       const config = resolveLlmGatewayConfig(env, llmLocal);
-      const identity = enrichmentIdentity(config);
+      const identity = enrichmentIdentity(config, enrichMode);
       if (shouldAttemptEnrichment(enrichMode, config) && !isUsableModelId(config.modelId)) {
         update({
           enrichment: { state: "failed", note: EMPTY_MODEL_NOTE, ...identity },

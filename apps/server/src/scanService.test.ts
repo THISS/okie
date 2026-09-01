@@ -528,3 +528,34 @@ test("enrichment notes and logs strip tokenized gateway URLs", async () => {
     fixture.cleanup();
   }
 });
+
+test("force enrichment without a visible key records provider anthropic, not openrouter.ai", async () => {
+  const fixture = makeTarball("acme-app-cla29bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "src/index.ts": "export const ping = () => 'pong';\n",
+  });
+  const commitSha = "cla29bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "force",
+      env: {},
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+      enricherFactory: () => async () => {
+        throw new Error("profile auth unavailable");
+      },
+    }));
+    queue.submit({ owner: "acme", repo: "app", slug: "acme__app" });
+    await queue.idle();
+    const job = queue.list()[0]!;
+    assert.equal(job.stage, "complete");
+    assert.equal(job.enrichment.state, "failed");
+    assert.equal(job.enrichment.provider, "anthropic");
+    assert.equal(job.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.notEqual(job.enrichment.provider, "openrouter.ai");
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
+  }
+});
