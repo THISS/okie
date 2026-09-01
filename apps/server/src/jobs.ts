@@ -10,6 +10,16 @@ export type ScanJobStage =
 
 export type EnrichmentState = "pending" | "running" | "complete" | "skipped" | "failed";
 
+export interface ScanJobEnrichment {
+  state: EnrichmentState;
+  enrichedContainers?: number;
+  note?: string;
+  /** Configured model id when enrichment was attempted. Never the API key. */
+  modelId?: string;
+  /** Safe provider host (or "anthropic" fallback). Never a URL, never a key. */
+  provider?: string;
+}
+
 export interface ScanJob {
   id: string;
   slug: string;
@@ -24,7 +34,7 @@ export interface ScanJob {
   commitSha?: string;
   entityCount?: number;
   relationCount?: number;
-  enrichment: { state: EnrichmentState; enrichedContainers?: number; note?: string };
+  enrichment: ScanJobEnrichment;
   error?: string;
 }
 
@@ -136,6 +146,41 @@ export function createScanJobQueue(
         if (!running && pending.length === 0) resolve();
         else drained = resolve;
       }),
+  };
+}
+
+/**
+ * Wire-facing job row. `redact` runs on `error` and `enrichment.note` so a
+ * tokenized gateway URL or echoed key cannot leave via GET /api/scans.
+ * Provider/model id are already non-secret by construction.
+ */
+export function toPublicJob(
+  job: ScanJob,
+  redact: (text: string) => string = text => text,
+): Record<string, unknown> {
+  const note = job.enrichment.note ? redact(job.enrichment.note) : undefined;
+  const enrichment: Record<string, unknown> = { state: job.enrichment.state };
+  if (job.enrichment.enrichedContainers !== undefined) {
+    enrichment.enrichedContainers = job.enrichment.enrichedContainers;
+  }
+  if (note) enrichment.note = note;
+  if (job.enrichment.modelId) enrichment.modelId = job.enrichment.modelId;
+  if (job.enrichment.provider) enrichment.provider = job.enrichment.provider;
+  return {
+    id: job.id,
+    slug: job.slug,
+    owner: job.owner,
+    repo: job.repo,
+    ...(job.ref ? { ref: job.ref } : {}),
+    stage: job.stage,
+    atlasReady: job.atlasReady,
+    ...(job.commitSha ? { commitSha: job.commitSha } : {}),
+    ...(job.entityCount !== undefined ? { entityCount: job.entityCount } : {}),
+    ...(job.relationCount !== undefined ? { relationCount: job.relationCount } : {}),
+    enrichment,
+    ...(job.error ? { error: redact(job.error) } : {}),
+    atlasPath: `/r/${job.owner}/${job.repo}`,
+    fixtureParam: `scan:${job.slug}`,
   };
 }
 

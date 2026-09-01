@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { enrichmentStageDetail, type PublicEnrichment } from './scanJobEnrichment';
 
 /**
  * The paste-a-repo landing (embed-hosting v2 self-serve): a GitHub URL goes in,
@@ -19,7 +20,7 @@ type PublicJob = {
   commitSha?: string;
   entityCount?: number;
   relationCount?: number;
-  enrichment: { state: 'pending' | 'running' | 'complete' | 'skipped' | 'failed'; enrichedContainers?: number; note?: string };
+  enrichment: PublicEnrichment;
   error?: string;
   atlasPath: string;
 };
@@ -177,15 +178,17 @@ export function ScanLandingScreen() {
               {STAGE_LABELS.map((stage, index) => {
                 const reached = stageIndex >= index || job.stage === 'complete';
                 const active = stage.key === job.stage;
+                const detail = stage.key === 'enriching' ? enrichmentStageDetail(job.enrichment) : undefined;
                 return (
-                  <li key={stage.key} style={{ color: reached ? '#eef4f2' : '#5b6a67' }}>
+                  <li
+                    data-enrichment-state={stage.key === 'enriching' ? job.enrichment.state : undefined}
+                    data-enrichment-model={stage.key === 'enriching' ? job.enrichment.modelId : undefined}
+                    data-enrichment-provider={stage.key === 'enriching' ? job.enrichment.provider : undefined}
+                    key={stage.key}
+                    style={{ color: reached ? '#eef4f2' : '#5b6a67' }}
+                  >
                     {reached && !active ? '✓' : active ? '●' : '○'} {stage.label}
-                    {stage.key === 'enriching' && job.enrichment.state === 'skipped' && (
-                      <span style={mutedStyle}> — skipped ({job.enrichment.note})</span>
-                    )}
-                    {stage.key === 'enriching' && job.enrichment.state === 'failed' && (
-                      <span style={mutedStyle}> — failed; the deterministic atlas stands</span>
-                    )}
+                    {detail ? <span style={mutedStyle}> — {detail}</span> : null}
                   </li>
                 );
               })}

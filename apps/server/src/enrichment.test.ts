@@ -134,17 +134,25 @@ test("no system packet means no enrichment at all (no gate anchor)", async () =>
   assert.equal(called, 0);
 });
 
-test("gateway progress notes never include the API key", async () => {
+test("gateway progress notes include the model id and never a tokenized URL", async () => {
   const fakeKey = "okie-test-llm-key-cla20-fake";
+  const urlToken = "okie-test-url-token-cla29-fake";
   const notes: string[] = [];
   const enrich = createEnricher({
     onProgress: note => notes.push(note),
-    gateway: { baseUrl: "https://openrouter.ai/api/v1", modelId: "acme/fast" },
+    gateway: {
+      baseUrl: `https://okietest:${urlToken}@example.invalid/v1?api_key=${urlToken}`,
+      modelId: "acme/fast",
+    },
     generate: async () => ({ document: { ok: true } }),
   });
   await enrich(packets());
-  assert.ok(notes.some(note => note.includes("llm gateway") && note.includes("acme/fast")));
+  const gatewayNote = notes.find(note => note.includes("llm gateway"));
+  assert.ok(gatewayNote);
+  assert.match(gatewayNote, /llm gateway example\.invalid model acme\/fast/);
+  assert.doesNotMatch(gatewayNote, /https:\/\//);
   assert.ok(notes.every(note => !note.includes(fakeKey)));
+  assert.ok(notes.every(note => !note.includes(urlToken)));
 });
 
 test("enrichment pass uses the configured model id, not a hardcoded table", () => {

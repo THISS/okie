@@ -30,7 +30,11 @@ test("healthz reports service status without scanRoot or filesystem paths", () =
   assert.deepEqual(Object.keys(body).sort(), ["bind", "enrich", "ok", "public", "service"]);
 
   assert.equal("scanRoot" in body, false);
+  assert.equal("modelId" in body, false);
+  assert.equal("apiKey" in body, false);
   assert.doesNotMatch(json, /scanRoot/);
+  assert.doesNotMatch(json, /modelId/);
+  assert.doesNotMatch(json, /apiKey/);
   assert.doesNotMatch(json, /"\/[^"]+"/);
   assert.doesNotMatch(json, /[A-Za-z]:\\/);
 });
@@ -58,4 +62,5 @@ test("healthz and main.ts never put an LLM API key on the wire", () => {
   assert.doesNotMatch(src, /healthzBody\([^)]*apiKey/);
   assert.doesNotMatch(src, /healthzBody\([^)]*llm/);
   assert.match(src, /describeEnrichmentMode\(enrich,\s*llm\)/);
+  assert.match(src, /toPublicJob\(job,\s*text => redactGatewayText\(text,\s*llm\.apiKey\)\)/);
 });

@@ -149,6 +149,8 @@ test("no LLM key skips enrichment and still publishes the deterministic atlas", 
     assert.equal(job.atlasReady, true);
     assert.equal(job.enrichment.state, "skipped");
     assert.match(job.enrichment.note ?? "", /no LLM credentials visible/);
+    assert.equal(job.enrichment.modelId, undefined);
+    assert.equal(job.enrichment.provider, undefined);
     assert.doesNotMatch(job.enrichment.note ?? "", /ANTHROPIC_API_KEY=\S+/);
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
     assert.ok(existsSync(join(scanRoot, "index.json")));
@@ -204,6 +206,8 @@ test("job logs redact a gateway key if a provider error echoes it", async () => 
     assert.equal(job.enrichment.state, "failed");
     assert.doesNotMatch(job.enrichment.note ?? "", new RegExp(FAKE_GATEWAY_KEY));
     assert.match(job.enrichment.note ?? "", /\[redacted-llm-key\]/);
+    assert.equal(job.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.equal(job.enrichment.provider, "openrouter.ai");
     assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
   } finally {
@@ -257,6 +261,8 @@ test("empty model id fails enrichment only; deterministic atlas still publishes"
     assert.equal(job.atlasReady, true);
     assert.equal(job.enrichment.state, "failed");
     assert.match(job.enrichment.note ?? "", /empty model id/);
+    assert.equal(job.enrichment.modelId, undefined);
+    assert.equal(job.enrichment.provider, "openrouter.ai");
     assert.equal(job.error, undefined);
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
     assert.ok(existsSync(join(scanRoot, "index.json")));
@@ -294,6 +300,8 @@ test("invalid model id fails enrichment only; deterministic atlas still publishe
     assert.equal(job.atlasReady, true);
     assert.equal(job.enrichment.state, "failed");
     assert.match(job.enrichment.note ?? "", /not-a-real-model/);
+    assert.equal(job.enrichment.modelId, "not-a-real-model");
+    assert.equal(job.enrichment.provider, "openrouter.ai");
     assert.equal(job.error, undefined);
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
     assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
@@ -368,6 +376,7 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     assert.equal(off.stage, "complete");
     assert.equal(off.atlasReady, true);
     assert.equal(off.enrichment.state, "skipped");
+    assert.equal(off.enrichment.modelId, undefined);
     const offStory = readFileSync(join(scanRoot, "acme__app-off", "story.json"), "utf8");
 
     const rejected = await run("acme__app-reject", () => async packets => {
@@ -409,6 +418,9 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     });
     assert.equal(accepted.stage, "complete");
     assert.equal(accepted.atlasReady, true);
+    assert.equal(accepted.enrichment.state, "complete");
+    assert.equal(accepted.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.equal(accepted.enrichment.provider, "openrouter.ai");
     const acceptedStory = readFileSync(join(scanRoot, "acme__app-summary", "story.json"), "utf8");
     type OverviewStory = {
       steps: Array<{ id: string; title: string; reveal?: string; focusEntityIds: string[]; narration: string }>;
@@ -473,5 +485,46 @@ test("job.error and logs scrub gateway error strings (gh token + operator key)",
     assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
   } finally {
     rmSync(scanRoot, { recursive: true, force: true });
+  }
+});
+
+test("enrichment notes and logs strip tokenized gateway URLs", async () => {
+  const fixture = makeTarball("acme-app-cla29aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "src/index.ts": "export const ping = () => 'pong';\n",
+  });
+  const commitSha = "cla29aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const urlToken = "okie-test-url-token-cla29-fake";
+  const queryToken = "okie-test-query-token-cla29-fake";
+  const tokenized = `https://okietest:${urlToken}@example.invalid/v1?api_key=${queryToken}`;
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  const logs: string[] = [];
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "auto",
+      env: { OPENROUTER_API_KEY: FAKE_GATEWAY_KEY, OKIE_LLM_BASE_URL: tokenized },
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+      log: line => logs.push(line),
+      enricherFactory: () => async () => {
+        throw new Error(`llm gateway 401 from ${tokenized}`);
+      },
+    }));
+    queue.submit({ owner: "acme", repo: "app", slug: "acme__app" });
+    await queue.idle();
+    const job = queue.list()[0]!;
+    assert.equal(job.stage, "complete");
+    assert.equal(job.enrichment.state, "failed");
+    assert.equal(job.enrichment.provider, "example.invalid");
+    assert.equal(job.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.equal((job.enrichment.note ?? "").includes(urlToken), false);
+    assert.equal((job.enrichment.note ?? "").includes(queryToken), false);
+    assert.match(job.enrichment.note ?? "", /example\.invalid/);
+    assert.ok(logs.every(line => !line.includes(urlToken)));
+    assert.ok(logs.every(line => !line.includes(queryToken)));
+    assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
   }
 });
