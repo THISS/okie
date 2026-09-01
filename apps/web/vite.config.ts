@@ -1,6 +1,6 @@
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
-import { handleOembedRequest, OEMBED_PATH, oembedRequestOrigin } from './src/oembed';
+import { handleOembedRequest, OEMBED_PATH, oembedAllowedHostsFromEnv, oembedRequestOrigin } from './src/oembed';
 
 // The local scan process (apps/server) owns /api (submit + job status) and
 // /scan (published trio objects + manifest). Dev and preview proxy both there
@@ -33,6 +33,7 @@ function okieOembedPlugin(): Plugin {
         method: request.method ?? 'GET',
         requestOrigin: oembedRequestOrigin(request.headers),
         searchParams: url.searchParams,
+        allowedHosts: oembedAllowedHostsFromEnv(process.env),
       });
       response.statusCode = result.status;
       for (const [name, value] of Object.entries(result.headers)) {

@@ -7,6 +7,9 @@ import { parseAppRoute } from './renderer/route';
  * type="application/json+oembed">` on the share URL, then fetch JSON whose
  * `html` iframe points at that same public view (no login wall). The payload
  * is a pure function of the atlas URL — no scan objects, no secrets.
+ *
+ * Iframe origins are allowlisted (loopback plus operator/Vercel public hosts).
+ * A forged `Host` / `X-Forwarded-Host` cannot become the embed target.
  */
 
 export const OEMBED_PATH = '/oembed';
@@ -17,15 +20,18 @@ export const OEMBED_MIN_HEIGHT = 140;
 export const OEMBED_PROVIDER_NAME = 'Okie';
 export const OEMBED_CACHE_AGE_SECONDS = 300;
 export const OEMBED_JSON_TYPE = 'application/json+oembed';
+export const OEMBED_FALLBACK_ORIGIN = 'http://localhost:4173';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1']);
+const PUBLIC_ORIGIN_ENV = ['OKIE_PUBLIC_ORIGIN', 'VERCEL_PROJECT_PRODUCTION_URL', 'VERCEL_URL'] as const;
 
 export type PublicAtlasOembedTarget = {
   owner: string;
   repo: string;
   ref?: string;
   search: string;
+  origin: string;
 };
 
 export type OembedRichResponse = {
@@ -44,6 +50,7 @@ export type OembedHttpInput = {
   method: string;
   requestOrigin: string;
   searchParams: URLSearchParams;
+  allowedHosts?: readonly string[];
 };
 
 export type OembedHttpOutput = {
@@ -70,25 +77,63 @@ function firstHeader(value: string | string[] | undefined): string | undefined {
   return token || undefined;
 }
 
-/** Public origin of the atlas host (never the loopback scan process). */
+export function isLoopbackHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return LOOPBACK.has(host) || host === '[::1]';
+}
+
+/** `https://host` origin with no userinfo, or undefined if the raw value is unsafe. */
+export function sanitizeOembedOrigin(raw: string): string | undefined {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined;
+    if (url.username || url.password) return undefined;
+    if (!url.hostname) return undefined;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Extra public hostnames (not secrets) from operator/Vercel origin env.
+ * Callers pass `process.env` from Node (Vite plugin / serverless); this module
+ * does not read process.env itself so the browser bundle stays env-free.
+ */
+export function oembedAllowedHostsFromEnv(
+  env: Record<string, string | undefined>,
+): string[] {
+  const hosts = new Set<string>();
+  for (const key of PUBLIC_ORIGIN_ENV) {
+    const raw = env[key]?.trim();
+    if (!raw) continue;
+    const origin = sanitizeOembedOrigin(raw.includes('://') ? raw : `https://${raw}`);
+    if (!origin) continue;
+    hosts.add(new URL(origin).hostname.toLowerCase());
+  }
+  return [...hosts];
+}
+
+export function isAllowedOembedHostname(
+  hostname: string,
+  allowedHosts: readonly string[] = [],
+): boolean {
+  const host = hostname.toLowerCase();
+  if (isLoopbackHostname(host)) return true;
+  return allowedHosts.some(allowed => allowed.toLowerCase() === host);
+}
+
+/**
+ * Public origin of the atlas host. Rejects credentialed / path-shaped Host
+ * headers rather than echoing them into iframe src.
+ */
 export function oembedRequestOrigin(headers: OembedHeaderBag): string {
   const proto = firstHeader(headers['x-forwarded-proto']) === 'https' ? 'https' : 'http';
   const host = firstHeader(headers['x-forwarded-host'])
     ?? firstHeader(headers.host)
     ?? 'localhost:4173';
-  return `${proto}://${host}`;
-}
-
-function isLoopbackHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  return LOOPBACK.has(host) || host === '[::1]';
-}
-
-function hostsCompatible(page: URL, origin: URL): boolean {
-  const a = page.hostname.toLowerCase();
-  const b = origin.hostname.toLowerCase();
-  if (a === b) return true;
-  return isLoopbackHostname(a) && isLoopbackHostname(b);
+  if (/[@\\/\s]/.test(host) || host.includes('://')) return OEMBED_FALLBACK_ORIGIN;
+  return sanitizeOembedOrigin(`${proto}://${host}`) ?? OEMBED_FALLBACK_ORIGIN;
 }
 
 function escapeAttribute(value: string): string {
@@ -137,30 +182,40 @@ function jsonBody(
   };
 }
 
+function parseAtlasRoute(pathname: string): ReturnType<typeof parseAppRoute> | undefined {
+  try {
+    return parseAppRoute(pathname);
+  } catch {
+    return undefined;
+  }
+}
+
 /**
- * Accept only a public `/r/<owner>/<repo>` path on this atlas origin.
- * The iframe `src` is rebuilt from `requestOrigin` so a foreign host in `url`
- * cannot become the embed target.
+ * Accept only a public `/r/<owner>/<repo>` path on an allowlisted atlas origin.
+ * Iframe `src` uses `URL.origin` of that page (never userinfo, never a forged Host).
  */
 export function parsePublicAtlasOembedUrl(
   raw: string,
   requestOrigin: string,
+  allowedHosts: readonly string[] = [],
 ): PublicAtlasOembedTarget | undefined {
   if (raw.length > 2048) return undefined;
+  const pageOrigin = sanitizeOembedOrigin(raw);
+  const reqOrigin = sanitizeOembedOrigin(requestOrigin);
+  if (!pageOrigin || !reqOrigin) return undefined;
   let page: URL;
-  let origin: URL;
+  let request: URL;
   try {
     page = new URL(raw);
-    origin = new URL(requestOrigin);
+    request = new URL(reqOrigin);
   } catch {
     return undefined;
   }
-  if (page.protocol !== 'http:' && page.protocol !== 'https:') return undefined;
-  if (origin.protocol !== 'http:' && origin.protocol !== 'https:') return undefined;
   if (page.username || page.password) return undefined;
-  if (!hostsCompatible(page, origin)) return undefined;
-  const route = parseAppRoute(page.pathname);
-  if (route.kind !== 'repo') return undefined;
+  if (!isAllowedOembedHostname(page.hostname, allowedHosts)) return undefined;
+  if (!isAllowedOembedHostname(request.hostname, allowedHosts)) return undefined;
+  const route = parseAtlasRoute(page.pathname);
+  if (!route || route.kind !== 'repo') return undefined;
   if (!GITHUB_NAME.test(route.owner) || !GITHUB_NAME.test(route.repo)) return undefined;
   if (route.ref && route.ref.split('/').some(segment => !GITHUB_NAME.test(segment))) return undefined;
   return {
@@ -168,6 +223,7 @@ export function parsePublicAtlasOembedUrl(
     repo: route.repo,
     ...(route.ref ? { ref: route.ref } : {}),
     search: page.search,
+    origin: page.origin,
   };
 }
 
@@ -176,8 +232,8 @@ export function publicAtlasPath(target: PublicAtlasOembedTarget): string {
   return `/r/${target.owner}/${target.repo}${pin}`;
 }
 
-export function publicAtlasHref(target: PublicAtlasOembedTarget, requestOrigin: string): string {
-  return new URL(`${publicAtlasPath(target)}${target.search}`, requestOrigin).href;
+export function publicAtlasHref(target: PublicAtlasOembedTarget): string {
+  return new URL(`${publicAtlasPath(target)}${target.search}`, target.origin).href;
 }
 
 export function publicAtlasTitle(target: PublicAtlasOembedTarget): string {
@@ -186,17 +242,15 @@ export function publicAtlasTitle(target: PublicAtlasOembedTarget): string {
 
 export function buildOembedIframeHtml(
   target: PublicAtlasOembedTarget,
-  requestOrigin: string,
   size: { width: number; height: number },
 ): string {
-  const src = publicAtlasHref(target, requestOrigin);
+  const src = publicAtlasHref(target);
   const title = publicAtlasTitle(target);
   return `<iframe src="${escapeAttribute(src)}" width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px" title="${escapeAttribute(title)}" allowfullscreen></iframe>`;
 }
 
 export function buildOembedRichResponse(
   target: PublicAtlasOembedTarget,
-  requestOrigin: string,
   maxWidth = OEMBED_DEFAULT_WIDTH,
   maxHeight = OEMBED_DEFAULT_HEIGHT,
 ): OembedRichResponse {
@@ -205,9 +259,9 @@ export function buildOembedRichResponse(
     version: '1.0',
     type: 'rich',
     provider_name: OEMBED_PROVIDER_NAME,
-    provider_url: new URL('/', requestOrigin).href.replace(/\/$/, ''),
+    provider_url: target.origin,
     title: publicAtlasTitle(target),
-    html: buildOembedIframeHtml(target, requestOrigin, size),
+    html: buildOembedIframeHtml(target, size),
     width: size.width,
     height: size.height,
     cache_age: OEMBED_CACHE_AGE_SECONDS,
@@ -282,13 +336,12 @@ export function handleOembedRequest(input: OembedHttpInput): OembedHttpOutput {
   if (!rawUrl) {
     return jsonBody(400, { error: 'url query parameter is required' });
   }
-  const target = parsePublicAtlasOembedUrl(rawUrl, input.requestOrigin);
+  const target = parsePublicAtlasOembedUrl(rawUrl, input.requestOrigin, input.allowedHosts);
   if (!target) {
     return jsonBody(404, { error: 'not a public atlas URL' });
   }
   const body = buildOembedRichResponse(
     target,
-    input.requestOrigin,
     parseMaxDimension(input.searchParams.get('maxwidth'), OEMBED_DEFAULT_WIDTH),
     parseMaxDimension(input.searchParams.get('maxheight'), OEMBED_DEFAULT_HEIGHT),
   );

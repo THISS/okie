@@ -8,6 +8,7 @@ import {
   buildOembedRichResponse,
   handleOembedRequest,
   installPublicAtlasOembedDiscovery,
+  oembedAllowedHostsFromEnv,
   oembedRequestOrigin,
   parsePublicAtlasOembedUrl,
   publicAtlasOembedHref,
@@ -30,12 +31,14 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
       owner: 'THISS',
       repo: 'okie',
       search: '',
+      origin: ORIGIN,
     });
     expect(parsePublicAtlasOembedUrl(`${ORIGIN}/r/THISS/okie/v1?nav=1`, ORIGIN)).toEqual({
       owner: 'THISS',
       repo: 'okie',
       ref: 'v1',
       search: '?nav=1',
+      origin: ORIGIN,
     });
     expect(parsePublicAtlasOembedUrl(`${ORIGIN}/new`, ORIGIN)).toBeUndefined();
     expect(parsePublicAtlasOembedUrl(`${ORIGIN}/`, ORIGIN)).toBeUndefined();
@@ -73,6 +76,42 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(result.body).not.toContain('evil.example');
   });
 
+  it('does not honor a forged Host as the iframe origin', () => {
+    const forged = request(
+      `url=${encodeURIComponent('http://evil.example/r/THISS/okie')}`,
+      'GET',
+      'http://evil.example',
+    );
+    expect(forged.status).toBe(404);
+    expect(forged.body).not.toContain('evil.example');
+    expect(forged.body).not.toContain('user:pass');
+    const credentialedHost = oembedRequestOrigin({ host: 'user:pass@evil.example' });
+    expect(credentialedHost).toBe('http://localhost:4173');
+    expect(credentialedHost).not.toContain('evil.example');
+  });
+
+  it('returns 404 for malformed percent-encoding instead of throwing', () => {
+    expect(() => parsePublicAtlasOembedUrl(`${ORIGIN}/r/%/okie`, ORIGIN)).not.toThrow();
+    expect(parsePublicAtlasOembedUrl(`${ORIGIN}/r/%/okie`, ORIGIN)).toBeUndefined();
+    expect(request(`url=${encodeURIComponent(`${ORIGIN}/r/%/okie`)}`).status).toBe(404);
+  });
+
+  it('allows a configured public host and still rejects unknown hosts', () => {
+    const allowed = ['atlas.example.test'];
+    const publicUrl = 'https://atlas.example.test/r/THISS/okie';
+    expect(parsePublicAtlasOembedUrl(publicUrl, publicUrl, allowed)?.origin).toBe('https://atlas.example.test');
+    const result = handleOembedRequest({
+      method: 'GET',
+      requestOrigin: 'https://atlas.example.test',
+      searchParams: new URLSearchParams({ url: publicUrl, format: 'json' }),
+      allowedHosts: allowed,
+    });
+    expect(result.status).toBe(200);
+    const body = JSON.parse(result.body) as { html: string };
+    expect(body.html).toContain('src="https://atlas.example.test/r/THISS/okie"');
+    expect(body.html).not.toMatch(/@/);
+  });
+
   it('rejects missing, xml, and non-atlas URLs', () => {
     expect(request('').status).toBe(400);
     expect(request(`url=${encodeURIComponent(DOGFOOD)}&format=xml`).status).toBe(501);
@@ -108,6 +147,15 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(attrs.get('href')).toBe(publicAtlasOembedHref(DOGFOOD));
   });
 
+  it('derives extra public hosts from origin env only, never API keys', () => {
+    expect(oembedAllowedHostsFromEnv({
+      OKIE_PUBLIC_ORIGIN: 'https://atlas.example.test',
+      VERCEL_URL: 'okie.vercel.app',
+      OPENROUTER_API_KEY: 'okie-test-llm-key-cla30-fake',
+      GITHUB_TOKEN: 'gho_okieTestPlantedSecretCla30xxxx',
+    })).toEqual(['atlas.example.test', 'okie.vercel.app']);
+  });
+
   it('derives the atlas origin from Host, never a scan-process bind', () => {
     expect(oembedRequestOrigin({ host: 'localhost:4173' })).toBe('http://localhost:4173');
     expect(oembedRequestOrigin({
@@ -131,6 +179,8 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     ]));
     const fn = readFileSync(new URL('../api/oembed.ts', import.meta.url), 'utf8');
     expect(fn).toContain('handleOembedRequest');
+    expect(fn).toContain('oembedAllowedHostsFromEnv');
     expect(fn).not.toMatch(/apiKey|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
+    expect(viteConfig).toContain('oembedAllowedHostsFromEnv');
   });
 });

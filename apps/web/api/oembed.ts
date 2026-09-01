@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { handleOembedRequest, oembedRequestOrigin } from '../src/oembed';
+import { handleOembedRequest, oembedAllowedHostsFromEnv, oembedRequestOrigin } from '../src/oembed';
 
 /**
  * Vercel serverless stand-in for the Vite `/oembed` plugin. Rewritten from
@@ -12,6 +12,7 @@ export default function handler(request: IncomingMessage, response: ServerRespon
     method: request.method ?? 'GET',
     requestOrigin: oembedRequestOrigin(request.headers),
     searchParams: url.searchParams,
+    allowedHosts: oembedAllowedHostsFromEnv(process.env),
   });
   response.statusCode = result.status;
   for (const [name, value] of Object.entries(result.headers)) {
