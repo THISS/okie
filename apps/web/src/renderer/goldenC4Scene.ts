@@ -236,6 +236,7 @@ export function resolveOmittedEdges(bundle: C4ProjectionBundle, snapshot: Archit
         toName: nameById.get(toId) ?? toId,
         label: edge.label || relationById.get(relationIds[0] ?? '')?.kind || 'relates to',
         relationCount: relationIds.length,
+        ...(relationIds.length ? { semanticIds: [...relationIds] } : {}),
       }];
     });
   });

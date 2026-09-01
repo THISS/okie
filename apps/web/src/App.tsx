@@ -65,7 +65,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1266,6 +1266,7 @@ export function App() {
   const [detailsOpen, setDetailsOpen] = useState(() => window.innerWidth > 780);
   const [inspectorTab, setInspectorTab] = useState<'source' | 'details'>('details');
   const [inspectorHistory, setInspectorHistory] = useState<InspectorHistorySubject[]>([]);
+  const [omittedRemainderExpanded, setOmittedRemainderExpanded] = useState(false);
   const [detailsWidth, setDetailsWidth] = useState(() => {
     let stored = Number.NaN;
     try {
@@ -1567,6 +1568,10 @@ export function App() {
     [activeDetail, activeProjectionRelationIds, scene, selected.id],
   );
   const related = canvasRelations.rows;
+  const omittedEnumeration = paintedOmittedRelationRows(canvasRelations.omittedRows, omittedRemainderExpanded);
+  useEffect(() => {
+    setOmittedRemainderExpanded(false);
+  }, [activeDetail, selected.id]);
   const breadcrumbState = useMemo(() => {
     const byId = new Map(scene.entities.map(entity => [entity.id, entity]));
     const chain: SceneEntity[] = [];
@@ -4266,7 +4271,8 @@ export function App() {
                   const collapsed = row.count > 1 ? ` · ${row.count} relationships` : '';
                   return <button aria-label={`${outbound ? 'Outbound' : 'Inbound'} ${row.label} ${outbound ? 'to' : 'from'} ${row.counterpart.name}${row.count > 1 ? `, ${row.count} collapsed relationships` : ''}`} data-inspector-presentation="relation-summary" data-inspector-relation-count={row.count} data-inspector-relation-edge-id={row.id} data-inspector-relation-id={row.relationId} key={row.id} onClick={() => inspectCanvasRelation(row)}><span aria-hidden="true" className="relation-direction">{outbound ? '→' : '←'}</span><span><strong>{row.counterpart.name}</strong><small>{row.label}{collapsed}{row.protocol ? ` · ${row.protocol}` : ''}</small></span><ChevronIcon size={15}/></button>;
                 }) : <div className="empty-inspector-section">No relationship is drawn on this card at this level.</div>}
-                {canvasRelations.omittedEdgeCount > 0 && <p className="empty-inspector-section" data-inspector-omitted-edge-count={canvasRelations.omittedEdgeCount} data-inspector-omitted-relation-count={canvasRelations.omittedRelationCount} data-testid="relationships-omitted-more">+{canvasRelations.omittedRelationCount} more not routed at this zoom</p>}
+                {canvasRelations.omittedEdgeCount > 0 && <button aria-expanded={omittedRemainderExpanded} className="empty-inspector-section relations-omitted-more" data-inspector-omitted-edge-count={canvasRelations.omittedEdgeCount} data-inspector-omitted-relation-count={canvasRelations.omittedRelationCount} data-testid="relationships-omitted-more" onClick={() => setOmittedRemainderExpanded(open => !open)} type="button">+{canvasRelations.omittedRelationCount} more not routed at this zoom</button>}
+                {canvasRelations.omittedEdgeCount > 0 && omittedRemainderExpanded ? <div className="relations-omitted-list" data-testid="relationships-omitted-list">{omittedEnumeration.map(row => <div data-omitted-relation-id={row.relationId} key={row.id}><span><strong>{row.fromName} → {row.toName}</strong><small>{row.label}{row.evidencePaths.length ? ` · ${row.evidencePaths.length} evidence file${row.evidencePaths.length === 1 ? '' : 's'}` : ''}</small></span></div>)}</div> : null}
                 {canvasRelations.hiddenInternalCount > 0 && <p className="empty-inspector-section" data-inspector-hidden-internal-count={canvasRelations.hiddenInternalCount} data-testid="relationships-hidden-internal">Hiding {canvasRelations.hiddenInternalCount} relationship{canvasRelations.hiddenInternalCount === 1 ? '' : 's'} between parts of {selected.name} — both ends land on this card. Open inside to see them.</p>}</div>
               </section>
 
