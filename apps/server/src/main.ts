@@ -3,11 +3,13 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_MAX_TARBALL_BYTES } from "@okie/scan";
+import { answerAskQuestion, publicAskStatus } from "./ask.js";
 import { createScanJobQueue, createSubmitLimiter, type ScanJob } from "./jobs.js";
 import { healthzBody, resolveListenHost } from "./localDefaults.js";
 import {
   describeEnrichmentMode,
   loadOperatorDotenv,
+  redactGatewayText,
   resolveLlmGatewayConfig,
   resolveLlmGatewayLocalConfig,
 } from "./llmGateway.js";
@@ -20,6 +22,8 @@ import { createScanJobRunner } from "./scanService.js";
  *   POST /api/scans {url}   validate GitHub URL → dedupe → enqueue a worker job
  *   GET  /api/scans/:id     job status with stage + enrichment progress
  *   GET  /api/scans         recent jobs (dev visibility)
+ *   GET  /api/ask           { connected } — gateway key present, never the key
+ *   POST /api/ask           one-shot Q&A grounded in submitted packets/summaries
  *   GET  /scan/*            the published trio objects + index.json manifest
  *
  * Vite proxies /api and /scan here during `pnpm dev`. This process has no auth
@@ -85,13 +89,13 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
   response.end(text);
 }
 
-async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
     const buffer = chunk as Buffer;
     size += buffer.length;
-    if (size > 16 * 1024) throw new Error("request body too large");
+    if (size > maxBytes) throw new Error("request body too large");
     chunks.push(buffer);
   }
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
@@ -120,13 +124,31 @@ function serveScanObject(pathname: string, response: ServerResponse): void {
 
 const server = createServer((request, response) => {
   void handle(request, response).catch((error: unknown) => {
-    sendJson(response, 500, { error: error instanceof Error ? error.message : String(error) });
+    const raw = error instanceof Error ? error.message : String(error);
+    sendJson(response, 500, { error: redactGatewayText(raw, llm.apiKey) });
   });
 });
 
 async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const url = new URL(request.url ?? "/", "http://localhost");
   const pathname = url.pathname;
+
+  if (request.method === "GET" && pathname === "/api/ask") {
+    sendJson(response, 200, publicAskStatus(llm));
+    return;
+  }
+
+  if (request.method === "POST" && pathname === "/api/ask") {
+    let body: unknown;
+    try {
+      body = await readJsonBody(request, 48 * 1024);
+    } catch {
+      sendJson(response, 400, { error: "Expected a JSON body: {\"question\": \"...\", \"packets\": [...]}" });
+      return;
+    }
+    sendJson(response, 200, await answerAskQuestion(llm, body));
+    return;
+  }
 
   if (request.method === "POST" && pathname === "/api/scans") {
     const key = request.socket.remoteAddress ?? "unknown";

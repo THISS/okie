@@ -509,6 +509,10 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .ask-popover textarea:focus { border-color: rgba(217,255,112,.4); }
 .ask-popover textarea::placeholder { color: var(--atlas-quiet); }
 .ask-popover p { margin: 8px 0 10px; color: var(--atlas-quiet); font-size: 11px; line-height: 1.45; }
+.ask-popover .ask-error { color: #f0b4b4; }
+.ask-popover .ask-answer { max-height: 160px; overflow: auto; margin: 0 0 10px; padding: 10px; border: 1px solid var(--atlas-line); border-radius: 8px; color: var(--atlas-text); font-size: 11px; line-height: 1.5; }
+.ask-popover .ask-citations { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+.ask-popover .ask-citations li { color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 10px; }
 .ask-popover > button { height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; border: 0; border-radius: 8px; background: var(--atlas-accent); color: #12170b; font-size: 11px; font-weight: 700; cursor: pointer; }
 .ask-popover > button:disabled { opacity: .35; cursor: not-allowed; }
 
