@@ -59,6 +59,22 @@ function citedRefs(entity: ArchitectureEntity | undefined): SourceRef[] | undefi
   return entity.sourceRefs.slice(0, MAX_SOURCE_REFS).map(ref => ({ ...ref }));
 }
 
+/**
+ * Optional CLA-28 polish: after a gated enrichment pass, accepted section
+ * summaries land on `responsibility`. Mention them in narration when they fit
+ * the authoring cap; otherwise keep the deterministic C4 copy (enrichment off
+ * and gate reject take this path because the field is absent).
+ */
+function withAcceptedSummary(deterministic: string, entity: ArchitectureEntity | undefined): string {
+  const summary = entity?.responsibility?.trim();
+  if (!summary || deterministic.includes(summary)) return deterministic;
+  const glue = /[.!?]$/u.test(deterministic) ? " " : ". ";
+  const combined = `${deterministic}${glue}${summary}`;
+  return combined.length <= STORY_AUTHORING_LIMITS.maxNarrationCharacters
+    ? combined
+    : deterministic;
+}
+
 function connectedTraces(
   focusIds: readonly EntityId[],
   relations: readonly ArchitectureRelation[],
@@ -102,8 +118,11 @@ function step(params: {
 /**
  * Deterministic C4 overview tour for a scanned snapshot: system context, the
  * surrounding world, containers, then one evidence-backed descent to a
- * representative component and code entity. No LLM, no enrichment — ranks and
- * copy come only from observed structure (child counts, relation degree, ids).
+ * representative component and code entity. Ranks, step ids, titles, focus,
+ * traces, and reveals come only from observed structure (child counts,
+ * relation degree, ids). After a gated enrichment pass, step narration may
+ * mention an accepted summary; the compiler is not replaced by an LLM-written
+ * story.
  */
 export function buildOverviewStory(
   snapshot: ArchitectureSnapshot,
@@ -156,7 +175,7 @@ export function buildOverviewStory(
       relations,
       visibleRelations,
       reveal: "context",
-      narration: contextNarration,
+      narration: withAcceptedSummary(contextNarration, system),
       durationMs: 1_600,
       evidenceFrom: system,
     }),
@@ -186,9 +205,12 @@ export function buildOverviewStory(
       relations,
       visibleRelations,
       reveal: "container",
-      narration: childCount > 0
-        ? `${featuredContainer.name} holds ${childCount} component${childCount === 1 ? "" : "s"}.`
-        : `${featuredContainer.name} is a container in ${systemName}.`,
+      narration: withAcceptedSummary(
+        childCount > 0
+          ? `${featuredContainer.name} holds ${childCount} component${childCount === 1 ? "" : "s"}.`
+          : `${featuredContainer.name} is a container in ${systemName}.`,
+        featuredContainer,
+      ),
       durationMs: 1_800,
     }));
   }
@@ -202,7 +224,10 @@ export function buildOverviewStory(
       relations,
       visibleRelations,
       reveal: "component",
-      narration: `${featuredComponent.name} is a component in ${featuredContainer!.name}, with ${childCount} source declaration${childCount === 1 ? "" : "s"}.`,
+      narration: withAcceptedSummary(
+        `${featuredComponent.name} is a component in ${featuredContainer!.name}, with ${childCount} source declaration${childCount === 1 ? "" : "s"}.`,
+        featuredComponent,
+      ),
       durationMs: 1_800,
     }));
   }
@@ -219,7 +244,10 @@ export function buildOverviewStory(
       relations,
       visibleRelations,
       reveal: "code",
-      narration: `${location} is a source-level declaration in ${featuredComponent!.name}.`,
+      narration: withAcceptedSummary(
+        `${location} is a source-level declaration in ${featuredComponent!.name}.`,
+        featuredCode,
+      ),
       durationMs: 2_000,
     }));
   }

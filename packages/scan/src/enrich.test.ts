@@ -398,7 +398,21 @@ test("rejected or off enrichment leaves the deterministic overview story unchang
   });
   assert.equal(stableJson(rejected.story), stableJson(off.story));
   assert.equal(rejected.enrichmentReport?.results[0]?.accepted, false);
+});
 
+test("accepted summaries polish overview narration; the C4 tour spine is unchanged", () => {
+  const pin = {
+    commitSha: "abc123def456abc123def456abc123def456abc1",
+    treeHash: "def456abc123def456abc123def456abc123def4",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+  };
+  const off = buildScanArtifacts({
+    discovery: discovery(),
+    pin,
+    readFile: read,
+    repositorySlug: "acme",
+    systemName: "Acme",
+  });
   const accepted = buildScanArtifacts({
     discovery: discovery(),
     pin,
@@ -408,9 +422,14 @@ test("rejected or off enrichment leaves the deterministic overview story unchang
     enrichmentDocs: new Map([["container:pkg-a", summaryDoc(off.baseExtraction, "container:pkg-a")]]),
   });
   assert.equal(accepted.enrichmentReport?.enrichedContainers.includes("container:pkg-a"), true);
-  assert.equal(stableJson(accepted.story), stableJson(off.story), "overview tour stays deterministic when summaries land");
   assert.equal(
     accepted.snapshot.entities.find(entity => entity.id === "container:pkg-a")?.responsibility,
     "Scanner-scoped container summary.",
   );
+  const spine = (story: typeof off.story) => story.steps.map(step => ({
+    id: step.id, title: step.title, reveal: step.reveal, focusEntityIds: [...step.focusEntityIds],
+  }));
+  assert.deepEqual(spine(accepted.story), spine(off.story));
+  assert.ok(accepted.story.steps.some(step => step.narration.includes("Scanner-scoped container summary.")));
+  assert.notEqual(stableJson(accepted.story), stableJson(off.story));
 });

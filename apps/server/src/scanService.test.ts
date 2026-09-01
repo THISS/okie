@@ -341,7 +341,7 @@ test("gateway 429 fails enrichment only; deterministic atlas still publishes", a
   }
 });
 
-test("off and rejected enrichment publish the same overview story; accepted summaries keep it", async () => {
+test("off and rejected enrichment publish the same overview story; accepted summaries polish narration", async () => {
   const fixture = makeTarball("acme-app-ffffffffffffffffffffffffffffffffffffffff", {
     "package.json": JSON.stringify({ name: "acme-app" }),
     "README.md": "# Acme\nTiny ping library.\n",
@@ -410,7 +410,26 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     assert.equal(accepted.stage, "complete");
     assert.equal(accepted.atlasReady, true);
     const acceptedStory = readFileSync(join(scanRoot, "acme__app-summary", "story.json"), "utf8");
-    assert.equal(acceptedStory, offStory, "accepted summaries must not change the overview tour");
+    type OverviewStory = {
+      steps: Array<{ id: string; title: string; reveal?: string; focusEntityIds: string[]; narration: string }>;
+    };
+    const spine = (raw: string) => JSON.parse(raw) as OverviewStory;
+    const offParsed = spine(offStory);
+    const acceptedParsed = spine(acceptedStory);
+    assert.deepEqual(
+      acceptedParsed.steps.map(step => ({
+        id: step.id, title: step.title, reveal: step.reveal, focusEntityIds: step.focusEntityIds,
+      })),
+      offParsed.steps.map(step => ({
+        id: step.id, title: step.title, reveal: step.reveal, focusEntityIds: step.focusEntityIds,
+      })),
+      "accepted summaries must not change the overview tour spine",
+    );
+    assert.ok(
+      acceptedParsed.steps.some(step => step.narration.includes("Tiny ping library.")),
+      "accepted container summary must appear in overview narration",
+    );
+    assert.notEqual(acceptedStory, offStory);
     const snapshot = JSON.parse(readFileSync(join(scanRoot, "acme__app-summary", "snapshot.json"), "utf8")) as {
       entities: Array<{ id: string; kind: string; responsibility?: string }>;
     };
