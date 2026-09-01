@@ -420,6 +420,30 @@ describe('production dev-mode gate', () => {
   });
 });
 
+describe('Mermaid import onto the atlas (CLA-35)', () => {
+  it('exposes a first-class import path on the atlas, not behind dev mode', () => {
+    expect(app).toContain('data-testid="import-mermaid"');
+    expect(app).toContain('aria-label="Import Mermaid diagram"');
+    expect(app).toContain('<ImportMermaidDialog');
+    expect(app).toContain('applyImportedMermaid');
+    expect(app).toContain("data-atlas-source={importedAtlas ? 'imported-mermaid'");
+    expect(app).not.toContain('{devMode && <ImportMermaidDialog');
+    expect(css).toContain('.import-mermaid-dialog');
+  });
+
+  it('compiles imported mermaid through the atlas scene path and leaves scan-from-repo in place', () => {
+    expect(app).toContain('compileImportedMermaidScene');
+    expect(app).toContain('importMermaidToAtlas');
+    expect(app).toContain("setLiveMessage(result.message)");
+    expect(app).toContain('The atlas is unchanged.');
+    expect(app).toContain("scanFixture ? 'scan' : 'golden'");
+    const landing = readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8');
+    expect(landing).toContain('Map a repository');
+    expect(landing).toContain('aria-label="GitHub repository URL"');
+    expect(landing).toContain('Scan');
+  });
+});
+
 describe('selected relationship focus wiring', () => {
   it('keeps transient endpoint/path promotion behind story selection ownership', () => {
     expect(app).toContain("currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pickedRelationId : undefined");

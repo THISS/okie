@@ -39,6 +39,9 @@ import {
   type DerivedDiagramSurface,
 } from './diagram/diagramWorkspace';
 import { SemanticDiagramSurface } from './diagram/SemanticDiagramSurface';
+import { ImportMermaidDialog } from './diagram/ImportMermaidDialog';
+import { compileImportedMermaidScene } from './diagram/compileImportedMermaid';
+import { importMermaidToAtlas, type ImportedMermaidAtlas } from './diagram/importMermaid';
 import { createNavigationHistoryController, type NavigationHistoryController } from './navigation/historyController';
 import {
   canonicalNavigationState,
@@ -1187,6 +1190,12 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     return params.has('cx') || params.has('cy') || params.has('z');
   }, []);
+  const [importedAtlas, setImportedAtlas] = useState<ImportedMermaidAtlas | undefined>();
+  const importedAtlasRef = useRef(importedAtlas);
+  importedAtlasRef.current = importedAtlas;
+  const [importMermaidOpen, setImportMermaidOpen] = useState(false);
+  const [importMermaidSource, setImportMermaidSource] = useState('');
+  const [importMermaidError, setImportMermaidError] = useState<string>();
   const goldenScene = useMemo(() => activeCreateScene(scanFixture?.navigation.rootEntityId ?? 'system:okie'), []);
   const navigationDefaults = useMemo<NavigationDefaults>(() => {
     const identity = query.fixture === 'stress'
@@ -1208,13 +1217,13 @@ export function App() {
     return {
       preserveParams: preservedNavigationParams,
       references: {
-        hasSnapshot: (id: string) => id === navigationDefaults.snapshotId,
-        hasView: (id: string) => id === navigationDefaults.viewId,
-        hasEntity: (id: string) => demoEntityIds?.has(id) ?? true,
+        hasSnapshot: (id: string) => id === navigationDefaults.snapshotId || id === importedAtlas?.snapshot.id,
+        hasView: (id: string) => id === navigationDefaults.viewId || id === `view:${importedAtlas?.snapshot.id}`,
+        hasEntity: (id: string) => demoEntityIds?.has(id) || importedAtlas?.snapshot.entities.some(entity => entity.id === id) || query.fixture === 'stress',
         hasStory: (id: string) => id === storyId,
       },
     };
-  }, [goldenScene.entities, navigationDefaults, query.fixture]);
+  }, [goldenScene.entities, importedAtlas, navigationDefaults, query.fixture]);
   const initialNavigation = useMemo(() => navigationStateFromUrl(
     window.location.href,
     navigationDefaults,
@@ -1976,7 +1985,7 @@ export function App() {
         const restoredBaseDetail = semanticDetails[restoredLevel];
         const restoredScene = query.fixture === 'stress'
           ? goldenScene
-          : activeCreateScene(next.rootEntityId, goldenScene, authoringHistoryRef.current.present);
+          : composeScene(next.rootEntityId, goldenScene, authoringHistoryRef.current.present);
         const validatedLensPath = validateSemanticLensPath(restoredScene, restoredBaseDetail, next.lensPath ?? []);
         const restoredSettled = validatedLensPath.entries;
         installSemanticSession({ baseDetail: restoredBaseDetail, settled: restoredSettled, active: idleSemanticLens() });
@@ -2774,8 +2783,14 @@ export function App() {
     window.requestAnimationFrame(() => visibilityControlRef.current?.focus({ preventScroll: true }));
   }
 
+  function composeScene(focusEntityId: string, previous?: AtlasScene, authoring?: ArchitectureAuthoringDocument): AtlasScene {
+    const imported = importedAtlasRef.current;
+    if (!imported) return activeCreateScene(focusEntityId, previous, authoring);
+    return compileImportedMermaidScene(imported, previous, focusEntityId, authoring);
+  }
+
   function authoredScene(document: ArchitectureAuthoringDocument, currentScene: AtlasScene) {
-    return activeCreateScene(navigationIdentity.rootEntityId, currentScene, document);
+    return composeScene(navigationIdentity.rootEntityId, currentScene, document);
   }
 
   function installAuthoringHistory(
@@ -3177,7 +3192,7 @@ export function App() {
     if (drillDetail) {
       interruptStory(`Opened ${target.name}`);
       cancelSemanticLensAt('scan drill recompile', liveCamera);
-      const nextScene = activeCreateScene(target.id, scene, authoringHistoryRef.current.present);
+      const nextScene = composeScene(target.id, scene, authoringHistoryRef.current.present);
       const nextCamera = frameProjectionScope(nextScene, target.id, baseDetail, viewport, measureCurrentMapSafeArea())
         ?? (() => {
           const bounds = semanticBounds(nextScene, target.id, baseDetail) ?? target;
@@ -3238,7 +3253,7 @@ export function App() {
     const target = scene.entities.find(entity => entity.id === entityId);
     if (!target) return;
     interruptStory(`Returned to ${target.name}`);
-    const nextScene = activeCreateScene(target.id, scene, authoringHistoryRef.current.present);
+    const nextScene = composeScene(target.id, scene, authoringHistoryRef.current.present);
     const nextCamera = frameProjectionScope(nextScene, target.id, baseDetail, viewport, measureCurrentMapSafeArea())
       ?? (() => {
         const bounds = semanticBounds(nextScene, target.id, baseDetail) ?? target;
@@ -3947,6 +3962,80 @@ export function App() {
     return [...new Set([selected.id, ...connected, ...selectedChildren.map(child => child.id)])].slice(0, 12);
   }
 
+  function applyImportedMermaid(source: string) {
+    const result = importMermaidToAtlas(source);
+    if (!result.ok) {
+      setImportMermaidError(result.message);
+      setLiveMessage(result.message);
+      return;
+    }
+    let nextScene: AtlasScene;
+    try {
+      nextScene = compileImportedMermaidScene(result.atlas, scene);
+    } catch (error) {
+      const message = `${error instanceof Error ? error.message : 'Mermaid import failed.'} The atlas is unchanged.`;
+      setImportMermaidError(message);
+      setLiveMessage(message);
+      return;
+    }
+    importedAtlasRef.current = result.atlas;
+    setImportedAtlas(result.atlas);
+    setImportMermaidError(undefined);
+    setImportMermaidSource(source);
+    setImportMermaidOpen(false);
+    interruptStory('Imported a Mermaid diagram');
+    cancelSemanticLensAt('imported mermaid', camera);
+    const frameDetail = result.atlas.frameDetail;
+    installSemanticSession(idleSemanticLensSession(frameDetail));
+    const fitted = frameSemanticEntities(
+      nextScene,
+      result.atlas.frameEntityIds,
+      frameDetail,
+      viewport,
+      measureCurrentMapSafeArea(),
+    )
+      ?? frameEntities(nextScene, result.atlas.frameEntityIds, viewport, measureCurrentMapSafeArea())
+      ?? camera;
+    const selectId = result.atlas.snapshot.entities.find(entity => entity.id !== result.atlas.rootEntityId)?.id
+      ?? result.atlas.rootEntityId;
+    setScene(nextScene);
+    setSelectedId(selectId);
+    setPickedRelationId(undefined);
+    setStoryStep(-1);
+    setStoryPlaying(false);
+    setVisibilityMode('all');
+    updateCamera(fitted);
+    const identity = {
+      repositoryId: result.atlas.snapshot.repositoryId,
+      snapshotId: result.atlas.snapshot.id,
+      viewId: `view:${result.atlas.snapshot.id}`,
+      rootEntityId: result.atlas.rootEntityId,
+    };
+    setNavigationIdentity({ ...identity, filterId: undefined });
+    setDiagramWorkspace(createDiagramWorkspace({
+      camera: fitted,
+      selectedId: selectId,
+      inspector: { open: detailsOpen, tab: 'details', subjectId: selectId },
+    }));
+    commitNavigation(canonicalNavigationState({
+      ...identity,
+      selectedId: selectId,
+      camera: fitted,
+      detail: frameDetail,
+      lensPath: [],
+    }, {
+      ...navigationDefaults,
+      ...identity,
+      selectedId: selectId,
+      camera: fitted,
+      detail: frameDetail,
+      lensPath: [],
+      story: undefined,
+    }), 'replace');
+    const kinds = result.atlas.diagramTypes.join(' and ');
+    setLiveMessage(`Imported ${kinds} onto the atlas with ${result.atlas.frameEntityIds.length} nodes.`);
+  }
+
   function openDerivedDiagram(kind: DerivedDiagramKind = 'flow') {
     abortInspectorCameraFlight();
     const id = `diagram:${kind}:${selected.id}`;
@@ -4020,7 +4109,7 @@ export function App() {
   const storyControlActive = storyPlaying || storyPhase === 'flight' || storyPhase === 'arrival';
 
   return (
-    <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-dev-mode={devMode ? 'true' : 'false'} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
+    <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-atlas-source={importedAtlas ? 'imported-mermaid' : scanFixture ? 'scan' : 'golden'} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-dev-mode={devMode ? 'true' : 'false'} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
       <a className="skip-link" href={mainDiagramActive ? '#entity-explorer' : '#derived-diagram-content'}>{mainDiagramActive ? 'Skip to entity explorer' : 'Skip to active diagram'}</a>
       <header className="topbar">
         <div className="brand-block" aria-label="Atlas home">
@@ -4047,6 +4136,17 @@ export function App() {
         </div>
 
         <div className="top-actions">
+          <button
+            aria-haspopup="dialog"
+            aria-label="Import Mermaid diagram"
+            className="icon-button"
+            data-testid="import-mermaid"
+            onClick={() => { setImportMermaidError(undefined); setImportMermaidOpen(true); }}
+            title="Import Mermaid"
+            type="button"
+          >
+            <FileIcon/>
+          </button>
           <details className="diagram-add-menu screenshot-menu" ref={screenshotMenuRef}>
             <summary aria-label="Capture screenshot" title="Capture screenshot"><ImageIcon size={16}/></summary>
             <div>
@@ -4406,6 +4506,14 @@ export function App() {
         </aside>
         </> : <section className="map-stage derived-map-stage"><SemanticDiagramSurface flowArtifact={activeDynamicFlowArtifact} mermaidSource={activeMermaidSource} notationAdvisoryCount={notationDiagnostics.length} onSessionChange={updateActiveDiagramSession} scene={scene} surface={activeDiagramSurface}/></section>}
       </main>
+      <ImportMermaidDialog
+        error={importMermaidError}
+        onClose={() => { setImportMermaidOpen(false); setImportMermaidError(undefined); }}
+        onImport={applyImportedMermaid}
+        onSourceChange={next => { setImportMermaidSource(next); setImportMermaidError(undefined); }}
+        open={importMermaidOpen}
+        source={importMermaidSource}
+      />
       <div aria-atomic="true" aria-live="polite" className="sr-only" role="status">{liveMessage}</div>
     </div>
   );
