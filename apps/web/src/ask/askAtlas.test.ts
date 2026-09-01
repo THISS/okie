@@ -6,8 +6,10 @@ import {
   ASK_NOT_CONNECTED_LIVE_MESSAGE,
   MAX_ASK_PACKETS,
   askScopeEntityIds,
+  askScopeKey,
   buildAskContext,
   probeAskConnection,
+  shouldCommitAskAnswer,
   submitAskQuestion,
   type AskEntity,
 } from './askAtlas';
@@ -85,6 +87,23 @@ describe('Ask scope is selected or isolated packets, never a silent whole-repo d
       isolatedIds: crowd.map(entity => entity.id),
     });
     expect(ids).toHaveLength(MAX_ASK_PACKETS);
+  });
+
+  it('does not commit an in-flight or leftover answer after the scope changes', () => {
+    const selected = askScopeKey({ selectedId: 'container:web-app', isolateActive: false, isolatedIds: [] });
+    const other = askScopeKey({ selectedId: 'container:other', isolateActive: false, isolatedIds: [] });
+    const isolated = askScopeKey({
+      selectedId: 'system:okie',
+      isolateActive: true,
+      isolatedIds: ['container:web-app', 'component:web-shell'],
+    });
+    expect(selected).toBe('select:container:web-app');
+    expect(other).not.toBe(selected);
+    expect(isolated).toBe('isolate:component:web-shell,container:web-app');
+    expect(isolated).not.toBe(askScopeKey({ selectedId: 'system:okie', isolateActive: false, isolatedIds: [] }));
+    expect(shouldCommitAskAnswer(selected, selected)).toBe(true);
+    expect(shouldCommitAskAnswer(selected, other)).toBe(false);
+    expect(shouldCommitAskAnswer(selected, isolated)).toBe(false);
   });
 });
 

@@ -101,8 +101,10 @@ import {
   ASK_NOT_CONNECTED_LIVE_MESSAGE,
   ASK_PROBE_TIMEOUT_MS,
   ASK_REQUEST_TIMEOUT_MS,
+  askScopeKey,
   buildAskContext,
   probeAskConnection,
+  shouldCommitAskAnswer,
   submitAskQuestion,
 } from './ask/askAtlas';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
@@ -1232,6 +1234,7 @@ export function App() {
   const askButtonRef = useRef<HTMLButtonElement | null>(null);
   const askInputRef = useRef<HTMLTextAreaElement | null>(null);
   const askAbortRef = useRef<AbortController | undefined>(undefined);
+  const askScopeKeyRef = useRef('');
   const shareButtonRef = useRef<HTMLButtonElement | null>(null);
   const visibilityControlRef = useRef<HTMLButtonElement | null>(null);
   const shareFallbackRef = useRef<HTMLInputElement | null>(null);
@@ -1638,6 +1641,12 @@ export function App() {
     () => scene.entities.filter(entity => visibilityFocusIds.has(entity.id)).map(entity => entity.id),
     [scene.entities, visibilityFocusIds],
   );
+  const currentAskScopeKey = askScopeKey({
+    selectedId,
+    isolateActive: visibilityMode === 'isolate',
+    isolatedIds: isolatedEntityIds,
+  });
+  askScopeKeyRef.current = currentAskScopeKey;
   const isolatedEntityIdSet = useMemo(() => new Set(isolatedEntityIds), [isolatedEntityIds]);
   const isolatedRelationIds = useMemo(
     () => scene.relations
@@ -3701,6 +3710,9 @@ export function App() {
       askAbortRef.current?.abort();
       askAbortRef.current = undefined;
       setAskPending(false);
+      setAskAnswer(undefined);
+      setAskCitations([]);
+      setAskError(undefined);
       return;
     }
     const controller = new AbortController();
@@ -3709,6 +3721,16 @@ export function App() {
     });
     return () => controller.abort();
   }, [askOpen]);
+
+  useEffect(() => {
+    if (!askOpen) return;
+    askAbortRef.current?.abort();
+    askAbortRef.current = undefined;
+    setAskPending(false);
+    setAskAnswer(undefined);
+    setAskCitations([]);
+    setAskError(undefined);
+  }, [askOpen, currentAskScopeKey]);
 
   const askState = askPending ? 'asking' : askError ? 'error' : askAnswer ? 'answered' : askConnected ? 'ready' : 'disconnected';
 
@@ -3741,7 +3763,10 @@ export function App() {
     askAbortRef.current?.abort();
     const controller = new AbortController();
     askAbortRef.current = controller;
+    const submittedScopeKey = currentAskScopeKey;
     setAskPending(true);
+    setAskAnswer(undefined);
+    setAskCitations([]);
     setAskError(undefined);
     try {
       const result = await submitAskQuestion(text, context, {
@@ -3749,6 +3774,7 @@ export function App() {
         timeoutMs: ASK_REQUEST_TIMEOUT_MS,
       });
       if (controller.signal.aborted) return;
+      if (!shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)) return;
       if (!result.connected) {
         playDisconnectedAsk();
         return;

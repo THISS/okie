@@ -188,6 +188,8 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('ASK_NOT_CONNECTED_LIVE_MESSAGE');
     expect(app).toContain('ASK_NOT_CONNECTED_COPY');
     expect(app).toContain('ASK_CONNECTED_COPY');
+    expect(app).toContain('shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)');
+    expect(app).toContain('currentAskScopeKey');
   });
 
   it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {

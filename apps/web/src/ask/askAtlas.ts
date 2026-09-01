@@ -64,6 +64,12 @@ export type AskScopeOptions = {
   isolatedIds: readonly string[];
 };
 
+export type AskScopeIdentity = {
+  selectedId: string;
+  isolateActive: boolean;
+  isolatedIds: readonly string[];
+};
+
 export type AskAnswer =
   | { connected: false }
   | { connected: true; answer: string; citations: string[]; scopeIds: string[] }
@@ -73,6 +79,21 @@ export type AskFetch = typeof fetch;
 
 export function isAskRootKind(kind: string) {
   return ROOT_KINDS.has(kind);
+}
+
+/**
+ * Stable identity for the packets Ask is allowed to cite. Used so an in-flight
+ * or leftover answer cannot land after the user changes selection or Isolate.
+ */
+export function askScopeKey(options: AskScopeIdentity): string {
+  if (options.isolateActive && options.isolatedIds.length > 0) {
+    return `isolate:${uniqueIds(options.isolatedIds).slice().sort().join(',')}`;
+  }
+  return `select:${options.selectedId}`;
+}
+
+export function shouldCommitAskAnswer(submittedScopeKey: string, currentScopeKey: string) {
+  return submittedScopeKey === currentScopeKey;
 }
 
 /**
