@@ -18,12 +18,13 @@ Every embed is a back-link to the full hosted atlas — the growth loop [`embed-
 
 | Door | Who | Access path | State today |
 |---|---|---|---|
-| **Public paste** | Anyone, no account | `POST /api/scans {url}` → anonymous codeload tarball at SHA | **Ships** (`main.ts`, `scanLanding.tsx`) |
-| **Connect a repo** | Signed-in, for private/owned repos | GitHub App install (read-only) → short-lived installation token | Gap — auth story below |
+| **Public view / embed** | Anyone, no account | `/r/{owner}/{repo}` and oEmbed | **Ships** — no login wall on the map |
+| **Hosted scan** | Signed-in GitHub user (OAuth) or GitHub App install | `POST /api/scans {url}` after `/api/auth/github` | **Ships** — no session, no scan. HTTPS Bearer (OAuth) or loopback test-double; never operator `gh` |
+| **Connect a private repo** | Signed-in + App installed | GitHub App install (read-only) → short-lived installation token | Gap — identity exists; private trees wait on installation-token mint |
 
-Public paste is the top of the funnel and stays frictionless: no login, no OAuth dance, just a URL. `normalizeRepoInput` already accepts every shape a user is likely to paste (`https://github.com/owner/repo`, `owner/repo`, `.../tree/<ref>`, `gh:owner/repo@ref`), so the box is forgiving. Connecting a repo is the second, deliberate step a user takes only when they want a private repo mapped or want to *own* an atlas (refresh-on-push, private embeds, deletion).
+`normalizeRepoInput` already accepts every shape a user is likely to paste (`https://github.com/owner/repo`, `owner/repo`, `.../tree/<ref>`, `gh:owner/repo@ref`), so the box is forgiving. Scanning requires GitHub identity (the Vercel-like abuse gate). Viewing a published atlas does not.
 
-Design rule: **the public door never requires an account, and the private door never requires a personal access token.** Anonymous scanning carries the funnel; the GitHub App carries trust.
+Design rule: **the public atlas view never requires an account, and hosted scan never uses a personal access token or operator `gh`.** GitHub OAuth names the account; the GitHub App (follow-up mint) carries private-tree trust.
 
 ### Minimal permissions
 
@@ -31,9 +32,9 @@ Acquisition is a pluggable stage ([`scan-runner.md`](../roadmap/scan-runner.md) 
 
 | Scan target | Identity asked of the user | GitHub permission | Why this is the floor |
 |---|---|---|---|
-| **Public repo** | None | None — anonymous `codeload` at SHA | The tree is already world-readable; a token would only add liability |
-| **Private repo** | Sign in, install the **Okie GitHub App** on the specific repo/org | Read-only **`contents`** + **`metadata`** | `contents` reads the tree at a SHA; `metadata` resolves refs/default branch. Nothing else — no write, no issues, no actions |
-| **Account identity** (optional) | GitHub **OAuth** (`read:user`, `user:email`) | — | Only to name the account and list installable repos; never touches code |
+| **Public repo** | GitHub OAuth (`read:user`) | Authenticated public API (Bearer) | Abuse gate: a real GitHub user, not operator `gh`. The tree is world-readable |
+| **Private repo** | Sign in, install the **Okie GitHub App** on the specific repo/org | Read-only **`contents`** + **`metadata`** | `contents` reads the tree at a SHA; `metadata` resolves refs/default branch. Installation-token mint is the follow-up — private trees stay closed until then |
+| **Account identity** | GitHub **OAuth** (`read:user`) | — | Names the account, raises GitHub rate limits, keys the scan quota |
 
 The GitHub App is the Vercel pattern: **installable per repo/org, revocable in one click, short-lived tokens, no long-lived user PATs.** We never ask for write scope, never ask for `repo` (the coarse classic-PAT scope), and never store source — the checkout is ephemeral and discarded after the scan ([`scan-runner.md`](../roadmap/scan-runner.md) "Checkout strategy"). The redaction gate (release gate 8, [`ingestion-golden-tests.md`](../architecture/ingestion-golden-tests.md)) guarantees no raw source, secret, or absolute path escapes into a published atlas — the reason a private repo can safely yield a *shareable* map.
 
@@ -41,15 +42,15 @@ The GitHub App is the Vercel pattern: **installable per repo/org, revocable in o
 
 | Capability | Anonymous | Signed-in (OAuth) | Signed-in + App installed |
 |---|---|---|---|
-| Scan a **public** repo | ✅ (rate-limited by IP) | ✅ (rate-limited by account) | ✅ |
-| Scan a **private** repo | ✗ | ✗ | ✅ (repos the App can read) |
+| Scan a **public** repo | ✗ (401 — sign in) | ✅ (rate-limited by account) | ✅ |
+| Scan a **private** repo | ✗ | ✗ (identity present; token mint later) | follow-up |
 | Explore / share the hosted atlas | ✅ | ✅ | ✅ |
 | Public embed snippet | ✅ | ✅ | ✅ |
 | **Own** an atlas (refresh-on-push, delete, pin default) | ✗ | ✗ | ✅ |
 | **Private** embed (token-gated) | ✗ | ✗ | ✅ |
-| Higher scan quota / priority | ✗ | ✅ | ✅ |
+| Higher scan quota / priority | ✗ | ✅ (account-keyed limiter) | ✅ |
 
-The split is deliberate: anonymous users get the *whole product* for public code (explore, share, embed) so the loop spins without a signup wall. Signing in only unlocks *ownership and privacy* — the things that genuinely need identity.
+The split is deliberate: anonymous users get the *whole view* for public maps (explore, share, embed) so a share URL never hits a login wall. Scanning is the abuse/cost gate and requires GitHub identity.
 
 ### Rate & abuse limits
 
@@ -57,15 +58,15 @@ The public door is a free compute endpoint, so it is bounded at several layers. 
 
 | Control | Where | Value today | Extend for scale |
 |---|---|---|---|
-| Per-key submit limiter | `jobs.ts` `createSubmitLimiter` | 5 scans / 10 min / IP | Key on account for signed-in; keep IP for anonymous |
+| Per-key submit limiter | `jobs.ts` `createSubmitLimiter` | 5 scans / 10 min / GitHub user id, plus IP | Account is the abuse key; IP remains a belt |
 | Dedupe identical in-flight scans | `jobs.ts` `activeByKey` | one job per `slug@ref` | — (idempotent by scan determinism) |
 | Single-worker CPU queue | `jobs.ts` | one job at a time | Worker pool + queue depth cap under load |
 | Tarball size cap | `github.ts` `DEFAULT_MAX_TARBALL_BYTES` | 150 MB | Per-tier cap; clear over-limit error already exists |
-| Request body cap | `main.ts` `readJsonBody` | 16 KB | — |
+| Request body cap | `scanServer.ts` `readJsonBody` | 16 KB | — |
 | Non-TS/JS fail-closed | `scan.ts` (empty source set) | explicit error | Language-coverage message already actionable |
 | Unknown/private-404 fail-closed | `github.ts` `acquisitionError` | "check owner/repo/ref, or that the repo is public" | — |
 
-Gaps to close before self-serve at volume: a **global** concurrency/spend ceiling (anonymous scans are unauthenticated compute), and an **enrichment budget** cap per account (enrichment is the only paid step — it must never be spendable by an anonymous flood). Recommendation: keep the deterministic scan free and generous; gate *enrichment* of arbitrary pasted repos behind sign-in once cost matters, since the deterministic atlas already publishes instantly on its own ([`embed-hosting.md`](../roadmap/embed-hosting.md) §5).
+Gaps to close before self-serve at volume: a **global** concurrency/spend ceiling, and an **enrichment budget** cap per GitHub account (enrichment is the only paid step). Scan submit is already account-keyed (5 / 10 min) plus IP. Recommendation: keep the deterministic scan free and generous for signed-in users; cap enrichment spend per account, since the deterministic atlas already publishes instantly on its own ([`embed-hosting.md`](../roadmap/embed-hosting.md) §5).
 
 ### The waiting experience (a real product moment)
 
@@ -154,7 +155,7 @@ Fully owned by [`embed-hosting.md`](../roadmap/embed-hosting.md) §4 + [`scan-ru
    Enrichment is the only paid (LLM) step and the only anonymous-spend risk. **Recommendation:** publish the deterministic atlas free and instantly for everyone; gate *enrichment of arbitrary pasted repos* behind sign-in once cost is real, while keeping enrichment automatic for the operator-curated flagship set. The deterministic base is already a complete, shippable product ([`embed-hosting.md`](../roadmap/embed-hosting.md) §5), so this costs the anonymous user nothing essential.
 
 2. **When does the GitHub App land, and does OAuth ship before it?**
-   Private repos and atlas ownership both need the App; casual identity needs only OAuth. **Recommendation:** ship **OAuth-lite first** (name the account, higher quota, "my atlases") to unlock ownership on *public* repos, then add the read-only App for private repos as the paid unlock. This sequences trust: users get value from signing in before they're asked to install anything.
+   **OAuth-lite ships in this slice** (sign-in required to scan a public repo; account-keyed submit limiter). Private repos still need App installation-token mint — identity is present, private trees stay closed until that follow-up.
 
 3. **Framing/CSP posture at launch — open vs. allowlist?**
    [`embed-hosting.md`](../roadmap/embed-hosting.md) flags this as a pre-launch checklist item. **Recommendation:** ship **public embeds with open `frame-ancestors`** (the growth loop wants zero friction to embed anywhere) and reserve the `frame-ancestors` *allowlist* for private embeds, where restricting to the customer's domains is a feature, not a limit. Never `X-Frame-Options: DENY` on `/embed/*`.

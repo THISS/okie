@@ -4,12 +4,14 @@ import {
   regenerateScanManifest,
   scanGithubRepository,
   stableJson,
+  githubRepoIsPublic,
+  repoApiPath,
   type EmittedPackets,
   type GithubClient,
   type GithubSourceRef,
   type ScanArtifacts,
 } from "@okie/scan";
-import type { JobRunner, ScanJobEnrichment } from "./jobs.js";
+import type { JobRunner, ScanJob, ScanJobEnrichment } from "./jobs.js";
 import { createEnricher } from "./enrichment.js";
 import { githubClientForAccess } from "./githubAccess.js";
 import {
@@ -43,12 +45,9 @@ export interface ScanServiceOptions {
   /** Injectable enrichment factory (tests). Returning undefined skips enrichment. */
   enricherFactory?: (onProgress: (note: string) => void) => EnrichmentHook | undefined;
   /**
-   * GitHub transport for HTTP scans. Defaults to the hosted anonymous client
-   * (`githubClientForAccess({ kind: "anonymous" })`) — HTTPS only, no `gh`
-   * CLI fallback, so an unauthenticated POST /api/scans cannot inherit the
-   * operator's credentials (CLA-18/30). The operator CLI still uses
-   * `createDefaultGithubClient()`. The `github` access kind is the Vercel-like
-   * OAuth/App seam and is not wired on this path yet.
+   * GitHub transport override for tests. Production uses per-job
+   * `job.githubAccess` via `githubClientForAccess` — HTTPS Bearer for OAuth/App,
+   * HTTPS-only for the loopback test-double, never `gh`, never env tokens.
    */
   githubClient?: GithubClient;
   log?: (line: string) => void;
@@ -150,8 +149,22 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const llmLocal = options.llmLocal ?? {};
   const enricherFactory = options.enricherFactory
     ?? (enrichMode === "off" ? () => undefined : createDefaultEnricherFactory(enrichMode, env, llmLocal));
-  const githubClient = options.githubClient ?? githubClientForAccess({ kind: "anonymous" });
+  const githubClientOverride = options.githubClient;
   const redact = (line: string): string => redactGatewayText(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
+
+  const clientForJob = (job: ScanJob): GithubClient => {
+    if (githubClientOverride) return githubClientOverride;
+    if (job.githubAccess) return githubClientForAccess(job.githubAccess);
+    throw new Error("hosted scan requires GitHub sign-in");
+  };
+
+  const rejectPrivateHostedTree = async (client: GithubClient, job: ScanJob): Promise<void> => {
+    if (!job.githubAccess) return;
+    const result = await client.getJson(repoApiPath(job.owner, job.repo));
+    if (!result.ok || !githubRepoIsPublic(result.json)) {
+      throw new Error("Could not confirm that repository is public. Private trees stay closed until the GitHub App can read them.");
+    }
+  };
 
   return async (job, update) => {
     try {
@@ -162,13 +175,14 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
         dirSlug: job.slug,
       };
       const scanOptions = {
-        client: githubClient,
+        client: clientForJob(job),
         codeSurface: "public" as const,
         ...(options.maxTarballBytes ? { maxTarballBytes: options.maxTarballBytes } : {}),
       };
 
       update({ stage: "scanning" });
       log(redact(`${job.id}: scanning gh:${job.owner}/${job.repo}${job.ref ? `@${job.ref}` : ""}`));
+      await rejectPrivateHostedTree(scanOptions.client, job);
       const deterministic = await scanGithubRepository(source, scanOptions);
       update({
         stage: "publishing",

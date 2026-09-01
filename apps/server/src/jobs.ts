@@ -1,4 +1,5 @@
 import { scrubGithubTokens } from "@okie/scan";
+import type { ScanGithubAccess } from "./githubAccess.js";
 
 export type ScanJobStage =
   | "queued"
@@ -36,6 +37,8 @@ export interface ScanJob {
   relationCount?: number;
   enrichment: ScanJobEnrichment;
   error?: string;
+  /** Hosted GitHub identity. Never copied by toPublicJob. */
+  githubAccess?: ScanGithubAccess;
 }
 
 export interface ScanJobRequest {
@@ -43,6 +46,7 @@ export interface ScanJobRequest {
   repo: string;
   ref?: string;
   slug: string;
+  githubAccess?: ScanGithubAccess;
 }
 
 export type JobRunner = (
@@ -133,6 +137,7 @@ export function createScanJobQueue(
         updatedAt: now(),
         atlasReady: false,
         enrichment: { state: "pending" },
+        ...(request.githubAccess ? { githubAccess: request.githubAccess } : {}),
       };
       jobs.set(job.id, job);
       pending.push(job);

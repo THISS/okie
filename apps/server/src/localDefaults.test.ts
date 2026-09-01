@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { DEFAULT_LISTEN_HOST, healthzBody, resolveListenHost } from "./localDefaults.js";
 import { publicLlmGatewayView, resolveLlmGatewayConfig } from "./llmGateway.js";
 
+const srcDir = fileURLToPath(new URL(".", import.meta.url));
+
 test("listen host defaults to loopback, not all interfaces", () => {
   assert.equal(DEFAULT_LISTEN_HOST, "127.0.0.1");
   assert.equal(resolveListenHost({}), "127.0.0.1");
@@ -39,14 +41,16 @@ test("healthz reports service status without scanRoot or filesystem paths", () =
   assert.doesNotMatch(json, /[A-Za-z]:\\/);
 });
 
-test("main.ts serves healthzBody on loopback and never puts scanRoot on the wire", () => {
-  const src = readFileSync(join(fileURLToPath(new URL(".", import.meta.url)), "../src/main.ts"), "utf8");
-  assert.match(src, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
-  assert.match(src, /server\.listen\(port,\s*bind/);
-  assert.doesNotMatch(src, /sendJson\([^;]*scanRoot/);
+test("scanServer serves healthzBody and main.ts listens on loopback without scanRoot on the wire", () => {
+  const main = readFileSync(join(srcDir, "../src/main.ts"), "utf8");
+  const server = readFileSync(join(srcDir, "../src/scanServer.ts"), "utf8");
+  assert.match(server, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
+  assert.match(main, /server\.listen\(port,\s*bind/);
+  assert.doesNotMatch(main, /sendJson\([^;]*scanRoot/);
+  assert.doesNotMatch(server, /sendJson\([^;]*scanRoot/);
 });
 
-test("healthz and main.ts never put an LLM API key on the wire", () => {
+test("healthz and scan HTTP never put an LLM API key on the wire", () => {
   const fakeKey = "okie-test-llm-key-cla20-fake";
   const config = resolveLlmGatewayConfig({ OPENROUTER_API_KEY: fakeKey });
   const body = healthzBody({ enrich: "auto", bind: "127.0.0.1" });
@@ -57,18 +61,24 @@ test("healthz and main.ts never put an LLM API key on the wire", () => {
   assert.doesNotMatch(view, new RegExp(fakeKey));
   assert.equal("apiKey" in body, false);
 
-  const src = readFileSync(join(fileURLToPath(new URL(".", import.meta.url)), "../src/main.ts"), "utf8");
-  assert.match(src, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
-  assert.doesNotMatch(src, /healthzBody\([^)]*apiKey/);
-  assert.doesNotMatch(src, /healthzBody\([^)]*llm/);
-  assert.match(src, /describeEnrichmentMode\(enrich,\s*llm\)/);
-  assert.match(src, /toPublicJob\(job,\s*text => redactGatewayText\(text,\s*llm\.apiKey\)\)/);
+  const main = readFileSync(join(srcDir, "../src/main.ts"), "utf8");
+  const server = readFileSync(join(srcDir, "../src/scanServer.ts"), "utf8");
+  assert.match(server, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
+  assert.doesNotMatch(server, /healthzBody\([^)]*apiKey/);
+  assert.doesNotMatch(server, /healthzBody\([^)]*llm/);
+  assert.match(main, /describeEnrichmentMode\(enrich,\s*llm\)/);
+  assert.match(server, /toPublicJob\(job,\s*text => redactGatewayText\(text,\s*llm\.apiKey\)\)/);
 });
 
-test("main.ts wires the hosted GitHub access seam and never the operator gh client", () => {
-  const src = readFileSync(join(fileURLToPath(new URL(".", import.meta.url)), "../src/main.ts"), "utf8");
-  assert.match(src, /resolveScanGithubAccess\(request\.headers\)/);
-  assert.match(src, /githubClientForAccess\(resolveScanGithubAccess\(\)\)/);
-  assert.doesNotMatch(src, /createDefaultGithubClient/);
-  assert.doesNotMatch(src, /GITHUB_TOKEN|GH_TOKEN/);
+test("scan HTTP wires GitHub session identity and never the operator gh client", () => {
+  const main = readFileSync(join(srcDir, "../src/main.ts"), "utf8");
+  const server = readFileSync(join(srcDir, "../src/scanServer.ts"), "utf8");
+  const oauth = readFileSync(join(srcDir, "../src/githubOAuth.ts"), "utf8");
+  assert.match(server, /resolveScanGithubAccess\(/);
+  assert.match(main, /createGithubAuthService/);
+  assert.doesNotMatch(main, /createDefaultGithubClient/);
+  assert.doesNotMatch(server, /createDefaultGithubClient/);
+  assert.doesNotMatch(main, /GITHUB_TOKEN|GH_TOKEN/);
+  assert.doesNotMatch(server, /GITHUB_TOKEN|GH_TOKEN/);
+  assert.doesNotMatch(oauth, /GITHUB_TOKEN|GH_TOKEN/);
 });
