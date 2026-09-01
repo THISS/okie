@@ -12,6 +12,8 @@ const scanServiceProxy = {
 
 export default defineConfig({
   plugins: [react()],
+  // SPA so `/new` and `/r/<owner>/<repo>` are public share/view URLs (CLA-30).
+  appType: 'spa',
   server: {
     host: 'localhost',
     port: 4173,

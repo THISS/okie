@@ -123,9 +123,9 @@ export function ScanLandingScreen() {
     <main style={page}>
       <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Map a repository</h1>
       <p style={mutedStyle}>
-        Paste a public GitHub repository and Okie builds its architecture atlas — an evidence-backed
-        C4 map from system context down to the public API of every file, with AI-written
-        descriptions layered on top of the deterministic scan.
+        Paste a public GitHub repository — no account needed — and Okie builds its architecture
+        atlas. Viewing a published atlas at <code>/r/owner/repo</code> is also public: there is
+        no login wall on the map. AI-written descriptions layer on top of the deterministic scan.
       </p>
 
       <form onSubmit={submit} style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem' }}>
@@ -245,7 +245,8 @@ export function ScanLandingScreen() {
       )}
 
       <p style={{ ...mutedStyle, marginTop: '2.5rem', fontSize: '0.85rem' }}>
-        Or explore the <a href="/" style={{ color: '#79dfd4' }}>Okie self-map demo</a>.
+        Or open the public <a href="/r/THISS/okie" style={{ color: '#79dfd4' }}>THISS/okie atlas</a>
+        {' '}(no login).
       </p>
     </main>
   );

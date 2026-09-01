@@ -1,7 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  createAnonymousGithubClient,
   regenerateScanManifest,
   scanGithubRepository,
   stableJson,
@@ -12,6 +11,7 @@ import {
 } from "@okie/scan";
 import type { JobRunner, ScanJobEnrichment } from "./jobs.js";
 import { createEnricher } from "./enrichment.js";
+import { githubClientForAccess } from "./githubAccess.js";
 import {
   createLlmGatewayClient,
   enrichmentModelId,
@@ -43,10 +43,12 @@ export interface ScanServiceOptions {
   /** Injectable enrichment factory (tests). Returning undefined skips enrichment. */
   enricherFactory?: (onProgress: (note: string) => void) => EnrichmentHook | undefined;
   /**
-   * GitHub transport for HTTP scans. Defaults to anonymous HTTPS with no `gh`
-   * CLI fallback — an unauthenticated POST /api/scans must not inherit the
-   * operator's credentials (CLA-18). The operator CLI still uses
-   * `createDefaultGithubClient()`.
+   * GitHub transport for HTTP scans. Defaults to the hosted anonymous client
+   * (`githubClientForAccess({ kind: "anonymous" })`) — HTTPS only, no `gh`
+   * CLI fallback, so an unauthenticated POST /api/scans cannot inherit the
+   * operator's credentials (CLA-18/30). The operator CLI still uses
+   * `createDefaultGithubClient()`. The `github` access kind is the Vercel-like
+   * OAuth/App seam and is not wired on this path yet.
    */
   githubClient?: GithubClient;
   log?: (line: string) => void;
@@ -148,7 +150,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const llmLocal = options.llmLocal ?? {};
   const enricherFactory = options.enricherFactory
     ?? (enrichMode === "off" ? () => undefined : createDefaultEnricherFactory(enrichMode, env, llmLocal));
-  const githubClient = options.githubClient ?? createAnonymousGithubClient();
+  const githubClient = options.githubClient ?? githubClientForAccess({ kind: "anonymous" });
   const redact = (line: string): string => redactGatewayText(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
 
   return async (job, update) => {

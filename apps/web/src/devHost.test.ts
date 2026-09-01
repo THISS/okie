@@ -19,4 +19,8 @@ describe('published Vite host default (CLA-17)', () => {
     expect(viteConfig).not.toMatch(/0\.0\.0\.0/);
     expect(viteConfig).toMatch(/host:\s*['"]localhost['"]/);
   });
+
+  it('is an SPA so /r/<owner>/<repo> share URLs serve the shell (CLA-30)', () => {
+    expect(viteConfig).toMatch(/appType:\s*['"]spa['"]/);
+  });
 });

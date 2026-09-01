@@ -1,9 +1,10 @@
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { join, normalize, resolve, sep } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_MAX_TARBALL_BYTES } from "@okie/scan";
 import { answerAskQuestion, publicAskStatus } from "./ask.js";
+import { githubClientForAccess, resolveScanGithubAccess } from "./githubAccess.js";
 import { createScanJobQueue, createSubmitLimiter, toPublicJob, type ScanJob } from "./jobs.js";
 import { healthzBody, resolveListenHost } from "./localDefaults.js";
 import {
@@ -14,10 +15,11 @@ import {
   resolveLlmGatewayLocalConfig,
 } from "./llmGateway.js";
 import { normalizeRepoInput } from "./repoUrl.js";
+import { resolvePublishedScanFile } from "./scanObjects.js";
 import { createScanJobRunner } from "./scanService.js";
 
 /**
- * Local-only paste-a-repo scan process (unauthenticated — not a public API):
+ * Paste-a-repo scan process used by the hosted public atlas (CLA-30):
  *
  *   POST /api/scans {url}   validate GitHub URL → dedupe → enqueue a worker job
  *   GET  /api/scans/:id     job status with stage + enrichment progress
@@ -26,10 +28,11 @@ import { createScanJobRunner } from "./scanService.js";
  *   POST /api/ask           one-shot Q&A grounded in submitted packets/summaries
  *   GET  /scan/*            the published trio objects + index.json manifest
  *
- * Vite proxies /api and /scan here during `pnpm dev`. This process has no auth
- * and must not be treated as deployable: it binds loopback by default (CLA-17)
- * and GitHub reads are anonymous HTTPS only (CLA-18). State on disk (the scan
- * root) is the durable output; job rows are ephemeral progress.
+ * Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (no login wall).
+ * Vite proxies /api and /scan here during `pnpm dev`. This process still has no
+ * HTTP auth and binds loopback by default (CLA-17). Anonymous POST /api/scans
+ * uses HTTPS-only GitHub reads — never operator `gh` (CLA-18/30). State on disk
+ * (the scan root) is the durable output; job rows are ephemeral progress.
  */
 
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -57,6 +60,7 @@ const queue = createScanJobQueue(createScanJobRunner({
   enrich,
   llmLocal,
   maxTarballBytes: DEFAULT_MAX_TARBALL_BYTES,
+  githubClient: githubClientForAccess(resolveScanGithubAccess()),
   log,
 }));
 const allowSubmit = createSubmitLimiter();
@@ -88,13 +92,8 @@ async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Pro
 
 /** Serves one published scan object; the scan root is the only readable tree. */
 function serveScanObject(pathname: string, response: ServerResponse): void {
-  const relative = normalize(decodeURIComponent(pathname.slice("/scan/".length)));
-  const target = resolve(scanRoot, relative);
-  if (target !== scanRoot && !target.startsWith(scanRoot + sep)) {
-    sendJson(response, 404, { error: "not found" });
-    return;
-  }
-  if (!existsSync(target) || !statSync(target).isFile()) {
+  const target = resolvePublishedScanFile(scanRoot, pathname);
+  if (!target) {
     sendJson(response, 404, { error: "not found" });
     return;
   }
@@ -136,6 +135,15 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
   }
 
   if (request.method === "POST" && pathname === "/api/scans") {
+    // Vercel-like GitHub auth is the intended abuse gate (CLA-30). This PR
+    // keeps paste anonymous: no login wall, no operator `gh`, no private trees.
+    const access = resolveScanGithubAccess(request.headers);
+    if (access.kind !== "anonymous") {
+      sendJson(response, 401, {
+        error: "GitHub sign-in is not available yet. Public repositories scan without login.",
+      });
+      return;
+    }
     const key = request.socket.remoteAddress ?? "unknown";
     if (!allowSubmit(key)) {
       sendJson(response, 429, { error: "Too many scans from this address; try again in a few minutes." });
@@ -195,7 +203,7 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
 }
 
 server.listen(port, bind, () => {
-  log(`listening on http://${bind}:${port} (no auth; local operator tool, not a public service)`);
+  log(`listening on http://${bind}:${port} (loopback default; anonymous GitHub HTTPS, no operator gh)`);
   log(`scan root: ${scanRoot}`);
   log(`enrichment: ${describeEnrichmentMode(enrich, llm)}`);
 });

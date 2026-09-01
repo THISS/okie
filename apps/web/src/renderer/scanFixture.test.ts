@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, loadScanFixture, resolveScanDocLoader, ScanFixtureError, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, fetchScanTrioLoader, loadScanFixture, resolveScanDocLoader, ScanFixtureError, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -123,5 +123,36 @@ describe('multi-repo scan doc resolution', () => {
 
   it('fails closed with guidance when no repos are available at all', () => {
     expect(() => resolveScanDocLoader('snapshot', 'anything', { root, repo: {} })).toThrow(/none are available/u);
+  });
+});
+
+describe('runtime-fetch scan trio loader (hosted /r URLs)', () => {
+  it('GETs /scan/<slug>/{name}.json and compiles nothing itself', async () => {
+    const calls: string[] = [];
+    const fetchImpl: typeof fetch = async input => {
+      const url = String(input);
+      calls.push(url);
+      return new Response(JSON.stringify({ ok: url }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const load = fetchScanTrioLoader('thiss__okie', fetchImpl);
+    expect(await load('snapshot')).toEqual({ ok: '/scan/thiss__okie/snapshot.json' });
+    expect(await load('view')).toEqual({ ok: '/scan/thiss__okie/view.json' });
+    expect(calls).toEqual([
+      '/scan/thiss__okie/snapshot.json',
+      '/scan/thiss__okie/view.json',
+    ]);
+  });
+
+  it('fails closed on 404 without putting tokens in the message', async () => {
+    const load = fetchScanTrioLoader('acme__app', async () => new Response('nope', { status: 404 }));
+    try {
+      await load('story');
+      throw new Error('expected ScanFixtureError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ScanFixtureError);
+      const message = (error as ScanFixtureError).issues[0]!.message;
+      expect(message).toContain('/scan/acme__app/story.json');
+      expect(message).not.toMatch(/gho_|ghp_|github_pat_|Bearer /u);
+    }
   });
 });

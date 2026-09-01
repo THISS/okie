@@ -64,3 +64,11 @@ test("healthz and main.ts never put an LLM API key on the wire", () => {
   assert.match(src, /describeEnrichmentMode\(enrich,\s*llm\)/);
   assert.match(src, /toPublicJob\(job,\s*text => redactGatewayText\(text,\s*llm\.apiKey\)\)/);
 });
+
+test("main.ts wires the hosted GitHub access seam and never the operator gh client", () => {
+  const src = readFileSync(join(fileURLToPath(new URL(".", import.meta.url)), "../src/main.ts"), "utf8");
+  assert.match(src, /resolveScanGithubAccess\(request\.headers\)/);
+  assert.match(src, /githubClientForAccess\(resolveScanGithubAccess\(\)\)/);
+  assert.doesNotMatch(src, /createDefaultGithubClient/);
+  assert.doesNotMatch(src, /GITHUB_TOKEN|GH_TOKEN/);
+});
