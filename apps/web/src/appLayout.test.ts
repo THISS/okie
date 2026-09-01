@@ -216,6 +216,18 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain('aggregated out of the routed view');
   });
 
+  it('keeps +N more compact until the remainder is opened, then enumerates omitted relations', () => {
+    expect(app).toContain('const [omittedRemainderExpanded, setOmittedRemainderExpanded] = useState(false)');
+    expect(app).toContain('paintedOmittedRelationRows(canvasRelations.omittedRows, omittedRemainderExpanded)');
+    expect(app).toContain('aria-expanded={omittedRemainderExpanded}');
+    expect(app).toContain('setOmittedRemainderExpanded(open => !open)');
+    expect(app).toContain('canvasRelations.omittedEdgeCount > 0 && omittedRemainderExpanded ? <div className="relations-omitted-list" data-testid="relationships-omitted-list">');
+    expect(app).toContain('data-omitted-relation-id={row.relationId}');
+    expect(app).toContain('{row.fromName} → {row.toName}');
+    expect(app).toContain("setOmittedRemainderExpanded(false)");
+    expect(app).not.toContain('scene.omittedRelations.map');
+  });
+
   it('never moves the camera on selection, only on an explicit camera intent', () => {
     const focusStart = app.indexOf('function focusEntity(');
     const focusEnd = app.indexOf('function navigateInspectorHierarchy', focusStart);

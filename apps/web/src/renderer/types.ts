@@ -88,6 +88,8 @@ export type OmittedEdge = {
   label: string;
   /** Canonical relations collapsed into this edge. */
   relationCount: number;
+  /** Relation ids collapsed into this unrouted edge, when the compile recorded them. */
+  semanticIds?: string[];
 };
 
 /** Dev-mode observability for the scan scoped compile (absent when unbounded). */

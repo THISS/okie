@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArchitectureEntity, ArchitectureRelation, ArchitectureSnapshot, EntityKind } from '@okie/architecture';
 import { createC4Scene, createGoldenC4Scene } from '../renderer/goldenC4Scene';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity } from './inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, paintedOmittedRelationRows } from './inspectorSupport';
 import type { AtlasScene, SemanticDetail } from '../renderer/types';
 
 /**
@@ -131,6 +131,27 @@ describe('L1 inspector follows the canvas', () => {
     expect(api.rows.map(row => row.id)).not.toContain(scene.omittedEdges![0]!.edgeId);
   });
 
+  it('keeps +N more compact by default and enumerates omitted relations only when expanded', () => {
+    const scene = scanScene(1);
+    const drawn = drawnEdgeIds(scene, 'container');
+    const api = canvasRelationsForEntity(scene, drawn, 'container:api', 'container');
+    const omittedEdge = scene.omittedEdges!.find(edge => edge.fromId === 'container:api' || edge.toId === 'container:api')!;
+
+    expect(api.omittedEdgeCount).toBe(1);
+    expect(api.omittedRelationCount).toBe(1);
+    expect(api.omittedRows).toHaveLength(1);
+    expect(api.omittedRows[0]).toMatchObject({
+      edgeId: omittedEdge.edgeId,
+      relationId: expect.stringMatching(/^rel:/),
+    });
+    expect(api.rows.map(row => row.id)).not.toContain(api.omittedRows[0]!.edgeId);
+    // Compact remainder: the inspector paints none of these until expand.
+    expect(paintedOmittedRelationRows(api.omittedRows, false)).toEqual([]);
+    expect(paintedOmittedRelationRows(api.omittedRows, true)).toEqual(api.omittedRows);
+    expect(paintedOmittedRelationRows(api.omittedRows, true).map(row => `${row.fromName} → ${row.toName}`))
+      .toHaveLength(api.omittedRelationCount);
+  });
+
   it('leaves the golden L1 card unchanged: three drawn context edges, all evidence-backed', () => {
     const scene = createGoldenC4Scene();
     const drawn = drawnEdgeIds(scene, 'context');
@@ -145,6 +166,7 @@ describe('L1 inspector follows the canvas', () => {
     expect(okie.omittedEdgeCount).toBe(0);
     // No fake +N more: leftover omittedRelations are not a second remainder.
     expect(okie.omittedRelationCount).toBe(0);
+    expect(okie.omittedRows).toEqual([]);
     // The golden fixture keeps 31 evidence-backed internal relations below L1.
     expect(okie.hiddenInternalCount).toBe(scene.relations.length - okie.rows.length);
     expect(okie.hiddenInternalCount).toBe(31);
@@ -172,6 +194,7 @@ describe('L1 inspector follows the canvas', () => {
     expect(stacked.hiddenInternalCount).toBe(3);
     expect(stacked.omittedEdgeCount).toBe(0);
     expect(stacked.omittedRelationCount).toBe(0);
+    expect(stacked.omittedRows).toEqual([]);
     expect(stacked.rows.length + stacked.hiddenInternalCount).toBe(scene.relations.length);
   });
 

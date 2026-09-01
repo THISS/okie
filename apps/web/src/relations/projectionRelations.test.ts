@@ -4,6 +4,7 @@ import {
   canvasRelationRowsForEntity,
   canvasRelationRowsInIsolate,
   canvasRelationsForEntity,
+  paintedOmittedRelationRows,
   selectedRelationPresentation,
   selectedRelationPresentations,
   selfProjectedRelationCount,
@@ -151,7 +152,13 @@ function projectedScene(): AtlasScene {
       toName: 'DB',
       label: '3 writes',
       relationCount: 3,
+      semanticIds: ['rel:api-db-w1', 'rel:api-db-w2', 'rel:api-db-w3'],
     }],
+    omittedRelations: [
+      { relationId: 'rel:api-db-w1', fromName: 'api.ts', toName: 'db.ts', label: 'writes rows', evidencePaths: ['src/w1.ts'] },
+      { relationId: 'rel:api-db-w2', fromName: 'api.ts', toName: 'db.ts', label: 'writes rows', evidencePaths: ['src/w2.ts'] },
+      { relationId: 'rel:api-db-w3', fromName: 'api.ts', toName: 'db.ts', label: 'writes rows', evidencePaths: ['src/w3.ts'] },
+    ],
     projection: {
       semanticToVisualEntityId: {}, visualToSemanticEntityId: {},
       semanticToVisualRelationIds: {}, visualToSemanticRelationIds: {},
@@ -299,5 +306,21 @@ describe('honest remainders beside the drawn rows', () => {
     expect(root.hiddenInternalCount).toBe(3);
     expect(root.omittedEdgeCount).toBe(0);
     expect(root.omittedRelationCount).toBe(0);
+    expect(root.omittedRows).toEqual([]);
+  });
+
+  it('enumerates omitted relations only after +N more is expanded', () => {
+    const scene = projectedScene();
+    const api = canvasRelationsForEntity(scene, ['edge:container:web>api', 'edge:container:api>db'], 'container:api', 'container');
+
+    expect(api.omittedRelationCount).toBe(3);
+    expect(api.omittedRows.map(row => row.relationId)).toEqual(['rel:api-db-w1', 'rel:api-db-w2', 'rel:api-db-w3']);
+    expect(api.omittedRows[0]).toMatchObject({
+      fromName: 'api.ts', toName: 'db.ts', label: 'writes rows', evidencePaths: ['src/w1.ts'],
+    });
+    expect(api.rows.map(row => row.id)).not.toContain('edge:container:api>db:writes');
+    expect(paintedOmittedRelationRows(api.omittedRows, false)).toEqual([]);
+    expect(paintedOmittedRelationRows(api.omittedRows, true)).toEqual(api.omittedRows);
+    expect(paintedOmittedRelationRows(api.omittedRows, true)).toHaveLength(3);
   });
 });

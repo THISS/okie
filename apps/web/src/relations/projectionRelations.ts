@@ -1,4 +1,4 @@
-import type { AtlasScene, SceneEntity, SceneRelation, SceneSourceRef, SemanticDetail } from '../renderer/types';
+import type { AtlasScene, OmittedEdge, SceneEntity, SceneRelation, SceneSourceRef, SemanticDetail } from '../renderer/types';
 
 export type RelationDirection = 'outbound' | 'inbound' | 'self';
 
@@ -147,6 +147,18 @@ export type CanvasRelationRow = {
   semanticIds: string[];
 };
 
+/** One unrouted relation collapsed into the compact `+N more` remainder. */
+export type OmittedRelationRow = {
+  /** Stable row key (`edgeId:relationId`) so one relation omitted in two edges stays distinct. */
+  id: string;
+  edgeId: string;
+  relationId: string;
+  fromName: string;
+  toName: string;
+  label: string;
+  evidencePaths: string[];
+};
+
 export type CanvasRelationsPresentation = {
   rows: CanvasRelationRow[];
   /**
@@ -159,7 +171,76 @@ export type CanvasRelationsPresentation = {
   omittedEdgeCount: number;
   /** Canonical relations collapsed into those unrouted edges. */
   omittedRelationCount: number;
+  /**
+   * Enumerable unrouted relations for this card at this band. The inspector must
+   * not paint these until the reader opens the compact `+N more` remainder.
+   */
+  omittedRows: OmittedRelationRow[];
 };
+
+function omittedEdgesForEntity(
+  scene: AtlasScene,
+  selectedEntityId: string,
+  detail: SemanticDetail,
+): OmittedEdge[] {
+  return (scene.omittedEdges ?? []).filter(edge => edge.detail === detail
+    && (edge.fromId === selectedEntityId || edge.toId === selectedEntityId));
+}
+
+/**
+ * Enumerates the unrouted relations a budgeted compile collapsed into `+N more`.
+ * Joins display names from omittedRelations only for ids this card's omitted
+ * edges already claimed — never a leftover dump of scene.omittedRelations.
+ */
+export function omittedRelationRowsFromEdges(
+  scene: AtlasScene,
+  omitted: readonly OmittedEdge[],
+): OmittedRelationRow[] {
+  const omittedRelationById = new Map((scene.omittedRelations ?? []).map(item => [item.relationId, item]));
+  const canonicalById = new Map(scene.relations.map(relation => [relation.id, relation]));
+  const entityById = new Map(scene.entities.map(entity => [entity.id, entity]));
+  const visualToSemantic = scene.projection?.visualToSemanticRelationIds;
+  const rows: OmittedRelationRow[] = [];
+  for (const edge of omitted) {
+    const semanticIds = [...new Set(edge.semanticIds?.length
+      ? edge.semanticIds
+      : visualToSemantic?.[edge.edgeId] ?? [])].sort((left, right) => left.localeCompare(right));
+    if (!semanticIds.length) {
+      rows.push({
+        id: edge.edgeId,
+        edgeId: edge.edgeId,
+        relationId: edge.edgeId,
+        fromName: edge.fromName,
+        toName: edge.toName,
+        label: edge.label,
+        evidencePaths: [],
+      });
+      continue;
+    }
+    for (const relationId of semanticIds) {
+      const omittedRelation = omittedRelationById.get(relationId);
+      const canonical = canonicalById.get(relationId);
+      rows.push({
+        id: `${edge.edgeId}:${relationId}`,
+        edgeId: edge.edgeId,
+        relationId,
+        fromName: omittedRelation?.fromName ?? (canonical ? entityById.get(canonical.from)?.name : undefined) ?? edge.fromName,
+        toName: omittedRelation?.toName ?? (canonical ? entityById.get(canonical.to)?.name : undefined) ?? edge.toName,
+        label: omittedRelation?.label?.trim() || canonical?.label?.trim() || canonical?.kindLabel?.trim() || edge.label,
+        evidencePaths: omittedRelation?.evidencePaths ?? [],
+      });
+    }
+  }
+  return rows;
+}
+
+/** Compact remainder paints nothing until the reader opens `+N more`. */
+export function paintedOmittedRelationRows(
+  omittedRows: readonly OmittedRelationRow[],
+  expanded: boolean,
+): readonly OmittedRelationRow[] {
+  return expanded ? omittedRows : [];
+}
 
 /**
  * Resolves the visible visual edges touching one entity.
@@ -292,8 +373,7 @@ export function canvasRelationsForEntity(
 ): CanvasRelationsPresentation {
   // Band-scoped: "+N more" claims what this zoom failed to route, and an edge
   // omitted in several bands must not be counted several times.
-  const omitted = (scene.omittedEdges ?? []).filter(edge => edge.detail === detail
-    && (edge.fromId === selectedEntityId || edge.toId === selectedEntityId));
+  const omitted = omittedEdgesForEntity(scene, selectedEntityId, detail);
   // Remainder is only unrouted visual edges. Never fall back to
   // scene.omittedRelations — on live L1 those ids are already counted as
   // hidden internals (or drawn rows), and stacking them as +N more is a dump.
@@ -302,5 +382,6 @@ export function canvasRelationsForEntity(
     hiddenInternalCount: selfProjectedRelationCount(scene, selectedEntityId, detail),
     omittedEdgeCount: omitted.length,
     omittedRelationCount: omitted.reduce((total, edge) => total + edge.relationCount, 0),
+    omittedRows: omittedRelationRowsFromEdges(scene, omitted),
   };
 }

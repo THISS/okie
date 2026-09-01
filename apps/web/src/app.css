@@ -643,7 +643,17 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .relations-list small { overflow: hidden; margin-top: 3px; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .relations-list svg { color: var(--atlas-quiet); }
 /* Footers under the drawn rows: what the canvas dropped, read as part of the list. */
-.relations-list > p.empty-inspector-section:not(:first-child) { border: 0; border-top: 1px solid var(--atlas-line); border-radius: 0; }
+.relations-list > p.empty-inspector-section:not(:first-child),
+.relations-list > button.relations-omitted-more:not(:first-child) { border: 0; border-top: 1px solid var(--atlas-line); border-radius: 0; }
+.relations-list > button.relations-omitted-more { display: block; grid-template-columns: none; padding: 12px; border-bottom: 0; background: transparent; color: var(--atlas-quiet); font-size: 11px; font-weight: 400; line-height: 1.5; }
+.relations-list > button.relations-omitted-more:hover { background: rgba(255,255,255,.045); }
+.relations-omitted-list { border-top: 1px solid var(--atlas-line); }
+.relations-omitted-list > div { padding: 9px 10px; border-bottom: 1px solid var(--atlas-line); background: rgba(255,255,255,.018); }
+.relations-omitted-list > div:last-child { border-bottom: 0; }
+.relations-omitted-list strong,
+.relations-omitted-list small { display: block; }
+.relations-omitted-list strong { overflow: hidden; font-size: 11px; font-weight: 630; text-overflow: ellipsis; white-space: nowrap; }
+.relations-omitted-list small { overflow: hidden; margin-top: 3px; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .source-card { width: 100%; min-width: 0; display: grid; grid-template-columns: 22px minmax(0, 1fr) 15px; align-items: start; gap: 8px; padding: 10px; border: 1px solid var(--atlas-line); border-radius: 9px; background: rgba(255,255,255,.018); text-align: left; cursor: pointer; }
 .source-card.static { cursor: default; }
 .source-card:not(.static):hover { border-color: var(--atlas-line-strong); background: rgba(255,255,255,.045); }
