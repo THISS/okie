@@ -41,4 +41,14 @@ describe('enrichmentStageDetail (CLA-29)', () => {
     expect(src).toMatch(/enrichmentStageDetail/);
     expect(src).toMatch(/data-enrichment-state/);
   });
+
+  it('scanLanding requires GitHub sign-in for scan and keeps /r views public', () => {
+    const src = readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8');
+    expect(src).toMatch(/\/api\/auth\/me/);
+    expect(src).toMatch(/credentials: 'include'/);
+    expect(src).toMatch(/Sign in with GitHub/);
+    expect(src).toMatch(/no login wall on the map/);
+    expect(src).not.toMatch(/no account needed/);
+    expect(src).not.toMatch(/gho_|GITHUB_TOKEN|GH_TOKEN|client_secret/);
+  });
 });

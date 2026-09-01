@@ -57,12 +57,23 @@ test("HTTP scan runner does not invoke operator gh auth on a private-repo 404", 
 
   try {
     const queue = createScanJobQueue(createScanJobRunner({ scanRoot, enrich: "off" }));
-    queue.submit({ owner: "acme", repo: "secret", slug: "acme__secret" });
+    queue.submit({
+      owner: "acme",
+      repo: "secret",
+      slug: "acme__secret",
+      githubAccess: {
+        kind: "github",
+        source: "test-double",
+        token: "gho_okieTestDoubleTokenCla30xxxxx",
+        login: "okie-test-user",
+        userId: "0",
+      },
+    });
     await queue.idle();
     const job = queue.list()[0]!;
     assert.equal(job.stage, "failed");
     assert.match(job.error ?? "", /not found.*public/i);
-    assert.equal(existsSync(sentinel), false, "operator gh CLI must not run on the unauthenticated HTTP path");
+    assert.equal(existsSync(sentinel), false, "operator gh CLI must not run on the hosted HTTP path");
   } finally {
     globalThis.fetch = originalFetch;
     process.env.PATH = originalPath;

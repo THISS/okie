@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
   acquireGithubTree,
+  authenticatedTarballUrl,
   commitApiPath,
   createAnonymousGithubClient,
+  createBearerGithubClient,
   GithubAcquisitionError,
   interpretCommitResponse,
   interpretRepoResponse,
@@ -42,6 +44,7 @@ test("URL/path builders match the GitHub REST + codeload shapes", () => {
   // Slashes in a ref are encoded so a branch like release/1.x forms one path segment value.
   assert.equal(commitApiPath("o", "r", "release/1.x"), "/repos/o/r/commits/release%2F1.x");
   assert.equal(tarballUrl("o", "r", "abc123"), "https://codeload.github.com/o/r/tar.gz/abc123");
+  assert.equal(authenticatedTarballUrl("o", "r", "abc123"), "https://api.github.com/repos/o/r/tarball/abc123");
 });
 
 test("interpretCommitResponse pins sha/tree and normalizes the committer date", () => {
@@ -177,6 +180,53 @@ test("createAnonymousGithubClient fails closed on a private-repo 404 and never m
 
   const dest = join(mkdtempSync(join(tmpdir(), "okie-anon-")), "repo.tar.gz");
   await assert.rejects(client.downloadTarball("acme", "secret", "deadbeef", dest, 1024), /status 404/);
+});
+
+test("createBearerGithubClient sends Authorization on JSON and tarball URLs and never shells out to gh", async () => {
+  const FAKE = "gho_okieTestBearerTokenCla30xxxxxxxx";
+  const originalPath = process.env.PATH ?? "";
+  const work = mkdtempSync(join(tmpdir(), "okie-bearer-gh-"));
+  const bin = join(work, "bin");
+  const sentinel = join(work, "gh-invoked");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, "gh"), `#!/bin/sh\nprintf '%s\\n' "$*" >> ${JSON.stringify(sentinel)}\nexit 1\n`);
+  chmodSync(join(bin, "gh"), 0o755);
+  process.env.PATH = `${bin}:${originalPath}`;
+  process.env.GITHUB_TOKEN = "gho_okieTestOperatorTokenCla30xxxx";
+  process.env.GH_TOKEN = "ghp_okieTestOperatorTokenCla30yyyy";
+
+  const seen: Array<{ url: string; authorization: string | null }> = [];
+  const client = createBearerGithubClient(FAKE, {
+    fetch: async (input, init) => {
+      const url = String(input);
+      const headers = new Headers(init?.headers);
+      seen.push({ url, authorization: headers.get("authorization") });
+      assert.equal(url.includes(FAKE), false, "token must not appear in the URL");
+      if (url.includes("/tarball/")) {
+        return new Response("not a tar", { status: 404 });
+      }
+      return new Response(JSON.stringify({ default_branch: "main" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+
+  try {
+    const json = await client.getJson("/repos/o/r");
+    assert.equal(json.ok, true);
+    const dest = join(work, "repo.tar.gz");
+    await assert.rejects(client.downloadTarball("o", "r", "deadbeef", dest, 1024), /status 404/);
+    assert.deepEqual(seen.map(item => item.authorization), [`Bearer ${FAKE}`, `Bearer ${FAKE}`]);
+    assert.equal(seen[0]?.url, "https://api.github.com/repos/o/r");
+    assert.equal(seen[1]?.url, "https://api.github.com/repos/o/r/tarball/deadbeef");
+    assert.equal(existsSync(sentinel), false, "operator gh CLI must not run for Bearer hosted access");
+  } finally {
+    process.env.PATH = originalPath;
+    delete process.env.GITHUB_TOKEN;
+    delete process.env.GH_TOKEN;
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 test("createAnonymousGithubClient reports anonymous rate-limits without a gh fallback hint", async () => {

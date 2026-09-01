@@ -3,22 +3,42 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { githubClientForAccess, resolveScanGithubAccess } from "./githubAccess.js";
+import { githubClientForAccess, resolveScanGithubAccess, scanQuotaKey } from "./githubAccess.js";
+import type { GithubSession } from "./githubOAuth.js";
 
 const FAKE_OPERATOR_GHO = "gho_okieTestOperatorTokenCla30xxxx";
 const FAKE_OPERATOR_GHP = "ghp_okieTestOperatorTokenCla30yyyy";
 const FAKE_USER_BEARER = "gho_okieTestUserTokenCla30zzzz";
+const FAKE_TEST_DOUBLE = "gho_okieTestDoubleTokenCla30xxxxx";
 
-test("hosted scan identity is anonymous even when Authorization and operator tokens are present", () => {
+const oauthSession: GithubSession = {
+  id: "session-oauth",
+  login: "octocat",
+  userId: "1",
+  source: "oauth",
+  token: FAKE_USER_BEARER,
+  createdAt: 1,
+};
+
+const testDoubleSession: GithubSession = {
+  id: "session-test",
+  login: "okie-test-user",
+  userId: "0",
+  source: "test-double",
+  token: FAKE_TEST_DOUBLE,
+  createdAt: 1,
+};
+
+test("hosted scan identity is unauthenticated without a session even when Authorization and operator tokens are present", () => {
   const previousGithub = process.env.GITHUB_TOKEN;
   const previousGh = process.env.GH_TOKEN;
   process.env.GITHUB_TOKEN = FAKE_OPERATOR_GHO;
   process.env.GH_TOKEN = FAKE_OPERATOR_GHP;
   try {
-    assert.deepEqual(resolveScanGithubAccess({}), { kind: "anonymous" });
+    assert.deepEqual(resolveScanGithubAccess({}), { kind: "unauthenticated" });
     assert.deepEqual(
-      resolveScanGithubAccess({ authorization: `Bearer ${FAKE_USER_BEARER}` }),
-      { kind: "anonymous" },
+      resolveScanGithubAccess({ headers: { authorization: `Bearer ${FAKE_USER_BEARER}` } }),
+      { kind: "unauthenticated" },
     );
   } finally {
     if (previousGithub === undefined) delete process.env.GITHUB_TOKEN;
@@ -28,7 +48,20 @@ test("hosted scan identity is anonymous even when Authorization and operator tok
   }
 });
 
-test("githubClientForAccess never sends operator or request tokens and never shells out to gh", async () => {
+test("a GitHub session is the only hosted scan grant", () => {
+  const access = resolveScanGithubAccess({
+    session: oauthSession,
+    headers: { authorization: `Bearer ${FAKE_OPERATOR_GHO}` },
+  });
+  assert.equal(access.kind, "github");
+  if (access.kind !== "github") throw new Error("expected github access");
+  assert.equal(access.login, "octocat");
+  assert.equal(access.source, "oauth");
+  assert.equal(access.token, FAKE_USER_BEARER);
+  assert.equal(scanQuotaKey(access), "gh:1");
+});
+
+test("githubClientForAccess sends Bearer for OAuth and never shells out to gh", async () => {
   const originalFetch = globalThis.fetch;
   const originalPath = process.env.PATH ?? "";
   const work = mkdtempSync(join(tmpdir(), "okie-gh-access-"));
@@ -39,10 +72,12 @@ test("githubClientForAccess never sends operator or request tokens and never she
   chmodSync(join(bin, "gh"), 0o755);
 
   const authorizationHeaders: string[] = [];
-  globalThis.fetch = async (_input, init) => {
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
     const headers = new Headers(init?.headers);
     const authorization = headers.get("authorization");
     if (authorization) authorizationHeaders.push(authorization);
+    assert.equal(url.includes(FAKE_USER_BEARER), false);
     return new Response("Not Found", { status: 404, headers: { "content-type": "application/json" } });
   };
   process.env.PATH = `${bin}:${originalPath}`;
@@ -50,19 +85,15 @@ test("githubClientForAccess never sends operator or request tokens and never she
   process.env.GH_TOKEN = FAKE_OPERATOR_GHP;
 
   try {
-    const anonymous = githubClientForAccess(resolveScanGithubAccess({
-      authorization: `Bearer ${FAKE_USER_BEARER}`,
-    }));
-    const json = await anonymous.getJson("/repos/acme/secret");
-    assert.equal(json.ok, false);
-    assert.deepEqual(authorizationHeaders, [], "anonymous hosted scans must not attach a Bearer token");
-    assert.equal(existsSync(sentinel), false, "operator gh CLI must not run for hosted anonymous access");
+    const client = githubClientForAccess(resolveScanGithubAccess({ session: oauthSession }));
+    await client.getJson("/repos/acme/public");
+    assert.deepEqual(authorizationHeaders, [`Bearer ${FAKE_USER_BEARER}`]);
+    assert.equal(existsSync(sentinel), false, "operator gh CLI must not run for hosted OAuth access");
 
-    // The github-identity seam exists but is not wired this PR — a token on the
-    // access object still must not hit the wire or the operator CLI.
-    const unwired = githubClientForAccess({ kind: "github", source: "oauth", token: FAKE_USER_BEARER });
-    await unwired.getJson("/repos/acme/secret");
-    assert.deepEqual(authorizationHeaders, []);
+    authorizationHeaders.length = 0;
+    const testDouble = githubClientForAccess(resolveScanGithubAccess({ session: testDoubleSession }));
+    await testDouble.getJson("/repos/acme/public");
+    assert.deepEqual(authorizationHeaders, [], "test-double tokens must not be sent to GitHub");
     assert.equal(existsSync(sentinel), false);
   } finally {
     globalThis.fetch = originalFetch;
@@ -71,4 +102,8 @@ test("githubClientForAccess never sends operator or request tokens and never she
     delete process.env.GH_TOKEN;
     rmSync(work, { recursive: true, force: true });
   }
+});
+
+test("githubClientForAccess throws for unauthenticated hosted scan", () => {
+  assert.throws(() => githubClientForAccess({ kind: "unauthenticated" }), /GitHub sign-in/);
 });

@@ -107,7 +107,8 @@ export type GithubJsonResult =
 /**
  * Transport for GitHub reads. Injected in tests to exercise resolution offline
  * against recorded fixtures. Production constructors:
- * - `createAnonymousGithubClient` — HTTPS only (HTTP/server path; no operator `gh`)
+ * - `createAnonymousGithubClient` — HTTPS only, no operator `gh` (test-double / public trees)
+ * - `createBearerGithubClient` — HTTPS Bearer token, no operator `gh` (hosted OAuth/App)
  * - `createDefaultGithubClient` — anonymous HTTPS, then `gh` CLI fallback (operator CLI)
  */
 export interface GithubClient {
@@ -119,6 +120,11 @@ export interface GithubClient {
 /** Optional `fetch` injection so tests can fail closed without hitting the network. */
 export interface GithubClientOptions {
   fetch?: typeof fetch;
+}
+
+/** Authenticated tarball at a SHA. Token stays on the Authorization header, never the URL. */
+export function authenticatedTarballUrl(owner: string, repo: string, sha: string): string {
+  return `https://api.github.com/repos/${owner}/${repo}/tarball/${sha}`;
 }
 
 function ghAvailable(): boolean {
@@ -144,13 +150,38 @@ function ghDownloadTarball(owner: string, repo: string, sha: string, maxBytes: n
 }
 
 const GITHUB_HEADERS = {
-  // GitHub requires a User-Agent; Accept pins the v3 JSON media type. No auth header —
-  // tokens are never read from env or embedded. Operator `gh` auth is only used by
-  // `createDefaultGithubClient` (CLI), never by the anonymous HTTP client.
+  // GitHub requires a User-Agent; Accept pins the v3 JSON media type. Operator
+  // `gh` auth is only used by `createDefaultGithubClient` (CLI). Hosted Bearer
+  // tokens are passed explicitly — never read from `GITHUB_TOKEN` / `GH_TOKEN`.
   "User-Agent": "okie-scan",
   Accept: "application/vnd.github+json",
   "X-GitHub-Api-Version": "2022-11-28",
 } as const;
+
+function jsonHeaders(token: string | undefined): Record<string, string> {
+  if (!token) return { ...GITHUB_HEADERS };
+  return { ...GITHUB_HEADERS, Authorization: `Bearer ${token}` };
+}
+
+function tarballRequest(
+  owner: string,
+  repo: string,
+  sha: string,
+  token: string | undefined,
+): { url: string; headers: Record<string, string> } {
+  if (!token) {
+    return { url: tarballUrl(owner, repo, sha), headers: { "User-Agent": GITHUB_HEADERS["User-Agent"] } };
+  }
+  return {
+    url: authenticatedTarballUrl(owner, repo, sha),
+    headers: {
+      "User-Agent": GITHUB_HEADERS["User-Agent"],
+      Accept: GITHUB_HEADERS.Accept,
+      "X-GitHub-Api-Version": GITHUB_HEADERS["X-GitHub-Api-Version"],
+      Authorization: `Bearer ${token}`,
+    },
+  };
+}
 
 function isRateLimited(status: number, headers: Headers): boolean {
   if (status === 429) return true;
@@ -161,25 +192,27 @@ function resolveFetch(options: GithubClientOptions | undefined): typeof fetch {
   return options?.fetch ?? ((input, init) => globalThis.fetch(input, init));
 }
 
-function createGithubClient(options: GithubClientOptions & { allowGhFallback: boolean }): GithubClient {
+function createGithubClient(options: GithubClientOptions & { allowGhFallback: boolean; token?: string }): GithubClient {
   const fetchImpl = resolveFetch(options);
   const allowGhFallback = options.allowGhFallback;
+  const token = options.token;
+  const accessLabel = token ? "authenticated access" : "anonymous access";
 
   return {
     async getJson(apiPath) {
-      let anonStatus = 0;
-      let anonRateLimited = false;
-      let anonMessage = "GitHub API request failed (network error).";
+      let httpStatus = 0;
+      let httpRateLimited = false;
+      let httpMessage = "GitHub API request failed (network error).";
       try {
-        const response = await fetchImpl(`https://api.github.com${apiPath}`, { headers: GITHUB_HEADERS });
+        const response = await fetchImpl(`https://api.github.com${apiPath}`, { headers: jsonHeaders(token) });
         if (response.ok) return { ok: true, json: await response.json() };
-        anonStatus = response.status;
-        anonRateLimited = isRateLimited(response.status, response.headers);
-        anonMessage = anonRateLimited
-          ? "GitHub API rate limit reached for anonymous access."
-          : `GitHub API request failed (status ${anonStatus}).`;
+        httpStatus = response.status;
+        httpRateLimited = isRateLimited(response.status, response.headers);
+        httpMessage = httpRateLimited
+          ? `GitHub API rate limit reached for ${accessLabel}.`
+          : `GitHub API request failed (status ${httpStatus}).`;
       } catch {
-        anonStatus = 0;
+        httpStatus = 0;
       }
       // Operator CLI only: fall back to `gh` for rate-limits, auth walls, private-repo
       // 404s, or a network hiccup. The HTTP server path must not take this branch.
@@ -188,22 +221,23 @@ function createGithubClient(options: GithubClientOptions & { allowGhFallback: bo
           return { ok: true, json: ghApiJson(apiPath) };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          return { ok: false, status: anonStatus || 502, rateLimited: anonRateLimited, message: `gh api failed: ${scrubGithubTokens(message)}` };
+          return { ok: false, status: httpStatus || 502, rateLimited: httpRateLimited, message: `gh api failed: ${scrubGithubTokens(message)}` };
         }
       }
       return {
         ok: false,
-        status: anonStatus || 502,
-        rateLimited: anonRateLimited,
-        message: allowGhFallback && anonRateLimited
+        status: httpStatus || 502,
+        rateLimited: httpRateLimited,
+        message: allowGhFallback && httpRateLimited
           ? "GitHub API rate limit reached for anonymous access and the gh CLI is not available (install/auth `gh`)."
-          : anonMessage,
+          : httpMessage,
       };
     },
 
     async downloadTarball(owner, repo, sha, destFile, maxBytes) {
+      const request = tarballRequest(owner, repo, sha, token);
       try {
-        const response = await fetchImpl(tarballUrl(owner, repo, sha), { headers: { "User-Agent": GITHUB_HEADERS["User-Agent"] } });
+        const response = await fetchImpl(request.url, { headers: request.headers });
         if (response.ok && response.body) {
           const declared = Number(response.headers.get("content-length") ?? "");
           if (Number.isFinite(declared) && declared > maxBytes) {
@@ -216,14 +250,14 @@ function createGithubClient(options: GithubClientOptions & { allowGhFallback: bo
         if (!fallbackWorthy || !allowGhFallback) {
           throw new GithubAcquisitionError(
             rateLimited
-              ? "GitHub tarball download rate-limited for anonymous access."
+              ? `GitHub tarball download rate-limited for ${accessLabel}.`
               : `Tarball download failed (status ${response.status}).`,
           );
         }
       } catch (error) {
         if (error instanceof GithubAcquisitionError) throw error;
         if (!allowGhFallback) {
-          throw new GithubAcquisitionError("Could not download tarball anonymously.");
+          throw new GithubAcquisitionError(token ? "Could not download tarball with authenticated access." : "Could not download tarball anonymously.");
         }
         // network error on the CLI path — try gh below
       }
@@ -236,19 +270,33 @@ function createGithubClient(options: GithubClientOptions & { allowGhFallback: bo
       throw new GithubAcquisitionError(
         allowGhFallback
           ? "Could not download tarball anonymously and the gh CLI is not available."
-          : "Could not download tarball anonymously.",
+          : token
+            ? "Could not download tarball with authenticated access."
+            : "Could not download tarball anonymously.",
       );
     },
   };
 }
 
 /**
- * HTTPS-only GitHub client for the HTTP scan API. Never shells out to `gh`, so an
- * unauthenticated `POST /api/scans` cannot inherit the operator's GitHub identity.
- * Private repos (GitHub 404 when anonymous) fail closed.
+ * HTTPS-only GitHub client. Never shells out to `gh`, never reads `GITHUB_TOKEN`
+ * / `GH_TOKEN`. Hosted unauthenticated POST is denied before this constructor;
+ * the test-double identity still uses this client for public trees.
+ * Private repos (GitHub 404 without a token that can read them) fail closed.
  */
 export function createAnonymousGithubClient(options: GithubClientOptions = {}): GithubClient {
   return createGithubClient({ ...options, allowGhFallback: false });
+}
+
+/**
+ * HTTPS Bearer client for a hosted GitHub OAuth / App token. Never shells out
+ * to `gh`, never reads operator env tokens. The token is an argument — it must
+ * not be taken from `process.env` or a request URL.
+ */
+export function createBearerGithubClient(token: string, options: GithubClientOptions = {}): GithubClient {
+  const trimmed = token.trim();
+  if (!trimmed) throw new Error("createBearerGithubClient requires a GitHub token");
+  return createGithubClient({ ...options, allowGhFallback: false, token: trimmed });
 }
 
 /** Operator CLI client: anonymous HTTPS first, `gh` CLI fallback for auth/limits. */

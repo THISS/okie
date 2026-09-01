@@ -258,13 +258,15 @@ test("healthz and public Ask status never include the gateway key", () => {
   ]);
 });
 
-test("main.ts serves Ask on /api/ask and never puts keys on healthz", () => {
-  const src = readFileSync(join(fileURLToPath(new URL(".", import.meta.url)), "../src/main.ts"), "utf8");
-  assert.match(src, /GET.*\/api\/ask|pathname === "\/api\/ask"/);
-  assert.match(src, /POST.*\/api\/ask|pathname === "\/api\/ask"/);
-  assert.match(src, /publicAskStatus\(llm\)/);
-  assert.match(src, /answerAskQuestion\(llm,/);
-  assert.match(src, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
-  assert.doesNotMatch(src, /healthzBody\([^)]*apiKey/);
-  assert.doesNotMatch(src, /healthzBody\([^)]*ask/);
+test("scan HTTP serves Ask on /api/ask and never puts keys on healthz", () => {
+  const dir = fileURLToPath(new URL(".", import.meta.url));
+  const main = readFileSync(join(dir, "../src/main.ts"), "utf8");
+  const server = readFileSync(join(dir, "../src/scanServer.ts"), "utf8");
+  assert.match(server, /pathname === "\/api\/ask"/);
+  assert.match(server, /publicAskStatus\(llm\)/);
+  assert.match(server, /answerAskQuestion\(llm,/);
+  assert.match(server, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
+  assert.doesNotMatch(server, /healthzBody\([^)]*apiKey/);
+  assert.doesNotMatch(server, /healthzBody\([^)]*ask/);
+  assert.doesNotMatch(main, /healthzBody\([^)]*apiKey/);
 });

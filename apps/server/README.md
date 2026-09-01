@@ -2,16 +2,27 @@
 
 Local paste-a-repo scan process used by `pnpm dev` (Vite proxies `/api` and `/scan` here).
 
-**This is not a deployable public API.** The process has no authentication: `POST /api/scans` enqueues work, job list/status are open, and `/scan/*` serves artifacts from disk. If a gateway or Anthropic key is set in the process, enrichment is attempted for whoever can POST.
+**This is not a deployable public API.** Hosted scan (`POST /api/scans`) requires a GitHub OAuth session (or a loopback test-double). Job list/status and `/scan/*` objects are still unauthenticated so public `/r/<owner>/<repo>` views have no login wall. If a gateway or Anthropic key is set in the process, enrichment is attempted for whoever can POST a scan.
 
 ## Published defaults
 
-- Listen bind is loopback (`127.0.0.1:4180`). Override with `OKIE_SERVER_HOST` / `OKIE_SERVER_PORT` only when LAN access is intentional — that still has no auth.
-- `GET /healthz` (and `GET /`) reports `{ service, ok, public: false, bind, enrich }`. It does not return `scanRoot`, filesystem paths, or LLM keys.
-- GitHub acquisition on this HTTP path is anonymous HTTPS (no operator `gh` auth, no `GITHUB_TOKEN` / `GH_TOKEN`). The CLI scanner is a separate, operator-local tool. `githubAccess.ts` is the seam for a later Vercel-like GitHub OAuth/App identity — private trees stay closed until that lands.
+- Listen bind is loopback (`127.0.0.1:4180`). Override with `OKIE_SERVER_HOST` / `OKIE_SERVER_PORT` only when LAN access is intentional.
+- `GET /healthz` (and `GET /`) reports `{ service, ok, public: false, bind, enrich }`. It does not return `scanRoot`, filesystem paths, LLM keys, OAuth secrets, or tokens.
+- Hosted scan requires GitHub identity. `GET /api/auth/github` starts OAuth (`state` CSRF cookie; `redirect_uri` from `OKIE_PUBLIC_ORIGIN`, never the Host header). Callback tokens stay in the in-memory session — never in URLs, logs, or `/healthz`. GitHub reads use HTTPS Bearer for OAuth, or HTTPS-only for the loopback test-double. Never operator `gh`, never `GITHUB_TOKEN` / `GH_TOKEN`.
+- Loopback without OAuth client credentials enables `GET /api/auth/github/test-login` so local QA can sign in without live GitHub App secrets. That path is off when the bind is not loopback.
 - Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (CLA-30). They have no login wall. `/r/THISS/okie` is the dogfood share URL (published scan, bundled self-scan, or the golden demo). Docs sites embed those views via the web origin's `GET /oembed?url=` (JSON iframe payload); this scan process does not serve oEmbed.
 
-Do not expose this process on a public interface, a reverse proxy, or a hosted deployment until it has real auth.
+Do not expose this process on a public interface, a reverse proxy, or a hosted deployment until OAuth client credentials are set in env (gitignored) and you accept the remaining unauthenticated surfaces (`GET /scan/*`, job list).
+
+GitHub OAuth env (never commit, never log):
+
+| Setting | Env | Notes |
+|---|---|---|
+| Client ID | `OKIE_GITHUB_CLIENT_ID` | GitHub App or OAuth App client id |
+| Client secret | `OKIE_GITHUB_CLIENT_SECRET` | Env only |
+| Public origin | `OKIE_PUBLIC_ORIGIN` | Callback + cookie origin (default `http://localhost:4173`) |
+| App slug | `OKIE_GITHUB_APP_SLUG` | Optional install redirect (`/api/auth/github/install`) |
+| Test double | `OKIE_GITHUB_TEST_DOUBLE` | `1` force on / `0` force off; default on for loopback when OAuth is unset |
 
 ## LLM gateway (OpenRouter first)
 

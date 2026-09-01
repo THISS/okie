@@ -90,6 +90,13 @@ test("toPublicJob exposes a login-free /r atlas path and never a token field", (
     updatedAt: 2,
     atlasReady: true,
     enrichment: { state: "skipped" },
+    githubAccess: {
+      kind: "github",
+      source: "oauth",
+      token: "gho_okieTestUserTokenCla30zzzz",
+      login: "octocat",
+      userId: "1",
+    },
   };
   const publicJob = toPublicJob(job);
   assert.equal(publicJob.atlasPath, "/r/THISS/okie");
@@ -97,6 +104,7 @@ test("toPublicJob exposes a login-free /r atlas path and never a token field", (
   assert.equal("token" in publicJob, false);
   assert.equal("githubAccess" in publicJob, false);
   assert.equal("apiKey" in publicJob, false);
+  assert.equal(JSON.stringify(publicJob).includes("gho_okieTestUserTokenCla30zzzz"), false);
 });
 
 test("toPublicJob redacts notes and errors and never carries a raw key field", () => {

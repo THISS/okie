@@ -56,15 +56,33 @@ function atlasHrefForSlug(slug: string): string | undefined {
   return owner && repo ? `/r/${owner}/${repo}` : undefined;
 }
 
+type AuthView = {
+  authenticated: boolean;
+  login?: string;
+  source?: string;
+  loginPath: string;
+  logoutPath: string;
+  oauthConfigured: boolean;
+  testLoginPath?: string;
+  installPath?: string;
+};
+
 export function ScanLandingScreen() {
   const [input, setInput] = useState('');
   const [job, setJob] = useState<PublicJob | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [published, setPublished] = useState<ManifestRepo[]>([]);
+  const [auth, setAuth] = useState<AuthView | undefined>();
   const pollRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
+    void fetch('/api/auth/me', { credentials: 'include' })
+      .then(response => (response.ok ? response.json() : undefined))
+      .then((body: AuthView | undefined) => {
+        if (body) setAuth(body);
+      })
+      .catch(() => {});
     void fetch('/scan/index.json')
       .then(response => (response.ok ? response.json() : undefined))
       .then((manifest: { repos?: ManifestRepo[] } | undefined) => {
@@ -79,7 +97,7 @@ export function ScanLandingScreen() {
   function watchJob(id: string) {
     if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
     pollRef.current = window.setInterval(() => {
-      void fetch(`/api/scans/${encodeURIComponent(id)}`)
+      void fetch(`/api/scans/${encodeURIComponent(id)}`, { credentials: 'include' })
         .then(async response => {
           if (!response.ok) throw new Error(`status ${response.status}`);
           const body = (await response.json()) as { job: PublicJob };
@@ -100,6 +118,7 @@ export function ScanLandingScreen() {
     try {
       const response = await fetch('/api/scans', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ url: input }),
       });
@@ -118,21 +137,39 @@ export function ScanLandingScreen() {
   }
 
   const stageIndex = job ? STAGE_LABELS.findIndex(stage => stage.key === job.stage) : -1;
+  const signedIn = Boolean(auth?.authenticated);
+  const scanLocked = auth !== undefined && !signedIn;
+  const signInHref = auth?.loginPath ?? '/api/auth/github';
+  const testLoginHref = auth?.testLoginPath;
+  const signOutHref = `${auth?.logoutPath ?? '/api/auth/logout'}?return=/new`;
 
   return (
-    <main style={page}>
+    <main data-auth-state={auth ? (signedIn ? 'signed-in' : 'signed-out') : 'unknown'} style={page}>
       <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Map a repository</h1>
       <p style={mutedStyle}>
-        Paste a public GitHub repository — no account needed — and Okie builds its architecture
-        atlas. Viewing a published atlas at <code>/r/owner/repo</code> is also public: there is
-        no login wall on the map. AI-written descriptions layer on top of the deterministic scan.
+        Sign in with GitHub to scan a public repository. Viewing a published atlas at{' '}
+        <code>/r/owner/repo</code> stays public: there is no login wall on the map.
+        AI-written descriptions layer on top of the deterministic scan.
       </p>
+
+      {auth && (
+        <p data-testid="scan-auth-status" style={{ ...mutedStyle, marginTop: '1rem' }}>
+          {signedIn
+            ? <>Signed in as <strong>@{auth.login}</strong>. <a href={signOutHref} style={{ color: '#79dfd4' }}>Sign out</a></>
+            : <>
+                <a href={signInHref} style={{ color: '#d9ff70', fontWeight: 600 }}>Sign in with GitHub</a>
+                {testLoginHref
+                  ? <> to scan, or <a href={testLoginHref} style={{ color: '#79dfd4' }}>use the local test sign-in</a>.</>
+                  : ' to scan.'}
+              </>}
+        </p>
+      )}
 
       <form onSubmit={submit} style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem' }}>
         <input
           aria-label="GitHub repository URL"
           autoFocus
-          disabled={submitting || (job !== undefined && job.stage !== 'failed')}
+          disabled={scanLocked || submitting || (job !== undefined && job.stage !== 'failed')}
           onChange={event => setInput(event.target.value)}
           placeholder="https://github.com/owner/repo"
           style={{
@@ -148,7 +185,7 @@ export function ScanLandingScreen() {
           value={input}
         />
         <button
-          disabled={submitting || input.trim() === '' || (job !== undefined && job.stage !== 'failed')}
+          disabled={scanLocked || submitting || input.trim() === '' || (job !== undefined && job.stage !== 'failed')}
           style={{
             padding: '0.7rem 1.2rem',
             borderRadius: '8px',
