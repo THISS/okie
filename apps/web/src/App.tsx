@@ -2786,7 +2786,8 @@ export function App() {
   function composeScene(focusEntityId: string, previous?: AtlasScene, authoring?: ArchitectureAuthoringDocument): AtlasScene {
     const imported = importedAtlasRef.current;
     if (!imported) return activeCreateScene(focusEntityId, previous, authoring);
-    return compileImportedMermaidScene(imported, previous, focusEntityId, authoring);
+    const matchingAuthoring = authoring?.repositoryId === imported.snapshot.repositoryId ? authoring : undefined;
+    return compileImportedMermaidScene(imported, previous, focusEntityId, matchingAuthoring);
   }
 
   function authoredScene(document: ArchitectureAuthoringDocument, currentScene: AtlasScene) {
@@ -3979,6 +3980,9 @@ export function App() {
       return;
     }
     importedAtlasRef.current = result.atlas;
+    const importedAuthoring = createGestureHistory(createArchitectureAuthoringDocument(result.atlas.snapshot.repositoryId));
+    authoringHistoryRef.current = importedAuthoring;
+    setAuthoringHistory(importedAuthoring);
     setImportedAtlas(result.atlas);
     setImportMermaidError(undefined);
     setImportMermaidSource(source);

@@ -84,7 +84,6 @@ const FLOWCHART_EDGE_PATTERNS: ReadonlyArray<{ re: RegExp; label?: number }> = [
 ];
 
 const SEQUENCE_ARROW = /^(.*?)(-{1,2}(?:>{1,2}|\)|x))([+-]?)(\s*)(\S+?)([+-]?)(?:\s*:\s*(.*))?$/u;
-const SEQUENCE_BLOCK = /^(?:loop|alt|opt|par|critical|break|rect|else|and|option|box)\b/iu;
 const C4_CALL = /^([A-Za-z][\w]*)\s*\((.*)\)\s*$/u;
 
 function hashText(value: string): string {
@@ -256,6 +255,15 @@ function parseFlowEdge(scan: Scan): { label?: string } | undefined {
   return undefined;
 }
 
+function uniqueFlowNodes(nodes: Array<{ id: string; name?: string }>): Array<{ id: string; name?: string }> {
+  const seen = new Set<string>();
+  return nodes.filter(node => {
+    if (seen.has(node.id)) return false;
+    seen.add(node.id);
+    return true;
+  });
+}
+
 function parseFlowNodeGroup(scan: Scan): Array<{ id: string; name?: string }> | undefined {
   const nodes: Array<{ id: string; name?: string }> = [];
   const readNode = (): { id: string; name?: string } | undefined => {
@@ -270,12 +278,13 @@ function parseFlowNodeGroup(scan: Scan): Array<{ id: string; name?: string }> | 
   skipWs(scan);
   while (scan.src[scan.i] === '&') {
     scan.i += 1;
+    if (nodes.length >= MAX_IMPORTED_MERMAID_NODES) return undefined;
     const next = readNode();
     if (!next) return undefined;
     nodes.push(next);
     skipWs(scan);
   }
-  return nodes;
+  return uniqueFlowNodes(nodes);
 }
 
 function parseFlowStatement(line: string): { nodes: Array<{ id: string; name?: string }>; edges: Array<{ from: string; to: string; label?: string }> } | undefined {
@@ -291,10 +300,12 @@ function parseFlowStatement(line: string): { nodes: Array<{ id: string; name?: s
     if (!edge) break;
     const targets = parseFlowNodeGroup(scan);
     if (!targets) return undefined;
+    if (current.length * targets.length > MAX_IMPORTED_MERMAID_EDGES) return undefined;
     nodes.push(...targets);
     for (const source of current) {
       for (const dest of targets) {
         if (source.id === dest.id) continue;
+        if (edges.length >= MAX_IMPORTED_MERMAID_EDGES) return undefined;
         edges.push({ from: source.id, to: dest.id, ...(edge.label ? { label: edge.label } : {}) });
       }
     }
@@ -366,6 +377,12 @@ function parseFlowchart(source: string): ParsedDiagram | string {
     }
     const parsed = parseFlowStatement(line);
     if (!parsed) return 'This flowchart statement could not be parsed.';
+    if (nodes.size + parsed.nodes.length > MAX_IMPORTED_MERMAID_NODES) {
+      return 'This Mermaid diagram has too many nodes to import.';
+    }
+    if (edges.length + parsed.edges.length > MAX_IMPORTED_MERMAID_EDGES) {
+      return 'This Mermaid diagram has too many edges to import.';
+    }
     const parent = stack.at(-1)?.id;
     for (const node of parsed.nodes) ensureNode(node.id, node.name, parent);
     for (const edge of parsed.edges) {
@@ -408,12 +425,17 @@ function parseSequence(source: string): ParsedDiagram | string {
       ensureActor(participant[1]!, participant[2] ? unescapeLabel(participant[2]) : participant[1]);
       continue;
     }
-    if (SEQUENCE_BLOCK.test(raw)) {
+    if (/^(?:else|and|option)\b/iu.test(raw)) {
+      if (blockDepth === 0) return 'This sequence diagram has an unmatched block continuation.';
+      continue;
+    }
+    if (/^(?:loop|alt|opt|par|critical|break|rect|box)\b/iu.test(raw)) {
       blockDepth += 1;
       continue;
     }
     if (/^end\b/iu.test(raw)) {
-      if (blockDepth > 0) blockDepth -= 1;
+      if (blockDepth === 0) return 'This sequence diagram has an unmatched end.';
+      blockDepth -= 1;
       continue;
     }
     if (/^(?:Note|note)\b/iu.test(raw) || /^(?:activate|deactivate|autonumber|create|destroy)\b/iu.test(raw)) {
@@ -425,10 +447,15 @@ function parseSequence(source: string): ParsedDiagram | string {
     const to = message[5]!.trim();
     const label = unescapeLabel(message[7] ?? '');
     if (!from || !to) return 'This sequence statement could not be parsed.';
+    if (nodes.size >= MAX_IMPORTED_MERMAID_NODES && !nodes.has(from) && !nodes.has(to)) {
+      return 'This Mermaid diagram has too many nodes to import.';
+    }
     ensureActor(from);
     ensureActor(to);
+    if (edges.length >= MAX_IMPORTED_MERMAID_EDGES) return 'This Mermaid diagram has too many edges to import.';
     edges.push({ from, to, kind: 'calls', ...(label ? { label } : {}) });
   }
+  if (blockDepth !== 0) return 'This sequence diagram has an unclosed block.';
   if (!nodes.size) return 'This sequence diagram has no participants to import.';
   return { type: 'sequence', title: title || 'Imported sequence', nodes: [...nodes.values()], edges };
 }
@@ -524,6 +551,7 @@ function parseC4(source: string): ParsedDiagram | string {
       continue;
     }
     if (raw === '}') {
+      if (!boundaryStack.length) return 'This C4 diagram has an unmatched closing brace.';
       boundaryStack.pop();
       continue;
     }
@@ -538,6 +566,7 @@ function parseC4(source: string): ParsedDiagram | string {
       if (!from || !to) return 'This C4 relationship is missing endpoints.';
       if (!nodes.has(from)) ensure(from, 'container', from);
       if (!nodes.has(to)) ensure(to, 'container', to);
+      if (edges.length >= MAX_IMPORTED_MERMAID_EDGES) return 'This Mermaid diagram has too many edges to import.';
       edges.push({
         from,
         to,
@@ -550,6 +579,9 @@ function parseC4(source: string): ParsedDiagram | string {
     if (!kind) return 'This C4 statement could not be parsed.';
     const alias = args[0];
     if (!alias) return 'This C4 element is missing an alias.';
+    if (nodes.size >= MAX_IMPORTED_MERMAID_NODES && !nodes.has(alias)) {
+      return 'This Mermaid diagram has too many nodes to import.';
+    }
     if (kind === 'boundary') {
       ensure(alias, 'container', args[1] || alias, args[2]);
       if (raw.endsWith('{')) boundaryStack.push(alias);
@@ -558,6 +590,7 @@ function parseC4(source: string): ParsedDiagram | string {
     ensure(alias, kind, args[1] || alias, args[2], args[3] ? [args[3]] : undefined);
     if (raw.endsWith('{')) boundaryStack.push(alias);
   }
+  if (boundaryStack.length) return 'This C4 diagram has an unclosed boundary.';
   if (!nodes.size) return 'This C4 diagram has no elements to import.';
   return { type: 'c4', title: title || 'Imported C4 diagram', nodes: [...nodes.values()], edges };
 }

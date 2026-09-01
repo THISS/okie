@@ -125,6 +125,41 @@ describe('importMermaidToAtlas', () => {
     const broken = importMermaidToAtlas('flowchart TD\n  A[Start -->');
     expect(broken.ok).toBe(false);
     if (!broken.ok) expect(broken.message).toMatch(/atlas is unchanged/i);
+
+    const unclosedSequence = importMermaidToAtlas('sequenceDiagram\n  loop Ping\n    User->>Atlas: hi');
+    expect(unclosedSequence.ok).toBe(false);
+    if (!unclosedSequence.ok) expect(unclosedSequence.message).toMatch(/unclosed block/i);
+
+    const extraSequenceEnd = importMermaidToAtlas('sequenceDiagram\n  User->>Atlas: hi\n  end');
+    expect(extraSequenceEnd.ok).toBe(false);
+    if (!extraSequenceEnd.ok) expect(extraSequenceEnd.message).toMatch(/unmatched end/i);
+
+    const unclosedC4 = importMermaidToAtlas('C4Context\nEnterprise_Boundary(b, "Bank") {\n  System(okie, "Okie")');
+    expect(unclosedC4.ok).toBe(false);
+    if (!unclosedC4.ok) expect(unclosedC4.message).toMatch(/unclosed boundary/i);
+
+    const extraC4Brace = importMermaidToAtlas('C4Context\nSystem(okie, "Okie")\n}');
+    expect(extraC4Brace.ok).toBe(false);
+    if (!extraC4Brace.ok) expect(extraC4Brace.message).toMatch(/unmatched closing brace/i);
+  });
+
+  it('accepts sequence alt/else/end and rejects cartesian edge explosions before projection', () => {
+    const alt = importMermaidToAtlas(`sequenceDiagram
+  participant User
+  participant Atlas
+  alt ok
+    User->>Atlas: yes
+  else fail
+    User->>Atlas: no
+  end
+`);
+    expect(alt.ok).toBe(true);
+
+    const left = Array.from({ length: 30 }, (_, index) => `L${index}`).join(' & ');
+    const right = Array.from({ length: 30 }, (_, index) => `R${index}`).join(' & ');
+    const explosion = importMermaidToAtlas(`flowchart TD\n  ${left} --> ${right}\n`);
+    expect(explosion.ok).toBe(false);
+    if (!explosion.ok) expect(explosion.message).toMatch(/could not be parsed|too many edges/i);
   });
 
   it('does not fetch remote content or execute click handlers', () => {

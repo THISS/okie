@@ -436,6 +436,8 @@ describe('Mermaid import onto the atlas (CLA-35)', () => {
     expect(app).toContain('importMermaidToAtlas');
     expect(app).toContain("setLiveMessage(result.message)");
     expect(app).toContain('The atlas is unchanged.');
+    expect(app).toContain('createArchitectureAuthoringDocument(result.atlas.snapshot.repositoryId)');
+    expect(app).toContain('authoring?.repositoryId === imported.snapshot.repositoryId');
     expect(app).toContain("scanFixture ? 'scan' : 'golden'");
     const landing = readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8');
     expect(landing).toContain('Map a repository');
