@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan";
-import { createEnricher, MAX_ENRICHABLE_CODE_ENTITIES } from "./enrichment.js";
+import { createEnricher, enrichmentStreamParams, MAX_ENRICHABLE_CODE_ENTITIES, resolveEnrichmentPassModelId } from "./enrichment.js";
 
 const containerPacket = (containerId: string, codeCount = 2): EnrichmentPacket => ({
   promptVersion: "okie-enrichment/v2",
@@ -109,6 +112,44 @@ test("gateway progress notes never include the API key", async () => {
   await enrich(packets());
   assert.ok(notes.some(note => note.includes("llm gateway") && note.includes("acme/fast")));
   assert.ok(notes.every(note => !note.includes(fakeKey)));
+});
+
+test("enrichment pass uses the configured model id, not a hardcoded table", () => {
+  assert.equal(resolveEnrichmentPassModelId({ modelId: "anthropic/claude-sonnet-4" }), "anthropic/claude-sonnet-4");
+  assert.equal(resolveEnrichmentPassModelId({ modelId: "acme/cheap" }), "acme/cheap");
+  assert.equal(resolveEnrichmentPassModelId({ gateway: { baseUrl: "https://example.gateway/v1", modelId: "openrouter/foo" } }), "openrouter/foo");
+  assert.equal(resolveEnrichmentPassModelId({ modelId: "operator/wins", gateway: { baseUrl: "https://x", modelId: "gateway/loses" } }), "operator/wins");
+  assert.equal(resolveEnrichmentPassModelId({ modelId: "  " }), undefined);
+
+  const params = enrichmentStreamParams("acme/cheap", "system", "system:acme", systemPacket);
+  assert.equal(params.model, "acme/cheap");
+  assert.throws(() => enrichmentStreamParams("  ", "system", "system:acme", systemPacket), /empty model id/);
+
+  const src = readFileSync(join(fileURLToPath(new URL(".", import.meta.url)), "../src/enrichment.ts"), "utf8");
+  assert.doesNotMatch(src, /claude-opus-4-8/);
+  assert.doesNotMatch(src, /ENRICHMENT_MODEL/);
+});
+
+test("empty model id fails the enrichment pass without producing docs", async () => {
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    onProgress: note => notes.push(note),
+    modelId: "",
+  });
+  await assert.rejects(() => enrich(packets()), /empty model id/);
+  assert.equal(notes.length, 0);
+});
+
+test("configured model id appears in progress notes when the pass runs", async () => {
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    modelId: "openai/gpt-4o-mini",
+    onProgress: note => notes.push(note),
+    generate: async () => ({ ok: true }),
+  });
+  await enrich(packets());
+  assert.ok(notes.some(note => note.includes("model openai/gpt-4o-mini")));
+  assert.ok(notes.every(note => !note.includes("claude-opus-4-8")));
 });
 
 test("total failure (e.g. bad credentials) throws instead of reporting empty success", async () => {

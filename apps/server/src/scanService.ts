@@ -15,6 +15,7 @@ import { createEnricher } from "./enrichment.js";
 import {
   createLlmGatewayClient,
   hasLlmCredentials,
+  isUsableModelId,
   redactLlmSecret,
   resolveLlmGatewayConfig,
   type LlmGatewayConfig,
@@ -72,6 +73,12 @@ function skipNote(config: LlmGatewayConfig): string {
   return "no LLM credentials visible";
 }
 
+const EMPTY_MODEL_NOTE = "empty model id; enrichment not started";
+
+function shouldAttemptEnrichment(mode: "auto" | "force", config: LlmGatewayConfig): boolean {
+  return mode === "force" || hasLlmCredentials(config);
+}
+
 /**
  * Default factory for the live enricher. Auto mode skips when no gateway or
  * Anthropic key is visible so the deterministic atlas still publishes. The
@@ -88,10 +95,16 @@ export function createDefaultEnricherFactory(
     // Profile-based Anthropic auth (`ant auth login`) is invisible to the sniff —
     // OKIE_SCAN_ENRICH=1 forces the attempt for that setup.
     if (mode === "auto" && !hasLlmCredentials(config)) return undefined;
+    if (!isUsableModelId(config.modelId)) {
+      return async () => {
+        throw new Error(EMPTY_MODEL_NOTE);
+      };
+    }
     try {
       const gateway = createLlmGatewayClient(config);
       return createEnricher({
         onProgress,
+        modelId: config.modelId,
         ...(gateway ? { gateway } : {}),
       });
     } catch {
@@ -148,12 +161,22 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
       update({ enrichment: { state: "skipped", note: "enrichment disabled" } });
       return;
     }
+
+    const config = resolveLlmGatewayConfig(env, llmLocal);
+    if (shouldAttemptEnrichment(enrichMode, config) && !isUsableModelId(config.modelId)) {
+      update({
+        enrichment: { state: "failed", note: EMPTY_MODEL_NOTE },
+      });
+      log(redact(`${job.id}: enrichment failed (${EMPTY_MODEL_NOTE}); deterministic atlas stands`));
+      return;
+    }
+
     const enricher = enricherFactory(note => log(redact(`${job.id}: ${note}`)));
     if (!enricher) {
       update({
         enrichment: {
           state: "skipped",
-          note: skipNote(resolveLlmGatewayConfig(env, llmLocal)),
+          note: skipNote(config),
         },
       });
       return;

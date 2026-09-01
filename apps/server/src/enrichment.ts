@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan";
+import { isUsableModelId, requireUsableModelId } from "./llmGateway.js";
 
 /**
  * Live-LLM enrichment adapter (scan-runner M3): turns the scanner's bounded,
@@ -10,8 +11,6 @@ import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan"
  * untouched. Resilience contract (see GithubScanOptions.enrichWithPackets): a
  * per-scope failure omits that scope's doc; a total failure returns an empty map.
  */
-
-export const ENRICHMENT_MODEL = "claude-opus-4-8";
 
 /** Scopes larger than this are left deterministic — restating every code entity
  *  in the reply would not fit a sane output budget, and huge containers are
@@ -34,6 +33,12 @@ export interface EnricherOptions {
   /** Injectable generator (tests). Default: the Anthropic streaming generator. */
   generate?: EnrichmentGenerator;
   /**
+   * Operator-configured model id (CLA-21). Opaque string the gateway understands.
+   * Empty fails the pass. Packet HTTP still uses the Anthropic SDK until CLA-23,
+   * but the request uses this id rather than a hardcoded model table.
+   */
+  modelId?: string;
+  /**
    * OpenAI-compatible gateway client (CLA-20). Constructed when a gateway key is
    * present. Packet HTTP still uses the Anthropic SDK until CLA-23.
    */
@@ -41,6 +46,12 @@ export interface EnricherOptions {
   /** Concurrent in-flight scopes (default 2 — bounded, order-independent by design). */
   maxConcurrent?: number;
   onProgress?: (note: string) => void;
+}
+
+/** Model id the pass will send. Gateway overlay wins only when `modelId` is unset. */
+export function resolveEnrichmentPassModelId(options: EnricherOptions): string | undefined {
+  const configured = options.modelId ?? options.gateway?.modelId;
+  return isUsableModelId(configured) ? configured!.trim() : undefined;
 }
 
 const SOURCE_REF_SCHEMA = {
@@ -131,21 +142,34 @@ Propose the TOP-LEVEL ACTORS (people or external roles) that interact with this 
 
 Ground everything in what the README actually says the project is for.`;
 
-function anthropicGenerator(client: Anthropic): EnrichmentGenerator {
+/**
+ * Fields the Anthropic SDK (and, later, the gateway) receive for one scope.
+ * The model id is the configured string — not a lookup table.
+ */
+export function enrichmentStreamParams(
+  modelId: string,
+  kind: PacketKind,
+  systemId: string,
+  packet: EnrichmentPacket | SystemPacket,
+) {
+  return {
+    model: requireUsableModelId(modelId),
+    max_tokens: MAX_OUTPUT_TOKENS,
+    thinking: { type: "adaptive" as const },
+    system: kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT,
+    output_config: { format: { type: "json_schema" as const, schema: EXTRACTION_DOC_SCHEMA } },
+    messages: [{
+      role: "user" as const,
+      content: kind === "container"
+        ? `The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${JSON.stringify(packet, null, 2)}`
+        : `System packet:\n${JSON.stringify(packet, null, 2)}`,
+    }],
+  };
+}
+
+function anthropicGenerator(client: Anthropic, modelId: string): EnrichmentGenerator {
   return async (packet, kind, systemId) => {
-    const stream = client.messages.stream({
-      model: ENRICHMENT_MODEL,
-      max_tokens: MAX_OUTPUT_TOKENS,
-      thinking: { type: "adaptive" },
-      system: kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT,
-      output_config: { format: { type: "json_schema", schema: EXTRACTION_DOC_SCHEMA } },
-      messages: [{
-        role: "user",
-        content: kind === "container"
-          ? `The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${JSON.stringify(packet, null, 2)}`
-          : `System packet:\n${JSON.stringify(packet, null, 2)}`,
-      }],
-    });
+    const stream = client.messages.stream(enrichmentStreamParams(modelId, kind, systemId, packet));
     const message = await stream.finalMessage();
     if (message.stop_reason === "refusal") throw new Error("model refused the enrichment request");
     const text = message.content
@@ -163,13 +187,24 @@ function anthropicGenerator(client: Anthropic): EnrichmentGenerator {
  */
 export function createEnricher(options: EnricherOptions = {}): (packets: EmittedPackets) => Promise<ReadonlyMap<string, unknown>> {
   const progress = options.onProgress ?? (() => {});
-  const generate = options.generate ?? anthropicGenerator(new Anthropic());
+  const passModelId = resolveEnrichmentPassModelId(options);
+  const usingInjectedGenerate = options.generate !== undefined;
+  const generate = options.generate ?? (passModelId
+    ? anthropicGenerator(new Anthropic(), passModelId)
+    : async () => {
+      throw new Error("empty model id");
+    });
   const maxConcurrent = Math.max(1, options.maxConcurrent ?? 2);
   const gateway = options.gateway;
 
   return async ({ packets, systemPacket }) => {
-    if (gateway) {
-      progress(`enrich: llm gateway ${gateway.baseUrl} model ${gateway.modelId}`);
+    if (!passModelId && !usingInjectedGenerate) {
+      throw new Error("empty model id");
+    }
+    if (passModelId && gateway) {
+      progress(`enrich: llm gateway ${gateway.baseUrl} model ${passModelId}`);
+    } else if (passModelId) {
+      progress(`enrich: model ${passModelId}`);
     }
     const docs = new Map<string, unknown>();
     if (!systemPacket) {

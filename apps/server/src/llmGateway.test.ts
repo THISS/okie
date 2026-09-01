@@ -10,9 +10,11 @@ import {
   DEFAULT_OPENROUTER_BASE_URL,
   describeEnrichmentMode,
   hasLlmCredentials,
+  isUsableModelId,
   publicLlmGatewayView,
   readLlmGatewayLocalConfigFile,
   redactLlmSecret,
+  requireUsableModelId,
   resolveLlmGatewayConfig,
   resolveLlmGatewayLocalConfig,
 } from "./llmGateway.js";
@@ -190,6 +192,59 @@ test("chatCompletions posts to the OpenAI-compatible path and redacts the key on
   assert.equal(calls[0]!.url, "https://example.gateway/v1/chat/completions");
   assert.equal(calls[0]!.authorization, `Bearer ${FAKE_GATEWAY_KEY}`);
   assert.equal((calls[0]!.body as { model: string }).model, "acme/fast");
+});
+
+test("chatCompletions always sends the configured model id, even if body.model is set", async () => {
+  const config = resolveLlmGatewayConfig({
+    OPENAI_BASE_URL: "https://example.gateway/v1",
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: "operator/chosen",
+  });
+  let posted: unknown;
+  const client = createLlmGatewayClient(config, {
+    fetch: async (_input, init) => {
+      posted = JSON.parse(String(init?.body));
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+    },
+  });
+  assert.ok(client);
+  await client.chatCompletions({ model: "injected/override", messages: [] });
+  assert.equal((posted as { model: string }).model, "operator/chosen");
+});
+
+test("present-but-empty model id does not fall back to the documented default", () => {
+  const fromEnv = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: "  ",
+  });
+  assert.equal(fromEnv.modelId, "");
+  assert.equal(isUsableModelId(fromEnv.modelId), false);
+
+  const fromLocal = resolveLlmGatewayConfig(
+    { OPENROUTER_API_KEY: FAKE_GATEWAY_KEY },
+    { modelId: "" },
+  );
+  assert.equal(fromLocal.modelId, "");
+  assert.throws(() => requireUsableModelId(fromLocal.modelId), /empty model id/);
+
+  const unset = resolveLlmGatewayConfig({ OPENROUTER_API_KEY: FAKE_GATEWAY_KEY });
+  assert.equal(unset.modelId, DEFAULT_GATEWAY_MODEL_ID);
+  assert.equal(isUsableModelId(unset.modelId), true);
+});
+
+test("empty modelId in local config file is preserved as empty, not dropped", () => {
+  const dir = mkdtempSync(join(tmpdir(), "okie-llm-empty-model-"));
+  try {
+    const path = join(dir, "okie.local.json");
+    writeFileSync(path, JSON.stringify({ modelId: "   " }));
+    const local = readLlmGatewayLocalConfigFile(path);
+    assert.equal(local.modelId, "");
+    const config = resolveLlmGatewayConfig({ OPENROUTER_API_KEY: FAKE_GATEWAY_KEY }, local);
+    assert.equal(config.modelId, "");
+    assert.match(describeEnrichmentMode("auto", config), /empty model id/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("redactLlmSecret is a no-op without a secret and never logs the key", () => {
