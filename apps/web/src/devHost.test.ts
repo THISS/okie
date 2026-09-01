@@ -22,5 +22,15 @@ describe('published Vite host default (CLA-17)', () => {
 
   it('is an SPA so /r/<owner>/<repo> share URLs serve the shell (CLA-30)', () => {
     expect(viteConfig).toMatch(/appType:\s*['"]spa['"]/);
+    const redirects = readFileSync(new URL('../public/_redirects', import.meta.url), 'utf8');
+    expect(redirects).toMatch(/\/r\/\*\s+\/index\.html\s+200/);
+    expect(redirects).toMatch(/\/new\s+\/index\.html\s+200/);
+    const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
+      rewrites: Array<{ source: string; destination: string }>;
+    };
+    expect(vercel.rewrites).toEqual(expect.arrayContaining([
+      { source: '/r/:path*', destination: '/index.html' },
+      { source: '/new', destination: '/index.html' },
+    ]));
   });
 });
