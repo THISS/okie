@@ -58,6 +58,46 @@ function firstNonEmpty(values: Array<string | undefined>): string | undefined {
   return undefined;
 }
 
+function envHasKey(env: NodeJS.Dict<string>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(env, key);
+}
+
+/**
+ * Model id is an opaque gateway string. Unset → documented default.
+ * A present-but-empty source (env or local) wins as empty so the enrichment
+ * pass can fail closed instead of silently substituting the default (CLA-21).
+ */
+function resolveModelId(env: NodeJS.Dict<string>, local: LlmGatewayLocalConfig): string {
+  const sources: Array<{ present: boolean; raw: string | undefined }> = [
+    { present: local.modelId !== undefined, raw: local.modelId },
+    { present: envHasKey(env, "OKIE_LLM_MODEL"), raw: env.OKIE_LLM_MODEL },
+    { present: envHasKey(env, "OPENROUTER_MODEL"), raw: env.OPENROUTER_MODEL },
+    { present: envHasKey(env, "OPENAI_MODEL"), raw: env.OPENAI_MODEL },
+  ];
+  for (const source of sources) {
+    if (!source.present) continue;
+    return source.raw?.trim() ?? "";
+  }
+  return DEFAULT_GATEWAY_MODEL_ID;
+}
+
+/** Non-empty after trim. Okie does not validate against a model table. */
+export function isUsableModelId(modelId: string | undefined): boolean {
+  return Boolean(trimToUndefined(modelId));
+}
+
+/**
+ * Throws when the operator configured an empty model id. Callers map this to
+ * an enrichment-pass failure, not a failed job.
+ */
+export function requireUsableModelId(modelId: string | undefined): string {
+  const trimmed = trimToUndefined(modelId);
+  if (!trimmed) {
+    throw new Error("empty model id");
+  }
+  return trimmed;
+}
+
 function withApiKey(base: Omit<LlmGatewayConfig, "apiKey">, apiKey: string): LlmGatewayConfig {
   const config: LlmGatewayConfig = { ...base };
   Object.defineProperty(config, "apiKey", {
@@ -118,12 +158,7 @@ export function resolveLlmGatewayConfig(
     env.OKIE_LLM_BASE_URL,
     env.OPENAI_BASE_URL,
   ]) ?? DEFAULT_OPENROUTER_BASE_URL;
-  const modelId = firstNonEmpty([
-    local.modelId,
-    env.OKIE_LLM_MODEL,
-    env.OPENROUTER_MODEL,
-    env.OPENAI_MODEL,
-  ]) ?? DEFAULT_GATEWAY_MODEL_ID;
+  const modelId = resolveModelId(env, local);
 
   const gatewayKey = gatewayKeyFromEnv(env);
   if (gatewayKey) {
@@ -153,8 +188,8 @@ export function readLlmGatewayLocalConfigFile(path: string): LlmGatewayLocalConf
     if (baseUrl) local.baseUrl = baseUrl;
   }
   if (typeof record.modelId === "string") {
-    const modelId = trimToUndefined(record.modelId);
-    if (modelId) local.modelId = modelId;
+    // Preserve present-but-empty so CLA-21 can fail the enrichment pass.
+    local.modelId = record.modelId.trim();
   }
   return local;
 }
@@ -225,7 +260,8 @@ export class LlmGatewayClient {
    * this slice only constructs the client.
    */
   async chatCompletions(body: Record<string, unknown>): Promise<unknown> {
-    const payload = { model: this.modelId, ...body };
+    // Configured model id always wins — body must not override it (CLA-21).
+    const payload = { ...body, model: this.modelId };
     const response = await this.#fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -260,14 +296,17 @@ export function describeEnrichmentMode(
   config: LlmGatewayConfig,
 ): string {
   if (mode === "off") return "disabled (OKIE_SCAN_ENRICH=0)";
+  const modelNote = isUsableModelId(config.modelId)
+    ? `model ${config.modelId}`
+    : "empty model id (enrichment pass will fail; atlas still publishes)";
   if (mode === "force") {
-    return `forced (OKIE_SCAN_ENRICH=1) gateway ${config.baseUrl} model ${config.modelId}`;
+    return `forced (OKIE_SCAN_ENRICH=1) gateway ${config.baseUrl} ${modelNote}`;
   }
   if (!hasLlmCredentials(config)) {
-    return `auto (no key; enrichment skipped) gateway ${config.baseUrl} model ${config.modelId}`;
+    return `auto (no key; enrichment skipped) gateway ${config.baseUrl} ${modelNote}`;
   }
   if (config.keySource === "anthropic-fallback") {
-    return `auto (ANTHROPIC_* fallback) gateway ${config.baseUrl} model ${config.modelId}`;
+    return `auto (ANTHROPIC_* fallback) gateway ${config.baseUrl} ${modelNote}`;
   }
-  return `auto gateway ${config.baseUrl} model ${config.modelId}`;
+  return `auto gateway ${config.baseUrl} ${modelNote}`;
 }
