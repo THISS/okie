@@ -49,6 +49,11 @@ test("OAuth config never reads GITHUB_TOKEN / GH_TOKEN and defaults test-double 
     assert.equal(loopback.clientSecret, undefined);
     const publicBind = resolveGithubOAuthConfig({}, "0.0.0.0");
     assert.equal(publicBind.testDouble, false);
+    const proxied = resolveGithubOAuthConfig({
+      OKIE_PUBLIC_ORIGIN: "https://atlas.example.test",
+      OKIE_GITHUB_TEST_DOUBLE: "1",
+    }, "127.0.0.1");
+    assert.equal(proxied.testDouble, false, "test-double must not enable behind a public origin");
     const configured = resolveGithubOAuthConfig({
       OKIE_GITHUB_CLIENT_ID: FAKE_CLIENT_ID,
       OKIE_GITHUB_CLIENT_SECRET: FAKE_CLIENT_SECRET,

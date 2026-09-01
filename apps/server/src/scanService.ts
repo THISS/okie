@@ -4,6 +4,8 @@ import {
   regenerateScanManifest,
   scanGithubRepository,
   stableJson,
+  githubRepoIsPrivate,
+  repoApiPath,
   type EmittedPackets,
   type GithubClient,
   type GithubSourceRef,
@@ -156,6 +158,15 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
     throw new Error("hosted scan requires GitHub sign-in");
   };
 
+  const rejectPrivateHostedTree = async (client: GithubClient, job: ScanJob): Promise<void> => {
+    if (!job.githubAccess) return;
+    const result = await client.getJson(repoApiPath(job.owner, job.repo));
+    if (!result.ok) return;
+    if (githubRepoIsPrivate(result.json)) {
+      throw new Error("That repository is private. Private trees stay closed until the GitHub App can read them.");
+    }
+  };
+
   return async (job, update) => {
     try {
       const source: GithubSourceRef = {
@@ -172,6 +183,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
 
       update({ stage: "scanning" });
       log(redact(`${job.id}: scanning gh:${job.owner}/${job.repo}${job.ref ? `@${job.ref}` : ""}`));
+      await rejectPrivateHostedTree(scanOptions.client, job);
       const deterministic = await scanGithubRepository(source, scanOptions);
       update({
         stage: "publishing",

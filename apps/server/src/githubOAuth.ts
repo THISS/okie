@@ -22,6 +22,7 @@ export const INSTALL_PATH = "/api/auth/github/install";
 export const SETUP_PATH = "/api/auth/github/setup";
 
 const STATE_TTL_MS = 10 * 60 * 1000;
+const MAX_PENDING_OAUTH = 256;
 const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
 const DEFAULT_PUBLIC_ORIGIN = "http://localhost:4173";
 const DEFAULT_RETURN_PATH = "/new";
@@ -81,6 +82,14 @@ export function isLoopbackBind(bind: string): boolean {
   return host === "127.0.0.1" || host === "::1" || host === "localhost";
 }
 
+export function isLoopbackOrigin(origin: string): boolean {
+  try {
+    return isLoopbackBind(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
+
 function trimToUndefined(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   return trimmed ? trimmed : undefined;
@@ -105,7 +114,7 @@ export function resolveGithubOAuthConfig(
   const clientId = trimToUndefined(env.OKIE_GITHUB_CLIENT_ID);
   const clientSecret = trimToUndefined(env.OKIE_GITHUB_CLIENT_SECRET);
   const oauthConfigured = Boolean(clientId && clientSecret);
-  const loopback = isLoopbackBind(bind);
+  const loopback = isLoopbackBind(bind) && isLoopbackOrigin(publicOrigin);
   let testDouble = false;
   if (loopback) {
     if (env.OKIE_GITHUB_TEST_DOUBLE === "0") testDouble = false;
@@ -333,6 +342,15 @@ export function createGithubAuthService(options: {
   };
 
   const beginState = (returnTo: string): string => {
+    const cutoff = now() - STATE_TTL_MS;
+    for (const [key, row] of pending) {
+      if (row.createdAt < cutoff) pending.delete(key);
+    }
+    while (pending.size >= MAX_PENDING_OAUTH) {
+      const oldest = pending.keys().next().value;
+      if (oldest === undefined) break;
+      pending.delete(oldest);
+    }
     const state = randomBytes(32).toString("hex");
     pending.set(state, { returnTo: safeReturnPath(returnTo), createdAt: now() });
     return state;

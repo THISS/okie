@@ -14,6 +14,7 @@ import {
   interpretCommitResponse,
   interpretRepoResponse,
   isGithubSource,
+  githubRepoIsPrivate,
   parseGithubSource,
   repoApiPath,
   resolveGithubCommit,
@@ -72,6 +73,9 @@ test("interpretCommitResponse falls back to author date and throws on a malforme
 test("interpretRepoResponse reads default_branch (and rejects a private/404 shape)", () => {
   assert.equal(interpretRepoResponse({ default_branch: "trunk" }), "trunk");
   assert.throws(() => interpretRepoResponse({ message: "Not Found" }), GithubAcquisitionError);
+  assert.equal(githubRepoIsPrivate({ default_branch: "main", private: true }), true);
+  assert.equal(githubRepoIsPrivate({ default_branch: "main", private: false }), false);
+  assert.equal(githubRepoIsPrivate({ default_branch: "main" }), false);
 });
 
 /** A GithubClient stub that answers from a recorded map and records the endpoints hit. */

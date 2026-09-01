@@ -100,6 +100,11 @@ export function interpretRepoResponse(json: unknown): string {
   return branch;
 }
 
+/** True when GitHub's repo payload says the tree is private (authenticated visibility). */
+export function githubRepoIsPrivate(json: unknown): boolean {
+  return (json as { private?: unknown }).private === true;
+}
+
 export type GithubJsonResult =
   | { ok: true; json: unknown }
   | { ok: false; status: number; rateLimited: boolean; message: string };

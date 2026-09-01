@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { GithubClient } from "@okie/scan";
-import { createScanJobQueue } from "./jobs.js";
+import { createScanJobQueue, toPublicJob } from "./jobs.js";
 import { createDefaultEnricherFactory, createScanJobRunner, type ScanServiceOptions } from "./scanService.js";
 
 test("HTTP scan runner fails closed on a private-repo 404 without an explicit token", async () => {
@@ -28,6 +28,44 @@ test("HTTP scan runner fails closed on a private-repo 404 without an explicit to
     const job = queue.list()[0]!;
     assert.equal(job.stage, "failed");
     assert.match(job.error ?? "", /not found.*public/i);
+    assert.deepEqual(calls, ["/repos/acme/secret"]);
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+  }
+});
+
+test("hosted scan refuses a private tree even when the GitHub token can see it", async () => {
+  const calls: string[] = [];
+  const client: GithubClient = {
+    async getJson(apiPath) {
+      calls.push(apiPath);
+      return { ok: true, json: { default_branch: "main", private: true } };
+    },
+    async downloadTarball() {
+      calls.push("tarball");
+      throw new Error("downloadTarball must not run for a private hosted tree");
+    },
+  };
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({ scanRoot, enrich: "off", githubClient: client }));
+    queue.submit({
+      owner: "acme",
+      repo: "secret",
+      slug: "acme__secret",
+      githubAccess: {
+        kind: "github",
+        source: "oauth",
+        token: "gho_okieTestUserTokenCla30zzzz",
+        login: "octocat",
+        userId: "1",
+      },
+    });
+    await queue.idle();
+    const job = queue.list()[0]!;
+    assert.equal(job.stage, "failed");
+    assert.match(job.error ?? "", /private/i);
+    assert.equal(JSON.stringify(toPublicJob(job)).includes("gho_okieTestUserTokenCla30zzzz"), false);
     assert.deepEqual(calls, ["/repos/acme/secret"]);
   } finally {
     rmSync(scanRoot, { recursive: true, force: true });
