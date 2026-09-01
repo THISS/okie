@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AtlasScene, SceneEntity, SceneRelation } from '../renderer/types';
 import {
   canvasRelationRowsForEntity,
+  canvasRelationRowsInIsolate,
   canvasRelationsForEntity,
   selectedRelationPresentation,
   selectedRelationPresentations,
@@ -228,6 +229,31 @@ describe('inspector rows follow the canvas', () => {
       .toEqual([expect.objectContaining({
         id: 'relation:a-b', relationId: 'relation:a-b', direction: 'outbound', label: 'reads', count: 1,
       })]);
+  });
+});
+
+describe('Isolate inspector rows follow the canvas', () => {
+  it('keeps a projected L1 edge when visual ends are isolated and canonical ends are not', () => {
+    const rows = canvasRelationRowsForEntity(projectedScene(), ['edge:context:app>db'], 'system:app');
+    const isolateSet = new Set(['system:app', 'external:db']);
+
+    expect(projectedRelations.find(relation => relation.id === 'rel:a1-db'))
+      .toMatchObject({ from: 'code:a1', to: 'external:db' });
+    expect(isolateSet.has('code:a1')).toBe(false);
+    // Canonical from/to matching is what Isolate used to do, and it drops this row.
+    expect(projectedRelations.filter(relation => isolateSet.has(relation.from) && isolateSet.has(relation.to)))
+      .toEqual([]);
+    expect(canvasRelationRowsInIsolate(rows, 'system:app', isolateSet)).toEqual([expect.objectContaining({
+      id: 'edge:context:app>db',
+      relationId: 'rel:a1-db',
+      counterpart: expect.objectContaining({ id: 'external:db' }),
+    })]);
+  });
+
+  it('drops the row when the visual counterpart is outside the isolate set', () => {
+    const rows = canvasRelationRowsForEntity(projectedScene(), ['edge:context:app>db'], 'system:app');
+    expect(canvasRelationRowsInIsolate(rows, 'system:app', new Set(['system:app']))).toEqual([]);
+    expect(canvasRelationRowsInIsolate(rows, 'system:app', new Set(['external:db']))).toEqual([]);
   });
 });
 

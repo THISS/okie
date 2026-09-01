@@ -268,6 +268,21 @@ export function selfProjectedRelationCount(
   return count;
 }
 
+/**
+ * Isolate keeps the same visual edges the canvas draws: both projected
+ * endpoints must be in the isolate set. Canonical `from`/`to` are not used —
+ * a band-projected L1 edge (Okie → DB) stays even when its semantic ends
+ * (`code:a1` → `external:db`) are descendants outside the isolate set.
+ */
+export function canvasRelationRowsInIsolate(
+  rows: readonly CanvasRelationRow[],
+  selectedEntityId: string,
+  isolatedEntityIds: ReadonlySet<string>,
+): CanvasRelationRow[] {
+  if (!isolatedEntityIds.has(selectedEntityId)) return [];
+  return rows.filter(row => isolatedEntityIds.has(row.counterpart.id));
+}
+
 /** The inspector's Relationships section for one selected entity. */
 export function canvasRelationsForEntity(
   scene: AtlasScene,

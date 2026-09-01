@@ -65,7 +65,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1623,7 +1623,6 @@ export function App() {
       .map(relation => relation.id),
     [scene.relations, isolatedEntityIdSet],
   );
-  const isolatedRelationIdSet = useMemo(() => new Set(isolatedRelationIds), [isolatedRelationIds]);
   const visibleExplorerEntities = useMemo(
     () => visibilityMode === 'isolate' && !storyTraveling
       ? explorerEntities.filter(entity => isolatedEntityIdSet.has(entity.id))
@@ -1632,9 +1631,11 @@ export function App() {
   );
   const visibleRelated = useMemo(
     () => visibilityMode === 'isolate' && !storyTraveling
-      ? related.filter(row => row.semanticIds.some(id => isolatedRelationIdSet.has(id)))
+      // Isolate matches the canvas: keep a row when both visual ends are isolated,
+      // not when canonical from/to happen to be in the isolate set (CLA-5).
+      ? canvasRelationRowsInIsolate(related, selected.id, isolatedEntityIdSet)
       : related,
-    [isolatedRelationIdSet, related, storyTraveling, visibilityMode],
+    [isolatedEntityIdSet, related, selected.id, storyTraveling, visibilityMode],
   );
   const sceneObjectSummary = useMemo(
     () => summarizeIds(scene.entities.map(entity => entity.id)),

@@ -7,6 +7,7 @@ export {
   inspectorWidthStorageKey,
 } from './inspectorPanel';
 export {
+  canvasRelationRowsInIsolate,
   canvasRelationsForEntity,
   selectedRelationPresentation,
   type CanvasRelationRow,
