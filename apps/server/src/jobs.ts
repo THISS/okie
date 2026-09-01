@@ -168,8 +168,11 @@ export function toPublicJob(
     const modelId = redact(job.enrichment.modelId);
     if (modelId === job.enrichment.modelId) enrichment.modelId = modelId;
   }
-  if (job.enrichment.provider && !/https?:\/\//i.test(job.enrichment.provider) && !job.enrichment.provider.includes("@")) {
-    enrichment.provider = job.enrichment.provider;
+  if (job.enrichment.provider) {
+    const provider = redact(job.enrichment.provider);
+    if (provider === job.enrichment.provider && !/https?:\/\//i.test(provider) && !provider.includes("@")) {
+      enrichment.provider = provider;
+    }
   }
   return {
     id: job.id,

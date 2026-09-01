@@ -296,9 +296,11 @@ export function publicGatewayBaseUrl(baseUrl: string): string {
 
 /** Safe snapshot for logs / inspect / health-adjacent views. Never includes the key. */
 export function publicLlmGatewayView(config: LlmGatewayConfig): LlmGatewayPublicView {
+  const modelId = enrichmentModelId(config)
+    ?? (isUsableModelId(config.modelId) ? "[redacted]" : config.modelId);
   return {
     baseUrl: publicGatewayBaseUrl(config.baseUrl),
-    modelId: config.modelId,
+    modelId,
     keySource: config.keySource,
     keyConfigured: Boolean(config.apiKey),
   };
@@ -337,10 +339,15 @@ export function enrichmentProviderLabel(
   config: LlmGatewayConfig,
   mode: "off" | "force" | "auto" = "auto",
 ): string | undefined {
-  if (config.keySource === "anthropic-fallback") return "anthropic";
-  if (config.keySource === "gateway") return safeGatewayProvider(config.baseUrl);
-  if (mode === "force") return "anthropic";
-  return safeGatewayProvider(config.baseUrl);
+  let raw: string | undefined;
+  if (config.keySource === "anthropic-fallback") raw = "anthropic";
+  else if (config.keySource === "gateway") raw = safeGatewayProvider(config.baseUrl);
+  else if (mode === "force") raw = "anthropic";
+  else raw = safeGatewayProvider(config.baseUrl);
+  if (!raw) return undefined;
+  if (/https?:\/\//i.test(raw) || raw.includes("@") || raw.includes("/")) return undefined;
+  const redacted = redactGatewayText(raw, config.apiKey);
+  return redacted === raw ? raw : undefined;
 }
 
 /**
@@ -357,27 +364,30 @@ export function enrichmentModelId(config: LlmGatewayConfig): string | undefined 
 /**
  * Strip userinfo, query, and fragment from http(s) URLs in `text`. Tokens in
  * `https://user:token@host/path?api_key=` must not reach logs, job.error, or UI.
- * Trailing sentence punctuation is preserved; commas inside userinfo are not
- * treated as URL terminators.
+ * The match is whitespace-delimited (commas/quotes inside userinfo stay in the
+ * URL so they can be stripped), then trailing sentence punctuation is peeled
+ * only when `new URL` requires it.
  */
 export function redactTokenizedUrls(text: string): string {
-  return text.replace(/https?:\/\/[^\s"'<>]+/gi, raw => {
-    const trailingMatch = /[.,;:!?)]+$/.exec(raw);
-    const core = trailingMatch ? raw.slice(0, trailingMatch.index) : raw;
-    const suffix = trailingMatch ? trailingMatch[0] : "";
-    try {
-      const parsed = new URL(core);
-      if (!parsed.username && !parsed.password && !parsed.search && !parsed.hash) {
-        return raw;
+  return text.replace(/https?:\/\/\S+/gi, raw => {
+    let candidate = raw;
+    while (candidate.length >= 8) {
+      try {
+        const parsed = new URL(candidate);
+        const suffix = raw.slice(candidate.length);
+        if (!parsed.username && !parsed.password && !parsed.search && !parsed.hash) {
+          return raw;
+        }
+        parsed.username = "";
+        parsed.password = "";
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.toString()}${suffix}`;
+      } catch {
+        candidate = candidate.slice(0, -1);
       }
-      parsed.username = "";
-      parsed.password = "";
-      parsed.search = "";
-      parsed.hash = "";
-      return `${parsed.toString()}${suffix}`;
-    } catch {
-      return `[redacted-url]${suffix}`;
     }
+    return "[redacted-url]";
   });
 }
 
@@ -495,12 +505,12 @@ export class LlmGatewayClient {
   }
 
   toJSON(): LlmGatewayPublicView {
-    return {
-      baseUrl: publicGatewayBaseUrl(this.baseUrl),
+    return publicLlmGatewayView({
+      baseUrl: this.baseUrl,
       modelId: this.modelId,
       keySource: this.keySource,
-      keyConfigured: true,
-    };
+      apiKey: this.#apiKey,
+    });
   }
 
   [inspect.custom](): LlmGatewayPublicView {

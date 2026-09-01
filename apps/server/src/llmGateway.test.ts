@@ -371,6 +371,32 @@ test("redactTokenizedUrls does not stop at a comma inside userinfo", () => {
   assert.doesNotMatch(redacted, /api_key=/);
 });
 
+test("redactTokenizedUrls does not stop at an apostrophe inside userinfo", () => {
+  const password = "okie-test-part-a'okie-test-part-b";
+  const query = "okie-test-query-token-cla29-fake";
+  const url = `https://okietest:${password}@example.invalid/v1?api_key=${query}`;
+  const redacted = redactTokenizedUrls(`llm gateway 401 from ${url}`);
+  assert.equal(redacted.includes("okie-test-part-b"), false);
+  assert.equal(redacted.includes(query), false);
+  assert.match(redacted, /example\.invalid/);
+});
+
+test("inspect and public views redact a model id that equals the API key", () => {
+  const config = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: FAKE_GATEWAY_KEY,
+  });
+  const view = JSON.stringify(publicLlmGatewayView(config));
+  const inspected = inspect(config, { showHidden: true });
+  assert.doesNotMatch(view, new RegExp(FAKE_GATEWAY_KEY));
+  assert.doesNotMatch(inspected, new RegExp(FAKE_GATEWAY_KEY));
+  assert.match(view, /\[redacted\]/);
+  const client = createLlmGatewayClient(config);
+  assert.ok(client);
+  assert.doesNotMatch(JSON.stringify(client), new RegExp(FAKE_GATEWAY_KEY));
+  assert.doesNotMatch(inspect(client, { showHidden: true }), new RegExp(FAKE_GATEWAY_KEY));
+});
+
 test("enrichmentModelId omits a model field that is the API key or a tokenized URL", () => {
   const keyed = resolveLlmGatewayConfig({
     OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
