@@ -12,6 +12,14 @@ import {
 } from "@okie/scan";
 import type { JobRunner } from "./jobs.js";
 import { createEnricher } from "./enrichment.js";
+import {
+  createLlmGatewayClient,
+  hasLlmCredentials,
+  redactLlmSecret,
+  resolveLlmGatewayConfig,
+  type LlmGatewayConfig,
+  type LlmGatewayLocalConfig,
+} from "./llmGateway.js";
 
 export type EnrichmentHook = (packets: EmittedPackets) => Promise<ReadonlyMap<string, unknown>>;
 
@@ -20,10 +28,14 @@ export interface ScanServiceOptions {
   scanRoot: string;
   maxTarballBytes?: number;
   /**
-   * "auto": enrich when an Anthropic key/token is visible; "force": attempt even
+   * "auto": enrich when a gateway or Anthropic key is visible; "force": attempt even
    * without one (profile-based auth the sniff can't see); "off": deterministic only.
    */
   enrich?: "auto" | "force" | "off";
+  /** Env dict for gateway resolution (tests). Defaults to process.env. */
+  env?: NodeJS.Dict<string>;
+  /** Non-secret local overlay (base URL / model id). */
+  llmLocal?: LlmGatewayLocalConfig;
   /** Injectable enrichment factory (tests). Returning undefined skips enrichment. */
   enricherFactory?: (onProgress: (note: string) => void) => EnrichmentHook | undefined;
   /**
@@ -53,19 +65,35 @@ function publishArtifacts(scanRoot: string, dirSlug: string, artifacts: ScanArti
   writeFileSync(join(scanRoot, "index.json"), stableJson(manifest));
 }
 
-function defaultEnricherFactory(
+function skipNote(config: LlmGatewayConfig): string {
+  if (config.keySource === "none") {
+    return "no LLM credentials visible (set OKIE_LLM_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY; ANTHROPIC_API_KEY remains a fallback, or OKIE_SCAN_ENRICH=1 for profile auth)";
+  }
+  return "no LLM credentials visible";
+}
+
+/**
+ * Default factory for the live enricher. Auto mode skips when no gateway or
+ * Anthropic key is visible so the deterministic atlas still publishes. The
+ * OpenAI-compatible client is constructed here when a gateway key is present;
+ * packet HTTP still uses the Anthropic SDK until CLA-23.
+ */
+export function createDefaultEnricherFactory(
   mode: "auto" | "force",
+  env: NodeJS.Dict<string> = process.env,
+  local: LlmGatewayLocalConfig = {},
 ): (onProgress: (note: string) => void) => EnrichmentHook | undefined {
   return onProgress => {
-    // The SDK resolves credentials lazily (at request time), so "auto" sniffs the
-    // two visible sources up front rather than burning a whole enrichment pass on
-    // auth failures. Profile-based auth (`ant auth login`) is invisible to the
-    // sniff — OKIE_SCAN_ENRICH=1 forces the attempt for that setup, and a total
-    // auth failure then surfaces as an honest "enrichment failed" on the job.
-    const credentialVisible = Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
-    if (mode === "auto" && !credentialVisible) return undefined;
+    const config = resolveLlmGatewayConfig(env, local);
+    // Profile-based Anthropic auth (`ant auth login`) is invisible to the sniff —
+    // OKIE_SCAN_ENRICH=1 forces the attempt for that setup.
+    if (mode === "auto" && !hasLlmCredentials(config)) return undefined;
     try {
-      return createEnricher({ onProgress });
+      const gateway = createLlmGatewayClient(config);
+      return createEnricher({
+        onProgress,
+        ...(gateway ? { gateway } : {}),
+      });
     } catch {
       return undefined;
     }
@@ -83,9 +111,12 @@ function defaultEnricherFactory(
 export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const log = options.log ?? (() => {});
   const enrichMode = options.enrich ?? "auto";
+  const env = options.env ?? process.env;
+  const llmLocal = options.llmLocal ?? {};
   const enricherFactory = options.enricherFactory
-    ?? (enrichMode === "off" ? () => undefined : defaultEnricherFactory(enrichMode));
+    ?? (enrichMode === "off" ? () => undefined : createDefaultEnricherFactory(enrichMode, env, llmLocal));
   const githubClient = options.githubClient ?? createAnonymousGithubClient();
+  const redact = (line: string): string => redactLlmSecret(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
 
   return async (job, update) => {
     const source: GithubSourceRef = {
@@ -101,7 +132,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
     };
 
     update({ stage: "scanning" });
-    log(`${job.id}: scanning gh:${job.owner}/${job.repo}${job.ref ? `@${job.ref}` : ""}`);
+    log(redact(`${job.id}: scanning gh:${job.owner}/${job.repo}${job.ref ? `@${job.ref}` : ""}`));
     const deterministic = await scanGithubRepository(source, scanOptions);
     update({
       stage: "publishing",
@@ -111,18 +142,18 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
     });
     publishArtifacts(options.scanRoot, job.slug, deterministic.artifacts);
     update({ atlasReady: true });
-    log(`${job.id}: deterministic atlas published (${deterministic.artifacts.snapshot.entities.length} entities @ ${deterministic.commitSha.slice(0, 12)})`);
+    log(redact(`${job.id}: deterministic atlas published (${deterministic.artifacts.snapshot.entities.length} entities @ ${deterministic.commitSha.slice(0, 12)})`));
 
     if (enrichMode === "off") {
       update({ enrichment: { state: "skipped", note: "enrichment disabled" } });
       return;
     }
-    const enricher = enricherFactory(note => log(`${job.id}: ${note}`));
+    const enricher = enricherFactory(note => log(redact(`${job.id}: ${note}`)));
     if (!enricher) {
       update({
         enrichment: {
           state: "skipped",
-          note: "no Anthropic credentials visible (set ANTHROPIC_API_KEY, or OKIE_SCAN_ENRICH=1 for profile auth)",
+          note: skipNote(resolveLlmGatewayConfig(env, llmLocal)),
         },
       });
       return;
@@ -150,16 +181,17 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
             : {}),
         },
       });
-      log(`${job.id}: enriched atlas republished (${report?.enrichedContainers.length ?? 0} containers)`);
+      log(redact(`${job.id}: enriched atlas republished (${report?.enrichedContainers.length ?? 0} containers)`));
     } catch (error) {
       // The deterministic atlas is already live — record the downgrade, don't fail the job.
+      const note = redact(error instanceof Error ? error.message : String(error));
       update({
         enrichment: {
           state: "failed",
-          note: error instanceof Error ? error.message : String(error),
+          note,
         },
       });
-      log(`${job.id}: enrichment failed (${error instanceof Error ? error.message : String(error)}); deterministic atlas stands`);
+      log(redact(`${job.id}: enrichment failed (${note}); deterministic atlas stands`));
     }
   };
 }

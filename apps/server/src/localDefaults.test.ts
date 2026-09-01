@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_LISTEN_HOST, healthzBody, resolveListenHost } from "./localDefaults.js";
+import { publicLlmGatewayView, resolveLlmGatewayConfig } from "./llmGateway.js";
 
 test("listen host defaults to loopback, not all interfaces", () => {
   assert.equal(DEFAULT_LISTEN_HOST, "127.0.0.1");
@@ -39,4 +40,22 @@ test("main.ts serves healthzBody on loopback and never puts scanRoot on the wire
   assert.match(src, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
   assert.match(src, /server\.listen\(port,\s*bind/);
   assert.doesNotMatch(src, /sendJson\([^;]*scanRoot/);
+});
+
+test("healthz and main.ts never put an LLM API key on the wire", () => {
+  const fakeKey = "okie-test-llm-key-cla20-fake";
+  const config = resolveLlmGatewayConfig({ OPENROUTER_API_KEY: fakeKey });
+  const body = healthzBody({ enrich: "auto", bind: "127.0.0.1" });
+  const json = JSON.stringify(body);
+  const view = JSON.stringify(publicLlmGatewayView(config));
+
+  assert.doesNotMatch(json, new RegExp(fakeKey));
+  assert.doesNotMatch(view, new RegExp(fakeKey));
+  assert.equal("apiKey" in body, false);
+
+  const src = readFileSync(join(fileURLToPath(new URL(".", import.meta.url)), "../src/main.ts"), "utf8");
+  assert.match(src, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
+  assert.doesNotMatch(src, /healthzBody\([^)]*apiKey/);
+  assert.doesNotMatch(src, /healthzBody\([^)]*llm/);
+  assert.match(src, /describeEnrichmentMode\(enrich,\s*llm\)/);
 });

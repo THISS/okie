@@ -5,6 +5,12 @@ import { fileURLToPath } from "node:url";
 import { DEFAULT_MAX_TARBALL_BYTES } from "@okie/scan";
 import { createScanJobQueue, createSubmitLimiter, type ScanJob } from "./jobs.js";
 import { healthzBody, resolveListenHost } from "./localDefaults.js";
+import {
+  describeEnrichmentMode,
+  loadOperatorDotenv,
+  resolveLlmGatewayConfig,
+  resolveLlmGatewayLocalConfig,
+} from "./llmGateway.js";
 import { normalizeRepoInput } from "./repoUrl.js";
 import { createScanJobRunner } from "./scanService.js";
 
@@ -24,6 +30,9 @@ import { createScanJobRunner } from "./scanService.js";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const repoRoot = resolve(here, "../../..");
+loadOperatorDotenv(repoRoot);
+const llmLocal = resolveLlmGatewayLocalConfig(repoRoot);
+const llm = resolveLlmGatewayConfig(process.env, llmLocal);
 const scanRoot = process.env.OKIE_SCAN_ROOT
   ? resolve(process.env.OKIE_SCAN_ROOT)
   : join(repoRoot, "fixtures/scan");
@@ -42,6 +51,7 @@ const log = (line: string): void => {
 const queue = createScanJobQueue(createScanJobRunner({
   scanRoot,
   enrich,
+  llmLocal,
   maxTarballBytes: DEFAULT_MAX_TARBALL_BYTES,
   log,
 }));
@@ -180,9 +190,5 @@ async function handle(request: IncomingMessage, response: ServerResponse): Promi
 server.listen(port, bind, () => {
   log(`listening on http://${bind}:${port} (no auth; local operator tool, not a public service)`);
   log(`scan root: ${scanRoot}`);
-  log(`enrichment: ${enrich === "off"
-    ? "disabled (OKIE_SCAN_ENRICH=0)"
-    : enrich === "force"
-      ? "forced (OKIE_SCAN_ENRICH=1)"
-      : "auto (runs when ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN is set)"}`);
+  log(`enrichment: ${describeEnrichmentMode(enrich, llm)}`);
 });

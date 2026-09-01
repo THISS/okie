@@ -33,6 +33,11 @@ export type EnrichmentGenerator = (
 export interface EnricherOptions {
   /** Injectable generator (tests). Default: the Anthropic streaming generator. */
   generate?: EnrichmentGenerator;
+  /**
+   * OpenAI-compatible gateway client (CLA-20). Constructed when a gateway key is
+   * present. Packet HTTP still uses the Anthropic SDK until CLA-23.
+   */
+  gateway?: { baseUrl: string; modelId: string };
   /** Concurrent in-flight scopes (default 2 — bounded, order-independent by design). */
   maxConcurrent?: number;
   onProgress?: (note: string) => void;
@@ -160,8 +165,12 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
   const progress = options.onProgress ?? (() => {});
   const generate = options.generate ?? anthropicGenerator(new Anthropic());
   const maxConcurrent = Math.max(1, options.maxConcurrent ?? 2);
+  const gateway = options.gateway;
 
   return async ({ packets, systemPacket }) => {
+    if (gateway) {
+      progress(`enrich: llm gateway ${gateway.baseUrl} model ${gateway.modelId}`);
+    }
     const docs = new Map<string, unknown>();
     if (!systemPacket) {
       // No system root means no gate anchor for container docs — nothing to enrich.

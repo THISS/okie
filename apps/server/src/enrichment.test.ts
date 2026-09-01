@@ -98,6 +98,19 @@ test("no system packet means no enrichment at all (no gate anchor)", async () =>
   assert.equal(called, 0);
 });
 
+test("gateway progress notes never include the API key", async () => {
+  const fakeKey = "okie-test-llm-key-cla20-fake";
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    onProgress: note => notes.push(note),
+    gateway: { baseUrl: "https://openrouter.ai/api/v1", modelId: "acme/fast" },
+    generate: async () => ({ ok: true }),
+  });
+  await enrich(packets());
+  assert.ok(notes.some(note => note.includes("llm gateway") && note.includes("acme/fast")));
+  assert.ok(notes.every(note => !note.includes(fakeKey)));
+});
+
 test("total failure (e.g. bad credentials) throws instead of reporting empty success", async () => {
   const enrich = createEnricher({
     generate: async () => {
