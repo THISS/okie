@@ -26,8 +26,9 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
    stable ID, fingerprint = content hash).
 5. **View + compile** — synthesize a validator-satisfying view, a deterministic multi-step
    C4 overview story (system → containers → a representative component/code descent;
-   `overview-story.ts` `buildOverviewStory`), then `buildC4ProjectionBundle` →
-   `compileC4Scene`/`compileC4Timeline`.
+   `overview-story.ts` `buildOverviewStory`). After a gated enrichment pass, step
+   narration may mention accepted section summaries; step count and reveals stay
+   the C4 tour. Then `buildC4ProjectionBundle` → `compileC4Scene`/`compileC4Timeline`.
 
 ## Structure mapping (R1 — deterministic truth layer)
 
