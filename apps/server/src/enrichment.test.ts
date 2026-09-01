@@ -552,8 +552,12 @@ test("default enricher factory drives packets through chatCompletions on a fake 
     assert.deepEqual([...docs.keys()].sort(), ["container:pkg-a", "system:acme"]);
     assert.deepEqual(docs.get("container:pkg-a"), GATE_DOC);
     assert.equal(posted.length, 2);
-    assert.match(posted[0]!, /"containerId": "container:pkg-a"/);
-    assert.match(posted[1]!, /"systemId": "system:acme"/);
+    const userMessages = posted.map(raw => {
+      const body = JSON.parse(raw) as { messages: Array<{ role: string; content: string }> };
+      return body.messages.find(message => message.role === "user")?.content ?? "";
+    });
+    assert.ok(userMessages.some(content => /"containerId": "container:pkg-a"/.test(content)));
+    assert.ok(userMessages.some(content => /"systemId": "system:acme"/.test(content)));
     assert.ok(posted.every(body => !body.includes(fakeKey)));
     assert.ok(posted.every(body => !body.includes("WHOLE_REPO_SENTINEL")));
   } finally {
