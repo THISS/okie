@@ -63,3 +63,27 @@ export function inspectorTabForEntity(canShowSource: boolean, intent: InspectorI
   if (intent === 'details') return 'details';
   return canShowSource ? 'source' : 'details';
 }
+
+/**
+ * Compile-time empty copy written onto scene entities when the snapshot has no
+ * `responsibility`. Not an accepted enrichment summary — Details stays as-is.
+ */
+export const INSPECTOR_EMPTY_SUMMARY = 'No summary supplied.';
+
+export type InspectorSummaryEntity = {
+  responsibility?: string;
+};
+
+/**
+ * Accepted section summaries land on `responsibility` after the enrichment gate
+ * (CLA-24). Hand-authored golden copy uses the same field. Placeholder / blank
+ * copy is not a summary: the inspector keeps current Details/Source only.
+ * Failed or skipped enrichment never blanks those tabs — it just omits this text.
+ */
+export function inspectorAcceptedSummary(
+  entity: InspectorSummaryEntity | undefined,
+): string | undefined {
+  const text = entity?.responsibility?.trim();
+  if (!text || text === INSPECTOR_EMPTY_SUMMARY) return undefined;
+  return text;
+}
