@@ -193,6 +193,12 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('canvasRelationsForEntity(scene, activeProjectionRelationIds, selected.id, activeDetail)');
   });
 
+  it('filters Isolate Relationships by visual endpoints, not canonical from/to', () => {
+    expect(app).toContain('canvasRelationRowsInIsolate(related, selected.id, isolatedEntityIdSet)');
+    expect(app).not.toContain('row.semanticIds.some(id => isolatedRelationIdSet.has(id))');
+    expect(app).toContain('canvasRelationsForEntity(scene, activeProjectionRelationIds, selected.id, activeDetail)');
+  });
+
   it('follows the canvas in Relationships and keeps both remainders honest', () => {
     const relationships = app.indexOf('<h3>Relationships</h3>');
     const omitted = app.indexOf('data-testid="relationships-omitted-more"', relationships);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArchitectureEntity, ArchitectureRelation, ArchitectureSnapshot, EntityKind } from '@okie/architecture';
 import { createC4Scene, createGoldenC4Scene } from '../renderer/goldenC4Scene';
-import { canvasRelationsForEntity } from './inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity } from './inspectorSupport';
 import type { AtlasScene, SemanticDetail } from '../renderer/types';
 
 /**
@@ -173,6 +173,36 @@ describe('L1 inspector follows the canvas', () => {
     expect(stacked.omittedEdgeCount).toBe(0);
     expect(stacked.omittedRelationCount).toBe(0);
     expect(stacked.rows.length + stacked.hiddenInternalCount).toBe(scene.relations.length);
+  });
+
+  it('Isolate keeps the projected L1 row the canvas draws when canonical ends are not isolated', () => {
+    const scene = scanScene();
+    const drawn = drawnEdgeIds(scene, 'context');
+    const presentation = canvasRelationsForEntity(scene, drawn, 'system:app', 'context');
+    const isolateSet = new Set(['system:app', 'external:db']);
+
+    expect(presentation.rows[0]).toMatchObject({ relationId: 'rel:a1-db', direction: 'outbound' });
+    expect(scene.relations.find(candidate => candidate.id === 'rel:a1-db'))
+      .toMatchObject({ from: 'code:a1', to: 'external:db' });
+    expect(isolateSet.has('code:a1')).toBe(false);
+    expect(scene.relations.filter(relation => isolateSet.has(relation.from) && isolateSet.has(relation.to)))
+      .toEqual([]);
+    expect(canvasRelationRowsInIsolate(presentation.rows, 'system:app', isolateSet).map(row => row.id))
+      .toEqual(presentation.rows.map(row => row.id));
+    expect(canvasRelationRowsInIsolate(presentation.rows, 'system:app', new Set(['system:app']))).toEqual([]);
+  });
+
+  it('Isolate does not change golden L1 rows when both visual ends are isolated', () => {
+    const scene = createGoldenC4Scene();
+    const rows = canvasRelationsForEntity(scene, drawnEdgeIds(scene, 'context'), 'system:okie', 'context').rows;
+    const visualEnds = new Set(['system:okie', ...rows.map(row => row.counterpart.id)]);
+
+    expect(rows.map(row => `${row.directionLabel}:${row.relationId}`)).toEqual([
+      'IN:relation:developer-explores-okie',
+      'OUT:relation:okie-renders-browser',
+      'OUT:relation:okie-source-evidence',
+    ]);
+    expect(canvasRelationRowsInIsolate(rows, 'system:okie', visualEnds)).toEqual(rows);
   });
 
   it('shows relations and evidence with empty enrich copy', () => {
