@@ -7,6 +7,7 @@ import {
   DEFAULT_REQUEST_TIMEOUT_MS,
   isUsableModelId,
   requireUsableModelId,
+  safeGatewayProvider,
   shouldSkipRemainingScopes,
   withDeadline,
   type EnrichmentBudget,
@@ -397,7 +398,8 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
       throw new Error("empty model id");
     }
     if (passModelId && gateway) {
-      progress(`enrich: llm gateway ${gateway.baseUrl} model ${passModelId}`);
+      const provider = safeGatewayProvider(gateway.baseUrl) ?? "configured";
+      progress(`enrich: llm gateway ${provider} model ${passModelId}`);
     } else if (passModelId) {
       progress(`enrich: model ${passModelId}`);
     }

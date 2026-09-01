@@ -15,18 +15,23 @@ import {
   DEFAULT_OPENROUTER_BASE_URL,
   DEFAULT_REQUEST_TIMEOUT_MS,
   describeEnrichmentMode,
+  enrichmentModelId,
+  enrichmentProviderLabel,
   hasLlmCredentials,
   isUsableModelId,
   LlmGatewayError,
+  publicGatewayBaseUrl,
   publicLlmGatewayView,
   readGatewayUsage,
   readLlmGatewayLocalConfigFile,
   redactGatewayText,
   redactLlmSecret,
+  redactTokenizedUrls,
   requireUsableModelId,
   resolveEnrichmentBudget,
   resolveLlmGatewayConfig,
   resolveLlmGatewayLocalConfig,
+  safeGatewayProvider,
   shouldSkipRemainingScopes,
 } from "./llmGateway.js";
 
@@ -35,6 +40,11 @@ const FAKE_GATEWAY_KEY = "okie-test-llm-key-cla20-fake";
 const FAKE_ANTHROPIC_KEY = "okie-test-anthropic-key-cla20-fake";
 /** Obviously fake GitHub-shaped token for planted-secret tests (existing `gho_` scrub). */
 const PLANTED_SOURCE_SECRET = "gho_okieTestPlantedSecretCla25xxxx";
+/** Obviously fake URL userinfo/query tokens — never a live credential. */
+const FAKE_URL_USERINFO = "okie-test-url-token-cla29-fake";
+const FAKE_URL_QUERY = "okie-test-query-token-cla29-fake";
+const TOKENIZED_GATEWAY_URL =
+  `https://okietest:${FAKE_URL_USERINFO}@example.invalid/v1?api_key=${FAKE_URL_QUERY}`;
 
 test("defaults suit OpenRouter: base URL and documented model id", () => {
   const config = resolveLlmGatewayConfig({});
@@ -311,7 +321,107 @@ test("describeEnrichmentMode never includes the key", () => {
   const keyed = resolveLlmGatewayConfig({ OPENROUTER_API_KEY: FAKE_GATEWAY_KEY });
   const line = describeEnrichmentMode("auto", keyed);
   assert.doesNotMatch(line, new RegExp(FAKE_GATEWAY_KEY));
-  assert.match(line, /openrouter\.ai\/api\/v1/);
+  assert.match(line, /openrouter\.ai/);
+  assert.match(line, /model anthropic\/claude-sonnet-4/);
+  assert.doesNotMatch(line, /\/api\/v1/);
+  assert.doesNotMatch(line, /https:\/\//);
+});
+
+test("describeEnrichmentMode and public views strip tokenized gateway URLs", () => {
+  const config = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OKIE_LLM_BASE_URL: TOKENIZED_GATEWAY_URL,
+  });
+  const line = describeEnrichmentMode("auto", config);
+  assert.match(line, /example\.invalid/);
+  assert.doesNotMatch(line, new RegExp(FAKE_URL_USERINFO));
+  assert.doesNotMatch(line, new RegExp(FAKE_URL_QUERY));
+  assert.doesNotMatch(line, /api_key=/);
+  assert.doesNotMatch(line, /https:\/\//);
+  assert.equal(enrichmentProviderLabel(config), "example.invalid");
+  assert.equal(enrichmentModelId(config), DEFAULT_GATEWAY_MODEL_ID);
+
+  const view = publicLlmGatewayView(config);
+  assert.doesNotMatch(JSON.stringify(view), new RegExp(FAKE_URL_USERINFO));
+  assert.doesNotMatch(JSON.stringify(view), new RegExp(FAKE_URL_QUERY));
+  assert.equal(view.baseUrl.includes("example.invalid"), true);
+  assert.equal(safeGatewayProvider(TOKENIZED_GATEWAY_URL), "example.invalid");
+  assert.doesNotMatch(publicGatewayBaseUrl(TOKENIZED_GATEWAY_URL), new RegExp(FAKE_URL_USERINFO));
+});
+
+test("redactGatewayText strips tokenized gateway URLs and the operator key", () => {
+  const mixed = `llm gateway 401: ${TOKENIZED_GATEWAY_URL} key ${FAKE_GATEWAY_KEY}`;
+  const redacted = redactGatewayText(mixed, FAKE_GATEWAY_KEY);
+  assert.equal(redacted.includes(FAKE_URL_USERINFO), false);
+  assert.equal(redacted.includes(FAKE_URL_QUERY), false);
+  assert.equal(redacted.includes(FAKE_GATEWAY_KEY), false);
+  assert.match(redacted, /example\.invalid/);
+  assert.match(redacted, /\[redacted-llm-key\]/);
+  assert.equal(redactTokenizedUrls("plain https://openrouter.ai/api/v1 ok"), "plain https://openrouter.ai/api/v1 ok");
+});
+
+test("redactTokenizedUrls does not stop at a comma inside userinfo", () => {
+  const password = "okie-test-secret-part-a,okie-test-secret-part-b";
+  const query = "okie-test-query-token-cla29-fake";
+  const url = `https://okietest:${password}@example.invalid/v1?api_key=${query}`;
+  const redacted = redactTokenizedUrls(`llm gateway 401 from ${url}`);
+  assert.equal(redacted.includes(password), false);
+  assert.equal(redacted.includes(query), false);
+  assert.match(redacted, /example\.invalid/);
+  assert.doesNotMatch(redacted, /api_key=/);
+});
+
+test("redactTokenizedUrls does not stop at an apostrophe inside userinfo", () => {
+  const password = "okie-test-part-a'okie-test-part-b";
+  const query = "okie-test-query-token-cla29-fake";
+  const url = `https://okietest:${password}@example.invalid/v1?api_key=${query}`;
+  const redacted = redactTokenizedUrls(`llm gateway 401 from ${url}`);
+  assert.equal(redacted.includes("okie-test-part-b"), false);
+  assert.equal(redacted.includes(query), false);
+  assert.match(redacted, /example\.invalid/);
+});
+
+test("inspect and public views redact a model id that equals the API key", () => {
+  const config = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: FAKE_GATEWAY_KEY,
+  });
+  const view = JSON.stringify(publicLlmGatewayView(config));
+  const inspected = inspect(config, { showHidden: true });
+  assert.doesNotMatch(view, new RegExp(FAKE_GATEWAY_KEY));
+  assert.doesNotMatch(inspected, new RegExp(FAKE_GATEWAY_KEY));
+  assert.match(view, /\[redacted\]/);
+  const client = createLlmGatewayClient(config);
+  assert.ok(client);
+  assert.doesNotMatch(JSON.stringify(client), new RegExp(FAKE_GATEWAY_KEY));
+  assert.doesNotMatch(inspect(client, { showHidden: true }), new RegExp(FAKE_GATEWAY_KEY));
+});
+
+test("enrichmentModelId omits a model field that is the API key or a tokenized URL", () => {
+  const keyed = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: FAKE_GATEWAY_KEY,
+  });
+  assert.equal(enrichmentModelId(keyed), undefined);
+  const described = describeEnrichmentMode("auto", keyed);
+  assert.match(described, /model \[redacted\]/);
+  assert.doesNotMatch(described, new RegExp(FAKE_GATEWAY_KEY));
+
+  const tokenized = resolveLlmGatewayConfig({
+    OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+    OPENROUTER_MODEL: TOKENIZED_GATEWAY_URL,
+  });
+  assert.equal(enrichmentModelId(tokenized), undefined);
+  assert.doesNotMatch(describeEnrichmentMode("auto", tokenized), new RegExp(FAKE_URL_USERINFO));
+});
+
+test("force without a gateway key names anthropic, not the unused OpenRouter host", () => {
+  const none = resolveLlmGatewayConfig({});
+  assert.equal(enrichmentProviderLabel(none, "force"), "anthropic");
+  assert.equal(enrichmentProviderLabel(none, "auto"), "openrouter.ai");
+  const forced = describeEnrichmentMode("force", none);
+  assert.match(forced, /provider anthropic model /);
+  assert.doesNotMatch(forced, /openrouter\.ai/);
 });
 
 test("resolveEnrichmentBudget reads env and keeps documented defaults", () => {

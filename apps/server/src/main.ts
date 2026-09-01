@@ -4,7 +4,7 @@ import { join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_MAX_TARBALL_BYTES } from "@okie/scan";
 import { answerAskQuestion, publicAskStatus } from "./ask.js";
-import { createScanJobQueue, createSubmitLimiter, type ScanJob } from "./jobs.js";
+import { createScanJobQueue, createSubmitLimiter, toPublicJob, type ScanJob } from "./jobs.js";
 import { healthzBody, resolveListenHost } from "./localDefaults.js";
 import {
   describeEnrichmentMode,
@@ -62,22 +62,7 @@ const queue = createScanJobQueue(createScanJobRunner({
 const allowSubmit = createSubmitLimiter();
 
 function publicJob(job: ScanJob): Record<string, unknown> {
-  return {
-    id: job.id,
-    slug: job.slug,
-    owner: job.owner,
-    repo: job.repo,
-    ...(job.ref ? { ref: job.ref } : {}),
-    stage: job.stage,
-    atlasReady: job.atlasReady,
-    ...(job.commitSha ? { commitSha: job.commitSha } : {}),
-    ...(job.entityCount !== undefined ? { entityCount: job.entityCount } : {}),
-    ...(job.relationCount !== undefined ? { relationCount: job.relationCount } : {}),
-    enrichment: job.enrichment,
-    ...(job.error ? { error: job.error } : {}),
-    atlasPath: `/r/${job.owner}/${job.repo}`,
-    fixtureParam: `scan:${job.slug}`,
-  };
+  return toPublicJob(job, text => redactGatewayText(text, llm.apiKey));
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown): void {

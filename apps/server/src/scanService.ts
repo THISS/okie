@@ -10,10 +10,12 @@ import {
   type GithubSourceRef,
   type ScanArtifacts,
 } from "@okie/scan";
-import type { JobRunner } from "./jobs.js";
+import type { JobRunner, ScanJobEnrichment } from "./jobs.js";
 import { createEnricher } from "./enrichment.js";
 import {
   createLlmGatewayClient,
+  enrichmentModelId,
+  enrichmentProviderLabel,
   hasLlmCredentials,
   isUsableModelId,
   redactGatewayText,
@@ -78,6 +80,19 @@ const EMPTY_MODEL_NOTE = "empty model id; enrichment not started";
 
 function shouldAttemptEnrichment(mode: "auto" | "force", config: LlmGatewayConfig): boolean {
   return mode === "force" || hasLlmCredentials(config);
+}
+
+/** Provider host + model id when enrichment was attempted. Never a key or URL. */
+function enrichmentIdentity(
+  config: LlmGatewayConfig,
+  mode: "auto" | "force",
+): Pick<ScanJobEnrichment, "modelId" | "provider"> {
+  const modelId = enrichmentModelId(config);
+  const provider = enrichmentProviderLabel(config, mode);
+  return {
+    ...(modelId ? { modelId } : {}),
+    ...(provider ? { provider } : {}),
+  };
 }
 
 /**
@@ -169,9 +184,10 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
       }
 
       const config = resolveLlmGatewayConfig(env, llmLocal);
+      const identity = enrichmentIdentity(config, enrichMode);
       if (shouldAttemptEnrichment(enrichMode, config) && !isUsableModelId(config.modelId)) {
         update({
-          enrichment: { state: "failed", note: EMPTY_MODEL_NOTE },
+          enrichment: { state: "failed", note: EMPTY_MODEL_NOTE, ...identity },
         });
         log(redact(`${job.id}: enrichment failed (${EMPTY_MODEL_NOTE}); deterministic atlas stands`));
         return;
@@ -188,7 +204,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
         return;
       }
 
-      update({ stage: "enriching", enrichment: { state: "running" } });
+      update({ stage: "enriching", enrichment: { state: "running", ...identity } });
       try {
         // Pin the enrichment pass to the exact commit the deterministic pass
         // resolved, so both passes describe one tree and the republish is a pure
@@ -204,6 +220,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
           relationCount: enriched.artifacts.snapshot.relations.length,
           enrichment: {
             state: "complete",
+            ...identity,
             enrichedContainers: report?.enrichedContainers.length ?? 0,
             ...(report && report.results.some(result => !result.accepted)
               ? { note: `${report.results.filter(result => !result.accepted).length} scope(s) rejected by the gate; they stay deterministic` }
@@ -217,6 +234,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
         update({
           enrichment: {
             state: "failed",
+            ...identity,
             note,
           },
         });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createScanJobQueue, createSubmitLimiter, type ScanJob } from "./jobs.js";
+import { createScanJobQueue, createSubmitLimiter, toPublicJob, type ScanJob } from "./jobs.js";
 
 const request = (slug = "o__r", ref?: string) => ({
   owner: "o",
@@ -77,6 +77,36 @@ test("a runner that marks failure itself is not overwritten to complete", async 
   queue.submit(request());
   await queue.idle();
   assert.equal(queue.list()[0]!.stage, "failed");
+});
+
+test("toPublicJob redacts notes and errors and never carries a raw key field", () => {
+  const planted = "https://okietest:okie-test-url-token-cla29-fake@example.invalid/v1?api_key=okie-test-query-token-cla29-fake";
+  const job: ScanJob = {
+    id: "job-1-o__r",
+    slug: "o__r",
+    owner: "o",
+    repo: "r",
+    stage: "complete",
+    createdAt: 1,
+    updatedAt: 2,
+    atlasReady: true,
+    enrichment: {
+      state: "failed",
+      note: `llm gateway 401: ${planted}`,
+      modelId: "acme/fast",
+      provider: "example.invalid",
+    },
+    error: `boom ${planted}`,
+  };
+  const publicJob = toPublicJob(job, text => text.replace(/okie-test-[a-z0-9-]+/g, "[redacted]"));
+  const json = JSON.stringify(publicJob);
+  assert.equal(json.includes("okie-test-url-token-cla29-fake"), false);
+  assert.equal(json.includes("okie-test-query-token-cla29-fake"), false);
+  assert.equal("apiKey" in publicJob, false);
+  const enrichment = publicJob.enrichment as { state: string; modelId: string; provider: string };
+  assert.equal(enrichment.state, "failed");
+  assert.equal(enrichment.modelId, "acme/fast");
+  assert.equal(enrichment.provider, "example.invalid");
 });
 
 test("submit limiter allows a burst then blocks until the window rolls", () => {

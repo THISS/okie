@@ -36,6 +36,7 @@ export interface LlmGatewayConfig {
 }
 
 export interface LlmGatewayPublicView {
+  /** Origin + path only. Userinfo and query (where tokens hide) are stripped. */
   baseUrl: string;
   modelId: string;
   keySource: LlmKeySource;
@@ -279,11 +280,27 @@ function anthropicKeyFromEnv(env: NodeJS.Dict<string>): string | undefined {
   return firstNonEmpty([env.ANTHROPIC_API_KEY, env.ANTHROPIC_AUTH_TOKEN]);
 }
 
+/** Origin + pathname, with userinfo/query/hash stripped. Never throws. */
+export function publicGatewayBaseUrl(baseUrl: string): string {
+  try {
+    const parsed = new URL(baseUrl);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return "[redacted-url]";
+  }
+}
+
 /** Safe snapshot for logs / inspect / health-adjacent views. Never includes the key. */
 export function publicLlmGatewayView(config: LlmGatewayConfig): LlmGatewayPublicView {
+  const modelId = enrichmentModelId(config)
+    ?? (isUsableModelId(config.modelId) ? "[redacted]" : config.modelId);
   return {
-    baseUrl: config.baseUrl,
-    modelId: config.modelId,
+    baseUrl: publicGatewayBaseUrl(config.baseUrl),
+    modelId,
     keySource: config.keySource,
     keyConfigured: Boolean(config.apiKey),
   };
@@ -300,11 +317,86 @@ export function redactLlmSecret(text: string, secret: string | undefined): strin
 }
 
 /**
+ * Hostname of a gateway URL, never userinfo or query. `undefined` when the
+ * string is not a usable URL — callers must not fall back to the raw value.
+ */
+export function safeGatewayProvider(baseUrl: string): string | undefined {
+  try {
+    const parsed = new URL(baseUrl);
+    const host = parsed.hostname.trim().toLowerCase();
+    return host || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Provider label for job/UI. Anthropic fallback and force-without-gateway-key
+ * (profile auth) are named "anthropic". A gateway key uses the hostname only.
+ * Never a URL, never a key.
+ */
+export function enrichmentProviderLabel(
+  config: LlmGatewayConfig,
+  mode: "off" | "force" | "auto" = "auto",
+): string | undefined {
+  let raw: string | undefined;
+  if (config.keySource === "anthropic-fallback") raw = "anthropic";
+  else if (config.keySource === "gateway") raw = safeGatewayProvider(config.baseUrl);
+  else if (mode === "force") raw = "anthropic";
+  else raw = safeGatewayProvider(config.baseUrl);
+  if (!raw) return undefined;
+  if (/https?:\/\//i.test(raw) || raw.includes("@") || raw.includes("/")) return undefined;
+  const redacted = redactGatewayText(raw, config.apiKey);
+  return redacted === raw ? raw : undefined;
+}
+
+/**
+ * Configured model id when non-empty and not a secret. If the operator pasted
+ * a key or tokenized URL into the model field, omit it rather than publish it.
+ */
+export function enrichmentModelId(config: LlmGatewayConfig): string | undefined {
+  if (!isUsableModelId(config.modelId)) return undefined;
+  const trimmed = config.modelId.trim();
+  const redacted = redactGatewayText(trimmed, config.apiKey);
+  return redacted === trimmed ? trimmed : undefined;
+}
+
+/**
+ * Strip userinfo, query, and fragment from http(s) URLs in `text`. Tokens in
+ * `https://user:token@host/path?api_key=` must not reach logs, job.error, or UI.
+ * The match is whitespace-delimited (commas/quotes inside userinfo stay in the
+ * URL so they can be stripped), then trailing sentence punctuation is peeled
+ * only when `new URL` requires it.
+ */
+export function redactTokenizedUrls(text: string): string {
+  return text.replace(/https?:\/\/\S+/gi, raw => {
+    let candidate = raw;
+    while (candidate.length >= 8) {
+      try {
+        const parsed = new URL(candidate);
+        const suffix = raw.slice(candidate.length);
+        if (!parsed.username && !parsed.password && !parsed.search && !parsed.hash) {
+          return raw;
+        }
+        parsed.username = "";
+        parsed.password = "";
+        parsed.search = "";
+        parsed.hash = "";
+        return `${parsed.toString()}${suffix}`;
+      } catch {
+        candidate = candidate.slice(0, -1);
+      }
+    }
+    return "[redacted-url]";
+  });
+}
+
+/**
  * Last-mile scrub for anything that leaves toward the gateway, logs, or job.error:
- * existing GitHub token patterns plus the operator's exact API key.
+ * existing GitHub token patterns, tokenized gateway URLs, plus the operator's exact API key.
  */
 export function redactGatewayText(text: string, secret?: string): string {
-  return redactLlmSecret(scrubGithubTokens(text), secret);
+  return redactLlmSecret(redactTokenizedUrls(scrubGithubTokens(text)), secret);
 }
 
 export function hasLlmCredentials(config: LlmGatewayConfig): boolean {
@@ -413,12 +505,12 @@ export class LlmGatewayClient {
   }
 
   toJSON(): LlmGatewayPublicView {
-    return {
+    return publicLlmGatewayView({
       baseUrl: this.baseUrl,
       modelId: this.modelId,
       keySource: this.keySource,
-      keyConfigured: true,
-    };
+      apiKey: this.#apiKey,
+    });
   }
 
   [inspect.custom](): LlmGatewayPublicView {
@@ -485,17 +577,21 @@ export function describeEnrichmentMode(
   config: LlmGatewayConfig,
 ): string {
   if (mode === "off") return "disabled (OKIE_SCAN_ENRICH=0)";
-  const modelNote = isUsableModelId(config.modelId)
-    ? `model ${config.modelId}`
-    : "empty model id (enrichment pass will fail; atlas still publishes)";
+  const modelId = enrichmentModelId(config);
+  const modelNote = modelId
+    ? `model ${modelId}`
+    : isUsableModelId(config.modelId)
+      ? "model [redacted]"
+      : "empty model id (enrichment pass will fail; atlas still publishes)";
+  const provider = enrichmentProviderLabel(config, mode) ?? "configured";
   if (mode === "force") {
-    return `forced (OKIE_SCAN_ENRICH=1) gateway ${config.baseUrl} ${modelNote}`;
+    return `forced (OKIE_SCAN_ENRICH=1) ${config.keySource === "gateway" ? "gateway" : "provider"} ${provider} ${modelNote}`;
   }
   if (!hasLlmCredentials(config)) {
-    return `auto (no key; enrichment skipped) gateway ${config.baseUrl} ${modelNote}`;
+    return `auto (no key; enrichment skipped) gateway ${provider} ${modelNote}`;
   }
   if (config.keySource === "anthropic-fallback") {
-    return `auto (ANTHROPIC_* fallback) gateway ${config.baseUrl} ${modelNote}`;
+    return `auto (ANTHROPIC_* fallback) provider ${provider} ${modelNote}`;
   }
-  return `auto gateway ${config.baseUrl} ${modelNote}`;
+  return `auto gateway ${provider} ${modelNote}`;
 }
