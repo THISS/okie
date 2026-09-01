@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { inspect } from "node:util";
+import { scrubGithubTokens } from "@okie/scan";
 
 /**
  * OpenAI-compatible LLM gateway config + client construction (CLA-20).
@@ -141,7 +142,7 @@ export function llmGatewayErrorFromHttp(status: number, body: string, apiKey?: s
     : status >= 500 && status <= 599
       ? "server"
       : "http";
-  return new LlmGatewayError(`llm gateway ${status}: ${redactLlmSecret(body, apiKey)}`, { kind, status });
+  return new LlmGatewayError(`llm gateway ${status}: ${redactGatewayText(body, apiKey)}`, { kind, status });
 }
 
 /**
@@ -298,6 +299,14 @@ export function redactLlmSecret(text: string, secret: string | undefined): strin
   return text.split(value).join("[redacted-llm-key]");
 }
 
+/**
+ * Last-mile scrub for anything that leaves toward the gateway, logs, or job.error:
+ * existing GitHub token patterns plus the operator's exact API key.
+ */
+export function redactGatewayText(text: string, secret?: string): string {
+  return redactLlmSecret(scrubGithubTokens(text), secret);
+}
+
 export function hasLlmCredentials(config: LlmGatewayConfig): boolean {
   return config.keySource !== "none";
 }
@@ -418,12 +427,14 @@ export class LlmGatewayClient {
 
   /**
    * POST `{baseUrl}/chat/completions` with a per-request timeout.
-   * Packet enrichment drives this (CLA-23). The deadline and usage parse
+   * Packet enrichment drives this (CLA-23). The JSON body is token-scrubbed
+   * before it leaves the machine (CLA-25). The deadline and usage parse
    * keep a paste-a-repo job from hanging or running unbounded (CLA-22).
    */
   async chatCompletions(body: Record<string, unknown>): Promise<LlmChatCompletionResult> {
     // Configured model id always wins — body must not override it (CLA-21).
     const payload = { ...body, model: this.modelId };
+    const serialized = redactGatewayText(JSON.stringify(payload), this.#apiKey);
     const signal = AbortSignal.timeout(this.timeoutMs);
     let response: Response;
     try {
@@ -433,7 +444,7 @@ export class LlmGatewayClient {
           "content-type": "application/json",
           authorization: `Bearer ${this.#apiKey}`,
         },
-        body: JSON.stringify(payload),
+        body: serialized,
         signal,
       });
     } catch (error) {

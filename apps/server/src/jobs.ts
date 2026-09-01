@@ -1,3 +1,5 @@
+import { scrubGithubTokens } from "@okie/scan";
+
 export type ScanJobStage =
   | "queued"
   | "scanning"
@@ -93,9 +95,10 @@ export function createScanJobQueue(
         if (next.stage !== "failed") update({ stage: "complete" });
       })
       .catch((error: unknown) => {
+        const raw = error instanceof Error ? error.message : String(error);
         update({
           stage: "failed",
-          error: error instanceof Error ? error.message : String(error),
+          error: scrubGithubTokens(raw),
         });
       })
       .finally(() => {

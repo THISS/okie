@@ -4,7 +4,13 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan";
+import {
+  buildEnrichmentPackets,
+  extractArchitecture,
+  type EmittedPackets,
+  type EnrichmentPacket,
+  type SystemPacket,
+} from "@okie/scan";
 import {
   createEnricher,
   enrichmentChatCompletionsBody,
@@ -581,6 +587,78 @@ test("default enricher factory drives packets through chatCompletions on a fake 
     assert.ok(userMessages.some(content => /"systemId": "system:acme"/.test(content)));
     assert.ok(posted.every(body => !body.includes(fakeKey)));
     assert.ok(posted.every(body => !body.includes("WHOLE_REPO_SENTINEL")));
+  } finally {
+    await fake.close();
+  }
+});
+
+test("a planted secret in source does not appear in the outbound chatCompletions JSON body", async () => {
+  const planted = "gho_okieTestPlantedSecretCla25xxxx";
+  const fakeKey = "okie-test-llm-key-cla25-fake";
+  const sourceFiles: Record<string, string> = {
+    "README.md": `# Acme\n`,
+    "src/index.ts": `export const ping = () => "pong";\nconst planted = "${planted}";\n`,
+  };
+  const read = (path: string): string => {
+    const text = sourceFiles[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const extraction = extractArchitecture({
+    discovery: {
+      sourceFiles: ["src/index.ts"],
+      units: [{ kind: "root", dir: "", name: "acme-app", packageName: "acme-app", evidencePath: "package.json" }],
+      unitByFile: new Map([["src/index.ts", ""]]),
+      unitByPackageName: new Map([["acme-app", ""]]),
+      summary: { singlePackage: true, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+    },
+    readFile: read,
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  const emitted = buildEnrichmentPackets(extraction, read);
+  assert.ok(emitted.packets.length > 0);
+
+  const leakedPacket = containerPacket("container:pkg-a");
+  leakedPacket.excerpts = [{
+    path: "src/a.ts",
+    startLine: 1,
+    endLine: 2,
+    lines: [`export const ping = () => "pong";`, `const token = "${planted}";`],
+  }];
+
+  const posted: string[] = [];
+  const fake = await listenFakeGateway(async (request, response) => {
+    posted.push(await readRequestBody(request));
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(GATE_DOC)));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      modelId: "acme/fast",
+      gateway: client,
+    });
+    await enrich(packets({
+      packets: [...emitted.packets, leakedPacket],
+      ...(emitted.systemPacket ? { systemPacket: emitted.systemPacket } : {}),
+    }));
+    assert.ok(posted.length > 0, "gateway must receive at least one chatCompletions POST");
+    for (const body of posted) {
+      assert.equal(body.includes(planted), false, "planted source secret must not appear in outbound JSON");
+      assert.equal(body.includes(fakeKey), false, "operator key must not appear in outbound JSON");
+      assert.equal(body.includes("WHOLE_REPO_SENTINEL"), false);
+    }
+    assert.ok(posted.some(body => body.includes("[redacted-token]")));
+    assert.ok(posted.some(body => body.includes("container:pkg-a")));
+    const raw = JSON.stringify(leakedPacket);
+    assert.equal(raw.includes(planted), true, "fixture packet still contains the planted secret before the gateway path");
   } finally {
     await fake.close();
   }

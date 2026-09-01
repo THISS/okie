@@ -52,6 +52,49 @@ test("emits one packet per code-bearing container, strictly redacted to scope", 
   assert.ok(a.code.every(code => a.components.some(component => component.id === code.componentId)));
 });
 
+test("packet excerpts apply the existing GitHub token scrub (planted secret stays off the wire)", () => {
+  const planted = "gho_okieTestPlantedSecretCla25xxxx";
+  const withSecret: Record<string, string> = {
+    ...files,
+    "pkg/a/src/index.ts": `export function alpha() {}\nconst planted = "${planted}";\n`,
+    "README.md": `# Acme\ntoken ${planted}\n`,
+  };
+  const readSecret = (path: string): string => {
+    const text = withSecret[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const extraction = extractArchitecture({
+    discovery: {
+      sourceFiles: ["pkg/a/src/index.ts", "pkg/a/src/util.ts", "pkg/b/src/main.ts", "pkg/c/src/config.ts"],
+      units: [
+        { kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" },
+        { kind: "member", dir: "pkg/b", name: "@acme/b", packageName: "@acme/b", evidencePath: "pkg/b" },
+        { kind: "member", dir: "pkg/c", name: "@acme/c", packageName: "@acme/c", evidencePath: "pkg/c" },
+      ],
+      unitByFile: new Map([
+        ["pkg/a/src/index.ts", "pkg/a"], ["pkg/a/src/util.ts", "pkg/a"],
+        ["pkg/b/src/main.ts", "pkg/b"], ["pkg/c/src/config.ts", "pkg/c"],
+      ]),
+      unitByPackageName: new Map([["@acme/a", "pkg/a"], ["@acme/b", "pkg/b"], ["@acme/c", "pkg/c"]]),
+      summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+    },
+    readFile: readSecret,
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  const emitted = buildEnrichmentPackets(extraction, readSecret);
+  const a = emitted.packets.find(packet => packet.containerId === "container:pkg-a")!;
+  const packetJson = JSON.stringify(a);
+  const systemJson = JSON.stringify(emitted.systemPacket);
+  assert.equal(packetJson.includes(planted), false);
+  assert.equal(systemJson.includes(planted), false);
+  assert.ok(a.excerpts.some(excerpt => excerpt.lines.some(line => line.includes("[redacted-token]"))));
+  assert.ok(emitted.systemPacket?.readme.some(excerpt => excerpt.lines.some(line => line.includes("[redacted-token]"))));
+  // scope redaction still holds
+  assert.equal(packetJson.includes("pkg/b/"), false);
+});
+
 test("manifest is content-addressed and deterministic; file names round-trip", () => {
   const first = buildEnrichmentPackets(base(), read).manifest;
   const second = buildEnrichmentPackets(base(), read).manifest;

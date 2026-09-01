@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan";
+import { scrubGithubTokens, type EmittedPackets, type EnrichmentPacket, type SystemPacket } from "@okie/scan";
 import {
   DEFAULT_MAX_ENRICHMENT_DOLLARS,
   DEFAULT_MAX_ENRICHMENT_SCOPES,
@@ -184,15 +184,16 @@ function packetSystemPrompt(kind: PacketKind): string {
   return kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT;
 }
 
-/** User-message body: one bounded packet (or system packet), never the whole repo. */
+/** User-message body: one bounded, token-scrubbed packet (or system packet), never the whole repo. */
 export function packetUserMessage(
   kind: PacketKind,
   systemId: string,
   packet: EnrichmentPacket | SystemPacket,
 ): string {
+  const serialized = scrubGithubTokens(JSON.stringify(packet, null, 2));
   return kind === "container"
-    ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${JSON.stringify(packet, null, 2)}`
-    : `Summarize THIS packet's scope only.\n\nSystem packet:\n${JSON.stringify(packet, null, 2)}`;
+    ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${serialized}`
+    : `Summarize THIS packet's scope only.\n\nSystem packet:\n${serialized}`;
 }
 
 function cappedOutputTokens(maxOutputTokens: number): number {

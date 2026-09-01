@@ -421,3 +421,38 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     fixture.cleanup();
   }
 });
+
+test("job.error and logs scrub gateway error strings (gh token + operator key)", async () => {
+  const planted = "gho_okieTestPlantedSecretCla25xxxx";
+  const client: GithubClient = {
+    async getJson() {
+      throw new Error(`llm gateway 401: ${planted} ${FAKE_GATEWAY_KEY}`);
+    },
+    async downloadTarball() {
+      throw new Error("downloadTarball must not run");
+    },
+  };
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  const logs: string[] = [];
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "off",
+      env: { OPENROUTER_API_KEY: FAKE_GATEWAY_KEY },
+      githubClient: client,
+      log: line => logs.push(line),
+    }));
+    queue.submit({ owner: "acme", repo: "app", slug: "acme__app" });
+    await queue.idle();
+    const job = queue.list()[0]!;
+    assert.equal(job.stage, "failed");
+    assert.equal((job.error ?? "").includes(planted), false);
+    assert.equal((job.error ?? "").includes(FAKE_GATEWAY_KEY), false);
+    assert.match(job.error ?? "", /\[redacted-token\]/);
+    assert.match(job.error ?? "", /\[redacted-llm-key\]/);
+    assert.ok(logs.every(line => !line.includes(planted)));
+    assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+  }
+});
