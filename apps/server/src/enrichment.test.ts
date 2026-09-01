@@ -450,6 +450,27 @@ test("chat-completions body is the bounded packet, not Anthropic Messages fields
   assert.throws(() => enrichmentChatCompletionsBody("  ", "system", "system:acme", systemPacket), /empty model id/);
 });
 
+test("prompts ask for a short summary of this packet's scope only", () => {
+  const container = enrichmentChatCompletionsBody("acme/fast", "container", "system:acme", containerPacket("container:pkg-a"));
+  const system = enrichmentChatCompletionsBody("acme/fast", "system", "system:acme", systemPacket);
+  const containerMessages = container.messages as Array<{ role: string; content: string }>;
+  const systemMessages = system.messages as Array<{ role: string; content: string }>;
+  assert.match(containerMessages[0]!.content, /short summary of THIS packet's scope only/);
+  assert.match(containerMessages[0]!.content, /section summary, not a free-form dump/);
+  assert.doesNotMatch(containerMessages[0]!.content, /Propose LOGICAL COMPONENTS that regroup/);
+  assert.doesNotMatch(containerMessages[0]!.content, /Restate EVERY code entity/);
+  assert.match(containerMessages[1]!.content, /Summarize THIS packet's scope only/);
+  assert.match(containerMessages[1]!.content, /"containerId": "container:pkg-a"/);
+  assert.doesNotMatch(containerMessages[1]!.content, /WHOLE_REPO_SENTINEL/);
+  assert.doesNotMatch(containerMessages[1]!.content, /okie-test-llm-key/);
+
+  assert.match(systemMessages[0]!.content, /short summary of THIS packet's scope only/);
+  assert.doesNotMatch(systemMessages[0]!.content, /Propose the TOP-LEVEL ACTORS/);
+  assert.match(systemMessages[1]!.content, /Summarize THIS packet's scope only/);
+  assert.match(systemMessages[1]!.content, /"systemId": "system:acme"/);
+  assert.doesNotMatch(systemMessages[1]!.content, /WHOLE_REPO_SENTINEL/);
+});
+
 test("parseChatCompletionDocument reads JSON content the gate already consumes", () => {
   assert.deepEqual(parseChatCompletionDocument(chatCompletionReply(GATE_DOC)), GATE_DOC);
   assert.deepEqual(parseChatCompletionDocument({

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { GithubClient } from "@okie/scan";
 import { createScanJobQueue } from "./jobs.js";
-import { createDefaultEnricherFactory, createScanJobRunner } from "./scanService.js";
+import { createDefaultEnricherFactory, createScanJobRunner, type ScanServiceOptions } from "./scanService.js";
 
 test("HTTP scan runner fails closed on a private-repo 404 without an explicit token", async () => {
   const calls: string[] = [];
@@ -334,6 +334,87 @@ test("gateway 429 fails enrichment only; deterministic atlas still publishes", a
     assert.equal(job.error, undefined);
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
     assert.ok(logs.some(line => line.includes("deterministic atlas stands")));
+    assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
+  }
+});
+
+test("off and rejected enrichment publish the same overview story; accepted summaries keep it", async () => {
+  const fixture = makeTarball("acme-app-ffffffffffffffffffffffffffffffffffffffff", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "README.md": "# Acme\nTiny ping library.\n",
+    "src/index.ts": "export const ping = () => 'pong';\n",
+  });
+  const commitSha = "ffffffffffffffffffffffffffffffffffffffff";
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  const logs: string[] = [];
+  const run = async (slug: string, enricherFactory?: ScanServiceOptions["enricherFactory"]) => {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: enricherFactory ? "auto" : "off",
+      env: enricherFactory ? { OPENROUTER_API_KEY: FAKE_GATEWAY_KEY } : {},
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+      log: line => logs.push(line),
+      ...(enricherFactory ? { enricherFactory } : {}),
+    }));
+    queue.submit({ owner: "acme", repo: "app", slug });
+    await queue.idle();
+    return queue.list()[0]!;
+  };
+  try {
+    const off = await run("acme__app-off");
+    assert.equal(off.stage, "complete");
+    assert.equal(off.atlasReady, true);
+    assert.equal(off.enrichment.state, "skipped");
+    const offStory = readFileSync(join(scanRoot, "acme__app-off", "story.json"), "utf8");
+
+    const rejected = await run("acme__app-reject", () => async packets => {
+      const containerId = packets.packets[0]?.containerId ?? "container:missing";
+      return new Map([[containerId, {
+        schemaVersion: 1,
+        entities: [
+          { id: "system:not-the-base", kind: "softwareSystem", name: "Nope", sourceRefs: [] },
+          { id: "component:ghost", kind: "component", parentId: containerId, name: "Ghost", sourceRefs: [] },
+        ],
+        relations: [],
+      }]]);
+    });
+    assert.equal(rejected.stage, "complete");
+    assert.equal(rejected.atlasReady, true);
+    assert.ok(rejected.enrichment.state === "complete" || rejected.enrichment.state === "failed");
+    const rejectedStory = readFileSync(join(scanRoot, "acme__app-reject", "story.json"), "utf8");
+    assert.equal(rejectedStory, offStory, "rejected enrichment must not change the overview story");
+
+    const accepted = await run("acme__app-summary", () => async packets => {
+      const systemId = packets.systemPacket?.systemId;
+      const packet = packets.packets[0];
+      if (!systemId || !packet) return new Map();
+      return new Map([[packet.containerId, {
+        schemaVersion: 1,
+        entities: [
+          { id: systemId, kind: "softwareSystem", name: packets.systemPacket!.systemName, sourceRefs: [] },
+          {
+            id: packet.containerId, kind: "container", parentId: systemId, name: packet.containerName,
+            responsibility: "Tiny ping library.", sourceRefs: [],
+          },
+          ...packet.components.map(component => ({
+            id: component.id, kind: "component", parentId: packet.containerId, name: component.name,
+            responsibility: `Hosts ${component.path}.`, sourceRefs: [],
+          })),
+        ],
+        relations: [],
+      }]]);
+    });
+    assert.equal(accepted.stage, "complete");
+    assert.equal(accepted.atlasReady, true);
+    const acceptedStory = readFileSync(join(scanRoot, "acme__app-summary", "story.json"), "utf8");
+    assert.equal(acceptedStory, offStory, "accepted summaries must not change the overview tour");
+    const snapshot = JSON.parse(readFileSync(join(scanRoot, "acme__app-summary", "snapshot.json"), "utf8")) as {
+      entities: Array<{ id: string; kind: string; responsibility?: string }>;
+    };
+    assert.ok(snapshot.entities.some(entity => entity.kind === "container" && entity.responsibility === "Tiny ping library."));
     assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
   } finally {
     rmSync(scanRoot, { recursive: true, force: true });
