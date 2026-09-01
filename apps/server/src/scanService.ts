@@ -4,7 +4,7 @@ import {
   regenerateScanManifest,
   scanGithubRepository,
   stableJson,
-  githubRepoIsPrivate,
+  githubRepoIsPublic,
   repoApiPath,
   type EmittedPackets,
   type GithubClient,
@@ -161,9 +161,8 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const rejectPrivateHostedTree = async (client: GithubClient, job: ScanJob): Promise<void> => {
     if (!job.githubAccess) return;
     const result = await client.getJson(repoApiPath(job.owner, job.repo));
-    if (!result.ok) return;
-    if (githubRepoIsPrivate(result.json)) {
-      throw new Error("That repository is private. Private trees stay closed until the GitHub App can read them.");
+    if (!result.ok || !githubRepoIsPublic(result.json)) {
+      throw new Error("Could not confirm that repository is public. Private trees stay closed until the GitHub App can read them.");
     }
   };
 

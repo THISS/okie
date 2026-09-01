@@ -110,7 +110,7 @@ test("HTTP scan runner does not invoke operator gh auth on a private-repo 404", 
     await queue.idle();
     const job = queue.list()[0]!;
     assert.equal(job.stage, "failed");
-    assert.match(job.error ?? "", /not found.*public/i);
+    assert.match(job.error ?? "", /public/i);
     assert.equal(existsSync(sentinel), false, "operator gh CLI must not run on the hosted HTTP path");
   } finally {
     globalThis.fetch = originalFetch;

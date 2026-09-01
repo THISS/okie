@@ -15,6 +15,7 @@ import {
   interpretRepoResponse,
   isGithubSource,
   githubRepoIsPrivate,
+  githubRepoIsPublic,
   parseGithubSource,
   repoApiPath,
   resolveGithubCommit,
@@ -75,7 +76,9 @@ test("interpretRepoResponse reads default_branch (and rejects a private/404 shap
   assert.throws(() => interpretRepoResponse({ message: "Not Found" }), GithubAcquisitionError);
   assert.equal(githubRepoIsPrivate({ default_branch: "main", private: true }), true);
   assert.equal(githubRepoIsPrivate({ default_branch: "main", private: false }), false);
-  assert.equal(githubRepoIsPrivate({ default_branch: "main" }), false);
+  assert.equal(githubRepoIsPublic({ default_branch: "main", private: false }), true);
+  assert.equal(githubRepoIsPublic({ default_branch: "main", private: true }), false);
+  assert.equal(githubRepoIsPublic({ default_branch: "main" }), false);
 });
 
 /** A GithubClient stub that answers from a recorded map and records the endpoints hit. */
