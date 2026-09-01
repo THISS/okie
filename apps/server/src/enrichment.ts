@@ -11,6 +11,7 @@ import {
   withDeadline,
   type EnrichmentBudget,
   type GatewayUsage,
+  type LlmChatCompletionResult,
 } from "./llmGateway.js";
 
 /**
@@ -46,20 +47,26 @@ export type EnrichmentGenerator = (
   systemId: string,
 ) => Promise<EnrichmentProposal>;
 
+/** OpenAI-compatible gateway seam. `chatCompletions` is what packet HTTP uses (CLA-23). */
+export interface EnrichmentGateway {
+  baseUrl: string;
+  modelId: string;
+  chatCompletions?: (body: Record<string, unknown>) => Promise<LlmChatCompletionResult>;
+}
+
 export interface EnricherOptions {
-  /** Injectable generator (tests). Default: the Anthropic streaming generator. */
+  /** Injectable generator (tests). Default: gateway `chatCompletions`, else Anthropic. */
   generate?: EnrichmentGenerator;
   /**
    * Operator-configured model id (CLA-21). Opaque string the gateway understands.
-   * Empty fails the pass. Packet HTTP still uses the Anthropic SDK until CLA-23,
-   * but the request uses this id rather than a hardcoded model table.
+   * Empty fails the pass. Packet HTTP uses this id rather than a hardcoded model table.
    */
   modelId?: string;
   /**
-   * OpenAI-compatible gateway client (CLA-20). Constructed when a gateway key is
-   * present. Packet HTTP still uses the Anthropic SDK until CLA-23.
+   * OpenAI-compatible gateway (CLA-20/23). When `chatCompletions` is present, packets
+   * POST there. Otherwise Anthropic SDK remains the `ANTHROPIC_*` fallback.
    */
-  gateway?: { baseUrl: string; modelId: string };
+  gateway?: EnrichmentGateway;
   /** Per-request timeout + scan-level caps (CLA-22). Defaults are the documented constants. */
   budget?: Partial<EnrichmentBudget>;
   /** Concurrent in-flight scopes (default 2 — bounded, order-independent by design). */
@@ -174,8 +181,27 @@ Propose the TOP-LEVEL ACTORS (people or external roles) that interact with this 
 
 Ground everything in what the README actually says the project is for.`;
 
+function packetSystemPrompt(kind: PacketKind): string {
+  return kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT;
+}
+
+/** User-message body: one bounded packet (or system packet), never the whole repo. */
+export function packetUserMessage(
+  kind: PacketKind,
+  systemId: string,
+  packet: EnrichmentPacket | SystemPacket,
+): string {
+  return kind === "container"
+    ? `The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${JSON.stringify(packet, null, 2)}`
+    : `System packet:\n${JSON.stringify(packet, null, 2)}`;
+}
+
+function cappedOutputTokens(maxOutputTokens: number): number {
+  return Math.max(1, Math.min(MAX_OUTPUT_TOKENS, Math.floor(maxOutputTokens)));
+}
+
 /**
- * Fields the Anthropic SDK (and, later, the gateway) receive for one scope.
+ * Anthropic Messages fields for one scope (ANTHROPIC_* fallback).
  * The model id is the configured string — not a lookup table.
  */
 export function enrichmentStreamParams(
@@ -185,20 +211,100 @@ export function enrichmentStreamParams(
   packet: EnrichmentPacket | SystemPacket,
   maxOutputTokens: number = MAX_OUTPUT_TOKENS,
 ) {
-  const maxTokens = Math.max(1, Math.min(MAX_OUTPUT_TOKENS, Math.floor(maxOutputTokens)));
+  const maxTokens = cappedOutputTokens(maxOutputTokens);
   return {
     model: requireUsableModelId(modelId),
     max_tokens: maxTokens,
     thinking: { type: "adaptive" as const },
-    system: kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT,
+    system: packetSystemPrompt(kind),
     output_config: { format: { type: "json_schema" as const, schema: EXTRACTION_DOC_SCHEMA } },
     messages: [{
       role: "user" as const,
-      content: kind === "container"
-        ? `The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${JSON.stringify(packet, null, 2)}`
-        : `System packet:\n${JSON.stringify(packet, null, 2)}`,
+      content: packetUserMessage(kind, systemId, packet),
     }],
   };
+}
+
+/**
+ * OpenAI-compatible `chat/completions` body for one scope (CLA-23).
+ * Same packet + prompts as the Anthropic path; no Anthropic-only fields.
+ */
+export function enrichmentChatCompletionsBody(
+  modelId: string,
+  kind: PacketKind,
+  systemId: string,
+  packet: EnrichmentPacket | SystemPacket,
+  maxOutputTokens: number = MAX_OUTPUT_TOKENS,
+): Record<string, unknown> {
+  return {
+    model: requireUsableModelId(modelId),
+    max_tokens: cappedOutputTokens(maxOutputTokens),
+    messages: [
+      { role: "system", content: packetSystemPrompt(kind) },
+      { role: "user", content: packetUserMessage(kind, systemId, packet) },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "architecture_extraction",
+        schema: EXTRACTION_DOC_SCHEMA,
+      },
+    },
+  };
+}
+
+function textFromContent(content: unknown): string | undefined {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content.map(part => {
+      if (typeof part === "string") return part;
+      if (part && typeof part === "object" && typeof (part as { text?: unknown }).text === "string") {
+        return (part as { text: string }).text;
+      }
+      return "";
+    }).join("");
+  }
+  return undefined;
+}
+
+function unwrapJsonPayload(text: string): string {
+  const trimmed = text.trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
+  return fenced ? fenced[1]!.trim() : trimmed;
+}
+
+/**
+ * Pull the gate document out of an OpenAI-compatible chat-completions payload.
+ * `choices[0].message.content` is JSON text (or already-parsed object).
+ */
+export function parseChatCompletionDocument(json: unknown): unknown {
+  const record = typeof json === "object" && json !== null ? json as Record<string, unknown> : undefined;
+  const choices = Array.isArray(record?.choices) ? record.choices : [];
+  const first = choices[0];
+  const message = first && typeof first === "object" && first !== null
+    ? (first as Record<string, unknown>).message
+    : undefined;
+  const content = message && typeof message === "object" && message !== null
+    ? (message as Record<string, unknown>).content
+    : undefined;
+  if (content && typeof content === "object" && !Array.isArray(content)) {
+    return content;
+  }
+  const text = textFromContent(content);
+  if (!text?.trim()) {
+    throw new Error("llm gateway response missing message content");
+  }
+  try {
+    return JSON.parse(unwrapJsonPayload(text)) as unknown;
+  } catch {
+    throw new Error("llm gateway response content is not JSON");
+  }
+}
+
+function gatewayCanChat(
+  gateway: EnrichmentGateway | undefined,
+): gateway is EnrichmentGateway & { chatCompletions: NonNullable<EnrichmentGateway["chatCompletions"]> } {
+  return typeof gateway?.chatCompletions === "function";
 }
 
 function usageFromAnthropic(message: Anthropic.Message): GatewayUsage | undefined {
@@ -237,11 +343,43 @@ function anthropicGenerator(
   };
 }
 
+function gatewayGenerator(
+  client: { chatCompletions: (body: Record<string, unknown>) => Promise<LlmChatCompletionResult> },
+  modelId: string,
+  remainingTokens: () => number,
+): EnrichmentGenerator {
+  return async (packet, kind, systemId) => {
+    const result = await client.chatCompletions(
+      enrichmentChatCompletionsBody(modelId, kind, systemId, packet, remainingTokens()),
+    );
+    const document = parseChatCompletionDocument(result.json);
+    return result.usage ? { document, usage: result.usage } : { document };
+  };
+}
+
+function defaultGenerator(
+  options: EnricherOptions,
+  passModelId: string | undefined,
+  remainingTokens: () => number,
+  timeoutMs: number,
+): EnrichmentGenerator {
+  if (passModelId && gatewayCanChat(options.gateway)) {
+    return gatewayGenerator(options.gateway, passModelId, remainingTokens);
+  }
+  if (passModelId) {
+    return anthropicGenerator(new Anthropic(), passModelId, { timeoutMs, remainingTokens });
+  }
+  return async () => {
+    throw new Error("empty model id");
+  };
+}
+
 /**
  * Builds the `enrichWithPackets` hook for GithubScanOptions.
- * Per-scope failures omit that scope. Rate-limit / 5xx skip remaining scopes
- * and throw so the job records enrichment failed; the deterministic atlas
- * stays live. Scan-level budget skips remaining without throwing.
+ * Called only while the ephemeral checkout exists (scan.ts). Per-scope failures
+ * omit that scope. Rate-limit / 5xx skip remaining scopes and throw so the job
+ * records enrichment failed; the deterministic atlas stays live. Scan-level
+ * budget skips remaining without throwing.
  */
 export function createEnricher(options: EnricherOptions = {}): (packets: EmittedPackets) => Promise<ReadonlyMap<string, unknown>> {
   const progress = options.onProgress ?? (() => {});
@@ -250,14 +388,7 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
   const budget = resolveBudget(options.budget);
   const spent = { tokens: 0, dollars: 0 };
   const remainingTokens = (): number => Math.max(1, budget.maxTokens - spent.tokens);
-  const generate = options.generate ?? (passModelId
-    ? anthropicGenerator(new Anthropic(), passModelId, {
-      timeoutMs: budget.requestTimeoutMs,
-      remainingTokens,
-    })
-    : async () => {
-      throw new Error("empty model id");
-    });
+  const generate = options.generate ?? defaultGenerator(options, passModelId, remainingTokens, budget.requestTimeoutMs);
   const maxConcurrent = Math.max(1, options.maxConcurrent ?? 2);
   const gateway = options.gateway;
 

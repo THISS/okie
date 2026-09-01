@@ -5,8 +5,17 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan";
-import { createEnricher, enrichmentStreamParams, MAX_ENRICHABLE_CODE_ENTITIES, resolveEnrichmentPassModelId } from "./enrichment.js";
+import {
+  createEnricher,
+  enrichmentChatCompletionsBody,
+  enrichmentStreamParams,
+  MAX_ENRICHABLE_CODE_ENTITIES,
+  packetUserMessage,
+  parseChatCompletionDocument,
+  resolveEnrichmentPassModelId,
+} from "./enrichment.js";
 import { createLlmGatewayClient, LlmGatewayError, resolveLlmGatewayConfig } from "./llmGateway.js";
+import { createDefaultEnricherFactory } from "./scanService.js";
 
 const containerPacket = (containerId: string, codeCount = 2): EnrichmentPacket => ({
   promptVersion: "okie-enrichment/v2",
@@ -398,6 +407,159 @@ test("fake HTTP gateway: 429 skips remaining scopes and redacts the key", async 
     );
     assert.equal(hits.length, 2, "third scope must not hit the gateway after 429");
     assert.ok(notes.every(note => !note.includes(fakeKey)));
+  } finally {
+    await fake.close();
+  }
+});
+
+const GATE_DOC = { schemaVersion: 1, entities: [], relations: [] };
+
+function chatCompletionReply(document: unknown, usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number }) {
+  return {
+    choices: [{ message: { role: "assistant", content: JSON.stringify(document) } }],
+    ...(usage ? { usage } : {}),
+  };
+}
+
+async function readRequestBody(request: IncomingMessage): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+test("chat-completions body is the bounded packet, not Anthropic Messages fields", () => {
+  const packet = containerPacket("container:pkg-a");
+  const body = enrichmentChatCompletionsBody("acme/fast", "container", "system:acme", packet);
+  assert.equal(body.model, "acme/fast");
+  assert.equal(typeof body.max_tokens, "number");
+  assert.equal("thinking" in body, false);
+  assert.equal("output_config" in body, false);
+  assert.equal("system" in body, false);
+  const messages = body.messages as Array<{ role: string; content: string }>;
+  assert.equal(messages[0]!.role, "system");
+  assert.match(messages[0]!.content, /architecture curator/);
+  assert.equal(messages[1]!.role, "user");
+  assert.equal(messages[1]!.content, packetUserMessage("container", "system:acme", packet));
+  assert.match(messages[1]!.content, /"containerId": "container:pkg-a"/);
+  assert.doesNotMatch(messages[1]!.content, /WHOLE_REPO_SENTINEL/);
+  const format = body.response_format as { type: string; json_schema: { name: string } };
+  assert.equal(format.type, "json_schema");
+  assert.equal(format.json_schema.name, "architecture_extraction");
+  assert.throws(() => enrichmentChatCompletionsBody("  ", "system", "system:acme", systemPacket), /empty model id/);
+});
+
+test("parseChatCompletionDocument reads JSON content the gate already consumes", () => {
+  assert.deepEqual(parseChatCompletionDocument(chatCompletionReply(GATE_DOC)), GATE_DOC);
+  assert.deepEqual(parseChatCompletionDocument({
+    choices: [{ message: { content: [{ type: "text", text: JSON.stringify(GATE_DOC) }] } }],
+  }), GATE_DOC);
+  assert.deepEqual(parseChatCompletionDocument({
+    choices: [{ message: { content: "```json\n" + JSON.stringify(GATE_DOC) + "\n```" } }],
+  }), GATE_DOC);
+  assert.deepEqual(parseChatCompletionDocument({
+    choices: [{ message: { content: GATE_DOC } }],
+  }), GATE_DOC);
+  assert.throws(() => parseChatCompletionDocument({ choices: [] }), /missing message content/);
+  assert.throws(() => parseChatCompletionDocument({
+    choices: [{ message: { content: "not-json" } }],
+  }), /not JSON/);
+});
+
+test("gateway adapter posts each packet to chat/completions and keys docs by container id", async () => {
+  const fakeKey = "okie-test-llm-key-cla20-fake";
+  const posted: Array<{ url: string; authorization: string | null; body: Record<string, unknown> }> = [];
+  const fake = await listenFakeGateway(async (request, response) => {
+    const raw = await readRequestBody(request);
+    const authorization = typeof request.headers.authorization === "string"
+      ? request.headers.authorization
+      : null;
+    posted.push({
+      url: request.url ?? "",
+      authorization,
+      body: JSON.parse(raw) as Record<string, unknown>,
+    });
+    const user = ((posted.at(-1)!.body.messages as Array<{ role: string; content: string }>)
+      .find(message => message.role === "user")?.content) ?? "";
+    const id = user.includes("container:pkg-b")
+      ? "container:pkg-b"
+      : user.includes("System packet:")
+        ? "system:acme"
+        : "container:pkg-a";
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(
+      { ...GATE_DOC, id },
+      { prompt_tokens: 4, completion_tokens: 2, total_tokens: 6 },
+    )));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const notes: string[] = [];
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      modelId: "acme/fast",
+      gateway: client,
+      onProgress: note => notes.push(note),
+    });
+    const docs = await enrich(packets({
+      packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+    }));
+    assert.deepEqual([...docs.keys()].sort(), ["container:pkg-a", "container:pkg-b", "system:acme"]);
+    assert.deepEqual(docs.get("container:pkg-a"), { ...GATE_DOC, id: "container:pkg-a" });
+    assert.deepEqual(docs.get("container:pkg-b"), { ...GATE_DOC, id: "container:pkg-b" });
+    assert.deepEqual(docs.get("system:acme"), { ...GATE_DOC, id: "system:acme" });
+    assert.equal(posted.length, 3);
+    assert.ok(posted.every(call => call.url === "/v1/chat/completions"));
+    assert.ok(posted.every(call => call.authorization === `Bearer ${fakeKey}`));
+    assert.ok(posted.every(call => call.body.model === "acme/fast"));
+    const firstUser = (posted[0]!.body.messages as Array<{ content: string }>)[1]!.content;
+    assert.match(firstUser, /"containerId": "container:pkg-a"/);
+    assert.doesNotMatch(firstUser, /container:pkg-b/);
+    assert.doesNotMatch(firstUser, /WHOLE_REPO_SENTINEL/);
+    const secondUser = (posted[1]!.body.messages as Array<{ content: string }>)[1]!.content;
+    assert.match(secondUser, /"containerId": "container:pkg-b"/);
+    assert.doesNotMatch(secondUser, /container:pkg-a/);
+    assert.ok(posted.every(call => !("thinking" in call.body)));
+    assert.ok(notes.some(note => note.includes("llm gateway") && note.includes("acme/fast")));
+    assert.ok(notes.every(note => !note.includes(fakeKey)));
+  } finally {
+    await fake.close();
+  }
+});
+
+test("default enricher factory drives packets through chatCompletions on a fake gateway", async () => {
+  const fakeKey = "okie-test-llm-key-cla20-fake";
+  const posted: string[] = [];
+  const fake = await listenFakeGateway(async (request, response) => {
+    posted.push(await readRequestBody(request));
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(GATE_DOC)));
+  });
+  try {
+    const hook = createDefaultEnricherFactory("auto", {
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    })(() => {});
+    assert.ok(hook);
+    const docs = await hook(packets());
+    assert.deepEqual([...docs.keys()].sort(), ["container:pkg-a", "system:acme"]);
+    assert.deepEqual(docs.get("container:pkg-a"), GATE_DOC);
+    assert.equal(posted.length, 2);
+    const userMessages = posted.map(raw => {
+      const body = JSON.parse(raw) as { messages: Array<{ role: string; content: string }> };
+      return body.messages.find(message => message.role === "user")?.content ?? "";
+    });
+    assert.ok(userMessages.some(content => /"containerId": "container:pkg-a"/.test(content)));
+    assert.ok(userMessages.some(content => /"systemId": "system:acme"/.test(content)));
+    assert.ok(posted.every(body => !body.includes(fakeKey)));
+    assert.ok(posted.every(body => !body.includes("WHOLE_REPO_SENTINEL")));
   } finally {
     await fake.close();
   }
