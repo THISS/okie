@@ -1,6 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { EmittedPackets, EnrichmentPacket, SystemPacket } from "@okie/scan";
-import { isUsableModelId, requireUsableModelId } from "./llmGateway.js";
+import {
+  DEFAULT_MAX_ENRICHMENT_DOLLARS,
+  DEFAULT_MAX_ENRICHMENT_SCOPES,
+  DEFAULT_MAX_ENRICHMENT_TOKENS,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+  isUsableModelId,
+  requireUsableModelId,
+  shouldSkipRemainingScopes,
+  withDeadline,
+  type EnrichmentBudget,
+  type GatewayUsage,
+} from "./llmGateway.js";
 
 /**
  * Live-LLM enrichment adapter (scan-runner M3): turns the scanner's bounded,
@@ -21,13 +32,19 @@ const MAX_OUTPUT_TOKENS = 64_000;
 
 export type PacketKind = "container" | "system";
 
+/** One scope's proposal: the document the gate consumes, plus optional gateway usage. */
+export interface EnrichmentProposal {
+  document: unknown;
+  usage?: GatewayUsage;
+}
+
 /** The one seam that touches the network: packet in, parsed JSON document out. */
 export type EnrichmentGenerator = (
   packet: EnrichmentPacket | SystemPacket,
   kind: PacketKind,
   /** The base system id every document must restate (the merge gate's anchor). */
   systemId: string,
-) => Promise<unknown>;
+) => Promise<EnrichmentProposal>;
 
 export interface EnricherOptions {
   /** Injectable generator (tests). Default: the Anthropic streaming generator. */
@@ -43,9 +60,24 @@ export interface EnricherOptions {
    * present. Packet HTTP still uses the Anthropic SDK until CLA-23.
    */
   gateway?: { baseUrl: string; modelId: string };
+  /** Per-request timeout + scan-level caps (CLA-22). Defaults are the documented constants. */
+  budget?: Partial<EnrichmentBudget>;
   /** Concurrent in-flight scopes (default 2 — bounded, order-independent by design). */
   maxConcurrent?: number;
   onProgress?: (note: string) => void;
+}
+
+function resolveBudget(partial?: Partial<EnrichmentBudget>): EnrichmentBudget {
+  return {
+    requestTimeoutMs: partial?.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
+    maxScopes: partial?.maxScopes ?? DEFAULT_MAX_ENRICHMENT_SCOPES,
+    maxTokens: partial?.maxTokens ?? DEFAULT_MAX_ENRICHMENT_TOKENS,
+    maxDollars: partial?.maxDollars ?? DEFAULT_MAX_ENRICHMENT_DOLLARS,
+  };
+}
+
+function addDollars(left: number, right: number): number {
+  return Math.round((left + right) * 1e6) / 1e6;
 }
 
 /** Model id the pass will send. Gateway overlay wins only when `modelId` is unset. */
@@ -151,10 +183,12 @@ export function enrichmentStreamParams(
   kind: PacketKind,
   systemId: string,
   packet: EnrichmentPacket | SystemPacket,
+  maxOutputTokens: number = MAX_OUTPUT_TOKENS,
 ) {
+  const maxTokens = Math.max(1, Math.min(MAX_OUTPUT_TOKENS, Math.floor(maxOutputTokens)));
   return {
     model: requireUsableModelId(modelId),
-    max_tokens: MAX_OUTPUT_TOKENS,
+    max_tokens: maxTokens,
     thinking: { type: "adaptive" as const },
     system: kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT,
     output_config: { format: { type: "json_schema" as const, schema: EXTRACTION_DOC_SCHEMA } },
@@ -167,30 +201,60 @@ export function enrichmentStreamParams(
   };
 }
 
-function anthropicGenerator(client: Anthropic, modelId: string): EnrichmentGenerator {
+function usageFromAnthropic(message: Anthropic.Message): GatewayUsage | undefined {
+  const promptTokens = message.usage?.input_tokens;
+  const completionTokens = message.usage?.output_tokens;
+  if (promptTokens === undefined && completionTokens === undefined) return undefined;
+  const prompt = promptTokens ?? 0;
+  const completion = completionTokens ?? 0;
+  return {
+    ...(promptTokens !== undefined ? { promptTokens } : {}),
+    ...(completionTokens !== undefined ? { completionTokens } : {}),
+    totalTokens: prompt + completion,
+  };
+}
+
+function anthropicGenerator(
+  client: Anthropic,
+  modelId: string,
+  options: { timeoutMs: number; remainingTokens: () => number },
+): EnrichmentGenerator {
   return async (packet, kind, systemId) => {
-    const stream = client.messages.stream(enrichmentStreamParams(modelId, kind, systemId, packet));
+    const signal = AbortSignal.timeout(options.timeoutMs);
+    const stream = client.messages.stream(
+      enrichmentStreamParams(modelId, kind, systemId, packet, options.remainingTokens()),
+      { signal },
+    );
     const message = await stream.finalMessage();
     if (message.stop_reason === "refusal") throw new Error("model refused the enrichment request");
     const text = message.content
       .filter((block): block is Anthropic.TextBlock => block.type === "text")
       .map(block => block.text)
       .join("");
-    return JSON.parse(text) as unknown;
+    const document = JSON.parse(text) as unknown;
+    const usage = usageFromAnthropic(message);
+    return usage ? { document, usage } : { document };
   };
 }
 
 /**
- * Builds the `enrichWithPackets` hook for GithubScanOptions. Never throws:
- * per-scope failures are logged through onProgress and that scope stays on the
- * deterministic base.
+ * Builds the `enrichWithPackets` hook for GithubScanOptions.
+ * Per-scope failures omit that scope. Rate-limit / 5xx skip remaining scopes
+ * and throw so the job records enrichment failed; the deterministic atlas
+ * stays live. Scan-level budget skips remaining without throwing.
  */
 export function createEnricher(options: EnricherOptions = {}): (packets: EmittedPackets) => Promise<ReadonlyMap<string, unknown>> {
   const progress = options.onProgress ?? (() => {});
   const passModelId = resolveEnrichmentPassModelId(options);
   const usingInjectedGenerate = options.generate !== undefined;
+  const budget = resolveBudget(options.budget);
+  const spent = { tokens: 0, dollars: 0 };
+  const remainingTokens = (): number => Math.max(1, budget.maxTokens - spent.tokens);
   const generate = options.generate ?? (passModelId
-    ? anthropicGenerator(new Anthropic(), passModelId)
+    ? anthropicGenerator(new Anthropic(), passModelId, {
+      timeoutMs: budget.requestTimeoutMs,
+      remainingTokens,
+    })
     : async () => {
       throw new Error("empty model id");
     });
@@ -206,6 +270,7 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
     } else if (passModelId) {
       progress(`enrich: model ${passModelId}`);
     }
+    progress(`enrich: budget ${budget.maxScopes} scopes / ${budget.maxTokens} tokens / $${budget.maxDollars} / timeout ${budget.requestTimeoutMs}ms`);
     const docs = new Map<string, unknown>();
     if (!systemPacket) {
       // No system root means no gate anchor for container docs — nothing to enrich.
@@ -224,24 +289,63 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
     work.push({ id: systemId, packet: systemPacket, kind: "system" });
 
     let index = 0;
+    let scopesAttempted = 0;
     let firstFailure: string | undefined;
+    let abortRemaining: string | undefined;
+    const skipRest = (reason: string): void => {
+      const leftover = work.length - index;
+      index = work.length;
+      if (leftover > 0) {
+        progress(`enrich: ${reason}; skipping ${leftover} remaining scope(s); stays deterministic`);
+      }
+    };
     const runNext = async (): Promise<void> => {
-      while (index < work.length) {
+      while (index < work.length && abortRemaining === undefined) {
+        if (scopesAttempted >= budget.maxScopes) {
+          skipRest(`scan budget max scopes ${budget.maxScopes} reached`);
+          break;
+        }
+        if (spent.tokens >= budget.maxTokens) {
+          skipRest(`scan budget max tokens ${budget.maxTokens} reached (${spent.tokens})`);
+          break;
+        }
+        if (spent.dollars >= budget.maxDollars) {
+          skipRest(`scan budget max dollars $${budget.maxDollars} reached ($${spent.dollars})`);
+          break;
+        }
         const item = work[index]!;
         index += 1;
+        scopesAttempted += 1;
         try {
           progress(`enrich ${item.id}: requesting proposal`);
-          const doc = await generate(item.packet, item.kind, systemId);
-          docs.set(item.id, doc);
+          const proposal = await withDeadline(generate(item.packet, item.kind, systemId), budget.requestTimeoutMs);
+          docs.set(item.id, proposal.document);
+          const used = proposal.usage?.totalTokens ?? 0;
+          if (used > 0) spent.tokens += used;
+          if (proposal.usage?.costUsd !== undefined) {
+            spent.dollars = addDollars(spent.dollars, proposal.usage.costUsd);
+          }
           progress(`enrich ${item.id}: proposal received`);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           firstFailure ??= message;
+          if (shouldSkipRemainingScopes(error)) {
+            abortRemaining = message;
+            const leftover = work.length - index;
+            index = work.length;
+            progress(`enrich ${item.id}: ${message}; skipping ${leftover} remaining scope(s); stays deterministic`);
+            break;
+          }
           progress(`enrich ${item.id}: failed (${message}); stays deterministic`);
         }
       }
     };
     await Promise.all(Array.from({ length: Math.min(maxConcurrent, work.length) }, runNext));
+    // Rate-limit / 5xx: do not keep spending. The job records enrichment failed;
+    // the deterministic atlas is already live.
+    if (abortRemaining !== undefined) {
+      throw new Error(`enrichment failed (${abortRemaining}); remaining scopes skipped`);
+    }
     // Partial success republishes what the gate accepts; TOTAL failure (typically
     // bad credentials) is surfaced as a throw so the job records an honest
     // "enrichment failed" instead of "complete, 0 containers".

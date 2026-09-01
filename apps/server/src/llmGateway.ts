@@ -43,6 +43,163 @@ export interface LlmGatewayPublicView {
 
 export interface LlmGatewayClientOptions {
   fetch?: typeof fetch;
+  /** Per-request deadline for `chatCompletions`. Default `DEFAULT_REQUEST_TIMEOUT_MS`. */
+  timeoutMs?: number;
+}
+
+/** Per-request HTTP deadline so a hung gateway cannot stall a paste-a-repo job. */
+export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
+/** Scan-level cap on gateway calls (container scopes + system). */
+export const DEFAULT_MAX_ENRICHMENT_SCOPES = 16;
+/** Scan-level cap on reported tokens (`usage.total_tokens` / prompt+completion). */
+export const DEFAULT_MAX_ENRICHMENT_TOKENS = 200_000;
+/** Scan-level dollar cap, applied only when the gateway reports cost. */
+export const DEFAULT_MAX_ENRICHMENT_DOLLARS = 1;
+
+export type LlmGatewayFailureKind = "timeout" | "rate_limit" | "server" | "http";
+
+export interface EnrichmentBudget {
+  requestTimeoutMs: number;
+  maxScopes: number;
+  maxTokens: number;
+  /** Enforced only when a response reports `usage.cost` (or equivalent). */
+  maxDollars: number;
+}
+
+export interface GatewayUsage {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens: number;
+  costUsd?: number;
+}
+
+export class LlmGatewayError extends Error {
+  readonly kind: LlmGatewayFailureKind;
+  readonly status?: number;
+
+  constructor(message: string, options: { kind: LlmGatewayFailureKind; status?: number; cause?: unknown }) {
+    super(message, options.cause !== undefined ? { cause: options.cause } : undefined);
+    this.name = "LlmGatewayError";
+    this.kind = options.kind;
+    if (options.status !== undefined) this.status = options.status;
+  }
+}
+
+export function classifyLlmGatewayFailure(error: unknown): LlmGatewayFailureKind | undefined {
+  if (error instanceof LlmGatewayError) return error.kind;
+  const message = error instanceof Error ? error.message : String(error);
+  const statusMatch = /llm gateway (\d{3})\b/.exec(message);
+  if (statusMatch) {
+    const status = Number(statusMatch[1]);
+    if (status === 429) return "rate_limit";
+    if (status >= 500 && status <= 599) return "server";
+    return "http";
+  }
+  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+    return "timeout";
+  }
+  if (/llm gateway timeout/i.test(message) || /\btimeout after \d+ms\b/i.test(message)) {
+    return "timeout";
+  }
+  return undefined;
+}
+
+/** Rate-limit and 5xx abort the rest of the scan's enrichment pass. */
+export function shouldSkipRemainingScopes(error: unknown): boolean {
+  const kind = classifyLlmGatewayFailure(error);
+  return kind === "rate_limit" || kind === "server";
+}
+
+function optionalFiniteNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function parsePositiveNumber(raw: string | undefined, fallback: number): number {
+  const parsed = optionalFiniteNumber(raw);
+  if (parsed === undefined || parsed <= 0) return fallback;
+  return parsed;
+}
+
+/** Operator env overlay. Missing / invalid values keep the documented defaults. */
+export function resolveEnrichmentBudget(env: NodeJS.Dict<string> = process.env): EnrichmentBudget {
+  return {
+    requestTimeoutMs: Math.floor(parsePositiveNumber(env.OKIE_LLM_TIMEOUT_MS, DEFAULT_REQUEST_TIMEOUT_MS)),
+    maxScopes: Math.floor(parsePositiveNumber(env.OKIE_LLM_MAX_SCOPES, DEFAULT_MAX_ENRICHMENT_SCOPES)),
+    maxTokens: Math.floor(parsePositiveNumber(env.OKIE_LLM_MAX_TOKENS, DEFAULT_MAX_ENRICHMENT_TOKENS)),
+    maxDollars: parsePositiveNumber(env.OKIE_LLM_MAX_DOLLARS, DEFAULT_MAX_ENRICHMENT_DOLLARS),
+  };
+}
+
+export function llmGatewayErrorFromHttp(status: number, body: string, apiKey?: string): LlmGatewayError {
+  const kind: LlmGatewayFailureKind = status === 429
+    ? "rate_limit"
+    : status >= 500 && status <= 599
+      ? "server"
+      : "http";
+  return new LlmGatewayError(`llm gateway ${status}: ${redactLlmSecret(body, apiKey)}`, { kind, status });
+}
+
+/**
+ * OpenAI-compatible `usage` plus OpenRouter `cost` / `x-openrouter-cost`.
+ * Returns `undefined` when the payload has neither token counts nor a cost.
+ */
+export function readGatewayUsage(json: unknown, headerCostUsd?: number): GatewayUsage | undefined {
+  const record = typeof json === "object" && json !== null ? json as Record<string, unknown> : undefined;
+  const usage = record && typeof record.usage === "object" && record.usage !== null
+    ? record.usage as Record<string, unknown>
+    : undefined;
+  const promptTokens = optionalFiniteNumber(usage?.prompt_tokens) ?? optionalFiniteNumber(usage?.input_tokens);
+  const completionTokens = optionalFiniteNumber(usage?.completion_tokens) ?? optionalFiniteNumber(usage?.output_tokens);
+  const reportedTotal = optionalFiniteNumber(usage?.total_tokens);
+  const totalTokens = reportedTotal
+    ?? ((promptTokens ?? 0) + (completionTokens ?? 0) || undefined);
+  const costUsd = optionalFiniteNumber(usage?.cost)
+    ?? optionalFiniteNumber(usage?.total_cost)
+    ?? optionalFiniteNumber(usage?.cost_usd)
+    ?? headerCostUsd;
+  if (totalTokens === undefined && costUsd === undefined) return undefined;
+  return {
+    ...(promptTokens !== undefined ? { promptTokens } : {}),
+    ...(completionTokens !== undefined ? { completionTokens } : {}),
+    totalTokens: totalTokens ?? 0,
+    ...(costUsd !== undefined ? { costUsd } : {}),
+  };
+}
+
+function headerCostUsd(headers: Headers): number | undefined {
+  return optionalFiniteNumber(headers.get("x-openrouter-cost"))
+    ?? optionalFiniteNumber(headers.get("x-openai-cost"));
+}
+
+function isAbortLike(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return error.name === "AbortError" || error.name === "TimeoutError";
+}
+
+/** Rejects with `LlmGatewayError` (`timeout`) when `work` does not settle in time. */
+export async function withDeadline<T>(work: Promise<T>, timeoutMs: number): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return work;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      timer = setTimeout(() => {
+        reject(new LlmGatewayError(`llm gateway timeout after ${timeoutMs}ms`, { kind: "timeout" }));
+      }, timeoutMs);
+      work.then(resolve, reject);
+    });
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+export interface LlmChatCompletionResult {
+  json: unknown;
+  usage?: GatewayUsage;
 }
 
 function trimToUndefined(value: string | undefined): string | undefined {
@@ -227,6 +384,7 @@ export class LlmGatewayClient {
   readonly modelId: string;
   readonly keySource: "gateway";
   readonly hasApiKey = true;
+  readonly timeoutMs: number;
   readonly #apiKey: string;
   readonly #fetch: typeof fetch;
 
@@ -240,6 +398,9 @@ export class LlmGatewayClient {
     this.keySource = "gateway";
     this.#apiKey = apiKey;
     this.#fetch = options.fetch ?? fetch;
+    this.timeoutMs = options.timeoutMs !== undefined && Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
+      ? options.timeoutMs
+      : DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
   toJSON(): LlmGatewayPublicView {
@@ -256,29 +417,46 @@ export class LlmGatewayClient {
   }
 
   /**
-   * POST `{baseUrl}/chat/completions`. Packet enrichment will call this in CLA-23;
-   * this slice only constructs the client.
+   * POST `{baseUrl}/chat/completions` with a per-request timeout.
+   * Packet enrichment will drive this in CLA-23; CLA-22 adds the deadline
+   * and usage parse so a paste-a-repo job cannot hang or run unbounded.
    */
-  async chatCompletions(body: Record<string, unknown>): Promise<unknown> {
+  async chatCompletions(body: Record<string, unknown>): Promise<LlmChatCompletionResult> {
     // Configured model id always wins — body must not override it (CLA-21).
     const payload = { ...body, model: this.modelId };
-    const response = await this.#fetch(`${this.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.#apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    const signal = AbortSignal.timeout(this.timeoutMs);
+    let response: Response;
+    try {
+      response = await this.#fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${this.#apiKey}`,
+        },
+        body: JSON.stringify(payload),
+        signal,
+      });
+    } catch (error) {
+      if (signal.aborted || isAbortLike(error)) {
+        throw new LlmGatewayError(`llm gateway timeout after ${this.timeoutMs}ms`, {
+          kind: "timeout",
+          cause: error,
+        });
+      }
+      throw error;
+    }
     const text = await response.text();
     if (!response.ok) {
-      throw new Error(`llm gateway ${response.status}: ${redactLlmSecret(text, this.#apiKey)}`);
+      throw llmGatewayErrorFromHttp(response.status, text, this.#apiKey);
     }
+    let json: unknown;
     try {
-      return JSON.parse(text) as unknown;
+      json = JSON.parse(text) as unknown;
     } catch {
       throw new Error("llm gateway returned non-JSON");
     }
+    const usage = readGatewayUsage(json, headerCostUsd(response.headers));
+    return usage ? { json, usage } : { json };
   }
 }
 

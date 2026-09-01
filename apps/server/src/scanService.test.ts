@@ -302,3 +302,41 @@ test("invalid model id fails enrichment only; deterministic atlas still publishe
     fixture.cleanup();
   }
 });
+
+test("gateway 429 fails enrichment only; deterministic atlas still publishes", async () => {
+  const fixture = makeTarball("acme-app-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "src/index.ts": "export const ping = () => 'pong';\n",
+  });
+  const commitSha = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  const logs: string[] = [];
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "auto",
+      env: { OPENROUTER_API_KEY: FAKE_GATEWAY_KEY },
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+      log: line => logs.push(line),
+      enricherFactory: () => async () => {
+        throw new Error(`enrichment failed (llm gateway 429: quota ${FAKE_GATEWAY_KEY}); remaining scopes skipped`);
+      },
+    }));
+    queue.submit({ owner: "acme", repo: "app", slug: "acme__app" });
+    await queue.idle();
+    const job = queue.list()[0]!;
+    assert.equal(job.stage, "complete");
+    assert.equal(job.atlasReady, true);
+    assert.equal(job.enrichment.state, "failed");
+    assert.match(job.enrichment.note ?? "", /429/);
+    assert.match(job.enrichment.note ?? "", /remaining scopes skipped/);
+    assert.doesNotMatch(job.enrichment.note ?? "", new RegExp(FAKE_GATEWAY_KEY));
+    assert.equal(job.error, undefined);
+    assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
+    assert.ok(logs.some(line => line.includes("deterministic atlas stands")));
+    assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
+  }
+});
