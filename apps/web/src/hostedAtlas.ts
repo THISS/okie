@@ -40,7 +40,7 @@ export function hostedAtlasBootPlan(
   return steps;
 }
 
-/** True when this pathname is a public atlas view (no paste form, no login). */
+/** True when this pathname is a public atlas view (no paste form, no login). oEmbed iframes this same path. */
 export function isPublicAtlasViewPath(pathname: string): boolean {
   return parseAppRoute(pathname).kind === 'repo';
 }
