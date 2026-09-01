@@ -1,6 +1,7 @@
 export {
   clampInspectorWidth,
   defaultInspectorWidth,
+  inspectorAcceptedSummary,
   inspectorCanShowSource,
   inspectorTabForEntity,
   inspectorWidthRange,

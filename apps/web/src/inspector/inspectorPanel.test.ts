@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   clampInspectorWidth,
   defaultInspectorWidth,
+  inspectorAcceptedSummary,
   inspectorCanShowSource,
   inspectorTabForEntity,
   inspectorWidthRange,
   inspectorWidthStorageKey,
+  INSPECTOR_EMPTY_SUMMARY,
 } from './inspectorPanel';
-import { createGoldenC4Scene } from '../renderer/goldenC4Scene';
+import { createC4Scene, createGoldenC4Scene } from '../renderer/goldenC4Scene';
+import type { ArchitectureEntity, ArchitectureRelation, ArchitectureSnapshot, EntityKind } from '@okie/architecture';
 
 describe('inspector panel sizing', () => {
   it('defaults to a compact 376–416px pane and uses 360px at the compact breakpoint', () => {
@@ -75,5 +78,81 @@ describe('inspector Source tab enablement', () => {
     expect(inspectorCanShowSource({ ...code, sourceExcerpts: undefined, sourceRefs: undefined })).toBe(false);
     expect(inspectorCanShowSource(parent)).toBe(false);
     expect(inspectorCanShowSource(system)).toBe(false);
+  });
+});
+
+function scanEntity(id: string, kind: EntityKind, parentId?: string): ArchitectureEntity {
+  return { id, name: id, kind, sourceRefs: kind === 'code' ? [{ path: `${id}.ts`, commitSha: 'sha' }] : [], ...(parentId ? { parentId } : {}) };
+}
+
+function scanRelation(id: string, from: string, to: string): ArchitectureRelation {
+  return { id, from, to, kind: 'uses', evidence: [{ source: { path: `${id}.ts`, commitSha: 'sha' } }] };
+}
+
+function scanSnapshot(entities: ArchitectureEntity[], relations: ArchitectureRelation[]): ArchitectureSnapshot {
+  return {
+    schemaVersion: 1,
+    id: 'snapshot:scan',
+    repositoryId: 'repo:scan',
+    commitSha: 'sha',
+    generatedAt: '2026-01-01T00:00:00Z',
+    entities,
+    relations,
+  };
+}
+
+describe('inspector accepted section summaries (CLA-26)', () => {
+  it('returns authored or accepted copy and ignores blank or placeholder enrich copy', () => {
+    expect(inspectorAcceptedSummary({ responsibility: 'Hosts the scan server.' })).toBe('Hosts the scan server.');
+    expect(inspectorAcceptedSummary({ responsibility: '  Trimmed summary.  ' })).toBe('Trimmed summary.');
+    expect(inspectorAcceptedSummary({ responsibility: INSPECTOR_EMPTY_SUMMARY })).toBeUndefined();
+    expect(inspectorAcceptedSummary({ responsibility: ` ${INSPECTOR_EMPTY_SUMMARY} ` })).toBeUndefined();
+    expect(inspectorAcceptedSummary({ responsibility: '' })).toBeUndefined();
+    expect(inspectorAcceptedSummary({ responsibility: '   ' })).toBeUndefined();
+    expect(inspectorAcceptedSummary({})).toBeUndefined();
+    expect(inspectorAcceptedSummary(undefined)).toBeUndefined();
+  });
+
+  it('shows golden container and code summaries in Details', () => {
+    const scene = createGoldenC4Scene();
+    const container = scene.entities.find(entity => entity.id === 'container:web-app')!;
+    const code = scene.entities.find(entity => entity.id === 'code:web-shell:app')!;
+
+    expect(inspectorAcceptedSummary(container)).toBe(container.responsibility);
+    expect(inspectorAcceptedSummary(code)).toBe(code.responsibility);
+    expect(container.responsibility).not.toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(code.responsibility).not.toBe(INSPECTOR_EMPTY_SUMMARY);
+  });
+
+  it('keeps Details/Source available when enrichment is off, skipped, or rejected', () => {
+    const scene = createC4Scene({
+      baseSnapshot: scanSnapshot(
+        [
+          scanEntity('system:app', 'softwareSystem'),
+          scanEntity('container:web', 'container', 'system:app'),
+          scanEntity('component:web-x', 'component', 'container:web'),
+          scanEntity('code:w1', 'code', 'component:web-x'),
+        ],
+        [scanRelation('rel:w1-app', 'code:w1', 'system:app')],
+      ),
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    const container = scene.entities.find(entity => entity.id === 'container:web')!;
+    const code = scene.entities.find(entity => entity.id === 'code:w1')!;
+
+    expect(container.responsibility).toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(code.responsibility).toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(inspectorAcceptedSummary(container)).toBeUndefined();
+    expect(inspectorAcceptedSummary(code)).toBeUndefined();
+    expect(inspectorCanShowSource(code)).toBe(true);
+    expect(inspectorTabForEntity(inspectorCanShowSource(container))).toBe('details');
+    expect(inspectorTabForEntity(inspectorCanShowSource(code))).toBe('source');
+    expect(code.sourceRefs?.length).toBeGreaterThan(0);
   });
 });

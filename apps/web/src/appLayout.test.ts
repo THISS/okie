@@ -170,6 +170,14 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain("entity.detail === 'code' && Boolean(entity.sourceExcerpts?.length)");
   });
 
+  it('renders an accepted section summary in Details and omits empty enrich copy', () => {
+    expect(app).toContain('inspectorAcceptedSummary(selected)');
+    expect(app).toContain("data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'}");
+    expect(app).toContain('data-inspector-section-summary=""');
+    expect(app).toContain('{selectedSummary ? <p className="responsibility" data-inspector-section-summary="">{selectedSummary}</p> : null}');
+    expect(app).not.toContain('<p className="responsibility">{selected.responsibility}</p>');
+  });
+
   it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {
     expect(app).toContain('data-inspector-presentation="relation-summary"');
     expect(app).toContain('data-inspector-relation-id={row.relationId}');

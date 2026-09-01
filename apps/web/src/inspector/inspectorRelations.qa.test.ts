@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArchitectureEntity, ArchitectureRelation, ArchitectureSnapshot, EntityKind } from '@okie/architecture';
 import { createC4Scene, createGoldenC4Scene } from '../renderer/goldenC4Scene';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity, paintedOmittedRelationRows } from './inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, inspectorAcceptedSummary, paintedOmittedRelationRows } from './inspectorSupport';
 import type { AtlasScene, SemanticDetail } from '../renderer/types';
 
 /**
@@ -233,8 +233,9 @@ describe('L1 inspector follows the canvas', () => {
     const okie = canvasRelationsForEntity(scene, drawnEdgeIds(scene, 'context'), 'system:app', 'context');
 
     // Deterministic layer only: no summaries were authored, and the rows still stand.
-    expect(scene.entities.find(candidate => candidate.id === 'system:app')?.responsibility)
-      .toBe('No summary supplied.');
+    const system = scene.entities.find(candidate => candidate.id === 'system:app')!;
+    expect(system.responsibility).toBe('No summary supplied.');
+    expect(inspectorAcceptedSummary(system)).toBeUndefined();
     expect(okie.rows).toHaveLength(1);
     expect(okie.rows[0]!.semanticIds.every(id => scene.relations.some(candidate => candidate.id === id))).toBe(true);
   });

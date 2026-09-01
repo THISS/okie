@@ -65,7 +65,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1367,6 +1367,7 @@ export function App() {
   const pickedRelationPresentation = useMemo(() => pickedRelation ? selectedRelationPresentation(scene, pickedRelation, pickedRelation.from) : undefined, [pickedRelation, scene]);
   const selectedExcerpt = selected.sourceExcerpts?.[0];
   const sourceAvailable = inspectorCanShowSource(selected, { pickedRelation: Boolean(pickedRelation) });
+  const selectedSummary = inspectorAcceptedSummary(selected);
   const localWorkspace = useMemo<LocalWorkspaceContext | undefined>(() => {
     const injected = (window as Window & { __OKIE_LOCAL_WORKSPACE__?: LocalWorkspaceContext }).__OKIE_LOCAL_WORKSPACE__;
     return injected ?? (configuredRepositoryRoot ? { repositoryRoot: configuredRepositoryRoot } : undefined);
@@ -4222,11 +4223,11 @@ export function App() {
                 <button className="secondary-detail-action" disabled={!authoringEnabled || !selectedRouteOverride} onClick={resetSelectedRelationshipRoute}>Auto route</button>
                 <button className="danger-detail-action" disabled={!authoringEnabled} onClick={deleteSelectedRelationship}>Delete relationship</button>
               </div>}
-            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-presentation="entity">
+            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'} data-inspector-presentation="entity">
               <header className="entity-hero">
                 <div className="entity-kicker"><span>{selectedLevelLabel}</span><small className={`provenance-badge tone-${selectedProvenance.tone}`}>{selectedProvenance.badge}</small></div>
                 <h2 id="inspector-entity-title">{selected.name}</h2>
-                <p className="responsibility">{selected.responsibility}</p>
+                {selectedSummary ? <p className="responsibility" data-inspector-section-summary="">{selectedSummary}</p> : null}
                 <div aria-label="Entity metadata" className="entity-metadata">
                   <span>{selected.technology ?? 'Technology not specified'}</span>
                   {selected.tags?.map(tag => <span className="signal" key={tag}>{tag}</span>)}
