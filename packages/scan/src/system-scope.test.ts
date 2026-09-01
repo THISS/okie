@@ -228,3 +228,52 @@ test("carries judgement prose on restated container anchors (how opaque crates g
   assert.equal(container.name, baseContainer.name);
   assert.deepEqual(container.sourceRefs, baseContainer.sourceRefs);
 });
+
+function summarySystemDoc(): Doc {
+  return {
+    schemaVersion: 1,
+    entities: [
+      {
+        id: SYSTEM_ID, kind: "softwareSystem", name: "Acme",
+        responsibility: "Demo system people interact with.", sourceRefs: [],
+      },
+      {
+        id: "container:pkg-a", kind: "container", parentId: SYSTEM_ID, name: "A",
+        responsibility: "Public library package.", sourceRefs: [],
+      },
+      {
+        id: "container:pkg-b", kind: "container", parentId: SYSTEM_ID, name: "B",
+        responsibility: "Downstream consumer package.", sourceRefs: [],
+      },
+    ],
+    relations: [],
+  };
+}
+
+test("accepts system-scope section summaries without requiring persons", () => {
+  const { extraction: merged, report } = mergeEnrichment(base(), new Map([[SYSTEM_ID, summarySystemDoc()]]));
+  assert.equal(report.systemScope?.accepted, true, report.systemScope?.reasons.join("; "));
+  assert.equal(report.systemScope?.persons, 0);
+  assert.equal(merged.entities.find(entity => entity.id === SYSTEM_ID)?.responsibility, "Demo system people interact with.");
+  assert.equal(merged.entities.find(entity => entity.id === "container:pkg-a")?.responsibility, "Public library package.");
+  assert.equal(merged.entities.some(entity => entity.kind === "person"), false);
+  assert.deepEqual(merged.relations, base().relations);
+  assert.deepEqual(validateArchitectureExtraction(merged), []);
+});
+
+test("system-scope summaries reject hallucinated containers; the base is unchanged", () => {
+  const doc = summarySystemDoc() as { entities: ArchitectureExtractionEntity[] };
+  doc.entities.push({
+    id: "container:ghost",
+    kind: "container",
+    parentId: SYSTEM_ID,
+    name: "Ghost",
+    responsibility: "Not in the scan.",
+    sourceRefs: [],
+  });
+  const { extraction: merged, report } = mergeEnrichment(base(), new Map([[SYSTEM_ID, doc]]));
+  assert.equal(report.systemScope?.accepted, false);
+  assert.ok((report.systemScope?.reasons ?? []).some(reason => /ghost|must restate/i.test(reason)));
+  assert.equal(JSON.stringify(merged), JSON.stringify(base()));
+  assert.equal(merged.entities.find(entity => entity.id === "container:pkg-a")?.responsibility, undefined);
+});

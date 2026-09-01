@@ -144,8 +144,12 @@ manifest picker) builds on.
 
 ## Enrichment (R2a — agents propose, validators dispose)
 
-R1 produces file-components (deterministic structural truth). R2 lets bounded-scope agents
-regroup a container's files into **logical components** without ever touching observed facts.
+R1 produces file-components (deterministic structural truth). Live packet enrichment
+asks for **section summaries** of scanner-scoped containers/components (and optionally
+one code entity). Those documents merge only if the existing enrichment gate accepts
+them; hallucinated ids and out-of-scope entities reject that scope and it stays
+deterministic. Recorded regrouping / actor documents still merge when they satisfy
+the gate.
 
 - `okie-scan --emit-packets <dir>` writes one bounded, **redacted** packet per code-bearing
   container (`container__<id>.json`) plus a content-addressed `manifest.json`. A packet contains
@@ -161,23 +165,23 @@ regroup a container's files into **logical components** without ever touching ob
 Track A derives external *systems* deterministically, but the **persons** at the edge (User,
 Developer, AI Agent (MCP), CI…) are judgement, not parsing. The **system packet** carries the
 top-level shape — the container list, the deterministic external systems, and short README
-teasers — with a `scopePaths` allowlist (the READMEs + container evidence anchors). A system-scope
-document (keyed by the system id) may **only ADD `person` entities and person-touching relations**
-to the system/containers/externals; it may **not** add or mutate any container, component, code, or
-external entity, and it may not author non-person (structural) edges. Any violation rejects the
-**whole** document atomically (the deterministic base still publishes). Restated structural
-entities are id-matched anchors whose content is ignored. Accepted actors render in the L1
-system-context band alongside the external systems. Merge is order-independent and replay-stable.
+teasers — with a `scopePaths` allowlist (the READMEs + container evidence anchors). A
+system-scope document (keyed by the system id) may attach section summaries (`responsibility`)
+on the restated system/containers, and may still ADD `person` entities plus person-touching
+relations. It may **not** add or mutate a component, code, or unknown container, and it may
+not author non-person (structural) edges. Any violation rejects the **whole** document
+atomically (the deterministic base still publishes).
 
 Each document is validated **atomically** — any failure leaves that scope on the deterministic
 file-component base (deterministic always publishes):
 
 1. **Gate** — `validateArchitectureExtraction` must return `[]`.
-2. **Scope** — every cited path is inside the packet's scope.
-3. **Observed-facts immutability** — every code entity must exist in the base with byte-identical
-   `name` + `sourceRefs` (path/symbol/lines). Only `parentId` may change; components may carry new
-   prose. Any observed-value diff rejects the whole document.
-4. **Coverage** — the document must re-parent exactly the container's code entities (total partition).
+2. **Scope** — every cited path is inside the packet's scope. Hallucinated ids reject the document.
+3. **Observed-facts immutability** — restated code must exist in the base with byte-identical
+   `name` + `sourceRefs` (path/symbol/lines). Summaries may add `responsibility` only.
+4. **Summaries vs regrouping** — a summary document restates scanner-scoped container/component
+   ids (code optional, no re-parent). A regrouping document must still re-parent exactly the
+   container's code entities (total partition) into new logical components.
 
 ### Chosen representations (documented per the extraction-gate contract)
 

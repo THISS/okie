@@ -16,10 +16,10 @@ import {
 
 /**
  * Live-LLM enrichment adapter (scan-runner M3): turns the scanner's bounded,
- * redacted packets into gate-shaped enrichment documents. The adapter is
+ * redacted packets into gate-shaped section summaries. The adapter is
  * deliberately dumb about correctness — every document it returns still goes
- * through `mergeEnrichment`'s atomic per-scope gate, so a hallucinated id or a
- * broken coverage rule rejects THAT scope and the deterministic base publishes
+ * through `mergeEnrichment`'s atomic per-scope gate, so a hallucinated id or an
+ * out-of-scope entity rejects THAT scope and the deterministic base publishes
  * untouched. Resilience contract (see GithubScanOptions.enrichWithPackets): a
  * per-scope failure omits that scope's doc; a total failure returns an empty map.
  */
@@ -156,30 +156,29 @@ const EXTRACTION_DOC_SCHEMA = {
 } as const;
 
 const CONTAINER_SYSTEM_PROMPT = `You are an architecture curator for a C4 atlas built from a deterministic repository scan.
-You receive one JSON "enrichment packet" describing a single container: its file components, its code entities (the public symbols of each file), the import relations that touch it, and the first lines of each file.
+Write a short summary of THIS packet's scope only. Do not reason about any other container, file, or repository.
 
-Propose LOGICAL COMPONENTS that regroup this container's files by responsibility, so a reader sees 3–9 meaningful parts instead of one card per file. Return ONE JSON document with this exact contract — documents violating any rule are rejected whole:
+You receive one JSON "enrichment packet" for a single container: its scanner-scoped file-components, its code entities, the import relations that touch it, and capped file headers. Return ONE JSON ArchitectureExtraction document — a section summary, not a free-form dump. Documents violating any rule are rejected whole:
 
 1. Restate exactly one softwareSystem entity: the id given as the packet's system anchor (see user message), name unchanged, no parentId.
-2. Restate exactly one container entity: the packet's containerId, parented to the system id, name unchanged. You may add a one-sentence "responsibility".
-3. Add your proposed components: kind "component", parentId = the containerId, id namespaced "component:<container-local-slug>-<your-slug>" where <container-local-slug> is the containerId with its "container:" prefix removed. Ids are lowercase kebab-case. Give each a clear human name and a 1–2 sentence "responsibility" describing what it does for the system (plain prose, no marketing). sourceRefs: [] (they are derived from the code you assign).
-4. Restate EVERY code entity from the packet — total coverage, none omitted — changing ONLY parentId to one of your proposed component ids. id, kind, name, and sourceRefs must be copied byte-for-byte from the packet. All code entities from the same file path must land in the same component (file cohesion).
-5. Give each code entity a one-sentence "responsibility": what this public symbol does and what callers use it for. The packet's relations list shows the observed usage graph — a code entity that appears in NO relation is an island, and its responsibility MUST explain why it stands alone (for example: entry-point API consumed by downstream repos, a config constant read at build time, a type-only export, a re-exported convenience). Never leave an island undescribed.
-6. relations must be [] — relations are deterministic and not yours to propose.
+2. Restate exactly one container entity: the packet's containerId, parented to the system id, name unchanged. Give it a one-sentence "responsibility" summarizing this container.
+3. Restate the packet's existing components by exact id (kind "component", parentId = the containerId). Do not invent ids and do not regroup files. Give each a one-sentence "responsibility". sourceRefs may be [].
+4. Optionally restate ONE in-scope code entity with a one-sentence "responsibility". Copy id, kind, name, parentId, and sourceRefs byte-for-byte from the packet. Do not re-parent it.
+5. relations must be [] — relations are deterministic and not yours to propose.
 
-Group by domain responsibility (what the code is FOR), not by file-name similarity. Prefer fewer, well-named components over many thin ones.`;
+Cite only scopePaths. Hallucinated ids or out-of-scope entities reject the whole document. Keep summaries short (one or two sentences). Do not dump the packet.`;
 
 const SYSTEM_SCOPE_PROMPT = `You are an architecture curator for a C4 atlas built from a deterministic repository scan.
-You receive one JSON "system packet": the software system, its containers, its external dependencies, and short README excerpts.
+Write a short summary of THIS packet's scope only. Do not reason about files outside the system packet.
 
-Propose the TOP-LEVEL ACTORS (people or external roles) that interact with this system, as C4 L1 persons. Return ONE JSON document with this exact contract — documents violating any rule are rejected whole:
+You receive one JSON "system packet": the software system, its scanner-scoped containers, its external dependencies, and short README excerpts. Return ONE JSON ArchitectureExtraction document — section summaries of this system and its containers, not a free-form dump. Documents violating any rule are rejected whole:
 
-1. Restate exactly one softwareSystem entity with the packet's systemId (name unchanged, no parentId).
-2. Add 1–3 person entities: kind "person", NO parentId, id "person:<kebab-slug>", a human name (e.g. "Library user", "Maintainer"), a one-sentence "responsibility", and sourceRefs citing ONLY paths from the packet's scopePaths (usually a README).
-3. Add relations connecting each person to the system, a container, or an external system: kind "uses", id "relation:<from-local>-<to-local>", a short label ("integrates the library", "maintains releases"), and evidence whose source.path is in scopePaths.
-4. Restate each container from the packet with its exact id, parented to the system, name unchanged, sourceRefs [] — and give each a one-sentence "responsibility" saying what it is for. This matters MOST for containers with no visible code (native/Rust crates, generated packages): the reader sees an empty box otherwise, so explain its role in the system (e.g. "Rust renderer core compiled to WASM", "wire protocol contract shared with the renderer"). Do NOT add or modify components or code, and never invent containers not in the packet.
+1. Restate exactly one softwareSystem entity with the packet's systemId (name unchanged, no parentId). Give it a one-sentence "responsibility" summarizing this system.
+2. Restate each container from the packet with its exact id, parented to the system, name unchanged, sourceRefs [] — and give each a one-sentence "responsibility" saying what it is for. This matters MOST for containers with no visible code (native/Rust crates, generated packages). Never invent containers not in the packet.
+3. Do not add persons, components, or code. relations must be [].
+4. Cite only scopePaths.
 
-Ground everything in what the README actually says the project is for.`;
+Ground summaries in what the README teasers actually say. Hallucinated ids reject the whole document. Keep summaries short (one or two sentences).`;
 
 function packetSystemPrompt(kind: PacketKind): string {
   return kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT;
@@ -192,8 +191,8 @@ export function packetUserMessage(
   packet: EnrichmentPacket | SystemPacket,
 ): string {
   return kind === "container"
-    ? `The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${JSON.stringify(packet, null, 2)}`
-    : `System packet:\n${JSON.stringify(packet, null, 2)}`;
+    ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${JSON.stringify(packet, null, 2)}`
+    : `Summarize THIS packet's scope only.\n\nSystem packet:\n${JSON.stringify(packet, null, 2)}`;
 }
 
 function cappedOutputTokens(maxOutputTokens: number): number {

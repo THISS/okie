@@ -12,7 +12,7 @@ import {
 import type { Discovery } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
 import { mergeEnrichment } from "./enrich.js";
-import { scanRepository } from "./scan.js";
+import { buildScanArtifacts, scanRepository, stableJson } from "./scan.js";
 
 const files: Record<string, string> = {
   "README.md": "# Acme",
@@ -61,6 +61,41 @@ function containerCode(extraction: ArchitectureExtraction, containerId: string):
 }
 
 type Doc = Record<string, unknown>;
+
+function fileComponents(extraction: ArchitectureExtraction, containerId: string): ArchitectureExtractionEntity[] {
+  return extraction.entities.filter(entity => entity.kind === "component" && entity.parentId === containerId);
+}
+
+/** A compliant section-summary document: restates scanner-scoped ids, no regrouping. */
+function summaryDoc(extraction: ArchitectureExtraction, containerId: string, withCode = false): Doc {
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const container = extraction.entities.find(entity => entity.id === containerId)!;
+  const components = fileComponents(extraction, containerId);
+  const code = withCode
+    ? containerCode(extraction, containerId).find(entity => entity.id.endsWith(":alpha"))
+      ?? containerCode(extraction, containerId)[0]
+    : undefined;
+  return {
+    schemaVersion: 1,
+    entities: [
+      { id: system.id, kind: "softwareSystem", name: system.name, sourceRefs: [] },
+      {
+        id: container.id, kind: "container", parentId: system.id, name: container.name,
+        responsibility: "Scanner-scoped container summary.", sourceRefs: [],
+      },
+      ...components.map(component => ({
+        id: component.id, kind: "component", parentId: containerId, name: component.name,
+        responsibility: `Summary of ${component.name}.`, sourceRefs: [],
+      })),
+      ...(code ? [{
+        id: code.id, kind: "code", parentId: code.parentId, name: code.name,
+        responsibility: "Optional in-scope code summary.",
+        sourceRefs: code.sourceRefs.map(ref => ({ ...ref })),
+      }] : []),
+    ],
+    relations: [],
+  };
+}
 
 /** A compliant single-logical-component proposal for a container. */
 function validDoc(extraction: ArchitectureExtraction, containerId: string): Doc {
@@ -286,4 +321,96 @@ test("carries code-entity judgement fields (responsibility) through the merge; o
   // A code entity WITHOUT judgement stays untouched apart from its new parent.
   const other = merged.entities.find(entity => entity.kind === "code" && entity.id !== (alpha.id as string) && entity.parentId === "component:pkg-a-core");
   assert.ok(other && other.responsibility === undefined);
+});
+
+test("accepts scanner-scoped section summaries without regrouping files", () => {
+  const extraction = base();
+  const containerId = "container:pkg-a";
+  const { extraction: merged, report } = mergeEnrichment(extraction, new Map([[containerId, summaryDoc(extraction, containerId, true)]]));
+
+  assert.equal(report.results.find(result => result.containerId === containerId)?.accepted, true, report.results[0]?.reasons.join("; "));
+  assert.deepEqual(validateArchitectureExtraction(merged), []);
+  assert.ok(merged.entities.some(entity => entity.id === "component:pkg-a-src-index-ts"), "file-components remain");
+  assert.ok(!merged.entities.some(entity => entity.id === "component:pkg-a-core"), "must not regroup");
+  assert.equal(merged.entities.find(entity => entity.id === containerId)?.responsibility, "Scanner-scoped container summary.");
+  assert.match(
+    merged.entities.find(entity => entity.id === "component:pkg-a-src-index-ts")?.responsibility ?? "",
+    /^Summary of /,
+  );
+  const alpha = merged.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alpha")!;
+  const summarizedCode = merged.entities.find(entity => entity.kind === "code" && entity.responsibility === "Optional in-scope code summary.");
+  assert.ok(summarizedCode, "optional in-scope code summary should land");
+  assert.equal(summarizedCode.parentId, extraction.entities.find(entity => entity.id === summarizedCode.id)!.parentId);
+  assert.equal(alpha.parentId, extraction.entities.find(entity => entity.id === alpha.id)!.parentId);
+  assert.deepEqual(merged.relations, extraction.relations, "summaries must not rewrite deterministic relations");
+});
+
+test("section summaries reject hallucinated ids and out-of-scope citations; the base is unchanged", () => {
+  const extraction = base();
+  const ghost = summaryDoc(extraction, "container:pkg-a", true) as { entities: ArchitectureExtractionEntity[] };
+  ghost.entities.push({
+    id: "code:ghost:nope",
+    kind: "code",
+    parentId: "component:pkg-a-src-index-ts",
+    name: "nope",
+    sourceRefs: [{ path: "pkg/a/src/index.ts" }],
+  });
+  const hallucinated = mergeEnrichment(extraction, new Map([["container:pkg-a", ghost]]));
+  assert.equal(hallucinated.report.results[0]!.accepted, false);
+  assert.ok(hallucinated.report.results[0]!.reasons.some(reason => /outside this scope|ghost/i.test(reason)));
+  assert.equal(JSON.stringify(hallucinated.extraction), JSON.stringify(extraction));
+  assert.ok(hallucinated.extraction.entities.some(entity => entity.id === "component:pkg-a-src-index-ts"));
+  assert.ok(!hallucinated.extraction.entities.some(entity => entity.id === "code:ghost:nope"));
+
+  const oos = summaryDoc(extraction, "container:pkg-a") as { entities: ArchitectureExtractionEntity[] };
+  const component = oos.entities.find(entity => entity.kind === "component")!;
+  component.sourceRefs = [{ path: "pkg/b/src/main.ts" }];
+  const outOfScope = mergeEnrichment(extraction, new Map([["container:pkg-a", oos]]));
+  assert.equal(outOfScope.report.results[0]!.accepted, false);
+  assert.ok(outOfScope.report.results[0]!.reasons.some(reason => reason.includes("out-of-scope")));
+  assert.equal(JSON.stringify(outOfScope.extraction), JSON.stringify(extraction));
+});
+
+test("rejected or off enrichment leaves the deterministic overview story unchanged", () => {
+  const pin = {
+    commitSha: "abc123def456abc123def456abc123def456abc1",
+    treeHash: "def456abc123def456abc123def456abc123def4",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+  };
+  const off = buildScanArtifacts({
+    discovery: discovery(),
+    pin,
+    readFile: read,
+    repositorySlug: "acme",
+    systemName: "Acme",
+  });
+  const rejected = buildScanArtifacts({
+    discovery: discovery(),
+    pin,
+    readFile: read,
+    repositorySlug: "acme",
+    systemName: "Acme",
+    enrichmentDocs: new Map([["container:pkg-a", {
+      schemaVersion: 1,
+      entities: [{ id: "system:other", kind: "softwareSystem", name: "Nope", sourceRefs: [] }],
+      relations: [],
+    }]]),
+  });
+  assert.equal(stableJson(rejected.story), stableJson(off.story));
+  assert.equal(rejected.enrichmentReport?.results[0]?.accepted, false);
+
+  const accepted = buildScanArtifacts({
+    discovery: discovery(),
+    pin,
+    readFile: read,
+    repositorySlug: "acme",
+    systemName: "Acme",
+    enrichmentDocs: new Map([["container:pkg-a", summaryDoc(off.baseExtraction, "container:pkg-a")]]),
+  });
+  assert.equal(accepted.enrichmentReport?.enrichedContainers.includes("container:pkg-a"), true);
+  assert.equal(stableJson(accepted.story), stableJson(off.story), "overview tour stays deterministic when summaries land");
+  assert.equal(
+    accepted.snapshot.entities.find(entity => entity.id === "container:pkg-a")?.responsibility,
+    "Scanner-scoped container summary.",
+  );
 });
