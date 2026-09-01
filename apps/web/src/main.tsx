@@ -8,6 +8,7 @@ import '@fontsource/ibm-plex-mono/latin-600.css';
 import '@okie/theme/tokens.css';
 import './app.css';
 import { ASPECT_PRESET_TARGET } from '@okie/architecture';
+import { hostedAtlasBootPlan } from './hostedAtlas';
 import { readDemoQuery } from './renderer/query';
 import { parseAppRoute } from './renderer/route';
 import { setActiveScanFixture } from './renderer/fixtureBundle';
@@ -47,15 +48,25 @@ function ScanErrorScreen({ error }: { error: unknown }) {
   </main>;
 }
 
-async function bootScanFixture(load: ScanTrioLoader | undefined, slug: string | undefined): Promise<boolean> {
-  let fixture: ScanFixture;
+async function tryBootScanFixture(
+  load: ScanTrioLoader | undefined,
+  slug: string | undefined,
+): Promise<{ ok: true } | { ok: false; error: unknown }> {
   try {
-    fixture = await loadScanFixture(load, { targetAspect: bootstrapScanAspect() }, slug);
+    const fixture: ScanFixture = await loadScanFixture(load, { targetAspect: bootstrapScanAspect() }, slug);
+    setActiveScanFixture(fixture);
+    return { ok: true };
   } catch (error) {
-    root.render(<StrictMode><ScanErrorScreen error={error} /></StrictMode>);
+    return { ok: false, error };
+  }
+}
+
+async function bootScanFixture(load: ScanTrioLoader | undefined, slug: string | undefined): Promise<boolean> {
+  const result = await tryBootScanFixture(load, slug);
+  if (!result.ok) {
+    root.render(<StrictMode><ScanErrorScreen error={result.error} /></StrictMode>);
     return false;
   }
-  setActiveScanFixture(fixture);
   return true;
 }
 
@@ -65,7 +76,9 @@ async function boot() {
   //
   // Selection, in order:
   //   /new                       → the paste-a-repo landing (no atlas machinery)
-  //   /r/<owner>/<repo>          → that repo's published trio, runtime-fetched
+  //   /r/<owner>/<repo>          → public share URL (no login). Published trio
+  //                                via runtime fetch; THISS/okie also falls back
+  //                                through the bundled self-scan to the golden demo.
   //   ?fixture=scan[:<slug>]     → the R3a query form (bundled glob; runtime-fetch
   //                                fallback for a slug published after this build)
   const route = parseAppRoute(window.location.pathname);
@@ -75,9 +88,26 @@ async function boot() {
     return;
   }
   if (route.kind === 'repo') {
-    // The hosted clean path always reads the serving origin: the published objects
-    // are the source of truth there, independent of what this bundle globbed in.
-    if (!await bootScanFixture(fetchScanTrioLoader(route.slug), route.slug)) return;
+    const plan = hostedAtlasBootPlan(route, { bundledSlugs: availableScanRepoSlugs() });
+    let lastError: unknown;
+    let atlasReady = false;
+    for (const step of plan) {
+      if (step.kind === 'golden') {
+        atlasReady = true;
+        break;
+      }
+      const load = step.kind === 'fetch' ? fetchScanTrioLoader(step.slug) : undefined;
+      const result = await tryBootScanFixture(load, step.slug);
+      if (result.ok) {
+        atlasReady = true;
+        break;
+      }
+      lastError = result.error;
+    }
+    if (!atlasReady) {
+      root.render(<StrictMode><ScanErrorScreen error={lastError} /></StrictMode>);
+      return;
+    }
   } else {
     const query = readDemoQuery(window.location.search);
     if (query.fixture === 'scan') {

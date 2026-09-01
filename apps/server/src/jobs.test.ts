@@ -79,6 +79,26 @@ test("a runner that marks failure itself is not overwritten to complete", async 
   assert.equal(queue.list()[0]!.stage, "failed");
 });
 
+test("toPublicJob exposes a login-free /r atlas path and never a token field", () => {
+  const job: ScanJob = {
+    id: "job-1-thiss__okie",
+    slug: "thiss__okie",
+    owner: "THISS",
+    repo: "okie",
+    stage: "complete",
+    createdAt: 1,
+    updatedAt: 2,
+    atlasReady: true,
+    enrichment: { state: "skipped" },
+  };
+  const publicJob = toPublicJob(job);
+  assert.equal(publicJob.atlasPath, "/r/THISS/okie");
+  assert.equal(publicJob.fixtureParam, "scan:thiss__okie");
+  assert.equal("token" in publicJob, false);
+  assert.equal("githubAccess" in publicJob, false);
+  assert.equal("apiKey" in publicJob, false);
+});
+
 test("toPublicJob redacts notes and errors and never carries a raw key field", () => {
   const planted = "https://okietest:okie-test-url-token-cla29-fake@example.invalid/v1?api_key=okie-test-query-token-cla29-fake";
   const job: ScanJob = {

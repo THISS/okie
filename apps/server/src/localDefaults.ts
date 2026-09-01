@@ -2,8 +2,10 @@
  * Local-operator defaults for the unauthenticated scan HTTP process.
  *
  * This service has no auth. The published listen bind is loopback so LAN/WAN
- * clients cannot hit POST /api/scans, list jobs, or read scan artifacts.
- * Do not treat apps/server as a deployable public API (CLA-17).
+ * clients cannot hit POST /api/scans, list jobs, or read scan artifacts
+ * (CLA-17). Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs
+ * (CLA-30) — they have no login wall. Do not treat apps/server as a
+ * deployable public API until GitHub auth/quotas land.
  */
 
 export const DEFAULT_LISTEN_HOST = "127.0.0.1";
