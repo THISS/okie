@@ -1,6 +1,6 @@
 /**
- * WebMCP (CLA-40 + CLA-41): progressive enhancement so Chrome (and later
- * other browsers) can see Okie as a WebMCP provider.
+ * WebMCP (CLA-40 + CLA-41 + CLA-42): progressive enhancement so Chrome (and
+ * later other browsers) can see Okie as a WebMCP provider.
  *
  * This is the in-page browser API (`document.modelContext`, with a fallback to
  * the Chrome origin-trial `navigator.modelContext`) — not a remote or stdio
@@ -15,7 +15,14 @@
  * HTML form tools do not fit this hosted chrome — `/new` is a React SPA that
  * POSTs JSON with the user's session cookie rather than a native form action,
  * and opening an atlas is navigation, not a form. Tools fill the paste box /
- * navigate so the user sees the same UI. Atlas actuation is CLA-42.
+ * navigate so the user sees the same UI.
+ *
+ * CLA-42 atlas tools (`set_c4_level`, `select_entity`, `isolate`,
+ * `start_overview_tour`, `ask_atlas`): imperative `registerTool` on a loaded
+ * atlas (`/` local fixture and `/r/:owner/:repo`). Each calls the same store
+ * actions the chrome already uses. No new backend. Unknown entity/level is a
+ * structured tool error, never a throw. `ask_atlas` opens the Ask popover and
+ * may fill the query; it does not start a live paid answer.
  *
  * Origin isolation: never assign `document.domain`. Hosted chrome sends
  * `Permissions-Policy: tools=(self)` and `Origin-Agent-Cluster: ?1`. Do not
@@ -68,6 +75,91 @@ export const LANDING_REPO_INPUT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+export const SET_C4_LEVEL_TOOL_NAME = 'set_c4_level';
+export const SET_C4_LEVEL_TOOL_TITLE = 'Set C4 level';
+export const SET_C4_LEVEL_TOOL_DESCRIPTION =
+  'Switch the loaded atlas to a C4 band: context (L1), container (L2), component (L3), or code (L4). Same as the level rail.';
+
+export const SELECT_ENTITY_TOOL_NAME = 'select_entity';
+export const SELECT_ENTITY_TOOL_TITLE = 'Select entity';
+export const SELECT_ENTITY_TOOL_DESCRIPTION =
+  'Select an entity on the loaded atlas and open its inspector. Same as picking a node on the map.';
+
+export const ISOLATE_TOOL_NAME = 'isolate';
+export const ISOLATE_TOOL_TITLE = 'Isolate focus';
+export const ISOLATE_TOOL_DESCRIPTION =
+  'Isolate the focused context on the loaded atlas, or restore the full view. Same as Isolate focus / Restore full view.';
+
+export const START_OVERVIEW_TOUR_TOOL_NAME = 'start_overview_tour';
+export const START_OVERVIEW_TOUR_TOOL_TITLE = 'Start overview tour';
+export const START_OVERVIEW_TOUR_TOOL_DESCRIPTION =
+  'Start the saved overview guided story on the loaded atlas. Same as the story launcher.';
+
+export const ASK_ATLAS_TOOL_NAME = 'ask_atlas';
+export const ASK_ATLAS_TOOL_TITLE = 'Ask Atlas';
+export const ASK_ATLAS_TOOL_DESCRIPTION =
+  'Open the Ask Atlas popover on the loaded atlas and optionally fill the question. Does not submit a live paid answer.';
+
+export const C4_LEVELS = ['context', 'container', 'component', 'code'] as const;
+export type C4Level = (typeof C4_LEVELS)[number];
+
+export const SET_C4_LEVEL_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    level: {
+      type: 'string',
+      description: 'C4 band: context, container, component, or code. L1–L4 aliases are also accepted.',
+      enum: ['context', 'container', 'component', 'code', 'L1', 'L2', 'L3', 'L4'],
+    },
+  },
+  required: ['level'],
+  additionalProperties: false,
+} as const;
+
+export const SELECT_ENTITY_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    entityId: {
+      type: 'string',
+      description: 'Entity id on this atlas, for example system:okie.',
+    },
+  },
+  required: ['entityId'],
+  additionalProperties: false,
+} as const;
+
+export const ISOLATE_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    entityId: {
+      type: 'string',
+      description: 'Optional entity to select before isolating. Defaults to the current selection.',
+    },
+    active: {
+      type: 'boolean',
+      description: 'When false, restore the full architecture view. Defaults to true.',
+    },
+  },
+  additionalProperties: false,
+} as const;
+
+export const START_OVERVIEW_TOUR_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {},
+  additionalProperties: false,
+} as const;
+
+export const ASK_ATLAS_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    question: {
+      type: 'string',
+      description: 'Optional question to put in the Ask Atlas field. Not submitted.',
+    },
+  },
+  additionalProperties: false,
+} as const;
+
 export type OkieProbeResult = {
   ok: true;
   product: 'Okie';
@@ -75,7 +167,13 @@ export type OkieProbeResult = {
   tool: typeof OKIE_PROBE_TOOL_NAME;
 };
 
-export type WebMcpToolErrorCode = 'invalid_repo' | 'unauthorized' | 'unavailable' | 'submit_failed';
+export type WebMcpToolErrorCode =
+  | 'invalid_repo'
+  | 'unauthorized'
+  | 'unavailable'
+  | 'submit_failed'
+  | 'unknown_entity'
+  | 'unknown_level';
 
 export type WebMcpToolError = {
   ok: false;
@@ -101,6 +199,42 @@ export type OpenShareAtlasSuccess = {
 
 export type StartPublicScanResult = StartPublicScanSuccess | WebMcpToolError;
 export type OpenShareAtlasResult = OpenShareAtlasSuccess | WebMcpToolError;
+
+export type SetC4LevelSuccess = {
+  ok: true;
+  tool: typeof SET_C4_LEVEL_TOOL_NAME;
+  level: C4Level;
+};
+
+export type SelectEntitySuccess = {
+  ok: true;
+  tool: typeof SELECT_ENTITY_TOOL_NAME;
+  entityId: string;
+};
+
+export type IsolateSuccess = {
+  ok: true;
+  tool: typeof ISOLATE_TOOL_NAME;
+  visibilityMode: 'isolate' | 'all';
+};
+
+export type StartOverviewTourSuccess = {
+  ok: true;
+  tool: typeof START_OVERVIEW_TOUR_TOOL_NAME;
+  step: 0;
+};
+
+export type AskAtlasSuccess = {
+  ok: true;
+  tool: typeof ASK_ATLAS_TOOL_NAME;
+  open: true;
+};
+
+export type SetC4LevelResult = SetC4LevelSuccess | WebMcpToolError;
+export type SelectEntityResult = SelectEntitySuccess | WebMcpToolError;
+export type IsolateResult = IsolateSuccess | WebMcpToolError;
+export type StartOverviewTourResult = StartOverviewTourSuccess | WebMcpToolError;
+export type AskAtlasResult = AskAtlasSuccess | WebMcpToolError;
 
 export type WebMcpJsonSchema = {
   type: 'object';
@@ -139,10 +273,33 @@ export type ScanLandingActions = {
   openAtlas: (atlasPath: string) => void;
 };
 
+export type AtlasChromeActions = {
+  hasEntity: (entityId: string) => boolean;
+  selectEntity: (entityId: string) => void;
+  setC4Level: (level: C4Level) => void;
+  isolate: (active: boolean) => void;
+  startOverviewTour: () => void;
+  openAsk: (question: string) => void;
+};
+
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
 const GITHUB_NAME_MAX = 100;
+const ENTITY_ID_MAX = 200;
+const ASK_QUESTION_MAX = 2_000;
+
+const C4_LEVEL_BY_ALIAS: Record<string, C4Level> = {
+  context: 'context',
+  container: 'container',
+  component: 'component',
+  code: 'code',
+  l1: 'context',
+  l2: 'container',
+  l3: 'component',
+  l4: 'code',
+};
 
 let landingActions: ScanLandingActions | undefined;
+let atlasActions: AtlasChromeActions | undefined;
 
 export function webMcpToolError(code: WebMcpToolErrorCode, message: string): WebMcpToolError {
   return { ok: false, isError: true, error: { code, message } };
@@ -229,6 +386,44 @@ export function bindScanLandingActions(actions: ScanLandingActions): () => void 
   };
 }
 
+export function bindAtlasChromeActions(actions: AtlasChromeActions): () => void {
+  atlasActions = actions;
+  return () => {
+    if (atlasActions === actions) atlasActions = undefined;
+  };
+}
+
+export function parseC4LevelInput(input?: Record<string, unknown>): { level: C4Level } | WebMcpToolError {
+  const raw = typeof input?.level === 'string' ? input.level.trim() : '';
+  const level = C4_LEVEL_BY_ALIAS[raw.toLowerCase()];
+  if (!level) {
+    return webMcpToolError('unknown_level', 'Provide a C4 level: context, container, component, or code.');
+  }
+  return { level };
+}
+
+export function parseEntityIdInput(input?: Record<string, unknown>, key = 'entityId'): { entityId: string } | WebMcpToolError {
+  const raw = typeof input?.[key] === 'string' ? input[key].trim() : '';
+  if (!raw || raw.length > ENTITY_ID_MAX) {
+    return webMcpToolError('unknown_entity', 'That entity is not on this atlas.');
+  }
+  return { entityId: raw };
+}
+
+function optionalEntityIdInput(input?: Record<string, unknown>): { entityId?: string } | WebMcpToolError {
+  if (input?.entityId === undefined) return {};
+  return parseEntityIdInput(input);
+}
+
+function optionalAskQuestion(input?: Record<string, unknown>): string {
+  if (typeof input?.question !== 'string') return '';
+  return input.question.trim().slice(0, ASK_QUESTION_MAX);
+}
+
+function atlasUnavailable(): WebMcpToolError {
+  return webMcpToolError('unavailable', 'Open a loaded atlas to use this tool.');
+}
+
 export function okieProbeResult(): OkieProbeResult {
   return {
     ok: true,
@@ -305,6 +500,131 @@ export const OPEN_SHARE_ATLAS_TOOL: WebMcpTool = {
 
 export const LANDING_WEBMCP_TOOLS: readonly WebMcpTool[] = [START_PUBLIC_SCAN_TOOL, OPEN_SHARE_ATLAS_TOOL];
 
+function executeSetC4Level(input?: Record<string, unknown>): SetC4LevelResult {
+  try {
+    const parsed = parseC4LevelInput(input);
+    if ('error' in parsed) return parsed;
+    const actions = atlasActions;
+    if (!actions) return atlasUnavailable();
+    actions.setC4Level(parsed.level);
+    return { ok: true, tool: SET_C4_LEVEL_TOOL_NAME, level: parsed.level };
+  } catch {
+    return webMcpToolError('unavailable', 'Could not change the C4 level.');
+  }
+}
+
+function executeSelectEntity(input?: Record<string, unknown>): SelectEntityResult {
+  try {
+    const parsed = parseEntityIdInput(input);
+    if ('error' in parsed) return parsed;
+    const actions = atlasActions;
+    if (!actions) return atlasUnavailable();
+    if (!actions.hasEntity(parsed.entityId)) {
+      return webMcpToolError('unknown_entity', 'That entity is not on this atlas.');
+    }
+    actions.selectEntity(parsed.entityId);
+    return { ok: true, tool: SELECT_ENTITY_TOOL_NAME, entityId: parsed.entityId };
+  } catch {
+    return webMcpToolError('unavailable', 'Could not select that entity.');
+  }
+}
+
+function executeIsolate(input?: Record<string, unknown>): IsolateResult {
+  try {
+    const parsed = optionalEntityIdInput(input);
+    if ('error' in parsed) return parsed;
+    const actions = atlasActions;
+    if (!actions) return atlasUnavailable();
+    if (parsed.entityId !== undefined) {
+      if (!actions.hasEntity(parsed.entityId)) {
+        return webMcpToolError('unknown_entity', 'That entity is not on this atlas.');
+      }
+      actions.selectEntity(parsed.entityId);
+    }
+    const active = input?.active !== false;
+    actions.isolate(active);
+    return { ok: true, tool: ISOLATE_TOOL_NAME, visibilityMode: active ? 'isolate' : 'all' };
+  } catch {
+    return webMcpToolError('unavailable', 'Could not change isolate.');
+  }
+}
+
+function executeStartOverviewTour(input?: Record<string, unknown>): StartOverviewTourResult {
+  try {
+    void input;
+    const actions = atlasActions;
+    if (!actions) return atlasUnavailable();
+    actions.startOverviewTour();
+    return { ok: true, tool: START_OVERVIEW_TOUR_TOOL_NAME, step: 0 };
+  } catch {
+    return webMcpToolError('unavailable', 'Could not start the overview tour.');
+  }
+}
+
+function executeAskAtlas(input?: Record<string, unknown>): AskAtlasResult {
+  try {
+    const actions = atlasActions;
+    if (!actions) return atlasUnavailable();
+    actions.openAsk(optionalAskQuestion(input));
+    return { ok: true, tool: ASK_ATLAS_TOOL_NAME, open: true };
+  } catch {
+    return webMcpToolError('unavailable', 'Could not open Ask Atlas.');
+  }
+}
+
+export const SET_C4_LEVEL_TOOL: WebMcpTool = {
+  name: SET_C4_LEVEL_TOOL_NAME,
+  title: SET_C4_LEVEL_TOOL_TITLE,
+  description: SET_C4_LEVEL_TOOL_DESCRIPTION,
+  inputSchema: SET_C4_LEVEL_INPUT_SCHEMA,
+  execute: executeSetC4Level,
+  annotations: { readOnlyHint: false },
+};
+
+export const SELECT_ENTITY_TOOL: WebMcpTool = {
+  name: SELECT_ENTITY_TOOL_NAME,
+  title: SELECT_ENTITY_TOOL_TITLE,
+  description: SELECT_ENTITY_TOOL_DESCRIPTION,
+  inputSchema: SELECT_ENTITY_INPUT_SCHEMA,
+  execute: executeSelectEntity,
+  annotations: { readOnlyHint: false },
+};
+
+export const ISOLATE_TOOL: WebMcpTool = {
+  name: ISOLATE_TOOL_NAME,
+  title: ISOLATE_TOOL_TITLE,
+  description: ISOLATE_TOOL_DESCRIPTION,
+  inputSchema: ISOLATE_INPUT_SCHEMA,
+  execute: executeIsolate,
+  annotations: { readOnlyHint: false },
+};
+
+export const START_OVERVIEW_TOUR_TOOL: WebMcpTool = {
+  name: START_OVERVIEW_TOUR_TOOL_NAME,
+  title: START_OVERVIEW_TOUR_TOOL_TITLE,
+  description: START_OVERVIEW_TOUR_TOOL_DESCRIPTION,
+  inputSchema: START_OVERVIEW_TOUR_INPUT_SCHEMA,
+  execute: executeStartOverviewTour,
+  annotations: { readOnlyHint: false },
+};
+
+export const ASK_ATLAS_TOOL: WebMcpTool = {
+  name: ASK_ATLAS_TOOL_NAME,
+  title: ASK_ATLAS_TOOL_TITLE,
+  description: ASK_ATLAS_TOOL_DESCRIPTION,
+  inputSchema: ASK_ATLAS_INPUT_SCHEMA,
+  execute: executeAskAtlas,
+  annotations: { readOnlyHint: false },
+};
+
+export const ATLAS_WEBMCP_TOOLS: readonly WebMcpTool[] = [
+  SET_C4_LEVEL_TOOL,
+  SELECT_ENTITY_TOOL,
+  ISOLATE_TOOL,
+  START_OVERVIEW_TOUR_TOOL,
+  ASK_ATLAS_TOOL,
+];
+
 function asModelContext(value: unknown): WebMcpModelContext | undefined {
   if (value === null || typeof value !== 'object') return undefined;
   const registerTool = (value as { registerTool?: unknown }).registerTool;
@@ -362,4 +682,11 @@ export async function registerWebMcpLandingTools(
   options?: WebMcpRegisterOptions,
 ): Promise<WebMcpFoundationStatus> {
   return registerTools(LANDING_WEBMCP_TOOLS, host, options);
+}
+
+export async function registerWebMcpAtlasTools(
+  host: unknown = globalThis,
+  options?: WebMcpRegisterOptions,
+): Promise<WebMcpFoundationStatus> {
+  return registerTools(ATLAS_WEBMCP_TOOLS, host, options);
 }
