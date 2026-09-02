@@ -13,6 +13,7 @@ import { installPublicAtlasOembedDiscovery } from './oembed';
 import { readDemoQuery } from './renderer/query';
 import { parseAppRoute } from './renderer/route';
 import { setActiveScanFixture } from './renderer/fixtureBundle';
+import { registerWebMcpFoundation } from './webmcp';
 import {
   availableScanRepoSlugs,
   fetchScanTrioLoader,
@@ -72,6 +73,8 @@ async function bootScanFixture(load: ScanTrioLoader | undefined, slug: string | 
 }
 
 async function boot() {
+  // WebMCP is progressive enhancement (CLA-40). Missing APIs are a silent no-op.
+  void registerWebMcpFoundation();
   // A scanned fixture is fetched, validated and compiled BEFORE App is imported,
   // so App reads the compiled scene/story synchronously (like the golden fixture).
   //
