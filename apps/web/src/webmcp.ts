@@ -57,8 +57,8 @@ export type WebMcpModelContext = {
 };
 
 export type WebMcpHost = {
-  document?: { modelContext?: unknown };
-  navigator?: { modelContext?: unknown };
+  document?: unknown;
+  navigator?: unknown;
 };
 
 export type WebMcpFoundationStatus = 'absent' | 'registered' | 'skipped';
@@ -88,22 +88,29 @@ function asModelContext(value: unknown): WebMcpModelContext | undefined {
   return value as WebMcpModelContext;
 }
 
+function readModelContext(host: unknown, key: 'document' | 'navigator'): unknown {
+  if (host === null || typeof host !== 'object') return undefined;
+  const container = (host as Record<string, unknown>)[key];
+  if (container === null || typeof container !== 'object') return undefined;
+  return (container as { modelContext?: unknown }).modelContext;
+}
+
 /**
  * Current spec surface is `document.modelContext`. Chrome 149 shipped
  * `navigator.modelContext` (deprecated in Chrome 150). Prefer document.
  */
-export function detectModelContext(host: WebMcpHost = globalThis): WebMcpModelContext | undefined {
+export function detectModelContext(host: unknown = globalThis): WebMcpModelContext | undefined {
   try {
-    const fromDocument = asModelContext(host.document?.modelContext);
+    const fromDocument = asModelContext(readModelContext(host, 'document'));
     if (fromDocument) return fromDocument;
-    return asModelContext(host.navigator?.modelContext);
+    return asModelContext(readModelContext(host, 'navigator'));
   } catch {
     return undefined;
   }
 }
 
 export async function registerWebMcpFoundation(
-  host: WebMcpHost = globalThis,
+  host: unknown = globalThis,
 ): Promise<WebMcpFoundationStatus> {
   try {
     const context = detectModelContext(host);

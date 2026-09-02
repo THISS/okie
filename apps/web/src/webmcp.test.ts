@@ -10,6 +10,7 @@ import {
   okieProbeResult,
   registerWebMcpFoundation,
   type WebMcpTool,
+  type WebMcpHost,
 } from './webmcp';
 
 const PLANTED_SECRETS = [
@@ -42,8 +43,8 @@ describe('WebMCP foundation (CLA-40)', () => {
   });
 
   it('does not throw when detect walks a throwing host', async () => {
-    const host = {
-      get document() {
+    const host: WebMcpHost = {
+      get document(): never {
         throw new Error('okie-test-llm-key-cla40-fake');
       },
     };
