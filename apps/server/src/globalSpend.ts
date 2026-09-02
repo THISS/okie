@@ -69,7 +69,7 @@ export function createGlobalEnrichmentSpend(
     snapshot: () => ({ tokens: spent.tokens, dollars: spent.dollars }),
     remaining: () => ({
       ...(cap.maxTokens !== undefined ? { tokens: Math.max(0, cap.maxTokens - spent.tokens) } : {}),
-      ...(cap.maxDollars !== undefined ? { dollars: Math.max(0, cap.maxDollars - spent.dollars) } : {}),
+      ...(cap.maxDollars !== undefined ? { dollars: Math.max(0, addDollars(cap.maxDollars, -spent.dollars)) } : {}),
     }),
     isExhausted: () => {
       if (cap.maxTokens !== undefined && spent.tokens >= cap.maxTokens) return true;
