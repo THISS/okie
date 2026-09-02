@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { enrichmentStageDetail, type PublicEnrichment } from './scanJobEnrichment';
+import {
+  bindScanLandingActions,
+  publicScanFetchInit,
+  registerWebMcpLandingTools,
+  startPublicScanResultFromHttp,
+  type StartPublicScanResult,
+} from './webmcp';
 
 /**
  * The paste-a-repo landing (embed-hosting v2 self-serve): a GitHub URL goes in,
@@ -94,6 +101,26 @@ export function ScanLandingScreen() {
     };
   }, []);
 
+  const submitRepoRef = useRef<(url: string) => Promise<StartPublicScanResult>>(
+    async () => startPublicScanResultFromHttp(0, {}),
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const unbind = bindScanLandingActions({
+      fillRepoInput: setInput,
+      submitScan: url => submitRepoRef.current(url),
+      openAtlas: atlasPath => {
+        window.location.assign(atlasPath);
+      },
+    });
+    void registerWebMcpLandingTools(globalThis, { signal: controller.signal });
+    return () => {
+      controller.abort();
+      unbind();
+    };
+  }, []);
+
   function watchJob(id: string) {
     if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
     pollRef.current = window.setInterval(() => {
@@ -111,29 +138,33 @@ export function ScanLandingScreen() {
     }, 1500);
   }
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  async function submitRepo(url: string): Promise<StartPublicScanResult> {
+    setInput(url);
     setError(undefined);
     setSubmitting(true);
     try {
-      const response = await fetch('/api/scans', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url: input }),
-      });
+      const response = await fetch('/api/scans', publicScanFetchInit(url));
       const body = (await response.json()) as { job?: PublicJob; error?: string };
+      const toolResult = startPublicScanResultFromHttp(response.status, body);
       if (!response.ok || !body.job) {
         setError(body.error ?? `The scan service returned HTTP ${response.status}.`);
-        return;
+        return toolResult;
       }
       setJob(body.job);
       watchJob(body.job.id);
+      return toolResult;
     } catch (requestError) {
       setError(`Could not reach the scan service (${requestError instanceof Error ? requestError.message : String(requestError)}). Is it running? Start it with: pnpm --filter @okie/server dev`);
+      return startPublicScanResultFromHttp(0, {});
     } finally {
       setSubmitting(false);
     }
+  }
+  submitRepoRef.current = submitRepo;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    await submitRepo(input);
   }
 
   const stageIndex = job ? STAGE_LABELS.findIndex(stage => stage.key === job.stage) : -1;
@@ -168,6 +199,7 @@ export function ScanLandingScreen() {
       <form onSubmit={submit} style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem' }}>
         <input
           aria-label="GitHub repository URL"
+          name="url"
           autoFocus
           disabled={scanLocked || submitting || (job !== undefined && job.stage !== 'failed')}
           onChange={event => setInput(event.target.value)}
