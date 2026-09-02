@@ -14,6 +14,13 @@ describe('enrichmentStageDetail (CLA-29)', () => {
     expect(enrichmentStageDetail({ state: 'skipped', note: 'enrichment disabled' })).toBe('skipped');
   });
 
+  it('says skipped when the global enrichment budget is reached, without dumping spend', () => {
+    expect(enrichmentStageDetail({
+      state: 'skipped',
+      note: 'global enrichment budget reached',
+    })).toBe('skipped');
+  });
+
   it('says failed without echoing gateway URLs from the note', () => {
     expect(enrichmentStageDetail({
       state: 'failed',

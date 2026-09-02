@@ -70,6 +70,16 @@ export interface EnricherOptions {
   gateway?: EnrichmentGateway;
   /** Per-request timeout + scan-level caps (CLA-22). Defaults are the documented constants. */
   budget?: Partial<EnrichmentBudget>;
+  /**
+   * Called after each scope that reports usage — including billed replies whose
+   * content later fails to parse — so a process-wide ceiling (CLA-38) cannot be
+   * bypassed by malformed responses. Presence of this hook serializes scopes
+   * (maxConcurrent defaults to 1) so concurrent in-flight calls cannot double-spend
+   * the remaining global headroom.
+   */
+  onUsage?: (usage: GatewayUsage) => void;
+  /** Extra stop condition (CLA-38 global ledger already exhausted). */
+  budgetExhausted?: () => boolean;
   /** Concurrent in-flight scopes (default 2 — bounded, order-independent by design). */
   maxConcurrent?: number;
   onProgress?: (note: string) => void;
@@ -321,6 +331,20 @@ function usageFromAnthropic(message: Anthropic.Message): GatewayUsage | undefine
   };
 }
 
+function attachUsage(error: unknown, usage?: GatewayUsage): unknown {
+  if (usage && error && typeof error === "object") {
+    thrownUsage.set(error, usage);
+  }
+  return error;
+}
+
+function usageFromThrown(error: unknown): GatewayUsage | undefined {
+  if (error && typeof error === "object") return thrownUsage.get(error);
+  return undefined;
+}
+
+const thrownUsage = new WeakMap<object, GatewayUsage>();
+
 function anthropicGenerator(
   client: Anthropic,
   modelId: string,
@@ -333,14 +357,18 @@ function anthropicGenerator(
       { signal },
     );
     const message = await stream.finalMessage();
-    if (message.stop_reason === "refusal") throw new Error("model refused the enrichment request");
-    const text = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map(block => block.text)
-      .join("");
-    const document = JSON.parse(text) as unknown;
     const usage = usageFromAnthropic(message);
-    return usage ? { document, usage } : { document };
+    try {
+      if (message.stop_reason === "refusal") throw new Error("model refused the enrichment request");
+      const text = message.content
+        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .map(block => block.text)
+        .join("");
+      const document = JSON.parse(text) as unknown;
+      return usage ? { document, usage } : { document };
+    } catch (error) {
+      throw attachUsage(error, usage);
+    }
   };
 }
 
@@ -353,8 +381,12 @@ function gatewayGenerator(
     const result = await client.chatCompletions(
       enrichmentChatCompletionsBody(modelId, kind, systemId, packet, remainingTokens()),
     );
-    const document = parseChatCompletionDocument(result.json);
-    return result.usage ? { document, usage: result.usage } : { document };
+    try {
+      const document = parseChatCompletionDocument(result.json);
+      return result.usage ? { document, usage: result.usage } : { document };
+    } catch (error) {
+      throw attachUsage(error, result.usage);
+    }
   };
 }
 
@@ -390,8 +422,19 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
   const spent = { tokens: 0, dollars: 0 };
   const remainingTokens = (): number => Math.max(1, budget.maxTokens - spent.tokens);
   const generate = options.generate ?? defaultGenerator(options, passModelId, remainingTokens, budget.requestTimeoutMs);
-  const maxConcurrent = Math.max(1, options.maxConcurrent ?? 2);
+  // Global spend accounting must not race two in-flight scopes against the same remainder.
+  const maxConcurrent = Math.max(1, options.maxConcurrent ?? (options.onUsage ? 1 : 2));
   const gateway = options.gateway;
+
+  const accountUsage = (usage?: GatewayUsage): void => {
+    if (!usage) return;
+    const used = usage.totalTokens ?? 0;
+    if (used > 0) spent.tokens += used;
+    if (usage.costUsd !== undefined) {
+      spent.dollars = addDollars(spent.dollars, usage.costUsd);
+    }
+    options.onUsage?.(usage);
+  };
 
   return async ({ packets, systemPacket }) => {
     if (!passModelId && !usingInjectedGenerate) {
@@ -446,6 +489,10 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
           skipRest(`scan budget max dollars $${budget.maxDollars} reached ($${spent.dollars})`);
           break;
         }
+        if (options.budgetExhausted?.()) {
+          skipRest("global enrichment budget reached");
+          break;
+        }
         const item = work[index]!;
         index += 1;
         scopesAttempted += 1;
@@ -453,13 +500,10 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
           progress(`enrich ${item.id}: requesting proposal`);
           const proposal = await withDeadline(generate(item.packet, item.kind, systemId), budget.requestTimeoutMs);
           docs.set(item.id, proposal.document);
-          const used = proposal.usage?.totalTokens ?? 0;
-          if (used > 0) spent.tokens += used;
-          if (proposal.usage?.costUsd !== undefined) {
-            spent.dollars = addDollars(spent.dollars, proposal.usage.costUsd);
-          }
+          accountUsage(proposal.usage);
           progress(`enrich ${item.id}: proposal received`);
         } catch (error) {
+          accountUsage(usageFromThrown(error));
           const message = error instanceof Error ? error.message : String(error);
           firstFailure ??= message;
           if (shouldSkipRemainingScopes(error)) {

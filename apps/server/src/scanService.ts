@@ -15,6 +15,11 @@ import type { JobRunner, ScanJob, ScanJobEnrichment } from "./jobs.js";
 import { createEnricher } from "./enrichment.js";
 import { githubClientForAccess } from "./githubAccess.js";
 import {
+  clampEnrichmentBudget,
+  GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE,
+  type GlobalEnrichmentSpend,
+} from "./globalSpend.js";
+import {
   createLlmGatewayClient,
   enrichmentModelId,
   enrichmentProviderLabel,
@@ -44,6 +49,11 @@ export interface ScanServiceOptions {
   llmLocal?: LlmGatewayLocalConfig;
   /** Injectable enrichment factory (tests). Returning undefined skips enrichment. */
   enricherFactory?: (onProgress: (note: string) => void) => EnrichmentHook | undefined;
+  /**
+   * Process-wide token/$ ceiling across GitHub users (CLA-38). When exhausted,
+   * enrichment is skipped and the deterministic atlas stays live.
+   */
+  globalSpend?: GlobalEnrichmentSpend;
   /**
    * GitHub transport override for tests. Production uses per-job
    * `job.githubAccess` via `githubClientForAccess` — HTTPS Bearer for OAuth/App,
@@ -108,6 +118,7 @@ export function createDefaultEnricherFactory(
   mode: "auto" | "force",
   env: NodeJS.Dict<string> = process.env,
   local: LlmGatewayLocalConfig = {},
+  globalSpend?: GlobalEnrichmentSpend,
 ): (onProgress: (note: string) => void) => EnrichmentHook | undefined {
   return onProgress => {
     const config = resolveLlmGatewayConfig(env, local);
@@ -120,12 +131,20 @@ export function createDefaultEnricherFactory(
       };
     }
     try {
-      const budget = resolveEnrichmentBudget(env);
+      const budget = clampEnrichmentBudget(resolveEnrichmentBudget(env), globalSpend);
       const gateway = createLlmGatewayClient(config, { timeoutMs: budget.requestTimeoutMs });
+      const globalCap = Boolean(
+        globalSpend && (globalSpend.cap.maxTokens !== undefined || globalSpend.cap.maxDollars !== undefined),
+      );
       return createEnricher({
         onProgress,
         modelId: config.modelId,
         budget,
+        ...(globalSpend ? {
+          onUsage: usage => globalSpend.record(usage),
+          budgetExhausted: () => globalSpend.isExhausted(),
+        } : {}),
+        ...(globalCap ? { maxConcurrent: 1 } : {}),
         ...(gateway ? { gateway } : {}),
       });
     } catch {
@@ -147,8 +166,9 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const enrichMode = options.enrich ?? "auto";
   const env = options.env ?? process.env;
   const llmLocal = options.llmLocal ?? {};
+  const globalSpend = options.globalSpend;
   const enricherFactory = options.enricherFactory
-    ?? (enrichMode === "off" ? () => undefined : createDefaultEnricherFactory(enrichMode, env, llmLocal));
+    ?? (enrichMode === "off" ? () => undefined : createDefaultEnricherFactory(enrichMode, env, llmLocal, globalSpend));
   const githubClientOverride = options.githubClient;
   const redact = (line: string): string => redactGatewayText(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
 
@@ -217,6 +237,14 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
             note: skipNote(config),
           },
         });
+        return;
+      }
+
+      if (globalSpend?.isExhausted()) {
+        update({
+          enrichment: { state: "skipped", note: GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE },
+        });
+        log(redact(`${job.id}: ${GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE}; deterministic atlas stands`));
         return;
       }
 

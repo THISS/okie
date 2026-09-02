@@ -17,7 +17,10 @@ export type PublicEnrichment = {
 /** Suffix on the "Writing AI descriptions" step. `undefined` while pending/running. */
 export function enrichmentStageDetail(enrichment: PublicEnrichment): string | undefined {
   if (enrichment.state === 'skipped') {
-    return enrichment.note === 'enrichment disabled' ? 'skipped' : 'skipped (no key)';
+    if (enrichment.note === 'enrichment disabled' || enrichment.note === 'global enrichment budget reached') {
+      return 'skipped';
+    }
+    return 'skipped (no key)';
   }
   if (enrichment.state === 'failed') {
     return 'failed; the deterministic atlas stands';

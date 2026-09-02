@@ -2,6 +2,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_MAX_TARBALL_BYTES } from "@okie/scan";
 import { createGithubAuthService } from "./githubOAuth.js";
+import { createGlobalEnrichmentSpend, resolveGlobalEnrichmentCap } from "./globalSpend.js";
 import { createScanJobQueue, createSubmitLimiter } from "./jobs.js";
 import { resolveListenHost } from "./localDefaults.js";
 import {
@@ -56,11 +57,13 @@ const log = (line: string): void => {
 };
 
 const auth = createGithubAuthService({ env: process.env, bind });
+const globalSpend = createGlobalEnrichmentSpend(resolveGlobalEnrichmentCap());
 const queue = createScanJobQueue(createScanJobRunner({
   scanRoot,
   enrich,
   llmLocal,
   maxTarballBytes: DEFAULT_MAX_TARBALL_BYTES,
+  globalSpend,
   log,
 }));
 const allowSubmit = createSubmitLimiter();

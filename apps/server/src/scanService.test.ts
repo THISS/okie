@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import type { GithubClient } from "@okie/scan";
+import {
+  createGlobalEnrichmentSpend,
+  GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE,
+} from "./globalSpend.js";
+import { healthzBody } from "./localDefaults.js";
 import { createScanJobQueue, toPublicJob } from "./jobs.js";
 import { createDefaultEnricherFactory, createScanJobRunner, type ScanServiceOptions } from "./scanService.js";
 
@@ -268,7 +274,7 @@ test("job logs redact a gateway key if a provider error echoes it", async () => 
 function githubClientForTarball(commitSha: string, tgz: string): GithubClient {
   return {
     async getJson(apiPath) {
-      if (apiPath === "/repos/acme/app") return { ok: true, json: { default_branch: "main" } };
+      if (apiPath === "/repos/acme/app") return { ok: true, json: { default_branch: "main", private: false } };
       if (apiPath === "/repos/acme/app/commits/main" || apiPath === `/repos/acme/app/commits/${commitSha}`) {
         return {
           ok: true,
@@ -604,6 +610,220 @@ test("force enrichment without a visible key records provider anthropic, not ope
     assert.equal(job.enrichment.modelId, "anthropic/claude-sonnet-4");
     assert.notEqual(job.enrichment.provider, "openrouter.ai");
   } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
+  }
+});
+
+const ALICE_TOKEN = "gho_okieTestUserATokenCla38aaaa";
+const BOB_TOKEN = "gho_okieTestUserBTokenCla38bbbb";
+
+function githubAccess(login: string, userId: string, token: string) {
+  return { kind: "github" as const, source: "oauth" as const, token, login, userId };
+}
+
+async function listenFakeGateway(
+  handler: (request: IncomingMessage, response: ServerResponse) => void,
+): Promise<{ baseUrl: string; close: () => Promise<void> }> {
+  const server = createServer(handler);
+  await new Promise<void>(resolve => { server.listen(0, "127.0.0.1", () => resolve()); });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("fake gateway has no port");
+  return {
+    baseUrl: `http://127.0.0.1:${address.port}/v1`,
+    close: () => new Promise((resolve, reject) => {
+      server.closeAllConnections();
+      server.close(error => { if (error) reject(error); else resolve(); });
+    }),
+  };
+}
+
+function fakeChatReply(totalTokens: number): string {
+  return JSON.stringify({
+    choices: [{
+      message: {
+        role: "assistant",
+        content: JSON.stringify({ schemaVersion: 1, entities: [], relations: [] }),
+      },
+    }],
+    usage: { prompt_tokens: Math.max(1, totalTokens - 1), completion_tokens: 1, total_tokens: totalTokens, cost: 0.01 },
+  });
+}
+
+test("under a global cap, enrichment runs on a fake gateway for more than one GitHub user", async () => {
+  const fixture = makeTarball("acme-app-cla38aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "src/index.ts": "export const ping = () => 'pong';\n",
+  });
+  const commitSha = "cla38aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  const logs: string[] = [];
+  const hits: number[] = [];
+  const spend = createGlobalEnrichmentSpend({ maxTokens: 10_000, maxDollars: 50 });
+  const fake = await listenFakeGateway((_request, response) => {
+    hits.push(1);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(fakeChatReply(20));
+  });
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "auto",
+      env: {
+        OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+        OKIE_LLM_BASE_URL: fake.baseUrl,
+        OPENROUTER_MODEL: "acme/fast",
+      },
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+      globalSpend: spend,
+      log: line => logs.push(line),
+    }));
+    queue.submit({
+      owner: "acme", repo: "app", slug: "acme__app-alice",
+      githubAccess: githubAccess("alice", "11", ALICE_TOKEN),
+    });
+    await queue.idle();
+    queue.submit({
+      owner: "acme", repo: "app", slug: "acme__app-bob",
+      githubAccess: githubAccess("bob", "22", BOB_TOKEN),
+    });
+    await queue.idle();
+    const jobs = queue.list();
+    assert.equal(jobs.length, 2);
+    for (const job of jobs) {
+      assert.equal(job.stage, "complete");
+      assert.equal(job.atlasReady, true);
+      assert.notEqual(job.enrichment.state, "skipped");
+      const publicJob = JSON.stringify(toPublicJob(job));
+      assert.equal(publicJob.includes(FAKE_GATEWAY_KEY), false);
+      assert.equal(publicJob.includes(ALICE_TOKEN), false);
+      assert.equal(publicJob.includes(BOB_TOKEN), false);
+      assert.ok(existsSync(join(scanRoot, job.slug, "snapshot.json")));
+    }
+    assert.ok(hits.length >= 2, "fake gateway must receive enrichment POSTs under the cap");
+    assert.ok(spend.snapshot().tokens > 0);
+    assert.equal(spend.isExhausted(), false);
+    assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
+    assert.ok(logs.every(line => !line.includes(ALICE_TOKEN)));
+    assert.ok(logs.every(line => !line.includes(BOB_TOKEN)));
+    const health = JSON.stringify(healthzBody({ enrich: "auto", bind: "127.0.0.1" }));
+    assert.equal(health.includes(FAKE_GATEWAY_KEY), false);
+    assert.doesNotMatch(health, /maxTokens|spend|GLOBAL_MAX/i);
+  } finally {
+    await fake.close();
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
+  }
+});
+
+test("at the global cap, enrichment skips across GitHub users and the atlas still publishes", async () => {
+  const fixture = makeTarball("acme-app-cla38bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "src/index.ts": "export const ping = () => 'pong';\n",
+  });
+  const commitSha = "cla38bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  const logs: string[] = [];
+  const hits: number[] = [];
+  const spend = createGlobalEnrichmentSpend({ maxTokens: 30 });
+  const fake = await listenFakeGateway((_request, response) => {
+    hits.push(1);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(fakeChatReply(30));
+  });
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "auto",
+      env: {
+        OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+        OKIE_LLM_BASE_URL: fake.baseUrl,
+        OPENROUTER_MODEL: "acme/fast",
+      },
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+      globalSpend: spend,
+      log: line => logs.push(line),
+    }));
+    queue.submit({
+      owner: "acme", repo: "app", slug: "acme__app-alice",
+      githubAccess: githubAccess("alice", "11", ALICE_TOKEN),
+    });
+    await queue.idle();
+    const afterFirst = hits.length;
+    assert.ok(afterFirst >= 1, "first user under the cap may call the fake gateway");
+    assert.equal(spend.isExhausted(), true);
+
+    queue.submit({
+      owner: "acme", repo: "app", slug: "acme__app-bob",
+      githubAccess: githubAccess("bob", "22", BOB_TOKEN),
+    });
+    await queue.idle();
+    const bob = queue.list().find(job => job.slug === "acme__app-bob")!;
+    const alice = queue.list().find(job => job.slug === "acme__app-alice")!;
+    assert.equal(bob.stage, "complete");
+    assert.equal(bob.atlasReady, true);
+    assert.equal(bob.enrichment.state, "skipped");
+    assert.equal(bob.enrichment.note, GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE);
+    assert.equal(alice.atlasReady, true);
+    assert.equal(hits.length, afterFirst, "second user's enrichment must not hit the gateway");
+    assert.ok(existsSync(join(scanRoot, "acme__app-bob", "snapshot.json")));
+    assert.ok(existsSync(join(scanRoot, "index.json")));
+    const publicBob = JSON.stringify(toPublicJob(bob));
+    assert.equal(publicBob.includes(FAKE_GATEWAY_KEY), false);
+    assert.equal(publicBob.includes(BOB_TOKEN), false);
+    assert.doesNotMatch(publicBob, /https?:\/\/[^"]*@/);
+    assert.ok(logs.some(line => line.includes(GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE)));
+    assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
+    assert.ok(logs.every(line => !line.includes(ALICE_TOKEN) && !line.includes(BOB_TOKEN)));
+    const health = JSON.stringify(healthzBody({ enrich: "auto", bind: "127.0.0.1" }));
+    assert.equal(health.includes(FAKE_GATEWAY_KEY), false);
+    assert.equal("apiKey" in JSON.parse(health), false);
+  } finally {
+    await fake.close();
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
+  }
+});
+
+test("a zero global cap skips enrichment without calling the fake gateway", async () => {
+  const fixture = makeTarball("acme-app-cla38cccccccccccccccccccccccccccccccccc", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "src/index.ts": "export const ping = () => 'pong';\n",
+  });
+  const commitSha = "cla38ccccccccccccccccccccccccccccccccccccc";
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  const hits: number[] = [];
+  const fake = await listenFakeGateway((_request, response) => {
+    hits.push(1);
+    response.writeHead(500);
+    response.end("must not be called");
+  });
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "auto",
+      env: {
+        OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+        OKIE_LLM_BASE_URL: fake.baseUrl,
+        OPENROUTER_MODEL: "acme/fast",
+      },
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+      globalSpend: createGlobalEnrichmentSpend({ maxTokens: 0 }),
+    }));
+    queue.submit({
+      owner: "acme", repo: "app", slug: "acme__app",
+      githubAccess: githubAccess("alice", "11", ALICE_TOKEN),
+    });
+    await queue.idle();
+    const job = queue.list()[0]!;
+    assert.equal(job.stage, "complete");
+    assert.equal(job.atlasReady, true);
+    assert.equal(job.enrichment.state, "skipped");
+    assert.equal(job.enrichment.note, GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE);
+    assert.equal(hits.length, 0);
+    assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
+  } finally {
+    await fake.close();
     rmSync(scanRoot, { recursive: true, force: true });
     fixture.cleanup();
   }
