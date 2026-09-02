@@ -169,7 +169,7 @@ import {
   type StoryFlight,
   type StoryFlightSample,
 } from './storyPlayback';
-import { bindAtlasChromeActions, registerWebMcpAtlasTools, type AtlasChromeActions } from './webmcp';
+import { atlasEnrichmentStatus, atlasIdentityFromLocation, atlasTourPlaying, bindAtlasChromeActions, registerWebMcpAtlasTools, type AtlasChromeActions } from './webmcp';
 
 // A scanned snapshot (fixture=scan) is fetched, validated and compiled before App
 // is imported (see main.tsx); when present it drives the app through the same
@@ -1252,6 +1252,15 @@ export function App() {
     isolate: () => {},
     startOverviewTour: () => {},
     openAsk: () => {},
+    readContext: () => ({
+      atlas: { fixtureId: 'okie' },
+      c4Level: 'context',
+      selectedEntityId: null,
+      tourPlaying: false,
+      enrichmentStatus: 'none',
+      scanAvailable: false,
+      askAvailable: false,
+    }),
   });
   const shareButtonRef = useRef<HTMLButtonElement | null>(null);
   const visibilityControlRef = useRef<HTMLButtonElement | null>(null);
@@ -3505,6 +3514,18 @@ export function App() {
       setQuestion(question);
       window.setTimeout(() => askInputRef.current?.focus(), 0);
     },
+    readContext: () => ({
+      atlas: atlasIdentityFromLocation(window.location.pathname, window.location.search),
+      c4Level: activeDetail,
+      selectedEntityId: selected?.id ?? null,
+      tourPlaying: atlasTourPlaying({ storyStep, storyPlaying, storyPhase }),
+      enrichmentStatus: atlasEnrichmentStatus({
+        atlasSource: importedAtlas ? 'imported-mermaid' : scanFixture ? 'scan' : query.fixture === 'stress' ? 'stress' : 'golden',
+        entities: scene.entities,
+      }),
+      scanAvailable: false,
+      askAvailable: query.fixture !== 'stress' && storyStep < 0,
+    }),
   };
 
   useEffect(() => {
@@ -3516,6 +3537,7 @@ export function App() {
       isolate: active => atlasChromeRef.current.isolate(active),
       startOverviewTour: () => atlasChromeRef.current.startOverviewTour(),
       openAsk: question => atlasChromeRef.current.openAsk(question),
+      readContext: () => atlasChromeRef.current.readContext(),
     });
     void registerWebMcpAtlasTools(globalThis, { signal: controller.signal });
     return () => {

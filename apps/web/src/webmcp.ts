@@ -1,6 +1,6 @@
 /**
- * WebMCP (CLA-40 + CLA-41 + CLA-42): progressive enhancement so Chrome (and
- * later other browsers) can see Okie as a WebMCP provider.
+ * WebMCP (CLA-40 + CLA-41 + CLA-42 + CLA-43): progressive enhancement so Chrome
+ * (and later other browsers) can see Okie as a WebMCP provider.
  *
  * This is the in-page browser API (`document.modelContext`, with a fallback to
  * the Chrome origin-trial `navigator.modelContext`) — not a remote or stdio
@@ -24,6 +24,12 @@
  * structured tool error, never a throw. `ask_atlas` opens the Ask popover and
  * may fill the query; it does not start a live paid answer.
  *
+ * CLA-43 `get_atlas_context`: a read-only snapshot of the current page so
+ * agents stop guessing from the DOM. WebMCP's old `provideContext` /
+ * `clearContext` surface was removed from the spec; this is a tool, not
+ * registered state. `execute` reads live chrome (selection, C4 level, tour)
+ * at call time — never a snapshot captured at registerTool.
+ *
  * Origin isolation: never assign `document.domain`. Hosted chrome sends
  * `Permissions-Policy: tools=(self)` and `Origin-Agent-Cluster: ?1`. Do not
  * widen `tools` unless we later embed ourselves.
@@ -31,6 +37,10 @@
  * Refs: https://developer.chrome.com/docs/ai/webmcp
  *       https://webmachinelearning.github.io/webmcp/
  */
+
+import { INSPECTOR_EMPTY_SUMMARY } from './inspector/inspectorPanel';
+import { readDemoQuery } from './renderer/query';
+import { parseAppRoute } from './renderer/route';
 
 /** Permissions-Policy + origin-keyed agent cluster for hosted chrome. */
 export const WEBMCP_HOST_HEADERS = {
@@ -160,6 +170,41 @@ export const ASK_ATLAS_INPUT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+export const GET_ATLAS_CONTEXT_TOOL_NAME = 'get_atlas_context';
+export const GET_ATLAS_CONTEXT_TOOL_TITLE = 'Get atlas context';
+export const GET_ATLAS_CONTEXT_TOOL_DESCRIPTION =
+  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity, whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
+
+export const GET_ATLAS_CONTEXT_INPUT_SCHEMA = {
+  type: 'object',
+  properties: {},
+  additionalProperties: false,
+} as const;
+
+export const ATLAS_ENRICHMENT_STATUSES = [
+  'none',
+  'pending',
+  'running',
+  'complete',
+  'skipped',
+  'failed',
+] as const;
+export type AtlasEnrichmentStatus = (typeof ATLAS_ENRICHMENT_STATUSES)[number];
+
+export type AtlasIdentity = { owner: string; repo: string } | { fixtureId: string };
+
+export type AtlasPageContextInput = {
+  atlas: AtlasIdentity;
+  c4Level: C4Level;
+  selectedEntityId: string | null;
+  tourPlaying: boolean;
+  enrichmentStatus: AtlasEnrichmentStatus;
+  scanAvailable: boolean;
+  askAvailable: boolean;
+};
+
+export type AtlasSourceKind = 'golden' | 'scan' | 'stress' | 'imported-mermaid';
+
 export type OkieProbeResult = {
   ok: true;
   product: 'Okie';
@@ -230,11 +275,24 @@ export type AskAtlasSuccess = {
   open: true;
 };
 
+export type GetAtlasContextSuccess = {
+  ok: true;
+  tool: typeof GET_ATLAS_CONTEXT_TOOL_NAME;
+  atlas: AtlasIdentity;
+  c4Level: C4Level;
+  selectedEntityId: string | null;
+  tourPlaying: boolean;
+  enrichmentStatus: AtlasEnrichmentStatus;
+  scanAvailable: boolean;
+  askAvailable: boolean;
+};
+
 export type SetC4LevelResult = SetC4LevelSuccess | WebMcpToolError;
 export type SelectEntityResult = SelectEntitySuccess | WebMcpToolError;
 export type IsolateResult = IsolateSuccess | WebMcpToolError;
 export type StartOverviewTourResult = StartOverviewTourSuccess | WebMcpToolError;
 export type AskAtlasResult = AskAtlasSuccess | WebMcpToolError;
+export type GetAtlasContextResult = GetAtlasContextSuccess | WebMcpToolError;
 
 export type WebMcpJsonSchema = {
   type: 'object';
@@ -280,6 +338,7 @@ export type AtlasChromeActions = {
   isolate: (active: boolean) => void;
   startOverviewTour: () => void;
   openAsk: (question: string) => void;
+  readContext: () => AtlasPageContextInput;
 };
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
@@ -422,6 +481,97 @@ function optionalAskQuestion(input?: Record<string, unknown>): string {
 
 function atlasUnavailable(): WebMcpToolError {
   return webMcpToolError('unavailable', 'Open a loaded atlas to use this tool.');
+}
+
+const ENRICHMENT_STATUS_SET = new Set<string>(ATLAS_ENRICHMENT_STATUSES);
+const C4_LEVEL_SET = new Set<string>(C4_LEVELS);
+
+/**
+ * Public page identity: a share URL's owner/repo, else the local fixture id.
+ * Never includes private paths, scan roots, or repository filesystem location.
+ */
+export function atlasIdentityFromLocation(pathname: string, search = ''): AtlasIdentity {
+  const route = parseAppRoute(pathname);
+  if (route.kind === 'repo') return { owner: route.owner, repo: route.repo };
+  const query = readDemoQuery(search);
+  if (query.fixture === 'scan' && query.scanRepo) return { fixtureId: `scan:${query.scanRepo}` };
+  return { fixtureId: query.fixture };
+}
+
+/**
+ * Enrichment enum from already-loaded client scene data. No job poll, no
+ * spend ledger, no model id. Local fixtures are `none`; a scan atlas is
+ * `complete` when any entity carries an accepted summary, otherwise `skipped`.
+ */
+export function atlasEnrichmentStatus(input: {
+  atlasSource: AtlasSourceKind;
+  entities: readonly { responsibility?: string }[];
+}): AtlasEnrichmentStatus {
+  if (input.atlasSource !== 'scan') return 'none';
+  const accepted = input.entities.some(entity => {
+    const text = entity.responsibility?.trim();
+    return Boolean(text) && text !== INSPECTOR_EMPTY_SUMMARY;
+  });
+  return accepted ? 'complete' : 'skipped';
+}
+
+/** Same predicate as the story play/pause control: a tour is playing through hold, flight, or arrival. */
+export function atlasTourPlaying(input: {
+  storyStep: number;
+  storyPlaying: boolean;
+  storyPhase: string;
+}): boolean {
+  return input.storyStep >= 0 && (
+    input.storyPlaying
+    || input.storyPhase === 'flight'
+    || input.storyPhase === 'arrival'
+  );
+}
+
+function publicAtlasIdentity(atlas: AtlasIdentity): AtlasIdentity {
+  const record = atlas as { owner?: unknown; repo?: unknown; fixtureId?: unknown };
+  if (typeof record.owner === 'string' && typeof record.repo === 'string') {
+    return { owner: record.owner, repo: record.repo };
+  }
+  if (typeof record.fixtureId === 'string' && record.fixtureId) {
+    return { fixtureId: record.fixtureId };
+  }
+  return { fixtureId: 'okie' };
+}
+
+function publicSelectedEntityId(value: string | null): string | null {
+  if (typeof value !== 'string') return null;
+  const entityId = value.trim();
+  if (!entityId || entityId.length > ENTITY_ID_MAX) return null;
+  return entityId;
+}
+
+function publicEnrichmentStatus(value: unknown): AtlasEnrichmentStatus {
+  return typeof value === 'string' && ENRICHMENT_STATUS_SET.has(value)
+    ? value as AtlasEnrichmentStatus
+    : 'none';
+}
+
+function publicC4Level(value: unknown): C4Level {
+  return typeof value === 'string' && C4_LEVEL_SET.has(value) ? value as C4Level : 'context';
+}
+
+/**
+ * Pick only the public context fields. Extra keys on the live reader (paths,
+ * tokens, spend) are dropped rather than forwarded to the tool result.
+ */
+export function atlasPageContext(input: AtlasPageContextInput): GetAtlasContextSuccess {
+  return {
+    ok: true,
+    tool: GET_ATLAS_CONTEXT_TOOL_NAME,
+    atlas: publicAtlasIdentity(input.atlas),
+    c4Level: publicC4Level(input.c4Level),
+    selectedEntityId: publicSelectedEntityId(input.selectedEntityId),
+    tourPlaying: Boolean(input.tourPlaying),
+    enrichmentStatus: publicEnrichmentStatus(input.enrichmentStatus),
+    scanAvailable: Boolean(input.scanAvailable),
+    askAvailable: Boolean(input.askAvailable),
+  };
 }
 
 export function okieProbeResult(): OkieProbeResult {
@@ -572,6 +722,17 @@ function executeAskAtlas(input?: Record<string, unknown>): AskAtlasResult {
   }
 }
 
+function executeGetAtlasContext(input?: Record<string, unknown>): GetAtlasContextResult {
+  try {
+    void input;
+    const actions = atlasActions;
+    if (!actions) return atlasUnavailable();
+    return atlasPageContext(actions.readContext());
+  } catch {
+    return webMcpToolError('unavailable', 'Could not read atlas context.');
+  }
+}
+
 export const SET_C4_LEVEL_TOOL: WebMcpTool = {
   name: SET_C4_LEVEL_TOOL_NAME,
   title: SET_C4_LEVEL_TOOL_TITLE,
@@ -617,12 +778,22 @@ export const ASK_ATLAS_TOOL: WebMcpTool = {
   annotations: { readOnlyHint: false },
 };
 
+export const GET_ATLAS_CONTEXT_TOOL: WebMcpTool = {
+  name: GET_ATLAS_CONTEXT_TOOL_NAME,
+  title: GET_ATLAS_CONTEXT_TOOL_TITLE,
+  description: GET_ATLAS_CONTEXT_TOOL_DESCRIPTION,
+  inputSchema: GET_ATLAS_CONTEXT_INPUT_SCHEMA,
+  execute: executeGetAtlasContext,
+  annotations: { readOnlyHint: true },
+};
+
 export const ATLAS_WEBMCP_TOOLS: readonly WebMcpTool[] = [
   SET_C4_LEVEL_TOOL,
   SELECT_ENTITY_TOOL,
   ISOLATE_TOOL,
   START_OVERVIEW_TOUR_TOOL,
   ASK_ATLAS_TOOL,
+  GET_ATLAS_CONTEXT_TOOL,
 ];
 
 function asModelContext(value: unknown): WebMcpModelContext | undefined {
