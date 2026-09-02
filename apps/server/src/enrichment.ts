@@ -19,9 +19,11 @@ import {
  * Live-LLM enrichment adapter (scan-runner M3): turns the scanner's bounded,
  * redacted packets into gate-shaped section summaries. The adapter is
  * deliberately dumb about correctness — every document it returns still goes
- * through `mergeEnrichment`'s atomic per-scope gate, so a hallucinated id or an
- * out-of-scope entity rejects THAT scope and the deterministic base publishes
- * untouched. Resilience contract (see GithubScanOptions.enrichWithPackets): a
+ * through `mergeEnrichment`'s atomic per-document gate, so a hallucinated id or an
+ * out-of-scope entity rejects THAT document and the deterministic base publishes
+ * for the rejected chunk. Remainder packets for the same container are grouped
+ * into an array (OSS `--enrich-from` shape); a bad remainder does not drop an
+ * accepted sibling. Resilience contract (see GithubScanOptions.enrichWithPackets): a
  * per-scope failure omits that scope's doc; a total failure returns an empty map.
  */
 
@@ -408,9 +410,34 @@ function defaultGenerator(
 }
 
 /**
+ * Groups remainder-packet documents onto the same container id, matching OSS
+ * `--enrich-from`. A single accepted doc stays a bare object; two or more
+ * remainder chunks become an array that `mergeEnrichment` unions. Walks
+ * `accepted` in packet order so concurrent completion cannot reverse chunks.
+ */
+function collectDocsByContainer(
+  accepted: ReadonlyArray<{ id: string; document: unknown } | undefined>,
+): Map<string, unknown> {
+  const docs = new Map<string, unknown>();
+  for (const item of accepted) {
+    if (!item) continue;
+    const existing = docs.get(item.id);
+    if (existing === undefined) {
+      docs.set(item.id, item.document);
+    } else if (Array.isArray(existing)) {
+      existing.push(item.document);
+    } else {
+      docs.set(item.id, [existing, item.document]);
+    }
+  }
+  return docs;
+}
+
+/**
  * Builds the `enrichWithPackets` hook for GithubScanOptions.
  * Called only while the ephemeral checkout exists (scan.ts). Per-scope failures
- * omit that scope. Rate-limit / 5xx skip remaining scopes and throw so the job
+ * omit that scope. Remainder packets for one container union instead of
+ * last-write-wins. Rate-limit / 5xx skip remaining scopes and throw so the job
  * records enrichment failed; the deterministic atlas stays live. Scan-level
  * budget skips remaining without throwing.
  */
@@ -447,11 +474,10 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
       progress(`enrich: model ${passModelId}`);
     }
     progress(`enrich: budget ${budget.maxScopes} scopes / ${budget.maxTokens} tokens / $${budget.maxDollars} / timeout ${budget.requestTimeoutMs}ms`);
-    const docs = new Map<string, unknown>();
     if (!systemPacket) {
       // No system root means no gate anchor for container docs — nothing to enrich.
       progress("enrich: no system packet in this scan; staying deterministic");
-      return docs;
+      return new Map();
     }
     const systemId = systemPacket.systemId;
     const work: Array<{ id: string; packet: EnrichmentPacket | SystemPacket; kind: PacketKind }> = [];
@@ -464,6 +490,7 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
     }
     work.push({ id: systemId, packet: systemPacket, kind: "system" });
 
+    const acceptedByIndex: Array<{ id: string; document: unknown } | undefined> = new Array(work.length);
     let index = 0;
     let scopesAttempted = 0;
     let firstFailure: string | undefined;
@@ -493,13 +520,14 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
           skipRest("global enrichment budget reached");
           break;
         }
+        const itemIndex = index;
         const item = work[index]!;
         index += 1;
         scopesAttempted += 1;
         try {
           progress(`enrich ${item.id}: requesting proposal`);
           const proposal = await withDeadline(generate(item.packet, item.kind, systemId), budget.requestTimeoutMs);
-          docs.set(item.id, proposal.document);
+          acceptedByIndex[itemIndex] = { id: item.id, document: proposal.document };
           accountUsage(proposal.usage);
           progress(`enrich ${item.id}: proposal received`);
         } catch (error) {
@@ -523,6 +551,7 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
     if (abortRemaining !== undefined) {
       throw new Error(`enrichment failed (${abortRemaining}); remaining scopes skipped`);
     }
+    const docs = collectDocsByContainer(acceptedByIndex);
     // Partial success republishes what the gate accepts; TOTAL failure (typically
     // bad credentials) is surfaced as a throw so the job records an honest
     // "enrichment failed" instead of "complete, 0 containers".

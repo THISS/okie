@@ -48,9 +48,11 @@ export interface GithubScanOptions extends ScanOptions {
   /**
    * Live enrichment adapter (M3): called with the bounded packets while the ephemeral
    * checkout is still on disk; returns container-id-keyed docs to merge through the
-   * gate. Used only when no pre-recorded `enrichmentDocs` were supplied. The adapter
-   * owns its own resilience — per-scope failures simply omit that scope's doc, and the
-   * deterministic base always publishes (an empty map means no enrichment).
+   * gate. Remainder packets for one container must be an array (same shape as
+   * `--enrich-from`); last-write-wins would drop the first chunk. Used only when no
+   * pre-recorded `enrichmentDocs` were supplied. The adapter owns its own resilience
+   * — per-scope failures simply omit that scope's doc, and the deterministic base
+   * always publishes (an empty map means no enrichment).
    */
   enrichWithPackets?: (packets: EmittedPackets) => Promise<ReadonlyMap<string, unknown>>;
 }

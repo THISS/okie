@@ -7,6 +7,9 @@ import { fileURLToPath } from "node:url";
 import {
   buildEnrichmentPackets,
   extractArchitecture,
+  MAX_COMPONENTS_PER_PACKET,
+  mergeEnrichment,
+  type Discovery,
   type EmittedPackets,
   type EnrichmentPacket,
   type SystemPacket,
@@ -61,6 +64,77 @@ const packets = (overrides: Partial<EmittedPackets> = {}): EmittedPackets => ({
   ...overrides,
 });
 
+const repoRoot = join(fileURLToPath(new URL(".", import.meta.url)), "../../..");
+
+type ExtractionDoc = { schemaVersion: number; entities: Array<{ id: string; kind: string }>; relations: unknown[] };
+
+function asDocArray(value: unknown): unknown[] {
+  assert.ok(Array.isArray(value), "remainder packets must group onto one container id");
+  return value;
+}
+
+function componentEntities(doc: unknown): Array<{ id: string; kind: string }> {
+  const record = doc && typeof doc === "object" ? doc as ExtractionDoc : undefined;
+  return (record?.entities ?? []).filter(entity => entity.kind === "component");
+}
+
+function loadAppsWebFixture(name: "container__apps-web.json" | "container__apps-web.2.json"): ExtractionDoc {
+  return JSON.parse(readFileSync(join(repoRoot, "fixtures/enrichment/thiss-okie", name), "utf8")) as ExtractionDoc;
+}
+
+function summaryFromPacket(
+  packet: EnrichmentPacket,
+  systemId: string,
+  systemName: string,
+  extraEntities: object[] = [],
+): ExtractionDoc {
+  return {
+    schemaVersion: 1,
+    entities: [
+      { id: systemId, kind: "softwareSystem", name: systemName, sourceRefs: [] },
+      {
+        id: packet.containerId, kind: "container", parentId: systemId, name: packet.containerName,
+        responsibility: `Summary of ${packet.containerName} chunk ${packet.chunkIndex ?? 1}.`,
+        sourceRefs: [],
+      },
+      ...packet.components.map(component => ({
+        id: component.id, kind: "component", parentId: packet.containerId, name: component.name,
+        responsibility: `Summary of ${component.name}.`, sourceRefs: [],
+      })),
+      ...extraEntities,
+    ] as ExtractionDoc["entities"],
+    relations: [],
+  };
+}
+
+function hugeExtraction(fileCount: number) {
+  const sourceFiles: string[] = [];
+  const files: Record<string, string> = {
+    "README.md": "# Huge",
+    "pkg/h/package.json": `${JSON.stringify({ name: "@acme/h" }, null, 2)}\n`,
+  };
+  const unitByFile = new Map<string, string>();
+  for (let index = 0; index < fileCount; index += 1) {
+    const path = `pkg/h/src/f${String(index).padStart(3, "0")}.ts`;
+    sourceFiles.push(path);
+    files[path] = `export function fn${index}() { return ${index}; }\n`;
+    unitByFile.set(path, "pkg/h");
+  }
+  const readHuge = (path: string): string => {
+    const text = files[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const discovery: Discovery = {
+    sourceFiles,
+    units: [{ kind: "member", dir: "pkg/h", name: "@acme/h", packageName: "@acme/h", evidencePath: "pkg/h" }],
+    unitByFile,
+    unitByPackageName: new Map([["@acme/h", "pkg/h"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  return { extraction: extractArchitecture({ discovery, readFile: readHuge, systemName: "Huge", systemSlug: "huge" }), readHuge };
+}
+
 async function listenFakeGateway(
   handler: (request: IncomingMessage, response: ServerResponse) => void,
 ): Promise<{ baseUrl: string; close: () => Promise<void> }> {
@@ -93,6 +167,126 @@ test("enricher requests one doc per container plus the system scope, threading t
   }));
   assert.deepEqual([...docs.keys()].sort(), ["container:pkg-a", "container:pkg-b", "system:acme"]);
   assert.ok(calls.every(call => call.systemId === "system:acme"));
+});
+
+test("remainder packets for the same container union; later chunk does not overwrite the first", async () => {
+  const first = loadAppsWebFixture("container__apps-web.json");
+  const remainder = loadAppsWebFixture("container__apps-web.2.json");
+  assert.equal(componentEntities(first).length, 61, "chunk 1 restates 61 @okie/web file-components");
+  assert.equal(componentEntities(remainder).length, 7, "remainder restates the leftover 7");
+
+  const enrich = createEnricher({
+    maxConcurrent: 2,
+    generate: async (packet, kind) => {
+      if (kind === "system") return { document: { schemaVersion: 1, entities: [], relations: [] } };
+      const scoped = packet as EnrichmentPacket;
+      if (scoped.chunkIndex === 1) {
+        await new Promise(resolve => { setTimeout(resolve, 40); });
+        return { document: first };
+      }
+      return { document: remainder };
+    },
+  });
+  const docs = await enrich(packets({
+    packets: [
+      { ...containerPacket("container:apps-web"), chunkIndex: 1, chunkCount: 2 },
+      { ...containerPacket("container:apps-web"), chunkIndex: 2, chunkCount: 2 },
+    ],
+  }));
+  const grouped = asDocArray(docs.get("container:apps-web"));
+  assert.equal(grouped.length, 2);
+  assert.equal(grouped[0], first, "packet order, not completion order");
+  assert.equal(grouped[1], remainder);
+  const unioned = new Set(grouped.flatMap(doc => componentEntities(doc).map(entity => entity.id)));
+  assert.equal(unioned.size, 68, "hosted enrichWithPackets must keep 68 @okie/web file-components, not 7");
+  assert.notEqual(componentEntities(grouped.at(-1)).length, 68);
+  assert.equal(componentEntities(grouped.at(-1)).length, 7, "last-write-wins would have kept only the remainder");
+});
+
+test("hosted remainder packets union through the gate: 68 file-components, not 7", async () => {
+  const fileCount = MAX_COMPONENTS_PER_PACKET + 7;
+  const { extraction, readHuge } = hugeExtraction(fileCount);
+  const emitted = buildEnrichmentPackets(extraction, readHuge);
+  const chunks = emitted.packets.filter(packet => packet.containerId === "container:pkg-h");
+  assert.equal(chunks.length, 2);
+  assert.equal(chunks[0]!.components.length, MAX_COMPONENTS_PER_PACKET);
+  assert.equal(chunks[1]!.components.length, 7);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+
+  const enrich = createEnricher({
+    maxConcurrent: 2,
+    generate: async (packet, kind, systemId) => {
+      if (kind === "system") {
+        return {
+          document: {
+            schemaVersion: 1,
+            entities: [{ id: systemId, kind: "softwareSystem", name: system.name, responsibility: "Huge test system.", sourceRefs: [] }],
+            relations: [],
+          },
+        };
+      }
+      return { document: summaryFromPacket(packet as EnrichmentPacket, systemId, system.name) };
+    },
+  });
+  const docs = await enrich(emitted);
+  const grouped = asDocArray(docs.get("container:pkg-h"));
+  assert.equal(componentEntities(grouped.at(-1)).length, 7, "overwrite would keep only the remainder chunk");
+  const { extraction: merged, report } = mergeEnrichment(extraction, docs);
+  const web = report.results.find(result => result.containerId === "container:pkg-h");
+  assert.equal(web?.accepted, true, web?.reasons.join("; "));
+  assert.equal(web?.components, fileCount);
+  const summarized = merged.entities.filter(entity =>
+    entity.kind === "component" && entity.parentId === "container:pkg-h" && entity.responsibility);
+  assert.equal(summarized.length, 68, "union must keep 68 file-component summaries, not 7");
+});
+
+test("a hallucinated-id remainder rejects that document; the sibling packet still merges", async () => {
+  const fileCount = MAX_COMPONENTS_PER_PACKET + 7;
+  const { extraction, readHuge } = hugeExtraction(fileCount);
+  const emitted = buildEnrichmentPackets(extraction, readHuge);
+  const chunks = emitted.packets.filter(packet => packet.containerId === "container:pkg-h");
+  const firstIds = new Set(chunks[0]!.components.map(component => component.id));
+  const remainderIds = new Set(chunks[1]!.components.map(component => component.id));
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    generate: async (packet, kind, systemId) => {
+      if (kind === "system") {
+        return {
+          document: {
+            schemaVersion: 1,
+            entities: [{ id: systemId, kind: "softwareSystem", name: system.name, responsibility: "Huge test system.", sourceRefs: [] }],
+            relations: [],
+          },
+        };
+      }
+      const scoped = packet as EnrichmentPacket;
+      const extra = scoped.chunkIndex === 2 ? [{
+        id: "code:ghost:nope",
+        kind: "code",
+        parentId: scoped.components[0]!.id,
+        name: "nope",
+        sourceRefs: [{ path: scoped.scopePaths[0] ?? "pkg/h/src/f000.ts" }],
+      }] : [];
+      return { document: summaryFromPacket(scoped, systemId, system.name, extra) };
+    },
+  });
+  const docs = await enrich(emitted);
+  const grouped = asDocArray(docs.get("container:pkg-h"));
+  assert.equal(grouped.length, 2, "the hallucinated remainder is still handed to the gate");
+  const { extraction: merged, report } = mergeEnrichment(extraction, docs);
+  assert.equal(report.results.find(result => result.containerId === "container:pkg-h")?.accepted, true);
+  const summarized = merged.entities.filter(entity =>
+    entity.kind === "component" && entity.parentId === "container:pkg-h" && entity.responsibility);
+  for (const id of firstIds) {
+    assert.equal(merged.entities.find(entity => entity.id === id)?.responsibility, `Summary of ${merged.entities.find(entity => entity.id === id)?.name}.`);
+  }
+  assert.equal(summarized.length, firstIds.size, "rejected remainder must not drop the accepted sibling");
+  for (const id of remainderIds) {
+    assert.equal(merged.entities.find(entity => entity.id === id)?.responsibility, undefined);
+  }
+  assert.ok(!merged.entities.some(entity => entity.id === "code:ghost:nope"));
 });
 
 test("a per-scope failure omits only that scope and never throws", async () => {
