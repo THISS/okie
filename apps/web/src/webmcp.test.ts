@@ -5,6 +5,9 @@ import {
   ASK_ATLAS_TOOL,
   ASK_ATLAS_TOOL_NAME,
   ATLAS_WEBMCP_TOOLS,
+  GET_ATLAS_CONTEXT_INPUT_SCHEMA,
+  GET_ATLAS_CONTEXT_TOOL,
+  GET_ATLAS_CONTEXT_TOOL_NAME,
   ISOLATE_INPUT_SCHEMA,
   ISOLATE_TOOL,
   ISOLATE_TOOL_NAME,
@@ -28,6 +31,9 @@ import {
   START_PUBLIC_SCAN_TOOL,
   START_PUBLIC_SCAN_TOOL_NAME,
   WEBMCP_HOST_HEADERS,
+  atlasEnrichmentStatus,
+  atlasIdentityFromLocation,
+  atlasPageContext,
   bindAtlasChromeActions,
   bindScanLandingActions,
   detectModelContext,
@@ -43,6 +49,7 @@ import {
   registerWebMcpLandingTools,
   startPublicScanResultFromHttp,
   type AtlasChromeActions,
+  type AtlasPageContextInput,
   type WebMcpTool,
   type WebMcpHost,
 } from './webmcp';
@@ -159,18 +166,20 @@ describe('WebMCP foundation (CLA-40)', () => {
   it('wires detection into hosted chrome boot and host headers', () => {
     const main = readFileSync(new URL('./main.tsx', import.meta.url), 'utf8');
     expect(main).toContain('registerWebMcpFoundation');
-    expect(main).not.toMatch(/registerWebMcpLandingTools|registerWebMcpAtlasTools|start_public_scan|open_share_atlas|set_c4_level|select_entity/);
+    expect(main).not.toMatch(/registerWebMcpLandingTools|registerWebMcpAtlasTools|start_public_scan|open_share_atlas|set_c4_level|select_entity|get_atlas_context/);
 
     const landing = readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8');
     expect(landing).toContain('registerWebMcpLandingTools');
     expect(landing).toContain('bindScanLandingActions');
     expect(landing).toContain('publicScanFetchInit');
-    expect(landing).not.toMatch(/okie_select|okie_isolate|okie_level|okie_tour|okie_ask|set_c4_level|select_entity|start_overview_tour|ask_atlas|registerWebMcpAtlasTools/);
+    expect(landing).not.toMatch(/okie_select|okie_isolate|okie_level|okie_tour|okie_ask|set_c4_level|select_entity|start_overview_tour|ask_atlas|get_atlas_context|registerWebMcpAtlasTools/);
     expect(landing).not.toMatch(/document\.domain\s*=/);
 
     const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
     expect(app).toContain('registerWebMcpAtlasTools');
     expect(app).toContain('bindAtlasChromeActions');
+    expect(app).toContain('readContext');
+    expect(app).toContain('atlasIdentityFromLocation');
     expect(app).not.toMatch(/document\.domain\s*=/);
     expect(app).not.toContain('registerWebMcpLandingTools');
 
@@ -404,17 +413,39 @@ describe('WebMCP landing tools (CLA-41)', () => {
   });
 });
 
-function bindFakeAtlas(overrides: Partial<AtlasChromeActions> = {}) {
-  const actions: AtlasChromeActions = {
-    hasEntity: entityId => entityId === 'system:okie' || entityId === 'container:web-app',
-    selectEntity: () => {},
-    setC4Level: () => {},
-    isolate: () => {},
-    startOverviewTour: () => {},
-    openAsk: () => {},
+function defaultContext(overrides: Partial<AtlasPageContextInput> = {}): AtlasPageContextInput {
+  return {
+    atlas: { fixtureId: 'okie' },
+    c4Level: 'context',
+    selectedEntityId: 'system:okie',
+    tourPlaying: false,
+    enrichmentStatus: 'none',
+    scanAvailable: false,
+    askAvailable: true,
     ...overrides,
   };
-  return { actions, unbind: bindAtlasChromeActions(actions) };
+}
+
+function bindFakeAtlas(overrides: Partial<AtlasChromeActions> = {}) {
+  const live = defaultContext();
+  const actions: AtlasChromeActions = {
+    hasEntity: entityId => entityId === 'system:okie' || entityId === 'container:web-app',
+    selectEntity: entityId => {
+      live.selectedEntityId = entityId;
+    },
+    setC4Level: level => {
+      live.c4Level = level;
+    },
+    isolate: () => {},
+    startOverviewTour: () => {
+      live.tourPlaying = true;
+      live.askAvailable = false;
+    },
+    openAsk: () => {},
+    readContext: () => ({ ...live }),
+    ...overrides,
+  };
+  return { actions, live, unbind: bindAtlasChromeActions(actions) };
 }
 
 describe('WebMCP atlas tools (CLA-42)', () => {
@@ -429,11 +460,11 @@ describe('WebMCP atlas tools (CLA-42)', () => {
     expect(registerTool).not.toHaveBeenCalled();
   });
 
-  it('registers the five atlas tools with JSON schemas when a test double is present', async () => {
+  it('registers the atlas tools with JSON schemas when a test double is present', async () => {
     const registerTool = vi.fn(async (tool: WebMcpTool) => tool);
     const status = await registerWebMcpAtlasTools({ document: { modelContext: { registerTool } } });
     expect(status).toBe('registered');
-    expect(registerTool).toHaveBeenCalledTimes(5);
+    expect(registerTool).toHaveBeenCalledTimes(6);
     const names = registerTool.mock.calls.map(call => call[0].name);
     expect(names).toEqual([
       SET_C4_LEVEL_TOOL_NAME,
@@ -441,6 +472,7 @@ describe('WebMCP atlas tools (CLA-42)', () => {
       ISOLATE_TOOL_NAME,
       START_OVERVIEW_TOUR_TOOL_NAME,
       ASK_ATLAS_TOOL_NAME,
+      GET_ATLAS_CONTEXT_TOOL_NAME,
     ]);
     expect(ATLAS_WEBMCP_TOOLS.map(tool => tool.name)).toEqual(names);
 
@@ -450,7 +482,9 @@ describe('WebMCP atlas tools (CLA-42)', () => {
     expect(tools[2]!.inputSchema).toEqual(ISOLATE_INPUT_SCHEMA);
     expect(tools[3]!.inputSchema).toEqual(START_OVERVIEW_TOUR_INPUT_SCHEMA);
     expect(tools[4]!.inputSchema).toEqual(ASK_ATLAS_INPUT_SCHEMA);
-    for (const tool of tools) {
+    expect(tools[5]!.inputSchema).toEqual(GET_ATLAS_CONTEXT_INPUT_SCHEMA);
+    expect(tools[5]!.annotations.readOnlyHint).toBe(true);
+    for (const tool of tools.slice(0, 5)) {
       expect(tool.name).toMatch(/^[A-Za-z0-9._-]{1,128}$/);
       expect(tool.inputSchema.type).toBe('object');
       expect(tool.annotations.readOnlyHint).toBe(false);
@@ -629,6 +663,191 @@ describe('WebMCP atlas tools (CLA-42)', () => {
       error: { code: 'unavailable' },
     });
     await expect(Promise.resolve(SELECT_ENTITY_TOOL.execute({ entityId: 'system:okie' }))).resolves.toMatchObject({
+      ok: false,
+      isError: true,
+      error: { code: 'unavailable' },
+    });
+  });
+});
+
+describe('WebMCP page context (CLA-43)', () => {
+  afterEach(() => {
+    bindFakeAtlas().unbind();
+  });
+
+  it('no-ops when the API is absent', async () => {
+    const registerTool = vi.fn();
+    await expect(registerWebMcpAtlasTools({})).resolves.toBe('absent');
+    await expect(registerWebMcpAtlasTools({ document: {}, navigator: {} })).resolves.toBe('absent');
+    expect(registerTool).not.toHaveBeenCalled();
+  });
+
+  it('registers get_atlas_context and returns the listed public fields', async () => {
+    bindFakeAtlas();
+    const registerTool = vi.fn(async (tool: WebMcpTool) => tool);
+    const status = await registerWebMcpAtlasTools({ document: { modelContext: { registerTool } } });
+    expect(status).toBe('registered');
+    const tool = registerTool.mock.calls.map(call => call[0]).find(candidate => candidate.name === GET_ATLAS_CONTEXT_TOOL_NAME);
+    expect(tool).toBeDefined();
+    expect(tool!.name).toMatch(/^[A-Za-z0-9._-]{1,128}$/);
+    expect(tool!.inputSchema).toEqual(GET_ATLAS_CONTEXT_INPUT_SCHEMA);
+    expect(tool!.annotations.readOnlyHint).toBe(true);
+
+    const result = await tool!.execute({
+      OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+      GITHUB_TOKEN: PLANTED_SECRETS[1],
+    });
+    expect(result).toEqual({
+      ok: true,
+      tool: GET_ATLAS_CONTEXT_TOOL_NAME,
+      atlas: { fixtureId: 'okie' },
+      c4Level: 'context',
+      selectedEntityId: 'system:okie',
+      tourPlaying: false,
+      enrichmentStatus: 'none',
+      scanAvailable: false,
+      askAvailable: true,
+    });
+    expect(result).toEqual(expect.not.objectContaining({
+      apiKey: expect.anything(),
+      token: expect.anything(),
+      spend: expect.anything(),
+      scanRoot: expect.anything(),
+    }));
+  });
+
+  it('returns live selection and level after CLA-42 actions, not a stale register-time snapshot', async () => {
+    const stale: AtlasPageContextInput = defaultContext();
+    const { live } = bindFakeAtlas();
+    const registerTool = vi.fn(async (tool: WebMcpTool) => tool);
+    await registerWebMcpAtlasTools({ document: { modelContext: { registerTool } } });
+
+    expect(await GET_ATLAS_CONTEXT_TOOL.execute({})).toMatchObject({
+      c4Level: 'context',
+      selectedEntityId: 'system:okie',
+      tourPlaying: false,
+      askAvailable: true,
+    });
+
+    await SET_C4_LEVEL_TOOL.execute({ level: 'L2' });
+    await SELECT_ENTITY_TOOL.execute({ entityId: 'container:web-app' });
+    await START_OVERVIEW_TOUR_TOOL.execute({});
+
+    expect(live.c4Level).toBe('container');
+    expect(live.selectedEntityId).toBe('container:web-app');
+    expect(live.tourPlaying).toBe(true);
+
+    const after = await GET_ATLAS_CONTEXT_TOOL.execute({});
+    expect(after).toEqual({
+      ok: true,
+      tool: GET_ATLAS_CONTEXT_TOOL_NAME,
+      atlas: { fixtureId: 'okie' },
+      c4Level: 'container',
+      selectedEntityId: 'container:web-app',
+      tourPlaying: true,
+      enrichmentStatus: 'none',
+      scanAvailable: false,
+      askAvailable: false,
+    });
+    expect(after).not.toEqual(expect.objectContaining({
+      c4Level: stale.c4Level,
+      selectedEntityId: stale.selectedEntityId,
+      tourPlaying: stale.tourPlaying,
+    }));
+  });
+
+  it('does not put secrets, spend, or private paths in names, descriptions, or results', async () => {
+    bindFakeAtlas({
+      readContext: () => ({
+        ...defaultContext({ atlas: { owner: 'acme', repo: 'widgets' }, enrichmentStatus: 'complete' }),
+        apiKey: PLANTED_SECRETS[0],
+        token: PLANTED_SECRETS[1],
+        OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+        GITHUB_TOKEN: PLANTED_SECRETS[1],
+        scanRoot: '/var/okie/scan-root',
+        spendLedger: { usd: 12.5 },
+        repositoryRoot: '/home/ubuntu/okie',
+      } as AtlasPageContextInput),
+    });
+
+    const result = await GET_ATLAS_CONTEXT_TOOL.execute({
+      apiKey: PLANTED_SECRETS[0],
+      token: 'gho_okieTestPlantedSecretCla40xxxx',
+      scanRoot: '/tmp/private-scan',
+    });
+    expect(result).toEqual({
+      ok: true,
+      tool: GET_ATLAS_CONTEXT_TOOL_NAME,
+      atlas: { owner: 'acme', repo: 'widgets' },
+      c4Level: 'context',
+      selectedEntityId: 'system:okie',
+      tourPlaying: false,
+      enrichmentStatus: 'complete',
+      scanAvailable: false,
+      askAvailable: true,
+    });
+    expect(result).not.toHaveProperty('apiKey');
+    expect(result).not.toHaveProperty('token');
+    expect(result).not.toHaveProperty('scanRoot');
+    expect(result).not.toHaveProperty('spendLedger');
+    expect(result).not.toHaveProperty('repositoryRoot');
+
+    const published = publicSurface(
+      GET_ATLAS_CONTEXT_TOOL.name,
+      GET_ATLAS_CONTEXT_TOOL.title,
+      GET_ATLAS_CONTEXT_TOOL.description,
+      GET_ATLAS_CONTEXT_TOOL.inputSchema,
+      result,
+      atlasPageContext({
+        atlas: { fixtureId: 'okie' },
+        c4Level: 'code',
+        selectedEntityId: 'system:okie',
+        tourPlaying: false,
+        enrichmentStatus: 'skipped',
+        scanAvailable: false,
+        askAvailable: true,
+      }),
+    );
+    expect(SECRET_LEAK.test(published)).toBe(false);
+    for (const secret of PLANTED_SECRETS) {
+      expect(published).not.toContain(secret);
+    }
+    expect(published).not.toContain('127.0.0.1:4180');
+    expect(published).not.toContain('scanRoot');
+    expect(published).not.toContain('/home/ubuntu');
+    expect(published).not.toContain('spend');
+  });
+
+  it('maps share URLs to owner/repo and local pages to a fixture id', () => {
+    expect(atlasIdentityFromLocation('/r/THISS/okie')).toEqual({ owner: 'THISS', repo: 'okie' });
+    expect(atlasIdentityFromLocation('/r/acme/widgets', '?fixture=scan')).toEqual({ owner: 'acme', repo: 'widgets' });
+    expect(atlasIdentityFromLocation('/', '?fixture=okie')).toEqual({ fixtureId: 'okie' });
+    expect(atlasIdentityFromLocation('/', '?fixture=stress')).toEqual({ fixtureId: 'stress' });
+    expect(atlasIdentityFromLocation('/', '?fixture=scan:acme__widgets')).toEqual({ fixtureId: 'scan:acme__widgets' });
+    expect(JSON.stringify([
+      atlasIdentityFromLocation('/r/THISS/okie'),
+      atlasIdentityFromLocation('/', '?fixture=okie'),
+    ])).not.toMatch(/scanRoot|\/home\/|\/var\/|OPENROUTER|GITHUB_TOKEN/);
+  });
+
+  it('derives enrichment from loaded scene facts without spend or model id', () => {
+    expect(atlasEnrichmentStatus({ atlasSource: 'golden', entities: [{ responsibility: 'Hosts the atlas.' }] })).toBe('none');
+    expect(atlasEnrichmentStatus({ atlasSource: 'stress', entities: [] })).toBe('none');
+    expect(atlasEnrichmentStatus({ atlasSource: 'imported-mermaid', entities: [{ responsibility: 'Box' }] })).toBe('none');
+    expect(atlasEnrichmentStatus({
+      atlasSource: 'scan',
+      entities: [{ responsibility: 'No summary supplied.' }, { responsibility: '   ' }],
+    })).toBe('skipped');
+    expect(atlasEnrichmentStatus({
+      atlasSource: 'scan',
+      entities: [{ responsibility: 'Hosts the scan server.' }],
+    })).toBe('complete');
+    expect(JSON.stringify(atlasEnrichmentStatus({ atlasSource: 'scan', entities: [{ responsibility: 'Hosts the scan server.' }] }))).not.toMatch(/spend|usd|OPENROUTER|modelId|provider/i);
+  });
+
+  it('returns unavailable without throwing when atlas chrome is not bound', async () => {
+    bindFakeAtlas().unbind();
+    await expect(Promise.resolve(GET_ATLAS_CONTEXT_TOOL.execute({}))).resolves.toMatchObject({
       ok: false,
       isError: true,
       error: { code: 'unavailable' },
