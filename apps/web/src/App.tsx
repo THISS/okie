@@ -114,7 +114,7 @@ import {
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
-import { storyFocusPresentation } from './storyFocus';
+import { isolateNeighborhoodIds, storyFocusPresentation } from './storyFocus';
 import { RelationshipAuthoringOverlay } from './editor/RelationshipAuthoringOverlay';
 import { commitGesture, createGestureHistory, redoGesture, undoGesture, type GestureHistory } from './editor/gestureHistory';
 import {
@@ -1603,7 +1603,16 @@ export function App() {
     [currentStory, pickedRelationId, projectionOverride, scene, storyPhase, storySelectionOverride],
   );
   const rendererSelectedId = storyFocus.selectedId;
-  const focusedIds = storyFocus.focusedIds;
+  const visibilityFocusIds = useMemo(
+    () => new Set([...storyFocus.requiredIds, ...relationFocus.endpointIds]),
+    [relationFocus.endpointIds, storyFocus.requiredIds],
+  );
+  const isolatedEntityIds = useMemo(
+    () => isolateNeighborhoodIds(scene.entities, visibilityFocusIds, { liftCodeStoryFocus: currentStory !== undefined && storyPhase !== 'idle' && !storySelectionOverride }),
+    [currentStory, scene.entities, storyPhase, storySelectionOverride, visibilityFocusIds],
+  );
+  const isolatedEntityIdSet = useMemo(() => new Set(isolatedEntityIds), [isolatedEntityIds]);
+  const focusedIds = visibilityMode === 'isolate' ? isolatedEntityIdSet : storyFocus.focusedIds;
   const activeRelationIds = useMemo(
     () => new Set([...storyFocus.relationIds, ...relationFocus.relationIds]),
     [relationFocus.relationIds, storyFocus.relationIds],
@@ -1663,21 +1672,12 @@ export function App() {
     }),
     [activeDetail, activeProjectionEntityIds, scene, selected, semanticLensSession.settled],
   );
-  const visibilityFocusIds = useMemo(
-    () => new Set([...storyFocus.requiredIds, ...relationFocus.endpointIds]),
-    [relationFocus.endpointIds, storyFocus.requiredIds],
-  );
-  const isolatedEntityIds = useMemo(
-    () => scene.entities.filter(entity => visibilityFocusIds.has(entity.id)).map(entity => entity.id),
-    [scene.entities, visibilityFocusIds],
-  );
   const currentAskScopeKey = askScopeKey({
     selectedId,
     isolateActive: visibilityMode === 'isolate',
     isolatedIds: isolatedEntityIds,
   });
   askScopeKeyRef.current = currentAskScopeKey;
-  const isolatedEntityIdSet = useMemo(() => new Set(isolatedEntityIds), [isolatedEntityIds]);
   const isolatedRelationIds = useMemo(
     () => scene.relations
       .filter(relation => isolatedEntityIdSet.has(relation.from) && isolatedEntityIdSet.has(relation.to))
@@ -2764,7 +2764,7 @@ export function App() {
       isolationOriginRef.current = undefined;
     }
     setVisibilityMode(next);
-    const isolatedCount = scene.entities.filter(entity => visibilityFocusIds.has(entity.id)).length;
+    const isolatedCount = isolatedEntityIds.length;
     setLiveMessage(next === 'dim'
       ? 'Other entities dimmed. They remain available for selection and keyboard navigation.'
       : next === 'isolate'

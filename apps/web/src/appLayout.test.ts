@@ -454,6 +454,12 @@ describe('selected relationship focus wiring', () => {
     expect(app).toContain('new Set([...storyFocus.requiredIds, ...relationFocus.endpointIds])');
   });
 
+  it('lifts isolate from a code story step to the file-component neighborhood', () => {
+    expect(app).toContain('isolateNeighborhoodIds(scene.entities, visibilityFocusIds');
+    expect(app).toContain('liftCodeStoryFocus:');
+    expect(app).toContain("visibilityMode === 'isolate' ? isolatedEntityIdSet : storyFocus.focusedIds");
+  });
+
   it('resolves selected route handles from the retained projected relation and carries its own detail', () => {
     expect(app).toContain('selectedProjectedRelationForFocus(scene, selectedRelationId, projectionOverride, authoringDetail)');
     expect(app).toContain('detail: authoringPointer.detail');
