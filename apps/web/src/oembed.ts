@@ -1,3 +1,4 @@
+import { isDogfoodAtlas } from './hostedAtlas';
 import { parseAppRoute } from './renderer/route';
 
 /**
@@ -5,8 +6,10 @@ import { parseAppRoute } from './renderer/route';
  *
  * Docs sites discover the endpoint from a `<link rel="alternate"
  * type="application/json+oembed">` on the share URL, then fetch JSON whose
- * `html` iframe points at that same public view (no login wall). The payload
- * is a pure function of the atlas URL — no scan objects, no secrets.
+ * `html` iframe points at that same public view (no login wall) and
+ * `thumbnail_url` reuses the Open Graph atlas card. The payload is a function
+ * of the atlas URL — no scan objects, no secrets. Unpublished / private trees
+ * 404 with the same generic error as an unknown URL.
  *
  * Iframe origins are allowlisted (loopback only for loopback requests, plus
  * exact operator/Vercel public origins). A forged Host cannot become the embed
@@ -21,6 +24,9 @@ export const OEMBED_MIN_HEIGHT = 140;
 export const OEMBED_PROVIDER_NAME = 'Okie';
 export const OEMBED_CACHE_AGE_SECONDS = 300;
 export const OEMBED_JSON_TYPE = 'application/json+oembed';
+export const OEMBED_THUMBNAIL_WIDTH = 1200;
+export const OEMBED_THUMBNAIL_HEIGHT = 630;
+export const OG_IMAGE_PATH_PREFIX = '/og';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
 const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1']);
@@ -44,6 +50,9 @@ export type OembedRichResponse = {
   width: number;
   height: number;
   cache_age: number;
+  thumbnail_url: string;
+  thumbnail_width: number;
+  thumbnail_height: number;
 };
 
 export type OembedHttpInput = {
@@ -51,6 +60,8 @@ export type OembedHttpInput = {
   requestOrigin: string;
   searchParams: URLSearchParams;
   allowedOrigins?: readonly string[];
+  /** Fail closed: unpublished / private trees 404 like an unknown URL. */
+  isPublicAtlas?: (owner: string, repo: string) => boolean;
 };
 
 export type OembedHttpOutput = {
@@ -265,6 +276,14 @@ export function publicAtlasTitle(target: PublicAtlasOembedTarget): string {
   return `${target.owner}/${target.repo} architecture atlas`;
 }
 
+export function publicAtlasOgImagePath(target: PublicAtlasOembedTarget): string {
+  return `${OG_IMAGE_PATH_PREFIX}/${encodeURIComponent(target.owner)}/${encodeURIComponent(target.repo)}`;
+}
+
+export function publicAtlasOgImageHref(target: PublicAtlasOembedTarget): string {
+  return new URL(publicAtlasOgImagePath(target), target.origin).href;
+}
+
 export function buildOembedIframeHtml(
   target: PublicAtlasOembedTarget,
   size: { width: number; height: number },
@@ -290,6 +309,9 @@ export function buildOembedRichResponse(
     width: size.width,
     height: size.height,
     cache_age: OEMBED_CACHE_AGE_SECONDS,
+    thumbnail_url: publicAtlasOgImageHref(target),
+    thumbnail_width: OEMBED_THUMBNAIL_WIDTH,
+    thumbnail_height: OEMBED_THUMBNAIL_HEIGHT,
   };
 }
 
@@ -363,6 +385,10 @@ export function handleOembedRequest(input: OembedHttpInput): OembedHttpOutput {
   }
   const target = parsePublicAtlasOembedUrl(rawUrl, input.requestOrigin, input.allowedOrigins);
   if (!target) {
+    return jsonBody(404, { error: 'not a public atlas URL' });
+  }
+  const isPublic = input.isPublicAtlas ?? isDogfoodAtlas;
+  if (!isPublic(target.owner, target.repo)) {
     return jsonBody(404, { error: 'not a public atlas URL' });
   }
   const body = buildOembedRichResponse(

@@ -1,7 +1,9 @@
 {
   "rewrites": [
     { "source": "/oembed", "destination": "/api/oembed" },
-    { "source": "/r/:path*", "destination": "/index.html" },
+    { "source": "/og/:owner/:repo", "destination": "/api/og?owner=:owner&repo=:repo" },
+    { "source": "/r/:owner/:repo", "destination": "/api/share?owner=:owner&repo=:repo" },
+    { "source": "/r/:owner/:repo/:ref*", "destination": "/api/share?owner=:owner&repo=:repo" },
     { "source": "/new", "destination": "/index.html" }
   ]
 }

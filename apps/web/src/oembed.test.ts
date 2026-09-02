@@ -5,6 +5,8 @@ import {
   OEMBED_DEFAULT_WIDTH,
   OEMBED_JSON_TYPE,
   OEMBED_PATH,
+  OEMBED_THUMBNAIL_HEIGHT,
+  OEMBED_THUMBNAIL_WIDTH,
   buildOembedRichResponse,
   handleOembedRequest,
   installPublicAtlasOembedDiscovery,
@@ -62,6 +64,9 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(body.type).toBe('rich');
     expect(body.provider_name).toBe('Okie');
     expect(body.title).toBe('THISS/okie architecture atlas');
+    expect(body.thumbnail_url).toBe(`${ORIGIN}/og/THISS/okie`);
+    expect(body.thumbnail_width).toBe(OEMBED_THUMBNAIL_WIDTH);
+    expect(body.thumbnail_height).toBe(OEMBED_THUMBNAIL_HEIGHT);
     expect(body.width).toBe(OEMBED_DEFAULT_WIDTH);
     expect(body.height).toBe(OEMBED_DEFAULT_HEIGHT);
     expect(body.html).toContain(`src="${DOGFOOD}"`);
@@ -134,6 +139,22 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(request(`url=${encodeURIComponent(DOGFOOD)}&format=xml`).status).toBe(501);
     expect(request(`url=${encodeURIComponent(`${ORIGIN}/new`)}`).status).toBe(404);
     expect(request(`url=${encodeURIComponent(DOGFOOD)}`, 'POST').status).toBe(405);
+    const unpublished = request(`url=${encodeURIComponent(`${ORIGIN}/r/secret-org/private-tree`)}`);
+    expect(unpublished.status).toBe(404);
+    expect(unpublished.body).toContain('not a public atlas URL');
+    expect(unpublished.body).not.toContain('secret-org');
+    expect(unpublished.body).not.toMatch(/private repository|exists/i);
+
+    const published = handleOembedRequest({
+      method: 'GET',
+      requestOrigin: ORIGIN,
+      searchParams: new URLSearchParams({ url: `${ORIGIN}/r/acme/app`, format: 'json' }),
+      isPublicAtlas: (owner, repo) => owner === 'acme' && repo === 'app',
+    });
+    expect(published.status).toBe(200);
+    const publishedBody = JSON.parse(published.body) as { title: string; thumbnail_url: string };
+    expect(publishedBody.title).toBe('acme/app architecture atlas');
+    expect(publishedBody.thumbnail_url).toBe(`${ORIGIN}/og/acme/app`);
     expect(request('', 'OPTIONS').status).toBe(204);
   });
 
