@@ -1226,6 +1226,7 @@ mod tests {
         assert!(shader.contains("@location(10) screen_tangent: vec2<f32>"));
         assert!(shader.contains("arrow_radius_px = min(8.0, terminal_half_screen)"));
         assert!(shader.contains("screen += input.screen_offset - tangent * arrow_radius_px"));
+        assert!(shader.contains("zoom < 1.30"));
     }
 
     #[test]

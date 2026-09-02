@@ -1,5 +1,5 @@
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RenderState, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation, SemanticDetail } from './types';
-import { C4_BOUNDARY_STROKE_ALPHA, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, fitDisplayText } from '@okie/scene-compiler';
+import { C4_BOUNDARY_STROKE_ALPHA, C4_LABEL_MIN_TITLE_PX, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, fitDisplayText, fitDisplayTextAtSize } from '@okie/scene-compiler';
 import { roundedOrthogonalRoute, routeArrowHead, routeArrowHeads, routeShaft, type RouteArrowHead, type RoutePoint } from './routeGeometry';
 
 const palette = {
@@ -57,9 +57,9 @@ export function canvasEntityPresentationMetrics(detail: SemanticDetail, boundary
     descriptionBaseline: (detail === 'context' ? 112 : detail === 'code' ? 68 : 76) * screenScale,
     horizontalInsets: 36 * screenScale,
     kickerFontSize: presentation.kickerFontSize * fontScale,
-    titleFontSize: presentation.titleFontSize
-      * (boundary && (detail === 'context' || detail === 'container') ? 0.78 : 1)
-      * fontScale,
+    titleFontSize: Math.max(detail === 'context' || detail === 'container' ? C4_LABEL_MIN_TITLE_PX : 0,
+      presentation.titleFontSize
+      * (boundary && (detail === 'context' || detail === 'container') ? 0.78 : 1) * fontScale),
     descriptionFontSize: presentation.descriptionFontSize * fontScale,
     radius: (boundary ? 20 : detail === 'code' ? 7 : 14) * screenScale,
     strokeWidth: (boundary ? 1.5 : 2) * screenScale,
@@ -552,7 +552,7 @@ export class Canvas2DRenderer implements AtlasRenderer {
     }
     ctx.fillStyle = colors.fill;
     ctx.strokeStyle = selected ? '#d9ff70' : focused ? '#79dfd4' : colors.stroke;
-    ctx.lineWidth = Math.max(selected ? 1.7 : 0, metrics.strokeWidth);
+    ctx.lineWidth = Math.max(selected ? 1.7 : 1, metrics.strokeWidth);
     roundedRect(ctx, origin.x, origin.y, width, height, metrics.radius);
     ctx.fill();
     ctx.globalAlpha = projectionOpacity * chromeVisibility * (boundary ? C4_BOUNDARY_STROKE_ALPHA : 1);
@@ -568,25 +568,30 @@ export class Canvas2DRenderer implements AtlasRenderer {
     const textMaxWidth = Math.max(1, width - metrics.horizontalInsets);
     const label = (entity.kindLabel ?? entity.kind).toUpperCase();
     const displayKicker = fitDisplayText(label, textMaxWidth, metrics.kickerFontSize, 'word', 'sans-semibold');
-    const displayTitle = fitDisplayText(
+    const titleMetrics = renderedDetail === 'code' ? 'mono-semibold' as const : 'sans-semibold' as const;
+    const titleFloor = renderedDetail === 'context' || renderedDetail === 'container'
+      ? C4_LABEL_MIN_TITLE_PX
+      : metrics.titleFontSize;
+    const fittedTitle = fitDisplayTextAtSize(
       entity.name,
       textMaxWidth,
       metrics.titleFontSize,
+      titleFloor,
       'identifier',
-      renderedDetail === 'code' ? 'mono-semibold' : 'sans-semibold',
+      titleMetrics,
     );
     ctx.globalAlpha = projectionContentOpacity * labelVisibility;
     ctx.fillStyle = colors.accent;
     ctx.font = `600 ${metrics.kickerFontSize}px ${diagramFont('sans')}`;
-    ctx.fillText(displayKicker, origin.x + metrics.leftInset, origin.y + metrics.kickerBaseline, textMaxWidth);
-    ctx.fillStyle = '#f1f7f4';
-    ctx.font = `600 ${metrics.titleFontSize}px ${diagramFont(renderedDetail === 'code' ? 'mono' : 'sans')}`;
-    ctx.fillText(displayTitle, origin.x + metrics.leftInset, origin.y + metrics.titleBaseline, textMaxWidth);
+    ctx.fillText(displayKicker, origin.x + metrics.leftInset, origin.y + metrics.kickerBaseline);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `600 ${fittedTitle.fontSize}px ${diagramFont(renderedDetail === 'code' ? 'mono' : 'sans')}`;
+    ctx.fillText(fittedTitle.content, origin.x + metrics.leftInset, origin.y + metrics.titleBaseline);
 
     const rawDescription = renderedDetail === 'code' ? entity.source : entity.responsibility;
     if (!boundary && rawDescription) {
       ctx.globalAlpha = projectionContentOpacity * labelVisibility;
-      ctx.fillStyle = '#83918c';
+      ctx.fillStyle = '#9aa8b4';
       ctx.font = `400 ${metrics.descriptionFontSize}px ${diagramFont(renderedDetail === 'code' ? 'mono' : 'sans')}`;
       const description = fitDisplayText(
         rawDescription,
@@ -595,7 +600,7 @@ export class Canvas2DRenderer implements AtlasRenderer {
         renderedDetail === 'code' ? 'path' : 'word',
         renderedDetail === 'code' ? 'mono-regular' : 'sans-regular',
       );
-      ctx.fillText(description, origin.x + metrics.leftInset, origin.y + metrics.descriptionBaseline, textMaxWidth);
+      ctx.fillText(description, origin.x + metrics.leftInset, origin.y + metrics.descriptionBaseline);
     }
     ctx.restore();
   }

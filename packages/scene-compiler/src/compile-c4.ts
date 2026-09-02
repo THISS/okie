@@ -24,7 +24,7 @@ import {
 } from '@okie/architecture';
 import { RENDERER_PROTOCOL_VERSION, type LodRange, type Rect, type Representation, type SceneObject, type ScenePath, type SceneSnapshot, type Timeline } from './protocol.js';
 import { defaultTheme, type SceneTheme } from './theme.js';
-import { displayTextWidth, fitDisplayText } from './display-text.js';
+import { displayTextWidth, fitDisplayText, fitDisplayTextAtSize } from './display-text.js';
 
 export type CompiledZoomBand = {
   detail: C4Band;
@@ -71,6 +71,13 @@ const visualScaleByBand: Readonly<Record<C4Band, number>> = {
 
 /** Resting owner-shell outline alpha. Must stay above the retired 0.1 hairline (CLA-45). */
 export const C4_BOUNDARY_STROKE_ALPHA = 0.88;
+
+/**
+ * L1–L3 primary titles must project to at least 12 CSS px (golden-okie-hierarchy).
+ * Compiler shrink-to-fit and the Canvas fallback use this as the truncation floor
+ * at context zoom so scoped names stay readable before they ellipsize.
+ */
+export const C4_LABEL_MIN_TITLE_PX = 12;
 
 export type BandTransitionNode = {
   visualNodeId: string;
@@ -258,13 +265,26 @@ function presentation(
   const focusZoom = C4_ZOOM_BANDS.find(candidate => candidate.detail === band)!.focusZoom;
   const focusPresentation = C4_PRESENTATION_AT_FOCUS[band];
   const maxWidth = Math.max(1, bounds.width - 36 * visualScale);
-  const titleFontSize = focusPresentation.titleFontSize
+  const authoredTitleFontSize = focusPresentation.titleFontSize
     * (boundary && (band === 'context' || band === 'container') ? 0.78 : 1)
     / focusZoom;
   const kickerFontSize = focusPresentation.kickerFontSize / focusZoom;
   const descriptionFontSize = focusPresentation.descriptionFontSize / focusZoom;
+  const titleMetrics = band === 'code' ? 'mono-semibold' as const : 'sans-semibold' as const;
+  const titleFloor = band === 'context' || band === 'container'
+    ? C4_LABEL_MIN_TITLE_PX / focusZoom
+    : authoredTitleFontSize;
+  const fittedTitle = fitDisplayTextAtSize(
+    node.name,
+    maxWidth,
+    authoredTitleFontSize,
+    titleFloor,
+    'identifier',
+    titleMetrics,
+  );
   const displayKicker = fitDisplayText(kindLabel[node.kind], maxWidth, kickerFontSize, 'word', 'sans-semibold');
-  const displayTitle = fitDisplayText(node.name, maxWidth, titleFontSize, 'identifier', band === 'code' ? 'mono-semibold' : 'sans-semibold');
+  const displayTitle = fittedTitle.content;
+  const titleFontSize = fittedTitle.fontSize;
   const displayDescription = description
     ? fitDisplayText(description, maxWidth, descriptionFontSize, band === 'code' ? 'path' : 'word', band === 'code' ? 'mono-regular' : 'sans-regular')
     : undefined;

@@ -114,6 +114,14 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     var coverage = 1.0;
     if input.glyph > 0.5 {
         coverage = textureSampleLevel(glyph_texture, glyph_sampler, input.uv, 0.0).r;
+        // At L1 context zoom, coverage-as-alpha washes 8–12 px titles into the
+        // dark atlas. Sharpen the coverage edge so unselected labels keep contrast.
+        let zoom = camera.zoom_padding.x;
+        if zoom < 1.30 && coverage > 0.01 {
+            let t = clamp((1.30 - zoom) / 0.98, 0.0, 1.0);
+            let edge = 0.14 * t;
+            coverage = clamp((coverage - edge) / max(1.0 - edge * 1.45, 0.2), 0.0, 1.0);
+        }
         if coverage < 0.01 {
             discard;
         }
