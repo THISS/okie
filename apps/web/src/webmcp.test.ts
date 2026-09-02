@@ -635,4 +635,3 @@ describe('WebMCP atlas tools (CLA-42)', () => {
     });
   });
 });
-
