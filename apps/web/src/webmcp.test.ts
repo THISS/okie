@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  ASK_ATLAS_INPUT_SCHEMA,
+  ASK_ATLAS_TOOL,
+  ASK_ATLAS_TOOL_NAME,
+  ATLAS_WEBMCP_TOOLS,
+  ISOLATE_INPUT_SCHEMA,
+  ISOLATE_TOOL,
+  ISOLATE_TOOL_NAME,
   LANDING_REPO_INPUT_SCHEMA,
   LANDING_WEBMCP_TOOLS,
   OKIE_PROBE_INPUT_SCHEMA,
@@ -9,19 +16,33 @@ import {
   OKIE_PROBE_TOOL_NAME,
   OPEN_SHARE_ATLAS_TOOL,
   OPEN_SHARE_ATLAS_TOOL_NAME,
+  SELECT_ENTITY_INPUT_SCHEMA,
+  SELECT_ENTITY_TOOL,
+  SELECT_ENTITY_TOOL_NAME,
+  SET_C4_LEVEL_INPUT_SCHEMA,
+  SET_C4_LEVEL_TOOL,
+  SET_C4_LEVEL_TOOL_NAME,
+  START_OVERVIEW_TOUR_INPUT_SCHEMA,
+  START_OVERVIEW_TOUR_TOOL,
+  START_OVERVIEW_TOUR_TOOL_NAME,
   START_PUBLIC_SCAN_TOOL,
   START_PUBLIC_SCAN_TOOL_NAME,
   WEBMCP_HOST_HEADERS,
+  bindAtlasChromeActions,
   bindScanLandingActions,
   detectModelContext,
   okieProbeResult,
+  parseC4LevelInput,
+  parseEntityIdInput,
   parsePublicRepoInput,
   publicAtlasPath,
   publicGithubRepoUrl,
   publicScanFetchInit,
+  registerWebMcpAtlasTools,
   registerWebMcpFoundation,
   registerWebMcpLandingTools,
   startPublicScanResultFromHttp,
+  type AtlasChromeActions,
   type WebMcpTool,
   type WebMcpHost,
 } from './webmcp';
@@ -125,6 +146,7 @@ describe('WebMCP foundation (CLA-40)', () => {
     const webSrc = [
       readFileSync(new URL('./webmcp.ts', import.meta.url), 'utf8'),
       readFileSync(new URL('./main.tsx', import.meta.url), 'utf8'),
+      readFileSync(new URL('./App.tsx', import.meta.url), 'utf8'),
       readFileSync(new URL('./oembed.ts', import.meta.url), 'utf8'),
       readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8'),
       readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8'),
@@ -137,14 +159,20 @@ describe('WebMCP foundation (CLA-40)', () => {
   it('wires detection into hosted chrome boot and host headers', () => {
     const main = readFileSync(new URL('./main.tsx', import.meta.url), 'utf8');
     expect(main).toContain('registerWebMcpFoundation');
-    expect(main).not.toMatch(/registerWebMcpLandingTools|start_public_scan|open_share_atlas|okie_select|okie_isolate/);
+    expect(main).not.toMatch(/registerWebMcpLandingTools|registerWebMcpAtlasTools|start_public_scan|open_share_atlas|set_c4_level|select_entity/);
 
     const landing = readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8');
     expect(landing).toContain('registerWebMcpLandingTools');
     expect(landing).toContain('bindScanLandingActions');
     expect(landing).toContain('publicScanFetchInit');
-    expect(landing).not.toMatch(/okie_select|okie_isolate|okie_level|okie_tour|okie_ask/);
+    expect(landing).not.toMatch(/okie_select|okie_isolate|okie_level|okie_tour|okie_ask|set_c4_level|select_entity|start_overview_tour|ask_atlas|registerWebMcpAtlasTools/);
     expect(landing).not.toMatch(/document\.domain\s*=/);
+
+    const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+    expect(app).toContain('registerWebMcpAtlasTools');
+    expect(app).toContain('bindAtlasChromeActions');
+    expect(app).not.toMatch(/document\.domain\s*=/);
+    expect(app).not.toContain('registerWebMcpLandingTools');
 
     const viteConfig = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
     expect(viteConfig).toContain('WEBMCP_HOST_HEADERS');
@@ -375,3 +403,236 @@ describe('WebMCP landing tools (CLA-41)', () => {
     })).resolves.toBe('skipped');
   });
 });
+
+function bindFakeAtlas(overrides: Partial<AtlasChromeActions> = {}) {
+  const actions: AtlasChromeActions = {
+    hasEntity: entityId => entityId === 'system:okie' || entityId === 'container:web-app',
+    selectEntity: () => {},
+    setC4Level: () => {},
+    isolate: () => {},
+    startOverviewTour: () => {},
+    openAsk: () => {},
+    ...overrides,
+  };
+  return { actions, unbind: bindAtlasChromeActions(actions) };
+}
+
+describe('WebMCP atlas tools (CLA-42)', () => {
+  afterEach(() => {
+    bindFakeAtlas().unbind();
+  });
+
+  it('no-ops when the API is absent', async () => {
+    const registerTool = vi.fn();
+    await expect(registerWebMcpAtlasTools({})).resolves.toBe('absent');
+    await expect(registerWebMcpAtlasTools({ document: {}, navigator: {} })).resolves.toBe('absent');
+    expect(registerTool).not.toHaveBeenCalled();
+  });
+
+  it('registers the five atlas tools with JSON schemas when a test double is present', async () => {
+    const registerTool = vi.fn(async (tool: WebMcpTool) => tool);
+    const status = await registerWebMcpAtlasTools({ document: { modelContext: { registerTool } } });
+    expect(status).toBe('registered');
+    expect(registerTool).toHaveBeenCalledTimes(5);
+    const names = registerTool.mock.calls.map(call => call[0].name);
+    expect(names).toEqual([
+      SET_C4_LEVEL_TOOL_NAME,
+      SELECT_ENTITY_TOOL_NAME,
+      ISOLATE_TOOL_NAME,
+      START_OVERVIEW_TOUR_TOOL_NAME,
+      ASK_ATLAS_TOOL_NAME,
+    ]);
+    expect(ATLAS_WEBMCP_TOOLS.map(tool => tool.name)).toEqual(names);
+
+    const tools = registerTool.mock.calls.map(call => call[0]);
+    expect(tools[0]!.inputSchema).toEqual(SET_C4_LEVEL_INPUT_SCHEMA);
+    expect(tools[1]!.inputSchema).toEqual(SELECT_ENTITY_INPUT_SCHEMA);
+    expect(tools[2]!.inputSchema).toEqual(ISOLATE_INPUT_SCHEMA);
+    expect(tools[3]!.inputSchema).toEqual(START_OVERVIEW_TOUR_INPUT_SCHEMA);
+    expect(tools[4]!.inputSchema).toEqual(ASK_ATLAS_INPUT_SCHEMA);
+    for (const tool of tools) {
+      expect(tool.name).toMatch(/^[A-Za-z0-9._-]{1,128}$/);
+      expect(tool.inputSchema.type).toBe('object');
+      expect(tool.annotations.readOnlyHint).toBe(false);
+    }
+  });
+
+  it('returns a structured tool error for unknown entity or level without throwing', async () => {
+    const selectEntity = vi.fn();
+    const setC4Level = vi.fn();
+    const isolate = vi.fn();
+    bindFakeAtlas({ selectEntity, setC4Level, isolate });
+
+    const unknownLevels = [undefined, {}, { level: '' }, { level: 'layer-9' }, { level: 'not-a-band' }];
+    for (const input of unknownLevels) {
+      await expect(Promise.resolve(SET_C4_LEVEL_TOOL.execute(input))).resolves.toMatchObject({
+        ok: false,
+        isError: true,
+        error: { code: 'unknown_level' },
+      });
+    }
+
+    const unknownEntities = [undefined, {}, { entityId: '' }, { entityId: 'missing:nope' }, { entityId: 'not a node' }];
+    for (const input of unknownEntities) {
+      await expect(Promise.resolve(SELECT_ENTITY_TOOL.execute(input))).resolves.toMatchObject({
+        ok: false,
+        isError: true,
+        error: { code: 'unknown_entity' },
+      });
+    }
+    for (const input of [{ entityId: '' }, { entityId: 'missing:nope' }, { entityId: 'not a node' }]) {
+      await expect(Promise.resolve(ISOLATE_TOOL.execute(input))).resolves.toMatchObject({
+        ok: false,
+        isError: true,
+        error: { code: 'unknown_entity' },
+      });
+    }
+
+    expect(selectEntity).not.toHaveBeenCalled();
+    expect(setC4Level).not.toHaveBeenCalled();
+    expect(isolate).not.toHaveBeenCalled();
+    expect(() => parseC4LevelInput({ level: 'nope' })).not.toThrow();
+    expect(() => parseEntityIdInput({ entityId: 'missing:nope' })).not.toThrow();
+  });
+
+  it('calls existing chrome actions for level, select, isolate, tour, and Ask', async () => {
+    const selectEntity = vi.fn();
+    const setC4Level = vi.fn();
+    const isolate = vi.fn();
+    const startOverviewTour = vi.fn();
+    const openAsk = vi.fn();
+    bindFakeAtlas({ selectEntity, setC4Level, isolate, startOverviewTour, openAsk });
+
+    await expect(Promise.resolve(SET_C4_LEVEL_TOOL.execute({ level: 'L2' }))).resolves.toEqual({
+      ok: true,
+      tool: SET_C4_LEVEL_TOOL_NAME,
+      level: 'container',
+    });
+    expect(setC4Level).toHaveBeenCalledWith('container');
+
+    await expect(Promise.resolve(SELECT_ENTITY_TOOL.execute({ entityId: 'system:okie' }))).resolves.toEqual({
+      ok: true,
+      tool: SELECT_ENTITY_TOOL_NAME,
+      entityId: 'system:okie',
+    });
+    expect(selectEntity).toHaveBeenCalledWith('system:okie');
+
+    await expect(Promise.resolve(ISOLATE_TOOL.execute({ entityId: 'container:web-app' }))).resolves.toEqual({
+      ok: true,
+      tool: ISOLATE_TOOL_NAME,
+      visibilityMode: 'isolate',
+    });
+    expect(selectEntity).toHaveBeenCalledWith('container:web-app');
+    expect(isolate).toHaveBeenCalledWith(true);
+
+    await expect(Promise.resolve(ISOLATE_TOOL.execute({ active: false }))).resolves.toEqual({
+      ok: true,
+      tool: ISOLATE_TOOL_NAME,
+      visibilityMode: 'all',
+    });
+    expect(isolate).toHaveBeenCalledWith(false);
+
+    await expect(Promise.resolve(START_OVERVIEW_TOUR_TOOL.execute({}))).resolves.toEqual({
+      ok: true,
+      tool: START_OVERVIEW_TOUR_TOOL_NAME,
+      step: 0,
+    });
+    expect(startOverviewTour).toHaveBeenCalledOnce();
+
+    await expect(Promise.resolve(ASK_ATLAS_TOOL.execute({ question: 'How does the golden fixture compile?' }))).resolves.toEqual({
+      ok: true,
+      tool: ASK_ATLAS_TOOL_NAME,
+      open: true,
+    });
+    expect(openAsk).toHaveBeenCalledWith('How does the golden fixture compile?');
+  });
+
+  it('does not put secrets in atlas tool names, descriptions, inputs, or results', async () => {
+    bindFakeAtlas();
+
+    const level = await SET_C4_LEVEL_TOOL.execute({
+      level: 'code',
+      OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+      GITHUB_TOKEN: PLANTED_SECRETS[1],
+    });
+    const selected = await SELECT_ENTITY_TOOL.execute({
+      entityId: 'system:okie',
+      token: PLANTED_SECRETS[0],
+    });
+    const isolated = await ISOLATE_TOOL.execute({ active: true, apiKey: PLANTED_SECRETS[2] });
+    const tour = await START_OVERVIEW_TOUR_TOOL.execute({
+      OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+    });
+    const ask = await ASK_ATLAS_TOOL.execute({
+      question: PLANTED_SECRETS[0],
+      GITHUB_TOKEN: PLANTED_SECRETS[1],
+    });
+    const unknownLevel = await SET_C4_LEVEL_TOOL.execute({
+      level: PLANTED_SECRETS[2],
+      token: 'gho_okieTestPlantedSecretCla40xxxx',
+    });
+    const unknownEntity = await SELECT_ENTITY_TOOL.execute({
+      entityId: PLANTED_SECRETS[0],
+    });
+
+    const published = publicSurface(
+      SET_C4_LEVEL_TOOL.name,
+      SET_C4_LEVEL_TOOL.title,
+      SET_C4_LEVEL_TOOL.description,
+      SET_C4_LEVEL_TOOL.inputSchema,
+      SELECT_ENTITY_TOOL.name,
+      SELECT_ENTITY_TOOL.title,
+      SELECT_ENTITY_TOOL.description,
+      SELECT_ENTITY_TOOL.inputSchema,
+      ISOLATE_TOOL.name,
+      ISOLATE_TOOL.title,
+      ISOLATE_TOOL.description,
+      ISOLATE_TOOL.inputSchema,
+      START_OVERVIEW_TOUR_TOOL.name,
+      START_OVERVIEW_TOUR_TOOL.title,
+      START_OVERVIEW_TOUR_TOOL.description,
+      START_OVERVIEW_TOUR_TOOL.inputSchema,
+      ASK_ATLAS_TOOL.name,
+      ASK_ATLAS_TOOL.title,
+      ASK_ATLAS_TOOL.description,
+      ASK_ATLAS_TOOL.inputSchema,
+      level,
+      selected,
+      isolated,
+      tour,
+      ask,
+      unknownLevel,
+      unknownEntity,
+    );
+    expect(SECRET_LEAK.test(published)).toBe(false);
+    for (const secret of PLANTED_SECRETS) {
+      expect(published).not.toContain(secret);
+    }
+    expect(published).not.toContain('127.0.0.1:4180');
+    expect(published).not.toContain('scanRoot');
+  });
+
+  it('does not fail boot when atlas registerTool rejects', async () => {
+    const registerTool = vi.fn(async () => {
+      throw new Error('NotAllowedError');
+    });
+    await expect(registerWebMcpAtlasTools({
+      document: { modelContext: { registerTool } },
+    })).resolves.toBe('skipped');
+  });
+
+  it('returns unavailable without throwing when atlas chrome is not bound', async () => {
+    bindFakeAtlas().unbind();
+    await expect(Promise.resolve(SET_C4_LEVEL_TOOL.execute({ level: 'context' }))).resolves.toMatchObject({
+      ok: false,
+      isError: true,
+      error: { code: 'unavailable' },
+    });
+    await expect(Promise.resolve(SELECT_ENTITY_TOOL.execute({ entityId: 'system:okie' }))).resolves.toMatchObject({
+      ok: false,
+      isError: true,
+      error: { code: 'unavailable' },
+    });
+  });
+});
+

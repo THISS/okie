@@ -169,6 +169,7 @@ import {
   type StoryFlight,
   type StoryFlightSample,
 } from './storyPlayback';
+import { bindAtlasChromeActions, registerWebMcpAtlasTools, type AtlasChromeActions } from './webmcp';
 
 // A scanned snapshot (fixture=scan) is fetched, validated and compiled before App
 // is imported (see main.tsx); when present it drives the app through the same
@@ -1244,6 +1245,14 @@ export function App() {
   const askInputRef = useRef<HTMLTextAreaElement | null>(null);
   const askAbortRef = useRef<AbortController | undefined>(undefined);
   const askScopeKeyRef = useRef('');
+  const atlasChromeRef = useRef<AtlasChromeActions>({
+    hasEntity: () => false,
+    selectEntity: () => {},
+    setC4Level: () => {},
+    isolate: () => {},
+    startOverviewTour: () => {},
+    openAsk: () => {},
+  });
   const shareButtonRef = useRef<HTMLButtonElement | null>(null);
   const visibilityControlRef = useRef<HTMLButtonElement | null>(null);
   const shareFallbackRef = useRef<HTMLInputElement | null>(null);
@@ -3471,6 +3480,49 @@ export function App() {
     }
     setStoryStep(-1);
   }
+
+  atlasChromeRef.current = {
+    hasEntity: entityId => scene.entities.some(entity => entity.id === entityId),
+    selectEntity: entityId => {
+      const entity = scene.entities.find(candidate => candidate.id === entityId);
+      if (entity) focusEntity(entity);
+    },
+    setC4Level: level => {
+      const index = semanticDetails.indexOf(level);
+      if (index >= 0) selectLevel(index);
+    },
+    isolate: active => {
+      if (active) changeVisibility('isolate');
+      else restoreVisibility();
+    },
+    startOverviewTour: () => setStep(0, true, 'push'),
+    openAsk: question => {
+      // Ask lives in the story launcher; a playing tour hides that chrome.
+      storyOriginAvailableRef.current = false;
+      if (storyStep >= 0) closeStory();
+      if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
+      setAskOpen(true);
+      setQuestion(question);
+      window.setTimeout(() => askInputRef.current?.focus(), 0);
+    },
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const unbind = bindAtlasChromeActions({
+      hasEntity: entityId => atlasChromeRef.current.hasEntity(entityId),
+      selectEntity: entityId => atlasChromeRef.current.selectEntity(entityId),
+      setC4Level: level => atlasChromeRef.current.setC4Level(level),
+      isolate: active => atlasChromeRef.current.isolate(active),
+      startOverviewTour: () => atlasChromeRef.current.startOverviewTour(),
+      openAsk: question => atlasChromeRef.current.openAsk(question),
+    });
+    void registerWebMcpAtlasTools(globalThis, { signal: controller.signal });
+    return () => {
+      controller.abort();
+      unbind();
+    };
+  }, []);
 
   useEffect(() => {
     if (query.fixture === 'stress' || storyStep >= 0 || restoringNavigationRef.current) return;
