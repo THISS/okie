@@ -133,11 +133,18 @@ export function createDefaultEnricherFactory(
     try {
       const budget = clampEnrichmentBudget(resolveEnrichmentBudget(env), globalSpend);
       const gateway = createLlmGatewayClient(config, { timeoutMs: budget.requestTimeoutMs });
+      const globalCap = Boolean(
+        globalSpend && (globalSpend.cap.maxTokens !== undefined || globalSpend.cap.maxDollars !== undefined),
+      );
       return createEnricher({
         onProgress,
         modelId: config.modelId,
         budget,
-        ...(globalSpend ? { onUsage: usage => globalSpend.record(usage) } : {}),
+        ...(globalSpend ? {
+          onUsage: usage => globalSpend.record(usage),
+          budgetExhausted: () => globalSpend.isExhausted(),
+        } : {}),
+        ...(globalCap ? { maxConcurrent: 1 } : {}),
         ...(gateway ? { gateway } : {}),
       });
     } catch {

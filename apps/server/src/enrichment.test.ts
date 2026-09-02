@@ -608,6 +608,70 @@ test("onUsage records fake-gateway usage onto a shared global spend ledger", asy
   }
 });
 
+test("billed malformed gateway replies still count toward the global cap", async () => {
+  const fakeKey = "okie-test-llm-key-cla38-fake";
+  const spend = createGlobalEnrichmentSpend({ maxTokens: 80 });
+  const hits: number[] = [];
+  const fake = await listenFakeGateway((_request, response) => {
+    hits.push(1);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "not-json {" } }],
+      usage: { prompt_tokens: 70, completion_tokens: 10, total_tokens: 80, cost: 0.02 },
+    }));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const notes: string[] = [];
+    const enrich = createEnricher({
+      modelId: "acme/fast",
+      gateway: client,
+      budget: clampEnrichmentBudget(resolveEnrichmentBudget({}), spend),
+      onUsage: usage => spend.record(usage),
+      budgetExhausted: () => spend.isExhausted(),
+      onProgress: note => notes.push(note),
+    });
+    await assert.rejects(() => enrich(packets()), /enrichment scope\(s\) failed|not JSON/);
+    assert.equal(spend.snapshot().tokens, 80);
+    assert.equal(spend.isExhausted(), true);
+    assert.ok(hits.length >= 1);
+    assert.ok(hits.length < 3, "remaining scopes must stop once the global cap is billed");
+    assert.ok(notes.every(note => !note.includes(fakeKey)));
+    assert.ok(JSON.stringify(spend.snapshot()).includes(fakeKey) === false);
+  } finally {
+    await fake.close();
+  }
+});
+
+test("onUsage serializes scopes so a global token cap cannot be double-spent", async () => {
+  const spend = createGlobalEnrichmentSpend({ maxTokens: 100 });
+  const called: string[] = [];
+  const enrich = createEnricher({
+    budget: { maxTokens: 10_000 },
+    onUsage: usage => spend.record(usage),
+    budgetExhausted: () => spend.isExhausted(),
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      called.push(id);
+      return { document: { ok: id }, usage: { totalTokens: 100 } };
+    },
+  });
+  const docs = await enrich(packets({
+    packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
+  }));
+  assert.deepEqual(called, ["container:pkg-a"]);
+  assert.deepEqual([...docs.keys()], ["container:pkg-a"]);
+  assert.equal(spend.snapshot().tokens, 100);
+  assert.equal(spend.isExhausted(), true);
+});
+
 test("default enricher factory drives packets through chatCompletions on a fake gateway", async () => {
   const fakeKey = "okie-test-llm-key-cla20-fake";
   const posted: string[] = [];
