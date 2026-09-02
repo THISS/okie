@@ -4,13 +4,42 @@ import { describe, expect, it } from 'vitest';
 import { absoluteSourcePath, editorSourceUri, SourceViewer, tokenizeSourceLine, tokenizeSourceLines, validRelativeSourcePath } from './SourceViewer';
 
 describe('source viewer helpers', () => {
-  it('degrades gracefully when a scanned entity has source refs but no frozen excerpt', () => {
-    // Scanned code entities (R1) carry sourceRefs but no portable frozen excerpt,
-    // so selectedExcerpt is undefined — the viewer must present a clean state, not error.
+  it('degrades gracefully when a code entity has source refs but no frozen excerpt', () => {
+    // Refs-only entities still open Source (CLA-9); the viewer must present a
+    // clean unavailable state rather than throw when selectedExcerpt is missing.
     const markup = renderToStaticMarkup(createElement(SourceViewer, { excerpt: undefined, onFeedback: () => undefined }));
     expect(markup).toContain('Source excerpt unavailable');
     expect(markup).toContain('no portable frozen source excerpt');
     expect(markup).toContain('role="status"');
+  });
+
+  it('renders a portable frozen excerpt for a scanned code entity', () => {
+    const excerpt = {
+      path: 'apps/web/src/inspector/inspectorPanel.ts',
+      symbol: 'inspectorAcceptedSummary',
+      language: 'typescript' as const,
+      startLine: 83,
+      endLine: 89,
+      highlightLine: 83,
+      frozenRevision: 'abc123def456',
+      lines: [
+        'export function inspectorAcceptedSummary(',
+        '  entity: InspectorSummaryEntity | undefined,',
+        '): string | undefined {',
+        '  const text = entity?.responsibility?.trim();',
+        '  if (!text || text === INSPECTOR_EMPTY_SUMMARY) return undefined;',
+        '  return text;',
+        '}',
+      ],
+      text: '',
+    };
+    excerpt.text = excerpt.lines.join('\n');
+    const markup = renderToStaticMarkup(createElement(SourceViewer, { excerpt, onFeedback: () => undefined }));
+    expect(markup).toContain('inspectorAcceptedSummary');
+    expect(markup).toContain('apps/web/src/inspector/inspectorPanel.ts');
+    expect(markup).toContain('INSPECTOR_EMPTY_SUMMARY');
+    expect(markup).toContain('source-viewer');
+    expect(markup).not.toContain('Source excerpt unavailable');
   });
 
   it('tokenizes source deterministically without changing its text', () => {

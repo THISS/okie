@@ -156,3 +156,73 @@ describe('inspector accepted section summaries (CLA-26)', () => {
     expect(code.sourceRefs?.length).toBeGreaterThan(0);
   });
 });
+
+describe('scanned portable source excerpts (CLA-54)', () => {
+  it('shows a portable excerpt on a scanned code entity and keeps containers sourceless', () => {
+    const lines = [
+      'export function inspectorAcceptedSummary(',
+      '  entity: InspectorSummaryEntity | undefined,',
+      '): string | undefined {',
+      '  const text = entity?.responsibility?.trim();',
+      '  if (!text || text === INSPECTOR_EMPTY_SUMMARY) return undefined;',
+      '  return text;',
+      '}',
+    ];
+    const excerpt = {
+      path: 'apps/web/src/inspector/inspectorPanel.ts',
+      symbol: 'inspectorAcceptedSummary',
+      language: 'typescript' as const,
+      startLine: 83,
+      endLine: 89,
+      highlightLine: 83,
+      frozenRevision: 'sha',
+      lines,
+      text: lines.join('\n'),
+    };
+    const scene = createC4Scene({
+      baseSnapshot: scanSnapshot(
+        [
+          scanEntity('system:app', 'softwareSystem'),
+          {
+            ...scanEntity('container:web', 'container', 'system:app'),
+            sourceRefs: [{ path: 'apps/web/package.json', commitSha: 'sha' }],
+          },
+          scanEntity('component:web-inspector', 'component', 'container:web'),
+          {
+            id: 'code:apps-web-src-inspector-inspector-panel-ts:inspector-accepted-summary',
+            name: 'inspectorAcceptedSummary',
+            kind: 'code',
+            parentId: 'component:web-inspector',
+            sourceRefs: [{
+              path: excerpt.path,
+              symbol: excerpt.symbol,
+              commitSha: 'sha',
+              startLine: excerpt.startLine,
+              endLine: excerpt.endLine,
+            }],
+            sourceExcerpts: [excerpt],
+          },
+        ],
+        [scanRelation('rel:web-app', 'container:web', 'system:app')],
+      ),
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    const code = scene.entities.find(entity => entity.name === 'inspectorAcceptedSummary')!;
+    const container = scene.entities.find(entity => entity.id === 'container:web')!;
+
+    expect(code.detail).toBe('code');
+    expect(code.sourceExcerpts?.[0]?.text).toContain('export function inspectorAcceptedSummary(');
+    expect(inspectorCanShowSource(code)).toBe(true);
+    expect(inspectorTabForEntity(inspectorCanShowSource(code))).toBe('source');
+    expect(container.detail).toBe('container');
+    expect(container.sourceExcerpts).toBeUndefined();
+    expect(inspectorCanShowSource(container)).toBe(false);
+    expect(inspectorTabForEntity(inspectorCanShowSource(container))).toBe('details');
+  });
+});

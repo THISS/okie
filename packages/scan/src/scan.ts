@@ -14,6 +14,7 @@ import {
   type NodeLayout,
 } from "@okie/architecture";
 import { compileC4Scene, compileC4Timeline, type CompiledC4Scene, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
+import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
@@ -166,7 +167,10 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     commitSha: pin.commitSha,
     generatedAt: pin.generatedAt,
   };
-  const snapshot = adaptArchitectureExtraction(extraction, metadata);
+  const snapshot = attachPortableSourceExcerpts(
+    adaptArchitectureExtraction(extraction, metadata),
+    readFile,
+  );
   const snapshotIssues = validateSnapshot(snapshot);
   if (snapshotIssues.length) {
     throw new Error(`Scanned snapshot failed validation:\n${snapshotIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
