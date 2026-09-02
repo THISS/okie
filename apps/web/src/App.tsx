@@ -138,7 +138,7 @@ import {
 import { frameEntities, frameSemanticEntities, measuredStorySafeArea, storySafeArea, type SafeArea, type ViewportSize } from './storyFraming';
 import {
   compensateSemanticInspectorFlightCamera,
-  frameProjectionScope,
+  frameProjectionScope, frameVisibleProjection,
   levels,
   retargetCameraForSemanticBand,
   scopeFitsSafeViewport,
@@ -4365,7 +4365,7 @@ export function App() {
             <button aria-label="Zoom in" onClick={() => semanticZoomControl('inward')}><ZoomInIcon/></button>
             <button aria-label="Zoom out" onClick={() => semanticZoomControl('outward')}><ZoomOutIcon/></button>
             <button aria-label="Fit architecture to view" onClick={() => {
-              const next = frameProjectionScope(scene, navigationIdentity.rootEntityId, activeDetail, viewport, measureCurrentMapSafeArea(), false, true) ?? defaultCamera;
+              const next = frameVisibleProjection(scene, activeProjectionEntityIds, activeDetail, viewport, measureCurrentMapSafeArea()) ?? defaultCamera;
               navigateCamera(next, 'replace', 'Fit the current architecture scope');
             }}><FitIcon/></button>
           </div>
