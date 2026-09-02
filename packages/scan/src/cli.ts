@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { buildEnrichmentPackets, containerIdFromFileName, packetFileName } from "./packet.js";
+import { buildEnrichmentPackets, containerIdFromFileName } from "./packet.js";
 import { GithubAcquisitionError, isGithubSource, parseGithubSource, type GithubSourceRef } from "./github.js";
 import { regenerateScanManifest } from "./manifest.js";
+import { readFrozenEnrichmentPrompt, writeEnrichmentPackets, writePromptEmission } from "./prompt.js";
 import { scanGithubRepository, scanRepository, stableJson, type ScanArtifacts, type ScanOptions } from "./scan.js";
 
 interface CliArgs {
@@ -14,6 +15,7 @@ interface CliArgs {
   scanRoot?: string;
   options: ScanOptions;
   emitPacketsDir?: string;
+  emitPromptDir?: string;
   enrichFromDir?: string;
   maxTarballBytes?: number;
 }
@@ -24,7 +26,8 @@ function printUsage(): void {
     "",
     "Usage: okie-scan [--source <path | gh:owner/repo[@ref]>] [--out <dir>]",
     "                 [--system-name <name>] [--repo <slug>] [--max-tarball-mb <n>]",
-    "                 [--emit-packets <dir>] [--enrich-from <dir>] [--include-members]",
+    "                 [--emit-packets <dir>] [--emit-prompt <dir>] [--enrich-from <dir>]",
+    "                 [--include-members]",
     "",
     "  --source <src>      local git working tree, or gh:owner/repo[@ref] (default: cwd)",
     "  --out <dir>         output directory (default: <source>/fixtures/scan for a local",
@@ -33,6 +36,7 @@ function printUsage(): void {
     "  --repo <slug>       repository slug for snapshot/repo IDs (default: derived)",
     "  --max-tarball-mb    cap on a gh: tarball download (default: 150)",
     "  --emit-packets <d>  (local only) write bounded, redacted enrichment packets to <d>",
+    "  --emit-prompt <d>   (local only) write packets plus concatenated prompts to <d>",
     "  --enrich-from <d>   read enrichment docs (<containerId>.json) from <d>, merge accepted",
     "  --include-members   scan fixture/example/playground/e2e workspace members too",
     "  --public-api        L4 code entities cover only the export surface (hosted posture)",
@@ -44,6 +48,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
   let source = process.cwd();
   let out = "";
   let emitPacketsDir: string | undefined;
+  let emitPromptDir: string | undefined;
   let enrichFromDir: string | undefined;
   let maxTarballBytes: number | undefined;
   const options: ScanOptions = {};
@@ -67,6 +72,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
         break;
       }
       case "--emit-packets": emitPacketsDir = next(); break;
+      case "--emit-prompt": emitPromptDir = next(); break;
       case "--enrich-from": enrichFromDir = next(); break;
       case "--include-members": options.includeAllMembers = true; break;
       case "--public-api": options.codeSurface = "public"; break;
@@ -87,6 +93,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       options,
       ...(enrichFromDir ? { enrichFromDir: resolve(enrichFromDir) } : {}),
       ...(emitPacketsDir ? { emitPacketsDir: resolve(emitPacketsDir) } : {}),
+      ...(emitPromptDir ? { emitPromptDir: resolve(emitPromptDir) } : {}),
       ...(maxTarballBytes ? { maxTarballBytes } : {}),
     };
   }
@@ -97,6 +104,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
     out: out ? resolve(out) : resolve(resolvedSource, "fixtures/scan"),
     options,
     ...(emitPacketsDir ? { emitPacketsDir: resolve(emitPacketsDir) } : {}),
+    ...(emitPromptDir ? { emitPromptDir: resolve(emitPromptDir) } : {}),
     ...(enrichFromDir ? { enrichFromDir: resolve(enrichFromDir) } : {}),
     ...(maxTarballBytes ? { maxTarballBytes } : {}),
   };
@@ -163,8 +171,8 @@ function refreshManifest(scanRoot: string): number {
 
 async function runGithubScan(args: CliArgs): Promise<void> {
   const github = args.github!;
-  if (args.emitPacketsDir) {
-    process.stderr.write("okie-scan: --emit-packets is local-only (needs the working tree); skipping for gh source.\n");
+  if (args.emitPacketsDir || args.emitPromptDir) {
+    process.stderr.write("okie-scan: --emit-packets/--emit-prompt is local-only (needs the working tree); skipping for gh source.\n");
   }
   const scanOptions = {
     ...args.options,
@@ -190,21 +198,20 @@ function runLocalScan(args: CliArgs): void {
   const artifacts = scanRepository(args.source, scanOptions);
   writeArtifacts(args.out, artifacts);
 
-  if (args.emitPacketsDir) {
+  if (args.emitPromptDir || args.emitPacketsDir) {
     const readFile = (repoRelativePath: string): string => readFileSync(`${args.source}/${repoRelativePath}`, "utf8");
-    const { packets, systemPacket, manifest } = buildEnrichmentPackets(artifacts.baseExtraction, readFile);
-    mkdirSync(args.emitPacketsDir, { recursive: true });
-    for (const packet of packets) {
-      writeFileSync(`${args.emitPacketsDir}/${packetFileName(packet.containerId)}`, stableJson(packet));
+    const emitted = buildEnrichmentPackets(artifacts.baseExtraction, readFile);
+    if (args.emitPromptDir) {
+      writePromptEmission(args.emitPromptDir, emitted, artifacts.pin, readFrozenEnrichmentPrompt());
     }
-    if (systemPacket) {
-      writeFileSync(`${args.emitPacketsDir}/${packetFileName(systemPacket.systemId)}`, stableJson(systemPacket));
+    if (args.emitPacketsDir && args.emitPacketsDir !== args.emitPromptDir) {
+      writeEnrichmentPackets(args.emitPacketsDir, emitted);
     }
-    writeFileSync(`${args.emitPacketsDir}/manifest.json`, stableJson(manifest));
   }
 
   const packetNote = args.emitPacketsDir ? `  wrote enrichment packets to ${args.emitPacketsDir}\n` : "";
-  process.stdout.write(summaryLines(artifacts) + packetNote + `  wrote snapshot/view/story/scene/timeline to ${args.out}\n`);
+  const promptNote = args.emitPromptDir ? `  wrote enrichment prompts to ${args.emitPromptDir}\n` : "";
+  process.stdout.write(summaryLines(artifacts) + packetNote + promptNote + `  wrote snapshot/view/story/scene/timeline to ${args.out}\n`);
 }
 
 async function main(): Promise<void> {
