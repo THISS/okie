@@ -1,6 +1,7 @@
 import type { AtlasScene, SceneEntity } from './renderer/types';
 
 export const DEFAULT_SEARCH_SUGGESTION_LIMIT = 7;
+export const DEFAULT_SEARCH_RESULT_LIMIT = DEFAULT_SEARCH_SUGGESTION_LIMIT;
 
 export type DefaultSearchSuggestionContext = {
   /** Currently selected entity id, if any. */
@@ -12,6 +13,22 @@ export type DefaultSearchSuggestionContext = {
   /** Maximum suggestions returned. Defaults to {@link DEFAULT_SEARCH_SUGGESTION_LIMIT}. */
   limit?: number;
 };
+
+/**
+ * Query search across the whole scene (not the current C4 parent). Nested code
+ * entities remain reachable while the entity list stays hierarchical.
+ */
+export function searchArchitectureEntities(
+  scene: Pick<AtlasScene, 'entities'>,
+  query: string,
+  limit = DEFAULT_SEARCH_RESULT_LIMIT,
+): SceneEntity[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized || limit <= 0) return [];
+  return scene.entities
+    .filter(entity => `${entity.name} ${entity.kind} ${entity.responsibility} ${entity.source ?? ''}`.toLowerCase().includes(normalized))
+    .slice(0, limit);
+}
 
 /**
  * Empty-query search suggestions: deterministic location-aware defaults for the

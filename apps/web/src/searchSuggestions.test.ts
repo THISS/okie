@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SceneEntity } from './renderer/types';
-import { DEFAULT_SEARCH_SUGGESTION_LIMIT, defaultSearchSuggestions } from './searchSuggestions';
+import { DEFAULT_SEARCH_RESULT_LIMIT, DEFAULT_SEARCH_SUGGESTION_LIMIT, defaultSearchSuggestions, searchArchitectureEntities } from './searchSuggestions';
 
 function entity(id: string, parentId?: string): SceneEntity {
   return {
@@ -113,5 +113,28 @@ describe('defaultSearchSuggestions', () => {
 
   it('returns an empty list for an empty scene', () => {
     expect(defaultSearchSuggestions({ entities: [] }, { selectedId: 'orders' })).toEqual([]);
+  });
+});
+
+describe('searchArchitectureEntities', () => {
+  it('finds a nested entity by name across the whole tree', () => {
+    const hits = searchArchitectureEntities(scene, 'orders');
+    expect(hits.map(item => item.id)).toEqual(['orders']);
+  });
+
+  it('matches source paths so nested files stay searchable', () => {
+    const withSource: SceneEntity = { ...entity('code:shell:app', 'web'), source: 'apps/web/src/App.tsx', name: 'App' };
+    const hits = searchArchitectureEntities({ entities: [...entities, withSource] }, 'App.tsx');
+    expect(hits.map(item => item.id)).toEqual(['code:shell:app']);
+  });
+
+  it('caps results at the default limit', () => {
+    const many = Array.from({ length: 12 }, (_, index) => entity(`match-${index}`));
+    many.forEach(item => { item.name = 'alpha'; });
+    expect(searchArchitectureEntities({ entities: many }, 'alpha')).toHaveLength(DEFAULT_SEARCH_RESULT_LIMIT);
+  });
+
+  it('returns nothing for a blank query', () => {
+    expect(searchArchitectureEntities(scene, '   ')).toEqual([]);
   });
 });

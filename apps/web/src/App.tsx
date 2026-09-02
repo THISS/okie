@@ -96,7 +96,8 @@ import {
   type SemanticLensSession,
   type SemanticLensState,
 } from './semantic/semanticLens';
-import { defaultSearchSuggestions } from './searchSuggestions';
+import { explorerEntitiesForView } from './entityExplorer';
+import { defaultSearchSuggestions, searchArchitectureEntities } from './searchSuggestions';
 import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldOpenSearch, shouldToggleDevMode } from './shortcuts';
 import {
   ASK_CONNECTED_COPY,
@@ -1644,22 +1645,24 @@ export function App() {
     return { chain, descendant };
   }, [navigationIdentity.rootEntityId, scene.entities, selected]);
   const searchResults = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedSearch = search.trim();
     return normalizedSearch
-      ? scene.entities.filter(entity => `${entity.name} ${entity.kind} ${entity.responsibility} ${entity.source ?? ''}`.toLowerCase().includes(normalizedSearch)).slice(0, 7)
+      ? searchArchitectureEntities(scene, normalizedSearch)
       : defaultSearchSuggestions(scene, {
         selectedId,
         rootId: navigationIdentity.rootEntityId,
         breadcrumbIds: breadcrumbState.chain.map(entity => entity.id),
       });
   }, [breadcrumbState, navigationIdentity.rootEntityId, scene, search, selectedId]);
-  const explorerEntities = useMemo(() => {
-    if (scene.entities.length > 200) {
-      return [selected, ...searchResults].filter((entity, index, all) => all.findIndex(candidate => candidate.id === entity.id) === index);
-    }
-    const active = new Set(activeProjectionEntityIds);
-    return scene.entities.filter(entity => active.has(entity.id));
-  }, [activeProjectionEntityIds, scene.entities, searchResults, selected]);
+  const explorerEntities = useMemo(
+    () => explorerEntitiesForView(scene, {
+      detail: activeDetail ?? 'context',
+      selected,
+      settledTargetIds: semanticLensSession.settled.map(entry => entry.targetId),
+      visibleIds: activeProjectionEntityIds,
+    }),
+    [activeDetail, activeProjectionEntityIds, scene, selected, semanticLensSession.settled],
+  );
   const visibilityFocusIds = useMemo(
     () => new Set([...storyFocus.requiredIds, ...relationFocus.endpointIds]),
     [relationFocus.endpointIds, storyFocus.requiredIds],
@@ -4421,7 +4424,7 @@ export function App() {
 
           <details className="entity-explorer">
             <summary aria-label="Toggle entity list" id="entity-explorer"><LayersIcon size={15}/><span>Entity list</span></summary>
-            <div className="entity-explorer-list" aria-label="Architecture entities">
+            <div className="entity-explorer-list" aria-label="Architecture entities" data-explorer-count={visibleExplorerEntities.length} data-testid="entity-explorer-list">
               <p>KEYBOARD EXPLORER · {visibleExplorerEntities.length.toLocaleString()} ENTITIES</p>
               {visibleExplorerEntities.map(entity => <button aria-current={entity.id === selectedId ? 'true' : undefined} key={entity.id} onClick={() => focusEntity(entity)}><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{entity.kindLabel ?? entity.kind} · {entity.responsibility}</small></span></button>)}
             </div>
