@@ -710,6 +710,85 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .source-unavailable strong { font-size: 11px; }
 .source-unavailable p { margin: 6px 0 0; color: var(--atlas-quiet); font-size: 11px; line-height: 1.5; }
 
+.import-mermaid-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: start center;
+  padding: 88px 16px 24px;
+  background: rgba(4, 7, 8, 0.62);
+}
+.import-mermaid-dialog {
+  width: min(640px, calc(100vw - 24px));
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--atlas-line-strong);
+  border-radius: var(--atlas-radius-md);
+  background: var(--atlas-panel-solid);
+  box-shadow: var(--atlas-shadow-panel);
+}
+.import-mermaid-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.import-mermaid-dialog h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.import-mermaid-dialog header button {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--atlas-line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--atlas-muted);
+  cursor: pointer;
+}
+.import-mermaid-dialog > p { margin: 0; color: var(--atlas-muted); font-size: 13px; line-height: 1.5; }
+.import-mermaid-dialog code { color: var(--atlas-cyan); font-family: var(--atlas-font-mono); font-size: 12px; }
+.import-mermaid-field textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 10px 12px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 8px;
+  background: rgba(255,255,255,.03);
+  color: var(--atlas-text);
+  font-family: var(--atlas-font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.import-mermaid-error { margin: 0; color: var(--atlas-danger); font-size: 13px; }
+.import-mermaid-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.import-mermaid-dialog footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--atlas-line);
+  border-radius: 8px;
+  background: rgba(255,255,255,.03);
+  color: var(--atlas-text);
+  cursor: pointer;
+}
+.import-mermaid-spacer { flex: 1; }
+.import-mermaid-submit {
+  border-color: var(--atlas-accent) !important;
+  background: var(--atlas-accent-soft) !important;
+  color: var(--atlas-accent) !important;
+  font-weight: 600;
+}
+
 .sr-only {
   position: absolute !important;
   width: 1px !important;
