@@ -74,13 +74,16 @@ pkg/a/ @acme/a-team
 pkg/a/src/index.ts @alice
 `;
 
-test("parseCodeOwners skips comments, owner-less lines, and last-match order is preserved", () => {
+test("parseCodeOwners skips comments and keeps owner-less rules as ownership clears", () => {
   const rules = parseCodeOwners(githubExample);
   assert.equal(rules[0]?.pattern, "*");
   assert.deepEqual(rules[0]?.owners, ["@global-owner1", "@global-owner2"]);
   assert.ok(rules.some(rule => rule.pattern === "pkg/a/src/index.ts" && rule.owners.includes("@alice")));
   assert.equal(parseCodeOwners("# only comments\n\n").length, 0);
-  assert.equal(parseCodeOwners("README.md\n").length, 0);
+  const cleared = parseCodeOwners("README.md\n");
+  assert.equal(cleared.length, 1);
+  assert.equal(cleared[0]?.pattern, "README.md");
+  assert.deepEqual(cleared[0]?.owners, []);
 });
 
 test("ownersForPath: GitHub last-matching-pattern-wins, including repo-wide *", () => {
@@ -96,6 +99,16 @@ test("ownersForPath: GitHub last-matching-pattern-wins, including repo-wide *", 
   assert.deepEqual(ownersForPath("cmd/main.go", rules), ["docs@example.com"]);
   assert.deepEqual(ownersForPath("build/logs/app.log", rules), ["@octo-org/octocats"]);
   assert.deepEqual(ownersForPath("README.md", rules), ["@global-owner1", "@global-owner2"]);
+});
+
+test("ownersForPath: an owner-less later rule clears inherited ownership (GitHub /apps/github)", () => {
+  const rules = parseCodeOwners("/apps/ @octocat\n/apps/github\n");
+  assert.deepEqual(ownersForPath("apps/web/App.tsx", rules), ["@octocat"]);
+  assert.deepEqual(ownersForPath("apps/github", rules), []);
+  assert.deepEqual(ownersForPath("apps/github/api.ts", rules), []);
+  assert.deepEqual(pathOwnerFacts(["apps/web/App.tsx", "apps/github/api.ts"], rules), [
+    { path: "apps/web/App.tsx", owners: ["@octocat"] },
+  ]);
 });
 
 test("ownersForPath: no rules or unmatched paths yield empty owners", () => {

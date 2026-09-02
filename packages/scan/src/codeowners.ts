@@ -50,10 +50,12 @@ export function parseCodeOwners(text: string): CodeOwnerRule[] {
     const line = stripCodeOwnersComment(raw).trim();
     if (!line || line.startsWith("!")) continue;
     const tokens = tokenizeCodeOwnersLine(line);
-    if (tokens.length < 2) continue;
+    if (tokens.length < 1) continue;
     const pattern = tokens[0]!;
+    if (!pattern) continue;
+    // Owner-less later rules are valid GitHub syntax: they *clear* inherited
+    // ownership for that path (`/apps/ @octocat` then `/apps/github`).
     const owners = uniqueSorted(tokens.slice(1).map(scrubGithubTokens).filter(isOwnerToken));
-    if (!pattern || owners.length === 0) continue;
     rules.push({ pattern, owners });
   }
   return rules;
