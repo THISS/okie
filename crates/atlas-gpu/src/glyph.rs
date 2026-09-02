@@ -395,6 +395,10 @@ mod tests {
             fit_text_content("packages/architecture/src/normalized.ts", 8),
             "…ized.ts"
         );
+        assert_eq!(
+            fit_text_content("@fontsource/ibm-plex-sans", 16),
+            "…/ibm-plex-sans"
+        );
     }
 
     #[test]

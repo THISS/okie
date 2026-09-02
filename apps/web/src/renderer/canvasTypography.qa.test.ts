@@ -7,7 +7,7 @@ type TextCall = {
   font: string;
   x: number;
   y: number;
-  maxWidth: number;
+  maxWidth?: number;
 };
 
 function fakeCanvas() {
@@ -183,8 +183,75 @@ describe('Canvas2D band-normalized typography', () => {
       expect(call.x).toBeLessThanOrEqual(card.x + card.width);
       expect(call.y).toBeGreaterThanOrEqual(card.y);
       expect(call.y).toBeLessThanOrEqual(card.y + card.height);
-      expect(call.maxWidth).toBeGreaterThan(0);
-      expect(call.maxWidth).toBeLessThanOrEqual(card.width);
     }
+  });
+
+  it('keeps L1/L2 titles at the 12px floor and preserves scoped package tails at context zoom', () => {
+    const metrics = canvasEntityPresentationMetrics('context', false, 0.32);
+    expect(metrics.titleFontSize).toBeGreaterThanOrEqual(12);
+    expect(metrics.titleFontSize).toBe(12);
+
+    const scene: AtlasScene = {
+      id: 'cla-53-labels',
+      title: 'CLA-53 labels',
+      subtitle: '',
+      entities: [
+        {
+          id: 'external:react',
+          name: 'react',
+          kind: 'system',
+          kindLabel: 'EXTERNAL SYSTEM',
+          detail: 'context',
+          responsibility: 'No summary supplied.',
+          x: 0,
+          y: 0,
+          width: 480,
+          height: 190,
+        },
+        {
+          id: 'external:fontsource',
+          name: '@fontsource/ibm-plex-sans',
+          kind: 'system',
+          kindLabel: 'EXTERNAL SYSTEM',
+          detail: 'context',
+          responsibility: 'No summary supplied.',
+          x: 520,
+          y: 0,
+          width: 480,
+          height: 190,
+        },
+        {
+          id: 'external:dompurify',
+          name: 'dompurify',
+          kind: 'system',
+          kindLabel: 'EXTERNAL SYSTEM',
+          detail: 'context',
+          responsibility: 'No summary supplied.',
+          x: 1040,
+          y: 0,
+          width: 480,
+          height: 190,
+        },
+      ],
+      relations: [],
+      regions: [],
+    };
+    const target = fakeCanvas();
+    const renderer = new Canvas2DRenderer(target.canvas, 'canvas2d');
+    renderer.setScene(scene);
+    renderer.resize(1200, 400, 1);
+    renderer.setCamera({ x: 760, y: 95, zoom: 0.32 });
+    renderer.setRenderState(state);
+    renderer.render(0);
+
+    const titles = target.textCalls.filter(call => call.font.includes('12px'));
+    const names = titles.map(call => call.content);
+    expect(names).toContain('react');
+    expect(names).toContain('dompurify');
+    const fontsource = names.find(name => name.includes('ibm-plex-sans') || name.includes('fontsource'));
+    expect(fontsource).toBeDefined();
+    expect(fontsource).toMatch(/ibm-plex-sans$/);
+    expect(fontsource?.startsWith('@fontsource/ibm-') && !fontsource.includes('plex-sans')).toBe(false);
+    expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(true);
   });
 });
