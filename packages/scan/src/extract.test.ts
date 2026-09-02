@@ -480,14 +480,23 @@ test("McCabe cyclomatic walks the same createSourceFile tree as L4 minting", () 
     )),
     3,
   );
-  // Nested helpers are not L4 nodes, so their branches belong to the top-level entity.
+  // Nested helpers are their own CFG; they are not L4 nodes, so they are omitted
+  // rather than folded into the outer function (classic McCabe).
   assert.equal(
     cyclomaticForDeclaration(declarationNamed(
       "export function outer() { function inner() { if (true) { return 1; } } if (false) { return 0; } }\n",
       "outer",
     )),
-    3,
+    2,
   );
+  assert.equal(
+    cyclomaticForDeclaration(declarationNamed(
+      "export function withCallback(items: number[]) { return items.map(item => item > 0 ? item : 0); }\n",
+      "withCallback",
+    )),
+    1,
+  );
+  assert.equal(cyclomaticForDeclaration(declarationNamed("export declare function ambient(x: number): number;\n", "ambient")), undefined);
   assert.equal(cyclomaticForDeclaration(declarationNamed("export type Alias = string;\n", "Alias")), undefined);
   assert.equal(cyclomaticForDeclaration(declarationNamed("export interface Box { x: number }\n", "Box")), undefined);
   assert.equal(cyclomaticForDeclaration(declarationNamed("export class Cls { m() { if (true) { return 1; } } }\n", "Cls")), undefined);
@@ -588,5 +597,3 @@ test("cyclomatic overlay writes the number onto existing snapshot entities only"
   assert.equal(overlaid.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alias")?.cyclomaticComplexity, undefined);
   assert.equal(overlaid.entities.some(entity => entity.id === "code:invented"), false);
 });
-
-

@@ -206,10 +206,23 @@ function isLogicalDecisionOperator(kind: ts.SyntaxKind): boolean {
 }
 
 /**
- * Classic McCabe: 1 + decision points in this subtree. Nested function bodies
- * count toward the top-level entity because they are not their own L4 nodes.
+ * Classic McCabe: 1 + decision points in this function's own CFG.
+ * Nested functions, methods, and classes have separate graphs and are skipped
+ * (they are not L4 nodes yet; their complexity is omitted rather than folded in).
  * Type-level conditionals (`T extends U ? A : B`) are not runtime branches.
  */
+function isNestedFunctionBoundary(node: ts.Node): boolean {
+  return ts.isFunctionDeclaration(node)
+    || ts.isFunctionExpression(node)
+    || ts.isArrowFunction(node)
+    || ts.isMethodDeclaration(node)
+    || ts.isGetAccessorDeclaration(node)
+    || ts.isSetAccessorDeclaration(node)
+    || ts.isConstructorDeclaration(node)
+    || ts.isClassDeclaration(node)
+    || ts.isClassExpression(node);
+}
+
 export function cyclomaticComplexity(node: ts.Node): number {
   let complexity = 1;
   const visit = (current: ts.Node): void => {
@@ -226,15 +239,19 @@ export function cyclomaticComplexity(node: ts.Node): number {
     } else if (ts.isBinaryExpression(current) && isLogicalDecisionOperator(current.operatorToken.kind)) {
       complexity += 1;
     }
-    ts.forEachChild(current, visit);
+    ts.forEachChild(current, child => {
+      if (child !== node && isNestedFunctionBoundary(child)) return;
+      visit(child);
+    });
   };
   visit(node);
   return complexity;
 }
 
-/** The executable function AST to score, or undefined for types/classes/constants. */
+/** The executable function AST to score, or undefined for types/classes/constants/bodyless decls. */
 export function functionLikeBody(node: ts.Node): ts.Node | undefined {
-  if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) return node;
+  if (ts.isFunctionDeclaration(node)) return node.body ? node : undefined;
+  if (ts.isFunctionExpression(node) || ts.isArrowFunction(node)) return node;
   if (ts.isVariableDeclaration(node) && node.initializer
     && (ts.isFunctionExpression(node.initializer) || ts.isArrowFunction(node.initializer))) {
     return node.initializer;

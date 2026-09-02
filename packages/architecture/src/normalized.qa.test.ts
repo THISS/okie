@@ -314,4 +314,3 @@ test('normalize round-trip preserves observed cyclomatic on a code entity', () =
   assert.equal(selected.entities.find(entity => entity.id === 'code:lib-src:handler')?.cyclomaticComplexity, 7);
   assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.cyclomaticComplexity, undefined);
 });
-
