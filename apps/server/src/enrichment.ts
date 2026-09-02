@@ -70,6 +70,11 @@ export interface EnricherOptions {
   gateway?: EnrichmentGateway;
   /** Per-request timeout + scan-level caps (CLA-22). Defaults are the documented constants. */
   budget?: Partial<EnrichmentBudget>;
+  /**
+   * Called after each successful scope that reports usage so a process-wide
+   * ceiling (CLA-38) can accumulate across jobs and GitHub users.
+   */
+  onUsage?: (usage: GatewayUsage) => void;
   /** Concurrent in-flight scopes (default 2 — bounded, order-independent by design). */
   maxConcurrent?: number;
   onProgress?: (note: string) => void;
@@ -458,6 +463,7 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
           if (proposal.usage?.costUsd !== undefined) {
             spent.dollars = addDollars(spent.dollars, proposal.usage.costUsd);
           }
+          if (proposal.usage) options.onUsage?.(proposal.usage);
           progress(`enrich ${item.id}: proposal received`);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
