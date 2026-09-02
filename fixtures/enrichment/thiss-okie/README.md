@@ -21,5 +21,6 @@ or `tmp/`.
 All six code-bearing containers and the system scope were accepted. `@okie/web`
 restates 22 of 68 file-components (the 64-entity extraction cap plus melted
 single-agent context — not a gate rejection). Opaque Rust crates have no
-container packet; their `responsibility` comes from the system document.
-Ownership / CODEOWNERS is not in the scan. No persons were added.
+container packet; their `responsibility` is the first paragraph of each crate
+`README.md` listed in the system packet's `scopePaths`. Ownership / CODEOWNERS
+is not in the scan. No persons were added.
