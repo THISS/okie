@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "responsibility": "Spatial explanation system that scans a repository into an evidence-backed C4 atlas and plays deterministic guided stories from system context down to source.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:apps-server",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/server",
+      "responsibility": "Loopback scan HTTP process that serves paste-a-repo jobs, published scan objects, and optional Ask Atlas answers against an OpenAI-compatible gateway. GET /healthz stays key-free.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:apps-web",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/web",
+      "responsibility": "React browser shell that renders the C4 atlas, plays deterministic guided stories, and hosts the inspector, source viewer, and paste-a-repo landing.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:crates-atlas-engine",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "atlas-engine",
+      "responsibility": "Deterministic, renderer-independent canvas state: camera math, semantic-zoom LOD, hit testing, story/timeline compilation, and the protocol runtime. No browser or GPU dependencies.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:crates-atlas-gpu",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "atlas-gpu",
+      "responsibility": "WebGPU-first rendering for the atlas protocol, constrained to WebGL2-safe vertex/index/uniform capabilities. Owns the glyph atlas, mesh building, and GPU surface selection.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:crates-atlas-protocol",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "atlas-protocol",
+      "responsibility": "Versioned v1 camelCase wire protocol for scenes, patches, geometry, and timelines. Pure data and validation; the Rust source of truth mirrored by the scene-compiler protocol module.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:crates-atlas-wasm",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "atlas-wasm",
+      "responsibility": "Stable browser boundary for the Rust atlas renderer: a wasm-bindgen facade exposing create_atlas_renderer, built into pkg/ for the web shell.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:packages-architecture",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/architecture",
+      "responsibility": "Canonical renderer-independent architecture model: extraction schema, snapshot validation, C4 projection, completeness scoring, and orthogonal routing.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:packages-scan",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/scan",
+      "responsibility": "Deterministic TypeScript scanner that pins a git tree, emits bounded enrichment packets and concatenated prompts, and merges accepted ArchitectureExtraction documents through an atomic gate.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:packages-scene-compiler",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/scene-compiler",
+      "responsibility": "Compiles architecture snapshots and stories into the v1 renderer scene protocol, C4 dynamic-flow artifacts, and the hand-authored golden demo fixture.",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:tooling",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "Build & fixture tooling",
+      "responsibility": "Repo-level generators that rebuild gitignored wasm-pack output and a seeded stress scene before check, build, and dev.",
+      "sourceRefs": []
+    }
+  ],
+  "relations": []
+}
