@@ -34,7 +34,7 @@ export interface ScanOptions {
   repositorySlug?: string;
   /** Scan fixture/example/playground/e2e workspace members too (default: skip them). */
   includeAllMembers?: boolean;
-  /** container id -> enrichment document (any JSON); accepted docs merge into that scope. */
+  /** container id -> enrichment document or remainder-packet array; accepted docs merge into that scope. */
   enrichmentDocs?: ReadonlyMap<string, unknown>;
   /** L4 code surface: 'all' (default, every top-level declaration) or 'public' (export surface only). */
   codeSurface?: "all" | "public";

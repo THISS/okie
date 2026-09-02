@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Discovery } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
-import { buildEnrichmentPackets, containerIdFromFileName, contentHash, packetFileName, ENRICHMENT_PROMPT_VERSION } from "./packet.js";
+import { buildEnrichmentPackets, containerIdFromFileName, contentHash, packetFileName, ENRICHMENT_PROMPT_VERSION, MAX_COMPONENTS_PER_PACKET } from "./packet.js";
 
 const files: Record<string, string> = {
   "README.md": "# Acme",
@@ -108,4 +108,74 @@ test("manifest is content-addressed and deterministic; file names round-trip", (
   // a changed packet must change its hash.
   assert.notEqual(contentHash("a"), contentHash("b"));
   assert.equal(contentHash("stable"), contentHash("stable"));
+});
+
+test("remainder packet filenames reverse to the container id", () => {
+  assert.equal(packetFileName("container:apps-web"), "container__apps-web.json");
+  assert.equal(packetFileName("container:apps-web", 1), "container__apps-web.json");
+  assert.equal(packetFileName("container:apps-web", 2), "container__apps-web.2.json");
+  assert.equal(containerIdFromFileName("container__apps-web.json"), "container:apps-web");
+  assert.equal(containerIdFromFileName("container__apps-web.2.json"), "container:apps-web");
+  assert.equal(containerIdFromFileName("container__apps-web.3.json"), "container:apps-web");
+});
+
+function hugeExtraction(fileCount: number) {
+  const sourceFiles: string[] = [];
+  const files: Record<string, string> = {
+    "README.md": "# Huge",
+    "pkg/h/package.json": `${JSON.stringify({ name: "@acme/h" }, null, 2)}\n`,
+  };
+  const unitByFile = new Map<string, string>();
+  for (let index = 0; index < fileCount; index += 1) {
+    const path = `pkg/h/src/f${String(index).padStart(3, "0")}.ts`;
+    sourceFiles.push(path);
+    files[path] = `export function fn${index}() { return ${index}; }\n`;
+    unitByFile.set(path, "pkg/h");
+  }
+  const readHuge = (path: string): string => {
+    const text = files[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const discovery: Discovery = {
+    sourceFiles,
+    units: [{ kind: "member", dir: "pkg/h", name: "@acme/h", packageName: "@acme/h", evidencePath: "pkg/h" }],
+    unitByFile,
+    unitByPackageName: new Map([["@acme/h", "pkg/h"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  return { extraction: extractArchitecture({ discovery, readFile: readHuge, systemName: "Huge", systemSlug: "huge" }), readHuge };
+}
+
+test("huge container splits into remainder packets; the cap does not drop leftover file-components", () => {
+  const { extraction, readHuge } = hugeExtraction(MAX_COMPONENTS_PER_PACKET + 9);
+  const emitted = buildEnrichmentPackets(extraction, readHuge);
+  const web = emitted.packets.filter(packet => packet.containerId === "container:pkg-h");
+  assert.equal(web.length, 2, "overflow must emit a remainder packet, not truncate");
+  assert.equal(web[0]!.components.length, MAX_COMPONENTS_PER_PACKET);
+  assert.equal(web[1]!.components.length, 9);
+  assert.equal(web[0]!.chunkIndex, 1);
+  assert.equal(web[1]!.chunkIndex, 2);
+  assert.equal(web[0]!.chunkCount, 2);
+  const ids = web.flatMap(packet => packet.components.map(component => component.id)).sort();
+  const expected = extraction.entities
+    .filter(entity => entity.kind === "component" && entity.parentId === "container:pkg-h")
+    .map(entity => entity.id)
+    .sort();
+  assert.deepEqual(ids, expected, "every code-bearing file-component must appear in some packet");
+  assert.equal(emitted.manifest.packets.filter(entry => entry.containerId === "container:pkg-h").length, 2);
+  assert.equal(emitted.manifest.packets.find(entry => entry.file === "container__pkg-h.2.json")?.components, 9);
+  const serializedSecond = JSON.stringify(web[1]);
+  for (const component of web[0]!.components) {
+    assert.equal(serializedSecond.includes(component.id), false, "remainder packet must not repeat the first chunk's ids");
+  }
+});
+
+test("a container at the cap still emits one packet", () => {
+  const { extraction, readHuge } = hugeExtraction(MAX_COMPONENTS_PER_PACKET);
+  const emitted = buildEnrichmentPackets(extraction, readHuge);
+  const web = emitted.packets.filter(packet => packet.containerId === "container:pkg-h");
+  assert.equal(web.length, 1);
+  assert.equal(web[0]!.chunkIndex, undefined);
+  assert.equal(web[0]!.components.length, MAX_COMPONENTS_PER_PACKET);
 });

@@ -22,9 +22,9 @@ export function readFrozenEnrichmentPrompt(): string {
   return readFileSync(frozenEnrichmentPromptPath(), "utf8");
 }
 
-/** Prompt sidecar next to a packet file: `container__<id>.prompt.md`. */
-export function promptFileName(id: string): string {
-  return packetFileName(id).replace(/\.json$/, ".prompt.md");
+/** Prompt sidecar next to a packet file: `container__<id>.prompt.md` (`.2` for remainder packets). */
+export function promptFileName(id: string, chunkIndex?: number): string {
+  return packetFileName(id, chunkIndex).replace(/\.json$/, ".prompt.md");
 }
 
 /** Same bytes as `stableJson` in scan.ts / CLI packet files. */
@@ -142,21 +142,22 @@ export function appendixForPacket(
   packet: EnrichmentPacket | SystemPacket,
   pin: Pick<RepositoryPin, "commitSha" | "treeHash">,
   id: string,
+  chunkIndex?: number,
 ): EnrichmentPromptAppendix {
   return {
     commitSha: pin.commitSha,
     treeHash: pin.treeHash,
-    packetFile: packetFileName(id),
+    packetFile: packetFileName(id, chunkIndex),
     fileTree: buildFileTree(packet.scopePaths),
     ownershipTree: ownershipTreeFromPacket(packet),
   };
 }
 
-/** Writes the existing `--emit-packets` layout (unchanged filenames and JSON). */
+/** Writes the `--emit-packets` layout (one JSON per packet, including remainder `*.2.json`). */
 export function writeEnrichmentPackets(dir: string, emitted: EmittedPackets): void {
   mkdirSync(dir, { recursive: true });
   for (const packet of emitted.packets) {
-    writeFileSync(`${dir}/${packetFileName(packet.containerId)}`, stableJson(packet));
+    writeFileSync(`${dir}/${packetFileName(packet.containerId, packet.chunkIndex)}`, stableJson(packet));
   }
   if (emitted.systemPacket) {
     writeFileSync(`${dir}/${packetFileName(emitted.systemPacket.systemId)}`, stableJson(emitted.systemPacket));
@@ -172,14 +173,14 @@ export function writeEnrichmentPrompts(
   prefix: string,
 ): void {
   mkdirSync(dir, { recursive: true });
-  const writeOne = (id: string, packet: EnrichmentPacket | SystemPacket): void => {
-    writeFileSync(`${dir}/${promptFileName(id)}`, concatenateEnrichmentPrompt({
+  const writeOne = (id: string, packet: EnrichmentPacket | SystemPacket, chunkIndex?: number): void => {
+    writeFileSync(`${dir}/${promptFileName(id, chunkIndex)}`, concatenateEnrichmentPrompt({
       prefix,
       packet,
-      appendix: appendixForPacket(packet, pin, id),
+      appendix: appendixForPacket(packet, pin, id, chunkIndex),
     }));
   };
-  for (const packet of emitted.packets) writeOne(packet.containerId, packet);
+  for (const packet of emitted.packets) writeOne(packet.containerId, packet, packet.chunkIndex);
   if (emitted.systemPacket) writeOne(emitted.systemPacket.systemId, emitted.systemPacket);
 }
 

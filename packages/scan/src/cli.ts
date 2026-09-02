@@ -37,7 +37,7 @@ function printUsage(): void {
     "  --max-tarball-mb    cap on a gh: tarball download (default: 150)",
     "  --emit-packets <d>  (local only) write bounded, redacted enrichment packets to <d>",
     "  --emit-prompt <d>   (local only) write packets plus concatenated prompts to <d>",
-    "  --enrich-from <d>   read enrichment docs (<containerId>.json) from <d>, merge accepted",
+    "  --enrich-from <d>   read enrichment docs (same filenames as packets, including remainder `*.2.json`) from <d>, merge accepted",
     "  --include-members   scan fixture/example/playground/e2e workspace members too",
     "  --public-api        L4 code entities cover only the export surface (hosted posture)",
     "",
@@ -110,18 +110,25 @@ function parseArgs(argv: readonly string[]): CliArgs {
   };
 }
 
-/** Reads <containerId>.json enrichment docs into a container-keyed map (parse errors kept as-is → rejected). */
+/** Reads packet-named enrichment docs, grouping remainder `*.2.json` onto the same container. */
 function readEnrichmentDocs(dir: string): Map<string, unknown> {
-  const docs = new Map<string, unknown>();
+  const docs = new Map<string, unknown[]>();
   for (const file of readdirSync(dir).sort()) {
+    if (file === "manifest.json" || file === "enrichment-report.json") continue;
     const containerId = containerIdFromFileName(file);
-    if (!containerId || file === "manifest.json") continue;
+    if (!containerId) continue;
     const text = readFileSync(`${dir}/${file}`, "utf8");
     let value: unknown;
     try { value = JSON.parse(text); } catch { value = text; }
-    docs.set(containerId, value);
+    const bucket = docs.get(containerId) ?? [];
+    bucket.push(value);
+    docs.set(containerId, bucket);
   }
-  return docs;
+  const unwrapped = new Map<string, unknown>();
+  for (const [containerId, bucket] of docs) {
+    unwrapped.set(containerId, bucket.length === 1 ? bucket[0]! : bucket);
+  }
+  return unwrapped;
 }
 
 /** Writes the six-artifact trio (+ enrichment report) to an output directory. */
