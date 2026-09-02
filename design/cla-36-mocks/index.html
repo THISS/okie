@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-mock-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLA-36 — Okie consumption mocks</title>
+<link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <p class="eyebrow">CLA-36 · design exploration</p>
+    <h1>Okie consumption mocks</h1>
+    <p>Four static frames arguing how to make the Okie atlas easier to read. They are built from the twelve
+      screenshots in <a href="../cla-36-pack/README.md">design/cla-36-pack</a>, which show the product exactly as
+      it ships on <code>main</code> today. Each frame puts the real screenshot next to the proposal so the delta
+      is arguable rather than asserted.</p>
+    <p>These are HTML and CSS only. Open any file directly in a browser — no build, no server, no dependencies.
+      Nothing here is wired into the app; <code>apps/web/src/app.css</code> is untouched and the canvas renderer
+      knows nothing about any of it. The written argument lives in
+      <a href="../cla-36-brief.md">design/cla-36-brief.md</a>.</p>
+  </header>
+
+  <nav class="doc-nav">
+    <a href="./index.html" aria-current="page">Index</a>
+    <a href="./01-calmer-l1.html">1 · Calmer L1</a>
+    <a href="./02-inspector-canvas-balance.html">2 · Inspector vs canvas</a>
+    <a href="./03-dense-legibility.html">3 · Dense legibility</a>
+    <a href="./04-themes.html">4 · Themes</a>
+  </nav>
+
+  <p class="section-label">The four frames</p>
+  <ul class="notes" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+    <li><b><a href="./01-calmer-l1.html" style="color:var(--atlas-accent);text-decoration:none">1 · A calmer L1</a></b>
+      Rank the canvas into focus, context, and periphery. Spend the accent on exactly one node. Push the chrome
+      below the map. Label the level rail.</li>
+    <li><b><a href="./02-inspector-canvas-balance.html" style="color:var(--atlas-accent);text-decoration:none">2 · Inspector vs canvas</a></b>
+      Three inspector states on one seam — Peek at 232&nbsp;px as the default, Detail at 376&nbsp;px on request,
+      Read at 560&nbsp;px only for source.</li>
+    <li><b><a href="./03-dense-legibility.html" style="color:var(--atlas-accent);text-decoration:none">3 · Dense legibility</a></b>
+      Give the canvas a legibility budget. Past it, group into counted pucks and say what is hidden. Promote
+      Isolate out of the story player.</li>
+    <li><b><a href="./04-themes.html" style="color:var(--atlas-accent);text-decoration:none">4 · Themes</a></b>
+      Lime-on-black stays the default. Add a light theme for distribution and turn the accent into a single
+      swappable slot for customer atlases.</li>
+  </ul>
+
+  <p class="section-label">The design vocabulary these frames share</p>
+
+  <div class="pair">
+    <div>
+      <p class="frame-caption"><b>Three canvas ranks</b> · driven by graph distance from the selection</p>
+      <div class="frame short" style="height:260px;grid-template-rows:1fr">
+        <div class="stage" style="grid-template-columns:1fr"><div class="canvas">
+          <div class="edge" data-rank="focus" style="left:60px;top:96px;width:52px;height:1px"></div>
+          <div class="edge" data-rank="context" style="left:340px;top:96px;width:56px;height:1px"></div>
+          <div class="edge" data-rank="periphery" style="left:200px;top:160px;width:1px;height:38px"></div>
+
+          <div class="node" data-rank="focus" style="left:112px;top:60px;width:228px;height:98px">
+            <span class="kind">Focus</span><span class="name">Rust / WASM renderer</span>
+            <span class="blurb">Full card. Summary, accent border, accent glow. Exactly one per frame.</span>
+          </div>
+          <div class="node" data-rank="context" style="left:396px;top:70px;width:180px;height:76px">
+            <span class="kind">Context</span><span class="name">Scene compiler</span><span class="badge">3 links</span>
+          </div>
+          <div class="node" data-rank="periphery" style="left:112px;top:198px"><span class="name">Periphery — react</span></div>
+          <div class="node" data-rank="periphery" style="left:280px;top:198px"><span class="name">+ 7 more</span></div>
+        </div></div>
+      </div>
+    </div>
+
+    <div>
+      <p class="frame-caption"><b>The two honesty primitives</b> · already half-built in the product</p>
+      <div class="frame short" style="height:260px;grid-template-rows:1fr">
+        <div class="stage" style="grid-template-columns:1fr"><div class="canvas" style="padding:28px 24px;display:grid;align-content:center;gap:22px">
+          <div class="hud" style="position:static;transform:none;justify-self:center">
+            <span>Showing <b>34 of 1,778</b> — grouped to stay readable</span>
+            <span class="act">Isolate a path</span>
+            <span class="act ghost">Show all</span>
+          </div>
+          <div class="cluster" style="position:static;height:96px;justify-self:center;width:240px">
+            <span class="n">14</span><span class="l">Rust crates</span>
+            <span class="hint">1,204 symbols · click to expand</span>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><b>Reused, not invented</b>Every colour, radius, shadow, and font in these frames comes from
+      <code>packages/theme/src/tokens.css</code>. Additions are namespaced <code>--mock-*</code> in
+      <code>mock.css</code> so the proposed delta is greppable.</li>
+    <li><b>Screenshots are real</b>Every “today” image is an unedited capture from
+      <code>design/cla-36-pack/</code>, shot headless at 3200×2000 against the dev server on <code>main</code>.</li>
+    <li><b>Deliberately not in scope</b>No retokenizing of <code>app.css</code>, no renderer theming, no layout
+      engine changes. This is an argument about hierarchy and disclosure, not an implementation plan.</li>
+  </ul>
+</div>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en" data-mock-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLA-36 · Frame 1 — A calmer L1</title>
+<link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <p class="eyebrow">CLA-36 · Frame 1 of 4</p>
+    <h1>A calmer L1</h1>
+    <p>Today every card on the map is drawn at the same size, the same border weight, and the same three-line
+      density, whether it is the system you are reading or a dependency four hops away. The lime accent is spent
+      in nine places at once, so it stops meaning “you are here”. This frame ranks the map instead: one focus, a
+      handful of context, everything else demoted to a labelled chip.</p>
+    <p><a href="./index.html">← All frames</a></p>
+  </header>
+
+  <nav class="doc-nav">
+    <a href="./index.html">Index</a>
+    <a href="./01-calmer-l1.html" aria-current="page">1 · Calmer L1</a>
+    <a href="./02-inspector-canvas-balance.html">2 · Inspector vs canvas</a>
+    <a href="./03-dense-legibility.html">3 · Dense legibility</a>
+    <a href="./04-themes.html">4 · Themes</a>
+  </nav>
+
+  <p class="section-label">Today — shipped on main</p>
+  <p class="frame-caption"><b>/?fixture=okie&amp;backend=canvas2d</b> · screenshot, not a mock</p>
+  <img src="../cla-36-pack/01-l1-atlas-and-chrome.png" alt="Okie L1 context view as it ships today"
+       style="width:100%;border-radius:18px;border:1px solid rgba(223,239,232,0.14);display:block">
+
+  <p class="section-label">Proposed</p>
+  <p class="frame-caption"><b>Ranked canvas</b> · chrome demoted below the map · one accent per frame</p>
+
+  <div class="frame">
+
+    <div class="topbar">
+      <div class="brand"><span class="glyph">◇</span> Atlas <span class="tag">PREVIEW</span></div>
+      <div class="omnibox">⌕ Find a system, flow, or source file… <kbd>⌘K</kbd></div>
+      <div class="topbar-actions">
+        <span class="icon-btn">⤓</span><span class="icon-btn">⧉</span><span class="icon-btn">↗</span>
+        <span class="avatar">BC</span>
+      </div>
+    </div>
+
+    <div class="tabbar"><span class="tab" aria-current="page">Main</span></div>
+
+    <div class="stage with-rail" style="--inspector-w:232px">
+      <div class="canvas">
+
+        <div class="map-title">
+          <h2>Okie architecture atlas</h2>
+          <p class="crumb"><b>Okie</b> · 1 system · 3 neighbours</p>
+        </div>
+
+        <!-- Level rail: labelled, because L1..L4 alone never told anyone what they mean. -->
+        <nav class="rail labelled">
+          <span aria-current="true">L1 <em>Context</em></span>
+          <span>L2 <em>Containers</em></span>
+          <span>L3 <em>Components</em></span>
+          <span>L4 <em>Code</em></span>
+        </nav>
+
+        <!-- edges: focus rank first, periphery barely there -->
+        <div class="edge" data-rank="focus" style="left:322px;top:276px;width:96px;height:1px"></div>
+        <div class="edge-label" style="left:334px;top:266px">explores</div>
+        <div class="edge" data-rank="focus" style="left:642px;top:276px;width:104px;height:1px"></div>
+        <div class="edge-label" style="left:660px;top:266px">renders&nbsp;via</div>
+        <div class="edge" data-rank="context" style="left:322px;top:406px;width:60px;height:1px"></div>
+        <div class="edge" data-rank="context" style="left:382px;top:276px;width:1px;height:130px"></div>
+
+        <!-- focus: the one node that carries the accent -->
+        <div class="node" data-rank="focus" style="left:418px;top:222px;width:224px;height:110px">
+          <span class="kind">Software system</span>
+          <span class="name">Okie</span>
+          <span class="blurb">Evidence-backed architecture atlas with semantic zoom and deterministic guided stories.</span>
+        </div>
+
+        <!-- context: real neighbours, quieter, no summary until you ask -->
+        <div class="node" data-rank="context" style="left:150px;top:242px;width:172px;height:70px">
+          <span class="kind">Person</span>
+          <span class="name">Developer / maintainer</span>
+          <span class="badge">2 links</span>
+        </div>
+        <div class="node" data-rank="context" style="left:746px;top:242px;width:180px;height:70px">
+          <span class="kind">External system</span>
+          <span class="name">Browser graphics platform</span>
+          <span class="badge">1 link</span>
+        </div>
+        <div class="node" data-rank="context" style="left:150px;top:372px;width:172px;height:70px">
+          <span class="kind">External system</span>
+          <span class="name">Source repository</span>
+          <span class="badge">1 link</span>
+        </div>
+
+        <!-- periphery: package dependencies collapse to chips instead of full cards -->
+        <div class="node" data-rank="periphery" style="left:418px;top:406px"><span class="name">react</span></div>
+        <div class="node" data-rank="periphery" style="left:494px;top:406px"><span class="name">wgpu</span></div>
+        <div class="node" data-rank="periphery" style="left:566px;top:406px"><span class="name">mermaid</span></div>
+        <div class="node" data-rank="periphery" style="left:652px;top:406px"><span class="name">+ 5 more</span></div>
+
+        <div class="minimap">
+          <i style="left:14px;top:24px;width:22px;height:12px"></i>
+          <i style="left:76px;top:24px;width:24px;height:12px"></i>
+          <i style="left:14px;top:44px;width:22px;height:12px"></i>
+          <i class="vp" style="left:42px;top:20px;width:30px;height:20px"></i>
+        </div>
+        <div class="zoomer"><span>+</span><span>−</span><span>⤢</span></div>
+
+        <div class="dock">
+          <div class="card"><span class="spark">✦</span> <strong>Ask Atlas</strong> <kbd style="font-family:var(--atlas-font-mono);font-size:10px;color:var(--atlas-quiet)">⌘↵</kbd></div>
+          <div class="card">▶ <strong>Overview tour</strong> 13 sec</div>
+        </div>
+      </div>
+
+      <!-- Peek rail: the inspector's proposed resting state. 232px, not 376px. -->
+      <aside class="peek">
+        <div>
+          <p class="entity-id">L1 · Software system</p>
+          <p class="entity-name">Okie</p>
+          <p class="entity-blurb">Evidence-backed architecture atlas with semantic zoom.</p>
+        </div>
+        <div class="facts">
+          <div class="fact"><span class="k">Inside</span> 5 containers</div>
+          <div class="fact"><span class="k">Links out</span> 3 systems</div>
+          <div class="fact"><span class="k">Evidence</span> 2 source refs</div>
+        </div>
+        <div class="btn-row"><span class="btn primary">Open inside →</span></div>
+        <div class="more">Full details ⇥</div>
+      </aside>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><b>Three ranks, not one</b>Focus keeps the summary and the accent. Context keeps its name and a link count. Periphery collapses to a pill. Rank is graph distance from the selection, so it survives any fixture size.</li>
+    <li><b>One accent per frame</b>The lime outline, the accent glow, and the primary button all point at the same node. The brand mark, the fixture label, and the story chrome give it up.</li>
+    <li><b>Chrome demoted below the map</b>Topbar, rail, and zoom sit on <code>--mock-chrome-text</code>, which is quieter than a periphery node. Nothing in the frame competes with the map for first read.</li>
+    <li><b>The rail says what it means</b><code>L1 Context</code> beats <code>L1</code>. The labels already exist in <code>semanticLensEngine.ts</code>; today they are only exposed to screen readers.</li>
+    <li><b>Framing follows the graph</b>Fit should frame the visible projection, not the root scope. Today it frames <code>system:okie</code> and pushes the context peers off-screen — see the gap between the two images above.</li>
+    <li><b>Dependencies stop being architecture</b>Eight npm packages currently render as full external-system cards at L1. They are provenance, not structure; chips give them back their real weight.</li>
+  </ul>
+</div>
+</body>
+</html>

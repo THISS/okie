@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" data-mock-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLA-36 · Frame 3 — Dense legibility</title>
+<link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <p class="eyebrow">CLA-36 · Frame 3 of 4</p>
+    <h1>Dense legibility</h1>
+    <p>Two shots in the pack show the same failure from opposite ends. The 5,000-node stress scene degrades into
+      identical rounded rectangles behind a uniform grey haze of 15,000 edges. The real 1,778-entity self-scan
+      renders nested containers as near-invisible dark-on-dark boxes with sub-pixel labels. In both cases the map
+      is drawing everything it knows and telling you nothing.</p>
+    <p>The fix is not a better layout. It is refusing to draw what cannot be read, and saying so.</p>
+    <p><a href="./index.html">← All frames</a></p>
+  </header>
+
+  <nav class="doc-nav">
+    <a href="./index.html">Index</a>
+    <a href="./01-calmer-l1.html">1 · Calmer L1</a>
+    <a href="./02-inspector-canvas-balance.html">2 · Inspector vs canvas</a>
+    <a href="./03-dense-legibility.html" aria-current="page">3 · Dense legibility</a>
+    <a href="./04-themes.html">4 · Themes</a>
+  </nav>
+
+  <p class="section-label">Today — density collapse, twice</p>
+  <div class="pair">
+    <div>
+      <p class="frame-caption"><b>08a</b> · 5,000 nodes / 15,000 paths</p>
+      <img src="../cla-36-pack/08a-dense-graph-stress-5k.png" alt="The 5k stress fixture as it renders today"
+           style="width:100%;border-radius:14px;border:1px solid rgba(223,239,232,0.14);display:block">
+    </div>
+    <div>
+      <p class="frame-caption"><b>08b</b> · real self-scan, 1,778 entities</p>
+      <img src="../cla-36-pack/08b-dense-graph-self-scan.png" alt="The self-scan at L2 as it renders today"
+           style="width:100%;border-radius:14px;border:1px solid rgba(223,239,232,0.14);display:block">
+    </div>
+  </div>
+
+  <p class="section-label">Proposed</p>
+  <p class="frame-caption"><b>Budgeted canvas</b> · over budget, groups collapse to counted pucks and the map says why</p>
+
+  <div class="frame">
+    <div class="topbar">
+      <div class="brand"><span class="glyph">◇</span> Atlas <span class="tag">PREVIEW</span></div>
+      <div class="omnibox">⌕ Find a system, flow, or source file… <kbd>⌘K</kbd></div>
+      <div class="topbar-actions"><span class="icon-btn">⤓</span><span class="icon-btn">↗</span><span class="avatar">BC</span></div>
+    </div>
+    <div class="tabbar"><span class="tab" aria-current="page">Main</span></div>
+
+    <div class="stage with-rail" style="--inspector-w:232px">
+      <div class="canvas">
+
+        <div class="map-title"><h2>okie scan</h2><p class="crumb"><b>okie</b> · 1,778 entities · 3,724 relations</p></div>
+
+        <!-- The honest header: what is on screen, what is not, and the one action that helps. -->
+        <div class="hud">
+          <span>Showing <b>34 of 1,778</b> — grouped to stay readable</span>
+          <span class="act">Isolate a path</span>
+          <span class="act ghost">Show all</span>
+        </div>
+
+        <nav class="rail labelled">
+          <span>L1 <em>Context</em></span><span aria-current="true">L2 <em>Containers</em></span>
+          <span>L3 <em>Components</em></span><span>L4 <em>Code</em></span>
+        </nav>
+
+        <div class="edge" data-rank="focus" style="left:378px;top:322px;width:84px;height:1px"></div>
+        <div class="edge-label" style="left:392px;top:312px">emits</div>
+        <div class="edge" data-rank="focus" style="left:678px;top:322px;width:80px;height:1px"></div>
+        <div class="edge-label" style="left:686px;top:312px">drives</div>
+        <div class="edge" data-rank="context" style="left:552px;top:388px;width:1px;height:60px"></div>
+        <div class="edge" data-rank="periphery" style="left:250px;top:388px;width:1px;height:118px"></div>
+        <div class="edge" data-rank="periphery" style="left:250px;top:506px;width:120px;height:1px"></div>
+
+        <div class="node" data-rank="focus" style="left:462px;top:268px;width:216px;height:108px">
+          <span class="kind">Container</span>
+          <span class="name">@okie/web</span>
+          <span class="blurb">64 source files · owns the shell, navigation, inspection, and guided stories.</span>
+        </div>
+
+        <div class="node" data-rank="context" style="left:206px;top:288px;width:172px;height:70px">
+          <span class="kind">Container</span><span class="name">@okie/scene-compiler</span><span class="badge">31 files</span>
+        </div>
+        <div class="node" data-rank="context" style="left:758px;top:288px;width:172px;height:70px">
+          <span class="kind">Container</span><span class="name">atlas-wasm</span><span class="badge">4 files</span>
+        </div>
+
+        <!-- Everything past the budget becomes one counted puck per group. -->
+        <div class="cluster" style="left:462px;top:428px;width:216px;height:96px">
+          <span class="n">14</span>
+          <span class="l">Rust crates</span>
+          <span class="hint">1,204 symbols · click to expand</span>
+        </div>
+        <div class="cluster" style="left:190px;top:428px;width:200px;height:96px">
+          <span class="n">8</span>
+          <span class="l">npm dependencies</span>
+          <span class="hint">provenance only</span>
+        </div>
+        <div class="cluster" style="left:742px;top:428px;width:200px;height:96px">
+          <span class="n">3</span>
+          <span class="l">Test + fixture members</span>
+          <span class="hint">hidden by default</span>
+        </div>
+
+        <div class="minimap">
+          <i style="left:12px;top:20px;width:26px;height:14px"></i>
+          <i style="left:52px;top:16px;width:30px;height:20px"></i>
+          <i style="left:96px;top:20px;width:24px;height:14px"></i>
+          <i style="left:20px;top:46px;width:88px;height:16px"></i>
+          <i class="vp" style="left:44px;top:12px;width:44px;height:30px"></i>
+        </div>
+        <div class="zoomer"><span>+</span><span>−</span><span>⤢</span></div>
+
+        <div class="dock">
+          <div class="card"><span class="spark">✦</span> <strong>Ask Atlas</strong></div>
+          <div class="card">▶ <strong>okie overview</strong> 16 sec</div>
+        </div>
+      </div>
+
+      <aside class="peek">
+        <div>
+          <p class="entity-id">L2 · Container</p>
+          <p class="entity-name">@okie/web</p>
+          <p class="entity-blurb" style="color:var(--atlas-quiet);font-style:italic">No description yet — scan ran without enrichment.</p>
+        </div>
+        <div class="facts">
+          <div class="fact"><span class="k">Inside</span> 64 files</div>
+          <div class="fact"><span class="k">Links</span> 2 out · 118 internal</div>
+          <div class="fact"><span class="k">Evidence</span> package.json</div>
+        </div>
+        <div class="btn-row"><span class="btn primary">Open inside →</span></div>
+        <div class="more">Full details ⇥</div>
+      </aside>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><b>Draw a budget, not a graph</b>Pick a legibility budget in nodes-per-viewport, roughly 30–40 at this card size. Past it, group and count instead of shrinking. Shrinking is how both shots above failed.</li>
+    <li><b>Counted pucks, not ellipses</b><code>14 Rust crates · 1,204 symbols</code> is a fact a reader can act on. Fourteen unlabelled rectangles are not. The puck is a real target: click expands it in place.</li>
+    <li><b>Say what is hidden</b>The HUD reads <code>Showing 34 of 1,778</code>. The product already does this well inside isolate mode (<code>Showing 1 of 70</code>) and inside the relationships list — it just never does it for the map as a whole.</li>
+    <li><b>Promote Isolate</b>Isolate focus is the single most effective consumption tool in the product and it is currently buried inside the story player. On a dense map it should be the first offered action.</li>
+    <li><b>Edges inherit node rank</b>Periphery-to-periphery edges do not draw at all. That alone removes most of the grey haze in <code>08a</code> without touching layout.</li>
+    <li><b>Missing copy should be quiet</b>“No summary supplied.” repeated nineteen times reads as breakage. Say it once, in the panel, in the voice of a state rather than an error.</li>
+  </ul>
+</div>
+</body>
+</html>

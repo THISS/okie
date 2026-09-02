@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLA-36 · Frame 4 — Lime-on-black, light, and customer accents</title>
+<link rel="stylesheet" href="./mock.css">
+</head>
+<body>
+<div class="doc">
+
+  <header class="doc-head">
+    <p class="eyebrow">CLA-36 · Frame 4 of 4</p>
+    <h1>Lime-on-black, light, and customer accents</h1>
+    <p>Lime-on-black is the strongest brand asset the product has, and every frame in the pack proves it reads as
+      one coherent thing. It should stay as the default. But it is currently the <em>only</em> option, and three
+      real situations break it: reading an atlas in a bright room, pasting a frame into a doc or a light-mode
+      README, and embedding an atlas inside a customer's own product.</p>
+    <p>None of those need a second design system. They need the accent to become a slot and the background/text
+      pair to be flippable. The neutral ramp, the spacing, the type, and the C4 kind hues all stay exactly where
+      they are.</p>
+    <p><a href="./index.html">← All frames</a></p>
+  </header>
+
+  <nav class="doc-nav">
+    <a href="./index.html">Index</a>
+    <a href="./01-calmer-l1.html">1 · Calmer L1</a>
+    <a href="./02-inspector-canvas-balance.html">2 · Inspector vs canvas</a>
+    <a href="./03-dense-legibility.html">3 · Dense legibility</a>
+    <a href="./04-themes.html" aria-current="page">4 · Themes</a>
+  </nav>
+
+  <p class="section-label">Signature — dark, unchanged, stays the default</p>
+  <p class="frame-caption"><b>--atlas-accent: #d9ff70</b> on <b>--atlas-bg: #070a0b</b></p>
+
+  <div class="frame short" data-mock-theme="dark">
+    <div class="topbar">
+      <div class="brand"><span class="glyph">◇</span> Atlas <span class="tag">PREVIEW</span></div>
+      <div class="omnibox">⌕ Find a system, flow, or source file… <kbd>⌘K</kbd></div>
+      <div class="topbar-actions"><span class="icon-btn">⤓</span><span class="icon-btn">↗</span><span class="avatar">BC</span></div>
+    </div>
+    <div class="tabbar"><span class="tab" aria-current="page">Main</span></div>
+    <div class="stage with-rail" style="--inspector-w:232px">
+      <div class="canvas">
+        <div class="map-title"><h2>Okie architecture atlas</h2><p class="crumb"><b>Okie</b> · 1 system · 3 neighbours</p></div>
+        <nav class="rail labelled">
+          <span aria-current="true">L1 <em>Context</em></span><span>L2 <em>Containers</em></span>
+          <span>L3 <em>Components</em></span><span>L4 <em>Code</em></span>
+        </nav>
+        <div class="edge" data-rank="focus" style="left:296px;top:210px;width:80px;height:1px"></div>
+        <div class="edge" data-rank="focus" style="left:592px;top:210px;width:84px;height:1px"></div>
+        <div class="node" data-rank="focus" style="left:376px;top:158px;width:216px;height:104px">
+          <span class="kind">Software system</span><span class="name">Okie</span>
+          <span class="blurb">Evidence-backed architecture atlas with semantic zoom.</span>
+        </div>
+        <div class="node" data-rank="context" style="left:136px;top:176px;width:160px;height:68px">
+          <span class="kind">Person</span><span class="name">Developer / maintainer</span>
+        </div>
+        <div class="node" data-rank="context" style="left:676px;top:176px;width:170px;height:68px">
+          <span class="kind">External system</span><span class="name">Browser graphics platform</span>
+        </div>
+        <div class="node" data-rank="periphery" style="left:376px;top:300px"><span class="name">react</span></div>
+        <div class="node" data-rank="periphery" style="left:450px;top:300px"><span class="name">wgpu</span></div>
+        <div class="node" data-rank="periphery" style="left:522px;top:300px"><span class="name">+ 6 more</span></div>
+        <div class="zoomer"><span>+</span><span>−</span><span>⤢</span></div>
+      </div>
+      <aside class="peek">
+        <div><p class="entity-id">L1 · Software system</p><p class="entity-name">Okie</p>
+          <p class="entity-blurb">Evidence-backed architecture atlas with semantic zoom.</p></div>
+        <div class="facts">
+          <div class="fact"><span class="k">Inside</span> 5 containers</div>
+          <div class="fact"><span class="k">Links out</span> 3 systems</div>
+          <div class="fact"><span class="k">Evidence</span> 2 source refs</div>
+        </div>
+        <div class="btn-row"><span class="btn primary">Open inside →</span></div>
+      </aside>
+    </div>
+  </div>
+
+  <p class="section-label">Light — same layout, same ranks, same component tree</p>
+  <p class="frame-caption"><b>--atlas-accent: #3f7d1f</b> on <b>--atlas-bg: #f6f8f7</b> · for bright rooms, docs, print, and embeds</p>
+
+  <div class="frame short" data-mock-theme="light">
+    <div class="topbar">
+      <div class="brand"><span class="glyph">◇</span> Atlas <span class="tag">PREVIEW</span></div>
+      <div class="omnibox">⌕ Find a system, flow, or source file… <kbd>⌘K</kbd></div>
+      <div class="topbar-actions"><span class="icon-btn">⤓</span><span class="icon-btn">↗</span><span class="avatar">BC</span></div>
+    </div>
+    <div class="tabbar"><span class="tab" aria-current="page">Main</span></div>
+    <div class="stage with-rail" style="--inspector-w:232px">
+      <div class="canvas">
+        <div class="map-title"><h2>Okie architecture atlas</h2><p class="crumb"><b>Okie</b> · 1 system · 3 neighbours</p></div>
+        <nav class="rail labelled">
+          <span aria-current="true">L1 <em>Context</em></span><span>L2 <em>Containers</em></span>
+          <span>L3 <em>Components</em></span><span>L4 <em>Code</em></span>
+        </nav>
+        <div class="edge" data-rank="focus" style="left:296px;top:210px;width:80px;height:1px"></div>
+        <div class="edge" data-rank="focus" style="left:592px;top:210px;width:84px;height:1px"></div>
+        <div class="node" data-rank="focus" style="left:376px;top:158px;width:216px;height:104px">
+          <span class="kind">Software system</span><span class="name">Okie</span>
+          <span class="blurb">Evidence-backed architecture atlas with semantic zoom.</span>
+        </div>
+        <div class="node" data-rank="context" style="left:136px;top:176px;width:160px;height:68px">
+          <span class="kind">Person</span><span class="name">Developer / maintainer</span>
+        </div>
+        <div class="node" data-rank="context" style="left:676px;top:176px;width:170px;height:68px">
+          <span class="kind">External system</span><span class="name">Browser graphics platform</span>
+        </div>
+        <div class="node" data-rank="periphery" style="left:376px;top:300px"><span class="name">react</span></div>
+        <div class="node" data-rank="periphery" style="left:450px;top:300px"><span class="name">wgpu</span></div>
+        <div class="node" data-rank="periphery" style="left:522px;top:300px"><span class="name">+ 6 more</span></div>
+        <div class="zoomer"><span>+</span><span>−</span><span>⤢</span></div>
+      </div>
+      <aside class="peek">
+        <div><p class="entity-id">L1 · Software system</p><p class="entity-name">Okie</p>
+          <p class="entity-blurb">Evidence-backed architecture atlas with semantic zoom.</p></div>
+        <div class="facts">
+          <div class="fact"><span class="k">Inside</span> 5 containers</div>
+          <div class="fact"><span class="k">Links out</span> 3 systems</div>
+          <div class="fact"><span class="k">Evidence</span> 2 source refs</div>
+        </div>
+        <div class="btn-row"><span class="btn primary">Open inside →</span></div>
+      </aside>
+    </div>
+  </div>
+
+  <p class="section-label">Customer accents — one slot, four tenants</p>
+  <p class="frame-caption"><b>Only --atlas-accent* moves.</b> Neutrals, kind hues, type, and spacing are shared.</p>
+
+  <div class="trio" style="grid-template-columns:repeat(4,1fr)">
+    <div class="frame short" data-mock-theme="dark" style="height:210px;grid-template-rows:34px 1fr;--atlas-accent:#d9ff70;--atlas-accent-strong:#bfee3e;--atlas-accent-soft:rgba(217,255,112,0.1);--mock-rank-focus-line:#d9ff70;--mock-edge-focus:rgba(217,255,112,0.55)">
+      <div class="topbar" style="padding:0 12px"><div class="brand"><span class="glyph">◇</span> Atlas</div></div>
+      <div class="stage" style="grid-template-columns:1fr"><div class="canvas">
+        <div class="edge" data-rank="focus" style="left:44px;top:88px;width:44px;height:1px"></div>
+        <div class="node" data-rank="focus" style="left:88px;top:56px;width:130px;height:64px"><span class="kind">System</span><span class="name">Okie</span></div>
+        <div class="node" data-rank="periphery" style="left:88px;top:132px"><span class="name">react</span></div>
+      </div></div>
+    </div>
+    <div class="frame short" data-mock-theme="dark" style="height:210px;grid-template-rows:34px 1fr;--atlas-accent:#79dfd4;--atlas-accent-strong:#4fc7ba;--atlas-accent-soft:rgba(121,223,212,0.1);--mock-rank-focus-line:#79dfd4;--mock-edge-focus:rgba(121,223,212,0.55)">
+      <div class="topbar" style="padding:0 12px"><div class="brand"><span class="glyph">◇</span> Atlas</div></div>
+      <div class="stage" style="grid-template-columns:1fr"><div class="canvas">
+        <div class="edge" data-rank="focus" style="left:44px;top:88px;width:44px;height:1px"></div>
+        <div class="node" data-rank="focus" style="left:88px;top:56px;width:130px;height:64px"><span class="kind">System</span><span class="name">Tenant A</span></div>
+        <div class="node" data-rank="periphery" style="left:88px;top:132px"><span class="name">react</span></div>
+      </div></div>
+    </div>
+    <div class="frame short" data-mock-theme="dark" style="height:210px;grid-template-rows:34px 1fr;--atlas-accent:#b9a1ff;--atlas-accent-strong:#9b7dff;--atlas-accent-soft:rgba(185,161,255,0.1);--mock-rank-focus-line:#b9a1ff;--mock-edge-focus:rgba(185,161,255,0.55)">
+      <div class="topbar" style="padding:0 12px"><div class="brand"><span class="glyph">◇</span> Atlas</div></div>
+      <div class="stage" style="grid-template-columns:1fr"><div class="canvas">
+        <div class="edge" data-rank="focus" style="left:44px;top:88px;width:44px;height:1px"></div>
+        <div class="node" data-rank="focus" style="left:88px;top:56px;width:130px;height:64px"><span class="kind">System</span><span class="name">Tenant B</span></div>
+        <div class="node" data-rank="periphery" style="left:88px;top:132px"><span class="name">react</span></div>
+      </div></div>
+    </div>
+    <div class="frame short" data-mock-theme="light" style="height:210px;grid-template-rows:34px 1fr;--atlas-accent:#2f5fc4;--atlas-accent-strong:#254da4;--atlas-accent-soft:rgba(47,95,196,0.12);--mock-rank-focus-line:#2f5fc4;--mock-edge-focus:rgba(47,95,196,0.6)">
+      <div class="topbar" style="padding:0 12px"><div class="brand"><span class="glyph">◇</span> Atlas</div></div>
+      <div class="stage" style="grid-template-columns:1fr"><div class="canvas">
+        <div class="edge" data-rank="focus" style="left:44px;top:88px;width:44px;height:1px"></div>
+        <div class="node" data-rank="focus" style="left:88px;top:56px;width:130px;height:64px"><span class="kind">System</span><span class="name">Tenant C</span></div>
+        <div class="node" data-rank="periphery" style="left:88px;top:132px"><span class="name">react</span></div>
+      </div></div>
+    </div>
+  </div>
+
+  <p class="section-label">The delta, in tokens</p>
+  <div class="swatches">
+    <div class="swatch"><div class="fill" style="background:#070a0b"></div><div class="meta"><code>--atlas-bg</code><small>#070a0b → #f6f8f7</small></div></div>
+    <div class="swatch"><div class="fill" style="background:#f1f7f4"></div><div class="meta"><code>--atlas-text</code><small>#f1f7f4 → #101a17</small></div></div>
+    <div class="swatch"><div class="fill" style="background:#d9ff70"></div><div class="meta"><code>--atlas-accent</code><small>#d9ff70 → #3f7d1f</small></div></div>
+    <div class="swatch"><div class="fill" style="background:#0d1213"></div><div class="meta"><code>--atlas-panel-solid</code><small>#0d1213 → #ffffff</small></div></div>
+    <div class="swatch"><div class="fill" style="background:rgba(223,239,232,0.19)"></div><div class="meta"><code>--atlas-line-strong</code><small>light-on-dark → dark-on-light</small></div></div>
+    <div class="swatch"><div class="fill" style="background:#7ca9ff"></div><div class="meta"><code>--atlas-blue</code><small>kind hue · darkened only</small></div></div>
+  </div>
+
+  <ul class="notes">
+    <li><b>Dark stays the default</b>It is the product's signature and it survives every frame in the pack. Nothing here proposes replacing it.</li>
+    <li><b>Light is a distribution requirement, not a preference</b>Public share URLs, oEmbed cards, and screenshots pasted into docs all land on light surfaces today. A dark-only atlas arrives as a black hole in someone else's page.</li>
+    <li><b>The accent must become a slot</b>Once <code>--atlas-accent</code> means exactly one thing — “the node you are on” — swapping it per tenant is a one-token change with no layout consequence. The four tiles above differ only in that token.</li>
+    <li><b>Kind hues survive both themes</b>Person, container, component, and external system need to stay distinguishable in light mode; the cyan/blue/purple/orange ramp only needs darkening, not re-authoring.</li>
+    <li><b>Contrast is the real bug</b><code>--atlas-line</code> at 10% alpha on <code>#070a0b</code> is why the self-scan boxes vanish in <code>08b</code>. Whatever happens to theming, resting borders need more contrast than they have now.</li>
+    <li><b>Out of scope here</b>This frame does not retokenize <code>apps/web/src/app.css</code> and does not teach the canvas renderer about themes. Both are real follow-on work; the token seam is what is being argued for.</li>
+  </ul>
+</div>
+</body>
+</html>
