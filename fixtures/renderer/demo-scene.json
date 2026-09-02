@@ -3535,7 +3535,7 @@
                 "y": 294.11139746729725
               },
               "maxWidth": 17.55355260429907,
-              "content": "packages/scene-compiler/src/generat…",
+              "content": "packages/…/src/generate-fixtures.ts",
               "fontFamily": "IBM Plex Mono SemiBold",
               "fontSize": 0.8022922636103151,
               "color": [
