@@ -6,14 +6,15 @@ import {
   handleOembedRequest,
   OEMBED_PATH,
   oembedAllowedOriginsFromEnv,
-  oembedRequestOrigin,
   parsePublicAtlasOembedUrl,
 } from './src/oembed';
 import {
   handleOgImageRequest,
   handleShareHtmlRequest,
   isOgImagePath,
+  LOCAL_SCAN_ORIGIN,
   resolvePublicAtlasShare,
+  trustedShareOrigin,
 } from './src/openGraph';
 import { isPublicAtlasViewPath as isSharePath } from './src/hostedAtlas';
 
@@ -25,7 +26,7 @@ const scanServiceProxy = {
   '/api': 'http://127.0.0.1:4180',
   '/scan': 'http://127.0.0.1:4180',
 };
-const SCAN_ORIGIN = 'http://127.0.0.1:4180';
+const SCAN_ORIGIN = LOCAL_SCAN_ORIGIN;
 
 function requestPathname(url: string): string {
   try {
@@ -61,8 +62,8 @@ function okieOembedPlugin(): Plugin {
       }
       void (async () => {
         const url = new URL(request.url ?? OEMBED_PATH, 'http://localhost');
-        const origin = oembedRequestOrigin(request.headers);
         const allowedOrigins = oembedAllowedOriginsFromEnv(process.env);
+        const origin = trustedShareOrigin(request.headers, allowedOrigins);
         const rawUrl = url.searchParams.get('url');
         const target = rawUrl && origin
           ? parsePublicAtlasOembedUrl(rawUrl, origin, allowedOrigins)
@@ -101,7 +102,7 @@ function okieOpenGraphPlugin(): Plugin {
         return;
       }
       void (async () => {
-        const origin = oembedRequestOrigin(request.headers);
+        const origin = trustedShareOrigin(request.headers, oembedAllowedOriginsFromEnv(process.env));
         const lookup = publicAtlasLookup(SCAN_ORIGIN);
         if (isImage) {
           writeNodeResponse(response, await handleOgImageRequest({
@@ -121,7 +122,7 @@ function okieOpenGraphPlugin(): Plugin {
         writeNodeResponse(response, await handleShareHtmlRequest({
           method: request.method ?? 'GET',
           pathname,
-          search: new URL(request.url ?? pathname, 'http://localhost').search,
+          search: '',
           requestOrigin: origin ?? '',
           indexHtml,
           allowedOrigins: oembedAllowedOriginsFromEnv(process.env),

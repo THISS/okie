@@ -1,6 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { oembedRequestOrigin } from '../src/oembed';
-import { handleOgImageRequest, resolvePublicAtlasShare } from '../src/openGraph';
+import { oembedAllowedOriginsFromEnv } from '../src/oembed';
+import {
+  defaultIsPublicAtlas,
+  handleOgImageRequest,
+  resolvePublicAtlasShare,
+  trustedScanLookupOrigin,
+  trustedShareOrigin,
+} from '../src/openGraph';
 
 /**
  * Vercel serverless stand-in for the Vite `/og/<owner>/<repo>` plugin.
@@ -11,12 +17,16 @@ export default function handler(request: IncomingMessage, response: ServerRespon
   const url = new URL(request.url ?? '/og', 'http://localhost');
   const owner = url.searchParams.get('owner') ?? '';
   const repo = url.searchParams.get('repo') ?? '';
-  const origin = oembedRequestOrigin(request.headers) ?? '';
+  const allowedOrigins = oembedAllowedOriginsFromEnv(process.env);
+  const origin = trustedShareOrigin(request.headers, allowedOrigins) ?? '';
+  const scanOrigin = trustedScanLookupOrigin(origin, allowedOrigins);
   void (async () => {
     const result = await handleOgImageRequest({
       method: request.method ?? 'GET',
       pathname: `/og/${owner}/${repo}`,
-      isPublicAtlas: (atlasOwner, atlasRepo) => resolvePublicAtlasShare(atlasOwner, atlasRepo, origin),
+      isPublicAtlas: (atlasOwner, atlasRepo) => scanOrigin
+        ? resolvePublicAtlasShare(atlasOwner, atlasRepo, scanOrigin)
+        : defaultIsPublicAtlas(atlasOwner, atlasRepo),
     });
     response.statusCode = result.status;
     for (const [name, value] of Object.entries(result.headers)) {

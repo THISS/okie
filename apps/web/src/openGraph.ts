@@ -4,7 +4,9 @@ import {
   OEMBED_CACHE_AGE_SECONDS,
   OEMBED_JSON_TYPE,
   OEMBED_PROVIDER_NAME,
+  effectiveOembedPort,
   isAllowedOembedRequestOrigin,
+  isLoopbackHostname,
   oembedRequestOrigin,
   parsePublicAtlasOembedUrl,
   publicAtlasHref,
@@ -28,6 +30,8 @@ import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, renderAtlasCardPng } from './atlasCard
  */
 
 export const OG_IMAGE_ROUTE_PREFIX = '/og';
+/** Local scan process — the only loopback origin used for published-snapshot lookups. */
+export const LOCAL_SCAN_ORIGIN = 'http://127.0.0.1:4180';
 export const ATLAS_NOT_FOUND_BODY = `<!doctype html>
 <html lang="en">
   <head>
@@ -103,6 +107,58 @@ export function defaultIsPublicAtlas(owner: string, repo: string): boolean {
   return isDogfoodAtlas(owner, repo);
 }
 
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const token = raw?.split(',')[0]?.trim();
+  return token || undefined;
+}
+
+/**
+ * Origin used in og:url / og:image. An unallowlisted `X-Forwarded-Host` cannot
+ * replace `Host` (forged loopback ports would otherwise leak into meta).
+ */
+export function trustedShareOrigin(
+  headers: OembedHeaderBag,
+  allowedOrigins: readonly string[] = [],
+): string | undefined {
+  const proto = firstHeader(headers['x-forwarded-proto']) === 'https' ? 'https' : 'http';
+  const host = firstHeader(headers.host);
+  const forwarded = firstHeader(headers['x-forwarded-host']);
+  const fromHost = host && !/[@\\/\s]/.test(host) && !host.includes('://')
+    ? sanitizeOembedOrigin(`${proto}://${host}`)
+    : undefined;
+  const fromForwarded = forwarded && !/[@\\/\s]/.test(forwarded) && !forwarded.includes('://')
+    ? sanitizeOembedOrigin(`${proto}://${forwarded}`)
+    : undefined;
+  if (fromForwarded && allowedOrigins.includes(fromForwarded)) return fromForwarded;
+  if (fromHost && isAllowedOembedRequestOrigin(fromHost, allowedOrigins)) return fromHost;
+  return undefined;
+}
+
+/** Snapshot lookup origin: known scan bind on loopback, else an allowlisted https origin. */
+export function trustedScanLookupOrigin(
+  requestOrigin: string,
+  allowedOrigins: readonly string[] = [],
+): string | undefined {
+  const origin = sanitizeOembedOrigin(requestOrigin);
+  if (!origin) return undefined;
+  const url = new URL(origin);
+  if (isLoopbackHostname(url.hostname)) return LOCAL_SCAN_ORIGIN;
+  if (allowedOrigins.includes(origin) && url.protocol === 'https:') return origin;
+  return undefined;
+}
+
+export function isTrustedScanOrigin(raw: string): boolean {
+  const origin = sanitizeOembedOrigin(raw);
+  if (!origin) return false;
+  const url = new URL(origin);
+  if (url.username || url.password) return false;
+  if (isLoopbackHostname(url.hostname)) {
+    return url.protocol === 'http:' && effectiveOembedPort(url) === '4180';
+  }
+  return url.protocol === 'https:';
+}
+
 export async function resolvePublicAtlasShare(
   owner: string,
   repo: string,
@@ -110,6 +166,7 @@ export async function resolvePublicAtlasShare(
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> {
   if (isDogfoodAtlas(owner, repo)) return true;
+  if (!isTrustedScanOrigin(scanOrigin)) return false;
   const snapshot = new URL(`/scan/${encodeURIComponent(repoSlugFor(owner, repo))}/snapshot.json`, scanOrigin);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 1500);
@@ -153,19 +210,21 @@ export function parseSharePath(
 }
 
 export function buildOpenGraphTags(target: PublicAtlasOembedTarget): OpenGraphTags {
-  const title = publicAtlasTitle(target);
-  const description = publicAtlasDescription(target);
-  const image = publicAtlasOgImageHref(target);
+  const canonical = { ...target, search: '' };
+  const title = publicAtlasTitle(canonical);
+  const description = publicAtlasDescription(canonical);
+  const pageHref = publicAtlasHref(canonical);
+  const image = publicAtlasOgImageHref(canonical);
   return {
     title,
     description,
-    url: publicAtlasHref(target),
+    url: pageHref,
     image,
     imageAlt: title,
     imageWidth: OG_IMAGE_WIDTH,
     imageHeight: OG_IMAGE_HEIGHT,
     siteName: OEMBED_PROVIDER_NAME,
-    oembedHref: publicAtlasOembedHref(publicAtlasHref(target)),
+    oembedHref: publicAtlasOembedHref(pageHref),
   };
 }
 

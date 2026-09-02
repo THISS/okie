@@ -7,10 +7,13 @@ import {
   handleOgImageRequest,
   handleShareHtmlRequest,
   injectPublicAtlasOpenGraph,
+  LOCAL_SCAN_ORIGIN,
   openGraphLeaksSecrets,
   parseOgImagePath,
   publicAtlasDescription,
   resolvePublicAtlasShare,
+  trustedScanLookupOrigin,
+  trustedShareOrigin,
 } from './openGraph';
 import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, pngDimensions, pngSignatureOk } from './atlasCard';
 
@@ -135,6 +138,38 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     expect(await resolvePublicAtlasShare('acme', 'app', 'http://127.0.0.1:4180', async () => new Response('{}', { status: 200 }))).toBe(true);
   });
 
+  it('does not fetch a caller-supplied loopback port and omits query secrets from meta', async () => {
+    let called = 0;
+    const fetchImpl: typeof fetch = async () => {
+      called += 1;
+      return new Response('{}', { status: 200 });
+    };
+    expect(await resolvePublicAtlasShare('acme', 'app', 'http://127.0.0.1:65534', fetchImpl)).toBe(false);
+    expect(called).toBe(0);
+    expect(trustedScanLookupOrigin('http://127.0.0.1:65534')).toBe(LOCAL_SCAN_ORIGIN);
+    expect(trustedShareOrigin({
+      host: 'localhost:4173',
+      'x-forwarded-host': '127.0.0.1:65534',
+    })).toBe('http://localhost:4173');
+    expect(trustedShareOrigin({
+      'x-forwarded-host': '127.0.0.1:65534',
+    })).toBeUndefined();
+
+    const result = await handleShareHtmlRequest({
+      method: 'GET',
+      pathname: '/r/THISS/okie',
+      search: '?api_key=okie-test-llm-key-cla39-fake&nav=1',
+      requestOrigin: ORIGIN,
+      indexHtml: INDEX,
+    });
+    const html = result.body as string;
+    expect(result.status).toBe(200);
+    expect(html).toContain(`property="og:url" content="${ORIGIN}/r/THISS/okie"`);
+    expect(html).not.toContain('api_key');
+    expect(html).not.toContain('okie-test-llm-key-cla39-fake');
+    expect(html).not.toContain('nav=1');
+  });
+
   it('strips the generic shell title when injecting tags', () => {
     const tags = buildOpenGraphTags({
       owner: 'THISS',
@@ -161,8 +196,9 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     ]));
     const shareFn = readFileSync(new URL('../api/share.ts', import.meta.url), 'utf8');
     const ogFn = readFileSync(new URL('../api/og.ts', import.meta.url), 'utf8');
-    expect(shareFn).toContain('handleShareHtmlRequest');
-    expect(ogFn).toContain('handleOgImageRequest');
+    expect(shareFn).toContain('trustedShareOrigin');
+    expect(shareFn).toContain('trustedScanLookupOrigin');
+    expect(ogFn).toContain('trustedScanLookupOrigin');
     expect(shareFn).not.toMatch(/OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
     expect(ogFn).not.toMatch(/OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
   });
