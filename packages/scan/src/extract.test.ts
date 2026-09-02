@@ -4,8 +4,14 @@ import { validateArchitectureExtraction } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import {
   cargoPathDependencies,
+  collectExtractedArchitecture,
+  cyclomaticComplexity,
+  cyclomaticForDeclaration,
+  cyclomaticIsFlagged,
+  CYCLOMATIC_FLAG_THRESHOLD,
   dynamicImports,
   extractArchitecture,
+  attachCyclomaticComplexity,
   moduleImports,
   parseSource,
   resolvePackageImport,
@@ -434,3 +440,153 @@ test("Cargo path dependencies become container edges between crate units", () =>
   assert.equal(edge!.evidence[0]!.source.path, "crates/engine-wasm/Cargo.toml");
   assert.equal(edge!.evidence[0]!.source.startLine, 2);
 });
+
+function declarationNamed(source: string, name: string) {
+  const file = parseSource("m.ts", source);
+  const declaration = topLevelDeclarations(file).find(item => item.name === name);
+  assert.ok(declaration, `expected top-level declaration ${name}`);
+  return declaration!;
+}
+
+test("McCabe cyclomatic walks the same createSourceFile tree as L4 minting", () => {
+  assert.equal(CYCLOMATIC_FLAG_THRESHOLD, 6, "product flag is Complexity Kink ~6.5, not McCabe 10");
+  assert.equal(cyclomaticForDeclaration(declarationNamed("export function simple() { return 1; }\n", "simple")), 1);
+  assert.equal(
+    cyclomaticForDeclaration(declarationNamed(
+      "export function branched(x: number) {\n  if (x > 0) return 1;\n  if (x < 0) return -1;\n  return 0;\n}\n",
+      "branched",
+    )),
+    3,
+  );
+  assert.equal(
+    cyclomaticForDeclaration(declarationNamed(
+      "export const gate = (a: boolean, b: boolean, c: boolean) => a && b || c;\n",
+      "gate",
+    )),
+    3,
+  );
+  assert.equal(
+    cyclomaticForDeclaration(declarationNamed(
+      [
+        "export function pick(x: number) {",
+        "  switch (x) {",
+        "    case 1: return 'a';",
+        "    case 2: return 'b';",
+        "    default: return 'c';",
+        "  }",
+        "}",
+      ].join("\n"),
+      "pick",
+    )),
+    3,
+  );
+  // Nested helpers are not L4 nodes, so their branches belong to the top-level entity.
+  assert.equal(
+    cyclomaticForDeclaration(declarationNamed(
+      "export function outer() { function inner() { if (true) { return 1; } } if (false) { return 0; } }\n",
+      "outer",
+    )),
+    3,
+  );
+  assert.equal(cyclomaticForDeclaration(declarationNamed("export type Alias = string;\n", "Alias")), undefined);
+  assert.equal(cyclomaticForDeclaration(declarationNamed("export interface Box { x: number }\n", "Box")), undefined);
+  assert.equal(cyclomaticForDeclaration(declarationNamed("export class Cls { m() { if (true) { return 1; } } }\n", "Cls")), undefined);
+  assert.equal(cyclomaticForDeclaration(declarationNamed("export const A = 1;\n", "A")), undefined);
+  assert.equal(cyclomaticComplexity(parseSource("m.ts", "const x = 1;\n")), 1);
+});
+
+test("cyclomatic flags complexity > 6 and leaves 6 unflagged", () => {
+  const sixIfs = Array.from({ length: 5 }, (_, index) => `  if (x === ${index}) return ${index};`).join("\n");
+  const sevenIfs = Array.from({ length: 6 }, (_, index) => `  if (x === ${index}) return ${index};`).join("\n");
+  const atThreshold = cyclomaticForDeclaration(declarationNamed(`export function atSix(x: number) {\n${sixIfs}\n  return x;\n}\n`, "atSix"));
+  const overThreshold = cyclomaticForDeclaration(declarationNamed(`export function overSix(x: number) {\n${sevenIfs}\n  return x;\n}\n`, "overSix"));
+  assert.equal(atThreshold, 6);
+  assert.equal(overThreshold, 7);
+  assert.equal(cyclomaticIsFlagged(atThreshold!), false);
+  assert.equal(cyclomaticIsFlagged(overThreshold!), true);
+  assert.equal(cyclomaticIsFlagged(10), true, "McCabe 10 is above the product flag, not the threshold itself");
+});
+
+test("extract attaches McCabe on existing code entities and does not mint new ones", () => {
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "pkg/a/src/index.ts": [
+      "export function alpha() { return 1; }",
+      "export const A = 1;",
+      "export type Alias = string;",
+      "export function tangled(x: number) {",
+      "  if (x === 1) return 1;",
+      "  if (x === 2) return 2;",
+      "  if (x === 3) return 3;",
+      "  if (x === 4) return 4;",
+      "  if (x === 5) return 5;",
+      "  if (x === 6) return 6;",
+      "  return x;",
+      "}",
+    ].join("\n"),
+    "pkg/b/src/main.ts": "import { alpha } from '@acme/a';\nexport class Beta {}\n",
+  };
+  const collected = collectExtractedArchitecture({
+    discovery: syntheticDiscovery(),
+    readFile: path => {
+      const text = files[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    },
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  const extraction = collected.extraction;
+  assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  assert.ok(extraction.entities.every(entity => !("cyclomaticComplexity" in entity)), "extraction stays overlay-free");
+  const ids = extraction.entities.map(entity => entity.id).sort();
+  const baseline = extractArchitecture({
+    discovery: syntheticDiscovery(),
+    readFile: path => {
+      const text = files[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    },
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  assert.deepEqual(baseline.entities.map(entity => entity.id).sort(), ids);
+  const alpha = extraction.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alpha")!;
+  const tangled = extraction.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:tangled")!;
+  const alias = extraction.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alias")!;
+  const constant = extraction.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:a")!;
+  const cls = extraction.entities.find(entity => entity.id === "code:pkg-b-src-main-ts:beta")!;
+  assert.equal(collected.cyclomaticById.get(alpha.id), 1);
+  assert.equal(collected.cyclomaticById.get(tangled.id), 7);
+  assert.equal(cyclomaticIsFlagged(collected.cyclomaticById.get(tangled.id)!), true);
+  assert.equal(collected.cyclomaticById.has(alias.id), false);
+  assert.equal(collected.cyclomaticById.has(constant.id), false);
+  assert.equal(collected.cyclomaticById.has(cls.id), false);
+  assert.ok([...collected.cyclomaticById.keys()].every(id => ids.includes(id)), "cyclomatic never invents entity ids");
+});
+
+test("cyclomatic overlay writes the number onto existing snapshot entities only", () => {
+  const snapshot = {
+    schemaVersion: 1 as const,
+    id: "snapshot:acme",
+    repositoryId: "repo:acme",
+    commitSha: "abc123",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    entities: [
+      { id: "system:acme", kind: "softwareSystem" as const, name: "Acme", sourceRefs: [] },
+      { id: "code:pkg-a-src-index-ts:alpha", kind: "code" as const, name: "alpha", sourceRefs: [] },
+      { id: "code:pkg-a-src-index-ts:alias", kind: "code" as const, name: "Alias", sourceRefs: [] },
+    ],
+    relations: [],
+  };
+  const overlaid = attachCyclomaticComplexity(snapshot, new Map([
+    ["code:pkg-a-src-index-ts:alpha", 1],
+    ["code:invented", 9],
+  ]));
+  assert.deepEqual(overlaid.entities.map(entity => entity.id), snapshot.entities.map(entity => entity.id));
+  assert.equal(overlaid.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alpha")?.cyclomaticComplexity, 1);
+  assert.equal(overlaid.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alias")?.cyclomaticComplexity, undefined);
+  assert.equal(overlaid.entities.some(entity => entity.id === "code:invented"), false);
+});
+
+

@@ -185,6 +185,7 @@ test("strict extraction validation rejects pipeline-owned and geometric fields",
   entities[0]!.fingerprint = "LLM-must-not-author-this";
   entities[0]!.sourceExcerpts = [];
   entities[0]!.owners = ["@llm-must-not-author-this"];
+  entities[0]!.cyclomaticComplexity = 9;
   const refs = entities[0]!.sourceRefs as Array<Record<string, unknown>>;
   refs[0]!.commitSha = "LLM-must-not-pin-this";
   const relations = value.relations as Array<Record<string, unknown>>;
@@ -196,6 +197,7 @@ test("strict extraction validation rejects pipeline-owned and geometric fields",
   assert.ok(paths.includes("entities[0].fingerprint"));
   assert.ok(paths.includes("entities[0].sourceExcerpts"));
   assert.ok(paths.includes("entities[0].owners"));
+  assert.ok(paths.includes("entities[0].cyclomaticComplexity"));
   assert.ok(paths.includes("entities[0].sourceRefs[0].commitSha"));
   assert.ok(paths.includes("relations[0].route"));
 });

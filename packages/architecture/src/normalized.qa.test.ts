@@ -226,6 +226,7 @@ test('round-trip selectors preserve evidence, layout, story step order, and dedu
     selectedSnapshot.entities.find(entity => entity.id === 'component:orders')?.owners,
     ['@commerce/orders'],
   );
+  assert.equal(selectedSnapshot.entities.find(entity => entity.id === 'component:orders')?.cyclomaticComplexity, undefined);
   assert.deepEqual(selectedView.entityIds, [
     'component:orders', 'container:api', 'data:ledger', 'external:payments', 'system:commerce',
   ]);
@@ -286,3 +287,31 @@ test('selectors fail explicitly for unknown snapshot, view, story, and out-of-vi
   assert.throws(() => selectArchitectureStory(normalized, 'story:missing'), /Unknown normalized story/);
   assert.throws(() => selectScopedView(normalized, view.id, 'component:missing'), /outside normalized view/);
 });
+
+test('normalize round-trip preserves observed cyclomatic on a code entity', () => {
+  const local: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: 'snapshot:cyc',
+    repositoryId: 'repo:cyc',
+    commitSha: 'abc123',
+    generatedAt: '2026-07-14T00:00:00.000Z',
+    entities: [
+      { id: 'system:cyc', kind: 'softwareSystem', name: 'Cyc', sourceRefs: [] },
+      { id: 'container:lib', kind: 'container', parentId: 'system:cyc', name: 'Lib', sourceRefs: [] },
+      { id: 'component:lib-src', kind: 'component', parentId: 'container:lib', name: 'src', sourceRefs: [source] },
+      {
+        id: 'code:lib-src:handler',
+        kind: 'code',
+        parentId: 'component:lib-src',
+        name: 'handler',
+        sourceRefs: [source],
+        cyclomaticComplexity: 7,
+      },
+    ],
+    relations: [],
+  };
+  const selected = selectArchitectureSnapshot(normalizeArchitecture({ snapshot: local }), local.id);
+  assert.equal(selected.entities.find(entity => entity.id === 'code:lib-src:handler')?.cyclomaticComplexity, 7);
+  assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.cyclomaticComplexity, undefined);
+});
+

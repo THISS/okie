@@ -38,7 +38,7 @@
  *       https://webmachinelearning.github.io/webmcp/
  */
 
-import { INSPECTOR_EMPTY_SUMMARY } from './inspector/inspectorPanel';
+import { INSPECTOR_EMPTY_SUMMARY, CYCLOMATIC_FLAG_THRESHOLD } from './inspector/inspectorPanel';
 import { readDemoQuery } from './renderer/query';
 import { parseAppRoute } from './renderer/route';
 
@@ -173,7 +173,7 @@ export const ASK_ATLAS_INPUT_SCHEMA = {
 export const GET_ATLAS_CONTEXT_TOOL_NAME = 'get_atlas_context';
 export const GET_ATLAS_CONTEXT_TOOL_TITLE = 'Get atlas context';
 export const GET_ATLAS_CONTEXT_TOOL_DESCRIPTION =
-  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity, whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
+  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity (including observed cyclomatic complexity when present), whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
 
 export const GET_ATLAS_CONTEXT_INPUT_SCHEMA = {
   type: 'object',
@@ -193,10 +193,20 @@ export type AtlasEnrichmentStatus = (typeof ATLAS_ENRICHMENT_STATUSES)[number];
 
 export type AtlasIdentity = { owner: string; repo: string } | { fixtureId: string };
 
+export type AtlasSelectedEntityFacts = {
+  id: string;
+  name: string;
+  kind: string;
+  detail?: C4Level;
+  cyclomaticComplexity?: number;
+  cyclomaticFlagged?: boolean;
+};
+
 export type AtlasPageContextInput = {
   atlas: AtlasIdentity;
   c4Level: C4Level;
   selectedEntityId: string | null;
+  selectedEntity?: AtlasSelectedEntityFacts | null;
   tourPlaying: boolean;
   enrichmentStatus: AtlasEnrichmentStatus;
   scanAvailable: boolean;
@@ -281,6 +291,7 @@ export type GetAtlasContextSuccess = {
   atlas: AtlasIdentity;
   c4Level: C4Level;
   selectedEntityId: string | null;
+  selectedEntity?: AtlasSelectedEntityFacts;
   tourPlaying: boolean;
   enrichmentStatus: AtlasEnrichmentStatus;
   scanAvailable: boolean;
@@ -546,6 +557,27 @@ function publicSelectedEntityId(value: string | null): string | null {
   return entityId;
 }
 
+const SELECTED_ENTITY_NAME_MAX = 160;
+const SELECTED_ENTITY_KIND_MAX = 40;
+
+function publicSelectedEntity(value: AtlasSelectedEntityFacts | null | undefined): AtlasSelectedEntityFacts | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const id = publicSelectedEntityId(value.id);
+  if (!id) return undefined;
+  const name = typeof value.name === 'string' ? value.name.trim().slice(0, SELECTED_ENTITY_NAME_MAX) : '';
+  const kind = typeof value.kind === 'string' ? value.kind.trim().slice(0, SELECTED_ENTITY_KIND_MAX) : '';
+  if (!name || !kind) return undefined;
+  const facts: AtlasSelectedEntityFacts = { id, name, kind };
+  if (typeof value.detail === 'string' && C4_LEVEL_SET.has(value.detail)) facts.detail = value.detail;
+  if (typeof value.cyclomaticComplexity === 'number'
+    && Number.isInteger(value.cyclomaticComplexity)
+    && value.cyclomaticComplexity >= 1) {
+    facts.cyclomaticComplexity = value.cyclomaticComplexity;
+    facts.cyclomaticFlagged = value.cyclomaticComplexity > CYCLOMATIC_FLAG_THRESHOLD;
+  }
+  return facts;
+}
+
 function publicEnrichmentStatus(value: unknown): AtlasEnrichmentStatus {
   return typeof value === 'string' && ENRICHMENT_STATUS_SET.has(value)
     ? value as AtlasEnrichmentStatus
@@ -561,12 +593,14 @@ function publicC4Level(value: unknown): C4Level {
  * tokens, spend) are dropped rather than forwarded to the tool result.
  */
 export function atlasPageContext(input: AtlasPageContextInput): GetAtlasContextSuccess {
+  const selectedEntity = publicSelectedEntity(input.selectedEntity);
   return {
     ok: true,
     tool: GET_ATLAS_CONTEXT_TOOL_NAME,
     atlas: publicAtlasIdentity(input.atlas),
     c4Level: publicC4Level(input.c4Level),
     selectedEntityId: publicSelectedEntityId(input.selectedEntityId),
+    ...(selectedEntity ? { selectedEntity } : {}),
     tourPlaying: Boolean(input.tourPlaying),
     enrichmentStatus: publicEnrichmentStatus(input.enrichmentStatus),
     scanAvailable: Boolean(input.scanAvailable),

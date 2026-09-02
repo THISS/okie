@@ -122,6 +122,28 @@ describe('Ask packets carry accepted summaries only', () => {
     expect(context.relations.map(relation => relation.id)).toEqual(['relation:shell-app']);
     expect(context.relations.some(relation => relation.id === 'relation:cross')).toBe(false);
   });
+
+  it('carries observed cyclomatic on the same packets, flagging complexity over 6', () => {
+    const context = buildAskContext({
+      entities: [
+        { id: 'component:web-shell', name: 'Application shell', kind: 'component', parentId: 'container:web-app', responsibility: 'Hosts Ask Atlas.' },
+        { id: 'code:simple', name: 'simple', kind: 'component', parentId: 'component:web-shell', cyclomaticComplexity: 1, source: 'pkg/a.ts' },
+        { id: 'code:tangled', name: 'tangled', kind: 'component', parentId: 'component:web-shell', cyclomaticComplexity: 7, source: 'pkg/b.ts' },
+      ],
+      selectedId: 'component:web-shell',
+      isolateActive: true,
+      isolatedIds: ['component:web-shell', 'code:simple', 'code:tangled'],
+    });
+    expect(context.packets.find(packet => packet.id === 'code:simple')).toMatchObject({
+      cyclomaticComplexity: 1,
+      cyclomaticFlagged: false,
+    });
+    expect(context.packets.find(packet => packet.id === 'code:tangled')).toMatchObject({
+      cyclomaticComplexity: 7,
+      cyclomaticFlagged: true,
+    });
+    expect(context.packets.find(packet => packet.id === 'component:web-shell')?.cyclomaticComplexity).toBeUndefined();
+  });
 });
 
 describe('Ask HTTP client', () => {

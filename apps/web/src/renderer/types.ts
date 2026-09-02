@@ -42,6 +42,8 @@ export type SceneEntity = {
   tags?: string[];
   /** Observed CODEOWNERS (or equivalent) path owners. Omitted when the repo has none. */
   owners?: string[];
+  /** Observed McCabe cyclomatic complexity. Omitted when the entity is not function-like. */
+  cyclomaticComplexity?: number;
 };
 
 export type SceneRelation = {

@@ -1,5 +1,12 @@
 export const ARCHITECTURE_SCHEMA_VERSION = 1 as const;
 
+/**
+ * Product flag for observed McCabe cyclomatic complexity (Complexity Kink ~6.5).
+ * Flag when `cyclomaticComplexity > CYCLOMATIC_FLAG_THRESHOLD`. McCabe 10 is the
+ * human-era lint bar — documented only, not the product flag.
+ */
+export const CYCLOMATIC_FLAG_THRESHOLD = 6;
+
 export type EntityId = string;
 export type RelationId = string;
 export type SnapshotId = string;
@@ -82,6 +89,12 @@ export interface ArchitectureEntity {
    * Scan-time overlay — never ArchitectureExtraction input. Omit when empty.
    */
   owners?: string[];
+  /**
+   * Observed McCabe cyclomatic complexity for a function-like L4 code entity.
+   * Scan-time overlay — never ArchitectureExtraction input. Omit when the
+   * declaration has no executable body (types, interfaces, classes, constants).
+   */
+  cyclomaticComplexity?: number;
   sourceRefs: SourceRef[];
   sourceExcerpts?: SourceExcerpt[];
   confidence?: number;

@@ -1,4 +1,4 @@
-import { inspectorAcceptedSummary } from '../inspector/inspectorPanel';
+import { inspectorAcceptedSummary, CYCLOMATIC_FLAG_THRESHOLD } from '../inspector/inspectorPanel';
 
 /**
  * Ask Atlas client (CLA-27): bound the live question to packets + accepted
@@ -26,6 +26,7 @@ export type AskEntity = {
   kind: string;
   responsibility?: string;
   source?: string;
+  cyclomaticComplexity?: number;
 };
 
 export type AskSceneRelation = {
@@ -42,6 +43,8 @@ export type AskPacket = {
   parentId?: string;
   summary?: string;
   source?: string;
+  cyclomaticComplexity?: number;
+  cyclomaticFlagged?: boolean;
 };
 
 export type AskRelation = {
@@ -230,6 +233,8 @@ export async function submitAskQuestion(
 
 function toPacket(entity: AskEntity): AskPacket {
   const summary = inspectorAcceptedSummary(entity);
+  const complexity = entity.cyclomaticComplexity;
+  const hasCyclomatic = typeof complexity === 'number' && Number.isInteger(complexity) && complexity >= 1;
   return {
     id: entity.id,
     name: entity.name,
@@ -237,6 +242,10 @@ function toPacket(entity: AskEntity): AskPacket {
     ...(entity.parentId ? { parentId: entity.parentId } : {}),
     ...(summary ? { summary } : {}),
     ...(entity.source ? { source: entity.source } : {}),
+    ...(hasCyclomatic ? {
+      cyclomaticComplexity: complexity,
+      cyclomaticFlagged: complexity > CYCLOMATIC_FLAG_THRESHOLD,
+    } : {}),
   };
 }
 

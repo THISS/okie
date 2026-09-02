@@ -183,6 +183,8 @@ describe('WebMCP foundation (CLA-40)', () => {
     expect(app).toContain('atlasIdentityFromLocation');
     expect(app).toContain('atlasTourPlaying');
     expect(app).toContain('atlasTourPlaying({ storyStep, storyPlaying, storyPhase })');
+    expect(app).toContain('selectedEntity:');
+    expect(app).toContain('cyclomaticComplexity: selectedCyclomatic.complexity');
     expect(app).not.toMatch(/document\.domain\s*=/);
     expect(app).not.toContain('registerWebMcpLandingTools');
 
@@ -819,6 +821,50 @@ describe('WebMCP page context (CLA-43)', () => {
     expect(published).not.toContain('scanRoot');
     expect(published).not.toContain('/home/ubuntu');
     expect(published).not.toContain('spend');
+  });
+
+  it('returns selected-entity cyclomatic on get_atlas_context and drops planted secrets', async () => {
+    bindFakeAtlas({
+      readContext: () => ({
+        ...defaultContext({
+          c4Level: 'code',
+          selectedEntityId: 'code:pkg-a-src-index-ts:tangled',
+          selectedEntity: {
+            id: 'code:pkg-a-src-index-ts:tangled',
+            name: 'tangled',
+            kind: 'Source',
+            detail: 'code',
+            cyclomaticComplexity: 7,
+            cyclomaticFlagged: false,
+            apiKey: PLANTED_SECRETS[0],
+          } as AtlasPageContextInput['selectedEntity'],
+        }),
+        OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+      } as AtlasPageContextInput),
+    });
+    const after = await GET_ATLAS_CONTEXT_TOOL.execute({ GITHUB_TOKEN: PLANTED_SECRETS[1] });
+    expect(after).toEqual({
+      ok: true,
+      tool: GET_ATLAS_CONTEXT_TOOL_NAME,
+      atlas: { fixtureId: 'okie' },
+      c4Level: 'code',
+      selectedEntityId: 'code:pkg-a-src-index-ts:tangled',
+      selectedEntity: {
+        id: 'code:pkg-a-src-index-ts:tangled',
+        name: 'tangled',
+        kind: 'Source',
+        detail: 'code',
+        cyclomaticComplexity: 7,
+        cyclomaticFlagged: true,
+      },
+      tourPlaying: false,
+      enrichmentStatus: 'none',
+      scanAvailable: false,
+      askAvailable: true,
+    });
+    expect(after).not.toHaveProperty('apiKey');
+    expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[0]);
+    expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[1]);
   });
 
   it('maps share URLs to owner/repo and local pages to a fixture id', () => {

@@ -3,6 +3,7 @@ export {
   defaultInspectorWidth,
   inspectorAcceptedSummary,
   inspectorCanShowSource,
+  inspectorCyclomatic,
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,

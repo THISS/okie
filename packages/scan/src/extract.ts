@@ -1,11 +1,13 @@
 import ts from "typescript";
-import type {
-  ArchitectureExtraction,
-  ArchitectureExtractionEntity,
-  ArchitectureExtractionEntityKind,
-  ArchitectureExtractionEvidence,
-  ArchitectureExtractionRelation,
-  ArchitectureExtractionSourceRef,
+import {
+  CYCLOMATIC_FLAG_THRESHOLD,
+  type ArchitectureExtraction,
+  type ArchitectureExtractionEntity,
+  type ArchitectureExtractionEntityKind,
+  type ArchitectureExtractionEvidence,
+  type ArchitectureExtractionRelation,
+  type ArchitectureExtractionSourceRef,
+  type ArchitectureSnapshot,
 } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import { pathSlug, resolveCollisions, slug, typedId } from "./ids.js";
@@ -186,6 +188,68 @@ export function symbolReferencesIn(
   // Walk the declaration body, skipping its own name identifier via isDeclarationName.
   visit(declaration.node);
   return references;
+}
+
+/**
+ * Product flag: Complexity Kink ~6.5. Functions with McCabe cyclomatic
+ * `complexity > 6` are flagged. McCabe 10 is the human-era lint bar only.
+ */
+export { CYCLOMATIC_FLAG_THRESHOLD };
+
+function isLogicalDecisionOperator(kind: ts.SyntaxKind): boolean {
+  return kind === ts.SyntaxKind.AmpersandAmpersandToken
+    || kind === ts.SyntaxKind.BarBarToken
+    || kind === ts.SyntaxKind.QuestionQuestionToken
+    || kind === ts.SyntaxKind.AmpersandAmpersandEqualsToken
+    || kind === ts.SyntaxKind.BarBarEqualsToken
+    || kind === ts.SyntaxKind.QuestionQuestionEqualsToken;
+}
+
+/**
+ * Classic McCabe: 1 + decision points in this subtree. Nested function bodies
+ * count toward the top-level entity because they are not their own L4 nodes.
+ * Type-level conditionals (`T extends U ? A : B`) are not runtime branches.
+ */
+export function cyclomaticComplexity(node: ts.Node): number {
+  let complexity = 1;
+  const visit = (current: ts.Node): void => {
+    if (ts.isIfStatement(current)
+      || ts.isWhileStatement(current)
+      || ts.isDoStatement(current)
+      || ts.isForStatement(current)
+      || ts.isForInStatement(current)
+      || ts.isForOfStatement(current)
+      || ts.isCatchClause(current)
+      || ts.isConditionalExpression(current)
+      || ts.isCaseClause(current)) {
+      complexity += 1;
+    } else if (ts.isBinaryExpression(current) && isLogicalDecisionOperator(current.operatorToken.kind)) {
+      complexity += 1;
+    }
+    ts.forEachChild(current, visit);
+  };
+  visit(node);
+  return complexity;
+}
+
+/** The executable function AST to score, or undefined for types/classes/constants. */
+export function functionLikeBody(node: ts.Node): ts.Node | undefined {
+  if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) return node;
+  if (ts.isVariableDeclaration(node) && node.initializer
+    && (ts.isFunctionExpression(node.initializer) || ts.isArrowFunction(node.initializer))) {
+    return node.initializer;
+  }
+  return undefined;
+}
+
+/** McCabe for one existing L4 declaration. Omitted when the entity is not function-like. */
+export function cyclomaticForDeclaration(declaration: TopLevelDeclaration): number | undefined {
+  const body = functionLikeBody(declaration.node);
+  return body ? cyclomaticComplexity(body) : undefined;
+}
+
+export function cyclomaticIsFlagged(complexity: number): boolean {
+  return complexity > CYCLOMATIC_FLAG_THRESHOLD;
 }
 
 /** Static `import ... from` and `export ... from` module specifiers with line spans. */
@@ -401,6 +465,8 @@ interface EntityDescriptor {
   name: string;
   parentKey?: string;
   sourceRefs: ArchitectureExtractionSourceRef[];
+  /** Observed McCabe for function-like code entities — snapshot overlay, not extraction. */
+  cyclomaticComplexity?: number;
 }
 
 interface RelationDescriptor {
@@ -558,8 +624,21 @@ function emitExternalSystems(input: ExternalEmitInput): void {
  * tooling, opaque Rust crates) → components (one per source file) → code (one per
  * top-level declaration). Relations come from static import/export specifiers.
  * Output is independent of file discovery order.
+ *
+ * Cyclomatic complexity is observed on the same `ts.createSourceFile` walk and
+ * returned separately so ArchitectureExtraction stays LLM-gate clean.
  */
+export interface ExtractedArchitecture {
+  extraction: ArchitectureExtraction;
+  /** Entity id → McCabe cyclomatic. Only function-like `kind: "code"` entities. */
+  cyclomaticById: ReadonlyMap<string, number>;
+}
+
 export function extractArchitecture(input: ExtractInput): ArchitectureExtraction {
+  return collectExtractedArchitecture(input).extraction;
+}
+
+export function collectExtractedArchitecture(input: ExtractInput): ExtractedArchitecture {
   const { discovery, readFile } = input;
   const fileSet = new Set(discovery.sourceFiles);
   const systemName = input.systemName ?? "Okie";
@@ -646,6 +725,7 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     const keyByName = new Map<string, string>();
     declarations.forEach((declaration, index) => {
       const naturalKey = `${file}#${index}`;
+      const cyclomaticComplexity = cyclomaticForDeclaration(declaration);
       entityDescriptors.push({
         naturalKey,
         desiredId: typedId("code", file, declaration.name),
@@ -653,6 +733,7 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
         name: declaration.name,
         parentKey: file,
         sourceRefs: [{ path: file, symbol: declaration.name, startLine: declaration.startLine, endLine: declaration.endLine }],
+        ...(cyclomaticComplexity !== undefined ? { cyclomaticComplexity } : {}),
       });
       if (!keyByName.has(declaration.name)) keyByName.set(declaration.name, naturalKey);
     });
@@ -770,6 +851,12 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
     name: descriptor.name,
     sourceRefs: descriptor.sourceRefs,
   }));
+  const cyclomaticById = new Map<string, number>();
+  sortedEntities.forEach((descriptor, index) => {
+    if (descriptor.cyclomaticComplexity !== undefined) {
+      cyclomaticById.set(entityIds[index]!, descriptor.cyclomaticComplexity);
+    }
+  });
 
   const sortedRelations = [...relationDescriptors.values()].sort((left, right) =>
     left.desiredId.localeCompare(right.desiredId) || left.naturalKey.localeCompare(right.naturalKey));
@@ -783,8 +870,84 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
   }));
 
   return {
-    schemaVersion: 1,
-    entities: entities.sort((left, right) => left.id.localeCompare(right.id)),
-    relations: relations.sort((left, right) => left.id.localeCompare(right.id)),
+    extraction: {
+      schemaVersion: 1,
+      entities: entities.sort((left, right) => left.id.localeCompare(right.id)),
+      relations: relations.sort((left, right) => left.id.localeCompare(right.id)),
+    },
+    cyclomaticById,
   };
+}
+
+/**
+ * Overlay observed McCabe onto existing code entities. No new C4 nodes.
+ * Extraction documents stay cyclomatic-free — this is scan-time, like CODEOWNERS.
+ */
+export function attachCyclomaticComplexity(
+  snapshot: ArchitectureSnapshot,
+  cyclomaticById: ReadonlyMap<string, number>,
+): ArchitectureSnapshot {
+  if (cyclomaticById.size === 0) {
+    return snapshot.entities.every(entity => entity.cyclomaticComplexity === undefined)
+      ? snapshot
+      : {
+        ...snapshot,
+        entities: snapshot.entities.map(entity => {
+          if (entity.cyclomaticComplexity === undefined) return entity;
+          const rest = { ...entity };
+          delete rest.cyclomaticComplexity;
+          return rest;
+        }),
+      };
+  }
+  return {
+    ...snapshot,
+    entities: snapshot.entities.map(entity => {
+      const complexity = cyclomaticById.get(entity.id);
+      if (complexity === undefined) {
+        if (entity.cyclomaticComplexity === undefined) return entity;
+        const rest = { ...entity };
+        delete rest.cyclomaticComplexity;
+        return rest;
+      }
+      return { ...entity, cyclomaticComplexity: complexity };
+    }),
+  };
+}
+
+/**
+ * Recompute McCabe from source when a prior extraction is reused (live enrichment).
+ * Same `ts.createSourceFile` walk as minting — not a second parser.
+ */
+export function cyclomaticByIdFromEntities(
+  entities: readonly ArchitectureExtractionEntity[],
+  readFile: (repoRelativePath: string) => string,
+): Map<string, number> {
+  const parsed = new Map<string, ts.SourceFile | undefined>();
+  const sourceOf = (path: string): ts.SourceFile | undefined => {
+    if (parsed.has(path)) return parsed.get(path);
+    try {
+      const sourceFile = parseSource(path, readFile(path));
+      parsed.set(path, sourceFile);
+      return sourceFile;
+    } catch {
+      parsed.set(path, undefined);
+      return undefined;
+    }
+  };
+  const cyclomaticById = new Map<string, number>();
+  for (const entity of entities) {
+    if (entity.kind !== "code") continue;
+    const ref = entity.sourceRefs[0];
+    if (!ref?.path || !ref.symbol) continue;
+    const sourceFile = sourceOf(ref.path);
+    if (!sourceFile) continue;
+    const declaration = topLevelDeclarations(sourceFile).find(candidate =>
+      candidate.name === ref.symbol
+      && (ref.startLine === undefined || candidate.startLine === ref.startLine));
+    if (!declaration) continue;
+    const complexity = cyclomaticForDeclaration(declaration);
+    if (complexity !== undefined) cyclomaticById.set(entity.id, complexity);
+  }
+  return cyclomaticById;
 }

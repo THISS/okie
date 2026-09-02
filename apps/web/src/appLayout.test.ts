@@ -188,6 +188,17 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('data-testid="inspector-owners"');
   });
 
+  it('renders observed McCabe cyclomatic in Details and flags complexity over 6', () => {
+    expect(app).toContain('inspectorCyclomatic(selected)');
+    expect(app).toContain("data-inspector-has-cyclomatic={selectedCyclomatic ? 'true' : 'false'}");
+    expect(app).toContain("data-inspector-cyclomatic-flagged={selectedCyclomatic?.flagged ? 'true' : 'false'}");
+    expect(app).toContain("data-inspector-section=\"cyclomatic\"");
+    expect(app).toContain('<h3>Complexity</h3>');
+    expect(app).toContain('data-testid="inspector-cyclomatic"');
+    expect(app).toContain('McCabe {selectedCyclomatic.complexity}');
+    expect(app).toContain('Over 6');
+  });
+
   it('samples C4 completeness advisories in Details instead of dumping the full list', () => {
     expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics');
     expect(app).toContain('inspectorNotationScope({');

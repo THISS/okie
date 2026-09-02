@@ -4,6 +4,7 @@ import {
   defaultInspectorWidth,
   inspectorAcceptedSummary,
   inspectorCanShowSource,
+  inspectorCyclomatic,
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
@@ -304,6 +305,55 @@ describe('inspector CODEOWNERS path owners (CLA-51)', () => {
     expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'container:web'))).toEqual(['@acme/a-team']);
     expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'code:w1'))).toEqual(['@alice']);
     expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'component:web-x'))).toEqual([]);
+  });
+});
+
+describe('inspector cyclomatic complexity (CLA-49)', () => {
+  it('shows the McCabe number and flags only when complexity is greater than 6', () => {
+    expect(inspectorCyclomatic({ cyclomaticComplexity: 1 })).toEqual({ complexity: 1, flagged: false });
+    expect(inspectorCyclomatic({ cyclomaticComplexity: 6 })).toEqual({ complexity: 6, flagged: false });
+    expect(inspectorCyclomatic({ cyclomaticComplexity: 7 })).toEqual({ complexity: 7, flagged: true });
+    expect(inspectorCyclomatic({ cyclomaticComplexity: 10 })).toEqual({ complexity: 10, flagged: true });
+    expect(inspectorCyclomatic({ cyclomaticComplexity: 0 })).toBeUndefined();
+    expect(inspectorCyclomatic({ cyclomaticComplexity: 1.5 })).toBeUndefined();
+    expect(inspectorCyclomatic({})).toBeUndefined();
+    expect(inspectorCyclomatic(undefined)).toBeUndefined();
+  });
+
+  it('does not invent cyclomatic on the golden atlas and carries scan overlay onto compiled L4 nodes', () => {
+    const golden = createGoldenC4Scene();
+    const code = golden.entities.find(entity => entity.id === 'code:web-shell:app')!;
+    expect(inspectorCyclomatic(code)).toBeUndefined();
+
+    const scene = createC4Scene({
+      baseSnapshot: scanSnapshot(
+        [
+          scanEntity('system:app', 'softwareSystem'),
+          scanEntity('container:web', 'container', 'system:app'),
+          scanEntity('component:web-x', 'component', 'container:web'),
+          { ...scanEntity('code:simple', 'code', 'component:web-x'), cyclomaticComplexity: 1 },
+          { ...scanEntity('code:tangled', 'code', 'component:web-x'), cyclomaticComplexity: 7 },
+          scanEntity('code:alias', 'code', 'component:web-x'),
+        ],
+        [scanRelation('rel:simple-app', 'code:simple', 'system:app')],
+      ),
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    expect(inspectorCyclomatic(scene.entities.find(entity => entity.id === 'code:simple'))).toEqual({ complexity: 1, flagged: false });
+    expect(inspectorCyclomatic(scene.entities.find(entity => entity.id === 'code:tangled'))).toEqual({ complexity: 7, flagged: true });
+    expect(inspectorCyclomatic(scene.entities.find(entity => entity.id === 'code:alias'))).toBeUndefined();
+    expect(inspectorCyclomatic(scene.entities.find(entity => entity.id === 'component:web-x'))).toBeUndefined();
+    expect(scene.entities.map(entity => entity.id).filter(id => id.startsWith('code:')).sort()).toEqual([
+      'code:alias',
+      'code:simple',
+      'code:tangled',
+    ]);
   });
 });
 
