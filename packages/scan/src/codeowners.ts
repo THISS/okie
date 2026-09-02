@@ -41,8 +41,9 @@ export function readCodeOwners(readFile: (repoRelativePath: string) => string): 
 }
 
 /**
- * Parse GitHub CODEOWNERS bytes into ordered rules. Comments and owner-less
- * lines are skipped. Last matching rule wins at query time.
+ * Parse GitHub CODEOWNERS bytes into ordered rules. Comments are skipped.
+ * Owner-less patterns are kept: last match wins, including a later empty
+ * owner list that clears inherited ownership.
  */
 export function parseCodeOwners(text: string): CodeOwnerRule[] {
   const rules: CodeOwnerRule[] = [];
