@@ -84,7 +84,7 @@ function record(value: unknown): Record<string, unknown> | undefined {
 }
 
 function sourceRefKey(ref: ArchitectureExtractionSourceRef): string {
-  return `${ref.path}${ref.symbol ?? ""}${ref.startLine ?? ""}${ref.endLine ?? ""}`;
+  return `${ref.path}\u0000${ref.symbol ?? ""}\u0000${ref.startLine ?? ""}\u0000${ref.endLine ?? ""}`;
 }
 
 function sourceRefsEqual(left: readonly ArchitectureExtractionSourceRef[], right: readonly ArchitectureExtractionSourceRef[]): boolean {
@@ -616,7 +616,7 @@ export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: R
       if (container) selfEdgesByContainer.set(container, (selfEdgesByContainer.get(container) ?? 0) + 1);
       continue;
     }
-    const key = `${from}${to}${relation.kind}`;
+    const key = `${from}\u0000${to}\u0000${relation.kind}`;
     const entry = collapsed.get(key) ?? { from, to, kind: relation.kind, evidence: [] };
     entry.evidence.push(...relation.evidence);
     collapsed.set(key, entry);

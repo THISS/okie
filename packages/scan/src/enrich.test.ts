@@ -410,6 +410,24 @@ test("remainder-packet summary docs union onto the same container; leftover file
   assert.equal(merged.entities.find(entity => entity.id === containerId)?.responsibility, "First packet.");
 });
 
+test("observed-field equality uses delimited sourceRef keys, not concatenation", () => {
+  const extraction = base();
+  const containerId = "container:pkg-a";
+  const doc = summaryDoc(extraction, containerId, true) as { entities: ArchitectureExtractionEntity[] };
+  const code = doc.entities.find(entity => entity.kind === "code")!;
+  const original = code.sourceRefs[0]!;
+  // Concatenation collision: symbol+startLine+endLine ("alpha"+"1"+"1") vs symbol "alpha11".
+  // Path stays in-scope so the gate reaches observed-field comparison.
+  code.sourceRefs = [{
+    path: original.path,
+    symbol: `${original.symbol ?? ""}${original.startLine ?? ""}${original.endLine ?? ""}`,
+  }];
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[containerId, doc]]));
+  assert.equal(report.results[0]!.accepted, false, "concatenated path+symbol must not match the delimited key");
+  assert.ok(report.results[0]!.reasons.some(reason => /mutates an observed field/.test(reason)));
+  assert.equal(JSON.stringify(merged), JSON.stringify(extraction));
+});
+
 test("a hallucinated remainder packet rejects only that document; the accepted packet still merges", () => {
   const extraction = base();
   const containerId = "container:pkg-a";

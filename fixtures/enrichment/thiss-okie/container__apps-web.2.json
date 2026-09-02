@@ -15,355 +15,11 @@
       "sourceRefs": []
     },
     {
-      "id": "component:apps-web-api-oembed-ts",
+      "id": "component:apps-web-src-semantic-semantic-lens-ts",
       "kind": "component",
       "parentId": "container:apps-web",
-      "name": "api/oembed.ts",
-      "responsibility": "Vercel serverless /oembed handler that returns JSON for public atlas share URLs instead of the SPA shell.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-api-og-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "api/og.ts",
-      "responsibility": "Vercel serverless /og handler that serves the deterministic PNG atlas card for crawlers.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-api-share-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "api/share.ts",
-      "responsibility": "Vercel serverless /r share-page handler that injects Open Graph tags into the HTML shell.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-atlas-card-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/atlasCard.ts",
-      "responsibility": "Deterministic Open Graph PNG card for a public atlas, a pure function of owner/repo with no secrets.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-canvas-animation-policy-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/canvasAnimationPolicy.ts",
-      "responsibility": "Decides when the canvas may run continuous animation versus freeze during authoring or reduced motion.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-diagram-compile-imported-mermaid-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/diagram/compileImportedMermaid.ts",
-      "responsibility": "Compiles an imported Mermaid atlas snapshot into a C4 scene for the diagram surface.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-diagram-copy-view-link-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/diagram/copyViewLink.ts",
-      "responsibility": "Copies the current atlas view URL to the clipboard.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-diagram-diagram-workspace-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/diagram/diagramWorkspace.ts",
-      "responsibility": "Session state for diagram surfaces: camera, selection, inspector tab, and derived diagram kinds.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-diagram-import-mermaid-dialog-tsx",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/diagram/ImportMermaidDialog.tsx",
-      "responsibility": "Dialog to paste Mermaid source and import it onto the atlas.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-diagram-import-mermaid-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/diagram/importMermaid.ts",
-      "responsibility": "Parses pasted Mermaid into a bounded architecture snapshot for import.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-diagram-mermaid-diagram-tsx",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/diagram/MermaidDiagram.tsx",
-      "responsibility": "Renders a Mermaid diagram inside the atlas diagram surface.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-diagram-semantic-diagram-surface-tsx",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/diagram/SemanticDiagramSurface.tsx",
-      "responsibility": "Main semantic diagram surface that hosts the atlas canvas, selection, and overlay chrome.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-editor-gesture-history-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/editor/gestureHistory.ts",
-      "responsibility": "Undo/redo history for relationship-authoring gestures.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-editor-relationship-authoring-overlay-tsx",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/editor/RelationshipAuthoringOverlay.tsx",
-      "responsibility": "Overlay that draws in-progress relationship authoring on the canvas.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-editor-relationship-interaction-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/editor/relationshipInteraction.ts",
-      "responsibility": "Pointer interaction state machine for drawing and editing relationships.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-icons-tsx",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/icons.tsx",
-      "responsibility": "SVG icon set used by atlas chrome (search, playback, share, zoom, and inspector).",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-inspector-inspector-history-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/inspector/inspectorHistory.ts",
-      "responsibility": "Inspector back/forward history for selected entities.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-live-camera-bridge-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/liveCameraBridge.ts",
-      "responsibility": "Synchronous per-frame camera pub/sub so the minimap tracks the live camera without React 60fps updates.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-oembed-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/oembed.ts",
-      "responsibility": "oEmbed discovery for public atlas share URLs, including origin allowlisting.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-open-graph-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/openGraph.ts",
-      "responsibility": "Open Graph image and share-HTML handlers for public atlas URLs.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-relations-projection-relations-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/relations/projectionRelations.ts",
-      "responsibility": "Projects visible and omitted canvas relations for the inspector and isolate view.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-relations-relation-focus-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/relations/relationFocus.ts",
-      "responsibility": "Computes which entities a selected relation should focus.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-relations-relation-framing-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/relations/relationFraming.ts",
-      "responsibility": "Frames the camera around a selected relation's endpoints.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-relations-relationship-flow-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/relations/relationshipFlow.ts",
-      "responsibility": "Chooses which relationships animate: story playback owns flow, otherwise only the selection.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-relations-selected-entity-framing-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/relations/selectedEntityFraming.ts",
-      "responsibility": "Plans camera reframing when the selected entity changes.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-backend-presentation-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/backendPresentation.ts",
-      "responsibility": "Human-readable renderer/backend pill copy (WebGPU, WebGL2, Canvas2D, unsupported).",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-camera-bounds-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/cameraBounds.ts",
-      "responsibility": "Atlas camera pan/zoom bounds and semantic zoom band intervals.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-camera-controller-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/cameraController.ts",
-      "responsibility": "Interactive camera controller for pan, zoom, and fitted views.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-demand-frame-scheduler-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/demandFrameScheduler.ts",
-      "responsibility": "Demand-driven animation-frame scheduler that wakes the renderer only when a frame is needed.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-fixture-bundle-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/fixtureBundle.ts",
-      "responsibility": "Loads demo, stress, and scan fixture bundles for the atlas.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-fixtures-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/fixtures.ts",
-      "responsibility": "Demo fixture accessors and seeded helper data for the renderer.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-golden-c4-scene-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/goldenC4Scene.ts",
-      "responsibility": "Builds the golden C4 compiled scene used by the demo atlas.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-gpu-loss-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/gpuLoss.ts",
-      "responsibility": "GPU/WebGL context-loss recovery: step down WebGPU → WebGL2 → Canvas2D.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-protocol-scene-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/protocolScene.ts",
-      "responsibility": "Maps compiled C4 scenes onto the renderer protocol snapshot.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-route-geometry-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/routeGeometry.ts",
-      "responsibility": "Edge route geometry helpers for drawing relationship paths.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-route-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/route.ts",
-      "responsibility": "Route computation helpers for atlas relationship edges.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-scene-screenshot-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/sceneScreenshot.ts",
-      "responsibility": "Captures a PNG screenshot of the current atlas canvas.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-stress-fixture-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/stressFixture.ts",
-      "responsibility": "Loads the generated 5k-node stress scene for renderer QA.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-types-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/types.ts",
-      "responsibility": "Shared renderer types: scene entities, camera, diagnostics, and semantic detail.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-unsupported-renderer-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/UnsupportedRenderer.ts",
-      "responsibility": "Fallback renderer when WebGPU, WebGL2, and Canvas2D are all unavailable.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-renderer-wheel-input-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/renderer/wheelInput.ts",
-      "responsibility": "Wheel and trackpad input mapping for canvas zoom.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-scan-job-enrichment-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/scanJobEnrichment.ts",
-      "responsibility": "Landing copy for scan-job enrichment state (running, skipped, failed) without leaking gateway notes.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-search-suggestions-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/searchSuggestions.ts",
-      "responsibility": "Deterministic empty-query search suggestions from selection, view root, and breadcrumbs.",
-      "sourceRefs": []
-    },
-    {
-      "id": "component:apps-web-src-semantic-semantic-lens-engine-ts",
-      "kind": "component",
-      "parentId": "container:apps-web",
-      "name": "src/semantic/semanticLensEngine.ts",
-      "responsibility": "Semantic-lens session engine: morph, pan focus, branch ghosts, and path validation.",
+      "name": "src/semantic/semanticLens.ts",
+      "responsibility": "Maps camera zoom onto C4 semantic bands (context, container, component, code).",
       "sourceRefs": []
     },
     {
@@ -372,6 +28,38 @@
       "parentId": "container:apps-web",
       "name": "src/shortcuts.ts",
       "responsibility": "Keyboard shortcut policy so search and Ask Atlas own their keystrokes and canvas hotkeys do not fire in inputs.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-focus-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyFocus.ts",
+      "responsibility": "Computes which entities and relations a story step should select and highlight.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-framing-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyFraming.ts",
+      "responsibility": "Frames the camera around the current story step’s revealed entities.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-playback-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyPlayback.ts",
+      "responsibility": "Guided-story playback runtime: play, pause, jump, and camera flights between steps.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-webmcp-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/webmcp.ts",
+      "responsibility": "In-page WebMCP provider exposing atlas tools (level, select, isolate, tour, ask) to the browser.",
       "sourceRefs": []
     },
     {

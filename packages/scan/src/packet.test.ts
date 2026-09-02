@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Discovery } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
+import { mergeEnrichment } from "./enrich.js";
 import { buildEnrichmentPackets, containerIdFromFileName, contentHash, packetFileName, ENRICHMENT_PROMPT_VERSION, MAX_COMPONENTS_PER_PACKET } from "./packet.js";
 
 const files: Record<string, string> = {
@@ -169,6 +170,35 @@ test("huge container splits into remainder packets; the cap does not drop leftov
   for (const component of web[0]!.components) {
     assert.equal(serializedSecond.includes(component.id), false, "remainder packet must not repeat the first chunk's ids");
   }
+});
+
+test("one summary document per remainder packet restates only that packet's ids; merge covers all leftover files", () => {
+  const { extraction, readHuge } = hugeExtraction(MAX_COMPONENTS_PER_PACKET + 9);
+  const emitted = buildEnrichmentPackets(extraction, readHuge);
+  const chunks = emitted.packets.filter(packet => packet.containerId === "container:pkg-h");
+  assert.equal(chunks.length, 2);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const docs = chunks.map(packet => {
+    const componentIds = new Set(packet.components.map(component => component.id));
+    const entities = [
+      { id: system.id, kind: "softwareSystem", name: system.name, sourceRefs: [] },
+      { id: packet.containerId, kind: "container", parentId: system.id, name: packet.containerName, sourceRefs: [] },
+      ...packet.components.map(component => ({
+        id: component.id, kind: "component", parentId: packet.containerId, name: component.name,
+        responsibility: `Summary of ${component.name}.`, sourceRefs: [],
+      })),
+    ];
+    for (const entity of entities.filter(item => item.kind === "component")) {
+      assert.equal(componentIds.has(entity.id), true, `${entity.id} must belong to ${packetFileName(packet.containerId, packet.chunkIndex)}`);
+    }
+    return { schemaVersion: 1, entities, relations: [] };
+  });
+  const { extraction: merged, report } = mergeEnrichment(extraction, new Map([["container:pkg-h", docs]]));
+  assert.equal(report.results[0]!.accepted, true, report.results[0]?.reasons.join("; "));
+  assert.equal(report.results[0]!.components, MAX_COMPONENTS_PER_PACKET + 9);
+  const summarized = merged.entities.filter(entity =>
+    entity.kind === "component" && entity.parentId === "container:pkg-h" && entity.responsibility);
+  assert.equal(summarized.length, MAX_COMPONENTS_PER_PACKET + 9);
 });
 
 test("a container at the cap still emits one packet", () => {

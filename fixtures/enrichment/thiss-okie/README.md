@@ -21,10 +21,11 @@ or `tmp/`.
 All six code-bearing containers and the system scope were accepted. `@okie/web`
 file-components:
 
-- **68 / 68 code-bearing** restated across `container__apps-web.json` (22) and
-  remainder packet `container__apps-web.2.json` (46). The packet generator splits
-  a container that exceeds `MAX_COMPONENTS_PER_PACKET` (61); `--enrich-from`
-  unions remainder docs onto the same container.
+- **68 / 68 code-bearing** restated across `container__apps-web.json` (61, matching
+  packet chunk 1) and remainder packet `container__apps-web.2.json` (7, matching
+  packet chunk 2). The packet generator splits a container that exceeds
+  `MAX_COMPONENTS_PER_PACKET` (61); `--enrich-from` unions remainder docs onto
+  the same container.
 - **1 documented skip:** `src/inspector/inspectorSupport.ts`
   (`component:apps-web-src-inspector-inspector-support-ts`) is an empty
   file-component (re-exports only, no top-level declaration) and is not an
