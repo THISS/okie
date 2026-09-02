@@ -5,6 +5,7 @@ export * from "./ids.js";
 export * from "./extract.js";
 export * from "./scope.js";
 export * from "./packet.js";
+export * from "./prompt.js";
 export * from "./enrich.js";
 export * from "./github.js";
 export * from "./manifest.js";

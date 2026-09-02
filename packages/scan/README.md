@@ -7,6 +7,9 @@ checker, no `node_modules`, no network.
 
 ```
 okie-scan --source <path> [--out <dir>] [--system-name <name>] [--repo <slug>]
+okie-scan --source <path> --emit-packets <dir>
+okie-scan --source <path> --emit-prompt <dir>
+okie-scan --source <path> --enrich-from <dir>
 ```
 
 Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Outputs
@@ -157,9 +160,16 @@ the gate.
   only that container's scope — its file-components, code entities (id/name/symbol/line ranges),
   touching relations, and capped file headers. Never a byte from outside the scope. It also writes
   one repo-wide **system packet** (`system__<id>.json`, see below).
+- `okie-scan --emit-prompt <dir>` is concat sugar on that same loop (local working tree only). It
+  writes the **same packet files** as `--emit-packets`, plus one `<packet>.prompt.md` per packet.
+  Each prompt is the frozen [`enrichment-prompt.md`](./enrichment-prompt.md) bytes, then the packet
+  JSON, then an appendix (scanned `commitSha` / `treeHash`, packet filename, file tree, ownership
+  tree). The appendix is data, not new instructions. Same scan SHA → byte-identical prompt+packet
+  files. See [`.cursor/skills/okie-enrich/SKILL.md`](../../.cursor/skills/okie-enrich/SKILL.md).
 - `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per container (and, optionally,
   one keyed by the **system id**) and merges the accepted ones, emitting `enrichment-report.json`.
-  See [`enrichment-prompt.md`](./enrichment-prompt.md) for the agent contract (`okie-enrichment/v2`).
+  Write each document with the **same filename as the packet**. See
+  [`enrichment-prompt.md`](./enrichment-prompt.md) for the agent contract (`okie-enrichment/v2`).
 
 ### System-scope enrichment (R2b — top-level actors)
 
