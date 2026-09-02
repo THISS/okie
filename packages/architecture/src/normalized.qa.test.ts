@@ -26,7 +26,7 @@ const snapshot: ArchitectureSnapshot = {
   generatedAt: '2026-07-14T00:00:00.000Z',
   entities: [
     { id: 'external:payments', kind: 'externalSystem', name: 'Payments', sourceRefs: [] },
-    { id: 'component:orders', kind: 'component', parentId: 'container:api', name: 'Orders', sourceRefs: [source], tags: ['domain'] },
+    { id: 'component:orders', kind: 'component', parentId: 'container:api', name: 'Orders', sourceRefs: [source], tags: ['domain'], owners: ['@commerce/orders'] },
     { id: 'system:commerce', kind: 'softwareSystem', name: 'Commerce', sourceRefs: [] },
     { id: 'data:ledger', kind: 'dataStore', name: 'Ledger', sourceRefs: [] },
     { id: 'container:api', kind: 'container', parentId: 'system:commerce', name: 'API', sourceRefs: [] },
@@ -222,6 +222,10 @@ test('round-trip selectors preserve evidence, layout, story step order, and dedu
     'relation:a-orders-payments', 'relation:b-payments-ledger',
   ]);
   assert.deepEqual(selectedSnapshot.relations[0]?.evidence, [{ source, reason: 'payment client call' }]);
+  assert.deepEqual(
+    selectedSnapshot.entities.find(entity => entity.id === 'component:orders')?.owners,
+    ['@commerce/orders'],
+  );
   assert.deepEqual(selectedView.entityIds, [
     'component:orders', 'container:api', 'data:ledger', 'external:payments', 'system:commerce',
   ]);

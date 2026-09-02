@@ -14,6 +14,7 @@ import {
   type NodeLayout,
 } from "@okie/architecture";
 import { compileC4Scene, compileC4Timeline, type CompiledC4Scene, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
+import { attachPathOwners, readCodeOwners } from "./codeowners.js";
 import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
@@ -167,9 +168,12 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     commitSha: pin.commitSha,
     generatedAt: pin.generatedAt,
   };
-  const snapshot = attachPortableSourceExcerpts(
-    adaptArchitectureExtraction(extraction, metadata),
-    readFile,
+  const snapshot = attachPathOwners(
+    attachPortableSourceExcerpts(
+      adaptArchitectureExtraction(extraction, metadata),
+      readFile,
+    ),
+    readCodeOwners(readFile)?.rules ?? [],
   );
   const snapshotIssues = validateSnapshot(snapshot);
   if (snapshotIssues.length) {

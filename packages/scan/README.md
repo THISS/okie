@@ -167,7 +167,7 @@ the gate.
   writes the **same packet files** as `--emit-packets`, plus one `<packet>.prompt.md` per packet.
   Each prompt is the frozen [`enrichment-prompt.md`](./enrichment-prompt.md) bytes, then the packet
   JSON, then an appendix (scanned `commitSha` / `treeHash`, packet filename, file tree, ownership
-  tree). The appendix is data, not new instructions. Same scan SHA → byte-identical prompt+packet
+  tree, and optional observed CODEOWNERS `pathOwners`). The appendix is data, not new instructions. Same scan SHA → byte-identical prompt+packet
   files. See [`.cursor/skills/okie-enrich/SKILL.md`](../../.cursor/skills/okie-enrich/SKILL.md).
 - `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per packet (and, optionally,
   one keyed by the **system id**) and merges the accepted ones, emitting `enrichment-report.json`.

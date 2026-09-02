@@ -68,7 +68,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorPathOwners, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1415,6 +1415,7 @@ export function App() {
   const selectedExcerpt = selected.sourceExcerpts?.[0];
   const sourceAvailable = inspectorCanShowSource(selected, { pickedRelation: Boolean(pickedRelation) });
   const selectedSummary = inspectorAcceptedSummary(selected);
+  const selectedOwners = inspectorPathOwners(selected);
   const localWorkspace = useMemo<LocalWorkspaceContext | undefined>(() => {
     const injected = (window as Window & { __OKIE_LOCAL_WORKSPACE__?: LocalWorkspaceContext }).__OKIE_LOCAL_WORKSPACE__;
     return injected ?? (configuredRepositoryRoot ? { repositoryRoot: configuredRepositoryRoot } : undefined);
@@ -4512,7 +4513,7 @@ export function App() {
                 <button className="secondary-detail-action" disabled={!authoringEnabled || !selectedRouteOverride} onClick={resetSelectedRelationshipRoute}>Auto route</button>
                 <button className="danger-detail-action" disabled={!authoringEnabled} onClick={deleteSelectedRelationship}>Delete relationship</button>
               </div>}
-            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'} data-inspector-presentation="entity">
+            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-has-owners={selectedOwners.length ? 'true' : 'false'} data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'} data-inspector-presentation="entity">
               <header className="entity-hero">
                 <div className="entity-kicker"><span>{selectedLevelLabel}</span><small className={`provenance-badge tone-${selectedProvenance.tone}`}>{selectedProvenance.badge}</small></div>
                 <h2 id="inspector-entity-title">{selected.name}</h2>
@@ -4533,6 +4534,11 @@ export function App() {
                 <div><span><InfoIcon size={13}/> {selectedProvenance.heading}</span><strong>{selectedProvenance.evidenceLabel}</strong></div>
                 <p>{selectedProvenance.description}</p>
               </div>
+
+              {selectedOwners.length > 0 ? <section className="detail-section ownership-section" data-inspector-section="ownership">
+                <div className="section-title"><h3>Owned by</h3><span>{selectedOwners.length}</span></div>
+                <div aria-label="CODEOWNERS" className="entity-metadata" data-testid="inspector-owners">{selectedOwners.map(owner => <span data-inspector-owner={owner} key={owner}>{owner}</span>)}</div>
+              </section> : null}
 
               <section className="detail-section diagrams-section">
                 <div className="section-title"><h3>Diagrams</h3><span>{selected.detail === 'component' || selected.detail === 'code' ? 3 : 2}</span></div>

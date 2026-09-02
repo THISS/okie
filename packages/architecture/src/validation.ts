@@ -198,6 +198,21 @@ export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssu
       issues.push({ path: `${path}.confidence`, message: "must be finite and between 0 and 1" });
     }
     entity.sourceRefs.forEach((source, sourceIndex) => validateSourceRef(source, `${path}.sourceRefs[${sourceIndex}]`, issues));
+    if (entity.owners !== undefined) {
+      if (!Array.isArray(entity.owners) || entity.owners.length === 0) {
+        issues.push({ path: `${path}.owners`, message: "must be a non-empty array when present" });
+      } else {
+        const seen = new Set<string>();
+        entity.owners.forEach((owner, ownerIndex) => {
+          if (typeof owner !== "string" || !owner.trim()) {
+            issues.push({ path: `${path}.owners[${ownerIndex}]`, message: "must be a non-blank string" });
+            return;
+          }
+          if (seen.has(owner)) issues.push({ path: `${path}.owners`, message: `duplicate owner: ${owner}` });
+          seen.add(owner);
+        });
+      }
+    }
     const excerpts = entity.sourceExcerpts ?? [];
     for (const duplicate of duplicateValues(excerpts.map(excerpt => JSON.stringify([
       excerpt.frozenRevision,

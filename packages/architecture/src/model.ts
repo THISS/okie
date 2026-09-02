@@ -77,6 +77,11 @@ export interface ArchitectureEntity {
   responsibility?: string;
   technology?: string[];
   tags?: string[];
+  /**
+   * Observed CODEOWNERS (or equivalent path owners) for this entity's files.
+   * Scan-time overlay — never ArchitectureExtraction input. Omit when empty.
+   */
+  owners?: string[];
   sourceRefs: SourceRef[];
   sourceExcerpts?: SourceExcerpt[];
   confidence?: number;
