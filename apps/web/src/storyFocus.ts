@@ -31,3 +31,5 @@ export function storyFocusPresentation(
     requiredIds: new Set(targetIds),
   };
 }
+
+export { isolateNeighborhoodIds } from './isolateNeighborhood';
