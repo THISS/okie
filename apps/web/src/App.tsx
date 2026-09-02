@@ -68,7 +68,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorPathOwners, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1506,8 +1506,15 @@ export function App() {
     scopeEntityId: activeDiagramScopeId,
   }), [activeDiagramDetail, activeDiagramScopeId, activeDiagramSurface.kind, activeDiagramSurface.title, query.fixture, scene.title]);
   const notationPresentation = useMemo(
-    () => presentInspectorNotationDiagnostics(notationDiagnostics),
-    [notationDiagnostics],
+    () => presentInspectorNotationDiagnostics(notationDiagnostics, {
+      scope: inspectorNotationScope({
+        selectedId: selected.id,
+        bandEntityIds: scene.projection?.entityIdsByDetail[activeDetail ?? 'context'] ?? [],
+        entities: scene.entities,
+        relations: activeSnapshot.relations,
+      }),
+    }),
+    [activeDetail, notationDiagnostics, scene.entities, scene.projection, selected.id],
   );
   const activeDynamicFlowArtifact = useMemo(() => {
     if (query.fixture === 'stress' || activeDiagramSurface.kind === 'main' || activeDiagramSurface.kind === 'code') return undefined;

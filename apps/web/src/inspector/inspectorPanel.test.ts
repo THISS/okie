@@ -4,6 +4,7 @@ import {
   defaultInspectorWidth,
   inspectorAcceptedSummary,
   inspectorCanShowSource,
+  inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
   inspectorWidthRange,
@@ -366,5 +367,161 @@ describe('inspector C4 notation sample (CLA-59)', () => {
     expect(inspectorPathOwners(system)).toEqual([]);
     expect(presentInspectorNotationDiagnostics([]).ready).toBe(true);
     expect(presentInspectorNotationDiagnostics([]).total).toBe(0);
+  });
+});
+
+describe('inspector C4 notation scope (CLA-60)', () => {
+  const entities = [
+    { id: 'system:okie' },
+    { id: 'person:reader' },
+    { id: 'container:web', parentId: 'system:okie' },
+    { id: 'container:model', parentId: 'system:okie' },
+    { id: 'container:other', parentId: 'system:other' },
+    { id: 'component:shell', parentId: 'container:web' },
+    ...Array.from({ length: 80 }, (_, index) => ({ id: `code:${index}`, parentId: 'component:shell' })),
+  ];
+  const relations = [
+    { id: 'rel:okie-reader', from: 'system:okie', to: 'person:reader' },
+    { id: 'rel:web-model', from: 'container:web', to: 'container:model' },
+    { id: 'rel:code-0-1', from: 'code:0', to: 'code:1' },
+    { id: 'rel:unrelated', from: 'container:other', to: 'person:reader' },
+  ];
+
+  function atlasDump() {
+    const missingDescriptions = [
+      advisory('element.description.missing', 'entities.system:okie.responsibility', 'C4 element system:okie should have a description.', { kind: 'element', id: 'system:okie' }),
+      advisory('element.description.missing', 'entities.person:reader.responsibility', 'C4 element person:reader should have a description.', { kind: 'element', id: 'person:reader' }),
+      advisory('element.description.missing', 'entities.container:web.responsibility', 'C4 element container:web should have a description.', { kind: 'element', id: 'container:web' }),
+      advisory('element.description.missing', 'entities.container:model.responsibility', 'C4 element container:model should have a description.', { kind: 'element', id: 'container:model' }),
+      ...Array.from({ length: 80 }, (_, index) => advisory(
+        'element.description.missing',
+        `entities.code:${index}.responsibility`,
+        `C4 element code:${index} should have a description.`,
+        { kind: 'element', id: `code:${index}` },
+      )),
+    ];
+    const missingLabels = [
+      advisory('relationship.label.missing', 'relations.rel:okie-reader.label', 'C4 relationship rel:okie-reader should have a directional label.', { kind: 'relationship', id: 'rel:okie-reader' }),
+      advisory('relationship.label.missing', 'relations.rel:web-model.label', 'C4 relationship rel:web-model should have a directional label.', { kind: 'relationship', id: 'rel:web-model' }),
+      advisory('relationship.label.missing', 'relations.rel:code-0-1.label', 'C4 relationship rel:code-0-1 should have a directional label.', { kind: 'relationship', id: 'rel:code-0-1' }),
+      advisory('relationship.label.missing', 'relations.rel:unrelated.label', 'C4 relationship rel:unrelated should have a directional label.', { kind: 'relationship', id: 'rel:unrelated' }),
+    ];
+    return [...missingDescriptions, ...missingLabels];
+  }
+
+  it('does not count atlas-wide completeness against a selected L1 system', () => {
+    const dump = atlasDump();
+    const scope = inspectorNotationScope({
+      selectedId: 'system:okie',
+      bandEntityIds: ['system:okie', 'person:reader'],
+      entities,
+      relations,
+    });
+    const presented = presentInspectorNotationDiagnostics(dump, { scope });
+
+    expect(dump.length).toBeGreaterThan(80);
+    expect(scope.entityIds).toEqual(new Set(['system:okie']));
+    expect(presented.total).toBe(2);
+    expect(presented.total).toBeLessThan(10);
+    expect(presented.sample.map(row => row.subjectId).sort()).toEqual(['rel:okie-reader', 'system:okie']);
+    expect(presented.hiddenCount).toBe(0);
+    expect(presented.sample.some(row => row.subjectId.startsWith('code:'))).toBe(false);
+    expect(presented.sample.some(row => row.subjectId === 'person:reader')).toBe(false);
+  });
+
+  it('includes the current C4 band under the selected parent, not sibling trees', () => {
+    const dump = atlasDump();
+    const scope = inspectorNotationScope({
+      selectedId: 'system:okie',
+      bandEntityIds: ['container:web', 'container:model', 'container:other'],
+      entities,
+      relations,
+    });
+    const presented = presentInspectorNotationDiagnostics(dump, { scope });
+
+    expect([...scope.entityIds].sort()).toEqual(['container:model', 'container:web', 'system:okie']);
+    expect(presented.total).toBe(5);
+    expect(presented.sample.map(row => row.subjectId).sort()).toEqual([
+      'container:model',
+      'container:web',
+      'rel:okie-reader',
+      'rel:web-model',
+      'system:okie',
+    ]);
+    expect(presented.sample.some(row => row.subjectId === 'container:other')).toBe(false);
+    expect(presented.sample.some(row => row.subjectId.startsWith('code:'))).toBe(false);
+  });
+
+  it('scopes a selected container to itself at L2 and to its code band without the rest of the atlas', () => {
+    const dump = atlasDump();
+    const l2 = presentInspectorNotationDiagnostics(dump, {
+      scope: inspectorNotationScope({
+        selectedId: 'container:web',
+        bandEntityIds: ['container:web', 'container:model', 'container:other'],
+        entities,
+        relations,
+      }),
+    });
+    expect(l2.total).toBe(2);
+    expect(l2.sample.map(row => row.subjectId).sort()).toEqual(['container:web', 'rel:web-model']);
+
+    const l4 = presentInspectorNotationDiagnostics(dump, {
+      scope: inspectorNotationScope({
+        selectedId: 'container:web',
+        bandEntityIds: Array.from({ length: 80 }, (_, index) => `code:${index}`),
+        entities,
+        relations,
+      }),
+    });
+    expect(l4.total).toBe(1 + 80 + 1 + 1);
+    expect(l4.sample).toHaveLength(INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(l4.hiddenCount).toBe(l4.total - INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(l4.sample.some(row => row.subjectId === 'container:model')).toBe(false);
+  });
+
+  it('still lists a real notation error in full when it sits outside the selected entity', () => {
+    const error = advisory(
+      'element.type.unsupported',
+      'entities.widget:x.kind',
+      'C4 element widget:x has an unsupported type: widget.',
+      { kind: 'element', id: 'widget:x' },
+    );
+    const presented = presentInspectorNotationDiagnostics([...atlasDump(), error], {
+      scope: inspectorNotationScope({
+        selectedId: 'system:okie',
+        bandEntityIds: ['system:okie', 'person:reader'],
+        entities,
+        relations,
+      }),
+    });
+
+    expect(presented.errors).toHaveLength(1);
+    expect(presented.errors[0]?.code).toBe('element.type.unsupported');
+    expect(presented.errors[0]?.message).toContain('unsupported type');
+    expect(presented.total).toBe(3);
+    expect(presented.sample.some(row => row.code === 'element.type.unsupported')).toBe(false);
+  });
+
+  it('keeps diagram completeness on the scoped pane and still omits owners when none exist', () => {
+    const scene = createGoldenC4Scene();
+    const system = scene.entities.find(entity => entity.id === 'system:okie')!;
+    const title = advisory(
+      'diagram.title.missing',
+      'diagram.title',
+      'C4 diagrams should have a non-blank title.',
+      { kind: 'diagram', id: 'view:scan' },
+    );
+    const presented = presentInspectorNotationDiagnostics([...atlasDump(), title], {
+      scope: inspectorNotationScope({
+        selectedId: 'system:okie',
+        bandEntityIds: ['system:okie', 'person:reader'],
+        entities,
+        relations,
+      }),
+    });
+
+    expect(inspectorPathOwners(system)).toEqual([]);
+    expect(presented.sample.some(row => row.code === 'diagram.title.missing')).toBe(true);
+    expect(presented.total).toBe(3);
   });
 });

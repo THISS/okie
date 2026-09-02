@@ -189,7 +189,9 @@ describe('compact inspector presentation', () => {
   });
 
   it('samples C4 completeness advisories in Details instead of dumping the full list', () => {
-    expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics)');
+    expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics');
+    expect(app).toContain('inspectorNotationScope({');
+    expect(app).toContain('selectedId: selected.id');
     expect(app).toContain('data-testid="inspector-notation"');
     expect(app).toContain('data-inspector-notation-total={notationPresentation.total}');
     expect(app).toContain('data-inspector-notation-hidden={notationPresentation.hiddenCount}');
