@@ -169,61 +169,67 @@ function coverageRevealLandingZoom(
   return Math.max(ATLAS_CAMERA_BOUNDS.minZoom, Math.min(ATLAS_CAMERA_BOUNDS.maxZoom, COVERAGE_REVEAL.full * fill));
 }
 
-export function frameProjectionScope(
+function dominantBandZoomRange(detail: SemanticDetail, forceBandOwnership = false) {
+  const level = Math.max(0, semanticDetails.indexOf(detail));
+  const interval = bandDominantIntervals[level]!;
+  const activeBand = ATLAS_SEMANTIC_ZOOM_BANDS[level]!;
+  return {
+    level,
+    minZoom: forceBandOwnership && level > 0
+      ? activeBand.enterZoom + activeBand.hysteresis + 0.001
+      : interval.min,
+    maxZoom: interval.max,
+  };
+}
+
+function frameEntityIdsAtDetail(
   scene: AtlasScene,
-  rootEntityId: string,
+  entityIds: readonly string[],
   detail: SemanticDetail,
   viewport: ViewportSize,
   safeArea: SafeArea,
-  forceBandOwnership = false,
-  preferReadableRoot = false,
+  minZoom: number,
+  maxZoom: number,
 ): Camera | undefined {
-  const ids = projectionScopeEntityIds(scene, rootEntityId, detail);
+  const wanted = new Set(entityIds);
   const entities = scene.entities.flatMap(entity => {
     const bounds = scene.projection?.boundsByEntityIdAndDetail[entity.id]?.[detail];
-    return ids.includes(entity.id) && bounds ? [{ ...entity, ...bounds }] : [];
+    return wanted.has(entity.id) && bounds ? [{ ...entity, ...bounds }] : [];
   });
   if (!entities.length) return undefined;
-  const level = semanticDetails.indexOf(detail);
-  const interval = bandDominantIntervals[Math.max(0, level)]!;
-  const activeBand = ATLAS_SEMANTIC_ZOOM_BANDS[Math.max(0, level)]!;
-  const rootBounds = scene.projection?.boundsByEntityIdAndDetail[rootEntityId]?.[detail];
-  // Coverage-reveal landing (scan mode only): frame the focus at COVERAGE_REVEAL.full
-  // coverage so its coverage-revealed children are visible on arrival, instead of clamping
-  // up to the band floor (which overframes a large scope and hides its interior). Demo/golden
-  // (no targetAspect) keep the band-floor landing → byte-identical, bandPolicy.qa unchanged.
-  const coverageLanding = scene.targetAspect !== undefined && rootBounds
-    ? coverageRevealLandingZoom(rootBounds, viewport, safeArea)
-    : undefined;
-  const ownershipFloor = coverageLanding ?? (forceBandOwnership && level > 0
-    ? activeBand.enterZoom + activeBand.hysteresis + 0.001
-    : interval.min);
-  const fitted = frameEntities({ ...scene, entities }, ids, viewport, safeArea, {
+  return frameEntities({ ...scene, entities }, entityIds, viewport, safeArea, {
     screenPadding: 24,
-    minZoom: ownershipFloor,
-    maxZoom: interval.max,
+    minZoom,
+    maxZoom,
   });
-  if (!fitted || !preferReadableRoot) return fitted;
-  if (!rootBounds) return fitted;
-  // The rail's readable-root target is the reveal-coverage zoom in scan mode (frame the focus
-  // at its children's reveal coverage), else the band focus preset (unchanged for the demo).
-  const focusZoom = coverageLanding
-    ?? scene.projection?.zoomPolicy?.bands.find(band => band.detail === detail)?.focusZoom
-    ?? levels[Math.max(0, level)]!.zoom;
-  return readableRootCamera(fitted, rootBounds, focusZoom, viewport, safeArea);
 }
 
-export function scopeFitsSafeViewport(
+/**
+ * Frames the entities currently painted at this C4 band (the visible projection),
+ * not the root entity's full descendant scope. Fit uses this; load/open-inside keep
+ * `frameProjectionScope` so CLA-11 unsolicited refit behavior stays unchanged.
+ */
+export function frameVisibleProjection(
   scene: AtlasScene,
-  rootEntityId: string,
+  entityIds: readonly string[],
+  detail: SemanticDetail,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): Camera | undefined {
+  const { minZoom, maxZoom } = dominantBandZoomRange(detail);
+  return frameEntityIdsAtDetail(scene, entityIds, detail, viewport, safeArea, minZoom, maxZoom);
+}
+
+export function projectedEntitiesFitSafeViewport(
+  scene: AtlasScene,
+  entityIds: readonly string[],
   detail: SemanticDetail,
   camera: Camera,
   viewport: ViewportSize,
   safeArea: SafeArea,
 ): boolean {
-  const ids = projectionScopeEntityIds(scene, rootEntityId, detail);
   const padding = 24;
-  return ids.every(id => {
+  return entityIds.every(id => {
     const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.[detail];
     if (!bounds) return true;
     const left = viewport.width / 2 + (bounds.x - camera.x) * camera.zoom;
@@ -235,6 +241,55 @@ export function scopeFitsSafeViewport(
       && top >= safeArea.top + padding
       && bottom <= viewport.height - safeArea.bottom - padding;
   });
+}
+
+export function frameProjectionScope(
+  scene: AtlasScene,
+  rootEntityId: string,
+  detail: SemanticDetail,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+  forceBandOwnership = false,
+  preferReadableRoot = false,
+): Camera | undefined {
+  const ids = projectionScopeEntityIds(scene, rootEntityId, detail);
+  const { level, minZoom, maxZoom } = dominantBandZoomRange(detail, forceBandOwnership);
+  const rootBounds = scene.projection?.boundsByEntityIdAndDetail[rootEntityId]?.[detail];
+  // Coverage-reveal landing (scan mode only): frame the focus at COVERAGE_REVEAL.full
+  // coverage so its coverage-revealed children are visible on arrival, instead of clamping
+  // up to the band floor (which overframes a large scope and hides its interior). Demo/golden
+  // (no targetAspect) keep the band-floor landing → byte-identical, bandPolicy.qa unchanged.
+  const coverageLanding = scene.targetAspect !== undefined && rootBounds
+    ? coverageRevealLandingZoom(rootBounds, viewport, safeArea)
+    : undefined;
+  const ownershipFloor = coverageLanding ?? minZoom;
+  const fitted = frameEntityIdsAtDetail(scene, ids, detail, viewport, safeArea, ownershipFloor, maxZoom);
+  if (!fitted || !preferReadableRoot) return fitted;
+  if (!rootBounds) return fitted;
+  // The rail's readable-root target is the reveal-coverage zoom in scan mode (frame the focus
+  // at its children's reveal coverage), else the band focus preset (unchanged for the demo).
+  const focusZoom = coverageLanding
+    ?? scene.projection?.zoomPolicy?.bands.find(band => band.detail === detail)?.focusZoom
+    ?? levels[level]!.zoom;
+  return readableRootCamera(fitted, rootBounds, focusZoom, viewport, safeArea);
+}
+
+export function scopeFitsSafeViewport(
+  scene: AtlasScene,
+  rootEntityId: string,
+  detail: SemanticDetail,
+  camera: Camera,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): boolean {
+  return projectedEntitiesFitSafeViewport(
+    scene,
+    projectionScopeEntityIds(scene, rootEntityId, detail),
+    detail,
+    camera,
+    viewport,
+    safeArea,
+  );
 }
 
 export function retargetCameraForSemanticBand(
