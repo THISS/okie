@@ -140,6 +140,25 @@ export type InspectorNotationPresentation = {
   ready: boolean;
 };
 
+export type InspectorNotationScope = {
+  entityIds: ReadonlySet<string>;
+  relationIds: ReadonlySet<string>;
+};
+
+export type InspectorNotationScopeInput = {
+  selectedId: string;
+  /** Entity ids in the current C4 band (canvas projection at this detail). */
+  bandEntityIds: readonly string[];
+  entities: readonly { id: string; parentId?: string }[];
+  relations: readonly { id: string; from: string; to: string }[];
+};
+
+export type InspectorNotationPresentOptions = {
+  sampleLimit?: number;
+  /** When set, completeness count+sample belong to this selection / band — not the whole atlas. */
+  scope?: InspectorNotationScope;
+};
+
 function notationRow(
   diagnostic: C4NotationCompletenessDiagnostic,
   tone: InspectorNotationTone,
@@ -153,30 +172,79 @@ function notationRow(
   };
 }
 
+function ancestorOrSelf(
+  entity: { id: string; parentId?: string },
+  ownerId: string,
+  byId: Map<string, { id: string; parentId?: string }>,
+): boolean {
+  let current: { id: string; parentId?: string } | undefined = entity;
+  const seen = new Set<string>();
+  while (current && !seen.has(current.id)) {
+    if (current.id === ownerId) return true;
+    seen.add(current.id);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+  return false;
+}
+
+function diagnosticInCompletenessScope(
+  diagnostic: C4NotationCompletenessDiagnostic,
+  scope: InspectorNotationScope,
+): boolean {
+  if (diagnostic.subject.kind === 'diagram') return true;
+  if (diagnostic.subject.kind === 'element') return scope.entityIds.has(diagnostic.subject.id);
+  return scope.relationIds.has(diagnostic.subject.id);
+}
+
 /**
- * Count-with-sample for inspector Details. Completeness advisories are capped;
- * real notation errors are listed in full and keep input order.
+ * Completeness subjects for inspector Details: the selected entity, plus
+ * descendants that sit in the current C4 band (the honest diagram for that
+ * selection). Relations that touch that set belong too. Root-system + code
+ * band is still a large dump — CLA-59 sampling still applies — but L1 must
+ * not attribute every code-file omission to the selected system.
+ */
+export function inspectorNotationScope(input: InspectorNotationScopeInput): InspectorNotationScope {
+  const byId = new Map(input.entities.map(entity => [entity.id, entity]));
+  const band = new Set(input.bandEntityIds);
+  const entityIds = new Set<string>([input.selectedId]);
+  for (const entity of input.entities) {
+    if (!band.has(entity.id) || entity.id === input.selectedId) continue;
+    if (ancestorOrSelf(entity, input.selectedId, byId)) entityIds.add(entity.id);
+  }
+  const relationIds = new Set<string>();
+  for (const relation of input.relations) {
+    if (entityIds.has(relation.from) || entityIds.has(relation.to)) relationIds.add(relation.id);
+  }
+  return { entityIds, relationIds };
+}
+
+/**
+ * Count-with-sample for inspector Details. Completeness advisories are capped
+ * and, when a scope is provided, counted only for that selection / C4 band.
+ * Real notation errors are listed in full, keep input order, and stay unscoped.
  */
 export function presentInspectorNotationDiagnostics(
   diagnostics: readonly C4NotationCompletenessDiagnostic[],
-  sampleLimit = INSPECTOR_NOTATION_ADVISORY_SAMPLE,
+  options: InspectorNotationPresentOptions = {},
 ): InspectorNotationPresentation {
   const errors: InspectorNotationDiagnosticRow[] = [];
   const advisories: InspectorNotationDiagnosticRow[] = [];
   for (const diagnostic of diagnostics) {
     if (INSPECTOR_NOTATION_ERROR_CODES.has(diagnostic.code)) {
       errors.push(notationRow(diagnostic, 'error'));
-    } else {
-      advisories.push(notationRow(diagnostic, 'advisory'));
+      continue;
     }
+    if (options.scope && !diagnosticInCompletenessScope(diagnostic, options.scope)) continue;
+    advisories.push(notationRow(diagnostic, 'advisory'));
   }
-  const limit = Math.max(0, sampleLimit);
+  const limit = Math.max(0, options.sampleLimit ?? INSPECTOR_NOTATION_ADVISORY_SAMPLE);
   const sample = advisories.slice(0, limit);
+  const total = errors.length + advisories.length;
   return {
-    total: diagnostics.length,
+    total,
     errors,
     sample,
     hiddenCount: Math.max(0, advisories.length - sample.length),
-    ready: diagnostics.length === 0,
+    ready: total === 0,
   };
 }
