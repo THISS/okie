@@ -350,6 +350,9 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .notation-readiness span { color: var(--atlas-accent); font-family: var(--atlas-font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .notation-readiness.advisory span { color: var(--atlas-orange); }
 .notation-readiness small { color: var(--atlas-quiet); font-size: 10px; line-height: 1.4; }
+.notation-readiness-list { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.notation-readiness-list li { color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 10px; font-weight: 400; line-height: 1.4; text-transform: none; overflow-wrap: anywhere; }
+.notation-readiness-more { display: block; margin-top: 4px; }
 
 .map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; isolation: isolate; }
 .map-stage::after { position: absolute; z-index: 2; right: 0; bottom: 0; left: 0; height: 120px; background: linear-gradient(transparent, rgba(7,10,11,.36)); content: ''; pointer-events: none; }
