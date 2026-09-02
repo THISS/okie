@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:apps-server",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/server",
+      "responsibility": "Loopback scan HTTP process that serves paste-a-repo jobs, published scan objects, and optional Ask Atlas answers against an OpenAI-compatible gateway. GET /healthz stays key-free.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-ask-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/ask.ts",
+      "responsibility": "One-shot Ask Atlas Q&A grounded in client-supplied packets and accepted summaries; disconnected when no gateway key is present.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-enrichment-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/enrichment.ts",
+      "responsibility": "Hosted enrichment pass that posts bounded packets to the configured LLM gateway and feeds replies through the existing merge gate.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-github-access-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/githubAccess.ts",
+      "responsibility": "Resolves GitHub HTTP clients for hosted scan: OAuth bearer, anonymous, or the loopback test double — never operator gh or env tokens.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-github-o-auth-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/githubOAuth.ts",
+      "responsibility": "GitHub OAuth start/callback with CSRF state cookies; tokens stay in the in-memory session.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-global-spend-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/globalSpend.ts",
+      "responsibility": "Process-wide enrichment spend ceiling across GitHub users, orthogonal to the per-user submit limiter.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-jobs-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/jobs.ts",
+      "responsibility": "In-memory scan job queue, stages, and the per-user / per-IP submit limiter.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-llm-gateway-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/llmGateway.ts",
+      "responsibility": "Resolves the OpenAI-compatible gateway from env and gitignored local config; never returns the key on public endpoints.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-local-defaults-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/localDefaults.ts",
+      "responsibility": "Loopback listen defaults and hosted-scan posture for the local operator process.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-main-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/main.ts",
+      "responsibility": "Process entry that wires GitHub auth, the scan job runner, Ask Atlas, and the loopback HTTP server.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-repo-url-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/repoUrl.ts",
+      "responsibility": "Normalizes a pasted repository URL onto the scan GitHub source shape.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-scan-objects-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/scanObjects.ts",
+      "responsibility": "Safe path resolution for published scan JSON objects under the scan root.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-scan-server-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/scanServer.ts",
+      "responsibility": "HTTP handlers for healthz, auth, scan jobs, Ask Atlas, and /scan/* objects.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-server-src-scan-service-ts",
+      "kind": "component",
+      "parentId": "container:apps-server",
+      "name": "src/scanService.ts",
+      "responsibility": "Runs a GitHub scan job, optionally enriches, and publishes the snapshot trio plus enrichment report.",
+      "sourceRefs": []
+    },
+    {
+      "id": "code:apps-server-src-ask-ts:answer-ask-question",
+      "kind": "code",
+      "parentId": "component:apps-server-src-ask-ts",
+      "name": "answerAskQuestion",
+      "responsibility": "Answers one Ask Atlas question from submitted packets and summaries, or reports the gateway as disconnected.",
+      "sourceRefs": [
+        {
+          "path": "apps/server/src/ask.ts",
+          "symbol": "answerAskQuestion",
+          "startLine": 138,
+          "endLine": 186
+        }
+      ]
+    }
+  ],
+  "relations": []
+}

@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:packages-scan",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/scan",
+      "responsibility": "Deterministic TypeScript scanner that pins a git tree, emits bounded enrichment packets and concatenated prompts, and merges accepted ArchitectureExtraction documents through an atomic gate.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-cli-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/cli.ts",
+      "responsibility": "okie-scan CLI: local or GitHub scan, packet/prompt emission, and --enrich-from merge.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-discover-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/discover.ts",
+      "responsibility": "Deterministic git-ls-files discovery of TypeScript/JS source into workspace containers.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-enrich-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/enrich.ts",
+      "responsibility": "Atomic enrichment merge: hallucinated ids reject the whole scope; accepted summaries attach responsibility only.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-extract-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/extract.ts",
+      "responsibility": "Syntax-only TypeScript extractor that maps files to C4 containers, file-components, and code entities.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-github-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/github.ts",
+      "responsibility": "Public GitHub tarball acquisition with anonymous REST plus optional gh-CLI fallback; tokens are scrubbed from errors.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-ids-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/ids.ts",
+      "responsibility": "Deterministic typed stable-id derivation for scanned entities and relations.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-manifest-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/manifest.ts",
+      "responsibility": "Builds the slug-sorted fixtures/scan/index.json listing of scanned repositories.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-overview-story-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/overview-story.ts",
+      "responsibility": "Synthesizes the deterministic C4 overview tour; accepted summaries may appear in narration, step count stays the tour.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-packet-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/packet.ts",
+      "responsibility": "Builds bounded, redacted per-container packets plus the repo-wide system packet.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-pin-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/pin.ts",
+      "responsibility": "Pins commitSha, treeHash, and committer-date generatedAt so a re-scan of a SHA is byte-identical.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-prompt-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/prompt.ts",
+      "responsibility": "Concatenates the frozen enrichment-prompt.md with packet JSON and a SHA-stamped appendix — no templating.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-redact-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/redact.ts",
+      "responsibility": "Scrubs GitHub-token-shaped secrets from packets and acquisition errors.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-scan-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/scan.ts",
+      "responsibility": "Orchestrates pin → discover → extract → optional enrich → view/story/scene/timeline compile.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scan-src-scope-ts",
+      "kind": "component",
+      "parentId": "container:packages-scan",
+      "name": "src/scope.ts",
+      "responsibility": "Derives per-container file-component and code partitions the enrichment gate reasons over.",
+      "sourceRefs": []
+    },
+    {
+      "id": "code:packages-scan-src-enrich-ts:merge-enrichment",
+      "kind": "code",
+      "parentId": "component:packages-scan-src-enrich-ts",
+      "name": "mergeEnrichment",
+      "responsibility": "Merges accepted per-scope documents into the deterministic base; rejected scopes stay file-components.",
+      "sourceRefs": [
+        {
+          "path": "packages/scan/src/enrich.ts",
+          "symbol": "mergeEnrichment",
+          "startLine": 387,
+          "endLine": 619
+        }
+      ]
+    }
+  ],
+  "relations": []
+}

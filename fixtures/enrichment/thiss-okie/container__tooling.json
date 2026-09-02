@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:tooling",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "Build & fixture tooling",
+      "responsibility": "Repo-level generators that rebuild gitignored wasm-pack output and a seeded stress scene before check, build, and dev.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:scripts-build-wasm-mjs",
+      "kind": "component",
+      "parentId": "container:tooling",
+      "name": "scripts/build-wasm.mjs",
+      "responsibility": "Invokes wasm-pack to build crates/atlas-wasm into pkg/ (profiling, release, or debug).",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:scripts-generate-stress-mjs",
+      "kind": "component",
+      "parentId": "container:tooling",
+      "name": "scripts/generate-stress.mjs",
+      "responsibility": "Writes a deterministic seeded N-node stress scene under fixtures/renderer/.",
+      "sourceRefs": []
+    },
+    {
+      "id": "code:scripts-generate-stress-mjs:mulberry32",
+      "kind": "code",
+      "parentId": "component:scripts-generate-stress-mjs",
+      "name": "mulberry32",
+      "responsibility": "Seeded PRNG so identical --nodes/--edges/--seed arguments rebuild a byte-identical stress scene.",
+      "sourceRefs": [
+        {
+          "path": "scripts/generate-stress.mjs",
+          "symbol": "mulberry32",
+          "startLine": 18,
+          "endLine": 25
+        }
+      ]
+    }
+  ],
+  "relations": []
+}

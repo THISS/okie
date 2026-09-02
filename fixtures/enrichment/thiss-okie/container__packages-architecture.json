@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:packages-architecture",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/architecture",
+      "responsibility": "Canonical renderer-independent architecture model: extraction schema, snapshot validation, C4 projection, completeness scoring, and orthogonal routing.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-authoring-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/authoring.ts",
+      "responsibility": "Command/document model for hand-authored architecture edits before they become a snapshot.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-c4-completeness-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/c4-completeness.ts",
+      "responsibility": "Scores how completely a snapshot and view cover the C4 bands.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-c4-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/c4.ts",
+      "responsibility": "Projects a snapshot into C4 bands, layouts, and scoped views.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-extraction-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/extraction.ts",
+      "responsibility": "ArchitectureExtraction intake schema, limits, and validateArchitectureExtraction — the enrichment gate.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-model-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/model.ts",
+      "responsibility": "Canonical entity/relation/snapshot types and schema version for the architecture model.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-normalized-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/normalized.ts",
+      "responsibility": "Selectors over a validated snapshot, view, and story used by compilers.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-orthogonal-router-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/orthogonal-router.ts",
+      "responsibility": "Orthogonal edge routing around node obstacles for C4 diagrams.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-architecture-src-validation-ts",
+      "kind": "component",
+      "parentId": "container:packages-architecture",
+      "name": "src/validation.ts",
+      "responsibility": "Validates snapshots, views, and stories against the frozen architecture contracts.",
+      "sourceRefs": []
+    },
+    {
+      "id": "code:packages-architecture-src-extraction-ts:validate-architecture-extraction",
+      "kind": "code",
+      "parentId": "component:packages-architecture-src-extraction-ts",
+      "name": "validateArchitectureExtraction",
+      "responsibility": "Validates an ArchitectureExtraction document against schema, id, and list limits before the enrichment merge.",
+      "sourceRefs": [
+        {
+          "path": "packages/architecture/src/extraction.ts",
+          "symbol": "validateArchitectureExtraction",
+          "startLine": 294,
+          "endLine": 430
+        }
+      ]
+    }
+  ],
+  "relations": []
+}

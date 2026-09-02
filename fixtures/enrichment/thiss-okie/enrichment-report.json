@@ -1,0 +1,56 @@
+{
+  "promptVersion": "okie-enrichment/v2",
+  "enrichedContainers": [
+    "container:apps-server",
+    "container:apps-web",
+    "container:packages-architecture",
+    "container:packages-scan",
+    "container:packages-scene-compiler",
+    "container:tooling"
+  ],
+  "collapsedSelfEdges": 0,
+  "results": [
+    {
+      "containerId": "container:apps-server",
+      "accepted": true,
+      "reasons": [],
+      "components": 13
+    },
+    {
+      "containerId": "container:apps-web",
+      "accepted": true,
+      "reasons": [],
+      "components": 22
+    },
+    {
+      "containerId": "container:packages-architecture",
+      "accepted": true,
+      "reasons": [],
+      "components": 8
+    },
+    {
+      "containerId": "container:packages-scan",
+      "accepted": true,
+      "reasons": [],
+      "components": 14
+    },
+    {
+      "containerId": "container:packages-scene-compiler",
+      "accepted": true,
+      "reasons": [],
+      "components": 12
+    },
+    {
+      "containerId": "container:tooling",
+      "accepted": true,
+      "reasons": [],
+      "components": 2
+    }
+  ],
+  "systemScope": {
+    "accepted": true,
+    "reasons": [],
+    "persons": 0,
+    "relations": 0
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:packages-scene-compiler",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/scene-compiler",
+      "responsibility": "Compiles architecture snapshots and stories into the v1 renderer scene protocol, C4 dynamic-flow artifacts, and the hand-authored golden demo fixture.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-scripts-generate-golden-source-excerpts-mjs",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "scripts/generate-golden-source-excerpts.mjs",
+      "responsibility": "Regenerates checked golden source excerpts from pinned path+symbol+line anchors.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-compile-c4-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/compile-c4.ts",
+      "responsibility": "Compiles a C4 projection bundle into the renderer scene used by the atlas.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-compile-normalized-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/compile-normalized.ts",
+      "responsibility": "Compiles a normalized architecture selection into scene objects.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-compile-scene-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/compile-scene.ts",
+      "responsibility": "Generic scene compiler from snapshot + view layouts into protocol objects and relations.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-compile-story-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/compile-story.ts",
+      "responsibility": "Compiles an architecture story into a renderer timeline.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-display-text-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/display-text.ts",
+      "responsibility": "Fits labels to available width using path/word/identifier display modes.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-dynamic-flow-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/dynamic-flow.ts",
+      "responsibility": "Builds C4 dynamic-flow story artifacts from snapshot relations.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-generate-fixtures-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/generate-fixtures.ts",
+      "responsibility": "Writes the checked demo snapshot/scene/timeline fixtures from the golden semantic model.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-golden-fixture-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/golden-fixture.ts",
+      "responsibility": "Hand-authored golden Okie self-map: the semantic source of truth for dogfooding pins.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-golden-source-excerpts-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/golden-source-excerpts.ts",
+      "responsibility": "Generated frozen source excerpts; regenerate rather than hand-edit.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-protocol-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/protocol.ts",
+      "responsibility": "TypeScript mirror of crates/atlas-protocol v1 camelCase renderer protocol.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:packages-scene-compiler-src-theme-ts",
+      "kind": "component",
+      "parentId": "container:packages-scene-compiler",
+      "name": "src/theme.ts",
+      "responsibility": "Scene fill/text colors keyed by entity kind for compiled atlas scenes.",
+      "sourceRefs": []
+    },
+    {
+      "id": "code:packages-scene-compiler-src-compile-c4-ts:compile-c4-scene",
+      "kind": "code",
+      "parentId": "component:packages-scene-compiler-src-compile-c4-ts",
+      "name": "compileC4Scene",
+      "responsibility": "Compiles a C4 projection bundle into the atlas scene protocol the renderer consumes.",
+      "sourceRefs": [
+        {
+          "path": "packages/scene-compiler/src/compile-c4.ts",
+          "symbol": "compileC4Scene",
+          "startLine": 957,
+          "endLine": 1020
+        }
+      ]
+    }
+  ],
+  "relations": []
+}

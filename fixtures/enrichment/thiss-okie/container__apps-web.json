@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:apps-web",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/web",
+      "responsibility": "React browser shell that renders the C4 atlas, plays deterministic guided stories, and hosts the inspector, source viewer, and paste-a-repo landing.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-app-tsx",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/App.tsx",
+      "responsibility": "Application shell: canvas viewport, inspector, story chrome, Ask Atlas, and isolate/step navigation.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-ask-ask-atlas-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/ask/askAtlas.ts",
+      "responsibility": "Ask Atlas client that bounds the question to selected or isolated packets and posts /api/ask without submitting when disconnected.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-camera-flight-controller-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/cameraFlightController.ts",
+      "responsibility": "Animates camera flights between story steps and framed selections.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-diagram-source-viewer-tsx",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/diagram/SourceViewer.tsx",
+      "responsibility": "Source tab viewer for code entities with frozen excerpts or source refs; containers stay sourceless.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-hosted-atlas-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/hostedAtlas.ts",
+      "responsibility": "Public /r/<owner>/<repo> atlas identity, including the THISS/okie dogfood share URL.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-inspector-inspector-panel-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/inspector/inspectorPanel.ts",
+      "responsibility": "Inspector width, Source vs Details tab policy, and inspectorAcceptedSummary for gated enrichment prose.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-main-tsx",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/main.tsx",
+      "responsibility": "Browser entry that bootstraps fonts and mounts the atlas, including the scan-fixture load path.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-minimap-tsx",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/minimap.tsx",
+      "responsibility": "Overview minimap for panning the atlas canvas.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-navigation-history-controller-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/navigation/historyController.ts",
+      "responsibility": "Browser history adapter that round-trips canonical navigation URLs.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-navigation-navigation-state-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/navigation/navigationState.ts",
+      "responsibility": "Canonical URL-backed navigation state for camera, selection, isolate, and story step.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-provenance-presentation-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/provenance/presentation.ts",
+      "responsibility": "Presents claim origin (observed / inferred / ai-explanation) and evidence counts.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-renderer-canvas2-d-renderer-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/renderer/Canvas2DRenderer.ts",
+      "responsibility": "CPU Canvas2D fallback renderer used when WebGPU/WebGL2 are unavailable.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-renderer-create-renderer-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/renderer/createRenderer.ts",
+      "responsibility": "Picks WASM, Canvas2D, or unsupported renderer backends for the atlas canvas.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-renderer-query-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/renderer/query.ts",
+      "responsibility": "Parses demo query params including fixture=scan and per-repo scan slugs.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-renderer-scan-fixture-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/renderer/scanFixture.ts",
+      "responsibility": "Loads and validates the gitignored fixtures/scan trio for ?fixture=scan.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-renderer-wasm-renderer-adapter-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/renderer/WasmRendererAdapter.ts",
+      "responsibility": "Frozen WASM import boundary: default-inits atlas-wasm and wraps createAtlasRenderer.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-scan-landing-tsx",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/scanLanding.tsx",
+      "responsibility": "Paste-a-repo landing that submits a GitHub URL and reports scan/enrichment job progress.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-semantic-semantic-lens-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/semantic/semanticLens.ts",
+      "responsibility": "Maps camera zoom onto C4 semantic bands (context, container, component, code).",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-focus-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyFocus.ts",
+      "responsibility": "Computes which entities and relations a story step should select and highlight.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-framing-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyFraming.ts",
+      "responsibility": "Frames the camera around the current story step’s revealed entities.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-playback-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyPlayback.ts",
+      "responsibility": "Guided-story playback runtime: play, pause, jump, and camera flights between steps.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-webmcp-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/webmcp.ts",
+      "responsibility": "In-page WebMCP provider exposing atlas tools (level, select, isolate, tour, ask) to the browser.",
+      "sourceRefs": []
+    },
+    {
+      "id": "code:apps-web-src-inspector-inspector-panel-ts:inspector-accepted-summary",
+      "kind": "code",
+      "parentId": "component:apps-web-src-inspector-inspector-panel-ts",
+      "name": "inspectorAcceptedSummary",
+      "responsibility": "Returns trimmed enrichment responsibility text for the inspector, ignoring blank or placeholder copy.",
+      "sourceRefs": [
+        {
+          "path": "apps/web/src/inspector/inspectorPanel.ts",
+          "symbol": "inspectorAcceptedSummary",
+          "startLine": 83,
+          "endLine": 89
+        }
+      ]
+    }
+  ],
+  "relations": []
+}
