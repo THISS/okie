@@ -69,6 +69,9 @@ const visualScaleByBand: Readonly<Record<C4Band, number>> = {
   code: C4_PRESENTATION_AT_FOCUS.code.geometryScale / C4_ZOOM_BANDS[3]!.focusZoom,
 };
 
+/** Resting owner-shell outline alpha. Must stay above the retired 0.1 hairline (CLA-45). */
+export const C4_BOUNDARY_STROKE_ALPHA = 0.88;
+
 export type BandTransitionNode = {
   visualNodeId: string;
   entityId: string;
@@ -277,7 +280,7 @@ function presentation(
         // would otherwise emit a radius the Rust validator rejects, losing the GPU surface.
         radius: Math.max(0, Math.min((boundary ? 20 : band === 'code' ? 7 : 14) * visualScale, bounds.width / 2, bounds.height / 2)),
         fill: bodyFill,
-        stroke: { color: [Math.min(1, fill[0] + 0.18), Math.min(1, fill[1] + 0.18), Math.min(1, fill[2] + 0.18), boundary ? 0.62 : 0.94], width: (boundary ? 1.5 : 2) * visualScale },
+        stroke: { color: [Math.min(1, fill[0] + 0.18), Math.min(1, fill[1] + 0.18), Math.min(1, fill[2] + 0.18), boundary ? C4_BOUNDARY_STROKE_ALPHA : 0.94], width: (boundary ? 1.5 : 2) * visualScale },
       },
       {
         kind: 'text',

@@ -1,5 +1,5 @@
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RenderState, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation, SemanticDetail } from './types';
-import { C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, fitDisplayText } from '@okie/scene-compiler';
+import { C4_BOUNDARY_STROKE_ALPHA, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, fitDisplayText } from '@okie/scene-compiler';
 import { roundedOrthogonalRoute, routeArrowHead, routeArrowHeads, routeShaft, type RouteArrowHead, type RoutePoint } from './routeGeometry';
 
 const palette = {
@@ -409,7 +409,7 @@ export class Canvas2DRenderer implements AtlasRenderer {
       const w = region.width * this.camera.zoom;
       const h = region.height * this.camera.zoom;
       ctx.fillStyle = 'rgba(147, 180, 166, 0.018)';
-      ctx.strokeStyle = 'rgba(176, 207, 194, 0.11)';
+      ctx.strokeStyle = 'rgba(176, 207, 194, 0.28)';
       ctx.lineWidth = 1;
       ctx.setLineDash([6, 7]);
       roundedRect(ctx, topLeft.x, topLeft.y, w, h, 18);
@@ -555,7 +555,7 @@ export class Canvas2DRenderer implements AtlasRenderer {
     ctx.lineWidth = Math.max(selected ? 1.7 : 0, metrics.strokeWidth);
     roundedRect(ctx, origin.x, origin.y, width, height, metrics.radius);
     ctx.fill();
-    ctx.globalAlpha = projectionOpacity * chromeVisibility * (boundary ? .62 : 1);
+    ctx.globalAlpha = projectionOpacity * chromeVisibility * (boundary ? C4_BOUNDARY_STROKE_ALPHA : 1);
     ctx.stroke();
     ctx.shadowBlur = 0;
 
