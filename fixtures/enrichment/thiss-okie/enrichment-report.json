@@ -20,7 +20,7 @@
       "containerId": "container:apps-web",
       "accepted": true,
       "reasons": [],
-      "components": 22
+      "components": 68
     },
     {
       "containerId": "container:packages-architecture",
