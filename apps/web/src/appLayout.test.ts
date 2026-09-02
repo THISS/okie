@@ -136,6 +136,7 @@ describe('multi-diagram workspace shell', () => {
     expect(app).toContain('flowArtifact={activeDynamicFlowArtifact}');
     expect(app).toContain('data-diagram-action="open-mermaid"');
     expect(css).toContain('.notation-readiness');
+    expect(css).toContain('.notation-readiness-list');
     expect(css).toContain('.semantic-diagram-readiness');
   });
 
@@ -185,6 +186,16 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('<h3>Owned by</h3>');
     expect(app).toContain('{selectedOwners.length > 0 ?');
     expect(app).toContain('data-testid="inspector-owners"');
+  });
+
+  it('samples C4 completeness advisories in Details instead of dumping the full list', () => {
+    expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics)');
+    expect(app).toContain('data-testid="inspector-notation"');
+    expect(app).toContain('data-inspector-notation-total={notationPresentation.total}');
+    expect(app).toContain('data-inspector-notation-hidden={notationPresentation.hiddenCount}');
+    expect(app).toContain('notationPresentation.errors.length');
+    expect(app).toContain('+${notationPresentation.hiddenCount} more completeness notes');
+    expect(app).not.toContain('notationDiagnostics.map');
   });
 
   it('grounds Ask Atlas in selected or isolated packets and keeps the disconnected explanation path', () => {

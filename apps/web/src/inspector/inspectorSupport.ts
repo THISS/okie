@@ -7,6 +7,8 @@ export {
   inspectorTabForEntity,
   inspectorWidthRange,
   inspectorWidthStorageKey,
+  presentInspectorNotationDiagnostics,
+  INSPECTOR_NOTATION_ADVISORY_SAMPLE,
 } from './inspectorPanel';
 export {
   canvasRelationRowsInIsolate,

@@ -8,10 +8,18 @@ import {
   inspectorTabForEntity,
   inspectorWidthRange,
   inspectorWidthStorageKey,
+  presentInspectorNotationDiagnostics,
   INSPECTOR_EMPTY_SUMMARY,
+  INSPECTOR_NOTATION_ADVISORY_SAMPLE,
 } from './inspectorPanel';
 import { createC4Scene, createGoldenC4Scene } from '../renderer/goldenC4Scene';
-import type { ArchitectureEntity, ArchitectureRelation, ArchitectureSnapshot, EntityKind } from '@okie/architecture';
+import type {
+  ArchitectureEntity,
+  ArchitectureRelation,
+  ArchitectureSnapshot,
+  C4NotationCompletenessDiagnostic,
+  EntityKind,
+} from '@okie/architecture';
 
 describe('inspector panel sizing', () => {
   it('defaults to a compact 376–416px pane and uses 360px at the compact breakpoint', () => {
@@ -295,5 +303,68 @@ describe('inspector CODEOWNERS path owners (CLA-51)', () => {
     expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'container:web'))).toEqual(['@acme/a-team']);
     expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'code:w1'))).toEqual(['@alice']);
     expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'component:web-x'))).toEqual([]);
+  });
+});
+
+function advisory(
+  code: C4NotationCompletenessDiagnostic['code'],
+  path: string,
+  message: string,
+  subject: C4NotationCompletenessDiagnostic['subject'],
+): C4NotationCompletenessDiagnostic {
+  return { severity: 'advisory', code, path, message, subject, glossaryTerms: [] };
+}
+
+describe('inspector C4 notation sample (CLA-59)', () => {
+  it('caps a thousands-long completeness list to a count-with-sample instead of dumping every row', () => {
+    const diagnostics = Array.from({ length: 3_200 }, (_, index) => advisory(
+      'element.description.missing',
+      `entities.code:${index}.responsibility`,
+      `C4 element code:${index} should have a description.`,
+      { kind: 'element', id: `code:${index}` },
+    ));
+    const presented = presentInspectorNotationDiagnostics(diagnostics);
+
+    expect(presented.total).toBe(3_200);
+    expect(presented.ready).toBe(false);
+    expect(presented.errors).toEqual([]);
+    expect(presented.sample).toHaveLength(INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(presented.hiddenCount).toBe(3_200 - INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(presented.sample.map(row => row.subjectId)).toEqual(
+      Array.from({ length: INSPECTOR_NOTATION_ADVISORY_SAMPLE }, (_, index) => `code:${index}`),
+    );
+    expect(presented.errors.length + presented.sample.length).toBeLessThan(20);
+  });
+
+  it('still lists a real notation error when completeness noise would bury it', () => {
+    const noise = Array.from({ length: 2_400 }, (_, index) => advisory(
+      'relationship.label.missing',
+      `relations.rel:${index}.label`,
+      `C4 relationship rel:${index} should have a directional label.`,
+      { kind: 'relationship', id: `rel:${index}` },
+    ));
+    const error = advisory(
+      'element.type.unsupported',
+      'entities.widget:x.kind',
+      'C4 element widget:x has an unsupported type: widget.',
+      { kind: 'element', id: 'widget:x' },
+    );
+    const presented = presentInspectorNotationDiagnostics([...noise, error]);
+
+    expect(presented.total).toBe(2_401);
+    expect(presented.errors).toHaveLength(1);
+    expect(presented.errors[0]?.code).toBe('element.type.unsupported');
+    expect(presented.errors[0]?.message).toContain('unsupported type');
+    expect(presented.sample).toHaveLength(INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(presented.hiddenCount).toBe(2_400 - INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(presented.sample.some(row => row.code === 'element.type.unsupported')).toBe(false);
+  });
+
+  it('does not invent owners while sampling advisories', () => {
+    const scene = createGoldenC4Scene();
+    const system = scene.entities.find(entity => entity.id === 'system:okie')!;
+    expect(inspectorPathOwners(system)).toEqual([]);
+    expect(presentInspectorNotationDiagnostics([]).ready).toBe(true);
+    expect(presentInspectorNotationDiagnostics([]).total).toBe(0);
   });
 });

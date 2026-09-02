@@ -1,3 +1,8 @@
+import type {
+  C4NotationCompletenessCode,
+  C4NotationCompletenessDiagnostic,
+} from '@okie/architecture';
+
 export const MIN_INSPECTOR_WIDTH = 360;
 export const MAX_INSPECTOR_WIDTH = 520;
 export const MAX_INSPECTOR_VIEWPORT_RATIO = .46;
@@ -99,4 +104,79 @@ export type InspectorOwnersEntity = {
 export function inspectorPathOwners(entity: InspectorOwnersEntity | undefined): string[] {
   return [...new Set((entity?.owners ?? []).map(owner => owner.trim()).filter(Boolean))]
     .sort((left, right) => left.localeCompare(right));
+}
+
+/**
+ * Completeness noise (missing descriptions, technology, labels) can number in
+ * the thousands on a self-scan. Structural / invalid notation still has to
+ * appear in Details — it is not sampled away with that noise.
+ */
+export const INSPECTOR_NOTATION_ADVISORY_SAMPLE = 5;
+
+const INSPECTOR_NOTATION_ERROR_CODES: ReadonlySet<C4NotationCompletenessCode> = new Set([
+  'diagram.type.unsupported',
+  'diagram.scope.unknown',
+  'diagram.scope.outside-view',
+  'diagram.scope.incompatible',
+  'element.type.unsupported',
+  'relationship.direction.invalid',
+]);
+
+export type InspectorNotationTone = 'error' | 'advisory';
+
+export type InspectorNotationDiagnosticRow = {
+  code: C4NotationCompletenessCode;
+  path: string;
+  message: string;
+  subjectId: string;
+  tone: InspectorNotationTone;
+};
+
+export type InspectorNotationPresentation = {
+  total: number;
+  errors: InspectorNotationDiagnosticRow[];
+  sample: InspectorNotationDiagnosticRow[];
+  hiddenCount: number;
+  ready: boolean;
+};
+
+function notationRow(
+  diagnostic: C4NotationCompletenessDiagnostic,
+  tone: InspectorNotationTone,
+): InspectorNotationDiagnosticRow {
+  return {
+    code: diagnostic.code,
+    path: diagnostic.path,
+    message: diagnostic.message,
+    subjectId: diagnostic.subject.id,
+    tone,
+  };
+}
+
+/**
+ * Count-with-sample for inspector Details. Completeness advisories are capped;
+ * real notation errors are listed in full and keep input order.
+ */
+export function presentInspectorNotationDiagnostics(
+  diagnostics: readonly C4NotationCompletenessDiagnostic[],
+  sampleLimit = INSPECTOR_NOTATION_ADVISORY_SAMPLE,
+): InspectorNotationPresentation {
+  const errors: InspectorNotationDiagnosticRow[] = [];
+  const advisories: InspectorNotationDiagnosticRow[] = [];
+  for (const diagnostic of diagnostics) {
+    if (INSPECTOR_NOTATION_ERROR_CODES.has(diagnostic.code)) {
+      errors.push(notationRow(diagnostic, 'error'));
+    } else {
+      advisories.push(notationRow(diagnostic, 'advisory'));
+    }
+  }
+  const limit = Math.max(0, sampleLimit);
+  const sample = advisories.slice(0, limit);
+  return {
+    total: diagnostics.length,
+    errors,
+    sample,
+    hiddenCount: Math.max(0, advisories.length - sample.length),
+    ready: diagnostics.length === 0,
+  };
 }
