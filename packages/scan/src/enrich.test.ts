@@ -371,6 +371,83 @@ test("section summaries reject hallucinated ids and out-of-scope citations; the 
   assert.equal(JSON.stringify(outOfScope.extraction), JSON.stringify(extraction));
 });
 
+test("remainder-packet summary docs union onto the same container; leftover file-components are not dropped", () => {
+  const extraction = base();
+  const containerId = "container:pkg-a";
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const container = extraction.entities.find(entity => entity.id === containerId)!;
+  const components = fileComponents(extraction, containerId);
+  assert.ok(components.length >= 2, "fixture has multiple file-components");
+  const first = {
+    schemaVersion: 1,
+    entities: [
+      { id: system.id, kind: "softwareSystem", name: system.name, sourceRefs: [] },
+      { id: container.id, kind: "container", parentId: system.id, name: container.name, responsibility: "First packet.", sourceRefs: [] },
+      {
+        id: components[0]!.id, kind: "component", parentId: containerId, name: components[0]!.name,
+        responsibility: "Summary of first file.", sourceRefs: [],
+      },
+    ],
+    relations: [],
+  };
+  const remainder = {
+    schemaVersion: 1,
+    entities: [
+      { id: system.id, kind: "softwareSystem", name: system.name, sourceRefs: [] },
+      { id: container.id, kind: "container", parentId: system.id, name: container.name, sourceRefs: [] },
+      {
+        id: components[1]!.id, kind: "component", parentId: containerId, name: components[1]!.name,
+        responsibility: "Summary of remainder file.", sourceRefs: [],
+      },
+    ],
+    relations: [],
+  };
+  const { extraction: merged, report } = mergeEnrichment(extraction, new Map([[containerId, [first, remainder]]]));
+  assert.equal(report.results.find(result => result.containerId === containerId)?.accepted, true, report.results[0]?.reasons.join("; "));
+  assert.equal(report.results.find(result => result.containerId === containerId)?.components, 2);
+  assert.equal(merged.entities.find(entity => entity.id === components[0]!.id)?.responsibility, "Summary of first file.");
+  assert.equal(merged.entities.find(entity => entity.id === components[1]!.id)?.responsibility, "Summary of remainder file.");
+  assert.equal(merged.entities.find(entity => entity.id === containerId)?.responsibility, "First packet.");
+});
+
+test("observed-field equality uses delimited sourceRef keys, not concatenation", () => {
+  const extraction = base();
+  const containerId = "container:pkg-a";
+  const doc = summaryDoc(extraction, containerId, true) as { entities: ArchitectureExtractionEntity[] };
+  const code = doc.entities.find(entity => entity.kind === "code")!;
+  const original = code.sourceRefs[0]!;
+  // Concatenation collision: symbol+startLine+endLine ("alpha"+"1"+"1") vs symbol "alpha11".
+  // Path stays in-scope so the gate reaches observed-field comparison.
+  code.sourceRefs = [{
+    path: original.path,
+    symbol: `${original.symbol ?? ""}${original.startLine ?? ""}${original.endLine ?? ""}`,
+  }];
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[containerId, doc]]));
+  assert.equal(report.results[0]!.accepted, false, "concatenated path+symbol must not match the delimited key");
+  assert.ok(report.results[0]!.reasons.some(reason => /mutates an observed field/.test(reason)));
+  assert.equal(JSON.stringify(merged), JSON.stringify(extraction));
+});
+
+test("a hallucinated remainder packet rejects only that document; the accepted packet still merges", () => {
+  const extraction = base();
+  const containerId = "container:pkg-a";
+  const good = summaryDoc(extraction, containerId);
+  const ghost = summaryDoc(extraction, containerId) as { entities: ArchitectureExtractionEntity[] };
+  ghost.entities.push({
+    id: "code:ghost:nope",
+    kind: "code",
+    parentId: "component:pkg-a-src-index-ts",
+    name: "nope",
+    sourceRefs: [{ path: "pkg/a/src/index.ts" }],
+  });
+  const { extraction: merged, report } = mergeEnrichment(extraction, new Map([[containerId, [good, ghost]]]));
+  assert.equal(report.results.find(result => result.containerId === containerId)?.accepted, true);
+  assert.equal(merged.entities.find(entity => entity.id === containerId)?.responsibility, "Scanner-scoped container summary.");
+  assert.ok(!merged.entities.some(entity => entity.id === "code:ghost:nope"));
+  const fileSummaries = merged.entities.filter(entity => entity.kind === "component" && entity.parentId === containerId && entity.responsibility);
+  assert.ok(fileSummaries.length >= 1);
+});
+
 test("rejected or off enrichment leaves the deterministic overview story unchanged", () => {
   const pin = {
     commitSha: "abc123def456abc123def456abc123def456abc1",

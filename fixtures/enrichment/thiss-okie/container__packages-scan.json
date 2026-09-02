@@ -20,7 +20,7 @@
       "kind": "component",
       "parentId": "container:packages-scan",
       "name": "src/cli.ts",
-      "responsibility": "okie-scan CLI: local or GitHub scan, packet/prompt emission, and --enrich-from merge.",
+      "responsibility": "okie-scan CLI: local or GitHub scan, packet/prompt emission, and --enrich-from merge of remainder packets.",
       "sourceRefs": []
     },
     {
@@ -36,7 +36,7 @@
       "kind": "component",
       "parentId": "container:packages-scan",
       "name": "src/enrich.ts",
-      "responsibility": "Atomic enrichment merge: hallucinated ids reject the whole scope; accepted summaries attach responsibility only.",
+      "responsibility": "Atomic enrichment merge: hallucinated ids reject that document; remainder packets union summaries onto the same container.",
       "sourceRefs": []
     },
     {
@@ -84,7 +84,7 @@
       "kind": "component",
       "parentId": "container:packages-scan",
       "name": "src/packet.ts",
-      "responsibility": "Builds bounded, redacted per-container packets plus the repo-wide system packet.",
+      "responsibility": "Builds bounded, redacted per-container packets; huge containers split into remainder packets so leftover file-components are not dropped.",
       "sourceRefs": []
     },
     {
@@ -126,21 +126,6 @@
       "name": "src/scope.ts",
       "responsibility": "Derives per-container file-component and code partitions the enrichment gate reasons over.",
       "sourceRefs": []
-    },
-    {
-      "id": "code:packages-scan-src-enrich-ts:merge-enrichment",
-      "kind": "code",
-      "parentId": "component:packages-scan-src-enrich-ts",
-      "name": "mergeEnrichment",
-      "responsibility": "Merges accepted per-scope documents into the deterministic base; rejected scopes stay file-components.",
-      "sourceRefs": [
-        {
-          "path": "packages/scan/src/enrich.ts",
-          "symbol": "mergeEnrichment",
-          "startLine": 387,
-          "endLine": 619
-        }
-      ]
     }
   ],
   "relations": []

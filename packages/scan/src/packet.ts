@@ -1,9 +1,17 @@
-import type { ArchitectureExtraction } from "@okie/architecture";
+import { ARCHITECTURE_EXTRACTION_LIMITS, type ArchitectureExtraction } from "@okie/architecture";
 import { containerScopes } from "./scope.js";
 import { scrubGithubTokens } from "./redact.js";
 
 /** Prompt/packet contract version — the promptVersion of the future hash domains. */
 export const ENRICHMENT_PROMPT_VERSION = "okie-enrichment/v2";
+
+/**
+ * Max file-components in one container packet. A summary document restates
+ * system + container + these components (+ optional one code entity). Sized to
+ * the extraction `maxListItems` budget (64) minus those three slots. Overflow
+ * becomes additional packets (same OSS loop) — never truncated / silently dropped.
+ */
+export const MAX_COMPONENTS_PER_PACKET = ARCHITECTURE_EXTRACTION_LIMITS.maxListItems - 3;
 
 /** Header lines included per scope file. Bounded redaction budget — in-scope only. */
 const MAX_HEADER_LINES = 24;
@@ -55,6 +63,10 @@ export interface EnrichmentPacket {
   code: PacketCode[];
   relations: PacketRelation[];
   excerpts: PacketExcerpt[];
+  /** 1-based chunk index; present only when this container split across packets. */
+  chunkIndex?: number;
+  /** Total packets for this container; present only when split. */
+  chunkCount?: number;
 }
 
 export interface PacketManifestEntry {
@@ -122,10 +134,21 @@ function stable(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function chunkItems<T>(items: readonly T[], size: number): T[][] {
+  if (items.length === 0) return [];
+  if (items.length <= size) return [items.slice()];
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
 /**
- * Builds one packet per code-bearing container. Empty components (no top-level
- * declarations) are listed for context but are NOT enrichment targets — they stay on
- * the deterministic base. Excerpts are capped file headers, strictly within scope.
+ * Builds packets for every code-bearing container. A container whose file-components
+ * fit `MAX_COMPONENTS_PER_PACKET` still emits one packet (byte-compatible). Overflow
+ * emits additional remainder packets covering the leftover scanner ids — never dropped.
+ * Empty components (no top-level declarations) are NOT enrichment targets.
  */
 export function buildEnrichmentPackets(
   extraction: ArchitectureExtraction,
@@ -142,40 +165,50 @@ export function buildEnrichmentPackets(
   for (const [containerId, scope] of [...scopes.entries()].sort(([left], [right]) => left.localeCompare(right))) {
     if (scope.codeBearing.length === 0) continue; // nothing to regroup
 
-    const memberIds = new Set<string>([
-      containerId,
-      ...scope.components.map(component => component.id),
-      ...scope.code.map(code => code.id),
-    ]);
-    const excerpts: PacketExcerpt[] = scope.scopePaths.map(path => {
-      const lines = scrubGithubTokens(readFile(path).replace(/\r\n/g, "\n")).split("\n").slice(0, MAX_HEADER_LINES);
-      return { path, startLine: 1, endLine: lines.length, lines };
+    const components: PacketComponent[] = scope.codeBearing.map(component => ({
+      id: component.id,
+      name: component.name,
+      path: scope.pathByComponentId.get(component.id) ?? "",
+    }));
+    const code: PacketCode[] = scope.code.map(codeEntity => {
+      const source = codeEntity.sourceRefs[0];
+      return {
+        id: codeEntity.id,
+        name: codeEntity.name,
+        path: source?.path ?? "",
+        ...(source?.symbol !== undefined ? { symbol: source.symbol } : {}),
+        ...(source?.startLine !== undefined ? { startLine: source.startLine } : {}),
+        ...(source?.endLine !== undefined ? { endLine: source.endLine } : {}),
+        componentId: codeEntity.parentId ?? "",
+      };
     });
+    const excerptsByPath = new Map<string, PacketExcerpt>();
+    for (const path of scope.scopePaths) {
+      const lines = scrubGithubTokens(readFile(path).replace(/\r\n/g, "\n")).split("\n").slice(0, MAX_HEADER_LINES);
+      excerptsByPath.set(path, { path, startLine: 1, endLine: lines.length, lines });
+    }
 
-    packets.push({
-      promptVersion: ENRICHMENT_PROMPT_VERSION,
-      containerId,
-      containerName: scope.container.name,
-      scopePaths: scope.scopePaths,
-      components: scope.codeBearing.map(component => ({
-        id: component.id,
-        name: component.name,
-        path: scope.pathByComponentId.get(component.id) ?? "",
-      })),
-      code: scope.code.map(code => {
-        const source = code.sourceRefs[0];
-        return {
-          id: code.id,
-          name: code.name,
-          path: source?.path ?? "",
-          ...(source?.symbol !== undefined ? { symbol: source.symbol } : {}),
-          ...(source?.startLine !== undefined ? { startLine: source.startLine } : {}),
-          ...(source?.endLine !== undefined ? { endLine: source.endLine } : {}),
-          componentId: code.parentId ?? "",
-        };
-      }),
-      relations: relationsFor(memberIds),
-      excerpts,
+    const chunks = chunkItems(components, MAX_COMPONENTS_PER_PACKET);
+    const chunkCount = chunks.length;
+    chunks.forEach((chunk, index) => {
+      const componentIds = new Set(chunk.map(component => component.id));
+      const chunkCode = code.filter(item => componentIds.has(item.componentId));
+      const chunkPaths = [...new Set(chunk.map(component => component.path).filter(path => path.length > 0))].sort();
+      const memberIds = new Set<string>([containerId, ...componentIds, ...chunkCode.map(item => item.id)]);
+      packets.push({
+        promptVersion: ENRICHMENT_PROMPT_VERSION,
+        containerId,
+        containerName: scope.container.name,
+        scopePaths: chunkPaths,
+        components: chunk,
+        code: chunkCode,
+        relations: relationsFor(memberIds),
+        excerpts: chunkPaths.flatMap(path => {
+          const excerpt = excerptsByPath.get(path);
+          return excerpt ? [excerpt] : [];
+        }),
+        ...(chunkCount > 1 ? { chunkIndex: index + 1, chunkCount } : {}),
+      });
     });
   }
 
@@ -185,7 +218,7 @@ export function buildEnrichmentPackets(
     promptVersion: ENRICHMENT_PROMPT_VERSION,
     packets: packets.map(packet => ({
       containerId: packet.containerId,
-      file: packetFileName(packet.containerId),
+      file: packetFileName(packet.containerId, packet.chunkIndex),
       hash: contentHash(stable(packet)),
       components: packet.components.length,
       codeEntities: packet.code.length,
@@ -269,14 +302,20 @@ export function buildSystemPacket(
 /**
  * Reversible packet file name for a container id: the single `:` becomes `__`
  * (slugs never contain `__`), so `containerIdFromFileName` can recover the id even
- * when the enrichment doc itself is malformed.
+ * when the enrichment doc itself is malformed. Remainder packets for a split
+ * container use `container__<id>.<n>.json` (n ≥ 2); chunk 1 keeps the unsuffixed name.
  */
-export function packetFileName(containerId: string): string {
-  return `${containerId.replace(/:/g, "__")}.json`;
+export function packetFileName(containerId: string, chunkIndex?: number): string {
+  const base = containerId.replace(/:/g, "__");
+  return chunkIndex !== undefined && chunkIndex > 1 ? `${base}.${chunkIndex}.json` : `${base}.json`;
 }
 
 /** Inverse of packetFileName; returns undefined for names that aren't packet files. */
 export function containerIdFromFileName(fileName: string): string | undefined {
   if (!fileName.endsWith(".json")) return undefined;
-  return fileName.slice(0, -".json".length).replace(/__/g, ":");
+  const stem = fileName.slice(0, -".json".length);
+  // Remainder packets: container__apps-web.2.json → container:apps-web
+  const withoutChunk = stem.replace(/\.\d+$/, "");
+  if (!withoutChunk) return undefined;
+  return withoutChunk.replace(/__/g, ":");
 }

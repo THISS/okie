@@ -273,6 +273,63 @@ test("writePromptEmission is byte-identical across two writes of the same pin", 
   }
 });
 
+test("writePromptEmission writes unique remainder packet files without overwriting chunk 1", () => {
+  const { extraction, readHuge } = (() => {
+    const sourceFiles: string[] = [];
+    const files: Record<string, string> = {
+      "README.md": "# Huge",
+      "pkg/h/package.json": `${JSON.stringify({ name: "@acme/h" }, null, 2)}\n`,
+    };
+    const unitByFile = new Map<string, string>();
+    const count = 70;
+    for (let index = 0; index < count; index += 1) {
+      const path = `pkg/h/src/f${String(index).padStart(3, "0")}.ts`;
+      sourceFiles.push(path);
+      files[path] = `export function fn${index}() { return ${index}; }\n`;
+      unitByFile.set(path, "pkg/h");
+    }
+    const readHuge = (path: string): string => {
+      const text = files[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    };
+    const extraction = extractArchitecture({
+      discovery: {
+        sourceFiles,
+        units: [{ kind: "member", dir: "pkg/h", name: "@acme/h", packageName: "@acme/h", evidencePath: "pkg/h" }],
+        unitByFile,
+        unitByPackageName: new Map([["@acme/h", "pkg/h"]]),
+        summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+      },
+      readFile: readHuge,
+      systemName: "Huge",
+      systemSlug: "huge",
+    });
+    return { extraction, readHuge };
+  })();
+  const emitted = buildEnrichmentPackets(extraction, readHuge);
+  const prefix = readFrozenEnrichmentPrompt();
+  const dir = mkdtempSync(join(tmpdir(), "okie-chunk-prompt-"));
+  try {
+    writePromptEmission(dir, emitted, PIN, prefix);
+    const names = readdirSync(dir);
+    assert.equal(names.includes("container__pkg-h.json"), true);
+    assert.equal(names.includes("container__pkg-h.2.json"), true);
+    assert.equal(names.includes("container__pkg-h.prompt.md"), true);
+    assert.equal(names.includes("container__pkg-h.2.prompt.md"), true);
+    const first = JSON.parse(readFileSync(`${dir}/container__pkg-h.json`, "utf8")) as EnrichmentPacket;
+    const second = JSON.parse(readFileSync(`${dir}/container__pkg-h.2.json`, "utf8")) as EnrichmentPacket;
+    assert.equal(first.chunkIndex, 1);
+    assert.equal(second.chunkIndex, 2);
+    assert.notEqual(first.components[0]?.id, second.components[0]?.id);
+    const prompt2 = readFileSync(`${dir}/container__pkg-h.2.prompt.md`, "utf8");
+    assert.equal(prompt2.startsWith(prefix), true);
+    assert.equal(prompt2.includes('"packetFile": "container__pkg-h.2.json"'), true);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("CLI --help documents --emit-prompt; --emit-packets is unchanged", () => {
   const cli = fileURLToPath(new URL("./cli.js", import.meta.url));
   const help = execFileSync(process.execPath, [cli, "--help"], { encoding: "utf8" });

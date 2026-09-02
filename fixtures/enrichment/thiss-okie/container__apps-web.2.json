@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "entities": [
+    {
+      "id": "system:okie",
+      "kind": "softwareSystem",
+      "name": "okie",
+      "sourceRefs": []
+    },
+    {
+      "id": "container:apps-web",
+      "kind": "container",
+      "parentId": "system:okie",
+      "name": "@okie/web",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-semantic-semantic-lens-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/semantic/semanticLens.ts",
+      "responsibility": "Maps camera zoom onto C4 semantic bands (context, container, component, code).",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-shortcuts-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/shortcuts.ts",
+      "responsibility": "Keyboard shortcut policy so search and Ask Atlas own their keystrokes and canvas hotkeys do not fire in inputs.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-focus-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyFocus.ts",
+      "responsibility": "Computes which entities and relations a story step should select and highlight.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-framing-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyFraming.ts",
+      "responsibility": "Frames the camera around the current story step’s revealed entities.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-story-playback-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/storyPlayback.ts",
+      "responsibility": "Guided-story playback runtime: play, pause, jump, and camera flights between steps.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-src-webmcp-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "src/webmcp.ts",
+      "responsibility": "In-page WebMCP provider exposing atlas tools (level, select, isolate, tour, ask) to the browser.",
+      "sourceRefs": []
+    },
+    {
+      "id": "component:apps-web-vite-config-ts",
+      "kind": "component",
+      "parentId": "container:apps-web",
+      "name": "vite.config.ts",
+      "responsibility": "Vite dev/preview config: React plugin, scan-service proxy, and oEmbed/OG/share middleware.",
+      "sourceRefs": []
+    }
+  ],
+  "relations": []
+}

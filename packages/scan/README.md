@@ -159,17 +159,22 @@ the gate.
   container (`container__<id>.json`) plus a content-addressed `manifest.json`. A packet contains
   only that container's scope — its file-components, code entities (id/name/symbol/line ranges),
   touching relations, and capped file headers. Never a byte from outside the scope. It also writes
-  one repo-wide **system packet** (`system__<id>.json`, see below).
+  one repo-wide **system packet** (`system__<id>.json`, see below). A container whose code-bearing
+  file-components exceed `MAX_COMPONENTS_PER_PACKET` (`maxListItems − 3` = 61) emits additional
+  remainder packets (`container__<id>.2.json`, …) covering the leftover scanner ids. The cap
+  does not drop files. Empty components (no top-level declaration) still have no packet rows.
 - `okie-scan --emit-prompt <dir>` is concat sugar on that same loop (local working tree only). It
   writes the **same packet files** as `--emit-packets`, plus one `<packet>.prompt.md` per packet.
   Each prompt is the frozen [`enrichment-prompt.md`](./enrichment-prompt.md) bytes, then the packet
   JSON, then an appendix (scanned `commitSha` / `treeHash`, packet filename, file tree, ownership
   tree). The appendix is data, not new instructions. Same scan SHA → byte-identical prompt+packet
   files. See [`.cursor/skills/okie-enrich/SKILL.md`](../../.cursor/skills/okie-enrich/SKILL.md).
-- `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per container (and, optionally,
+- `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per packet (and, optionally,
   one keyed by the **system id**) and merges the accepted ones, emitting `enrichment-report.json`.
-  Write each document with the **same filename as the packet**. See
-  [`enrichment-prompt.md`](./enrichment-prompt.md) for the agent contract (`okie-enrichment/v2`).
+  Write each document with the **same filename as the packet**, including remainder
+  `container__<id>.2.json`. Multiple accepted summary docs for one container **union** their
+  `responsibility` prose. See [`enrichment-prompt.md`](./enrichment-prompt.md) for the agent
+  contract (`okie-enrichment/v2`).
 
 ### System-scope enrichment (R2b — top-level actors)
 
@@ -204,8 +209,9 @@ file-component base (deterministic always publishes):
   file→logical mapping a function, so the merge can remap the deterministic intra-container
   file→file import edges to **logical→logical** (dedup + drop self-loops), preserving the dependency
   graph. `container→container` edges pass through unchanged.
-- **Empty components** (files with no top-level declaration, e.g. `vite.config.ts`) are not
-  enrichment targets; they remain deterministic file-components.
+- **Empty components** (files with no top-level declaration, e.g. a re-export barrel) are not
+  enrichment targets; they remain deterministic file-components. On this repo that is
+  `apps/web/src/inspector/inspectorSupport.ts`, not `vite.config.ts` (which is code-bearing).
 
 Merging is order-independent (accepted proposals apply in canonical container-id order; entities
 and relations re-sort by id) and reads no wall-clock/randomness, so the same base + documents

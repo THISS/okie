@@ -24,9 +24,18 @@ okie-scan --source <path> --enrich-from <docs-dir>
 ## Steps
 
 1. **Checkout the stamped SHA.** Each `.prompt.md` appendix includes `commitSha` (and `treeHash`). `git checkout <commitSha>` (detached is fine) so you edit the tree the scan pinned. If HEAD is already that SHA, leave it.
-2. **One JSON per packet.** For every `container__<id>.json` / `system__<id>.json` packet (skip `manifest.json`), write **one** `ArchitectureExtraction` document. Follow the frozen prompt: restated scanner-scoped ids, summaries in `responsibility`, empty `relations`. Do not invent ids. Hallucinated ids reject the whole scope; that scope stays deterministic.
-3. **Same filename as the packet.** Write the document to the enrich-from directory as `container__<id>.json` / `system__<id>.json` — the appendix `packetFile` value. Not a new name, not a nested folder unless the user named one.
-4. **Merge with the existing gate.** `okie-scan --source <path> --enrich-from <docs-dir>`. Do not call a new merge command. Atomic rejection leaves that scope on the deterministic base.
+2. **One JSON per packet.** For every `container__<id>.json` / `container__<id>.<n>.json` /
+   `system__<id>.json` packet (skip `manifest.json`), write **one** `ArchitectureExtraction`
+   document. Follow the frozen prompt: restated scanner-scoped ids, summaries in
+   `responsibility`, empty `relations`. Do not invent ids. Hallucinated ids reject that
+   document; sibling remainder packets for the same container can still merge. A rejected
+   document's scope stays deterministic.
+3. **Same filename as the packet.** Write the document to the enrich-from directory as
+   `container__<id>.json` / `container__<id>.2.json` / `system__<id>.json` — the appendix
+   `packetFile` value. Not a new name, not a nested folder unless the user named one.
+4. **Merge with the existing gate.** `okie-scan --source <path> --enrich-from <docs-dir>`.
+   Do not call a new merge command. Atomic rejection leaves that document's ids on the
+   deterministic base. Remainder packets union onto the same container.
 
 ## Do not
 
