@@ -38,6 +38,7 @@
  *       https://webmachinelearning.github.io/webmcp/
  */
 
+import { INSPECTOR_EMPTY_SUMMARY } from './inspector/inspectorPanel';
 import { readDemoQuery } from './renderer/query';
 import { parseAppRoute } from './renderer/route';
 
@@ -179,9 +180,6 @@ export const GET_ATLAS_CONTEXT_INPUT_SCHEMA = {
   properties: {},
   additionalProperties: false,
 } as const;
-
-/** Empty Details copy compiled onto entities that have no accepted summary. */
-const EMPTY_ENRICHMENT_SUMMARY = 'No summary supplied.';
 
 export const ATLAS_ENRICHMENT_STATUSES = [
   'none',
@@ -512,9 +510,22 @@ export function atlasEnrichmentStatus(input: {
   if (input.atlasSource !== 'scan') return 'none';
   const accepted = input.entities.some(entity => {
     const text = entity.responsibility?.trim();
-    return Boolean(text) && text !== EMPTY_ENRICHMENT_SUMMARY;
+    return Boolean(text) && text !== INSPECTOR_EMPTY_SUMMARY;
   });
   return accepted ? 'complete' : 'skipped';
+}
+
+/** Same predicate as the story play/pause control: a tour is playing through hold, flight, or arrival. */
+export function atlasTourPlaying(input: {
+  storyStep: number;
+  storyPlaying: boolean;
+  storyPhase: string;
+}): boolean {
+  return input.storyStep >= 0 && (
+    input.storyPlaying
+    || input.storyPhase === 'flight'
+    || input.storyPhase === 'arrival'
+  );
 }
 
 function publicAtlasIdentity(atlas: AtlasIdentity): AtlasIdentity {

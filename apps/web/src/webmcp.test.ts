@@ -34,6 +34,7 @@ import {
   atlasEnrichmentStatus,
   atlasIdentityFromLocation,
   atlasPageContext,
+  atlasTourPlaying,
   bindAtlasChromeActions,
   bindScanLandingActions,
   detectModelContext,
@@ -180,6 +181,8 @@ describe('WebMCP foundation (CLA-40)', () => {
     expect(app).toContain('bindAtlasChromeActions');
     expect(app).toContain('readContext');
     expect(app).toContain('atlasIdentityFromLocation');
+    expect(app).toContain('atlasTourPlaying');
+    expect(app).toContain('atlasTourPlaying({ storyStep, storyPlaying, storyPhase })');
     expect(app).not.toMatch(/document\.domain\s*=/);
     expect(app).not.toContain('registerWebMcpLandingTools');
 
@@ -843,6 +846,14 @@ describe('WebMCP page context (CLA-43)', () => {
       entities: [{ responsibility: 'Hosts the scan server.' }],
     })).toBe('complete');
     expect(JSON.stringify(atlasEnrichmentStatus({ atlasSource: 'scan', entities: [{ responsibility: 'Hosts the scan server.' }] }))).not.toMatch(/spend|usd|OPENROUTER|modelId|provider/i);
+  });
+
+  it('treats camera flight and arrival as tour playing, and paused/idle as not playing', () => {
+    expect(atlasTourPlaying({ storyStep: -1, storyPlaying: false, storyPhase: 'idle' })).toBe(false);
+    expect(atlasTourPlaying({ storyStep: 0, storyPlaying: false, storyPhase: 'paused' })).toBe(false);
+    expect(atlasTourPlaying({ storyStep: 0, storyPlaying: true, storyPhase: 'hold' })).toBe(true);
+    expect(atlasTourPlaying({ storyStep: 0, storyPlaying: false, storyPhase: 'flight' })).toBe(true);
+    expect(atlasTourPlaying({ storyStep: 1, storyPlaying: false, storyPhase: 'arrival' })).toBe(true);
   });
 
   it('returns unavailable without throwing when atlas chrome is not bound', async () => {

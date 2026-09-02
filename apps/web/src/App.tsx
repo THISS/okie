@@ -169,7 +169,7 @@ import {
   type StoryFlight,
   type StoryFlightSample,
 } from './storyPlayback';
-import { atlasEnrichmentStatus, atlasIdentityFromLocation, bindAtlasChromeActions, registerWebMcpAtlasTools, type AtlasChromeActions } from './webmcp';
+import { atlasEnrichmentStatus, atlasIdentityFromLocation, atlasTourPlaying, bindAtlasChromeActions, registerWebMcpAtlasTools, type AtlasChromeActions } from './webmcp';
 
 // A scanned snapshot (fixture=scan) is fetched, validated and compiled before App
 // is imported (see main.tsx); when present it drives the app through the same
@@ -3518,7 +3518,7 @@ export function App() {
       atlas: atlasIdentityFromLocation(window.location.pathname, window.location.search),
       c4Level: activeDetail,
       selectedEntityId: selected?.id ?? null,
-      tourPlaying: storyPlaying,
+      tourPlaying: atlasTourPlaying({ storyStep, storyPlaying, storyPhase }),
       enrichmentStatus: atlasEnrichmentStatus({
         atlasSource: importedAtlas ? 'imported-mermaid' : scanFixture ? 'scan' : query.fixture === 'stress' ? 'stress' : 'golden',
         entities: scene.entities,
