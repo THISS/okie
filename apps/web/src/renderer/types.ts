@@ -40,6 +40,8 @@ export type SceneEntity = {
   sourceRefs?: SceneSourceRef[];
   sourceExcerpts?: SceneSourceExcerpt[];
   tags?: string[];
+  /** Observed CODEOWNERS (or equivalent) path owners. Omitted when the repo has none. */
+  owners?: string[];
 };
 
 export type SceneRelation = {

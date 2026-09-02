@@ -178,6 +178,15 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain('<p className="responsibility">{selected.responsibility}</p>');
   });
 
+  it('renders observed CODEOWNERS in Details and omits the section when none exist', () => {
+    expect(app).toContain('inspectorPathOwners(selected)');
+    expect(app).toContain("data-inspector-has-owners={selectedOwners.length ? 'true' : 'false'}");
+    expect(app).toContain("data-inspector-section=\"ownership\"");
+    expect(app).toContain('<h3>Owned by</h3>');
+    expect(app).toContain('{selectedOwners.length > 0 ?');
+    expect(app).toContain('data-testid="inspector-owners"');
+  });
+
   it('grounds Ask Atlas in selected or isolated packets and keeps the disconnected explanation path', () => {
     expect(app).toContain("data-ask-connected={askConnected ? 'true' : 'false'}");
     expect(app).toContain('data-ask-state={askState}');

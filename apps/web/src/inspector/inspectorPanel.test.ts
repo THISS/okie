@@ -4,6 +4,7 @@ import {
   defaultInspectorWidth,
   inspectorAcceptedSummary,
   inspectorCanShowSource,
+  inspectorPathOwners,
   inspectorTabForEntity,
   inspectorWidthRange,
   inspectorWidthStorageKey,
@@ -224,5 +225,75 @@ describe('scanned portable source excerpts (CLA-54)', () => {
     expect(container.sourceExcerpts).toBeUndefined();
     expect(inspectorCanShowSource(container)).toBe(false);
     expect(inspectorTabForEntity(inspectorCanShowSource(container))).toBe('details');
+  });
+});
+
+describe('inspector CODEOWNERS path owners (CLA-51)', () => {
+  it('lists observed owners when present and omits the section when absent', () => {
+    expect(inspectorPathOwners({ owners: ['@acme/a-team', ' @alice ', '@acme/a-team'] })).toEqual(['@acme/a-team', '@alice']);
+    expect(inspectorPathOwners({ owners: ['@alice'] })).toEqual(['@alice']);
+    expect(inspectorPathOwners({ owners: [] })).toEqual([]);
+    expect(inspectorPathOwners({ owners: ['  ', ''] })).toEqual([]);
+    expect(inspectorPathOwners({})).toEqual([]);
+    expect(inspectorPathOwners(undefined)).toEqual([]);
+  });
+
+  it('does not invent owners on the golden atlas or a scanned entity without CODEOWNERS', () => {
+    const golden = createGoldenC4Scene();
+    const system = golden.entities.find(entity => entity.id === 'system:okie')!;
+    const container = golden.entities.find(entity => entity.id === 'container:web-app')!;
+    const code = golden.entities.find(entity => entity.id === 'code:web-shell:app')!;
+    expect(inspectorPathOwners(system)).toEqual([]);
+    expect(inspectorPathOwners(container)).toEqual([]);
+    expect(inspectorPathOwners(code)).toEqual([]);
+
+    const scene = createC4Scene({
+      baseSnapshot: scanSnapshot(
+        [
+          scanEntity('system:app', 'softwareSystem'),
+          scanEntity('container:web', 'container', 'system:app'),
+          scanEntity('component:web-x', 'component', 'container:web'),
+          scanEntity('code:w1', 'code', 'component:web-x'),
+        ],
+        [scanRelation('rel:w1-app', 'code:w1', 'system:app')],
+      ),
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'system:app'))).toEqual([]);
+    expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'container:web'))).toEqual([]);
+    expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'code:w1'))).toEqual([]);
+  });
+
+  it('shows fixture CODEOWNERS on compiled scan entities', () => {
+    const scene = createC4Scene({
+      baseSnapshot: {
+        ...scanSnapshot(
+          [
+            { ...scanEntity('system:app', 'softwareSystem'), owners: ['@acme/a-team', '@acme/maintainers'] },
+            { ...scanEntity('container:web', 'container', 'system:app'), owners: ['@acme/a-team'] },
+            scanEntity('component:web-x', 'component', 'container:web'),
+            { ...scanEntity('code:w1', 'code', 'component:web-x'), owners: ['@alice'] },
+          ],
+          [scanRelation('rel:w1-app', 'code:w1', 'system:app')],
+        ),
+      },
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'system:app'))).toEqual(['@acme/a-team', '@acme/maintainers']);
+    expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'container:web'))).toEqual(['@acme/a-team']);
+    expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'code:w1'))).toEqual(['@alice']);
+    expect(inspectorPathOwners(scene.entities.find(entity => entity.id === 'component:web-x'))).toEqual([]);
   });
 });

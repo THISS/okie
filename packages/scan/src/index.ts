@@ -4,6 +4,7 @@ export * from "./discover.js";
 export * from "./ids.js";
 export * from "./extract.js";
 export * from "./excerpt.js";
+export * from "./codeowners.js";
 export * from "./scope.js";
 export * from "./packet.js";
 export * from "./prompt.js";

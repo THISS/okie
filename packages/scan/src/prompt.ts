@@ -7,6 +7,7 @@ import {
   type EnrichmentPacket,
   type SystemPacket,
 } from "./packet.js";
+import { pathOwnerFacts, type CodeOwnerRule, type PathOwnerFact } from "./codeowners.js";
 import { scrubGithubTokens } from "./redact.js";
 
 /**
@@ -42,6 +43,8 @@ export interface OwnershipNode {
   id: string;
   name: string;
   kind: string;
+  /** Observed CODEOWNERS for this node's paths. Omitted when none. */
+  owners?: string[];
   children: OwnershipNode[];
 }
 
@@ -55,6 +58,8 @@ export interface EnrichmentPromptAppendix {
   packetFile: string;
   fileTree: FileTreeNode[];
   ownershipTree: OwnershipNode;
+  /** Observed CODEOWNERS path owners in this packet's scope. Omitted when none. */
+  pathOwners?: PathOwnerFact[];
 }
 
 export function isSystemPacket(packet: EnrichmentPacket | SystemPacket): packet is SystemPacket {
@@ -123,6 +128,39 @@ export function ownershipTreeFromPacket(packet: EnrichmentPacket | SystemPacket)
   return { id: packet.containerId, name: packet.containerName, kind: "container", children };
 }
 
+function uniqueSortedOwners(values: readonly string[]): string[] {
+  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+/** Overlay observed path owners onto the C4 tree. Data only — not new prompt instructions. */
+function withPathOwners(
+  node: OwnershipNode,
+  packet: EnrichmentPacket | SystemPacket,
+  ownersByPath: ReadonlyMap<string, readonly string[]>,
+): OwnershipNode {
+  const pathById = new Map<string, string>();
+  if (!isSystemPacket(packet)) {
+    for (const component of packet.components) pathById.set(component.id, component.path);
+    for (const code of packet.code) pathById.set(code.id, code.path);
+  }
+  const scopeUnion = uniqueSortedOwners([...ownersByPath.values()].flat());
+  const visit = (current: OwnershipNode): OwnershipNode => {
+    const children = current.children.map(visit);
+    const path = pathById.get(current.id);
+    const owners = path
+      ? [...(ownersByPath.get(path) ?? [])]
+      : ((current.kind === "softwareSystem" || current.kind === "container") && current.id === node.id
+        ? scopeUnion
+        : undefined);
+    return {
+      ...current,
+      ...(owners?.length ? { owners } : {}),
+      children,
+    };
+  };
+  return visit(node);
+}
+
 /**
  * Concatenate-only prompt: frozen prefix bytes, then packet JSON (same bytes as the
  * packet file), then the appendix JSON. No Jinja, no parameterization of the prefix.
@@ -143,13 +181,17 @@ export function appendixForPacket(
   pin: Pick<RepositoryPin, "commitSha" | "treeHash">,
   id: string,
   chunkIndex?: number,
+  rules: readonly CodeOwnerRule[] = [],
 ): EnrichmentPromptAppendix {
+  const facts = pathOwnerFacts(packet.scopePaths, rules);
+  const ownersByPath = new Map(facts.map(fact => [fact.path, fact.owners]));
   return {
     commitSha: pin.commitSha,
     treeHash: pin.treeHash,
     packetFile: packetFileName(id, chunkIndex),
     fileTree: buildFileTree(packet.scopePaths),
-    ownershipTree: ownershipTreeFromPacket(packet),
+    ownershipTree: withPathOwners(ownershipTreeFromPacket(packet), packet, ownersByPath),
+    ...(facts.length ? { pathOwners: facts } : {}),
   };
 }
 
@@ -171,13 +213,14 @@ export function writeEnrichmentPrompts(
   emitted: EmittedPackets,
   pin: Pick<RepositoryPin, "commitSha" | "treeHash">,
   prefix: string,
+  rules: readonly CodeOwnerRule[] = [],
 ): void {
   mkdirSync(dir, { recursive: true });
   const writeOne = (id: string, packet: EnrichmentPacket | SystemPacket, chunkIndex?: number): void => {
     writeFileSync(`${dir}/${promptFileName(id, chunkIndex)}`, concatenateEnrichmentPrompt({
       prefix,
       packet,
-      appendix: appendixForPacket(packet, pin, id, chunkIndex),
+      appendix: appendixForPacket(packet, pin, id, chunkIndex, rules),
     }));
   };
   for (const packet of emitted.packets) writeOne(packet.containerId, packet, packet.chunkIndex);
@@ -193,7 +236,8 @@ export function writePromptEmission(
   emitted: EmittedPackets,
   pin: Pick<RepositoryPin, "commitSha" | "treeHash">,
   prefix: string,
+  rules: readonly CodeOwnerRule[] = [],
 ): void {
   writeEnrichmentPackets(dir, emitted);
-  writeEnrichmentPrompts(dir, emitted, pin, prefix);
+  writeEnrichmentPrompts(dir, emitted, pin, prefix, rules);
 }

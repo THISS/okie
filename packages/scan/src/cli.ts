@@ -5,6 +5,7 @@ import { buildEnrichmentPackets, containerIdFromFileName } from "./packet.js";
 import { GithubAcquisitionError, isGithubSource, parseGithubSource, type GithubSourceRef } from "./github.js";
 import { regenerateScanManifest } from "./manifest.js";
 import { readFrozenEnrichmentPrompt, writeEnrichmentPackets, writePromptEmission } from "./prompt.js";
+import { readCodeOwners } from "./codeowners.js";
 import { scanGithubRepository, scanRepository, stableJson, type ScanArtifacts, type ScanOptions } from "./scan.js";
 
 interface CliArgs {
@@ -209,7 +210,13 @@ function runLocalScan(args: CliArgs): void {
     const readFile = (repoRelativePath: string): string => readFileSync(`${args.source}/${repoRelativePath}`, "utf8");
     const emitted = buildEnrichmentPackets(artifacts.baseExtraction, readFile);
     if (args.emitPromptDir) {
-      writePromptEmission(args.emitPromptDir, emitted, artifacts.pin, readFrozenEnrichmentPrompt());
+      writePromptEmission(
+        args.emitPromptDir,
+        emitted,
+        artifacts.pin,
+        readFrozenEnrichmentPrompt(),
+        readCodeOwners(readFile)?.rules ?? [],
+      );
     }
     if (args.emitPacketsDir && args.emitPacketsDir !== args.emitPromptDir) {
       writeEnrichmentPackets(args.emitPacketsDir, emitted);

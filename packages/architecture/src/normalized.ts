@@ -259,6 +259,7 @@ export function normalizeArchitecture({ snapshot, views = [], stories = [] }: No
       ...(entity.responsibility ? { responsibility: entity.responsibility } : {}),
       ...(entity.technology ? { technology: [...entity.technology] } : {}),
       ...(entity.tags ? { tags: [...entity.tags] } : {}),
+      ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
       ...(entity.fingerprint ? { fingerprint: entity.fingerprint } : {}),
     };
@@ -471,6 +472,7 @@ export function selectArchitectureSnapshot(state: NormalizedArchitecture, snapsh
       ...(entity.responsibility ? { responsibility: entity.responsibility } : {}),
       ...(entity.technology ? { technology: [...entity.technology] } : {}),
       ...(entity.tags ? { tags: [...entity.tags] } : {}),
+      ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
       ...(entity.fingerprint ? { fingerprint: entity.fingerprint } : {}),
     };

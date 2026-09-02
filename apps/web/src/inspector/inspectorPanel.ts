@@ -87,3 +87,16 @@ export function inspectorAcceptedSummary(
   if (!text || text === INSPECTOR_EMPTY_SUMMARY) return undefined;
   return text;
 }
+
+export type InspectorOwnersEntity = {
+  owners?: readonly string[];
+};
+
+/**
+ * Observed CODEOWNERS (or equivalent) path owners. Empty when the repo has none —
+ * the inspector omits the section rather than inventing owners.
+ */
+export function inspectorPathOwners(entity: InspectorOwnersEntity | undefined): string[] {
+  return [...new Set((entity?.owners ?? []).map(owner => owner.trim()).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right));
+}

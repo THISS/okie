@@ -95,6 +95,7 @@ function entityForScene(
         lines: [...excerpt.lines],
       })),
     } : {}),
+    ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
   };
 }
 

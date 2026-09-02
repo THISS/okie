@@ -123,6 +123,7 @@ test("appendix-after-prompt: packet JSON then appendix, not mixed into the prefi
   assert.ok(parsed.ownershipTree, "appendix carries ownership tree data");
   assert.equal(prefix.includes('"fileTree"'), false);
   assert.equal(prefix.includes('"ownershipTree"'), false);
+  assert.equal(prefix.includes('"pathOwners"'), false);
   assert.ok(prompt.indexOf('"fileTree"') >= prefix.length + packetJson.length);
 });
 
@@ -163,6 +164,36 @@ test("file tree and ownership tree are deterministic data derived from the packe
   assert.equal(ownership.id, "container:pkg-a");
   assert.equal(ownership.kind, "container");
   assert.ok(ownership.children.some(child => child.id === "component:pkg-a-src-index-ts"));
+});
+
+test("CODEOWNERS path owners ride the appendix as data, not new prompt instructions", () => {
+  const prefix = readFrozenEnrichmentPrompt();
+  assert.equal(prefix.includes("{{"), false, "frozen prompt stays untemplated");
+  assert.equal(prefix.includes("{%"), false);
+  const packet = fakePacket();
+  const rules = [{ pattern: "*", owners: ["@acme/maintainers"] }, { pattern: "pkg/a/", owners: ["@acme/a-team"] }];
+  const without = appendixForPacket(packet, PIN, packet.containerId);
+  assert.equal(without.pathOwners, undefined);
+  assert.equal(without.ownershipTree.owners, undefined);
+
+  const withOwners = appendixForPacket(packet, PIN, packet.containerId, undefined, rules);
+  assert.ok(withOwners.pathOwners?.length);
+  assert.deepEqual(
+    withOwners.pathOwners?.find(fact => fact.path === "pkg/a/src/index.ts")?.owners,
+    ["@acme/a-team"],
+  );
+  assert.deepEqual(withOwners.ownershipTree.owners, ["@acme/a-team"]);
+  const prompt = concatenateEnrichmentPrompt({ prefix, packet, appendix: withOwners });
+  assert.equal(prompt.slice(0, prefix.length), prefix);
+  const afterPrefix = prompt.slice(prefix.length);
+  const packetJson = stableJson(packet);
+  assert.equal(afterPrefix.startsWith(packetJson), true);
+  const appendixJson = afterPrefix.slice(packetJson.length);
+  assert.equal(appendixJson, stableJson(withOwners));
+  assert.ok(appendixJson.includes('"pathOwners"'));
+  assert.ok(appendixJson.includes("@acme/a-team"));
+  assert.equal(prefix.includes("@acme/a-team"), false);
+  assert.equal(prefix.includes("pathOwners"), false);
 });
 
 test("no secrets: planted tokens do not appear; generated files do not stamp host paths", () => {
