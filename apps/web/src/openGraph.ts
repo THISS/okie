@@ -7,12 +7,10 @@ import {
   effectiveOembedPort,
   isAllowedOembedRequestOrigin,
   isLoopbackHostname,
-  oembedRequestOrigin,
   parsePublicAtlasOembedUrl,
   publicAtlasHref,
   publicAtlasOembedHref,
   publicAtlasOgImageHref,
-  publicAtlasOgImagePath,
   publicAtlasTitle,
   sanitizeOembedOrigin,
   type OembedHeaderBag,
@@ -355,8 +353,3 @@ export async function handleOgImageRequest(input: OgImageHttpInput): Promise<Pub
   };
 }
 
-export function shareRequestOrigin(headers: OembedHeaderBag): string | undefined {
-  return oembedRequestOrigin(headers);
-}
-
-export { publicAtlasOgImageHref, publicAtlasOgImagePath, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH };
