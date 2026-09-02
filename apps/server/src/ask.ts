@@ -1,4 +1,4 @@
-import { scrubGithubTokens } from "@okie/scan";
+import { scrubGithubTokens, CYCLOMATIC_FLAG_THRESHOLD } from "@okie/scan";
 import {
   createLlmGatewayClient,
   isUsableModelId,
@@ -26,6 +26,8 @@ export interface AskPacket {
   parentId?: string;
   summary?: string;
   source?: string;
+  cyclomaticComplexity?: number;
+  cyclomaticFlagged?: boolean;
 }
 
 export interface AskRelation {
@@ -210,6 +212,12 @@ function sanitizePacket(raw: unknown): AskPacket | undefined {
   if (summary) packet.summary = scrubGithubTokens(summary).slice(0, 800);
   const source = optionalTrimmedString(record.source);
   if (source) packet.source = scrubGithubTokens(source).slice(0, 400);
+  if (typeof record.cyclomaticComplexity === "number"
+    && Number.isInteger(record.cyclomaticComplexity)
+    && record.cyclomaticComplexity >= 1) {
+    packet.cyclomaticComplexity = record.cyclomaticComplexity;
+    packet.cyclomaticFlagged = record.cyclomaticComplexity > CYCLOMATIC_FLAG_THRESHOLD;
+  }
   return packet;
 }
 

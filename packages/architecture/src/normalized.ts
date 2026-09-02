@@ -260,6 +260,7 @@ export function normalizeArchitecture({ snapshot, views = [], stories = [] }: No
       ...(entity.technology ? { technology: [...entity.technology] } : {}),
       ...(entity.tags ? { tags: [...entity.tags] } : {}),
       ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
+      ...(entity.cyclomaticComplexity !== undefined ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
       ...(entity.fingerprint ? { fingerprint: entity.fingerprint } : {}),
     };
@@ -473,6 +474,7 @@ export function selectArchitectureSnapshot(state: NormalizedArchitecture, snapsh
       ...(entity.technology ? { technology: [...entity.technology] } : {}),
       ...(entity.tags ? { tags: [...entity.tags] } : {}),
       ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
+      ...(entity.cyclomaticComplexity !== undefined ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
       ...(entity.fingerprint ? { fingerprint: entity.fingerprint } : {}),
     };

@@ -18,7 +18,11 @@ import { attachPathOwners, readCodeOwners } from "./codeowners.js";
 import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
-import { extractArchitecture } from "./extract.js";
+import {
+  attachCyclomaticComplexity,
+  collectExtractedArchitecture,
+  cyclomaticByIdFromEntities,
+} from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
 import { buildEnrichmentPackets, type EmittedPackets } from "./packet.js";
 import { pinRepository, type RepositoryPin } from "./pin.js";
@@ -140,6 +144,8 @@ export interface BuildScanArtifactsParams {
    * what extractArchitecture would produce here; callers never mutate it.
    */
   baseExtraction?: ArchitectureExtraction;
+  /** McCabe map from the same extract as `baseExtraction`. Recomputed from source when omitted. */
+  cyclomaticById?: ReadonlyMap<string, number>;
 }
 
 /** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
@@ -147,13 +153,20 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   const { discovery, pin, readFile, repositorySlug, systemName } = params;
   const systemSlug = slug(systemName);
 
-  const baseExtraction = params.baseExtraction ?? extractArchitecture({
-    discovery,
-    readFile,
-    systemName,
-    systemSlug,
-    ...(params.codeSurface ? { codeSurface: params.codeSurface } : {}),
-  });
+  const collected = params.baseExtraction
+    ? {
+      extraction: params.baseExtraction,
+      cyclomaticById: params.cyclomaticById
+        ?? cyclomaticByIdFromEntities(params.baseExtraction.entities, readFile),
+    }
+    : collectExtractedArchitecture({
+      discovery,
+      readFile,
+      systemName,
+      systemSlug,
+      ...(params.codeSurface ? { codeSurface: params.codeSurface } : {}),
+    });
+  const baseExtraction = collected.extraction;
   let extraction = baseExtraction;
   let enrichmentReport: EnrichmentReport | undefined;
   if (params.enrichmentDocs && params.enrichmentDocs.size > 0) {
@@ -168,12 +181,15 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     commitSha: pin.commitSha,
     generatedAt: pin.generatedAt,
   };
-  const snapshot = attachPathOwners(
-    attachPortableSourceExcerpts(
-      adaptArchitectureExtraction(extraction, metadata),
-      readFile,
+  const snapshot = attachCyclomaticComplexity(
+    attachPathOwners(
+      attachPortableSourceExcerpts(
+        adaptArchitectureExtraction(extraction, metadata),
+        readFile,
+      ),
+      readCodeOwners(readFile)?.rules ?? [],
     ),
-    readCodeOwners(readFile)?.rules ?? [],
+    collected.cyclomaticById,
   );
   const snapshotIssues = validateSnapshot(snapshot);
   if (snapshotIssues.length) {
@@ -280,15 +296,18 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     // Live enrichment (M3) must run inside this window: packets read source bytes from
     // the ephemeral checkout, which the finally below discards.
     let baseExtraction: ArchitectureExtraction | undefined;
+    let cyclomaticById: ReadonlyMap<string, number> | undefined;
     let enrichmentDocs = options.enrichmentDocs;
     if ((!enrichmentDocs || enrichmentDocs.size === 0) && options.enrichWithPackets) {
-      baseExtraction = extractArchitecture({
+      const collected = collectExtractedArchitecture({
         discovery,
         readFile,
         systemName,
         systemSlug: slug(systemName),
         ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
       });
+      baseExtraction = collected.extraction;
+      cyclomaticById = collected.cyclomaticById;
       const packets = buildEnrichmentPackets(baseExtraction, readFile);
       const generated = await options.enrichWithPackets(packets);
       enrichmentDocs = generated.size > 0 ? generated : undefined;
@@ -302,6 +321,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       ...(enrichmentDocs ? { enrichmentDocs } : {}),
       ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
       ...(baseExtraction ? { baseExtraction } : {}),
+      ...(cyclomaticById ? { cyclomaticById } : {}),
     });
     return { source, commitSha: commit.sha, artifacts };
   } finally {

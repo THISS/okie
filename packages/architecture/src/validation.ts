@@ -213,6 +213,14 @@ export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssu
         });
       }
     }
+    if (entity.cyclomaticComplexity !== undefined) {
+      if (entity.kind !== "code") {
+        issues.push({ path: `${path}.cyclomaticComplexity`, message: "is only valid on code entities" });
+      }
+      if (!Number.isInteger(entity.cyclomaticComplexity) || entity.cyclomaticComplexity < 1) {
+        issues.push({ path: `${path}.cyclomaticComplexity`, message: "must be an integer >= 1 when present" });
+      }
+    }
     const excerpts = entity.sourceExcerpts ?? [];
     for (const duplicate of duplicateValues(excerpts.map(excerpt => JSON.stringify([
       excerpt.frozenRevision,

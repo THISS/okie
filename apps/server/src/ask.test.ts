@@ -141,6 +141,52 @@ test("Ask never silently posts a whole-repo dump of extra packets", () => {
   assert.doesNotMatch(message, new RegExp(OUT_OF_SCOPE_ID));
 });
 
+test("Ask keeps observed cyclomatic on packets and derives the >6 flag", () => {
+  const kept = sanitizeAskPackets([
+    {
+      id: "code:simple",
+      name: "simple",
+      kind: "code",
+      cyclomaticComplexity: 1,
+      cyclomaticFlagged: true,
+      apiKey: FAKE_GATEWAY_KEY,
+    },
+    {
+      id: "code:tangled",
+      name: "tangled",
+      kind: "code",
+      cyclomaticComplexity: 7,
+      cyclomaticFlagged: false,
+    },
+    {
+      id: "component:web-shell",
+      name: "Application shell",
+      kind: "component",
+    },
+  ]);
+  assert.deepEqual(kept.find(packet => packet.id === "code:simple"), {
+    id: "code:simple",
+    name: "simple",
+    kind: "code",
+    cyclomaticComplexity: 1,
+    cyclomaticFlagged: false,
+  });
+  assert.deepEqual(kept.find(packet => packet.id === "code:tangled"), {
+    id: "code:tangled",
+    name: "tangled",
+    kind: "code",
+    cyclomaticComplexity: 7,
+    cyclomaticFlagged: true,
+  });
+  assert.equal(kept.find(packet => packet.id === "component:web-shell")?.cyclomaticComplexity, undefined);
+  const body = askChatCompletionsBody("acme/fast", "Which functions are over 6?", kept, []);
+  const user = (body.messages as Array<{ content: string }>)[1]!.content;
+  assert.match(user, /"cyclomaticComplexity": 7/);
+  assert.match(user, /"cyclomaticFlagged": true/);
+  assert.doesNotMatch(JSON.stringify(body), new RegExp(FAKE_GATEWAY_KEY));
+  assert.equal("apiKey" in (kept[0] as object), false);
+});
+
 test("Ask strips planted GitHub tokens from packet summaries before the gateway body", () => {
   const dirty = sanitizeAskPackets([{
     id: "container:web-app",

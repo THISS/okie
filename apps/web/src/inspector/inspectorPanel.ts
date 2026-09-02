@@ -1,7 +1,10 @@
-import type {
-  C4NotationCompletenessCode,
-  C4NotationCompletenessDiagnostic,
+import {
+  CYCLOMATIC_FLAG_THRESHOLD,
+  type C4NotationCompletenessCode,
+  type C4NotationCompletenessDiagnostic,
 } from '@okie/architecture';
+
+export { CYCLOMATIC_FLAG_THRESHOLD };
 
 export const MIN_INSPECTOR_WIDTH = 360;
 export const MAX_INSPECTOR_WIDTH = 520;
@@ -104,6 +107,28 @@ export type InspectorOwnersEntity = {
 export function inspectorPathOwners(entity: InspectorOwnersEntity | undefined): string[] {
   return [...new Set((entity?.owners ?? []).map(owner => owner.trim()).filter(Boolean))]
     .sort((left, right) => left.localeCompare(right));
+}
+
+export type InspectorCyclomaticEntity = {
+  cyclomaticComplexity?: number;
+};
+
+export type InspectorCyclomaticPresentation = {
+  complexity: number;
+  flagged: boolean;
+};
+
+/**
+ * Observed McCabe cyclomatic complexity for a function-like L4 code entity.
+ * Omit when absent (types, classes, constants, unscanned). Flag when `comp > 6`
+ * (Complexity Kink ~6.5). McCabe 10 is not the product flag.
+ */
+export function inspectorCyclomatic(
+  entity: InspectorCyclomaticEntity | undefined,
+): InspectorCyclomaticPresentation | undefined {
+  const value = entity?.cyclomaticComplexity;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) return undefined;
+  return { complexity: value, flagged: value > CYCLOMATIC_FLAG_THRESHOLD };
 }
 
 /**

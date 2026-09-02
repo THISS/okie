@@ -35,6 +35,38 @@ test("accepts a coherent architecture snapshot", () => {
   assert.deepEqual(validateSnapshot(snapshot), []);
 });
 
+test("accepts McCabe cyclomatic on code entities and rejects it elsewhere", () => {
+  const withCode: ArchitectureSnapshot = {
+    ...snapshot,
+    entities: [
+      ...snapshot.entities,
+      {
+        id: "code:api-handler",
+        kind: "code",
+        parentId: "container:api",
+        name: "handler",
+        sourceRefs: [{ path: "src/api.ts", commitSha: "abc123", symbol: "handler", startLine: 12, endLine: 20 }],
+        cyclomaticComplexity: 7,
+      },
+    ],
+  };
+  assert.deepEqual(validateSnapshot(withCode), []);
+  const onContainer: ArchitectureSnapshot = {
+    ...snapshot,
+    entities: snapshot.entities.map(entity => entity.id === "container:api"
+      ? { ...entity, cyclomaticComplexity: 3 }
+      : entity),
+  };
+  assert.ok(validateSnapshot(onContainer).some(issue => issue.path.endsWith("cyclomaticComplexity") && issue.message.includes("code entities")));
+  const fractional: ArchitectureSnapshot = {
+    ...withCode,
+    entities: withCode.entities.map(entity => entity.id === "code:api-handler"
+      ? { ...entity, cyclomaticComplexity: 1.5 }
+      : entity),
+  };
+  assert.ok(validateSnapshot(fractional).some(issue => issue.path.endsWith("cyclomaticComplexity") && issue.message.includes("integer")));
+});
+
 test("accepts coherent frozen excerpts and entities without source content", () => {
   const lines = ["export const café = '🗺️';", "export default café;"];
   const excerpt: SourceExcerpt = {

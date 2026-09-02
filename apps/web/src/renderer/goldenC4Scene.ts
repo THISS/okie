@@ -96,6 +96,7 @@ function entityForScene(
       })),
     } : {}),
     ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
+    ...(entity.cyclomaticComplexity !== undefined ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
   };
 }
 
