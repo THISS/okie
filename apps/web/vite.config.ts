@@ -17,6 +17,7 @@ import {
   trustedShareOrigin,
 } from './src/openGraph';
 import { isPublicAtlasViewPath as isSharePath } from './src/hostedAtlas';
+import { WEBMCP_HOST_HEADERS } from './src/webmcp';
 
 // The local scan process (apps/server) owns /api (submit + job status) and
 // /scan (published trio objects + manifest). Dev and preview proxy both there
@@ -89,6 +90,23 @@ function okieOembedPlugin(): Plugin {
   };
 }
 
+/** Origin isolation + `tools=(self)` so WebMCP stays same-origin (CLA-40). */
+function okieWebMcpHeadersPlugin(): Plugin {
+  const attach = (server: Pick<ViteDevServer, 'middlewares'>) => {
+    server.middlewares.use((_request, response, next) => {
+      for (const [name, value] of Object.entries(WEBMCP_HOST_HEADERS)) {
+        response.setHeader(name, value);
+      }
+      next();
+    });
+  };
+  return {
+    name: 'okie-webmcp-headers',
+    configureServer: attach,
+    configurePreviewServer: attach,
+  };
+}
+
 /** OG meta on `/r/<owner>/<repo>` and PNG cards at `/og/<owner>/<repo>` (CLA-39). */
 function okieOpenGraphPlugin(): Plugin {
   const sourceIndex = fileURLToPath(new URL('./index.html', import.meta.url));
@@ -139,17 +157,19 @@ function okieOpenGraphPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), okieOembedPlugin(), okieOpenGraphPlugin()],
+  plugins: [react(), okieWebMcpHeadersPlugin(), okieOembedPlugin(), okieOpenGraphPlugin()],
   // SPA so `/new` and `/r/<owner>/<repo>` are public share/view URLs (CLA-30).
   appType: 'spa',
   server: {
     host: 'localhost',
     port: 4173,
     proxy: scanServiceProxy,
+    headers: { ...WEBMCP_HOST_HEADERS },
   },
   preview: {
     host: 'localhost',
     port: 4173,
     proxy: scanServiceProxy,
+    headers: { ...WEBMCP_HOST_HEADERS },
   },
 });
