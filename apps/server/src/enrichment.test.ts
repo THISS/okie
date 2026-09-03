@@ -700,11 +700,14 @@ test("parseChatCompletionDocument reads JSON content the gate already consumes",
     choices: [{ message: { content: GATE_DOC } }],
   }), GATE_DOC);
   assert.deepEqual(parseChatCompletionDocument({
-    choices: [{ message: { parsed: GATE_DOC, content: "" } }],
-  }), GATE_DOC);
-  assert.deepEqual(parseChatCompletionDocument({
     choices: [{ message: { content: "Here is the document:\n```json\n" + JSON.stringify(GATE_DOC) + "\n```\n" } }],
   }), GATE_DOC);
+  assert.throws(() => parseChatCompletionDocument({
+    choices: [{ message: { parsed: GATE_DOC, content: "" } }],
+  }), /missing message content/);
+  assert.throws(() => parseChatCompletionDocument({
+    choices: [{ message: { content: "Sure, here you go: " + JSON.stringify(GATE_DOC) } }],
+  }), /not JSON/);
   assert.throws(() => parseChatCompletionDocument({ choices: [] }), /missing message content/);
   assert.throws(() => parseChatCompletionDocument({
     choices: [{ message: { content: "not-json" } }],
