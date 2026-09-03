@@ -347,16 +347,9 @@ function entityIdOf(node: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-const SOURCE_ANCHOR_KEYS = ["path", "symbol", "startLine", "endLine"] as const;
-
 function wrapSourceAnchor(value: unknown): unknown {
   if (typeof value === "string") return { path: value };
-  if (!isRecord(value)) return value;
-  const anchor: Record<string, unknown> = {};
-  for (const key of SOURCE_ANCHOR_KEYS) {
-    if (value[key] !== undefined) anchor[key] = value[key];
-  }
-  return "path" in anchor ? anchor : value;
+  return value;
 }
 
 function wrapSourceRefs(value: unknown, entity: Record<string, unknown>): unknown[] {
@@ -466,7 +459,7 @@ export function coerceGatewayExtractionDocument(raw: unknown): unknown {
   return {
     schemaVersion: typeof raw.schemaVersion === "number" ? raw.schemaVersion : 1,
     entities,
-    relations: Array.isArray(raw.relations) ? raw.relations : [],
+    relations: raw.relations === undefined ? [] : raw.relations,
   };
 }
 

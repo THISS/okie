@@ -1165,6 +1165,17 @@ test("malformed sourceRefs and duplicate ids still reach the merge gate", () => 
   assert.deepEqual((coerced.entities[1] as CoercedEntity).sourceRefs, [42] as unknown as CoercedEntity["sourceRefs"]);
 });
 
+test("unknown source-anchor keys and non-array relations still reach the merge gate", () => {
+  const coerced = coerceGatewayExtractionDocument({
+    schemaVersion: 2,
+    softwareSystems: [{ id: "system:okie", name: "okie", sourceRefs: [{ path: "README.md", commitSha: "abc" }] }],
+    relations: "nope",
+  }) as { schemaVersion: number; entities: CoercedEntity[]; relations: unknown };
+  assert.equal(coerced.schemaVersion, 2);
+  assert.deepEqual(coerced.relations, "nope");
+  assert.deepEqual(coerced.entities[0]?.sourceRefs, [{ path: "README.md", commitSha: "abc" }] as unknown as CoercedEntity["sourceRefs"]);
+});
+
 test("a hallucinated id is still present after coerce so the gate can reject it", () => {
   const coerced = coerceGatewayExtractionDocument({
     entities: [
