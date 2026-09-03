@@ -755,9 +755,9 @@ test("gateway adapter posts each packet to chat/completions and keys docs by con
       packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
     }));
     assert.deepEqual([...docs.keys()].sort(), ["container:pkg-a", "container:pkg-b", "system:acme"]);
-    assert.deepEqual(docs.get("container:pkg-a"), GATE_DOC);
-    assert.deepEqual(docs.get("container:pkg-b"), GATE_DOC);
-    assert.deepEqual(docs.get("system:acme"), GATE_DOC);
+    assert.deepEqual(docs.get("container:pkg-a"), { ...GATE_DOC, id: "container:pkg-a" });
+    assert.deepEqual(docs.get("container:pkg-b"), { ...GATE_DOC, id: "container:pkg-b" });
+    assert.deepEqual(docs.get("system:acme"), { ...GATE_DOC, id: "system:acme" });
     assert.equal(posted.length, 3);
     assert.ok(posted.every(call => call.url === "/v1/chat/completions"));
     assert.ok(posted.every(call => call.authorization === `Bearer ${fakeKey}`));
@@ -1042,7 +1042,7 @@ function systemEnvelope(systemId: string, systemName: string, packet: Enrichment
         responsibility: `Summary of ${packet.containerName}.`,
         sourceRefs: [],
       },
-    ],
+    ] as unknown as ExtractionDoc["entities"],
     relations: [],
   };
 }
