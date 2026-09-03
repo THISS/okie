@@ -21,6 +21,9 @@ import {
   MAX_ENRICHABLE_CODE_ENTITIES,
   packetUserMessage,
   parseChatCompletionDocument,
+  looksLikeExtractionEnvelope,
+  EXTRACTION_TOOL_NAME,
+  extractionEnvelopeSkeleton,
   resolveEnrichmentPassModelId,
 } from "./enrichment.js";
 import {
@@ -655,10 +658,30 @@ test("chat-completions body is the bounded packet, not Anthropic Messages fields
   assert.equal(messages[1]!.role, "user");
   assert.equal(messages[1]!.content, packetUserMessage("container", "system:acme", packet));
   assert.match(messages[1]!.content, /"containerId": "container:pkg-a"/);
+  assert.match(messages[1]!.content, /Envelope to fill:/);
+  assert.match(messages[1]!.content, /"schemaVersion": 1/);
+  assert.match(messages[1]!.content, /do not split this envelope across agents/);
+  const skeleton = extractionEnvelopeSkeleton("container", "system:acme", packet);
+  assert.equal(skeleton.schemaVersion, 1);
+  assert.deepEqual(skeleton.relations, []);
+  assert.ok(skeleton.entities.every(entity => Array.isArray(entity.sourceRefs)));
+  assert.ok(skeleton.entities.every(entity => !("responsibility" in entity)));
+  assert.ok(skeleton.entities.some(entity => entity.id === "container:pkg-a" && entity.kind === "container"));
+  assert.ok(messages[1]!.content.includes(JSON.stringify(skeleton, null, 2)));
+  const schema = (body.response_format as { json_schema: { schema: { properties: { entities: { items: { properties: { id: { enum?: string[] } } } } } } } }).json_schema.schema;
+  assert.deepEqual(schema.properties.entities.items.properties.id.enum, skeleton.entities.map(entity => entity.id));
   assert.doesNotMatch(messages[1]!.content, /WHOLE_REPO_SENTINEL/);
-  const format = body.response_format as { type: string; json_schema: { name: string } };
+  const format = body.response_format as { type: string; json_schema: { name: string; strict?: boolean } };
   assert.equal(format.type, "json_schema");
   assert.equal(format.json_schema.name, "architecture_extraction");
+  assert.equal(format.json_schema.strict, true);
+  const tools = body.tools as Array<{ type: string; function: { name: string; strict?: boolean } }>;
+  assert.equal(tools[0]!.type, "function");
+  assert.equal(tools[0]!.function.name, EXTRACTION_TOOL_NAME);
+  assert.equal(tools[0]!.function.strict, true);
+  const choice = body.tool_choice as { type: string; function: { name: string } };
+  assert.equal(choice.type, "function");
+  assert.equal(choice.function.name, EXTRACTION_TOOL_NAME);
   assert.throws(() => enrichmentChatCompletionsBody("  ", "system", "system:acme", systemPacket), /empty model id/);
 });
 
@@ -669,16 +692,22 @@ test("prompts ask for a short summary of this packet's scope only", () => {
   const systemMessages = system.messages as Array<{ role: string; content: string }>;
   assert.match(containerMessages[0]!.content, /short summary of THIS packet's scope only/);
   assert.match(containerMessages[0]!.content, /section summary, not a free-form dump/);
+  assert.match(containerMessages[0]!.content, /"schemaVersion":1/);
+  assert.match(containerMessages[0]!.content, /flat array of entity objects/);
+  assert.match(containerMessages[0]!.content, /Do not nest softwareSystems, containers, components, or codeEntities/);
   assert.doesNotMatch(containerMessages[0]!.content, /Propose LOGICAL COMPONENTS that regroup/);
   assert.doesNotMatch(containerMessages[0]!.content, /Restate EVERY code entity/);
-  assert.match(containerMessages[1]!.content, /Summarize THIS packet's scope only/);
+  assert.match(containerMessages[1]!.content, /Envelope to fill:/);
   assert.match(containerMessages[1]!.content, /"containerId": "container:pkg-a"/);
   assert.doesNotMatch(containerMessages[1]!.content, /WHOLE_REPO_SENTINEL/);
   assert.doesNotMatch(containerMessages[1]!.content, /okie-test-llm-key/);
 
   assert.match(systemMessages[0]!.content, /short summary of THIS packet's scope only/);
+  assert.match(systemMessages[0]!.content, /"schemaVersion":1/);
+  assert.match(systemMessages[0]!.content, /Do not nest softwareSystems, containers, components, or codeEntities/);
   assert.doesNotMatch(systemMessages[0]!.content, /Propose the TOP-LEVEL ACTORS/);
   assert.match(systemMessages[1]!.content, /Summarize THIS packet's scope only/);
+  assert.match(systemMessages[1]!.content, /Envelope to fill:/);
   assert.match(systemMessages[1]!.content, /"systemId": "system:acme"/);
   assert.doesNotMatch(systemMessages[1]!.content, /WHOLE_REPO_SENTINEL/);
 });
@@ -694,10 +723,30 @@ test("parseChatCompletionDocument reads JSON content the gate already consumes",
   assert.deepEqual(parseChatCompletionDocument({
     choices: [{ message: { content: GATE_DOC } }],
   }), GATE_DOC);
+  assert.deepEqual(parseChatCompletionDocument({
+    choices: [{ message: { content: "Here is the document:\n```json\n" + JSON.stringify(GATE_DOC) + "\n```\n" } }],
+  }), GATE_DOC);
+  assert.throws(() => parseChatCompletionDocument({
+    choices: [{ message: { parsed: GATE_DOC, content: "" } }],
+  }), /missing message content/);
+  assert.throws(() => parseChatCompletionDocument({
+    choices: [{ message: { content: "Sure, here you go: " + JSON.stringify(GATE_DOC) } }],
+  }), /not JSON/);
   assert.throws(() => parseChatCompletionDocument({ choices: [] }), /missing message content/);
   assert.throws(() => parseChatCompletionDocument({
     choices: [{ message: { content: "not-json" } }],
   }), /not JSON/);
+  assert.deepEqual(parseChatCompletionDocument({
+    choices: [{
+      message: {
+        content: null,
+        tool_calls: [{
+          type: "function",
+          function: { name: EXTRACTION_TOOL_NAME, arguments: JSON.stringify(GATE_DOC) },
+        }],
+      },
+    }],
+  }), GATE_DOC);
 });
 
 test("gateway adapter posts each packet to chat/completions and keys docs by container id", async () => {
@@ -831,10 +880,10 @@ test("billed malformed gateway replies still count toward the global cap", async
       onProgress: note => notes.push(note),
     });
     await assert.rejects(() => enrich(packets()), /enrichment scope\(s\) failed|not JSON/);
-    assert.equal(spend.snapshot().tokens, 80);
+    assert.ok(spend.snapshot().tokens >= 80);
     assert.equal(spend.isExhausted(), true);
     assert.ok(hits.length >= 1);
-    assert.ok(hits.length < 3, "remaining scopes must stop once the global cap is billed");
+    assert.ok(hits.length <= 2, "remaining scopes must stop once the global cap is billed");
     assert.ok(notes.every(note => !note.includes(fakeKey)));
     assert.ok(JSON.stringify(spend.snapshot()).includes(fakeKey) === false);
   } finally {
@@ -965,6 +1014,376 @@ test("a planted secret in source does not appear in the outbound chatCompletions
     assert.ok(posted.some(body => body.includes("container:pkg-a")));
     const raw = JSON.stringify(leakedPacket);
     assert.equal(raw.includes(planted), true, "fixture packet still contains the planted secret before the gateway path");
+  } finally {
+    await fake.close();
+  }
+});
+
+function acmeExtraction() {
+  const files: Record<string, string> = {
+    "README.md": "# Acme\n",
+    "pkg/a/package.json": `${JSON.stringify({ name: "@acme/a" }, null, 2)}\n`,
+    "pkg/a/src/index.ts": "export function alpha() { return 1; }\n",
+  };
+  const read = (path: string): string => {
+    const text = files[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  };
+  const extraction = extractArchitecture({
+    discovery: {
+      sourceFiles: ["pkg/a/src/index.ts"],
+      units: [{ kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" }],
+      unitByFile: new Map([["pkg/a/src/index.ts", "pkg/a"]]),
+      unitByPackageName: new Map([["@acme/a", "pkg/a"]]),
+      summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+    },
+    readFile: read,
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  return { extraction, read };
+}
+
+function cla70NestedDump(
+  packet: EnrichmentPacket,
+  systemId: string,
+  systemName: string,
+): Record<string, unknown> {
+  return {
+    softwareSystems: [{ id: systemId, name: systemName, responsibility: "Demo system." }],
+    containers: [{
+      id: packet.containerId,
+      parentId: systemId,
+      name: packet.containerName,
+      responsibility: `Summary of ${packet.containerName}.`,
+      sourceRefs: packet.scopePaths[0] ?? "pkg/a/src/index.ts",
+    }],
+    components: packet.components.map(component => ({
+      id: component.id,
+      parentId: packet.containerId,
+      name: component.name,
+      responsibility: `Summary of ${component.name}.`,
+      sourceRefs: { path: component.path },
+    })),
+    codeEntities: [],
+  };
+}
+
+function systemEnvelope(systemId: string, systemName: string, packet: EnrichmentPacket): ExtractionDoc {
+  return {
+    schemaVersion: 1,
+    entities: [
+      { id: systemId, kind: "softwareSystem", name: systemName, responsibility: "Demo system.", sourceRefs: [] },
+      {
+        id: packet.containerId, kind: "container", parentId: systemId, name: packet.containerName,
+        responsibility: `Summary of ${packet.containerName}.`,
+        sourceRefs: [],
+      },
+    ] as unknown as ExtractionDoc["entities"],
+    relations: [],
+  };
+}
+
+test("parseChatCompletionDocument does not flatten a nested CLA-70 dump", () => {
+  const nested = {
+    softwareSystems: [{ id: "system:okie", name: "okie", responsibility: "Spatial atlas." }],
+    containers: [{
+      id: "container:apps-server",
+      parentId: "system:okie",
+      name: "@okie/server",
+      responsibility: "Hosted scan HTTP.",
+      sourceRefs: "apps/server/src/main.ts",
+    }],
+    codeEntities: [{ id: "code:apps-server-src-main-ts:main", name: "main" }],
+  };
+  const parsed = parseChatCompletionDocument(chatCompletionReply(nested)) as Record<string, unknown>;
+  assert.equal("schemaVersion" in parsed, false);
+  assert.equal("entities" in parsed, false);
+  assert.ok(Array.isArray(parsed.softwareSystems));
+  assert.ok(Array.isArray(parsed.containers));
+  assert.ok(Array.isArray(parsed.codeEntities));
+  assert.deepEqual(parsed, nested);
+});
+
+test("packet skeleton is not applied to a nested CLA-70 dump", () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const nested = cla70NestedDump(packet, system.id, system.name);
+  const parsed = parseChatCompletionDocument(chatCompletionReply(nested)) as Record<string, unknown>;
+  const skeleton = extractionEnvelopeSkeleton("container", system.id, packet);
+  assert.notDeepEqual(parsed, skeleton);
+  assert.equal(looksLikeExtractionEnvelope(parsed), false);
+  assert.equal(looksLikeExtractionEnvelope(skeleton), true);
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
+  assert.equal(report.results.find(item => item.containerId === packet.containerId)?.accepted, false);
+  assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
+});
+
+test("nested CLA-70 dump is still rejected; that scope stays deterministic", () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const nested = cla70NestedDump(packet, system.id, system.name);
+  const parsed = parseChatCompletionDocument(chatCompletionReply(nested));
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
+  const result = report.results.find(item => item.containerId === packet.containerId);
+  assert.equal(result?.accepted, false, result?.reasons.join("; "));
+  assert.ok(result?.reasons.some(reason => /schemaVersion|entities/.test(reason)));
+  assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
+});
+
+test("true flat envelope with existing ids is still accepted", () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const envelope = summaryFromPacket(packet, system.id, system.name);
+  const parsed = parseChatCompletionDocument(chatCompletionReply(envelope));
+  assert.deepEqual(parsed, envelope);
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
+  const result = report.results.find(item => item.containerId === packet.containerId);
+  assert.equal(result?.accepted, true, result?.reasons.join("; "));
+  const container = merged.entities.find(entity => entity.id === packet.containerId);
+  assert.ok(container?.responsibility);
+  assert.notEqual(container?.responsibility, "");
+});
+
+test("invented ids are still rejected", () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const envelope = summaryFromPacket(packet, system.id, system.name, [{
+    id: "code:ghost:nope",
+    kind: "code",
+    parentId: packet.components[0]!.id,
+    name: "nope",
+    sourceRefs: [{ path: packet.scopePaths[0] ?? "pkg/a/src/index.ts" }],
+    responsibility: "Hallucinated.",
+  }]);
+  const parsed = parseChatCompletionDocument(chatCompletionReply(envelope));
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
+  assert.equal(report.results.find(item => item.containerId === packet.containerId)?.accepted, false);
+  assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
+  assert.ok(!merged.entities.some(entity => entity.id === "code:ghost:nope"));
+});
+
+test("fake HTTP gateway nested C4 dump is rejected by the merge gate", async () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const fakeKey = "okie-test-llm-key-cla70-fake";
+  const fake = await listenFakeGateway(async (request, response) => {
+    const raw = await readRequestBody(request);
+    const user = ((JSON.parse(raw) as { messages: Array<{ role: string; content: string }> })
+      .messages.find(message => message.role === "user")?.content) ?? "";
+    const document = user.includes("System packet:")
+      ? {
+        softwareSystem: {
+          id: system.id,
+          name: system.name,
+          responsibility: "Demo system.",
+          containers: [{
+            id: packet.containerId,
+            name: packet.containerName,
+            responsibility: `Summary of ${packet.containerName}.`,
+            sourceRefs: [],
+          }],
+        },
+      }
+      : cla70NestedDump(packet, system.id, system.name);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(document)));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      modelId: "acme/fast",
+      gateway: client,
+    });
+    const docs = await enrich(emitted);
+    const { report, extraction: merged } = mergeEnrichment(extraction, docs);
+    const container = report.results.find(item => item.containerId === packet.containerId);
+    assert.equal(container?.accepted, false, container?.reasons.join("; "));
+    assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
+    assert.equal(report.systemScope?.accepted, false);
+  } finally {
+    await fake.close();
+  }
+});
+
+test("fake HTTP gateway flat envelope is accepted by the merge gate", async () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const fakeKey = "okie-test-llm-key-cla70-fake";
+  const fake = await listenFakeGateway(async (request, response) => {
+    const raw = await readRequestBody(request);
+    const user = ((JSON.parse(raw) as { messages: Array<{ role: string; content: string }> })
+      .messages.find(message => message.role === "user")?.content) ?? "";
+    const document = user.includes("System packet:")
+      ? systemEnvelope(system.id, system.name, packet)
+      : summaryFromPacket(packet, system.id, system.name);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(document)));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      modelId: "acme/fast",
+      gateway: client,
+    });
+    const docs = await enrich(emitted);
+    const { report, extraction: merged } = mergeEnrichment(extraction, docs);
+    const container = report.results.find(item => item.containerId === packet.containerId);
+    assert.equal(container?.accepted, true, container?.reasons.join("; "));
+    assert.ok(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility);
+    assert.equal(report.systemScope?.accepted, true, report.systemScope?.reasons.join("; "));
+  } finally {
+    await fake.close();
+  }
+});
+
+test("looksLikeExtractionEnvelope is the gate envelope, not a nested dump", () => {
+  assert.equal(looksLikeExtractionEnvelope(GATE_DOC), true);
+  assert.equal(looksLikeExtractionEnvelope({
+    softwareSystems: [{ id: "system:okie", name: "okie" }],
+    containers: [{ id: "container:apps-server", sourceRefs: "apps/server/src/main.ts" }],
+  }), false);
+  assert.equal(looksLikeExtractionEnvelope({
+    schemaVersion: 1,
+    entities: [{
+      id: "system:okie", kind: "softwareSystem", name: "okie", sourceRefs: "README.md",
+    }],
+    relations: [],
+  }), false);
+  assert.equal(looksLikeExtractionEnvelope({
+    schemaVersion: 1,
+    entities: [{
+      id: "code:ghost:nope", kind: "code", name: "nope", parentId: "component:x", sourceRefs: [],
+    }],
+    relations: [],
+  }), true);
+});
+
+test("a nested first reply is retried once as the envelope; it is not coerced", async () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const fakeKey = "okie-test-llm-key-cla70-fake";
+  const posted: Array<{ userCount: number; hasTool: boolean; strict: boolean | undefined; retryHasSkeleton: boolean }> = [];
+  const fake = await listenFakeGateway(async (request, response) => {
+    const raw = await readRequestBody(request);
+    const body = JSON.parse(raw) as {
+      messages: Array<{ role: string; content: string }>;
+      tools?: unknown;
+      response_format?: { json_schema?: { strict?: boolean } };
+    };
+    const userCount = body.messages.filter(message => message.role === "user").length;
+    const retryUser = body.messages.filter(message => message.role === "user").at(-1)?.content ?? "";
+    posted.push({
+      userCount,
+      hasTool: JSON.stringify(body.tools ?? []).includes(EXTRACTION_TOOL_NAME),
+      strict: body.response_format?.json_schema?.strict,
+      retryHasSkeleton: userCount > 1 && retryUser.includes("Envelope to fill:") && retryUser.includes('"schemaVersion":1'),
+    });
+    const isSystem = body.messages.some(message => message.role === "user" && message.content.includes("System packet:"));
+    const retry = userCount > 1;
+    const document = retry
+      ? (isSystem ? systemEnvelope(system.id, system.name, packet) : summaryFromPacket(packet, system.id, system.name))
+      : cla70NestedDump(packet, system.id, system.name);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(document)));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      modelId: "acme/fast",
+      gateway: client,
+    });
+    const docs = await enrich(emitted);
+    const { report, extraction: merged } = mergeEnrichment(extraction, docs);
+    const container = report.results.find(item => item.containerId === packet.containerId);
+    assert.equal(container?.accepted, true, container?.reasons.join("; "));
+    assert.ok(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility);
+    assert.ok(posted.some(call => call.userCount === 1));
+    assert.ok(posted.some(call => call.userCount > 1));
+    assert.ok(posted.every(call => call.hasTool));
+    assert.ok(posted.every(call => call.strict === true));
+    assert.ok(posted.some(call => call.retryHasSkeleton));
+  } finally {
+    await fake.close();
+  }
+});
+
+test("a nested dump that stays nested after one retry is still rejected", async () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const fakeKey = "okie-test-llm-key-cla70-fake";
+  let posts = 0;
+  const fake = await listenFakeGateway(async (request, response) => {
+    posts += 1;
+    const raw = await readRequestBody(request);
+    const user = ((JSON.parse(raw) as { messages: Array<{ role: string; content: string }> })
+      .messages.find(message => message.role === "user")?.content) ?? "";
+    const document = user.includes("System packet:")
+      ? { softwareSystem: { id: system.id, name: system.name } }
+      : cla70NestedDump(packet, system.id, system.name);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(document)));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      modelId: "acme/fast",
+      gateway: client,
+    });
+    const docs = await enrich(emitted);
+    const { report, extraction: merged } = mergeEnrichment(extraction, docs);
+    assert.equal(report.results.find(item => item.containerId === packet.containerId)?.accepted, false);
+    assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
+    assert.ok(posts >= 4, "container + system each retry once");
   } finally {
     await fake.close();
   }

@@ -106,6 +106,19 @@ export function resolveEnrichmentPassModelId(options: EnricherOptions): string |
   return isUsableModelId(configured) ? configured!.trim() : undefined;
 }
 
+const ENTITY_KIND_ENUM = [
+  "softwareSystem",
+  "container",
+  "component",
+  "code",
+  "person",
+  "externalSystem",
+  "dataStore",
+  "queue",
+] as const;
+
+export const EXTRACTION_TOOL_NAME = "submit_architecture_extraction";
+
 const SOURCE_REF_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -124,13 +137,17 @@ const ENTITY_SCHEMA = {
   required: ["id", "kind", "name", "sourceRefs"],
   properties: {
     id: { type: "string" },
-    kind: { enum: ["softwareSystem", "container", "component", "code", "person", "externalSystem"] },
+    kind: { enum: [...ENTITY_KIND_ENUM] },
     parentId: { type: "string" },
     name: { type: "string" },
     responsibility: { type: "string" },
-    technology: { type: "string" },
+    technology: { type: "array", items: { type: "string" } },
     tags: { type: "array", items: { type: "string" } },
-    sourceRefs: { type: "array", items: SOURCE_REF_SCHEMA },
+    sourceRefs: {
+      type: "array",
+      description: "Always an array of {path, symbol?, startLine?, endLine?} objects, never a string.",
+      items: SOURCE_REF_SCHEMA,
+    },
   },
 } as const;
 
@@ -156,17 +173,112 @@ const RELATION_SCHEMA = {
   },
 } as const;
 
-/** ArchitectureExtraction shape, constrained enough that replies always parse. */
-const EXTRACTION_DOC_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["schemaVersion", "entities", "relations"],
-  properties: {
-    schemaVersion: { const: 1 },
-    entities: { type: "array", items: ENTITY_SCHEMA },
-    relations: { type: "array", items: RELATION_SCHEMA },
-  },
-} as const;
+type EnvelopeEntity = {
+  id: string;
+  kind: typeof ENTITY_KIND_ENUM[number];
+  name: string;
+  parentId?: string;
+  sourceRefs: Array<{ path: string; symbol?: string; startLine?: number; endLine?: number }>;
+};
+
+export type ExtractionEnvelopeSkeleton = {
+  schemaVersion: 1;
+  entities: EnvelopeEntity[];
+  relations: [];
+};
+
+function isSystemPacket(packet: EnrichmentPacket | SystemPacket): packet is SystemPacket {
+  return (packet as SystemPacket).scope === "system";
+}
+
+/**
+ * Packet-derived gate envelope with ids / kinds / names / sourceRefs already filled.
+ * `responsibility` is omitted so the model must write it. Copied from the packet —
+ * never minted. Not applied to a nested dump: the model still has to return this shape.
+ */
+export function extractionEnvelopeSkeleton(
+  kind: PacketKind,
+  systemId: string,
+  packet: EnrichmentPacket | SystemPacket,
+): ExtractionEnvelopeSkeleton {
+  if (kind === "system" || isSystemPacket(packet)) {
+    const scope = packet as SystemPacket;
+    return {
+      schemaVersion: 1,
+      entities: [
+        { id: scope.systemId, kind: "softwareSystem", name: scope.systemName, sourceRefs: [] },
+        ...scope.containers.map(container => ({
+          id: container.id,
+          kind: "container" as const,
+          name: container.name,
+          parentId: scope.systemId,
+          sourceRefs: [],
+        })),
+      ],
+      relations: [],
+    };
+  }
+  const scope = packet as EnrichmentPacket;
+  return {
+    schemaVersion: 1,
+    entities: [
+      { id: systemId, kind: "softwareSystem", name: systemId, sourceRefs: [] },
+      {
+        id: scope.containerId,
+        kind: "container",
+        name: scope.containerName,
+        parentId: systemId,
+        sourceRefs: [],
+      },
+      ...scope.components.map(component => ({
+        id: component.id,
+        kind: "component" as const,
+        name: component.name,
+        parentId: scope.containerId,
+        sourceRefs: [],
+      })),
+    ],
+    relations: [],
+  };
+}
+
+function allowedEntityIds(kind: PacketKind, systemId: string, packet: EnrichmentPacket | SystemPacket): string[] {
+  return extractionEnvelopeSkeleton(kind, systemId, packet).entities.map(entity => entity.id);
+}
+
+function extractionDocSchemaForPacket(
+  kind: PacketKind,
+  systemId: string,
+  packet: EnrichmentPacket | SystemPacket,
+): Record<string, unknown> {
+  const ids = allowedEntityIds(kind, systemId, packet);
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["schemaVersion", "entities", "relations"],
+    properties: {
+      schemaVersion: { type: "integer", enum: [1], description: "Must be the integer 1." },
+      entities: {
+        type: "array",
+        description: "Flat array of entity objects. Do not nest softwareSystems, containers, components, or codeEntities.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "kind", "name", "sourceRefs"],
+          properties: {
+            ...ENTITY_SCHEMA.properties,
+            id: { type: "string", enum: ids },
+          },
+        },
+      },
+      relations: { type: "array", items: RELATION_SCHEMA },
+    },
+  };
+}
+
+function envelopeRetryUserMessage(skeleton: ExtractionEnvelopeSkeleton): string {
+  return `That reply was not the required JSON envelope. Call ${EXTRACTION_TOOL_NAME} with this document, filling each entity's responsibility. Copy id, kind, name, parentId, and sourceRefs unchanged. sourceRefs must stay arrays of {path} objects, never a string. Do not nest softwareSystems, containers, components, or codeEntities.\n\nEnvelope to fill:\n${JSON.stringify(skeleton)}`;
+}
 
 const CONTAINER_SYSTEM_PROMPT = `You are an architecture curator for a C4 atlas built from a deterministic repository scan.
 Write a short summary of THIS packet's scope only. Do not reason about any other container, file, or repository.
@@ -179,6 +291,8 @@ You receive one JSON "enrichment packet" for a single container: its scanner-sco
 4. Optionally restate ONE in-scope code entity with a one-sentence "responsibility". Copy id, kind, name, parentId, and sourceRefs byte-for-byte from the packet. Do not re-parent it.
 5. relations must be [] — relations are deterministic and not yours to propose.
 
+Emit only {"schemaVersion":1,"entities":[...],"relations":[]}. entities is a flat array of entity objects. sourceRefs is always an array of {path, symbol?, startLine?, endLine?} objects, never a string. Do not nest softwareSystems, containers, components, or codeEntities objects.
+
 Cite only scopePaths. Hallucinated ids or out-of-scope entities reject the whole document. Keep summaries short (one or two sentences). Do not dump the packet.`;
 
 const SYSTEM_SCOPE_PROMPT = `You are an architecture curator for a C4 atlas built from a deterministic repository scan.
@@ -190,6 +304,8 @@ You receive one JSON "system packet": the software system, its scanner-scoped co
 2. Restate each container from the packet with its exact id, parented to the system, name unchanged, sourceRefs [] — and give each a one-sentence "responsibility" saying what it is for. This matters MOST for containers with no visible code (native/Rust crates, generated packages). Never invent containers not in the packet.
 3. Do not add persons, components, or code. relations must be [].
 4. Cite only scopePaths.
+
+Emit only {"schemaVersion":1,"entities":[...],"relations":[]}. entities is a flat array of entity objects. sourceRefs is always an array of {path, symbol?, startLine?, endLine?} objects, never a string. Do not nest softwareSystems, containers, components, or codeEntities objects.
 
 Ground summaries in what the README teasers actually say. Hallucinated ids reject the whole document. Keep summaries short (one or two sentences).`;
 
@@ -204,9 +320,11 @@ export function packetUserMessage(
   packet: EnrichmentPacket | SystemPacket,
 ): string {
   const serialized = scrubGithubTokens(JSON.stringify(packet, null, 2));
+  const skeleton = scrubGithubTokens(JSON.stringify(extractionEnvelopeSkeleton(kind, systemId, packet), null, 2));
+  const fill = `Fill each entity's "responsibility" on this ArchitectureExtraction envelope and return the filled document via ${EXTRACTION_TOOL_NAME}. Copy id, kind, name, parentId, and sourceRefs unchanged. sourceRefs is already an array of {path} objects. Do not nest softwareSystems, containers, components, or codeEntities, and do not split this envelope across agents.\n\nEnvelope to fill:\n${skeleton}`;
   return kind === "container"
-    ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${serialized}`
-    : `Summarize THIS packet's scope only.\n\nSystem packet:\n${serialized}`;
+    ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\n${fill}\n\nEnrichment packet:\n${serialized}`
+    : `Summarize THIS packet's scope only.\n\n${fill}\n\nSystem packet:\n${serialized}`;
 }
 
 function cappedOutputTokens(maxOutputTokens: number): number {
@@ -230,7 +348,7 @@ export function enrichmentStreamParams(
     max_tokens: maxTokens,
     thinking: { type: "adaptive" as const },
     system: packetSystemPrompt(kind),
-    output_config: { format: { type: "json_schema" as const, schema: EXTRACTION_DOC_SCHEMA } },
+    output_config: { format: { type: "json_schema" as const, schema: extractionDocSchemaForPacket(kind, systemId, packet) } },
     messages: [{
       role: "user" as const,
       content: packetUserMessage(kind, systemId, packet),
@@ -249,6 +367,7 @@ export function enrichmentChatCompletionsBody(
   packet: EnrichmentPacket | SystemPacket,
   maxOutputTokens: number = MAX_OUTPUT_TOKENS,
 ): Record<string, unknown> {
+  const schema = extractionDocSchemaForPacket(kind, systemId, packet);
   return {
     model: requireUsableModelId(modelId),
     max_tokens: cappedOutputTokens(maxOutputTokens),
@@ -260,9 +379,20 @@ export function enrichmentChatCompletionsBody(
       type: "json_schema",
       json_schema: {
         name: "architecture_extraction",
-        schema: EXTRACTION_DOC_SCHEMA,
+        strict: true,
+        schema,
       },
     },
+    tools: [{
+      type: "function",
+      function: {
+        name: EXTRACTION_TOOL_NAME,
+        description: "Submit the filled ArchitectureExtraction envelope for THIS packet only. Copy the Envelope to fill from the user message; add responsibility strings. schemaVersion must be 1. entities is a flat array. sourceRefs is always an array of {path} objects. relations must be [].",
+        parameters: schema,
+        strict: true,
+      },
+    }],
+    tool_choice: { type: "function", function: { name: EXTRACTION_TOOL_NAME } },
   };
 }
 
@@ -282,13 +412,76 @@ function textFromContent(content: unknown): string | undefined {
 
 function unwrapJsonPayload(text: string): string {
   const trimmed = text.trim();
-  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
-  return fenced ? fenced[1]!.trim() : trimmed;
+  const fenced = /```(?:json)?\s*([\s\S]*?)\s*```/i.exec(trimmed);
+  if (fenced?.[1]) return fenced[1].trim();
+  return trimmed;
+}
+
+function parseJsonOrThrow(text: string): unknown {
+  try {
+    return JSON.parse(unwrapJsonPayload(text)) as unknown;
+  } catch {
+    throw new Error("llm gateway response content is not JSON");
+  }
+}
+
+function payloadFromToolCalls(message: Record<string, unknown>): unknown | undefined {
+  const calls = message.tool_calls;
+  if (!Array.isArray(calls) || calls.length === 0) return undefined;
+  const named = calls.find(call => {
+    if (!call || typeof call !== "object" || Array.isArray(call)) return false;
+    const fn = (call as Record<string, unknown>).function;
+    return Boolean(fn && typeof fn === "object" && !Array.isArray(fn)
+      && (fn as Record<string, unknown>).name === EXTRACTION_TOOL_NAME);
+  }) ?? calls[0];
+  if (!named || typeof named !== "object" || Array.isArray(named)) return undefined;
+  const record = named as Record<string, unknown>;
+  const fn = record.function && typeof record.function === "object" && !Array.isArray(record.function)
+    ? record.function as Record<string, unknown>
+    : undefined;
+  const args = fn?.arguments ?? record.input ?? record.arguments;
+  if (typeof args === "string") return parseJsonOrThrow(args);
+  if (args && typeof args === "object") return args;
+  return undefined;
+}
+
+function payloadFromChatMessage(message: Record<string, unknown> | undefined): unknown {
+  if (!message) return undefined;
+  const fromTools = payloadFromToolCalls(message);
+  if (fromTools !== undefined) return fromTools;
+  const content = message.content;
+  if (content && typeof content === "object" && !Array.isArray(content)) return content;
+  const text = textFromContent(content);
+  if (!text?.trim()) return undefined;
+  return parseJsonOrThrow(text);
 }
 
 /**
- * Pull the gate document out of an OpenAI-compatible chat-completions payload.
- * `choices[0].message.content` is JSON text (or already-parsed object).
+ * True when the parsed JSON is already the gate envelope. Nested C4 dumps and
+ * string `sourceRefs` fail this check so the live hop can re-ask once. Invented
+ * ids still look like an envelope — the merge gate rejects those.
+ */
+export function looksLikeExtractionEnvelope(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const doc = value as Record<string, unknown>;
+  if (doc.schemaVersion !== 1) return false;
+  if (!Array.isArray(doc.entities) || !Array.isArray(doc.relations)) return false;
+  for (const row of doc.entities) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+    const entity = row as Record<string, unknown>;
+    if (typeof entity.id !== "string" || typeof entity.name !== "string") return false;
+    if (typeof entity.kind !== "string" || !ENTITY_KIND_ENUM.includes(entity.kind as typeof ENTITY_KIND_ENUM[number])) {
+      return false;
+    }
+    if (!Array.isArray(entity.sourceRefs)) return false;
+  }
+  return true;
+}
+
+/**
+ * Pull the JSON document out of an OpenAI-compatible chat-completions payload.
+ * Prefers a forced-tool call, else fence unwrap + JSON.parse. Nested C4 dumps
+ * are not reshaped. Wrong shape still reaches `mergeEnrichment` after one retry.
  */
 export function parseChatCompletionDocument(json: unknown): unknown {
   const record = typeof json === "object" && json !== null ? json as Record<string, unknown> : undefined;
@@ -297,21 +490,14 @@ export function parseChatCompletionDocument(json: unknown): unknown {
   const message = first && typeof first === "object" && first !== null
     ? (first as Record<string, unknown>).message
     : undefined;
-  const content = message && typeof message === "object" && message !== null
-    ? (message as Record<string, unknown>).content
+  const messageRecord = message && typeof message === "object" && message !== null && !Array.isArray(message)
+    ? message as Record<string, unknown>
     : undefined;
-  if (content && typeof content === "object" && !Array.isArray(content)) {
-    return content;
-  }
-  const text = textFromContent(content);
-  if (!text?.trim()) {
+  const payload = payloadFromChatMessage(messageRecord);
+  if (payload === undefined) {
     throw new Error("llm gateway response missing message content");
   }
-  try {
-    return JSON.parse(unwrapJsonPayload(text)) as unknown;
-  } catch {
-    throw new Error("llm gateway response content is not JSON");
-  }
+  return payload;
 }
 
 function gatewayCanChat(
@@ -366,11 +552,27 @@ function anthropicGenerator(
         .filter((block): block is Anthropic.TextBlock => block.type === "text")
         .map(block => block.text)
         .join("");
-      const document = JSON.parse(text) as unknown;
+      const document = JSON.parse(unwrapJsonPayload(text)) as unknown;
       return usage ? { document, usage } : { document };
     } catch (error) {
       throw attachUsage(error, usage);
     }
+  };
+}
+
+function mergeGatewayUsage(left?: GatewayUsage, right?: GatewayUsage): GatewayUsage | undefined {
+  if (!left) return right;
+  if (!right) return left;
+  const prompt = (left.promptTokens ?? 0) + (right.promptTokens ?? 0);
+  const completion = (left.completionTokens ?? 0) + (right.completionTokens ?? 0);
+  const cost = left.costUsd !== undefined || right.costUsd !== undefined
+    ? addDollars(left.costUsd ?? 0, right.costUsd ?? 0)
+    : undefined;
+  return {
+    ...(left.promptTokens !== undefined || right.promptTokens !== undefined ? { promptTokens: prompt } : {}),
+    ...(left.completionTokens !== undefined || right.completionTokens !== undefined ? { completionTokens: completion } : {}),
+    totalTokens: (left.totalTokens ?? 0) + (right.totalTokens ?? 0),
+    ...(cost !== undefined ? { costUsd: cost } : {}),
   };
 }
 
@@ -380,15 +582,35 @@ function gatewayGenerator(
   remainingTokens: () => number,
 ): EnrichmentGenerator {
   return async (packet, kind, systemId) => {
-    const result = await client.chatCompletions(
-      enrichmentChatCompletionsBody(modelId, kind, systemId, packet, remainingTokens()),
-    );
+    const body = enrichmentChatCompletionsBody(modelId, kind, systemId, packet, remainingTokens());
+    const first = await client.chatCompletions(body);
+    let usage = first.usage;
+    let document: unknown | undefined;
+    let parsed = false;
     try {
-      const document = parseChatCompletionDocument(result.json);
-      return result.usage ? { document, usage: result.usage } : { document };
-    } catch (error) {
-      throw attachUsage(error, result.usage);
+      document = parseChatCompletionDocument(first.json);
+      parsed = true;
+    } catch {
+      parsed = false;
     }
+    if (!parsed || !looksLikeExtractionEnvelope(document)) {
+      const skeleton = extractionEnvelopeSkeleton(kind, systemId, packet);
+      const retryBody: Record<string, unknown> = {
+        ...body,
+        messages: [
+          ...((body.messages as unknown[]) ?? []),
+          { role: "user", content: envelopeRetryUserMessage(skeleton) },
+        ],
+      };
+      const second = await client.chatCompletions(retryBody);
+      usage = mergeGatewayUsage(usage, second.usage);
+      try {
+        document = parseChatCompletionDocument(second.json);
+      } catch (error) {
+        throw attachUsage(error, usage);
+      }
+    }
+    return usage ? { document, usage } : { document };
   };
 }
 

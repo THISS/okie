@@ -15,7 +15,7 @@ import { scrubGithubTokens } from "@okie/scan";
 export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 /** Documented default model id in OpenRouter's `provider/model` form. Not a table. */
-export const DEFAULT_GATEWAY_MODEL_ID = "anthropic/claude-sonnet-4";
+export const DEFAULT_GATEWAY_MODEL_ID = "z-ai/glm-5.3-flash";
 
 export const LOCAL_LLM_CONFIG_FILENAME = "okie.local.json";
 
