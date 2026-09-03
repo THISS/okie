@@ -3,38 +3,15 @@ import test from "node:test";
 import {
   buildC4ProjectionBundle,
   selectC4BandProjection,
-  type ArchitectureEntity,
-  type ArchitectureRelation,
   type ArchitectureSnapshot,
   type C4Band,
 } from "@okie/architecture";
 import { compileC4Scene } from "./compile-c4.js";
+import { denseSnapshot } from "./band-cost-curve.js";
 
 // Opt-in scoped compile (task #26): band-depth + per-band edge budget bound the routing
 // cost of large-repo scenes. Defaults are OFF and must stay byte-identical.
-
-/** A dense single-container snapshot: `chainCount` chain edges (count 1) + one hub pair (count 5). */
-function denseSnapshot(componentCount: number): ArchitectureSnapshot {
-  const entities: ArchitectureEntity[] = [
-    { id: "system:d", kind: "softwareSystem", name: "D", sourceRefs: [] },
-    { id: "container:c", kind: "container", parentId: "system:d", name: "C", sourceRefs: [] },
-  ];
-  const cid = (index: number): string => `component:c-m${index.toString().padStart(3, "0")}`;
-  for (let index = 0; index < componentCount; index += 1) {
-    entities.push({ id: cid(index), kind: "component", parentId: "container:c", name: `m${index}`, sourceRefs: [] });
-    entities.push({ id: `code:c-m${index}`, kind: "code", parentId: cid(index), name: "k", sourceRefs: [] });
-  }
-  const relations: ArchitectureRelation[] = [];
-  const evidence = [{ source: { path: "x.ts", commitSha: "c" } }];
-  for (let index = 0; index < componentCount; index += 1) {
-    relations.push({ id: `relation:e${index.toString().padStart(3, "0")}`, from: cid(index), to: cid((index + 1) % componentCount), kind: "dependsOn", evidence });
-  }
-  // A hub pair (m000 -> m002) with 5 relations -> aggregate count 5, the highest-weight edge.
-  for (let copy = 0; copy < 5; copy += 1) {
-    relations.push({ id: `relation:hub${copy}`, from: cid(0), to: cid(2), kind: "dependsOn", evidence });
-  }
-  return { schemaVersion: 1, id: "snapshot:d", repositoryId: "repo:d", commitSha: "c", generatedAt: "2026-01-01T00:00:00.000Z", entities, relations };
-}
+// CLA-67 extends this harness in band-cost-curve.ts / band-cost-curve.qa.test.ts.
 
 const rootFocus = { rootEntityId: "system:d", focusEntityId: "system:d", familyId: "f" } as const;
 function bandEdges(bundle: ReturnType<typeof buildC4ProjectionBundle>, band: C4Band): { routed: string[]; omitted: string[] } {

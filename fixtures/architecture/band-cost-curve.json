@@ -1,0 +1,512 @@
+{
+  "schemaVersion": 1,
+  "hangGuardEntities": 2000,
+  "hangGuardUnchanged": true,
+  "healthyChildCount": 50,
+  "thresholds": {
+    "compileHealthyMs": 120,
+    "compileFallOverMs": 200,
+    "payloadHealthyBytes": 500000,
+    "payloadFallOverBytes": 1500000,
+    "cpuFrameHealthyMs": 8,
+    "cpuFrameFallOverMs": 16.7,
+    "prefetchHealthyMs": 80,
+    "prefetchFallOverMs": 200,
+    "prefetchCodeChildren": 25
+  },
+  "fallOver": {
+    "compileScopedChildCount": 100,
+    "compileUnboundedChildCount": 50,
+    "payloadBytesChildCount": null,
+    "cpuFrameChildCount": null,
+    "prefetchChildCount": null
+  },
+  "rows": [
+    {
+      "band": "component",
+      "childCount": 25,
+      "entityCount": 27,
+      "relationCount": 30,
+      "bandNodeCount": 27,
+      "bandEdgeCount": 24,
+      "bandOmittedEdgeCount": 2,
+      "objectCount": 27,
+      "pathCount": 24,
+      "payloadBytes": 48234,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "component",
+        "maxEdgesPerBand": 24,
+        "maxGridNodes": 1500
+      },
+      "prefetch": {
+        "band": "code",
+        "childCount": 25,
+        "entityCount": 28,
+        "relationCount": 30,
+        "bandNodeCount": 28,
+        "bandEdgeCount": 26,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 28,
+        "pathCount": 26,
+        "payloadBytes": 53411,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        }
+      },
+      "unbounded": {
+        "band": "component",
+        "childCount": 25,
+        "entityCount": 27,
+        "relationCount": 30,
+        "bandNodeCount": 27,
+        "bandEdgeCount": 26,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 27,
+        "pathCount": 26,
+        "payloadBytes": 49366,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "component"
+        }
+      }
+    },
+    {
+      "band": "component",
+      "childCount": 50,
+      "entityCount": 52,
+      "relationCount": 55,
+      "bandNodeCount": 52,
+      "bandEdgeCount": 24,
+      "bandOmittedEdgeCount": 27,
+      "objectCount": 52,
+      "pathCount": 24,
+      "payloadBytes": 77095,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "component",
+        "maxEdgesPerBand": 24,
+        "maxGridNodes": 1500
+      },
+      "prefetch": {
+        "band": "code",
+        "childCount": 25,
+        "entityCount": 28,
+        "relationCount": 30,
+        "bandNodeCount": 28,
+        "bandEdgeCount": 26,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 28,
+        "pathCount": 26,
+        "payloadBytes": 53411,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        }
+      },
+      "unbounded": {
+        "band": "component",
+        "childCount": 50,
+        "entityCount": 52,
+        "relationCount": 55,
+        "bandNodeCount": 52,
+        "bandEdgeCount": 51,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 52,
+        "pathCount": 51,
+        "payloadBytes": 90792,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "component"
+        }
+      }
+    },
+    {
+      "band": "component",
+      "childCount": 100,
+      "entityCount": 102,
+      "relationCount": 105,
+      "bandNodeCount": 102,
+      "bandEdgeCount": 24,
+      "bandOmittedEdgeCount": 77,
+      "objectCount": 102,
+      "pathCount": 24,
+      "payloadBytes": 131805,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "component",
+        "maxEdgesPerBand": 24,
+        "maxGridNodes": 1500
+      },
+      "prefetch": {
+        "band": "code",
+        "childCount": 25,
+        "entityCount": 28,
+        "relationCount": 30,
+        "bandNodeCount": 28,
+        "bandEdgeCount": 26,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 28,
+        "pathCount": 26,
+        "payloadBytes": 53411,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        }
+      },
+      "unbounded": {
+        "band": "component",
+        "childCount": 100,
+        "entityCount": 102,
+        "relationCount": 105,
+        "bandNodeCount": 102,
+        "bandEdgeCount": 101,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 102,
+        "pathCount": 101,
+        "payloadBytes": 170617,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "component"
+        }
+      }
+    },
+    {
+      "band": "component",
+      "childCount": 200,
+      "entityCount": 202,
+      "relationCount": 205,
+      "bandNodeCount": 202,
+      "bandEdgeCount": 24,
+      "bandOmittedEdgeCount": 177,
+      "objectCount": 202,
+      "pathCount": 24,
+      "payloadBytes": 248121,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "component",
+        "maxEdgesPerBand": 24,
+        "maxGridNodes": 1500
+      },
+      "prefetch": {
+        "band": "code",
+        "childCount": 25,
+        "entityCount": 28,
+        "relationCount": 30,
+        "bandNodeCount": 28,
+        "bandEdgeCount": 26,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 28,
+        "pathCount": 26,
+        "payloadBytes": 53411,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        }
+      },
+      "unbounded": {
+        "band": "component",
+        "childCount": 200,
+        "entityCount": 202,
+        "relationCount": 205,
+        "bandNodeCount": 202,
+        "bandEdgeCount": 201,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 202,
+        "pathCount": 201,
+        "payloadBytes": 337405,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "component"
+        }
+      }
+    },
+    {
+      "band": "component",
+      "childCount": 400,
+      "entityCount": 402,
+      "relationCount": 405,
+      "bandNodeCount": 402,
+      "bandEdgeCount": 24,
+      "bandOmittedEdgeCount": 377,
+      "objectCount": 402,
+      "pathCount": 24,
+      "payloadBytes": 476438,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "component",
+        "maxEdgesPerBand": 24,
+        "maxGridNodes": 1500
+      },
+      "prefetch": {
+        "band": "code",
+        "childCount": 25,
+        "entityCount": 28,
+        "relationCount": 30,
+        "bandNodeCount": 28,
+        "bandEdgeCount": 26,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 28,
+        "pathCount": 26,
+        "payloadBytes": 53411,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        }
+      }
+    },
+    {
+      "band": "component",
+      "childCount": 800,
+      "entityCount": 802,
+      "relationCount": 805,
+      "bandNodeCount": 802,
+      "bandEdgeCount": 24,
+      "bandOmittedEdgeCount": 777,
+      "objectCount": 802,
+      "pathCount": 24,
+      "payloadBytes": 942020,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "component",
+        "maxEdgesPerBand": 24,
+        "maxGridNodes": 1500
+      },
+      "prefetch": {
+        "band": "code",
+        "childCount": 25,
+        "entityCount": 28,
+        "relationCount": 30,
+        "bandNodeCount": 28,
+        "bandEdgeCount": 26,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 28,
+        "pathCount": 26,
+        "payloadBytes": 53411,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        }
+      }
+    }
+  ],
+  "observed": {
+    "host": "unspecified",
+    "note": "Wall-clock on one host. CI locks structure + generous ceilings, not these milliseconds.",
+    "rows": [
+      {
+        "childCount": 25,
+        "compileMs": 52.04275099999995,
+        "payloadBytes": 48234,
+        "cpuFirstFrameMs": 0.016526999999996406,
+        "cpuPanMs": 0.016186000000004697,
+        "cpuZoomMs": 0.016370999999992364,
+        "prefetchCompileMs": 57.050611,
+        "prefetchCpuFirstFrameMs": 0.016394999999988613,
+        "unboundedCompileMs": 55.41842400000007
+      },
+      {
+        "childCount": 50,
+        "compileMs": 99.6866849999999,
+        "payloadBytes": 77095,
+        "cpuFirstFrameMs": 0.01621900000009191,
+        "cpuPanMs": 0.016609999999900538,
+        "cpuZoomMs": 0.017025999999987107,
+        "prefetchCompileMs": 54.831625999999915,
+        "prefetchCpuFirstFrameMs": 0.01714599999991151,
+        "unboundedCompileMs": 216.98142400000006
+      },
+      {
+        "childCount": 100,
+        "compileMs": 265.2740309999999,
+        "payloadBytes": 131805,
+        "cpuFirstFrameMs": 0.004735999999866181,
+        "cpuPanMs": 0.004529999999249412,
+        "cpuZoomMs": 0.0045869999994465616,
+        "prefetchCompileMs": 54.22703799999999,
+        "prefetchCpuFirstFrameMs": 0.002531000000089989,
+        "unboundedCompileMs": 1149.3682640000006
+      },
+      {
+        "childCount": 200,
+        "compileMs": 838.9613150000005,
+        "payloadBytes": 248121,
+        "cpuFirstFrameMs": 0.007941000001665088,
+        "cpuPanMs": 0.007779999999911524,
+        "cpuZoomMs": 0.0075719999986176845,
+        "prefetchCompileMs": 54.51108899999963,
+        "prefetchCpuFirstFrameMs": 0.0024699999994481914,
+        "unboundedCompileMs": 7148.519826000003
+      },
+      {
+        "childCount": 400,
+        "compileMs": 924.9960900000005,
+        "payloadBytes": 476438,
+        "cpuFirstFrameMs": 0.014195999996445607,
+        "cpuPanMs": 0.013278999998874497,
+        "cpuZoomMs": 0.013680999996722676,
+        "prefetchCompileMs": 54.517487999997684,
+        "prefetchCpuFirstFrameMs": 0.0006810000049881637
+      },
+      {
+        "childCount": 800,
+        "compileMs": 268.80913500000315,
+        "payloadBytes": 942020,
+        "cpuFirstFrameMs": 0.08670400000119116,
+        "cpuPanMs": 0.03437799999665003,
+        "cpuZoomMs": 0.033972999997786246,
+        "prefetchCompileMs": 54.22064799999498,
+        "prefetchCpuFirstFrameMs": 0.011862999999721069
+      }
+    ],
+    "container25CompileMs": 54.701082999999926,
+    "code25CompileMs": 54.326365000000806
+  },
+  "selfScan": {
+    "entityCount": 2102,
+    "relationCount": 4349,
+    "hangGuardApplies": true,
+    "l1": {
+      "focusEntityId": "system:okie",
+      "band": "container",
+      "childCount": 10,
+      "entityCount": 2102,
+      "relationCount": 4349,
+      "bandNodeCount": 19,
+      "bandEdgeCount": 21,
+      "bandOmittedEdgeCount": 0,
+      "objectCount": 45,
+      "pathCount": 29,
+      "payloadBytes": 71140,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "container"
+      },
+      "compileMs": 127.63866099999723,
+      "cpuFirstFrameMs": 0.016529000000446104
+    },
+    "l2OpenInside": {
+      "focusEntityId": "container:apps-server",
+      "band": "component",
+      "childCount": 13,
+      "entityCount": 2102,
+      "relationCount": 4349,
+      "bandNodeCount": 23,
+      "bandEdgeCount": 24,
+      "bandOmittedEdgeCount": 26,
+      "objectCount": 27,
+      "pathCount": 27,
+      "payloadBytes": 68198,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "component",
+        "maxEdgesPerBand": 24,
+        "maxGridNodes": 1500
+      },
+      "compileMs": 112.4972689999995,
+      "cpuFirstFrameMs": 0.01756500000192318
+    },
+    "l3OpenInside": {
+      "focusEntityId": "component:apps-server-src-ask-ts",
+      "band": "code",
+      "childCount": 24,
+      "entityCount": 2102,
+      "relationCount": 4349,
+      "bandNodeCount": 44,
+      "bandEdgeCount": 41,
+      "bandOmittedEdgeCount": 0,
+      "objectCount": 44,
+      "pathCount": 45,
+      "payloadBytes": 128412,
+      "directFallbackCount": 0,
+      "compileOptions": {
+        "maxBand": "code"
+      },
+      "compileMs": 252.80570299999818,
+      "cpuFirstFrameMs": 0.024902999997721054
+    },
+    "quietPackages": {
+      "@okie/architecture": {
+        "focusEntityId": "container:packages-architecture",
+        "band": "component",
+        "childCount": 9,
+        "entityCount": 2102,
+        "relationCount": 4349,
+        "bandNodeCount": 19,
+        "bandEdgeCount": 24,
+        "bandOmittedEdgeCount": 8,
+        "objectCount": 24,
+        "pathCount": 27,
+        "payloadBytes": 68842,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "component",
+          "maxEdgesPerBand": 24,
+          "maxGridNodes": 1500
+        },
+        "compileMs": 80.34367800000473,
+        "cpuFirstFrameMs": 0.002670000001671724
+      },
+      "@okie/architecture L4": {
+        "focusEntityId": "component:packages-architecture-src-authoring-ts",
+        "band": "code",
+        "childCount": 22,
+        "entityCount": 2102,
+        "relationCount": 4349,
+        "bandNodeCount": 48,
+        "bandEdgeCount": 59,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 49,
+        "pathCount": 68,
+        "payloadBytes": 162008,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        },
+        "compileMs": 485.2458809999953,
+        "cpuFirstFrameMs": 0.005571999994572252
+      },
+      "@okie/scene-compiler": {
+        "focusEntityId": "container:packages-scene-compiler",
+        "band": "component",
+        "childCount": 13,
+        "entityCount": 2102,
+        "relationCount": 4349,
+        "bandNodeCount": 23,
+        "bandEdgeCount": 24,
+        "bandOmittedEdgeCount": 13,
+        "objectCount": 28,
+        "pathCount": 27,
+        "payloadBytes": 72561,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "component",
+          "maxEdgesPerBand": 24,
+          "maxGridNodes": 1500
+        },
+        "compileMs": 115.6285879999923,
+        "cpuFirstFrameMs": 0.002594999998109415
+      },
+      "@okie/scene-compiler L4": {
+        "focusEntityId": "component:packages-scene-compiler-scripts-generate-golden-source-excerpts-mjs",
+        "band": "code",
+        "childCount": 8,
+        "entityCount": 2102,
+        "relationCount": 4349,
+        "bandNodeCount": 19,
+        "bandEdgeCount": 4,
+        "bandOmittedEdgeCount": 0,
+        "objectCount": 19,
+        "pathCount": 4,
+        "payloadBytes": 61100,
+        "directFallbackCount": 0,
+        "compileOptions": {
+          "maxBand": "code"
+        },
+        "compileMs": 21.654057000007015,
+        "cpuFirstFrameMs": 0.0011999999987892807
+      }
+    }
+  }
+}

@@ -19,6 +19,7 @@ The model holds claims + evidence; a view selects a subgraph and owns layout; th
 
 **Architecture** (`docs/architecture/`)
 - `renderer.md` — renderer boundary, protocol, browser contract, milestones.
+- `band-cost-curve.md` — CLA-67 measured per-band compile/render cost vs node/edge count.
 - `deterministic-first-ingestion.md` — provenance classes, pipeline/LLM constraints, rescan lifecycle.
 - `ingestion-golden-tests.md` — byte-reproducibility, identity, hash domains, release gates.
 

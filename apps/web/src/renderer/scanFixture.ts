@@ -15,7 +15,9 @@ import type { AtlasScene, ScanGuardRefusal } from './types';
 // Hang-guard only (CLA-66 / CLA-67): unbounded full-graph compiles above this
 // entity count are refused. Band scoping is the DEFAULT scan path at every
 // size — do not raise this number as a product fix, and do not treat a bigger
-// dump as the slice. CLA-67 measures a healthy per-band count later.
+// dump as the slice. CLA-67 measured the per-band curve in
+// docs/architecture/band-cost-curve.md; the hang-guard stays 2000 until a
+// replacement is taken from that table (tests lock the number).
 export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;
 export const SCAN_CONTAINER_EDGE_BUDGET = 24;     // routed edges per band at a container drill-in
 export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a container drill-in

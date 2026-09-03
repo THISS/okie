@@ -9,6 +9,9 @@ Outputs are gitignored and rebuilt on demand — never hand-edit them.
 - **`generate-stress.mjs`** — writes a deterministic seeded stress scene
   (`--nodes`, `--edges`, `--seed`, `--output`) under `fixtures/renderer/`.
   Run via `pnpm generate:stress`.
+- **`measure-band-cost.mjs`** — CLA-67 per-band compile/payload/CPU-frame curve
+  into `fixtures/architecture/band-cost-curve.json`. Does not change the 2000
+  hang-guard. Run after building `@okie/scene-compiler`.
 - **Pins:** both script paths are dogfooding-pinned in the golden fixture; keep
   `build-wasm.mjs`'s wasm-pack args + crate name frozen (the WASM import
   boundary). See the dogfooding-pin gotcha in root `CLAUDE.md` before editing.
