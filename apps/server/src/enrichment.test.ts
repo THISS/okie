@@ -23,6 +23,7 @@ import {
   parseChatCompletionDocument,
   looksLikeExtractionEnvelope,
   EXTRACTION_TOOL_NAME,
+  extractionEnvelopeSkeleton,
   resolveEnrichmentPassModelId,
 } from "./enrichment.js";
 import {
@@ -657,6 +658,18 @@ test("chat-completions body is the bounded packet, not Anthropic Messages fields
   assert.equal(messages[1]!.role, "user");
   assert.equal(messages[1]!.content, packetUserMessage("container", "system:acme", packet));
   assert.match(messages[1]!.content, /"containerId": "container:pkg-a"/);
+  assert.match(messages[1]!.content, /Envelope to fill:/);
+  assert.match(messages[1]!.content, /"schemaVersion": 1/);
+  assert.match(messages[1]!.content, /do not split this envelope across agents/);
+  const skeleton = extractionEnvelopeSkeleton("container", "system:acme", packet);
+  assert.equal(skeleton.schemaVersion, 1);
+  assert.deepEqual(skeleton.relations, []);
+  assert.ok(skeleton.entities.every(entity => Array.isArray(entity.sourceRefs)));
+  assert.ok(skeleton.entities.every(entity => !("responsibility" in entity)));
+  assert.ok(skeleton.entities.some(entity => entity.id === "container:pkg-a" && entity.kind === "container"));
+  assert.ok(messages[1]!.content.includes(JSON.stringify(skeleton, null, 2)));
+  const schema = (body.response_format as { json_schema: { schema: { properties: { entities: { items: { properties: { id: { enum?: string[] } } } } } } } }).json_schema.schema;
+  assert.deepEqual(schema.properties.entities.items.properties.id.enum, skeleton.entities.map(entity => entity.id));
   assert.doesNotMatch(messages[1]!.content, /WHOLE_REPO_SENTINEL/);
   const format = body.response_format as { type: string; json_schema: { name: string; strict?: boolean } };
   assert.equal(format.type, "json_schema");
@@ -684,7 +697,7 @@ test("prompts ask for a short summary of this packet's scope only", () => {
   assert.match(containerMessages[0]!.content, /Do not nest softwareSystems, containers, components, or codeEntities/);
   assert.doesNotMatch(containerMessages[0]!.content, /Propose LOGICAL COMPONENTS that regroup/);
   assert.doesNotMatch(containerMessages[0]!.content, /Restate EVERY code entity/);
-  assert.match(containerMessages[1]!.content, /Summarize THIS packet's scope only/);
+  assert.match(containerMessages[1]!.content, /Envelope to fill:/);
   assert.match(containerMessages[1]!.content, /"containerId": "container:pkg-a"/);
   assert.doesNotMatch(containerMessages[1]!.content, /WHOLE_REPO_SENTINEL/);
   assert.doesNotMatch(containerMessages[1]!.content, /okie-test-llm-key/);
@@ -694,6 +707,7 @@ test("prompts ask for a short summary of this packet's scope only", () => {
   assert.match(systemMessages[0]!.content, /Do not nest softwareSystems, containers, components, or codeEntities/);
   assert.doesNotMatch(systemMessages[0]!.content, /Propose the TOP-LEVEL ACTORS/);
   assert.match(systemMessages[1]!.content, /Summarize THIS packet's scope only/);
+  assert.match(systemMessages[1]!.content, /Envelope to fill:/);
   assert.match(systemMessages[1]!.content, /"systemId": "system:acme"/);
   assert.doesNotMatch(systemMessages[1]!.content, /WHOLE_REPO_SENTINEL/);
 });
@@ -1092,6 +1106,23 @@ test("parseChatCompletionDocument does not flatten a nested CLA-70 dump", () => 
   assert.deepEqual(parsed, nested);
 });
 
+test("packet skeleton is not applied to a nested CLA-70 dump", () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const nested = cla70NestedDump(packet, system.id, system.name);
+  const parsed = parseChatCompletionDocument(chatCompletionReply(nested)) as Record<string, unknown>;
+  const skeleton = extractionEnvelopeSkeleton("container", system.id, packet);
+  assert.notDeepEqual(parsed, skeleton);
+  assert.equal(looksLikeExtractionEnvelope(parsed), false);
+  assert.equal(looksLikeExtractionEnvelope(skeleton), true);
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
+  assert.equal(report.results.find(item => item.containerId === packet.containerId)?.accepted, false);
+  assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
+});
+
 test("nested CLA-70 dump is still rejected; that scope stays deterministic", () => {
   const { extraction, read } = acmeExtraction();
   const emitted = buildEnrichmentPackets(extraction, read);
@@ -1266,7 +1297,7 @@ test("a nested first reply is retried once as the envelope; it is not coerced", 
   assert.ok(packet);
   const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
   const fakeKey = "okie-test-llm-key-cla70-fake";
-  const posted: Array<{ userCount: number; hasTool: boolean; strict: boolean | undefined }> = [];
+  const posted: Array<{ userCount: number; hasTool: boolean; strict: boolean | undefined; retryHasSkeleton: boolean }> = [];
   const fake = await listenFakeGateway(async (request, response) => {
     const raw = await readRequestBody(request);
     const body = JSON.parse(raw) as {
@@ -1275,10 +1306,12 @@ test("a nested first reply is retried once as the envelope; it is not coerced", 
       response_format?: { json_schema?: { strict?: boolean } };
     };
     const userCount = body.messages.filter(message => message.role === "user").length;
+    const retryUser = body.messages.filter(message => message.role === "user").at(-1)?.content ?? "";
     posted.push({
       userCount,
       hasTool: JSON.stringify(body.tools ?? []).includes(EXTRACTION_TOOL_NAME),
       strict: body.response_format?.json_schema?.strict,
+      retryHasSkeleton: userCount > 1 && retryUser.includes("Envelope to fill:") && retryUser.includes('"schemaVersion":1'),
     });
     const isSystem = body.messages.some(message => message.role === "user" && message.content.includes("System packet:"));
     const retry = userCount > 1;
@@ -1309,6 +1342,7 @@ test("a nested first reply is retried once as the envelope; it is not coerced", 
     assert.ok(posted.some(call => call.userCount > 1));
     assert.ok(posted.every(call => call.hasTool));
     assert.ok(posted.every(call => call.strict === true));
+    assert.ok(posted.some(call => call.retryHasSkeleton));
   } finally {
     await fake.close();
   }

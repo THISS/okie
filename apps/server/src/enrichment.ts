@@ -173,23 +173,112 @@ const RELATION_SCHEMA = {
   },
 } as const;
 
-/** ArchitectureExtraction shape, constrained enough that replies always parse. */
-const EXTRACTION_DOC_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["schemaVersion", "entities", "relations"],
-  properties: {
-    schemaVersion: { type: "integer", enum: [1], description: "Must be the integer 1." },
-    entities: {
-      type: "array",
-      description: "Flat array of entity objects. Do not nest softwareSystems, containers, components, or codeEntities.",
-      items: ENTITY_SCHEMA,
-    },
-    relations: { type: "array", items: RELATION_SCHEMA },
-  },
-} as const;
+type EnvelopeEntity = {
+  id: string;
+  kind: typeof ENTITY_KIND_ENUM[number];
+  name: string;
+  parentId?: string;
+  sourceRefs: Array<{ path: string; symbol?: string; startLine?: number; endLine?: number }>;
+};
 
-const ENVELOPE_RETRY_USER_MESSAGE = `That reply was not the required JSON envelope. Call ${EXTRACTION_TOOL_NAME} with only {"schemaVersion":1,"entities":[...],"relations":[]}. entities is a flat array of {id, kind, name, sourceRefs, parentId?, responsibility?}. sourceRefs must be an array of {path} objects, never a string. kind must be softwareSystem, container, component, code, person, externalSystem, dataStore, or queue. Do not nest softwareSystems, containers, components, or codeEntities.`;
+export type ExtractionEnvelopeSkeleton = {
+  schemaVersion: 1;
+  entities: EnvelopeEntity[];
+  relations: [];
+};
+
+function isSystemPacket(packet: EnrichmentPacket | SystemPacket): packet is SystemPacket {
+  return (packet as SystemPacket).scope === "system";
+}
+
+/**
+ * Packet-derived gate envelope with ids / kinds / names / sourceRefs already filled.
+ * `responsibility` is omitted so the model must write it. Copied from the packet —
+ * never minted. Not applied to a nested dump: the model still has to return this shape.
+ */
+export function extractionEnvelopeSkeleton(
+  kind: PacketKind,
+  systemId: string,
+  packet: EnrichmentPacket | SystemPacket,
+): ExtractionEnvelopeSkeleton {
+  if (kind === "system" || isSystemPacket(packet)) {
+    const scope = packet as SystemPacket;
+    return {
+      schemaVersion: 1,
+      entities: [
+        { id: scope.systemId, kind: "softwareSystem", name: scope.systemName, sourceRefs: [] },
+        ...scope.containers.map(container => ({
+          id: container.id,
+          kind: "container" as const,
+          name: container.name,
+          parentId: scope.systemId,
+          sourceRefs: [],
+        })),
+      ],
+      relations: [],
+    };
+  }
+  const scope = packet as EnrichmentPacket;
+  return {
+    schemaVersion: 1,
+    entities: [
+      { id: systemId, kind: "softwareSystem", name: systemId, sourceRefs: [] },
+      {
+        id: scope.containerId,
+        kind: "container",
+        name: scope.containerName,
+        parentId: systemId,
+        sourceRefs: [],
+      },
+      ...scope.components.map(component => ({
+        id: component.id,
+        kind: "component" as const,
+        name: component.name,
+        parentId: scope.containerId,
+        sourceRefs: [],
+      })),
+    ],
+    relations: [],
+  };
+}
+
+function allowedEntityIds(kind: PacketKind, systemId: string, packet: EnrichmentPacket | SystemPacket): string[] {
+  return extractionEnvelopeSkeleton(kind, systemId, packet).entities.map(entity => entity.id);
+}
+
+function extractionDocSchemaForPacket(
+  kind: PacketKind,
+  systemId: string,
+  packet: EnrichmentPacket | SystemPacket,
+): Record<string, unknown> {
+  const ids = allowedEntityIds(kind, systemId, packet);
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["schemaVersion", "entities", "relations"],
+    properties: {
+      schemaVersion: { type: "integer", enum: [1], description: "Must be the integer 1." },
+      entities: {
+        type: "array",
+        description: "Flat array of entity objects. Do not nest softwareSystems, containers, components, or codeEntities.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "kind", "name", "sourceRefs"],
+          properties: {
+            ...ENTITY_SCHEMA.properties,
+            id: { type: "string", enum: ids },
+          },
+        },
+      },
+      relations: { type: "array", items: RELATION_SCHEMA },
+    },
+  };
+}
+
+function envelopeRetryUserMessage(skeleton: ExtractionEnvelopeSkeleton): string {
+  return `That reply was not the required JSON envelope. Call ${EXTRACTION_TOOL_NAME} with this document, filling each entity's responsibility. Copy id, kind, name, parentId, and sourceRefs unchanged. sourceRefs must stay arrays of {path} objects, never a string. Do not nest softwareSystems, containers, components, or codeEntities.\n\nEnvelope to fill:\n${JSON.stringify(skeleton)}`;
+}
 
 const CONTAINER_SYSTEM_PROMPT = `You are an architecture curator for a C4 atlas built from a deterministic repository scan.
 Write a short summary of THIS packet's scope only. Do not reason about any other container, file, or repository.
@@ -231,9 +320,11 @@ export function packetUserMessage(
   packet: EnrichmentPacket | SystemPacket,
 ): string {
   const serialized = scrubGithubTokens(JSON.stringify(packet, null, 2));
+  const skeleton = scrubGithubTokens(JSON.stringify(extractionEnvelopeSkeleton(kind, systemId, packet), null, 2));
+  const fill = `Fill each entity's "responsibility" on this ArchitectureExtraction envelope and return the filled document via ${EXTRACTION_TOOL_NAME}. Copy id, kind, name, parentId, and sourceRefs unchanged. sourceRefs is already an array of {path} objects. Do not nest softwareSystems, containers, components, or codeEntities, and do not split this envelope across agents.\n\nEnvelope to fill:\n${skeleton}`;
   return kind === "container"
-    ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\nEnrichment packet:\n${serialized}`
-    : `Summarize THIS packet's scope only.\n\nSystem packet:\n${serialized}`;
+    ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\n${fill}\n\nEnrichment packet:\n${serialized}`
+    : `Summarize THIS packet's scope only.\n\n${fill}\n\nSystem packet:\n${serialized}`;
 }
 
 function cappedOutputTokens(maxOutputTokens: number): number {
@@ -257,7 +348,7 @@ export function enrichmentStreamParams(
     max_tokens: maxTokens,
     thinking: { type: "adaptive" as const },
     system: packetSystemPrompt(kind),
-    output_config: { format: { type: "json_schema" as const, schema: EXTRACTION_DOC_SCHEMA } },
+    output_config: { format: { type: "json_schema" as const, schema: extractionDocSchemaForPacket(kind, systemId, packet) } },
     messages: [{
       role: "user" as const,
       content: packetUserMessage(kind, systemId, packet),
@@ -276,6 +367,7 @@ export function enrichmentChatCompletionsBody(
   packet: EnrichmentPacket | SystemPacket,
   maxOutputTokens: number = MAX_OUTPUT_TOKENS,
 ): Record<string, unknown> {
+  const schema = extractionDocSchemaForPacket(kind, systemId, packet);
   return {
     model: requireUsableModelId(modelId),
     max_tokens: cappedOutputTokens(maxOutputTokens),
@@ -288,15 +380,15 @@ export function enrichmentChatCompletionsBody(
       json_schema: {
         name: "architecture_extraction",
         strict: true,
-        schema: EXTRACTION_DOC_SCHEMA,
+        schema,
       },
     },
     tools: [{
       type: "function",
       function: {
         name: EXTRACTION_TOOL_NAME,
-        description: "Submit the ArchitectureExtraction envelope for THIS packet only. schemaVersion must be 1. entities is a flat array. sourceRefs is always an array of {path} objects. relations must be [].",
-        parameters: EXTRACTION_DOC_SCHEMA,
+        description: "Submit the filled ArchitectureExtraction envelope for THIS packet only. Copy the Envelope to fill from the user message; add responsibility strings. schemaVersion must be 1. entities is a flat array. sourceRefs is always an array of {path} objects. relations must be [].",
+        parameters: schema,
         strict: true,
       },
     }],
@@ -502,11 +594,12 @@ function gatewayGenerator(
       parsed = false;
     }
     if (!parsed || !looksLikeExtractionEnvelope(document)) {
+      const skeleton = extractionEnvelopeSkeleton(kind, systemId, packet);
       const retryBody: Record<string, unknown> = {
         ...body,
         messages: [
           ...((body.messages as unknown[]) ?? []),
-          { role: "user", content: ENVELOPE_RETRY_USER_MESSAGE },
+          { role: "user", content: envelopeRetryUserMessage(skeleton) },
         ],
       };
       const second = await client.chatCompletions(retryBody);
