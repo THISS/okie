@@ -195,3 +195,15 @@ test('validation rejects stale endpoints, ambiguous empty intent, malformed scop
   assert.ok(messages.some(value => value.includes('must be finite')));
   assert.ok(messages.some(value => value.includes('routeOverrides[1].intent: must specify a preferred port or waypoint')));
 });
+
+test('authoring rejects scan-time duplicates relations', () => {
+  const document = createArchitectureAuthoringDocument(snapshot.repositoryId);
+  document.relations = [{
+    id: 'relation:authored-dup',
+    from: 'container:a',
+    to: 'container:b',
+    kind: 'duplicates',
+  }];
+  const issues = validateArchitectureAuthoringDocument(snapshot, document);
+  assert.ok(issues.some(issue => issue.path === 'relations[0].kind' && issue.message === 'unsupported relation kind'));
+});

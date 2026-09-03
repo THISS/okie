@@ -28,6 +28,7 @@ export interface AskPacket {
   source?: string;
   cyclomaticComplexity?: number;
   cyclomaticFlagged?: boolean;
+  duplicates?: Array<{ id: string; name: string }>;
 }
 
 export interface AskRelation {
@@ -217,6 +218,24 @@ function sanitizePacket(raw: unknown): AskPacket | undefined {
     && record.cyclomaticComplexity >= 1) {
     packet.cyclomaticComplexity = record.cyclomaticComplexity;
     packet.cyclomaticFlagged = record.cyclomaticComplexity > CYCLOMATIC_FLAG_THRESHOLD;
+  }
+  if (Array.isArray(record.duplicates)) {
+    const duplicates: Array<{ id: string; name: string }> = [];
+    const seen = new Set<string>();
+    for (const row of record.duplicates) {
+      if (duplicates.length >= 16) break;
+      if (!row || typeof row !== "object") continue;
+      const counterpart = row as Record<string, unknown>;
+      const counterpartId = optionalTrimmedString(counterpart.id);
+      const counterpartName = optionalTrimmedString(counterpart.name);
+      if (!counterpartId || !counterpartName || seen.has(counterpartId) || counterpartId === packet.id) continue;
+      seen.add(counterpartId);
+      duplicates.push({
+        id: scrubGithubTokens(counterpartId),
+        name: scrubGithubTokens(counterpartName).slice(0, 200),
+      });
+    }
+    if (duplicates.length) packet.duplicates = duplicates;
   }
   return packet;
 }

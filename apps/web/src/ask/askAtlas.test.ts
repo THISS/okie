@@ -144,6 +144,40 @@ describe('Ask packets carry accepted summaries only', () => {
     });
     expect(context.packets.find(packet => packet.id === 'component:web-shell')?.cyclomaticComplexity).toBeUndefined();
   });
+
+  it('carries observed clone duplicates on the same packets', () => {
+    const context = buildAskContext({
+      entities: [
+        { id: 'component:web-shell', name: 'Application shell', kind: 'component', parentId: 'container:web-app', responsibility: 'Hosts Ask Atlas.' },
+        { id: 'code:alpha', name: 'alpha', kind: 'component', parentId: 'component:web-shell', duplicates: [{ id: 'code:beta', name: 'beta' }] },
+        { id: 'code:beta', name: 'beta', kind: 'component', parentId: 'component:web-shell', duplicates: [{ id: 'code:alpha', name: 'alpha' }] },
+      ],
+      relations: [
+        { id: 'relation:dup:alpha-beta', from: 'code:alpha', to: 'code:beta', label: 'duplicates' },
+        { id: 'relation:cross', from: 'code:alpha', to: 'container:other', label: 'uses' },
+      ],
+      selectedId: 'component:web-shell',
+      isolateActive: true,
+      isolatedIds: ['component:web-shell', 'code:alpha', 'code:beta'],
+    });
+    expect(context.packets.find(packet => packet.id === 'code:alpha')?.duplicates).toEqual([{ id: 'code:beta', name: 'beta' }]);
+    expect(context.packets.find(packet => packet.id === 'code:beta')?.duplicates).toEqual([{ id: 'code:alpha', name: 'alpha' }]);
+    expect(context.packets.find(packet => packet.id === 'component:web-shell')?.duplicates).toBeUndefined();
+    expect(context.relations.map(relation => relation.id)).toEqual(['relation:dup:alpha-beta']);
+  });
+
+  it('drops invented duplicate counterpart ids that are not in the atlas entity set', () => {
+    const context = buildAskContext({
+      entities: [
+        { id: 'code:alpha', name: 'alpha', kind: 'component', duplicates: [{ id: 'code:invented', name: 'ghost' }, { id: 'code:beta', name: 'beta' }] },
+        { id: 'code:beta', name: 'beta', kind: 'component' },
+      ],
+      selectedId: 'code:alpha',
+      isolateActive: true,
+      isolatedIds: ['code:alpha'],
+    });
+    expect(context.packets.find(packet => packet.id === 'code:alpha')?.duplicates).toEqual([{ id: 'code:beta', name: 'beta' }]);
+  });
 });
 
 describe('Ask HTTP client', () => {

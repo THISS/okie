@@ -183,6 +183,7 @@ export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssu
   }
 
   const entityIds = new Set(snapshot.entities.map((entity) => entity.id));
+  const entityById = new Map(snapshot.entities.map((entity) => [entity.id, entity]));
   const parentById = new Map(snapshot.entities.map((entity) => [entity.id, entity.parentId]));
   snapshot.entities.forEach((entity, index) => {
     const path = `entities[${index}]`;
@@ -257,6 +258,16 @@ export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssu
     const path = `relations[${index}]`;
     if (!entityIds.has(relation.from)) issues.push({ path: `${path}.from`, message: `unknown entity: ${relation.from}` });
     if (!entityIds.has(relation.to)) issues.push({ path: `${path}.to`, message: `unknown entity: ${relation.to}` });
+    if (relation.kind === "duplicates") {
+      const fromEntity = entityById.get(relation.from);
+      const toEntity = entityById.get(relation.to);
+      if (fromEntity && fromEntity.kind !== "code") {
+        issues.push({ path: `${path}.from`, message: "duplicates relations must connect code entities" });
+      }
+      if (toEntity && toEntity.kind !== "code") {
+        issues.push({ path: `${path}.to`, message: "duplicates relations must connect code entities" });
+      }
+    }
     if (relation.confidence !== undefined && !isUnitInterval(relation.confidence)) {
       issues.push({ path: `${path}.confidence`, message: "must be finite and between 0 and 1" });
     }

@@ -36,6 +36,7 @@ export const C4_RELATION_KIND_LABELS = {
   contains: "Contains",
   dependsOn: "Depends on",
   returns: "Returns to",
+  duplicates: "Duplicates",
 } as const satisfies Record<RelationKind, string>;
 
 export type C4NotationCompletenessCode =

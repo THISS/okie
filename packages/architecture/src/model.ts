@@ -33,7 +33,8 @@ export type RelationKind =
   | "subscribes"
   | "contains"
   | "dependsOn"
-  | "returns";
+  | "returns"
+  | "duplicates";
 
 export interface SourceRef {
   path: string;

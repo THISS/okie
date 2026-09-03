@@ -801,6 +801,7 @@ function aggregateLabel(relations: readonly ArchitectureRelation[], kind: Relati
     contains: 'containment relationships',
     dependsOn: 'dependencies',
     returns: 'returns',
+    duplicates: 'duplicates',
   };
   return `${relations.length} ${plural[kind]}`;
 }
@@ -871,6 +872,8 @@ export function buildC4ProjectionBundle(
       // evidence is projected upward and collapsed, preventing duplicate L1/L2
       // arrows while retaining real implementation relationships.
       if (Math.max(entityRank(fromEntity.kind), entityRank(toEntity.kind)) < rank) continue;
+      // Clone pairs are L4 facts: do not lift `duplicates` into L1–L3 arrows.
+      if (relation.kind === 'duplicates' && band !== 'code') continue;
       const touchesFocus = isDescendantOrSelf(relation.from, focus.id, entityById)
         || isDescendantOrSelf(relation.to, focus.id, entityById);
       // A relation authored between two nodes already visible as surrounding

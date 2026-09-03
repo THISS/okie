@@ -278,4 +278,5 @@ test("reports an unsupported runtime element type and exports stable C4 terminol
   assert.equal(C4_DIAGRAM_TYPE_LABELS.container, "Container diagram");
   assert.equal(C4_ELEMENT_TYPE_LABELS.softwareSystem, "Software system");
   assert.equal(C4_RELATION_KIND_LABELS.dependsOn, "Depends on");
+  assert.equal(C4_RELATION_KIND_LABELS.duplicates, "Duplicates");
 });

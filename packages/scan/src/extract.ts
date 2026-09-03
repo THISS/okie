@@ -269,6 +269,96 @@ export function cyclomaticIsFlagged(complexity: number): boolean {
   return complexity > CYCLOMATIC_FLAG_THRESHOLD;
 }
 
+/**
+ * Minimum identifier-normalized tokens before two function-like bodies can be a
+ * clone pair. Keeps `return 1` / empty arrows from matching every trivial helper.
+ */
+export const MIN_CLONE_TOKENS = 20;
+
+function isNormalizedCloneIdentifier(kind: ts.SyntaxKind): boolean {
+  return kind === ts.SyntaxKind.Identifier || kind === ts.SyntaxKind.PrivateIdentifier;
+}
+
+function isNormalizedCloneLiteral(kind: ts.SyntaxKind): boolean {
+  return kind === ts.SyntaxKind.NumericLiteral
+    || kind === ts.SyntaxKind.BigIntLiteral
+    || kind === ts.SyntaxKind.StringLiteral
+    || kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral
+    || kind === ts.SyntaxKind.RegularExpressionLiteral
+    || kind === ts.SyntaxKind.TemplateHead
+    || kind === ts.SyntaxKind.TemplateMiddle
+    || kind === ts.SyntaxKind.TemplateTail;
+}
+
+/** Identifier-normalized token stream of a function-like body (Type-2). */
+export function cloneTokenSequence(node: ts.Node, sourceFile: ts.SourceFile): string[] {
+  const tokens: string[] = [];
+  const start = node.getStart(sourceFile);
+  const end = node.getEnd();
+  if (end <= start) return tokens;
+  const scanner = ts.createScanner(
+    sourceFile.languageVersion,
+    true,
+    sourceFile.languageVariant,
+    sourceFile.text,
+    undefined,
+    start,
+    end - start,
+  );
+  while (true) {
+    const kind = scanner.scan();
+    if (kind === ts.SyntaxKind.EndOfFileToken) break;
+    if (scanner.getTokenPos() >= end) break;
+    if (isNormalizedCloneIdentifier(kind)) tokens.push("I");
+    else if (isNormalizedCloneLiteral(kind)) tokens.push("L");
+    else tokens.push(String(kind));
+  }
+  return tokens;
+}
+
+/** Structural AST kind sequence of a function-like body. */
+export function cloneAstSequence(node: ts.Node): number[] {
+  const kinds: number[] = [];
+  const visit = (current: ts.Node): void => {
+    kinds.push(current.kind);
+    ts.forEachChild(current, visit);
+  };
+  visit(node);
+  return kinds;
+}
+
+/**
+ * Token + AST fingerprint for one existing L4 declaration. Omitted when the
+ * entity is not function-like or the body is below `MIN_CLONE_TOKENS`.
+ */
+export function cloneFingerprintForDeclaration(declaration: TopLevelDeclaration): string | undefined {
+  const body = functionLikeBody(declaration.node);
+  if (!body) return undefined;
+  const sourceFile = declaration.node.getSourceFile();
+  const tokens = cloneTokenSequence(body, sourceFile);
+  if (tokens.length < MIN_CLONE_TOKENS) return undefined;
+  return `${tokens.join(" ")}\n${cloneAstSequence(body).join(",")}`;
+}
+
+export interface ClonePair {
+  from: string;
+  to: string;
+}
+
+function clonePairsFromBuckets(buckets: ReadonlyMap<string, readonly string[]>): ClonePair[] {
+  const pairs: ClonePair[] = [];
+  for (const ids of buckets.values()) {
+    if (ids.length < 2) continue;
+    const sorted = [...ids].sort((left, right) => left.localeCompare(right));
+    for (let i = 0; i < sorted.length; i += 1) {
+      for (let j = i + 1; j < sorted.length; j += 1) {
+        pairs.push({ from: sorted[i]!, to: sorted[j]! });
+      }
+    }
+  }
+  return pairs.sort((left, right) => left.from.localeCompare(right.from) || left.to.localeCompare(right.to));
+}
+
 /** Static `import ... from` and `export ... from` module specifiers with line spans. */
 export function moduleImports(sourceFile: ts.SourceFile): ModuleImport[] {
   const imports: ModuleImport[] = [];
@@ -484,6 +574,8 @@ interface EntityDescriptor {
   sourceRefs: ArchitectureExtractionSourceRef[];
   /** Observed McCabe for function-like code entities — snapshot overlay, not extraction. */
   cyclomaticComplexity?: number;
+  /** Token+AST clone fingerprint for function-like code entities — snapshot overlay. */
+  cloneFingerprint?: string;
 }
 
 interface RelationDescriptor {
@@ -642,13 +734,16 @@ function emitExternalSystems(input: ExternalEmitInput): void {
  * top-level declaration). Relations come from static import/export specifiers.
  * Output is independent of file discovery order.
  *
- * Cyclomatic complexity is observed on the same `ts.createSourceFile` walk and
- * returned separately so ArchitectureExtraction stays LLM-gate clean.
+ * Cyclomatic complexity and clone fingerprints are observed on the same
+ * `ts.createSourceFile` walk and returned separately so ArchitectureExtraction
+ * stays LLM-gate clean.
  */
 export interface ExtractedArchitecture {
   extraction: ArchitectureExtraction;
   /** Entity id → McCabe cyclomatic. Only function-like `kind: "code"` entities. */
   cyclomaticById: ReadonlyMap<string, number>;
+  /** Clone pairs between existing function-like code ids. Never invents ids. */
+  clonePairs: readonly ClonePair[];
 }
 
 export function extractArchitecture(input: ExtractInput): ArchitectureExtraction {
@@ -743,6 +838,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     declarations.forEach((declaration, index) => {
       const naturalKey = `${file}#${index}`;
       const cyclomaticComplexity = cyclomaticForDeclaration(declaration);
+      const cloneFingerprint = cloneFingerprintForDeclaration(declaration);
       entityDescriptors.push({
         naturalKey,
         desiredId: typedId("code", file, declaration.name),
@@ -751,6 +847,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
         parentKey: file,
         sourceRefs: [{ path: file, symbol: declaration.name, startLine: declaration.startLine, endLine: declaration.endLine }],
         ...(cyclomaticComplexity !== undefined ? { cyclomaticComplexity } : {}),
+        ...(cloneFingerprint !== undefined ? { cloneFingerprint } : {}),
       });
       if (!keyByName.has(declaration.name)) keyByName.set(declaration.name, naturalKey);
     });
@@ -869,9 +966,16 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     sourceRefs: descriptor.sourceRefs,
   }));
   const cyclomaticById = new Map<string, number>();
+  const cloneBuckets = new Map<string, string[]>();
   sortedEntities.forEach((descriptor, index) => {
+    const id = entityIds[index]!;
     if (descriptor.cyclomaticComplexity !== undefined) {
-      cyclomaticById.set(entityIds[index]!, descriptor.cyclomaticComplexity);
+      cyclomaticById.set(id, descriptor.cyclomaticComplexity);
+    }
+    if (descriptor.cloneFingerprint !== undefined) {
+      const bucket = cloneBuckets.get(descriptor.cloneFingerprint) ?? [];
+      bucket.push(id);
+      cloneBuckets.set(descriptor.cloneFingerprint, bucket);
     }
   });
 
@@ -893,6 +997,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
       relations: relations.sort((left, right) => left.id.localeCompare(right.id)),
     },
     cyclomaticById,
+    clonePairs: clonePairsFromBuckets(cloneBuckets),
   };
 }
 
@@ -967,4 +1072,94 @@ export function cyclomaticByIdFromEntities(
     if (complexity !== undefined) cyclomaticById.set(entity.id, complexity);
   }
   return cyclomaticById;
+}
+
+/**
+ * Overlay token/AST clone pairs as `duplicates` edges between existing code
+ * entities. Invented ids are dropped. No new C4 nodes.
+ */
+export function attachDuplicateRelations(
+  snapshot: ArchitectureSnapshot,
+  pairs: readonly ClonePair[],
+): ArchitectureSnapshot {
+  if (pairs.length === 0) {
+    return snapshot.relations.every(relation => relation.kind !== "duplicates")
+      ? snapshot
+      : { ...snapshot, relations: snapshot.relations.filter(relation => relation.kind !== "duplicates") };
+  }
+  const entityById = new Map(snapshot.entities.map(entity => [entity.id, entity]));
+  const kept = snapshot.relations.filter(relation => relation.kind !== "duplicates");
+  const existing = new Set<string>();
+  const added: ArchitectureSnapshot["relations"][number][] = [];
+  for (const pair of pairs) {
+    const fromEntity = entityById.get(pair.from);
+    const toEntity = entityById.get(pair.to);
+    if (!fromEntity || !toEntity) continue;
+    if (fromEntity.kind !== "code" || toEntity.kind !== "code") continue;
+    if (fromEntity.id === toEntity.id) continue;
+    const [left, right] = fromEntity.id < toEntity.id ? [fromEntity, toEntity] : [toEntity, fromEntity];
+    const key = `${left.id}\0${right.id}`;
+    if (existing.has(key)) continue;
+    existing.add(key);
+    const evidence = [left.sourceRefs[0], right.sourceRefs[0]]
+      .filter((source): source is NonNullable<typeof source> => Boolean(source))
+      .map(source => ({ source }));
+    if (evidence.length === 0) continue;
+    const id = typedId("relation", "dup", left.id, right.id);
+    added.push({
+      id,
+      from: left.id,
+      to: right.id,
+      kind: "duplicates",
+      label: "duplicates",
+      lineageId: id,
+      evidence,
+    });
+  }
+  if (added.length === 0 && kept.length === snapshot.relations.length) return snapshot;
+  return {
+    ...snapshot,
+    relations: [...kept, ...added].sort((left, right) => left.id.localeCompare(right.id)),
+  };
+}
+
+/**
+ * Recompute clone pairs from source when a prior extraction is reused.
+ * Same `ts.createSourceFile` walk as minting — not a second parser.
+ */
+export function clonePairsFromEntities(
+  entities: readonly ArchitectureExtractionEntity[],
+  readFile: (repoRelativePath: string) => string,
+): ClonePair[] {
+  const parsed = new Map<string, ts.SourceFile | undefined>();
+  const sourceOf = (path: string): ts.SourceFile | undefined => {
+    if (parsed.has(path)) return parsed.get(path);
+    try {
+      const sourceFile = parseSource(path, readFile(path));
+      parsed.set(path, sourceFile);
+      return sourceFile;
+    } catch {
+      parsed.set(path, undefined);
+      return undefined;
+    }
+  };
+  const knownIds = new Set(entities.map(entity => entity.id));
+  const buckets = new Map<string, string[]>();
+  for (const entity of entities) {
+    if (entity.kind !== "code" || !knownIds.has(entity.id)) continue;
+    const ref = entity.sourceRefs[0];
+    if (!ref?.path || !ref.symbol) continue;
+    const sourceFile = sourceOf(ref.path);
+    if (!sourceFile) continue;
+    const declaration = topLevelDeclarations(sourceFile).find(candidate =>
+      candidate.name === ref.symbol
+      && (ref.startLine === undefined || candidate.startLine === ref.startLine));
+    if (!declaration) continue;
+    const fingerprint = cloneFingerprintForDeclaration(declaration);
+    if (!fingerprint) continue;
+    const bucket = buckets.get(fingerprint) ?? [];
+    bucket.push(entity.id);
+    buckets.set(fingerprint, bucket);
+  }
+  return clonePairsFromBuckets(buckets);
 }

@@ -20,8 +20,11 @@ import { buildOverviewStory } from "./overview-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
 import {
   attachCyclomaticComplexity,
+  attachDuplicateRelations,
+  clonePairsFromEntities,
   collectExtractedArchitecture,
   cyclomaticByIdFromEntities,
+  type ClonePair,
 } from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
 import { buildEnrichmentPackets, type EmittedPackets } from "./packet.js";
@@ -146,6 +149,8 @@ export interface BuildScanArtifactsParams {
   baseExtraction?: ArchitectureExtraction;
   /** McCabe map from the same extract as `baseExtraction`. Recomputed from source when omitted. */
   cyclomaticById?: ReadonlyMap<string, number>;
+  /** Clone pairs from the same extract as `baseExtraction`. Recomputed from source when omitted. */
+  clonePairs?: readonly ClonePair[];
 }
 
 /** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
@@ -158,6 +163,8 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
       extraction: params.baseExtraction,
       cyclomaticById: params.cyclomaticById
         ?? cyclomaticByIdFromEntities(params.baseExtraction.entities, readFile),
+      clonePairs: params.clonePairs
+        ?? clonePairsFromEntities(params.baseExtraction.entities, readFile),
     }
     : collectExtractedArchitecture({
       discovery,
@@ -181,15 +188,18 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     commitSha: pin.commitSha,
     generatedAt: pin.generatedAt,
   };
-  const snapshot = attachCyclomaticComplexity(
-    attachPathOwners(
-      attachPortableSourceExcerpts(
-        adaptArchitectureExtraction(extraction, metadata),
-        readFile,
+  const snapshot = attachDuplicateRelations(
+    attachCyclomaticComplexity(
+      attachPathOwners(
+        attachPortableSourceExcerpts(
+          adaptArchitectureExtraction(extraction, metadata),
+          readFile,
+        ),
+        readCodeOwners(readFile)?.rules ?? [],
       ),
-      readCodeOwners(readFile)?.rules ?? [],
+      collected.cyclomaticById,
     ),
-    collected.cyclomaticById,
+    collected.clonePairs,
   );
   const snapshotIssues = validateSnapshot(snapshot);
   if (snapshotIssues.length) {
@@ -297,6 +307,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     // the ephemeral checkout, which the finally below discards.
     let baseExtraction: ArchitectureExtraction | undefined;
     let cyclomaticById: ReadonlyMap<string, number> | undefined;
+    let clonePairs: readonly ClonePair[] | undefined;
     let enrichmentDocs = options.enrichmentDocs;
     if ((!enrichmentDocs || enrichmentDocs.size === 0) && options.enrichWithPackets) {
       const collected = collectExtractedArchitecture({
@@ -308,6 +319,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       });
       baseExtraction = collected.extraction;
       cyclomaticById = collected.cyclomaticById;
+      clonePairs = collected.clonePairs;
       const packets = buildEnrichmentPackets(baseExtraction, readFile);
       const generated = await options.enrichWithPackets(packets);
       enrichmentDocs = generated.size > 0 ? generated : undefined;
@@ -322,6 +334,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
       ...(baseExtraction ? { baseExtraction } : {}),
       ...(cyclomaticById ? { cyclomaticById } : {}),
+      ...(clonePairs && clonePairs.length ? { clonePairs } : {}),
     });
     return { source, commitSha: commit.sha, artifacts };
   } finally {

@@ -27,6 +27,7 @@ export type AskEntity = {
   responsibility?: string;
   source?: string;
   cyclomaticComplexity?: number;
+  duplicates?: Array<{ id: string; name: string }>;
 };
 
 export type AskSceneRelation = {
@@ -45,6 +46,7 @@ export type AskPacket = {
   source?: string;
   cyclomaticComplexity?: number;
   cyclomaticFlagged?: boolean;
+  duplicates?: Array<{ id: string; name: string }>;
 };
 
 export type AskRelation = {
@@ -126,10 +128,11 @@ export function buildAskContext(options: AskScopeOptions): AskContext {
   const allowed = new Set(scopeIds);
   const byId = new Map(options.entities.map(entity => [entity.id, entity]));
   const packets: AskPacket[] = [];
+  const knownIds = new Set(options.entities.map(entity => entity.id));
   for (const id of scopeIds) {
     const entity = byId.get(id);
     if (!entity) continue;
-    packets.push(toPacket(entity));
+    packets.push(toPacket(entity, knownIds));
   }
   const relations: AskRelation[] = [];
   for (const relation of options.relations ?? []) {
@@ -231,10 +234,14 @@ export async function submitAskQuestion(
   }
 }
 
-function toPacket(entity: AskEntity): AskPacket {
+function toPacket(entity: AskEntity, knownIds: ReadonlySet<string>): AskPacket {
   const summary = inspectorAcceptedSummary(entity);
   const complexity = entity.cyclomaticComplexity;
   const hasCyclomatic = typeof complexity === 'number' && Number.isInteger(complexity) && complexity >= 1;
+  const duplicates = (entity.duplicates ?? [])
+    .filter(row => knownIds.has(row.id) && row.id !== entity.id)
+    .filter(row => typeof row.name === 'string' && row.name.trim())
+    .map(row => ({ id: row.id, name: row.name.trim() }));
   return {
     id: entity.id,
     name: entity.name,
@@ -246,6 +253,7 @@ function toPacket(entity: AskEntity): AskPacket {
       cyclomaticComplexity: complexity,
       cyclomaticFlagged: complexity > CYCLOMATIC_FLAG_THRESHOLD,
     } : {}),
+    ...(duplicates.length ? { duplicates } : {}),
   };
 }
 

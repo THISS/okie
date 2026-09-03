@@ -202,6 +202,19 @@ test("strict extraction validation rejects pipeline-owned and geometric fields",
   assert.ok(paths.includes("relations[0].route"));
 });
 
+test("strict extraction validation rejects scan-time duplicates relations", () => {
+  const value = structuredClone(extraction) as unknown as ArchitectureExtraction;
+  value.relations = [{
+    id: "relation:dup:invented",
+    from: "system:atlas",
+    to: "container:model",
+    kind: "duplicates" as ArchitectureExtraction["relations"][number]["kind"],
+    evidence: [{ source: { path: "src/a.ts" } }],
+  }];
+  const issues = validateArchitectureExtraction(value);
+  assert.ok(issues.some(issue => issue.path === "relations[0].kind" && issue.message.includes("must be one of")));
+});
+
 test("validation enforces typed IDs, C4 hierarchy, paths, endpoints, evidence, and confidence", () => {
   const invalid = structuredClone(extraction) as unknown as ArchitectureExtraction;
   invalid.entities = [
