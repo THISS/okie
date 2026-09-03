@@ -93,6 +93,7 @@ test('CLA-68: compiled L4 sibling duplicates leave the packed code-card gutter',
     ));
   const span = pathExtent(route.points);
   const longSpan = horizontal ? span.width : span.height;
+  const loopSpan = horizontal ? span.height : span.width;
 
   assert.ok(facing > 0, 'clone siblings must remain separate cards');
   assert.ok(facing <= clearance * 2 + 1e-6, `packed L4 gutter should stay tight (${facing.toFixed(3)} world)`);
@@ -100,6 +101,10 @@ test('CLA-68: compiled L4 sibling duplicates leave the packed code-card gutter',
   assert.ok(
     longSpan > facing * 4,
     `duplicates stroke must span the sibling cards (extent ${span.width.toFixed(3)}×${span.height.toFixed(3)}, gutter ${facing.toFixed(3)})`,
+  );
+  assert.ok(
+    loopSpan > facing * 2,
+    `duplicates U must leave the packed gutter on the free axis (extent ${span.width.toFixed(3)}×${span.height.toFixed(3)}, gutter ${facing.toFixed(3)})`,
   );
   assert.notEqual(compiled.projections.visualEdgeById[edgeId]!.kind, 'calls');
   assert.equal(

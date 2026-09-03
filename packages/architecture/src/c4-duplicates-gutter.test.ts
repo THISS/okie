@@ -117,6 +117,10 @@ test('CLA-68: tight L4 duplicates leave the inter-card gutter instead of a 1px s
     span.width > gutter * 4,
     `duplicates path must span the sibling cards, not the facing hop (width ${span.width.toFixed(3)} vs gutter ${gutter.toFixed(3)})`,
   );
+  assert.ok(
+    span.height > siblingGap * 2,
+    `duplicates U must drop past the packed row gutter (height ${span.height.toFixed(3)} vs gap ${siblingGap.toFixed(3)})`,
+  );
 });
 
 test('CLA-68: other L4 kinds keep the existing orthogonal hop in the same packing', () => {
@@ -173,4 +177,8 @@ test('CLA-68: stacked L4 duplicates leave the row gutter along the free side', (
   ));
   assert.equal(confinedToGutter, false);
   assert.ok(span.height > siblingGap * 4);
+  assert.ok(
+    span.width > siblingGap * 2,
+    `stacked duplicates U must leave the packed column gutter (width ${span.width.toFixed(3)} vs gap ${siblingGap.toFixed(3)})`,
+  );
 });

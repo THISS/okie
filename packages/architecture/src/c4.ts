@@ -606,37 +606,61 @@ function facingGap(source: NodeLayout, target: NodeLayout): { axis: 'x' | 'y'; g
   return { axis: 'y', gap };
 }
 
+function duplicatesLoopSide(axis: 'x' | 'y', flipped: boolean) {
+  if (axis === 'x') return flipped ? 'top' as const : 'bottom' as const;
+  return flipped ? 'left' as const : 'right' as const;
+}
+
+function duplicatesLoopWaypoints(
+  source: NodeLayout,
+  target: NodeLayout,
+  clearance: number,
+  domain: NodeLayout | undefined,
+  side: 'top' | 'right' | 'bottom' | 'left',
+): { x: number; y: number }[] {
+  const pad = Math.max(clearance, ROUTING_EPSILON);
+  if (side === 'bottom' || side === 'top') {
+    const x0 = source.x + source.width / 2;
+    const x1 = target.x + target.width / 2;
+    const y = domain
+      ? (side === 'bottom' ? domain.y + domain.height - pad : domain.y + pad)
+      : (side === 'bottom'
+        ? Math.max(source.y + source.height, target.y + target.height) + clearance * 4
+        : Math.min(source.y, target.y) - clearance * 4);
+    return [{ x: x0, y }, { x: x1, y }];
+  }
+  const y0 = source.y + source.height / 2;
+  const y1 = target.y + target.height / 2;
+  const x = domain
+    ? (side === 'right' ? domain.x + domain.width - pad : domain.x + pad)
+    : (side === 'right'
+      ? Math.max(source.x + source.width, target.x + target.width) + clearance * 4
+      : Math.min(source.x, target.x) - clearance * 4);
+  return [{ x, y: y0 }, { x, y: y1 }];
+}
+
 /**
  * CLA-68: packed L4 siblings sit about two routing clearances apart, so the
  * default side-to-side orthogonal hop occupies the inter-card gutter. Prefer a
- * U along the free edge (bottom/right, then the opposite side) so the stroke
- * has length a person can see. Far-apart clones keep auto routing. This is
- * intent on the existing router, not a packing or router rewrite.
+ * U along the parent routing-domain edge (bottom/right, then the opposite
+ * side) so the stroke cannot sit in the packed 1px gutter. Far-apart clones
+ * keep auto routing. This is intent on the existing router, not a packing or
+ * router rewrite.
  */
 function tightDuplicatesLoopIntent(
   source: NodeLayout,
   target: NodeLayout,
   clearance: number,
+  domain: NodeLayout | undefined,
+  flipped = false,
 ): OrthogonalRouteIntent | undefined {
   const facing = facingGap(source, target);
   if (facing.gap < -ROUTING_EPSILON || facing.gap > clearance * 2 + ROUTING_EPSILON) return undefined;
-  return facing.axis === 'x'
-    ? { sourcePort: 'bottom', targetPort: 'bottom', waypoints: [] }
-    : { sourcePort: 'right', targetPort: 'right', waypoints: [] };
-}
-
-function flipOrthogonalSide(side: OrthogonalRouteIntent['sourcePort'] & string) {
-  if (side === 'bottom') return 'top' as const;
-  if (side === 'top') return 'bottom' as const;
-  if (side === 'right') return 'left' as const;
-  return 'right' as const;
-}
-
-function flipDuplicatesLoopIntent(intent: OrthogonalRouteIntent): OrthogonalRouteIntent {
+  const side = duplicatesLoopSide(facing.axis, flipped);
   return {
-    waypoints: intent.waypoints,
-    ...(intent.sourcePort !== undefined ? { sourcePort: flipOrthogonalSide(intent.sourcePort) } : {}),
-    ...(intent.targetPort !== undefined ? { targetPort: flipOrthogonalSide(intent.targetPort) } : {}),
+    sourcePort: side,
+    targetPort: side,
+    waypoints: duplicatesLoopWaypoints(source, target, clearance, domain, side),
   };
 }
 
@@ -720,11 +744,12 @@ export function routeC4BandEdgesDetailed(
       });
     }
     if (selectedOverride) consumedOverrides.add(selectedOverride.id);
+    const domain = lcaBounds ? expandRoutingRect(lcaBounds, options.clearance * 2 + 1) : undefined;
     const routeOptions = {
       source,
       target,
       obstacles,
-      ...(lcaBounds ? { domain: expandRoutingRect(lcaBounds, options.clearance * 2 + 1) } : {}),
+      ...(domain ? { domain } : {}),
       clearance: options.clearance,
       laneOffset,
       maxPoints: options.maxPoints ?? 16,
@@ -742,14 +767,17 @@ export function routeC4BandEdgesDetailed(
         routerDiagnostic: guided.diagnostic,
       });
     } else if (edge.kind === 'duplicates') {
-      const loop = tightDuplicatesLoopIntent(source, target, options.clearance);
+      const loop = tightDuplicatesLoopIntent(source, target, options.clearance, domain);
       const routed = loop
         ? routeOrthogonalWithIntent(routeOptions, loop)
         : undefined;
       const applied = routed?.status === 'applied'
         ? routed
         : loop
-          ? routeOrthogonalWithIntent(routeOptions, flipDuplicatesLoopIntent(loop))
+          ? routeOrthogonalWithIntent(
+            routeOptions,
+            tightDuplicatesLoopIntent(source, target, options.clearance, domain, true),
+          )
           : undefined;
       edges[edgeId] = {
         points: applied?.status === 'applied' ? applied.points : routeOrthogonal(routeOptions).points,
