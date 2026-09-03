@@ -88,6 +88,15 @@ describe('scanAncestorAtBand / scanNextBand', () => {
     expect(scanAncestorAtBand(tree, 'system:root', 'container')).toBeUndefined();
   });
 
+  it('names the one-down prefetch band', () => {
+    expect(scanNextBand('context')).toBe('container');
+    expect(scanNextBand('container')).toBe('component');
+    expect(scanNextBand('component')).toBe('code');
+    expect(scanNextBand('code')).toBeUndefined();
+  });
+});
+
+describe('cacheableNeighborhoodScene', () => {
   it('strips protocolPatch so a cached neighborhood can be reused after another scene', () => {
     const patched = { id: 's', protocolPatch: { baseRevision: 1, revision: 2 } };
     expect(cacheableNeighborhoodScene(patched)).toEqual({ id: 's' });
