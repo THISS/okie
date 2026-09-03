@@ -52,7 +52,7 @@ import {
   type SemanticDetail,
 } from './navigation/navigationState';
 import { createGoldenC4Scene, goldenAppStory, scanDrillDeeperDetail, semanticBounds, type AppStoryPlanStep } from './renderer/goldenC4Scene';
-import { scanCompileFocusForBand, scanEntityHasChildren, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
+import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
 import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
@@ -2837,7 +2837,7 @@ export function App() {
       const cached = neighborhoodScenesRef.current.get(focusEntityId);
       if (cached) return cached;
       const compiled = activeCreateScene(focusEntityId, previous);
-      neighborhoodScenesRef.current.set(focusEntityId, compiled);
+      neighborhoodScenesRef.current.set(focusEntityId, cacheableNeighborhoodScene(compiled));
       return compiled;
     }
     return activeCreateScene(focusEntityId, previous, authoring);

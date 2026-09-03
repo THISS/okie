@@ -23,6 +23,7 @@ describe('CLA-66: lazy band compile is the default scan path', () => {
     expect(app).toContain('Scan snapshots are read-only; neighborhood cache is the CLA-66 prefetch.');
     expect(app).not.toContain('if (scanFixture && !authoring)');
     expect(app).toContain('if (scanFixture) {');
+    expect(app).toContain('cacheableNeighborhoodScene(compiled)');
   });
 
   it('does not invent a new entity cap or raise the 2000 hang-guard in the shell', () => {

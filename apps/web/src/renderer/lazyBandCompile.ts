@@ -84,3 +84,15 @@ export function scanPrefetchFocusIds(
 export function scanNextBand(band: C4Band): C4Band | undefined {
   return BANDS[BANDS.indexOf(band) + 1];
 }
+
+/**
+ * Cached neighborhoods must not keep a protocolPatch from the compile that
+ * created them. That patch is revision-relative to whatever `previous` was at
+ * compile time; replaying it after another neighborhood was shown misses the
+ * renderer’s current revision. Full-snapshot load is the safe reuse path.
+ */
+export function cacheableNeighborhoodScene<T extends { protocolPatch?: unknown }>(scene: T): T {
+  if (!('protocolPatch' in scene) || scene.protocolPatch === undefined) return scene;
+  const { protocolPatch: _protocolPatch, ...rest } = scene;
+  return rest as T;
+}
