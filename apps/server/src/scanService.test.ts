@@ -12,6 +12,7 @@ import {
 } from "./globalSpend.js";
 import { healthzBody } from "./localDefaults.js";
 import { createScanJobQueue, toPublicJob } from "./jobs.js";
+import { DEFAULT_GATEWAY_MODEL_ID } from "./llmGateway.js";
 import { createDefaultEnricherFactory, createScanJobRunner, type ScanServiceOptions } from "./scanService.js";
 
 test("HTTP scan runner fails closed on a private-repo 404 without an explicit token", async () => {
@@ -261,7 +262,7 @@ test("job logs redact a gateway key if a provider error echoes it", async () => 
     assert.equal(job.enrichment.state, "failed");
     assert.doesNotMatch(job.enrichment.note ?? "", new RegExp(FAKE_GATEWAY_KEY));
     assert.match(job.enrichment.note ?? "", /\[redacted-llm-key\]/);
-    assert.equal(job.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.equal(job.enrichment.modelId, DEFAULT_GATEWAY_MODEL_ID);
     assert.equal(job.enrichment.provider, "openrouter.ai");
     assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
@@ -474,7 +475,7 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     assert.equal(accepted.stage, "complete");
     assert.equal(accepted.atlasReady, true);
     assert.equal(accepted.enrichment.state, "complete");
-    assert.equal(accepted.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.equal(accepted.enrichment.modelId, DEFAULT_GATEWAY_MODEL_ID);
     assert.equal(accepted.enrichment.provider, "openrouter.ai");
     const acceptedStory = readFileSync(join(scanRoot, "acme__app-summary", "story.json"), "utf8");
     type OverviewStory = {
@@ -571,7 +572,7 @@ test("enrichment notes and logs strip tokenized gateway URLs", async () => {
     assert.equal(job.stage, "complete");
     assert.equal(job.enrichment.state, "failed");
     assert.equal(job.enrichment.provider, "example.invalid");
-    assert.equal(job.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.equal(job.enrichment.modelId, DEFAULT_GATEWAY_MODEL_ID);
     assert.equal((job.enrichment.note ?? "").includes(urlToken), false);
     assert.equal((job.enrichment.note ?? "").includes(queryToken), false);
     assert.match(job.enrichment.note ?? "", /example\.invalid/);
@@ -607,7 +608,7 @@ test("force enrichment without a visible key records provider anthropic, not ope
     assert.equal(job.stage, "complete");
     assert.equal(job.enrichment.state, "failed");
     assert.equal(job.enrichment.provider, "anthropic");
-    assert.equal(job.enrichment.modelId, "anthropic/claude-sonnet-4");
+    assert.equal(job.enrichment.modelId, DEFAULT_GATEWAY_MODEL_ID);
     assert.notEqual(job.enrichment.provider, "openrouter.ai");
   } finally {
     rmSync(scanRoot, { recursive: true, force: true });

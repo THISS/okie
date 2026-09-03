@@ -322,7 +322,7 @@ test("describeEnrichmentMode never includes the key", () => {
   const line = describeEnrichmentMode("auto", keyed);
   assert.doesNotMatch(line, new RegExp(FAKE_GATEWAY_KEY));
   assert.match(line, /openrouter\.ai/);
-  assert.match(line, /model anthropic\/claude-sonnet-4/);
+  assert.match(line, /model z-ai\/glm-5\.3-flash/);
   assert.doesNotMatch(line, /\/api\/v1/);
   assert.doesNotMatch(line, /https:\/\//);
 });
