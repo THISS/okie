@@ -27,10 +27,13 @@ import {
  * per-scope failure omits that scope's doc; a total failure returns an empty map.
  */
 
-/** Scopes larger than this are left deterministic — restating every code entity
- *  in the reply would not fit a sane output budget, and huge containers are
- *  exactly where file-grained components still read fine. Surfaced, never silent. */
-export const MAX_ENRICHABLE_CODE_ENTITIES = 400;
+/**
+ * Per-packet skip: a chunk with more code entities than this is left
+ * deterministic (remainder chunks for the same container can still be asked).
+ * 500 covers THISS/okie `@okie/web` chunk 1 (474) so the overview-tour
+ * container is not skipped solely for 474 > 400. Not the 2000 hang-guard.
+ */
+export const MAX_ENRICHABLE_CODE_ENTITIES = 500;
 
 const MAX_OUTPUT_TOKENS = 64_000;
 
@@ -702,15 +705,20 @@ export function createEnricher(options: EnricherOptions = {}): (packets: Emitted
       return new Map();
     }
     const systemId = systemPacket.systemId;
-    const work: Array<{ id: string; packet: EnrichmentPacket | SystemPacket; kind: PacketKind }> = [];
+    // System scope first so a scan-level token cap cannot starve it after
+    // three container proposals (CLA-71). Oversized *packets* skip; remainder
+    // chunks for the same container still enqueue when they fit the cap.
+    const work: Array<{ id: string; packet: EnrichmentPacket | SystemPacket; kind: PacketKind }> = [
+      { id: systemId, packet: systemPacket, kind: "system" },
+    ];
     for (const packet of packets) {
       if (packet.code.length > MAX_ENRICHABLE_CODE_ENTITIES) {
-        progress(`enrich ${packet.containerId}: skipped (${packet.code.length} code entities > ${MAX_ENRICHABLE_CODE_ENTITIES} cap; stays deterministic)`);
+        const chunk = packet.chunkIndex !== undefined ? ` chunk ${packet.chunkIndex}` : "";
+        progress(`enrich ${packet.containerId}${chunk}: skipped (${packet.code.length} code entities > ${MAX_ENRICHABLE_CODE_ENTITIES} cap; stays deterministic)`);
         continue;
       }
       work.push({ id: packet.containerId, packet, kind: "container" });
     }
-    work.push({ id: systemId, packet: systemPacket, kind: "system" });
 
     const acceptedByIndex: Array<{ id: string; document: unknown } | undefined> = new Array(work.length);
     let index = 0;

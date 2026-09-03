@@ -59,10 +59,13 @@ Enrichment is bounded so a paste-a-repo job cannot run unbounded:
 | Per-request timeout | `OKIE_LLM_TIMEOUT_MS` | `60000` (60s) |
 | Max scopes per scan | `OKIE_LLM_MAX_SCOPES` | `16` |
 | Max tokens per scan | `OKIE_LLM_MAX_TOKENS` | `200000` (from gateway `usage` when present) |
+| Max code entities per packet | (constant `MAX_ENRICHABLE_CODE_ENTITIES`) | `500` (covers THISS/okie `@okie/web` chunk 1 at 474; oversized *packets* skip, remainders can still run) |
 | Max dollars per scan | `OKIE_LLM_MAX_DOLLARS` | `1` (enforced only if the gateway returns cost) |
 | Global max tokens | `OKIE_LLM_GLOBAL_MAX_TOKENS` | unset (no process-wide token ceiling) |
 | Global max dollars | `OKIE_LLM_GLOBAL_MAX_DOLLARS` | unset (no process-wide dollar ceiling) |
 
 A per-scope timeout omits that scope and continues. Hitting a scan-level cap skips remaining scopes; the deterministic atlas stays live. HTTP 429 or 5xx skips remaining scopes, records **enrichment failed**, and leaves the atlas up. Invalid env values keep the defaults. These numbers are not on `/healthz`.
+
+The system packet is scheduled **before** container packets so a 200k token cap cannot starve the system-scope summary after three container proposals. A packet over the 500-code cap is skipped on its own; remainder chunks for the same container are still asked when they fit. The 2000 hang-guard is a different axis and is not this table.
 
 The global token/$ cap is a **process-wide** ceiling across GitHub users (CLA-38), not a per-account quota. The existing 5 scans / 10 minutes per-user (plus IP) submit limiter stays. When the process is already at the global cap, enrichment is skipped (`enrichment.state: skipped`, note `global enrichment budget reached`) and the deterministic atlas still publishes. Unset / invalid global env values mean no global ceiling — only the per-scan caps apply. Dollar totals are enforced only when the gateway reports cost. Spend totals, keys, and gateway URLs never appear on `/healthz`, in job JSON, or in logs.

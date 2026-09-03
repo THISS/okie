@@ -53,7 +53,9 @@ export interface LlmGatewayClientOptions {
 export const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 /** Scan-level cap on gateway calls (container scopes + system). */
 export const DEFAULT_MAX_ENRICHMENT_SCOPES = 16;
-/** Scan-level cap on reported tokens (`usage.total_tokens` / prompt+completion). */
+/** Scan-level cap on reported tokens (`usage.total_tokens` / prompt+completion).
+ *  System packet is scheduled first (see createEnricher) so this cap cannot
+ *  starve the system-scope summary after three container proposals. */
 export const DEFAULT_MAX_ENRICHMENT_TOKENS = 200_000;
 /** Scan-level dollar cap, applied only when the gateway reports cost. */
 export const DEFAULT_MAX_ENRICHMENT_DOLLARS = 1;

@@ -30,8 +30,17 @@ import {
   createGlobalEnrichmentSpend,
   clampEnrichmentBudget,
 } from "./globalSpend.js";
-import { createLlmGatewayClient, LlmGatewayError, resolveEnrichmentBudget, resolveLlmGatewayConfig } from "./llmGateway.js";
+import {
+  createLlmGatewayClient,
+  DEFAULT_MAX_ENRICHMENT_TOKENS,
+  LlmGatewayError,
+  resolveEnrichmentBudget,
+  resolveLlmGatewayConfig,
+} from "./llmGateway.js";
 import { createDefaultEnricherFactory } from "./scanService.js";
+
+/** THISS/okie `@okie/web` first-packet code-entity count that 400 used to skip (CLA-71). */
+const THISS_OKIE_APPS_WEB_FIRST_PACKET_CODE_ENTITIES = 474;
 
 const containerPacket = (containerId: string, codeCount = 2): EnrichmentPacket => ({
   promptVersion: "okie-enrichment/v2",
@@ -157,6 +166,7 @@ async function listenFakeGateway(
 test("enricher requests one doc per container plus the system scope, threading the system id", async () => {
   const calls: Array<{ id: string; kind: string; systemId: string }> = [];
   const enrich = createEnricher({
+    maxConcurrent: 1,
     generate: async (packet, kind, systemId) => {
       const id = kind === "container"
         ? (packet as EnrichmentPacket).containerId
@@ -169,6 +179,8 @@ test("enricher requests one doc per container plus the system scope, threading t
     packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
   }));
   assert.deepEqual([...docs.keys()].sort(), ["container:pkg-a", "container:pkg-b", "system:acme"]);
+  assert.deepEqual(calls.map(call => call.kind), ["system", "container", "container"]);
+  assert.equal(calls[0]!.id, "system:acme");
   assert.ok(calls.every(call => call.systemId === "system:acme"));
 });
 
@@ -310,7 +322,7 @@ test("a per-scope failure omits only that scope and never throws", async () => {
   assert.ok(notes.some(note => note.includes("container:pkg-b") && note.includes("stays deterministic")));
 });
 
-test("oversized scopes are skipped with a visible note, not silently", async () => {
+test("oversized packets are skipped with a visible note; the system packet still runs", async () => {
   const notes: string[] = [];
   const enrich = createEnricher({
     onProgress: note => notes.push(note),
@@ -322,6 +334,111 @@ test("oversized scopes are skipped with a visible note, not silently", async () 
   assert.equal(docs.has("container:huge"), false);
   assert.equal(docs.has("system:acme"), true);
   assert.ok(notes.some(note => note.includes("container:huge") && note.includes("cap")));
+});
+
+test("CLA-71: published code cap asks a 474-entity @okie/web first packet and its remainder", async () => {
+  assert.equal(MAX_ENRICHABLE_CODE_ENTITIES, 500);
+  assert.ok(MAX_ENRICHABLE_CODE_ENTITIES >= THISS_OKIE_APPS_WEB_FIRST_PACKET_CODE_ENTITIES);
+  const notes: string[] = [];
+  const called: Array<{ id: string; kind: string; code: number }> = [];
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    generate: async (packet, kind) => {
+      if (kind === "system") {
+        called.push({ id: (packet as SystemPacket).systemId, kind, code: 0 });
+        return { document: { ok: "system" } };
+      }
+      const scoped = packet as EnrichmentPacket;
+      called.push({ id: scoped.containerId, kind, code: scoped.code.length });
+      return { document: { ok: scoped.containerId, chunk: scoped.chunkIndex } };
+    },
+    onProgress: note => notes.push(note),
+  });
+  const docs = await enrich(packets({
+    packets: [
+      { ...containerPacket("container:apps-web", THISS_OKIE_APPS_WEB_FIRST_PACKET_CODE_ENTITIES), chunkIndex: 1, chunkCount: 2 },
+      { ...containerPacket("container:apps-web", 40), chunkIndex: 2, chunkCount: 2 },
+    ],
+  }));
+  const grouped = asDocArray(docs.get("container:apps-web"));
+  assert.equal(grouped.length, 2);
+  assert.equal(called[0]!.kind, "system");
+  assert.deepEqual(called.filter(call => call.id === "container:apps-web").map(call => call.code), [
+    THISS_OKIE_APPS_WEB_FIRST_PACKET_CODE_ENTITIES,
+    40,
+  ]);
+  assert.ok(docs.has("system:acme"));
+  assert.ok(notes.every(note => !note.includes("skipped") || !note.includes("container:apps-web")));
+  assert.ok(notes.every(note => !note.includes("okie-test-llm-key")));
+});
+
+test("CLA-71: oversized first packet skip still asks a fitting remainder of the same container", async () => {
+  const called: Array<{ id: string; chunk?: number; code: number }> = [];
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    generate: async (packet, kind) => {
+      if (kind === "system") {
+        called.push({ id: (packet as SystemPacket).systemId, code: 0 });
+        return { document: { ok: "system" } };
+      }
+      const scoped = packet as EnrichmentPacket;
+      called.push({
+        id: scoped.containerId,
+        ...(scoped.chunkIndex !== undefined ? { chunk: scoped.chunkIndex } : {}),
+        code: scoped.code.length,
+      });
+      return { document: { ok: scoped.containerId } };
+    },
+    onProgress: note => notes.push(note),
+  });
+  const docs = await enrich(packets({
+    packets: [
+      { ...containerPacket("container:apps-web", MAX_ENRICHABLE_CODE_ENTITIES + 1), chunkIndex: 1, chunkCount: 2 },
+      { ...containerPacket("container:apps-web", 40), chunkIndex: 2, chunkCount: 2 },
+    ],
+  }));
+  assert.equal(docs.has("container:apps-web"), true);
+  assert.equal(docs.has("system:acme"), true);
+  assert.deepEqual(called.filter(call => call.id === "container:apps-web"), [
+    { id: "container:apps-web", chunk: 2, code: 40 },
+  ]);
+  assert.ok(notes.some(note => note.includes("container:apps-web") && note.includes("chunk 1") && note.includes("cap")));
+});
+
+test("CLA-71: system packet is first so a 200k token cap cannot starve it after three container proposals", async () => {
+  assert.equal(DEFAULT_MAX_ENRICHMENT_TOKENS, 200_000);
+  const called: string[] = [];
+  const notes: string[] = [];
+  const enrich = createEnricher({
+    maxConcurrent: 1,
+    budget: { maxTokens: DEFAULT_MAX_ENRICHMENT_TOKENS },
+    onProgress: note => notes.push(note),
+    generate: async (packet, kind) => {
+      const id = kind === "container"
+        ? (packet as EnrichmentPacket).containerId
+        : (packet as SystemPacket).systemId;
+      called.push(id);
+      return {
+        document: { ok: id },
+        usage: { totalTokens: kind === "system" ? 5_000 : 70_000 },
+      };
+    },
+  });
+  const docs = await enrich(packets({
+    packets: [
+      containerPacket("container:pkg-a"),
+      containerPacket("container:pkg-b"),
+      containerPacket("container:pkg-c"),
+      containerPacket("container:pkg-d"),
+    ],
+  }));
+  assert.equal(called[0], "system:acme");
+  assert.ok(docs.has("system:acme"));
+  assert.ok(called.includes("container:pkg-a"));
+  assert.equal(called.includes("container:pkg-d"), false, "fourth container still hits the 200k cap");
+  assert.ok(notes.some(note => note.includes("max tokens") && note.includes("skipping")));
+  assert.ok(notes.every(note => !note.includes("okie-test-llm-key")));
 });
 
 test("no system packet means no enrichment at all (no gate anchor)", async () => {
@@ -424,8 +541,8 @@ test("scan-level max scopes skips remaining scopes without throwing", async () =
   const docs = await enrich(packets({
     packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
   }));
-  assert.deepEqual(called, ["container:pkg-a"]);
-  assert.deepEqual([...docs.keys()], ["container:pkg-a"]);
+  assert.deepEqual(called, ["system:acme"]);
+  assert.deepEqual([...docs.keys()], ["system:acme"]);
   assert.ok(notes.some(note => note.includes("max scopes") && note.includes("skipping")));
   assert.ok(notes.every(note => !note.includes("okie-test-llm-key")));
 });
@@ -448,8 +565,8 @@ test("scan-level max tokens skips remaining scopes after usage is reported", asy
   const docs = await enrich(packets({
     packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
   }));
-  assert.deepEqual(called, ["container:pkg-a"]);
-  assert.deepEqual([...docs.keys()], ["container:pkg-a"]);
+  assert.deepEqual(called, ["system:acme"]);
+  assert.deepEqual([...docs.keys()], ["system:acme"]);
   assert.ok(notes.some(note => note.includes("max tokens")));
 });
 
@@ -469,8 +586,8 @@ test("scan-level max dollars applies only when the gateway reports cost", async 
   const costDocs = await costEnrich(packets({
     packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
   }));
-  assert.deepEqual(withCost, ["container:pkg-a"]);
-  assert.deepEqual([...costDocs.keys()], ["container:pkg-a"]);
+  assert.deepEqual(withCost, ["system:acme"]);
+  assert.deepEqual([...costDocs.keys()], ["system:acme"]);
 
   const withoutCost: string[] = [];
   const noCostEnrich = createEnricher({
@@ -536,7 +653,7 @@ test("gateway 429 skips remaining scopes and throws so the job can record enrich
     })),
     /enrichment failed \(llm gateway 429: too many requests\); remaining scopes skipped/,
   );
-  assert.deepEqual(called, ["container:pkg-a", "container:pkg-b"]);
+  assert.deepEqual(called, ["system:acme", "container:pkg-a", "container:pkg-b"]);
   assert.ok(notes.some(note => note.includes("skipping") && note.includes("remaining")));
 });
 
@@ -561,7 +678,7 @@ test("gateway 5xx skips remaining scopes and throws", async () => {
     })),
     /remaining scopes skipped/,
   );
-  assert.deepEqual(called, ["container:pkg-a"]);
+  assert.deepEqual(called, ["system:acme", "container:pkg-a"]);
 });
 
 test("fake HTTP gateway: 429 skips remaining scopes and redacts the key", async () => {
@@ -801,12 +918,16 @@ test("gateway adapter posts each packet to chat/completions and keys docs by con
     assert.ok(posted.every(call => call.authorization === `Bearer ${fakeKey}`));
     assert.ok(posted.every(call => call.body.model === "acme/fast"));
     const firstUser = (posted[0]!.body.messages as Array<{ content: string }>)[1]!.content;
-    assert.match(firstUser, /"containerId": "container:pkg-a"/);
+    assert.match(firstUser, /"systemId": "system:acme"/);
+    assert.match(firstUser, /System packet:/);
     assert.doesNotMatch(firstUser, /container:pkg-b/);
     assert.doesNotMatch(firstUser, /WHOLE_REPO_SENTINEL/);
     const secondUser = (posted[1]!.body.messages as Array<{ content: string }>)[1]!.content;
-    assert.match(secondUser, /"containerId": "container:pkg-b"/);
-    assert.doesNotMatch(secondUser, /container:pkg-a/);
+    assert.match(secondUser, /"containerId": "container:pkg-a"/);
+    assert.doesNotMatch(secondUser, /container:pkg-b/);
+    const thirdUser = (posted[2]!.body.messages as Array<{ content: string }>)[1]!.content;
+    assert.match(thirdUser, /"containerId": "container:pkg-b"/);
+    assert.doesNotMatch(thirdUser, /container:pkg-a/);
     assert.ok(posted.every(call => !("thinking" in call.body)));
     assert.ok(notes.some(note => note.includes("llm gateway") && note.includes("acme/fast")));
     assert.ok(notes.every(note => !note.includes(fakeKey)));
@@ -909,8 +1030,8 @@ test("onUsage serializes scopes so a global token cap cannot be double-spent", a
   const docs = await enrich(packets({
     packets: [containerPacket("container:pkg-a"), containerPacket("container:pkg-b")],
   }));
-  assert.deepEqual(called, ["container:pkg-a"]);
-  assert.deepEqual([...docs.keys()], ["container:pkg-a"]);
+  assert.deepEqual(called, ["system:acme"]);
+  assert.deepEqual([...docs.keys()], ["system:acme"]);
   assert.equal(spend.snapshot().tokens, 100);
   assert.equal(spend.isExhausted(), true);
 });
