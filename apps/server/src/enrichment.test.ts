@@ -21,7 +21,6 @@ import {
   MAX_ENRICHABLE_CODE_ENTITIES,
   packetUserMessage,
   parseChatCompletionDocument,
-  coerceGatewayExtractionDocument,
   resolveEnrichmentPassModelId,
 } from "./enrichment.js";
 import {
@@ -1012,7 +1011,6 @@ function cla70NestedDump(
   packet: EnrichmentPacket,
   systemId: string,
   systemName: string,
-  extraCode: object[] = [],
 ): Record<string, unknown> {
   return {
     softwareSystems: [{ id: systemId, name: systemName, responsibility: "Demo system." }],
@@ -1030,30 +1028,26 @@ function cla70NestedDump(
       responsibility: `Summary of ${component.name}.`,
       sourceRefs: { path: component.path },
     })),
-    codeEntities: extraCode,
+    codeEntities: [],
   };
 }
 
-test("coerceGatewayExtractionDocument is identity for gate-shaped and OSS fixture docs", () => {
-  assert.deepEqual(coerceGatewayExtractionDocument(GATE_DOC), GATE_DOC);
-  const fixture = loadAppsWebFixture("container__apps-web.json");
-  const coerced = coerceGatewayExtractionDocument(fixture) as ExtractionDoc;
-  assert.equal(coerced.schemaVersion, 1);
-  assert.ok(Array.isArray(coerced.entities));
-  assert.deepEqual(coerced.entities.map(entity => entity.id), fixture.entities.map(entity => entity.id));
-  assert.deepEqual(coerced.relations, []);
-});
+function systemEnvelope(systemId: string, systemName: string, packet: EnrichmentPacket): ExtractionDoc {
+  return {
+    schemaVersion: 1,
+    entities: [
+      { id: systemId, kind: "softwareSystem", name: systemName, responsibility: "Demo system.", sourceRefs: [] },
+      {
+        id: packet.containerId, kind: "container", parentId: systemId, name: packet.containerName,
+        responsibility: `Summary of ${packet.containerName}.`,
+        sourceRefs: [],
+      },
+    ],
+    relations: [],
+  };
+}
 
-type CoercedEntity = {
-  id: string;
-  kind: string;
-  parentId?: string;
-  name: string;
-  responsibility?: string;
-  sourceRefs: Array<{ path: string; symbol?: string; startLine?: number; endLine?: number }>;
-};
-
-test("coerceGatewayExtractionDocument flattens CLA-70 nested C4 and wraps sourceRefs", () => {
+test("parseChatCompletionDocument does not flatten a nested CLA-70 dump", () => {
   const nested = {
     softwareSystems: [{ id: "system:okie", name: "okie", responsibility: "Spatial atlas." }],
     containers: [{
@@ -1063,166 +1057,71 @@ test("coerceGatewayExtractionDocument flattens CLA-70 nested C4 and wraps source
       responsibility: "Hosted scan HTTP.",
       sourceRefs: "apps/server/src/main.ts",
     }],
-    components: [{
-      id: "component:apps-server-src-main-ts",
-      parentId: "container:apps-server",
-      name: "src/main.ts",
-      responsibility: "Binds the scan process.",
-      sourceRefs: { path: "apps/server/src/main.ts", symbol: "main" },
-    }],
-    codeEntities: [{
-      id: "code:apps-server-src-main-ts:main",
-      name: "main",
-      componentId: "component:apps-server-src-main-ts",
-      path: "apps/server/src/main.ts",
-      symbol: "main",
-      startLine: 1,
-      endLine: 4,
-      responsibility: "Entry point.",
-    }],
+    codeEntities: [{ id: "code:apps-server-src-main-ts:main", name: "main" }],
   };
-  const coerced = coerceGatewayExtractionDocument(nested) as { schemaVersion: number; entities: CoercedEntity[]; relations: unknown[] };
-  assert.equal(coerced.schemaVersion, 1);
-  assert.ok(Array.isArray(coerced.entities));
-  assert.deepEqual(coerced.relations, []);
-  assert.equal("softwareSystems" in coerced, false);
-  assert.equal("codeEntities" in coerced, false);
-  const byId = new Map(coerced.entities.map(entity => [entity.id, entity]));
-  assert.equal(byId.get("system:okie")?.kind, "softwareSystem");
-  assert.equal(byId.get("container:apps-server")?.parentId, "system:okie");
-  assert.deepEqual(byId.get("container:apps-server")?.sourceRefs, [{ path: "apps/server/src/main.ts" }]);
-  assert.deepEqual(byId.get("component:apps-server-src-main-ts")?.sourceRefs, [{ path: "apps/server/src/main.ts", symbol: "main" }]);
-  assert.equal(byId.get("code:apps-server-src-main-ts:main")?.parentId, "component:apps-server-src-main-ts");
-  assert.deepEqual(byId.get("code:apps-server-src-main-ts:main")?.sourceRefs, [{
-    path: "apps/server/src/main.ts", symbol: "main", startLine: 1, endLine: 4,
-  }]);
+  const parsed = parseChatCompletionDocument(chatCompletionReply(nested)) as Record<string, unknown>;
+  assert.equal("schemaVersion" in parsed, false);
+  assert.equal("entities" in parsed, false);
+  assert.ok(Array.isArray(parsed.softwareSystems));
+  assert.ok(Array.isArray(parsed.containers));
+  assert.ok(Array.isArray(parsed.codeEntities));
+  assert.deepEqual(parsed, nested);
 });
 
-test("coerceGatewayExtractionDocument flattens a nested softwareSystem.container tree", () => {
-  const tree = {
-    softwareSystem: {
-      id: "system:okie",
-      name: "okie",
-      responsibility: "Spatial atlas.",
-      container: {
-        id: "container:apps-web",
-        name: "@okie/web",
-        responsibility: "React shell.",
-        sourceRefs: [],
-        components: [{
-          id: "component:apps-web-src-app-tsx",
-          name: "src/App.tsx",
-          responsibility: "Application shell.",
-          sourceRefs: [],
-        }],
-      },
-    },
-  };
-  const coerced = coerceGatewayExtractionDocument(tree) as ExtractionDoc;
-  assert.deepEqual(coerced.entities.map(entity => entity.id), [
-    "system:okie",
-    "container:apps-web",
-    "component:apps-web-src-app-tsx",
-  ]);
-});
-
-test("coerceGatewayExtractionDocument does not mint entity ids", () => {
-  const coerced = coerceGatewayExtractionDocument({
-    container: { name: "Web", responsibility: "UI shell." },
-    softwareSystem: { name: "okie", responsibility: "Atlas." },
-  }) as ExtractionDoc;
-  assert.deepEqual(coerced.entities, []);
-  assert.ok(!JSON.stringify(coerced).includes("container:"));
-  assert.ok(!JSON.stringify(coerced).includes("system:okie"));
-});
-
-test("coerceGatewayExtractionDocument does not synthesize parent ids or trim source anchors", () => {
-  const coerced = coerceGatewayExtractionDocument({
-    softwareSystems: [{ id: "system:okie", name: "okie", responsibility: "Atlas." }],
-    containers: [{
-      id: "container:apps-web",
-      name: "@okie/web",
-      responsibility: "React shell.",
-      sourceRefs: " apps/web/src/App.tsx ",
-    }],
-  }) as { entities: CoercedEntity[] };
-  const container = coerced.entities.find(entity => entity.id === "container:apps-web");
-  assert.equal(container?.parentId, undefined, "sibling arrays must not get a synthesized parentId");
-  assert.deepEqual(container?.sourceRefs, [{ path: " apps/web/src/App.tsx " }]);
-});
-
-test("malformed sourceRefs and duplicate ids still reach the merge gate", () => {
-  const coerced = coerceGatewayExtractionDocument({
-    schemaVersion: 1,
-    entities: [
-      { id: "system:okie", kind: "softwareSystem", name: "okie", sourceRefs: [] },
-      { id: "system:okie", kind: "softwareSystem", name: "okie-dup", sourceRefs: [42] },
-    ],
-    relations: [],
-  }) as ExtractionDoc;
-  assert.equal(coerced.entities.length, 2);
-  assert.equal(coerced.entities[1]!.id, "system:okie");
-  assert.deepEqual((coerced.entities[1] as CoercedEntity).sourceRefs, [42] as unknown as CoercedEntity["sourceRefs"]);
-});
-
-test("unknown source-anchor keys and non-array relations still reach the merge gate", () => {
-  const coerced = coerceGatewayExtractionDocument({
-    schemaVersion: 2,
-    softwareSystems: [{ id: "system:okie", name: "okie", sourceRefs: [{ path: "README.md", commitSha: "abc" }] }],
-    relations: "nope",
-  }) as { schemaVersion: number; entities: CoercedEntity[]; relations: unknown };
-  assert.equal(coerced.schemaVersion, 2);
-  assert.deepEqual(coerced.relations, "nope");
-  assert.deepEqual(coerced.entities[0]?.sourceRefs, [{ path: "README.md", commitSha: "abc" }] as unknown as CoercedEntity["sourceRefs"]);
-});
-
-test("a hallucinated id is still present after coerce so the gate can reject it", () => {
-  const coerced = coerceGatewayExtractionDocument({
-    entities: [
-      { id: "system:okie", kind: "softwareSystem", name: "okie", sourceRefs: [] },
-      { id: "code:ghost:nope", kind: "code", name: "nope", parentId: "component:missing", sourceRefs: [] },
-    ],
-  }) as ExtractionDoc;
-  assert.ok(coerced.entities.some(entity => entity.id === "code:ghost:nope"));
-});
-
-test("live hop wraps CLA-70 nested dumps into documents the merge gate accepts", async () => {
+test("nested CLA-70 dump is still rejected; that scope stays deterministic", () => {
   const { extraction, read } = acmeExtraction();
   const emitted = buildEnrichmentPackets(extraction, read);
   const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
   assert.ok(packet);
   const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
   const nested = cla70NestedDump(packet, system.id, system.name);
-  const wrapped = parseChatCompletionDocument(chatCompletionReply(nested));
-  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, wrapped]]));
+  const parsed = parseChatCompletionDocument(chatCompletionReply(nested));
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
   const result = report.results.find(item => item.containerId === packet.containerId);
-  assert.equal(result?.accepted, true, result?.reasons.join("; "));
-  const container = merged.entities.find(entity => entity.id === packet.containerId);
-  assert.ok(container?.responsibility);
-  assert.ok(!merged.entities.some(entity => entity.id === "code:ghost:nope"));
+  assert.equal(result?.accepted, false, result?.reasons.join("; "));
+  assert.ok(result?.reasons.some(reason => /schemaVersion|entities/.test(reason)));
+  assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
 });
 
-test("live hop still lets the gate reject a nested dump that invents an id", async () => {
+test("true flat envelope with existing ids is still accepted", () => {
   const { extraction, read } = acmeExtraction();
   const emitted = buildEnrichmentPackets(extraction, read);
   const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
   assert.ok(packet);
   const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
-  const nested = cla70NestedDump(packet, system.id, system.name, [{
+  const envelope = summaryFromPacket(packet, system.id, system.name);
+  const parsed = parseChatCompletionDocument(chatCompletionReply(envelope));
+  assert.deepEqual(parsed, envelope);
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
+  const result = report.results.find(item => item.containerId === packet.containerId);
+  assert.equal(result?.accepted, true, result?.reasons.join("; "));
+  const container = merged.entities.find(entity => entity.id === packet.containerId);
+  assert.ok(container?.responsibility);
+  assert.notEqual(container?.responsibility, "");
+});
+
+test("invented ids are still rejected", () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const envelope = summaryFromPacket(packet, system.id, system.name, [{
     id: "code:ghost:nope",
+    kind: "code",
+    parentId: packet.components[0]!.id,
     name: "nope",
-    path: packet.scopePaths[0],
+    sourceRefs: [{ path: packet.scopePaths[0] ?? "pkg/a/src/index.ts" }],
     responsibility: "Hallucinated.",
   }]);
-  const wrapped = coerceGatewayExtractionDocument(nested) as ExtractionDoc;
-  assert.ok(wrapped.entities.some(entity => entity.id === "code:ghost:nope"));
-  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, wrapped]]));
+  const parsed = parseChatCompletionDocument(chatCompletionReply(envelope));
+  const { report, extraction: merged } = mergeEnrichment(extraction, new Map([[packet.containerId, parsed]]));
   assert.equal(report.results.find(item => item.containerId === packet.containerId)?.accepted, false);
   assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
   assert.ok(!merged.entities.some(entity => entity.id === "code:ghost:nope"));
 });
 
-test("fake HTTP gateway nested C4 dump is coerced and accepted by the merge gate", async () => {
+test("fake HTTP gateway nested C4 dump is rejected by the merge gate", async () => {
   const { extraction, read } = acmeExtraction();
   const emitted = buildEnrichmentPackets(extraction, read);
   const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
@@ -1248,6 +1147,46 @@ test("fake HTTP gateway nested C4 dump is coerced and accepted by the merge gate
         },
       }
       : cla70NestedDump(packet, system.id, system.name);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(chatCompletionReply(document)));
+  });
+  try {
+    const client = createLlmGatewayClient(resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: fakeKey,
+      OPENROUTER_MODEL: "acme/fast",
+    }), { timeoutMs: 2_000 });
+    assert.ok(client);
+    const enrich = createEnricher({
+      maxConcurrent: 1,
+      modelId: "acme/fast",
+      gateway: client,
+    });
+    const docs = await enrich(emitted);
+    const { report, extraction: merged } = mergeEnrichment(extraction, docs);
+    const container = report.results.find(item => item.containerId === packet.containerId);
+    assert.equal(container?.accepted, false, container?.reasons.join("; "));
+    assert.equal(merged.entities.find(entity => entity.id === packet.containerId)?.responsibility, undefined);
+    assert.equal(report.systemScope?.accepted, false);
+  } finally {
+    await fake.close();
+  }
+});
+
+test("fake HTTP gateway flat envelope is accepted by the merge gate", async () => {
+  const { extraction, read } = acmeExtraction();
+  const emitted = buildEnrichmentPackets(extraction, read);
+  const packet = emitted.packets.find(item => item.containerId === "container:pkg-a");
+  assert.ok(packet);
+  const system = extraction.entities.find(entity => entity.kind === "softwareSystem")!;
+  const fakeKey = "okie-test-llm-key-cla70-fake";
+  const fake = await listenFakeGateway(async (request, response) => {
+    const raw = await readRequestBody(request);
+    const user = ((JSON.parse(raw) as { messages: Array<{ role: string; content: string }> })
+      .messages.find(message => message.role === "user")?.content) ?? "";
+    const document = user.includes("System packet:")
+      ? systemEnvelope(system.id, system.name, packet)
+      : summaryFromPacket(packet, system.id, system.name);
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify(chatCompletionReply(document)));
   });

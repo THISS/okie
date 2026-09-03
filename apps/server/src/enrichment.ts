@@ -295,166 +295,6 @@ function unwrapJsonPayload(text: string): string {
   return trimmed;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** Nested C4 collection keys the live hop flattens into `entities`. */
-const NESTED_COLLECTION_KIND: Readonly<Record<string, string | undefined>> = {
-  entities: undefined,
-  softwareSystems: "softwareSystem",
-  softwareSystem: "softwareSystem",
-  systems: "softwareSystem",
-  containers: "container",
-  container: "container",
-  components: "component",
-  component: "component",
-  codeEntities: "code",
-  codes: "code",
-  code: "code",
-  persons: "person",
-  person: "person",
-  people: "person",
-  actors: "person",
-  externalSystems: "externalSystem",
-  externalSystem: "externalSystem",
-};
-
-const KIND_FROM_ID_PREFIX: Readonly<Record<string, string>> = {
-  system: "softwareSystem",
-  container: "container",
-  component: "component",
-  code: "code",
-  person: "person",
-  actor: "person",
-  external: "externalSystem",
-  data: "dataStore",
-  queue: "queue",
-};
-
-const TOP_LEVEL_KINDS = new Set(["softwareSystem", "person", "externalSystem"]);
-
-function kindFromId(id: string): string | undefined {
-  const prefix = id.split(":", 1)[0];
-  return prefix ? KIND_FROM_ID_PREFIX[prefix] : undefined;
-}
-
-/** Use an id the model already wrote (including packet-field names). Never mint a new one. */
-function entityIdOf(node: Record<string, unknown>): string | undefined {
-  if (typeof node.id === "string") return node.id;
-  if (typeof node.containerId === "string" && node.containerId.startsWith("container:")) return node.containerId;
-  if (typeof node.systemId === "string" && node.systemId.startsWith("system:")) return node.systemId;
-  return undefined;
-}
-
-function wrapSourceAnchor(value: unknown): unknown {
-  if (typeof value === "string") return { path: value };
-  return value;
-}
-
-function wrapSourceRefs(value: unknown, entity: Record<string, unknown>): unknown[] {
-  if (Array.isArray(value)) return value.map(wrapSourceAnchor);
-  if (value !== undefined && value !== null) return [wrapSourceAnchor(value)];
-  if (typeof entity.path === "string") {
-    return [wrapSourceAnchor({
-      path: entity.path,
-      ...(entity.symbol !== undefined ? { symbol: entity.symbol } : {}),
-      ...(entity.startLine !== undefined ? { startLine: entity.startLine } : {}),
-      ...(entity.endLine !== undefined ? { endLine: entity.endLine } : {}),
-    })];
-  }
-  return [];
-}
-
-function looksLikeEntity(node: Record<string, unknown>, inferredKind: string | undefined): boolean {
-  const id = entityIdOf(node);
-  if (typeof id !== "string") return false;
-  return inferredKind !== undefined
-    || typeof node.kind === "string"
-    || typeof node.name === "string"
-    || typeof node.responsibility === "string"
-    || typeof node.containerName === "string"
-    || typeof node.systemName === "string"
-    || node.sourceRefs !== undefined;
-}
-
-function emitEntity(
-  node: Record<string, unknown>,
-  inferredKind: string | undefined,
-  inferredParentId: string | undefined,
-): Record<string, unknown> | undefined {
-  const id = entityIdOf(node);
-  if (typeof id !== "string") return undefined;
-  const kind = (typeof node.kind === "string" ? node.kind : undefined) || inferredKind || kindFromId(id);
-  const name = typeof node.name === "string" ? node.name
-    : typeof node.containerName === "string" ? node.containerName
-    : typeof node.systemName === "string" ? node.systemName
-    : undefined;
-  if (typeof kind !== "string" || typeof name !== "string") return undefined;
-  const parentId = typeof node.parentId === "string" ? node.parentId
-    : typeof node.componentId === "string" ? node.componentId
-    : (kind && TOP_LEVEL_KINDS.has(kind) ? undefined : inferredParentId);
-  const entity: Record<string, unknown> = {
-    id,
-    kind,
-    name,
-    sourceRefs: wrapSourceRefs(node.sourceRefs, node),
-  };
-  if (typeof parentId === "string") entity.parentId = parentId;
-  if (typeof node.responsibility === "string") entity.responsibility = node.responsibility;
-  if (node.technology !== undefined) entity.technology = node.technology;
-  if (node.tags !== undefined) entity.tags = node.tags;
-  if (node.confidence !== undefined) entity.confidence = node.confidence;
-  return entity;
-}
-
-function collectEntities(
-  value: unknown,
-  inferredKind: string | undefined,
-  inferredParentId: string | undefined,
-  out: Record<string, unknown>[],
-): void {
-  if (Array.isArray(value)) {
-    for (const item of value) collectEntities(item, inferredKind, inferredParentId, out);
-    return;
-  }
-  if (!isRecord(value)) return;
-  const emitted = looksLikeEntity(value, inferredKind)
-    ? emitEntity(value, inferredKind, inferredParentId)
-    : undefined;
-  if (emitted) out.push(emitted);
-  const nextParent = typeof emitted?.id === "string" ? emitted.id : inferredParentId;
-  for (const [key, kind] of Object.entries(NESTED_COLLECTION_KIND)) {
-    if (value[key] === undefined) continue;
-    collectEntities(value[key], kind, nextParent, out);
-  }
-}
-
-/**
- * Reshape a live-gateway JSON payload into the flat ArchitectureExtraction envelope
- * the merge gate already expects. OpenRouter often ignores `response_format.json_schema`
- * for Claude and returns nested C4 objects (CLA-70).
- *
- * Shape only: flatten nested collections, default missing `schemaVersion` to 1, wrap
- * `sourceRefs` into arrays. Does not mint entity ids, synthesize missing parent ids
- * for sibling arrays, trim/rewrite source anchors, or drop malformed refs — the gate
- * still rejects those.
- */
-export function coerceGatewayExtractionDocument(raw: unknown): unknown {
-  const entities: Record<string, unknown>[] = [];
-  if (Array.isArray(raw)) {
-    collectEntities(raw, undefined, undefined, entities);
-    return { schemaVersion: 1, entities, relations: [] };
-  }
-  if (!isRecord(raw)) return raw;
-  collectEntities(raw, undefined, undefined, entities);
-  return {
-    schemaVersion: raw.schemaVersion === undefined ? 1 : raw.schemaVersion,
-    entities,
-    relations: raw.relations === undefined ? [] : raw.relations,
-  };
-}
-
 function payloadFromChatMessage(message: Record<string, unknown> | undefined): unknown {
   if (!message) return undefined;
   const parsed = message.parsed;
@@ -471,9 +311,9 @@ function payloadFromChatMessage(message: Record<string, unknown> | undefined): u
 }
 
 /**
- * Pull the gate document out of an OpenAI-compatible chat-completions payload.
- * `choices[0].message.content` is JSON text (or already-parsed object). Nested C4
- * dumps are coerced into ArchitectureExtraction; the merge gate still decides.
+ * Pull the JSON document out of an OpenAI-compatible chat-completions payload.
+ * Fence unwrap + JSON.parse only — nested C4 dumps are not reshaped. Wrong shape
+ * still reaches `mergeEnrichment` and that scope stays deterministic (CLA-70).
  */
 export function parseChatCompletionDocument(json: unknown): unknown {
   const record = typeof json === "object" && json !== null ? json as Record<string, unknown> : undefined;
@@ -489,7 +329,7 @@ export function parseChatCompletionDocument(json: unknown): unknown {
   if (payload === undefined) {
     throw new Error("llm gateway response missing message content");
   }
-  return coerceGatewayExtractionDocument(payload);
+  return payload;
 }
 
 function gatewayCanChat(
@@ -544,7 +384,7 @@ function anthropicGenerator(
         .filter((block): block is Anthropic.TextBlock => block.type === "text")
         .map(block => block.text)
         .join("");
-      const document = coerceGatewayExtractionDocument(JSON.parse(text) as unknown);
+      const document = JSON.parse(unwrapJsonPayload(text)) as unknown;
       return usage ? { document, usage } : { document };
     } catch (error) {
       throw attachUsage(error, usage);
