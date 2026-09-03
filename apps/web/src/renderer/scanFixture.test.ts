@@ -29,29 +29,30 @@ describe('scan fixture loader', () => {
     expect(refocused.id).toBe(scene.id);
     expect(refocused.entities).toHaveLength(demoSnapshot.entities.length);
 
-    // Below the size gate the anti-hang guard is a provable no-op: an Okie-sized
-    // scan compile is never refused, and the derived-flow scope stays unbounded.
+    // Hang-guard is a no-op on the demo-sized snapshot; per-kind maxBand still
+    // scopes the root compile (CLA-66) so L1 stays a handful, not every L4 row.
     expect(fixture.createScene(fixture.navigation.rootEntityId).scanGuardRefusal).toBeUndefined();
     expect(refocused.scanGuardRefusal).toBeUndefined();
-    expect(fixture.scopeCompileOptions(fixture.navigation.rootEntityId)).toEqual({});
-    expect(fixture.scopeCompileOptions(scene.entities[1]!.id)).toEqual({});
+    expect(fixture.scopeCompileOptions(fixture.navigation.rootEntityId)).toEqual({ maxBand: 'container' });
+    expect(scene.projection?.entityIdsByDetail.component ?? []).toEqual([]);
+    expect(scene.projection?.entityIdsByDetail.code ?? []).toEqual([]);
   });
+
 
   it('applies the mode-level aspect target below the scoped-compile size gate (task #30)', () => {
     const base = compileScanFixture(validTrio());
     const landscape = compileScanFixture(validTrio(), { targetAspect: 1.6 });
-    // The demo scan (70 entities) is far below the 2000-entity scoped-compile gate, yet the
-    // aspect target still reshapes its geometry — the whole point of the per-mode correction:
-    // Okie's own scan sits below the gate, so a size-gated preset would never reach it.
+    // Aspect is a per-mode compile input at every repo size, independent of the
+    // hang-guard entity count. Per-kind maxBand still scopes the root (CLA-66).
     expect(landscape.targetAspect).toBe(1.6);
     expect(base.targetAspect).toBeUndefined();
     const root = base.navigation.rootEntityId;
     const off = JSON.stringify(base.createScene(root).protocolSnapshot);
     const on = JSON.stringify(landscape.createScene(root).protocolSnapshot);
     expect(on).not.toEqual(off);
-    // Aspect is independent of the size-gated scoped options: those stay {} below the gate.
-    expect(landscape.scopeCompileOptions(root)).toEqual({});
+    expect(landscape.scopeCompileOptions(root)).toEqual({ maxBand: 'container' });
   });
+
 
   it('throws ScanFixtureError listing issues for an invalid snapshot', () => {
     const trio = validTrio();

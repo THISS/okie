@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { ArchitectureEntity, ArchitectureRelation, ArchitectureSnapshot, C4ProjectionBundle, EntityKind } from '@okie/architecture';
+import {
+  buildC4ProjectionBundle,
+  selectC4BandProjection,
+  type ArchitectureEntity,
+  type ArchitectureRelation,
+  type ArchitectureSnapshot,
+  type C4ProjectionBundle,
+  type EntityKind,
+} from '@okie/architecture';
 import {
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_EDGE_BUDGET,
@@ -29,7 +37,13 @@ function snapshot(entities: ArchitectureEntity[], relations: ArchitectureRelatio
   return { schemaVersion: 1, id: 'snapshot:test', repositoryId: 'repo:test', commitSha: 'sha', generatedAt: '2026-01-01T00:00:00Z', entities, relations };
 }
 
-describe('scanScopeCompileOptions — per-kind mapping above the size gate (large repo)', () => {
+describe('scanScopeCompileOptions — per-kind mapping is the default path at every size (CLA-66)', () => {
+  const small = snapshot([
+    entity('system:root', 'softwareSystem'),
+    entity('container:c', 'container', 'system:root'),
+    entity('component:x', 'component', 'container:c'),
+    entity('code:0', 'code', 'component:x'),
+  ]);
   const big = snapshot([
     entity('system:root', 'softwareSystem'),
     entity('container:c', 'container', 'system:root'),
@@ -37,31 +51,26 @@ describe('scanScopeCompileOptions — per-kind mapping above the size gate (larg
     ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
   ]);
 
-  it('system→container; container→component + edge budget + grid cap; component→code; code→unbounded', () => {
-    expect(scanScopeCompileOptions(big, 'system:root')).toEqual({ maxBand: 'container' });
-    expect(scanScopeCompileOptions(big, 'container:c')).toEqual({
-      maxBand: 'component',
-      maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
-      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
-    });
-    expect(scanScopeCompileOptions(big, 'component:x')).toEqual({ maxBand: 'code' });
-    expect(scanScopeCompileOptions(big, 'code:0')).toEqual({});
+  it('system→container; container→component + edge budget + grid cap; component→code; code→unbounded — below and above the hang-guard', () => {
+    for (const snap of [small, big]) {
+      expect(scanScopeCompileOptions(snap, 'system:root')).toEqual({ maxBand: 'container' });
+      expect(scanScopeCompileOptions(snap, 'container:c')).toEqual({
+        maxBand: 'component',
+        maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
+        maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      });
+      expect(scanScopeCompileOptions(snap, 'component:x')).toEqual({ maxBand: 'code' });
+      expect(scanScopeCompileOptions(snap, 'code:0')).toEqual({});
+    }
+  });
+
+  it('does not invent a new entity cap or raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
   });
 
   it('is deterministic (pure function of snapshot + focus)', () => {
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual(scanScopeCompileOptions(big, 'system:root'));
-    expect(scanScopeCompileOptions(big, 'container:c')).toEqual(scanScopeCompileOptions(big, 'container:c'));
-  });
-});
-
-describe('scanScopeCompileOptions — size gate keeps small repos unbounded (Okie stays identical)', () => {
-  it('returns {} below the size gate regardless of focus kind', () => {
-    const small = snapshot(
-      [entity('system:root', 'softwareSystem'), entity('container:c', 'container', 'system:root')],
-      [relation('r1', 'system:root', 'container:c')],
-    );
-    expect(scanScopeCompileOptions(small, 'system:root')).toEqual({});
-    expect(scanScopeCompileOptions(small, 'container:c')).toEqual({});
+    expect(scanScopeCompileOptions(small, 'container:c')).toEqual(scanScopeCompileOptions(small, 'container:c'));
   });
 });
 
@@ -191,17 +200,21 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
     expect(decision.refusal?.requestedFocusId).toBe('code:root');
   });
 
-  it('is a provable no-op below the gate — never refuses, always empty options (Okie)', () => {
+  it('never refuses below the hang-guard; per-kind maxBand still applies (CLA-66)', () => {
     const small = snapshot([
       entity('system:root', 'softwareSystem'),
       entity('code:root', 'code', 'system:root'),
       ...Array.from({ length: 10 }, (_, index) => entity(`code:${index}`, 'code', 'code:root')),
     ]);
-    for (const focus of ['system:root', 'code:root', 'code:5']) {
-      const decision = guardScanCompile(small, focus, 'system:root');
-      expect(decision).toEqual({ focusEntityId: focus, options: {} });
-      expect(decision.refusal).toBeUndefined();
-    }
+    expect(guardScanCompile(small, 'system:root', 'system:root')).toEqual({
+      focusEntityId: 'system:root',
+      options: { maxBand: 'container' },
+    });
+    expect(guardScanCompile(small, 'code:root', 'system:root')).toEqual({
+      focusEntityId: 'code:root',
+      options: {},
+    });
+    expect(guardScanCompile(small, 'code:5', 'system:root').refusal).toBeUndefined();
   });
 });
 
@@ -222,7 +235,7 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
     expect(scanDrillDeeperDetail(scoped, container)).toBe('component');
   });
 
-  it('returns undefined when the deeper band is already laid out (full / below-gate scene)', () => {
+  it('returns undefined when the deeper band is already laid out', () => {
     const full = sceneWith({ 'container:c': { container: bounds, component: bounds } });
     expect(scanDrillDeeperDetail(full, container)).toBeUndefined();
   });
@@ -233,6 +246,19 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
     expect(scanDrillDeeperDetail(scene, codeLeaf)).toBeUndefined();
     // component:x has no children in the scene → nothing deeper to compile.
     expect(scanDrillDeeperDetail(scene, sceneEntities[2]!)).toBeUndefined();
+  });
+
+  it('uses snapshot children when the compiled neighborhood omitted descendants (CLA-66)', () => {
+    const scoped = sceneWith({ 'container:c': { container: bounds } });
+    const containerOnly: SceneEntity = sceneEntities[1]!;
+    const emptyScene = { ...scoped, entities: [containerOnly] } as AtlasScene;
+    expect(scanDrillDeeperDetail(emptyScene, containerOnly)).toBeUndefined();
+    const snap = snapshot([
+      entity('system:root', 'softwareSystem'),
+      entity('container:c', 'container', 'system:root'),
+      entity('component:x', 'component', 'container:c'),
+    ]);
+    expect(scanDrillDeeperDetail(emptyScene, containerOnly, snap)).toBe('component');
   });
 });
 
@@ -247,19 +273,32 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
     entity('code:b', 'code', 'component:x'),
   ];
 
-  it('budgets routed edges + router grid above the relation gate, at every focus, without dropping bands', () => {
+  it('budgets routed edges + router grid above the relation gate, composed with per-kind maxBand', () => {
     const dense = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN + 1));
-    for (const focus of ['system:root', 'container:c', 'component:x', 'code:a']) {
-      expect(scanScopeCompileOptions(dense, focus)).toEqual({
-        maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
-        maxGridNodes: SCAN_CONTAINER_GRID_NODES,
-      });
-    }
+    expect(scanScopeCompileOptions(dense, 'system:root')).toEqual({
+      maxBand: 'container',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect(scanScopeCompileOptions(dense, 'container:c')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect(scanScopeCompileOptions(dense, 'component:x')).toEqual({
+      maxBand: 'code',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect(scanScopeCompileOptions(dense, 'code:a')).toEqual({
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
   });
 
-  it('stays untouched at or below the relation gate', () => {
+  it('stays at per-kind maxBand at or below the relation gate', () => {
     const sparse = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN));
-    expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({});
+    expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({ maxBand: 'container' });
   });
 
   it('composes with the entity gate: per-kind options win where set, budgets fill the gaps', () => {
@@ -299,5 +338,50 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
     expect(decision.refusal).toBeUndefined();
     expect(decision.focusEntityId).toBe('code:a');
     expect(decision.options.maxGridNodes).toBe(SCAN_CONTAINER_GRID_NODES);
+  });
+});
+
+describe('CLA-66: per-neighborhood compile — quiet containers drill without a whole-tree scene', () => {
+  const snap = snapshot([
+    entity('system:root', 'softwareSystem'),
+    entity('container:web', 'container', 'system:root'),
+    entity('container:architecture', 'container', 'system:root'),
+    entity('component:web-a', 'component', 'container:web'),
+    entity('component:arch-a', 'component', 'container:architecture'),
+    entity('code:web-fn', 'code', 'component:web-a'),
+    entity('code:arch-fn', 'code', 'component:arch-a'),
+  ]);
+
+  function bundle(focus: string) {
+    return buildC4ProjectionBundle(snap, {
+      rootEntityId: 'system:root',
+      focusEntityId: focus,
+      familyId: `fam:${focus}`,
+      ...scanScopeCompileOptions(snap, focus),
+    });
+  }
+
+  function ids(compiled: ReturnType<typeof bundle>, band: 'context' | 'container' | 'component' | 'code') {
+    return selectC4BandProjection(compiled, band).nodes.map(node => node.entity.logicalId);
+  }
+
+  it('root compile is a handful of L1/L2 nodes, not L4 rows', () => {
+    const root = bundle('system:root');
+    expect(ids(root, 'container')).toEqual(expect.arrayContaining(['container:web', 'container:architecture']));
+    expect(ids(root, 'component')).toEqual([]);
+    expect(ids(root, 'code')).toEqual([]);
+  });
+
+  it('Open inside a quiet package compiles that container’s L3, not a sibling neighborhood', () => {
+    const arch = bundle('container:architecture');
+    expect(ids(arch, 'component')).toContain('component:arch-a');
+    expect(ids(arch, 'component')).not.toContain('component:web-a');
+    expect(ids(arch, 'code')).toEqual([]);
+  });
+
+  it('Open inside a file compiles that file’s L4', () => {
+    const file = bundle('component:arch-a');
+    expect(ids(file, 'code')).toContain('code:arch-fn');
+    expect(ids(file, 'code')).not.toContain('code:web-fn');
   });
 });

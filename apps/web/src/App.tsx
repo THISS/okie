@@ -52,6 +52,7 @@ import {
   type SemanticDetail,
 } from './navigation/navigationState';
 import { createGoldenC4Scene, goldenAppStory, scanDrillDeeperDetail, semanticBounds, type AppStoryPlanStep } from './renderer/goldenC4Scene';
+import { scanCompileFocusForBand, scanEntityHasChildren, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
 import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
@@ -1242,6 +1243,9 @@ export function App() {
   const detailsTabRef = useRef<HTMLButtonElement | null>(null);
   const inspectorSelectionRef = useRef(initialNavigation.selectedId);
   const inspectorReframeGenerationRef = useRef(0);
+  const neighborhoodScenesRef = useRef<Map<string, AtlasScene>>(new Map(
+    scanFixture ? [[scanFixture.navigation.rootEntityId, goldenScene]] : [],
+  ));
   const askButtonRef = useRef<HTMLButtonElement | null>(null);
   const askInputRef = useRef<HTMLTextAreaElement | null>(null);
   const askAbortRef = useRef<AbortController | undefined>(undefined);
@@ -1434,7 +1438,9 @@ export function App() {
     () => selected.parentId ? scene.entities.find(entity => entity.id === selected.parentId) : undefined,
     [scene.entities, selected.parentId],
   );
-  const selectedHasChildren = selectedChildren.length > 0;
+  const selectedHasChildren = scanFixture
+    ? scanEntityHasChildren(activeSnapshot, selected.id)
+    : selectedChildren.length > 0;
   const selectedLevel = Math.max(0, semanticDetails.indexOf(selected.detail ?? 'context'));
   const selectedLevelLabel = `${levels[selectedLevel]?.short ?? 'L1'} · ${(selected.kindLabel ?? selected.detail ?? selected.kind).toUpperCase()}`;
   const detailsWidthRange = inspectorWidthRange(window.innerWidth);
@@ -1542,9 +1548,9 @@ export function App() {
       }],
     };
     // Derived flow/Mermaid projections build the bundle directly (not via the
-    // scan createScene seam), so scope them through the same per-focus options —
-    // {} below the gate (golden unchanged), bounded above it so this bypass path
-    // can never compile the full graph either.
+    // scan createScene seam), so scope them through the same per-focus options
+    // (per-kind maxBand at every size) so this bypass path can never compile
+    // the full graph either.
     const scoped = scanFixture?.scopeCompileOptions(scopeEntityId) ?? {};
     const projections = buildC4ProjectionBundle(activeSnapshot, {
       rootEntityId: activeView.rootEntityId,
@@ -2536,6 +2542,7 @@ export function App() {
       lensPath: semanticLensCanonicalPathIds(semanticLensSessionRef.current),
     }, navigationDefaults);
     historyControllerRef.current?.commitSettledCamera(next, base);
+    prefetchCommittedBox(semanticLensSessionRef.current.settled.at(-1)?.targetId ?? selected.id);
   }
 
   function flushNavigation(next: Camera) {
@@ -2720,6 +2727,7 @@ export function App() {
     // docs/product/interaction-semantics.md ("Spatial continuity and drill-down").
     const explicitCameraIntent = cameraIntent === 'frame' || inspectorIntent === 'source';
     if (explicitCameraIntent) reframeEntityAfterInspectorChange(entity, nextInspectorTab === 'source');
+    prefetchCommittedBox(entity.id);
   }
 
   function navigateInspectorHierarchy(entity: SceneEntity) {
@@ -2819,9 +2827,26 @@ export function App() {
 
   function composeScene(focusEntityId: string, previous?: AtlasScene, authoring?: ArchitectureAuthoringDocument): AtlasScene {
     const imported = importedAtlasRef.current;
-    if (!imported) return activeCreateScene(focusEntityId, previous, authoring);
+    if (!imported) {
+      if (scanFixture && !authoring) {
+        const cached = neighborhoodScenesRef.current.get(focusEntityId);
+        if (cached) return cached;
+        const compiled = activeCreateScene(focusEntityId, previous);
+        neighborhoodScenesRef.current.set(focusEntityId, compiled);
+        return compiled;
+      }
+      return activeCreateScene(focusEntityId, previous, authoring);
+    }
     const matchingAuthoring = authoring?.repositoryId === imported.snapshot.repositoryId ? authoring : undefined;
     return compileImportedMermaidScene(imported, previous, focusEntityId, matchingAuthoring);
+  }
+
+  /** Compile the next-band neighborhood without swapping the visible scene or moving the camera (CLA-11). */
+  function prefetchCommittedBox(entityId: string | undefined) {
+    if (!scanFixture || !entityId) return;
+    for (const focusId of scanPrefetchFocusIds(activeSnapshot, [entityId])) {
+      composeScene(focusId, scene, authoringHistoryRef.current.present);
+    }
   }
 
   function authoredScene(document: ArchitectureAuthoringDocument, currentScene: AtlasScene) {
@@ -3168,14 +3193,22 @@ export function App() {
     const currentSession = semanticLensSessionRef.current;
     const previousDetail = semanticLensSessionDetail(currentSession);
     const preferredIds = [selected.id, ...currentSession.settled.map(entry => entry.targetId).reverse(), navigationIdentity.rootEntityId];
-    const nextSession = semanticLevelSession(scene, detail, preferredIds);
+    const compileFocus = scanFixture
+      ? scanCompileFocusForBand(activeSnapshot, selected.id, detail, scanFixture.navigation.rootEntityId)
+      : navigationIdentity.rootEntityId;
+    const levelScene = scanFixture ? composeScene(compileFocus, scene, authoringHistoryRef.current.present) : scene;
+    if (levelScene !== scene) {
+      setScene(levelScene);
+      setNavigationIdentity(current => ({ ...current, rootEntityId: compileFocus }));
+    }
+    const nextSession = semanticLevelSession(levelScene, detail, preferredIds);
     const previousAnchorId = currentSession.settled.at(-1)?.targetId
       ?? (semanticBounds(scene, selected.id, previousDetail) ? selected.id : navigationIdentity.rootEntityId);
     const targetAnchorId = nextSession.settled.at(-1)?.targetId
-      ?? (semanticBounds(scene, selected.id, detail) ? selected.id : navigationIdentity.rootEntityId);
+      ?? (semanticBounds(levelScene, selected.id, detail) ? selected.id : compileFocus);
     const previousBounds = semanticBounds(scene, previousAnchorId, previousDetail);
-    const targetBounds = semanticBounds(scene, targetAnchorId, detail)
-      ?? semanticBounds(scene, navigationIdentity.rootEntityId, detail)
+    const targetBounds = semanticBounds(levelScene, targetAnchorId, detail)
+      ?? semanticBounds(levelScene, compileFocus, detail)
       ?? selected;
     semanticLensSessionRef.current = nextSession;    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
@@ -3184,20 +3217,21 @@ export function App() {
     const anchored = retargetCameraForSemanticBand(liveCamera, previousBounds, targetBounds, level.zoom, viewport);
     const mapSafeArea = measureCurrentMapSafeArea();
     const framedCamera = index === 0 && !scopeFitsSafeViewport(
-      scene,
-      navigationIdentity.rootEntityId,
+      levelScene,
+      compileFocus,
       detail,
       anchored,
       viewport,
       mapSafeArea,
     )
-      ? frameProjectionScope(scene, navigationIdentity.rootEntityId, detail, viewport, mapSafeArea) ?? anchored
+      ? frameProjectionScope(levelScene, compileFocus, detail, viewport, mapSafeArea) ?? anchored
       : anchored;
     const nextCamera = containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
     interruptStory(`Changed to ${level.name} detail`);
     updateCamera(nextCamera);
     commitNavigation(canonicalNavigationState({
       ...navigationRef.current,
+      rootEntityId: compileFocus,
       camera: nextCamera,
       detail: nextSession.baseDetail,
       lensPath: semanticLensCanonicalPathIds(nextSession),
@@ -3217,13 +3251,12 @@ export function App() {
         : `${target.name} has no portable frozen source excerpt.`);
       return;
     }
-    // Scan scoped compile: the top scene carries bands only down to its focus's
-    // depth, so a deeper scope can be absent and a lens drill would dead-end. When
-    // it is, re-enter the guarded compile seam (activeCreateScene → guardScanCompile)
-    // for the target scope, reset the now-stale lens session, and frame in. Below
-    // the gate every band is present so this never fires (Okie/golden untouched).
-    // Inspector-history mode was already applied above, so 'preserve' survives.
-    const drillDetail = scanFixture ? scanDrillDeeperDetail(scene, target) : undefined;
+    // Scan scoped compile (CLA-66): the current scene carries only the current
+    // band + one-down prefetch, so a deeper neighborhood is absent and a lens
+    // drill would dead-end. Re-enter the guarded compile seam for the target
+    // scope (snapshot children, not the compiled scene). Inspector-history mode
+    // was already applied above, so 'preserve' survives.
+    const drillDetail = scanFixture ? scanDrillDeeperDetail(scene, target, activeSnapshot) : undefined;
     if (drillDetail) {
       interruptStory(`Opened ${target.name}`);
       cancelSemanticLensAt('scan drill recompile', liveCamera);
@@ -3380,8 +3413,8 @@ export function App() {
     return safe;
   }
 
-  function semanticStorySession(step: AppStoryPlanStep): SemanticLensSession {
-    return semanticLevelSession(scene, step.reveal, step.focusEntityIds);
+  function semanticStorySession(step: AppStoryPlanStep, storyScene = scene): SemanticLensSession {
+    return semanticLevelSession(storyScene, step.reveal, step.focusEntityIds);
   }
 
   function installStorySemanticProgress(active: ActiveStoryFlight, easedCameraProgress: number) {
@@ -3400,8 +3433,21 @@ export function App() {
     const step = story.steps[bounded];
     const liveCamera = abortInspectorCameraFlight();
     setInspectorHistory([]);
+    const compileFocus = scanFixture
+      ? scanCompileFocusForBand(
+          activeSnapshot,
+          step.focusEntityIds[0] ?? scanFixture.navigation.rootEntityId,
+          step.reveal,
+          scanFixture.navigation.rootEntityId,
+        )
+      : navigationIdentity.rootEntityId;
+    const stepScene = scanFixture ? composeScene(compileFocus, scene, authoringHistoryRef.current.present) : scene;
+    if (stepScene !== scene) {
+      setScene(stepScene);
+      setNavigationIdentity(current => ({ ...current, rootEntityId: compileFocus }));
+    }
     const sourceSession = collapseInspectorFlightSession(semanticLensSessionRef.current);
-    const targetSession = semanticStorySession(step);
+    const targetSession = semanticStorySession(step, stepScene);
     installSemanticSession(sourceSession);
     const existingFlight = storyFlightRef.current;
     const sourceFocusedIds = existingFlight && storyFlightSample
@@ -3427,7 +3473,7 @@ export function App() {
     setStoryInterruption(undefined);
     setStorySelectionOverride(false);
     setReturnToStoryFrameRequired(false);
-    const framing = frameSemanticEntities(scene, step.focusEntityIds, step.reveal, viewport, measureCurrentStorySafeArea());
+    const framing = frameSemanticEntities(stepScene, step.focusEntityIds, step.reveal, viewport, measureCurrentStorySafeArea());
     const nextCamera = framing ?? liveCamera;
     activeLevelRef.current = semanticDetails.indexOf(step.reveal);
     const now = performance.now();
@@ -3470,6 +3516,7 @@ export function App() {
     const canonicalSession = reduceMotion ? targetSession : sourceSession;
     commitNavigation(canonicalNavigationState({
       ...navigationRef.current,
+      rootEntityId: compileFocus,
       camera: reduceMotion ? nextCamera : liveCamera,
       detail: canonicalSession.baseDetail,
       lensPath: semanticLensCanonicalPathIds(canonicalSession),
@@ -3479,6 +3526,15 @@ export function App() {
         positionMs: encodeStoryPosition(bounded, reduceMotion ? 'arrival' : 'flight', 0, flight.canonicalDurationMs),
       },
     }, navigationDefaults), historyMode);
+    const upcoming = story.steps[(bounded + 1) % story.steps.length];
+    if (upcoming && scanFixture) {
+      prefetchCommittedBox(scanCompileFocusForBand(
+        activeSnapshot,
+        upcoming.focusEntityIds[0] ?? scanFixture.navigation.rootEntityId,
+        upcoming.reveal,
+        scanFixture.navigation.rootEntityId,
+      ));
+    }
     setLiveMessage(reduceMotion
       ? `Story step ${bounded + 1} of ${story.steps.length}: ${step.title}. Applying destination.`
       : `Moving to story step ${bounded + 1} of ${story.steps.length}: ${step.title}.`);

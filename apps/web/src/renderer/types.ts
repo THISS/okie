@@ -106,9 +106,9 @@ export type ScopedCompileInfo = {
   directFallbackCount: number;
 };
 
-/** Set when the scan-mode compile guard refused an unbounded above-gate focus
- *  (a full-graph compile — the deep-link hang vector) and substituted a safe
- *  scoped scene. Dev-diagnostics only; absent on every below-gate/normal compile. */
+/** Set when the scan-mode compile guard refused an unbounded above-hang-guard
+ *  focus (a full-graph compile — the deep-link hang vector) and substituted a
+ *  safe scoped scene. Dev-diagnostics only; absent on a normal scoped compile. */
 export type ScanGuardRefusal = {
   /** The focus the caller asked for (would have compiled the whole graph). */
   requestedFocusId: string;
@@ -121,8 +121,8 @@ export type ScanGuardRefusal = {
 };
 
 /** Set when a scan-mode "Open inside" re-entered the guarded compile seam because
- *  the target's deeper band was scoped out of the top scene (so a lens drill would
- *  dead-end). Dev-diagnostics only; absent on every below-gate/lens drill. */
+ *  the target's deeper band was scoped out of the current neighborhood (so a lens
+ *  drill would dead-end). Dev-diagnostics only; absent on a plain lens drill. */
 export type ScanDrillRecompile = {
   /** The entity drilled into (now the recompiled scene's focus/root). */
   targetId: string;
@@ -156,8 +156,8 @@ export type AtlasScene = {
   /** Present when the scan compile guard refused the requested focus and fell
    *  back to a safe scene (dev diagnostics only; absent normally). */
   scanGuardRefusal?: ScanGuardRefusal;
-  /** Present when a scan drill recompiled a scoped-out deeper scope (dev
-   *  diagnostics only; absent on lens drills and below the gate). */
+  /** Present when a scan drill recompiled a scoped-out deeper neighborhood (dev
+   *  diagnostics only; absent on a plain lens drill). */
   scanDrillRecompile?: ScanDrillRecompile;
   projection?: {
     /** Compiler projection-family identifier used to scope durable route intent. */
