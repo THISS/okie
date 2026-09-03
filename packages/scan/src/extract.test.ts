@@ -12,6 +12,10 @@ import {
   dynamicImports,
   extractArchitecture,
   attachCyclomaticComplexity,
+  attachDuplicateRelations,
+  cloneFingerprintForDeclaration,
+  clonePairsFromEntities,
+  MIN_CLONE_TOKENS,
   moduleImports,
   parseSource,
   resolvePackageImport,
@@ -597,3 +601,97 @@ test("cyclomatic overlay writes the number onto existing snapshot entities only"
   assert.equal(overlaid.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alias")?.cyclomaticComplexity, undefined);
   assert.equal(overlaid.entities.some(entity => entity.id === "code:invented"), false);
 });
+
+const cloneSource = (name: string, param: string): string => [
+  `export function ${name}(${param}: number): number {`,
+  `  if (${param} > 0) {`,
+  `    const next = ${param} + 1;`,
+  `    if (next % 2 === 0) return next * 3;`,
+  `    return next - 1;`,
+  `  }`,
+  `  return 0;`,
+  `}`,
+].join("\n");
+
+test("token/AST clone walk matches Type-2 function bodies on the same createSourceFile tree", () => {
+  assert.ok(MIN_CLONE_TOKENS >= 16);
+  const alpha = cloneFingerprintForDeclaration(declarationNamed(`${cloneSource("alpha", "value")}\n`, "alpha"));
+  const beta = cloneFingerprintForDeclaration(declarationNamed(`${cloneSource("beta", "count")}\n`, "beta"));
+  const different = cloneFingerprintForDeclaration(declarationNamed([
+    "export function gamma(value: number): number {",
+    "  if (value < 0) return value;",
+    "  return value + 4;",
+    "}",
+  ].join("\n"), "gamma"));
+  assert.ok(alpha);
+  assert.equal(alpha, beta, "renamed identifiers still clone");
+  assert.notEqual(alpha, different);
+  assert.equal(cloneFingerprintForDeclaration(declarationNamed("export function tiny() { return 1; }\n", "tiny")), undefined);
+  assert.equal(cloneFingerprintForDeclaration(declarationNamed("export type Alias = string;\n", "Alias")), undefined);
+  assert.equal(cloneFingerprintForDeclaration(declarationNamed("export const A = 1;\n", "A")), undefined);
+  assert.equal(cloneFingerprintForDeclaration(declarationNamed("export class Cls { m() { if (true) { return 1; } } }\n", "Cls")), undefined);
+});
+
+test("extract emits duplicates between existing code ids only and does not mint clone nodes", () => {
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "pkg/a/src/index.ts": `${cloneSource("alpha", "value")}\nexport const A = 1;\nexport type Alias = string;\n`,
+    "pkg/b/src/main.ts": `${cloneSource("beta", "count")}\nexport class Beta {}\n`,
+  };
+  const collected = collectExtractedArchitecture({
+    discovery: syntheticDiscovery(),
+    readFile: path => {
+      const text = files[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    },
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  const extraction = collected.extraction;
+  assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  assert.equal(extraction.relations.some(relation => relation.kind === "duplicates"), false, "extraction stays overlay-free");
+  const ids = extraction.entities.map(entity => entity.id).sort();
+  const alpha = extraction.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alpha")!;
+  const beta = extraction.entities.find(entity => entity.id === "code:pkg-b-src-main-ts:beta")!;
+  const alias = extraction.entities.find(entity => entity.id === "code:pkg-a-src-index-ts:alias")!;
+  assert.deepEqual(collected.clonePairs, [{ from: alpha.id, to: beta.id }]);
+  assert.ok(collected.clonePairs.every(pair => ids.includes(pair.from) && ids.includes(pair.to)));
+  assert.equal(ids.includes("code:invented"), false);
+  const recomputed = clonePairsFromEntities(extraction.entities, path => {
+    const text = files[path];
+    if (text === undefined) throw new Error(`missing ${path}`);
+    return text;
+  });
+  assert.deepEqual(recomputed, collected.clonePairs);
+  assert.equal(alias.kind, "code");
+});
+
+test("duplicates overlay writes edges onto existing snapshot ids only", () => {
+  const snapshot = {
+    schemaVersion: 1 as const,
+    id: "snapshot:acme",
+    repositoryId: "repo:acme",
+    commitSha: "abc123",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    entities: [
+      { id: "system:acme", kind: "softwareSystem" as const, name: "Acme", sourceRefs: [] },
+      { id: "code:pkg-a-src-index-ts:alpha", kind: "code" as const, name: "alpha", sourceRefs: [{ path: "pkg/a/src/index.ts", commitSha: "abc123", symbol: "alpha", startLine: 1, endLine: 8 }] },
+      { id: "code:pkg-b-src-main-ts:beta", kind: "code" as const, name: "beta", sourceRefs: [{ path: "pkg/b/src/main.ts", commitSha: "abc123", symbol: "beta", startLine: 1, endLine: 8 }] },
+    ],
+    relations: [],
+  };
+  const overlaid = attachDuplicateRelations(snapshot, [
+    { from: "code:pkg-a-src-index-ts:alpha", to: "code:pkg-b-src-main-ts:beta" },
+    { from: "code:invented", to: "code:pkg-a-src-index-ts:alpha" },
+    { from: "code:pkg-a-src-index-ts:alpha", to: "system:acme" },
+  ]);
+  assert.deepEqual(overlaid.entities.map(entity => entity.id), snapshot.entities.map(entity => entity.id));
+  assert.equal(overlaid.entities.some(entity => entity.id === "code:invented"), false);
+  assert.equal(overlaid.relations.length, 1);
+  assert.equal(overlaid.relations[0]!.kind, "duplicates");
+  assert.equal(overlaid.relations[0]!.from, "code:pkg-a-src-index-ts:alpha");
+  assert.equal(overlaid.relations[0]!.to, "code:pkg-b-src-main-ts:beta");
+  assert.equal(overlaid.relations[0]!.label, "duplicates");
+});
+

@@ -69,7 +69,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorDuplicates, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1421,6 +1421,10 @@ export function App() {
   const selectedSummary = inspectorAcceptedSummary(selected);
   const selectedOwners = inspectorPathOwners(selected);
   const selectedCyclomatic = inspectorCyclomatic(selected);
+  const selectedDuplicates = useMemo(
+    () => inspectorDuplicates(selected.id, activeSnapshot.relations, activeSnapshot.entities),
+    [activeSnapshot.entities, activeSnapshot.relations, selected.id],
+  );
   const localWorkspace = useMemo<LocalWorkspaceContext | undefined>(() => {
     const injected = (window as Window & { __OKIE_LOCAL_WORKSPACE__?: LocalWorkspaceContext }).__OKIE_LOCAL_WORKSPACE__;
     return injected ?? (configuredRepositoryRoot ? { repositoryRoot: configuredRepositoryRoot } : undefined);
@@ -3602,6 +3606,7 @@ export function App() {
             cyclomaticComplexity: selectedCyclomatic.complexity,
             cyclomaticFlagged: selectedCyclomatic.flagged,
           } : {}),
+          ...(selectedDuplicates.length ? { duplicates: selectedDuplicates } : {}),
         },
       } : {}),
       tourPlaying: atlasTourPlaying({ storyStep, storyPlaying, storyPhase }),
@@ -3925,13 +3930,43 @@ export function App() {
     const text = question.trim();
     if (!text || askPending) return;
     const context = buildAskContext({
-      entities: scene.entities,
-      relations: scene.relations.map(relation => ({
-        id: relation.id,
-        from: relation.from,
-        to: relation.to,
-        ...(relation.label ? { label: relation.label } : {}),
+      entities: scene.entities.map(entity => ({
+        id: entity.id,
+        ...(entity.parentId ? { parentId: entity.parentId } : {}),
+        name: entity.name,
+        kind: entity.kind,
+        ...(entity.responsibility ? { responsibility: entity.responsibility } : {}),
+        ...(entity.source ? { source: entity.source } : {}),
+        ...(typeof entity.cyclomaticComplexity === 'number' ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
+        duplicates: inspectorDuplicates(entity.id, activeSnapshot.relations, activeSnapshot.entities),
       })),
+      relations: (() => {
+        const seen = new Set<string>();
+        const rows: Array<{ id: string; from: string; to: string; label?: string }> = [];
+        const push = (relation: { id: string; from: string; to: string; label?: string }) => {
+          if (seen.has(relation.id)) return;
+          seen.add(relation.id);
+          rows.push(relation);
+        };
+        for (const relation of scene.relations) {
+          push({
+            id: relation.id,
+            from: relation.from,
+            to: relation.to,
+            ...(relation.label ? { label: relation.label } : {}),
+          });
+        }
+        for (const relation of activeSnapshot.relations) {
+          if (relation.kind !== 'duplicates') continue;
+          push({
+            id: relation.id,
+            from: relation.from,
+            to: relation.to,
+            label: relation.label ?? 'duplicates',
+          });
+        }
+        return rows;
+      })(),
       selectedId,
       isolateActive: visibilityMode === 'isolate',
       isolatedIds: isolatedEntityIds,
@@ -4595,7 +4630,7 @@ export function App() {
                 <button className="secondary-detail-action" disabled={!authoringEnabled || !selectedRouteOverride} onClick={resetSelectedRelationshipRoute}>Auto route</button>
                 <button className="danger-detail-action" disabled={!authoringEnabled} onClick={deleteSelectedRelationship}>Delete relationship</button>
               </div>}
-            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-has-owners={selectedOwners.length ? 'true' : 'false'} data-inspector-has-cyclomatic={selectedCyclomatic ? 'true' : 'false'} data-inspector-cyclomatic-flagged={selectedCyclomatic?.flagged ? 'true' : 'false'} data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'} data-inspector-presentation="entity">
+            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-has-owners={selectedOwners.length ? 'true' : 'false'} data-inspector-has-cyclomatic={selectedCyclomatic ? 'true' : 'false'} data-inspector-cyclomatic-flagged={selectedCyclomatic?.flagged ? 'true' : 'false'} data-inspector-has-duplicates={selectedDuplicates.length ? 'true' : 'false'} data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'} data-inspector-presentation="entity">
               <header className="entity-hero">
                 <div className="entity-kicker"><span>{selectedLevelLabel}</span><small className={`provenance-badge tone-${selectedProvenance.tone}`}>{selectedProvenance.badge}</small></div>
                 <h2 id="inspector-entity-title">{selected.name}</h2>
@@ -4628,6 +4663,14 @@ export function App() {
                   <span className={selectedCyclomatic.flagged ? 'signal' : undefined}>McCabe {selectedCyclomatic.complexity}</span>
                   {selectedCyclomatic.flagged ? <span className="signal">Over 6</span> : null}
                 </div>
+              </section> : null}
+
+              {selectedDuplicates.length > 0 ? <section className="detail-section duplicates-section" data-inspector-section="duplicates">
+                <div className="section-title"><h3>Duplicates</h3><span>{selectedDuplicates.length}</span></div>
+                <div aria-label="Clone duplicates" className="inspector-link-list" data-testid="inspector-duplicates">{selectedDuplicates.map(counterpart => {
+                  const entity = scene.entities.find(candidate => candidate.id === counterpart.id);
+                  return <button data-inspector-duplicate-id={counterpart.id} disabled={!entity} key={counterpart.id} onClick={() => entity && focusEntity(entity, 'replace', 'preserve', 'auto', 'panel')} type="button"><span><strong>{counterpart.name}</strong><small>duplicates</small></span><ArrowIcon size={15}/></button>;
+                })}</div>
               </section> : null}
 
               <section className="detail-section diagrams-section">

@@ -27,6 +27,7 @@ export type AskEntity = {
   responsibility?: string;
   source?: string;
   cyclomaticComplexity?: number;
+  duplicates?: Array<{ id: string; name: string }>;
 };
 
 export type AskSceneRelation = {
@@ -45,6 +46,7 @@ export type AskPacket = {
   source?: string;
   cyclomaticComplexity?: number;
   cyclomaticFlagged?: boolean;
+  duplicates?: Array<{ id: string; name: string }>;
 };
 
 export type AskRelation = {
@@ -235,6 +237,9 @@ function toPacket(entity: AskEntity): AskPacket {
   const summary = inspectorAcceptedSummary(entity);
   const complexity = entity.cyclomaticComplexity;
   const hasCyclomatic = typeof complexity === 'number' && Number.isInteger(complexity) && complexity >= 1;
+  const duplicates = (entity.duplicates ?? [])
+    .filter(row => typeof row.id === 'string' && row.id && typeof row.name === 'string' && row.name.trim())
+    .map(row => ({ id: row.id, name: row.name.trim() }));
   return {
     id: entity.id,
     name: entity.name,
@@ -246,6 +251,7 @@ function toPacket(entity: AskEntity): AskPacket {
       cyclomaticComplexity: complexity,
       cyclomaticFlagged: complexity > CYCLOMATIC_FLAG_THRESHOLD,
     } : {}),
+    ...(duplicates.length ? { duplicates } : {}),
   };
 }
 

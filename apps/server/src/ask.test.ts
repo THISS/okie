@@ -187,6 +187,38 @@ test("Ask keeps observed cyclomatic on packets and derives the >6 flag", () => {
   assert.equal("apiKey" in (kept[0] as object), false);
 });
 
+test("Ask keeps observed clone duplicates on packets", () => {
+  const kept = sanitizeAskPackets([
+    {
+      id: "code:alpha",
+      name: "alpha",
+      kind: "code",
+      duplicates: [
+        { id: "code:beta", name: "beta" },
+        { id: "code:beta", name: "again" },
+        { id: "", name: "ghost" },
+      ],
+      apiKey: FAKE_GATEWAY_KEY,
+    },
+    {
+      id: "component:web-shell",
+      name: "Application shell",
+      kind: "component",
+    },
+  ]);
+  assert.deepEqual(kept.find(packet => packet.id === "code:alpha")?.duplicates, [
+    { id: "code:beta", name: "beta" },
+  ]);
+  assert.equal(kept.find(packet => packet.id === "component:web-shell")?.duplicates, undefined);
+  const body = askChatCompletionsBody("acme/fast", "Which functions are clones?", kept, [
+    { id: "relation:dup:alpha-beta", from: "code:alpha", to: "code:beta", label: "duplicates" },
+  ]);
+  const user = (body.messages as Array<{ content: string }>)[1]!.content;
+  assert.match(user, /"duplicates"/);
+  assert.match(user, /"label": "duplicates"/);
+  assert.doesNotMatch(JSON.stringify(body), new RegExp(FAKE_GATEWAY_KEY));
+});
+
 test("Ask strips planted GitHub tokens from packet summaries before the gateway body", () => {
   const dirty = sanitizeAskPackets([{
     id: "container:web-app",

@@ -5,6 +5,7 @@ import {
   inspectorAcceptedSummary,
   inspectorCanShowSource,
   inspectorCyclomatic,
+  inspectorDuplicates,
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
@@ -354,6 +355,69 @@ describe('inspector cyclomatic complexity (CLA-49)', () => {
       'code:simple',
       'code:tangled',
     ]);
+  });
+});
+
+describe('inspector clone duplicates (CLA-61)', () => {
+  it('lists existing counterpart ids from duplicates edges and ignores invented ids', () => {
+    expect(inspectorDuplicates('code:alpha', [
+      { from: 'code:alpha', to: 'code:beta', kind: 'duplicates' },
+      { from: 'code:invented', to: 'code:alpha', kind: 'duplicates' },
+      { from: 'code:alpha', to: 'code:gamma', kind: 'uses' },
+    ], [
+      { id: 'code:alpha', name: 'alpha' },
+      { id: 'code:beta', name: 'beta' },
+    ])).toEqual([{ id: 'code:beta', name: 'beta' }]);
+    expect(inspectorDuplicates('code:alpha', [], [{ id: 'code:alpha', name: 'alpha' }])).toEqual([]);
+    expect(inspectorDuplicates(undefined, [{ from: 'code:alpha', to: 'code:beta', kind: 'duplicates' }], [])).toEqual([]);
+  });
+
+  it('does not invent clones on the golden atlas and carries scan overlay onto compiled L4 nodes', () => {
+    const golden = createGoldenC4Scene();
+    expect(inspectorDuplicates(
+      golden.entities.find(entity => entity.id === 'code:web-shell:app')?.id,
+      [],
+      golden.entities,
+    )).toEqual([]);
+
+    const snapshot = scanSnapshot(
+      [
+        scanEntity('system:app', 'softwareSystem'),
+        scanEntity('container:web', 'container', 'system:app'),
+        scanEntity('component:web-x', 'component', 'container:web'),
+        scanEntity('code:alpha', 'code', 'component:web-x'),
+        scanEntity('code:beta', 'code', 'component:web-x'),
+        scanEntity('code:alias', 'code', 'component:web-x'),
+      ],
+      [{
+        id: 'relation:dup:alpha-beta',
+        from: 'code:alpha',
+        to: 'code:beta',
+        kind: 'duplicates',
+        label: 'duplicates',
+        evidence: [],
+      }],
+    );
+    const scene = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    expect(inspectorDuplicates('code:alpha', snapshot.relations, scene.entities)).toEqual([{ id: 'code:beta', name: 'code:beta' }]);
+    expect(inspectorDuplicates('code:beta', snapshot.relations, scene.entities)).toEqual([{ id: 'code:alpha', name: 'code:alpha' }]);
+    expect(inspectorDuplicates('code:alias', snapshot.relations, scene.entities)).toEqual([]);
+    expect(scene.entities.map(entity => entity.id).filter(id => id.startsWith('code:')).sort()).toEqual([
+      'code:alias',
+      'code:alpha',
+      'code:beta',
+    ]);
+    expect(scene.projection?.projectedRelationsByDetail.code.some(relation => relation.kindLabel === 'duplicates')).toBe(true);
+    expect(scene.projection?.projectedRelationsByDetail.context.some(relation => relation.kindLabel === 'duplicates')).toBe(false);
   });
 });
 

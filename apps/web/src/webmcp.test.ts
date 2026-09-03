@@ -185,6 +185,7 @@ describe('WebMCP foundation (CLA-40)', () => {
     expect(app).toContain('atlasTourPlaying({ storyStep, storyPlaying, storyPhase })');
     expect(app).toContain('selectedEntity:');
     expect(app).toContain('cyclomaticComplexity: selectedCyclomatic.complexity');
+    expect(app).toContain('duplicates: selectedDuplicates');
     expect(app).not.toMatch(/document\.domain\s*=/);
     expect(app).not.toContain('registerWebMcpLandingTools');
 
@@ -856,6 +857,54 @@ describe('WebMCP page context (CLA-43)', () => {
         detail: 'code',
         cyclomaticComplexity: 7,
         cyclomaticFlagged: true,
+      },
+      tourPlaying: false,
+      enrichmentStatus: 'none',
+      scanAvailable: false,
+      askAvailable: true,
+    });
+    expect(after).not.toHaveProperty('apiKey');
+    expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[0]);
+    expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[1]);
+  });
+
+  it('returns selected-entity clone duplicates on get_atlas_context and drops planted secrets', async () => {
+    bindFakeAtlas({
+      readContext: () => ({
+        ...defaultContext({
+          c4Level: 'code',
+          selectedEntityId: 'code:pkg-a-src-index-ts:alpha',
+          selectedEntity: {
+            id: 'code:pkg-a-src-index-ts:alpha',
+            name: 'alpha',
+            kind: 'Source',
+            detail: 'code',
+            duplicates: [
+              { id: 'code:pkg-b-src-main-ts:beta', name: 'beta' },
+              { id: 'code:invented', name: 'ghost' },
+            ],
+            apiKey: PLANTED_SECRETS[0],
+          } as AtlasPageContextInput['selectedEntity'],
+        }),
+        OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+      } as AtlasPageContextInput),
+    });
+    const after = await GET_ATLAS_CONTEXT_TOOL.execute({ GITHUB_TOKEN: PLANTED_SECRETS[1] });
+    expect(after).toEqual({
+      ok: true,
+      tool: GET_ATLAS_CONTEXT_TOOL_NAME,
+      atlas: { fixtureId: 'okie' },
+      c4Level: 'code',
+      selectedEntityId: 'code:pkg-a-src-index-ts:alpha',
+      selectedEntity: {
+        id: 'code:pkg-a-src-index-ts:alpha',
+        name: 'alpha',
+        kind: 'Source',
+        detail: 'code',
+        duplicates: [
+          { id: 'code:pkg-b-src-main-ts:beta', name: 'beta' },
+          { id: 'code:invented', name: 'ghost' },
+        ],
       },
       tourPlaying: false,
       enrichmentStatus: 'none',

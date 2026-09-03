@@ -131,6 +131,49 @@ export function inspectorCyclomatic(
   return { complexity: value, flagged: value > CYCLOMATIC_FLAG_THRESHOLD };
 }
 
+export type InspectorDuplicateCounterpart = {
+  id: string;
+  name: string;
+};
+
+export type InspectorDuplicateRelation = {
+  from: string;
+  to: string;
+  kind?: string;
+};
+
+export type InspectorDuplicateEntity = {
+  id: string;
+  name: string;
+};
+
+/**
+ * Observed token/AST clone counterparts for an L4 code entity. Snapshot
+ * `duplicates` edges only — invented ids never appear.
+ */
+export function inspectorDuplicates(
+  selectedId: string | undefined,
+  relations: readonly InspectorDuplicateRelation[],
+  entities: readonly InspectorDuplicateEntity[],
+): InspectorDuplicateCounterpart[] {
+  if (!selectedId) return [];
+  const names = new Map(entities.map(entity => [entity.id, entity.name]));
+  const counterparts = new Map<string, string>();
+  for (const relation of relations) {
+    if (relation.kind !== 'duplicates') continue;
+    const other = relation.from === selectedId
+      ? relation.to
+      : relation.to === selectedId
+        ? relation.from
+        : undefined;
+    if (!other || other === selectedId || !names.has(other)) continue;
+    counterparts.set(other, names.get(other)!);
+  }
+  return [...counterparts.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([id, name]) => ({ id, name }));
+}
+
 /**
  * Completeness noise (missing descriptions, technology, labels) can number in
  * the thousands on a self-scan. Structural / invalid notation still has to

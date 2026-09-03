@@ -4,6 +4,7 @@ export {
   inspectorAcceptedSummary,
   inspectorCanShowSource,
   inspectorCyclomatic,
+  inspectorDuplicates,
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,

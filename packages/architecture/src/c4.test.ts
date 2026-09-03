@@ -93,3 +93,27 @@ test('materialized projections are sorted, laid out and export-ready', async () 
   assert.ok(component.nodes.every(node => node.bounds.width > 0 && node.bounds.height > 0));
   assert.ok(component.edges.every(edge => edge.route.points.length >= 2));
 });
+
+test('duplicates relations stay on the code band and do not lift to L1–L3', async () => {
+  const source = await snapshot();
+  const from = source.entities.find(entity => entity.kind === 'code')!;
+  const to = source.entities.find(entity => entity.kind === 'code' && entity.id !== from.id)!;
+  const bundle = buildC4ProjectionBundle({
+    ...source,
+    relations: [...source.relations, {
+      id: 'relation:dup:code-pair',
+      from: from.id,
+      to: to.id,
+      kind: 'duplicates',
+      label: 'duplicates',
+      evidence: [{ source: { path: 'src/a.ts', commitSha: source.commitSha } }],
+    }],
+  }, { rootEntityId: 'system:okie', focusEntityId: 'system:okie' });
+
+  const kindsOn = (band: typeof C4_BANDS[number]) =>
+    selectC4BandProjection(bundle, band).edges.flatMap(edge => edge.aggregate.kinds);
+  assert.equal(kindsOn('context').includes('duplicates'), false);
+  assert.equal(kindsOn('container').includes('duplicates'), false);
+  assert.equal(kindsOn('component').includes('duplicates'), false);
+  assert.equal(kindsOn('code').includes('duplicates'), true);
+});

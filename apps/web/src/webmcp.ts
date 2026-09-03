@@ -173,7 +173,7 @@ export const ASK_ATLAS_INPUT_SCHEMA = {
 export const GET_ATLAS_CONTEXT_TOOL_NAME = 'get_atlas_context';
 export const GET_ATLAS_CONTEXT_TOOL_TITLE = 'Get atlas context';
 export const GET_ATLAS_CONTEXT_TOOL_DESCRIPTION =
-  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity (including observed cyclomatic complexity when present), whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
+  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity (including observed cyclomatic complexity and clone duplicates when present), whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
 
 export const GET_ATLAS_CONTEXT_INPUT_SCHEMA = {
   type: 'object',
@@ -200,6 +200,7 @@ export type AtlasSelectedEntityFacts = {
   detail?: C4Level;
   cyclomaticComplexity?: number;
   cyclomaticFlagged?: boolean;
+  duplicates?: Array<{ id: string; name: string }>;
 };
 
 export type AtlasPageContextInput = {
@@ -574,6 +575,23 @@ function publicSelectedEntity(value: AtlasSelectedEntityFacts | null | undefined
     && value.cyclomaticComplexity >= 1) {
     facts.cyclomaticComplexity = value.cyclomaticComplexity;
     facts.cyclomaticFlagged = value.cyclomaticComplexity > CYCLOMATIC_FLAG_THRESHOLD;
+  }
+  if (Array.isArray(value.duplicates)) {
+    const duplicates: Array<{ id: string; name: string }> = [];
+    const seen = new Set<string>();
+    for (const row of value.duplicates) {
+      if (duplicates.length >= 16) break;
+      if (!row || typeof row !== 'object') continue;
+      const counterpart = row as { id?: unknown; name?: unknown };
+      const counterpartId = publicSelectedEntityId(typeof counterpart.id === 'string' ? counterpart.id : null);
+      const counterpartName = typeof counterpart.name === 'string'
+        ? counterpart.name.trim().slice(0, SELECTED_ENTITY_NAME_MAX)
+        : '';
+      if (!counterpartId || !counterpartName || seen.has(counterpartId)) continue;
+      seen.add(counterpartId);
+      duplicates.push({ id: counterpartId, name: counterpartName });
+    }
+    if (duplicates.length) facts.duplicates = duplicates;
   }
   return facts;
 }

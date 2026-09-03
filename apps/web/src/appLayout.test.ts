@@ -199,6 +199,15 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('Over 6');
   });
 
+  it('renders observed clone duplicates in Details from existing L4 ids', () => {
+    expect(app).toContain('inspectorDuplicates(selected.id, activeSnapshot.relations, activeSnapshot.entities)');
+    expect(app).toContain("data-inspector-has-duplicates={selectedDuplicates.length ? 'true' : 'false'}");
+    expect(app).toContain("data-inspector-section=\"duplicates\"");
+    expect(app).toContain('<h3>Duplicates</h3>');
+    expect(app).toContain('data-testid="inspector-duplicates"');
+    expect(app).toContain('data-inspector-duplicate-id={counterpart.id}');
+  });
+
   it('samples C4 completeness advisories in Details instead of dumping the full list', () => {
     expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics');
     expect(app).toContain('inspectorNotationScope({');

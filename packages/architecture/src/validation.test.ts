@@ -67,6 +67,46 @@ test("accepts McCabe cyclomatic on code entities and rejects it elsewhere", () =
   assert.ok(validateSnapshot(fractional).some(issue => issue.path.endsWith("cyclomaticComplexity") && issue.message.includes("integer")));
 });
 
+test("accepts duplicates relations between code entities and rejects them elsewhere", () => {
+  const withCode: ArchitectureSnapshot = {
+    ...snapshot,
+    entities: [
+      ...snapshot.entities,
+      {
+        id: "code:api-alpha",
+        kind: "code",
+        parentId: "container:api",
+        name: "alpha",
+        sourceRefs: [{ path: "src/api.ts", commitSha: "abc123", symbol: "alpha", startLine: 12, endLine: 24 }],
+      },
+      {
+        id: "code:api-beta",
+        kind: "code",
+        parentId: "container:api",
+        name: "beta",
+        sourceRefs: [{ path: "src/other.ts", commitSha: "abc123", symbol: "beta", startLine: 8, endLine: 20 }],
+      },
+    ],
+    relations: [{
+      id: "relation:dup:alpha-beta",
+      from: "code:api-alpha",
+      to: "code:api-beta",
+      kind: "duplicates",
+      label: "duplicates",
+      evidence: [{ source: { path: "src/api.ts", commitSha: "abc123", symbol: "alpha", startLine: 12, endLine: 24 } }],
+    }],
+  };
+  assert.deepEqual(validateSnapshot(withCode), []);
+  const onContainer: ArchitectureSnapshot = {
+    ...withCode,
+    relations: [{
+      ...withCode.relations[0]!,
+      from: "container:api",
+    }],
+  };
+  assert.ok(validateSnapshot(onContainer).some(issue => issue.message.includes("duplicates relations must connect code entities")));
+});
+
 test("accepts coherent frozen excerpts and entities without source content", () => {
   const lines = ["export const café = '🗺️';", "export default café;"];
   const excerpt: SourceExcerpt = {
