@@ -292,7 +292,7 @@
     }
   ],
   "observed": {
-    "host": "cursor-cloud-agent",
+    "host": "unspecified",
     "note": "Wall-clock on one host. CI locks structure + generous ceilings, not these milliseconds.",
     "rows": [
       {

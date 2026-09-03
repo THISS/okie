@@ -14,7 +14,7 @@ Committed artifact: [`fixtures/architecture/band-cost-curve.json`](../../fixture
 - **Unbounded** is `maxBand` only — every visual edge in the band is routed. That is the hang the 2000-guard still exists to stop.
 - **Prefetch** is Open inside one layer down: one file-component neighborhood of 25 code children. It does not grow with the parent band.
 - **CPU frame** is a viewport cull of the compiled protocol scene (the work ProtocolEngine always does before GPU submit). Rasterization is measured live in the browser diagnostics pill (`Shift+Alt+D`).
-- Wall-clock samples are one Cursor cloud host. CI locks **structure** (node/edge/object/path/payload bytes) and generous ceilings, not these milliseconds.
+- Wall-clock samples are one measurement host. CI locks **structure** (node/edge/object/path/payload bytes) and generous ceilings, not these milliseconds.
 - Thresholds used to name healthy / fall-over: compile healthy `< 120ms`, fall-over `≥ 200ms`; payload healthy `< 500KB`, fall-over `≥ 1.5MB`; CPU frame healthy `< 8ms`, fall-over `≥ 16.7ms`; prefetch healthy `< 80ms`.
 
 ## Component-band curve (the expensive neighborhood)

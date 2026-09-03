@@ -133,7 +133,7 @@ const artifact = {
     ...(row.unbounded ? { unbounded: structuralFields(row.unbounded) } : {}),
   })),
   observed: {
-    host: "cursor-cloud-agent",
+    host: "unspecified",
     note: "Wall-clock on one host. CI locks structure + generous ceilings, not these milliseconds.",
     rows: rows.map(row => ({
       childCount: row.childCount,
