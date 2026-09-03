@@ -642,10 +642,10 @@ function duplicatesLoopWaypoints(
 /**
  * CLA-68: packed L4 siblings sit about two routing clearances apart, so the
  * default side-to-side orthogonal hop occupies the inter-card gutter. Prefer a
- * U along the parent routing-domain edge (bottom/right, then the opposite
- * side) so the stroke cannot sit in the packed 1px gutter. Far-apart clones
- * keep auto routing. This is intent on the existing router, not a packing or
- * router rewrite.
+ * U along the owner shell’s inner edge (bottom/right, then the opposite
+ * side) so the stroke cannot sit in the packed 1px gutter and stays inside
+ * the file box a person is looking at. Far-apart clones keep auto routing.
+ * This is intent on the existing router, not a packing or router rewrite.
  */
 function tightDuplicatesLoopIntent(
   source: NodeLayout,
@@ -767,7 +767,7 @@ export function routeC4BandEdgesDetailed(
         routerDiagnostic: guided.diagnostic,
       });
     } else if (edge.kind === 'duplicates') {
-      const loop = tightDuplicatesLoopIntent(source, target, options.clearance, domain);
+      const loop = tightDuplicatesLoopIntent(source, target, options.clearance, lcaBounds);
       const routed = loop
         ? routeOrthogonalWithIntent(routeOptions, loop)
         : undefined;
@@ -776,7 +776,7 @@ export function routeC4BandEdgesDetailed(
         : loop
           ? routeOrthogonalWithIntent(
             routeOptions,
-            tightDuplicatesLoopIntent(source, target, options.clearance, domain, true),
+            tightDuplicatesLoopIntent(source, target, options.clearance, lcaBounds, true),
           )
           : undefined;
       edges[edgeId] = {
