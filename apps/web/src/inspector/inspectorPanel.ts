@@ -161,7 +161,7 @@ export function inspectorDuplicates(
   const counterparts = new Map<string, string>();
   for (const relation of relations) {
     if (relation.kind !== 'duplicates') continue;
-    const other = relation.from === selectedId
+    const other: string | undefined = relation.from === selectedId
       ? relation.to
       : relation.to === selectedId
         ? relation.from

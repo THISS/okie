@@ -128,10 +128,11 @@ export function buildAskContext(options: AskScopeOptions): AskContext {
   const allowed = new Set(scopeIds);
   const byId = new Map(options.entities.map(entity => [entity.id, entity]));
   const packets: AskPacket[] = [];
+  const knownIds = new Set(options.entities.map(entity => entity.id));
   for (const id of scopeIds) {
     const entity = byId.get(id);
     if (!entity) continue;
-    packets.push(toPacket(entity));
+    packets.push(toPacket(entity, knownIds));
   }
   const relations: AskRelation[] = [];
   for (const relation of options.relations ?? []) {
@@ -233,12 +234,13 @@ export async function submitAskQuestion(
   }
 }
 
-function toPacket(entity: AskEntity): AskPacket {
+function toPacket(entity: AskEntity, knownIds: ReadonlySet<string>): AskPacket {
   const summary = inspectorAcceptedSummary(entity);
   const complexity = entity.cyclomaticComplexity;
   const hasCyclomatic = typeof complexity === 'number' && Number.isInteger(complexity) && complexity >= 1;
   const duplicates = (entity.duplicates ?? [])
-    .filter(row => typeof row.id === 'string' && row.id && typeof row.name === 'string' && row.name.trim())
+    .filter(row => knownIds.has(row.id) && row.id !== entity.id)
+    .filter(row => typeof row.name === 'string' && row.name.trim())
     .map(row => ({ id: row.id, name: row.name.trim() }));
   return {
     id: entity.id,

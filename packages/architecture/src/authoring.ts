@@ -69,7 +69,7 @@ export type ArchitectureAuthoringChange = {
 const DETAILS = new Set<StoryDetail>(['context', 'container', 'component', 'code']);
 const PORTS = new Set<OrthogonalSide>(['top', 'right', 'bottom', 'left']);
 const RELATION_KINDS = new Set<RelationKind>([
-  'uses', 'calls', 'reads', 'writes', 'publishes', 'subscribes', 'contains', 'dependsOn', 'returns', 'duplicates',
+  'uses', 'calls', 'reads', 'writes', 'publishes', 'subscribes', 'contains', 'dependsOn', 'returns',
 ]);
 
 function compareText(left: string, right: string): number {

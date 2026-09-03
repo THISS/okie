@@ -694,4 +694,3 @@ test("duplicates overlay writes edges onto existing snapshot ids only", () => {
   assert.equal(overlaid.relations[0]!.to, "code:pkg-b-src-main-ts:beta");
   assert.equal(overlaid.relations[0]!.label, "duplicates");
 });
-

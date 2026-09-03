@@ -165,6 +165,19 @@ describe('Ask packets carry accepted summaries only', () => {
     expect(context.packets.find(packet => packet.id === 'component:web-shell')?.duplicates).toBeUndefined();
     expect(context.relations.map(relation => relation.id)).toEqual(['relation:dup:alpha-beta']);
   });
+
+  it('drops invented duplicate counterpart ids that are not in the atlas entity set', () => {
+    const context = buildAskContext({
+      entities: [
+        { id: 'code:alpha', name: 'alpha', kind: 'component', duplicates: [{ id: 'code:invented', name: 'ghost' }, { id: 'code:beta', name: 'beta' }] },
+        { id: 'code:beta', name: 'beta', kind: 'component' },
+      ],
+      selectedId: 'code:alpha',
+      isolateActive: true,
+      isolatedIds: ['code:alpha'],
+    });
+    expect(context.packets.find(packet => packet.id === 'code:alpha')?.duplicates).toEqual([{ id: 'code:beta', name: 'beta' }]);
+  });
 });
 
 describe('Ask HTTP client', () => {

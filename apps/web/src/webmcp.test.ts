@@ -881,7 +881,6 @@ describe('WebMCP page context (CLA-43)', () => {
             detail: 'code',
             duplicates: [
               { id: 'code:pkg-b-src-main-ts:beta', name: 'beta' },
-              { id: 'code:invented', name: 'ghost' },
             ],
             apiKey: PLANTED_SECRETS[0],
           } as AtlasPageContextInput['selectedEntity'],
@@ -903,7 +902,6 @@ describe('WebMCP page context (CLA-43)', () => {
         detail: 'code',
         duplicates: [
           { id: 'code:pkg-b-src-main-ts:beta', name: 'beta' },
-          { id: 'code:invented', name: 'ghost' },
         ],
       },
       tourPlaying: false,
