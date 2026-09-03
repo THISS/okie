@@ -2827,18 +2827,20 @@ export function App() {
 
   function composeScene(focusEntityId: string, previous?: AtlasScene, authoring?: ArchitectureAuthoringDocument): AtlasScene {
     const imported = importedAtlasRef.current;
-    if (!imported) {
-      if (scanFixture && !authoring) {
-        const cached = neighborhoodScenesRef.current.get(focusEntityId);
-        if (cached) return cached;
-        const compiled = activeCreateScene(focusEntityId, previous);
-        neighborhoodScenesRef.current.set(focusEntityId, compiled);
-        return compiled;
-      }
-      return activeCreateScene(focusEntityId, previous, authoring);
+    if (imported) {
+      const matchingAuthoring = authoring?.repositoryId === imported.snapshot.repositoryId ? authoring : undefined;
+      return compileImportedMermaidScene(imported, previous, focusEntityId, matchingAuthoring);
     }
-    const matchingAuthoring = authoring?.repositoryId === imported.snapshot.repositoryId ? authoring : undefined;
-    return compileImportedMermaidScene(imported, previous, focusEntityId, matchingAuthoring);
+    // Scan snapshots are read-only; neighborhood cache is the CLA-66 prefetch.
+    // Authoring is golden-only and must not bypass the cache (callers always pass present).
+    if (scanFixture) {
+      const cached = neighborhoodScenesRef.current.get(focusEntityId);
+      if (cached) return cached;
+      const compiled = activeCreateScene(focusEntityId, previous);
+      neighborhoodScenesRef.current.set(focusEntityId, compiled);
+      return compiled;
+    }
+    return activeCreateScene(focusEntityId, previous, authoring);
   }
 
   /** Compile the next-band neighborhood without swapping the visible scene or moving the camera (CLA-11). */
