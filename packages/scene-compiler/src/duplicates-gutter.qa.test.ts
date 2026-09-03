@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   ASPECT_PRESET_TARGET,
+  C4_INTRINSIC_LAYOUT,
+  C4_SCAN_CODE_GAP_EXTRA_PX,
   buildC4ProjectionBundle,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
@@ -94,7 +96,7 @@ test('CLA-68: compiled L4 sibling duplicates leave the packed code-card gutter',
   const span = pathExtent(route.points);
   const longSpan = horizontal ? span.width : span.height;
   const loopSpan = horizontal ? span.height : span.width;
-  const packedGutter = clearance * 2;
+  const packedGutter = (C4_INTRINSIC_LAYOUT.gap + C4_SCAN_CODE_GAP_EXTRA_PX) / C4_ZOOM_BANDS[3]!.focusZoom;
 
   assert.ok(facing > 0, 'clone siblings must remain separate cards');
   assert.ok(facing <= packedGutter + 1e-6, `packed L4 gutter should stay the scan code gap (${facing.toFixed(3)} world)`);

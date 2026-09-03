@@ -191,6 +191,21 @@ export const C4_INTRINSIC_LAYOUT = {
 } as const;
 
 /**
+ * Scan-mode extra L4 sibling gap (CSS px at code focus zoom). Packed code
+ * cards otherwise sit two routing clearances apart, so a duplicates U is
+ * shorter than the renderer’s 6px corner rounding and collapses into a
+ * facing hop. Modest L4 packing bump (CLA-68); golden/demo (no
+ * targetAspect) stay byte-identical. Kept below the column-count change
+ * for okie’s own icons.tsx scan (4 columns through +32px).
+ */
+export const C4_SCAN_CODE_GAP_EXTRA_PX = 32;
+
+/** World-space packed-gutter ceiling for a tight L4 duplicates loop. */
+function packedDuplicatesGutter(clearance: number): number {
+  return clearance * 2 + clearance * (C4_SCAN_CODE_GAP_EXTRA_PX / 8);
+}
+
+/**
  * Discrete, compile-time aspect targets for grid packing. The CLIENT picks one at
  * compile-request time (e.g. from device orientation at bootstrap) and it travels
  * with the compiled scene as a deterministic parameter — the live viewport never
@@ -606,6 +621,19 @@ function facingGap(source: NodeLayout, target: NodeLayout): { axis: 'x' | 'y'; g
   return { axis: 'y', gap };
 }
 
+function duplicatesShareLane(
+  source: NodeLayout,
+  target: NodeLayout,
+  axis: 'x' | 'y',
+): boolean {
+  if (axis === 'x') {
+    return source.y < target.y + target.height - ROUTING_EPSILON
+      && target.y < source.y + source.height - ROUTING_EPSILON;
+  }
+  return source.x < target.x + target.width - ROUTING_EPSILON
+    && target.x < source.x + source.width - ROUTING_EPSILON;
+}
+
 function duplicatesLoopSide(axis: 'x' | 'y', flipped: boolean) {
   if (axis === 'x') return flipped ? 'top' as const : 'bottom' as const;
   return flipped ? 'left' as const : 'right' as const;
@@ -674,16 +702,17 @@ function tightDuplicatesLoopPoints(
   domain: NodeLayout | undefined,
 ): { x: number; y: number }[] | undefined {
   const facing = facingGap(source, target);
-  if (facing.gap < -ROUTING_EPSILON || facing.gap > clearance * 2 + ROUTING_EPSILON) {
+  if (facing.gap < -ROUTING_EPSILON || facing.gap > packedDuplicatesGutter(clearance) + ROUTING_EPSILON) {
     return undefined;
   }
+  if (!duplicatesShareLane(source, target, facing.axis)) return undefined;
   const primary = duplicatesLoopSide(facing.axis, false);
   const flipped = duplicatesLoopSide(facing.axis, true);
   const primaryRoom = duplicatesDomainRoom(source, target, clearance, domain, primary);
   const flippedRoom = duplicatesDomainRoom(source, target, clearance, domain, flipped);
-  const side = (!Number.isFinite(primaryRoom) || primaryRoom >= clearance || primaryRoom >= flippedRoom)
-    ? primary
-    : flipped;
+  const side = (Number.isFinite(primaryRoom) && primaryRoom < clearance && flippedRoom > primaryRoom)
+    ? flipped
+    : primary;
   const offset = duplicatesLoopOffset(source, target, clearance, domain, side);
   if (side === 'bottom' || side === 'top') {
     const x0 = source.x + source.width / 2;

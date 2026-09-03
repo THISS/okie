@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { NodeLayout, Point } from './model.js';
 import {
+  C4_SCAN_CODE_GAP_EXTRA_PX,
   routeC4BandEdgesDetailed,
   type BandProjection,
   type VisualEdge,
@@ -250,5 +251,63 @@ test('CLA-68: packed 2x2 duplicates stay in the pair gutter instead of the owner
   assert.ok(
     file.y + file.height - across.y > siblingGap * 4,
     'across must not hug the owner shell when another row occupies that edge',
+  );
+});
+
+test('CLA-68: diagonal 2x2 duplicates do not take a tight U through the other card', () => {
+  const packed2x2: Record<string, NodeLayout> = {
+    'visual:file': { x: -4, y: -8, width: 40, height: 40 },
+    'visual:alpha': { x: 0, y: 0, width: 16, height: 8 },
+    'visual:beta': { x: 16 + siblingGap, y: 0, width: 16, height: 8 },
+    'visual:gamma': { x: 0, y: 8 + siblingGap, width: 16, height: 8 },
+    'visual:delta': { x: 16 + siblingGap, y: 8 + siblingGap, width: 16, height: 8 },
+  };
+  const diagonal = {
+    ...edge('duplicates'),
+    fromVisualId: 'visual:alpha',
+    toVisualId: 'visual:delta',
+  };
+  const calls = {
+    ...edge('calls'),
+    fromVisualId: 'visual:alpha',
+    toVisualId: 'visual:delta',
+  };
+  const nodes = ['visual:file', 'visual:alpha', 'visual:beta', 'visual:gamma', 'visual:delta'];
+  const duplicates = routeC4BandEdgesDetailed(
+    { ...projection, visualNodeIds: nodes },
+    visualNodeById,
+    { 'visual-edge:dup': diagonal },
+    packed2x2,
+    { clearance, laneSpacing: 0.7, maxPoints: 16 },
+  ).edges['visual-edge:dup']!;
+  const auto = routeC4BandEdgesDetailed(
+    { ...projection, visualNodeIds: nodes },
+    visualNodeById,
+    { 'visual-edge:dup': calls },
+    packed2x2,
+    { clearance, laneSpacing: 0.7, maxPoints: 16 },
+  ).edges['visual-edge:dup']!;
+  assert.deepEqual(duplicates.points, auto.points);
+});
+
+test('CLA-68: scan-sized L4 gutter keeps the duplicates U taller than renderer corner rounding', () => {
+  const scanGap = (16 + C4_SCAN_CODE_GAP_EXTRA_PX) / focusZoom;
+  const packed: Record<string, NodeLayout> = {
+    'visual:file': { x: -4, y: -8, width: 16 * 2 + scanGap + 8, height: 24 },
+    'visual:alpha': { x: 0, y: 0, width: 16, height: 8 },
+    'visual:beta': { x: 16 + scanGap, y: 0, width: 16, height: 8 },
+  };
+  const duplicates = routeC4BandEdgesDetailed(
+    projection,
+    visualNodeById,
+    { 'visual-edge:dup': edge('duplicates') },
+    packed,
+    { clearance, laneSpacing: 0.7, maxPoints: 16 },
+  ).edges['visual-edge:dup']!;
+  const span = extent(duplicates.points);
+  const enterZoom = 7.1;
+  assert.ok(
+    span.height * enterZoom >= 16,
+    `scan duplicates U must survive 6px corner rounding (height ${span.height.toFixed(3)} world, ${ (span.height * enterZoom).toFixed(1) }px at code enter)`,
   );
 });
