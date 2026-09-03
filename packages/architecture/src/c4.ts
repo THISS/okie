@@ -14,9 +14,9 @@ import {
   expandRoutingRect,
   routeOrthogonal,
   routeOrthogonalWithIntent,
+  simplifyOrthogonalPoints,
   type GuidedOrthogonalRouteReason,
   type OrthogonalRouteDiagnostic,
-  type OrthogonalRouteIntent,
 } from './orthogonal-router.js';
 
 export type C4Band = StoryDetail;
@@ -611,57 +611,108 @@ function duplicatesLoopSide(axis: 'x' | 'y', flipped: boolean) {
   return flipped ? 'left' as const : 'right' as const;
 }
 
-function duplicatesLoopWaypoints(
+function duplicatesDomainRoom(
   source: NodeLayout,
   target: NodeLayout,
   clearance: number,
   domain: NodeLayout | undefined,
   side: 'top' | 'right' | 'bottom' | 'left',
-): { x: number; y: number }[] {
+): number {
+  if (!domain) return Number.POSITIVE_INFINITY;
   const pad = Math.max(clearance, ROUTING_EPSILON);
   if (side === 'bottom' || side === 'top') {
-    const x0 = source.x + source.width / 2;
-    const x1 = target.x + target.width / 2;
-    const y = domain
-      ? (side === 'bottom' ? domain.y + domain.height - pad : domain.y + pad)
-      : (side === 'bottom'
-        ? Math.max(source.y + source.height, target.y + target.height) + clearance * 4
-        : Math.min(source.y, target.y) - clearance * 4);
-    return [{ x: x0, y }, { x: x1, y }];
+    const outer = side === 'bottom'
+      ? Math.max(source.y + source.height, target.y + target.height)
+      : Math.min(source.y, target.y);
+    return side === 'bottom'
+      ? domain.y + domain.height - pad - outer
+      : outer - (domain.y + pad);
   }
-  const y0 = source.y + source.height / 2;
-  const y1 = target.y + target.height / 2;
-  const x = domain
-    ? (side === 'right' ? domain.x + domain.width - pad : domain.x + pad)
-    : (side === 'right'
-      ? Math.max(source.x + source.width, target.x + target.width) + clearance * 4
-      : Math.min(source.x, target.x) - clearance * 4);
-  return [{ x, y: y0 }, { x, y: y1 }];
+  const outer = side === 'right'
+    ? Math.max(source.x + source.width, target.x + target.width)
+    : Math.min(source.x, target.x);
+  return side === 'right'
+    ? domain.x + domain.width - pad - outer
+    : outer - (domain.x + pad);
 }
 
-/**
- * CLA-68: packed L4 siblings sit about two routing clearances apart, so the
- * default side-to-side orthogonal hop occupies the inter-card gutter. Prefer a
- * U along the owner shell’s inner edge (bottom/right, then the opposite
- * side) so the stroke cannot sit in the packed 1px gutter and stays inside
- * the file box a person is looking at. Far-apart clones keep auto routing.
- * This is intent on the existing router, not a packing or router rewrite.
- */
-function tightDuplicatesLoopIntent(
+function duplicatesLoopOffset(
   source: NodeLayout,
   target: NodeLayout,
   clearance: number,
   domain: NodeLayout | undefined,
-  flipped = false,
-): OrthogonalRouteIntent | undefined {
+  side: 'top' | 'right' | 'bottom' | 'left',
+): number {
+  const pad = Math.max(clearance, ROUTING_EPSILON);
+  const packingGap = facingGap(source, target).gap;
+  const card = side === 'bottom' || side === 'top'
+    ? Math.min(source.height, target.height)
+    : Math.min(source.width, target.width);
+  const desired = Math.max(pad * 4, card * 0.4);
+  const gutterRoom = packingGap > pad ? packingGap - pad - ROUTING_EPSILON : pad;
+  let offset = Math.min(desired, Math.max(pad, gutterRoom));
+  const domainRoom = duplicatesDomainRoom(source, target, clearance, domain, side);
+  if (Number.isFinite(domainRoom) && domainRoom > ROUTING_EPSILON) {
+    offset = Math.min(offset, domainRoom);
+  }
+  return Math.max(pad, offset);
+}
+
+/**
+ * CLA-68: packed L4 siblings sit about two routing clearances apart, so the
+ * default side-to-side orthogonal hop occupies the inter-card gutter. Emit a
+ * U in the packing gutter next to the pair (bottom/right, then the opposite
+ * side when the owner has more room there) so the stroke stays in the same
+ * viewport as the two cards. The grid router is not used: waypoints in that
+ * gutter sit on expanded-obstacle boundaries and would fall back to the hop.
+ * Far-apart clones keep auto routing. Not a packing or router rewrite.
+ */
+function tightDuplicatesLoopPoints(
+  source: NodeLayout,
+  target: NodeLayout,
+  clearance: number,
+  domain: NodeLayout | undefined,
+): { x: number; y: number }[] | undefined {
   const facing = facingGap(source, target);
-  if (facing.gap < -ROUTING_EPSILON || facing.gap > clearance * 2 + ROUTING_EPSILON) return undefined;
-  const side = duplicatesLoopSide(facing.axis, flipped);
-  return {
-    sourcePort: side,
-    targetPort: side,
-    waypoints: duplicatesLoopWaypoints(source, target, clearance, domain, side),
-  };
+  if (facing.gap < -ROUTING_EPSILON || facing.gap > clearance * 2 + ROUTING_EPSILON) {
+    return undefined;
+  }
+  const primary = duplicatesLoopSide(facing.axis, false);
+  const flipped = duplicatesLoopSide(facing.axis, true);
+  const primaryRoom = duplicatesDomainRoom(source, target, clearance, domain, primary);
+  const flippedRoom = duplicatesDomainRoom(source, target, clearance, domain, flipped);
+  const side = (!Number.isFinite(primaryRoom) || primaryRoom >= clearance || primaryRoom >= flippedRoom)
+    ? primary
+    : flipped;
+  const offset = duplicatesLoopOffset(source, target, clearance, domain, side);
+  if (side === 'bottom' || side === 'top') {
+    const x0 = source.x + source.width / 2;
+    const x1 = target.x + target.width / 2;
+    const y0 = side === 'bottom' ? source.y + source.height : source.y;
+    const y1 = side === 'bottom' ? target.y + target.height : target.y;
+    const y = side === 'bottom'
+      ? Math.max(source.y + source.height, target.y + target.height) + offset
+      : Math.min(source.y, target.y) - offset;
+    return simplifyOrthogonalPoints([
+      { x: x0, y: y0 },
+      { x: x0, y },
+      { x: x1, y },
+      { x: x1, y: y1 },
+    ]);
+  }
+  const y0 = source.y + source.height / 2;
+  const y1 = target.y + target.height / 2;
+  const x0 = side === 'right' ? source.x + source.width : source.x;
+  const x1 = side === 'right' ? target.x + target.width : target.x;
+  const x = side === 'right'
+    ? Math.max(source.x + source.width, target.x + target.width) + offset
+    : Math.min(source.x, target.x) - offset;
+  return simplifyOrthogonalPoints([
+    { x: x0, y: y0 },
+    { x, y: y0 },
+    { x, y: y1 },
+    { x: x1, y: y1 },
+  ]);
 }
 
 export function routeC4BandEdgesDetailed(
@@ -767,20 +818,9 @@ export function routeC4BandEdgesDetailed(
         routerDiagnostic: guided.diagnostic,
       });
     } else if (edge.kind === 'duplicates') {
-      const loop = tightDuplicatesLoopIntent(source, target, options.clearance, lcaBounds);
-      const routed = loop
-        ? routeOrthogonalWithIntent(routeOptions, loop)
-        : undefined;
-      const applied = routed?.status === 'applied'
-        ? routed
-        : loop
-          ? routeOrthogonalWithIntent(
-            routeOptions,
-            tightDuplicatesLoopIntent(source, target, options.clearance, lcaBounds, true),
-          )
-          : undefined;
+      const loop = tightDuplicatesLoopPoints(source, target, options.clearance, lcaBounds);
       edges[edgeId] = {
-        points: applied?.status === 'applied' ? applied.points : routeOrthogonal(routeOptions).points,
+        points: loop ?? routeOrthogonal(routeOptions).points,
       };
     } else {
       edges[edgeId] = { points: routeOrthogonal(routeOptions).points };

@@ -47,6 +47,22 @@ const visualNodeById: Record<string, VisualNode> = {
     technology: [],
     parentVisualId: 'visual:file',
   },
+  'visual:gamma': {
+    id: 'visual:gamma',
+    entity: entityRef('code:gamma'),
+    kind: 'code',
+    name: 'gamma',
+    technology: [],
+    parentVisualId: 'visual:file',
+  },
+  'visual:delta': {
+    id: 'visual:delta',
+    entity: entityRef('code:delta'),
+    kind: 'code',
+    name: 'delta',
+    technology: [],
+    parentVisualId: 'visual:file',
+  },
 };
 
 const focusZoom = 13.96;
@@ -118,8 +134,22 @@ test('CLA-68: tight L4 duplicates leave the inter-card gutter instead of a 1px s
     `duplicates path must span the sibling cards, not the facing hop (width ${span.width.toFixed(3)} vs gutter ${gutter.toFixed(3)})`,
   );
   assert.ok(
-    span.height > siblingGap * 2,
-    `duplicates U must drop past the packed row gutter (height ${span.height.toFixed(3)} vs gap ${siblingGap.toFixed(3)})`,
+    span.height >= clearance - 1e-6,
+    `duplicates U must leave the facing mid-line (height ${span.height.toFixed(3)} vs clearance ${clearance.toFixed(3)})`,
+  );
+  const acrossY = duplicates.points
+    .slice(0, -1)
+    .map((point, index) => ({ start: point, end: duplicates.points[index + 1]! }))
+    .filter(segment => Math.abs(segment.start.y - segment.end.y) <= 1e-6)
+    .map(segment => ({
+      y: segment.start.y,
+      length: Math.abs(segment.end.x - segment.start.x),
+    }))
+    .sort((left, right) => right.length - left.length)[0];
+  assert.ok(acrossY, 'duplicates U must have a horizontal across');
+  assert.ok(
+    acrossY.y <= left.y + left.height + siblingGap + 1e-6,
+    `duplicates across must stay in the packed row gutter (y ${acrossY.y.toFixed(3)} vs pair bottom ${ (left.y + left.height).toFixed(3) })`,
   );
 });
 
@@ -178,7 +208,47 @@ test('CLA-68: stacked L4 duplicates leave the row gutter along the free side', (
   assert.equal(confinedToGutter, false);
   assert.ok(span.height > siblingGap * 4);
   assert.ok(
-    span.width > siblingGap * 2,
+    span.width >= clearance - 1e-6,
     `stacked duplicates U must leave the packed column gutter (width ${span.width.toFixed(3)} vs gap ${siblingGap.toFixed(3)})`,
+  );
+});
+
+test('CLA-68: packed 2x2 duplicates stay in the pair gutter instead of the owner far edge', () => {
+  const packed2x2: Record<string, NodeLayout> = {
+    'visual:file': { x: -4, y: -8, width: 40, height: 40 },
+    'visual:alpha': { x: 0, y: 0, width: 16, height: 8 },
+    'visual:beta': { x: 16 + siblingGap, y: 0, width: 16, height: 8 },
+    'visual:gamma': { x: 0, y: 8 + siblingGap, width: 16, height: 8 },
+    'visual:delta': { x: 16 + siblingGap, y: 8 + siblingGap, width: 16, height: 8 },
+  };
+  const duplicates = routeC4BandEdgesDetailed(
+    {
+      ...projection,
+      visualNodeIds: ['visual:file', 'visual:alpha', 'visual:beta', 'visual:gamma', 'visual:delta'],
+    },
+    visualNodeById,
+    { 'visual-edge:dup': edge('duplicates') },
+    packed2x2,
+    { clearance, laneSpacing: 0.7, maxPoints: 16 },
+  ).edges['visual-edge:dup']!;
+  const alpha = packed2x2['visual:alpha']!;
+  const file = packed2x2['visual:file']!;
+  const across = duplicates.points
+    .slice(0, -1)
+    .map((point, index) => ({ start: point, end: duplicates.points[index + 1]! }))
+    .filter(segment => Math.abs(segment.start.y - segment.end.y) <= 1e-6)
+    .map(segment => ({
+      y: segment.start.y,
+      length: Math.abs(segment.end.x - segment.start.x),
+    }))
+    .sort((left, right) => right.length - left.length)[0];
+  assert.ok(across, '2x2 duplicates U must have a horizontal across');
+  assert.ok(
+    across.y <= alpha.y + alpha.height + siblingGap + 1e-6,
+    `across must sit in the pair’s row gutter, not the file-box bottom (y ${across.y.toFixed(3)} vs pair ${ (alpha.y + alpha.height).toFixed(3) }, file ${ (file.y + file.height).toFixed(3) })`,
+  );
+  assert.ok(
+    file.y + file.height - across.y > siblingGap * 4,
+    'across must not hug the owner shell when another row occupies that edge',
   );
 });

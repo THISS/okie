@@ -94,17 +94,41 @@ test('CLA-68: compiled L4 sibling duplicates leave the packed code-card gutter',
   const span = pathExtent(route.points);
   const longSpan = horizontal ? span.width : span.height;
   const loopSpan = horizontal ? span.height : span.width;
+  const packedGutter = clearance * 2;
 
   assert.ok(facing > 0, 'clone siblings must remain separate cards');
-  assert.ok(facing <= clearance * 2 + 1e-6, `packed L4 gutter should stay tight (${facing.toFixed(3)} world)`);
+  assert.ok(facing <= packedGutter + 1e-6, `packed L4 gutter should stay the scan code gap (${facing.toFixed(3)} world)`);
   assert.equal(confinedToGutter, false, 'compiled duplicates stroke must leave the facing gutter');
   assert.ok(
-    longSpan > facing * 4,
+    longSpan > facing * 2,
     `duplicates stroke must span the sibling cards (extent ${span.width.toFixed(3)}×${span.height.toFixed(3)}, gutter ${facing.toFixed(3)})`,
   );
   assert.ok(
-    loopSpan > facing * 2,
+    loopSpan >= clearance - 1e-6,
     `duplicates U must leave the packed gutter on the free axis (extent ${span.width.toFixed(3)}×${span.height.toFixed(3)}, gutter ${facing.toFixed(3)})`,
+  );
+  const across = route.points
+    .slice(0, -1)
+    .map((point, index) => ({ start: point, end: route.points[index + 1]! }))
+    .filter(segment => (
+      horizontal
+        ? Math.abs(segment.start.y - segment.end.y) <= 1e-6
+        : Math.abs(segment.start.x - segment.end.x) <= 1e-6
+    ))
+    .map(segment => ({
+      along: horizontal ? segment.start.y : segment.start.x,
+      length: horizontal
+        ? Math.abs(segment.end.x - segment.start.x)
+        : Math.abs(segment.end.y - segment.start.y),
+    }))
+    .sort((left, right) => right.length - left.length)[0];
+  const pairOuter = horizontal
+    ? Math.max(alpha.y + alpha.height, beta.y + beta.height)
+    : Math.max(alpha.x + alpha.width, beta.x + beta.width);
+  assert.ok(across, 'compiled duplicates U must have an across segment');
+  assert.ok(
+    Math.abs(across.along - pairOuter) <= packedGutter + 1e-6,
+    `compiled duplicates across must stay next to the pair (along ${across.along.toFixed(3)} vs pair ${pairOuter.toFixed(3)})`,
   );
   assert.notEqual(compiled.projections.visualEdgeById[edgeId]!.kind, 'calls');
   assert.equal(
