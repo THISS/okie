@@ -106,6 +106,19 @@ export function resolveEnrichmentPassModelId(options: EnricherOptions): string |
   return isUsableModelId(configured) ? configured!.trim() : undefined;
 }
 
+const ENTITY_KIND_ENUM = [
+  "softwareSystem",
+  "container",
+  "component",
+  "code",
+  "person",
+  "externalSystem",
+  "dataStore",
+  "queue",
+] as const;
+
+export const EXTRACTION_TOOL_NAME = "submit_architecture_extraction";
+
 const SOURCE_REF_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -124,13 +137,17 @@ const ENTITY_SCHEMA = {
   required: ["id", "kind", "name", "sourceRefs"],
   properties: {
     id: { type: "string" },
-    kind: { enum: ["softwareSystem", "container", "component", "code", "person", "externalSystem"] },
+    kind: { enum: [...ENTITY_KIND_ENUM] },
     parentId: { type: "string" },
     name: { type: "string" },
     responsibility: { type: "string" },
     technology: { type: "array", items: { type: "string" } },
     tags: { type: "array", items: { type: "string" } },
-    sourceRefs: { type: "array", items: SOURCE_REF_SCHEMA },
+    sourceRefs: {
+      type: "array",
+      description: "Always an array of {path, symbol?, startLine?, endLine?} objects, never a string.",
+      items: SOURCE_REF_SCHEMA,
+    },
   },
 } as const;
 
@@ -162,11 +179,17 @@ const EXTRACTION_DOC_SCHEMA = {
   additionalProperties: false,
   required: ["schemaVersion", "entities", "relations"],
   properties: {
-    schemaVersion: { type: "integer", enum: [1] },
-    entities: { type: "array", items: ENTITY_SCHEMA },
+    schemaVersion: { type: "integer", enum: [1], description: "Must be the integer 1." },
+    entities: {
+      type: "array",
+      description: "Flat array of entity objects. Do not nest softwareSystems, containers, components, or codeEntities.",
+      items: ENTITY_SCHEMA,
+    },
     relations: { type: "array", items: RELATION_SCHEMA },
   },
 } as const;
+
+const ENVELOPE_RETRY_USER_MESSAGE = `That reply was not the required JSON envelope. Call ${EXTRACTION_TOOL_NAME} with only {"schemaVersion":1,"entities":[...],"relations":[]}. entities is a flat array of {id, kind, name, sourceRefs, parentId?, responsibility?}. sourceRefs must be an array of {path} objects, never a string. kind must be softwareSystem, container, component, code, person, externalSystem, dataStore, or queue. Do not nest softwareSystems, containers, components, or codeEntities.`;
 
 const CONTAINER_SYSTEM_PROMPT = `You are an architecture curator for a C4 atlas built from a deterministic repository scan.
 Write a short summary of THIS packet's scope only. Do not reason about any other container, file, or repository.
@@ -264,9 +287,20 @@ export function enrichmentChatCompletionsBody(
       type: "json_schema",
       json_schema: {
         name: "architecture_extraction",
+        strict: true,
         schema: EXTRACTION_DOC_SCHEMA,
       },
     },
+    tools: [{
+      type: "function",
+      function: {
+        name: EXTRACTION_TOOL_NAME,
+        description: "Submit the ArchitectureExtraction envelope for THIS packet only. schemaVersion must be 1. entities is a flat array. sourceRefs is always an array of {path} objects. relations must be [].",
+        parameters: EXTRACTION_DOC_SCHEMA,
+        strict: true,
+      },
+    }],
+    tool_choice: { type: "function", function: { name: EXTRACTION_TOOL_NAME } },
   };
 }
 
@@ -291,12 +325,7 @@ function unwrapJsonPayload(text: string): string {
   return trimmed;
 }
 
-function payloadFromChatMessage(message: Record<string, unknown> | undefined): unknown {
-  if (!message) return undefined;
-  const content = message.content;
-  if (content && typeof content === "object" && !Array.isArray(content)) return content;
-  const text = textFromContent(content);
-  if (!text?.trim()) return undefined;
+function parseJsonOrThrow(text: string): unknown {
   try {
     return JSON.parse(unwrapJsonPayload(text)) as unknown;
   } catch {
@@ -304,10 +333,63 @@ function payloadFromChatMessage(message: Record<string, unknown> | undefined): u
   }
 }
 
+function payloadFromToolCalls(message: Record<string, unknown>): unknown | undefined {
+  const calls = message.tool_calls;
+  if (!Array.isArray(calls) || calls.length === 0) return undefined;
+  const named = calls.find(call => {
+    if (!call || typeof call !== "object" || Array.isArray(call)) return false;
+    const fn = (call as Record<string, unknown>).function;
+    return Boolean(fn && typeof fn === "object" && !Array.isArray(fn)
+      && (fn as Record<string, unknown>).name === EXTRACTION_TOOL_NAME);
+  }) ?? calls[0];
+  if (!named || typeof named !== "object" || Array.isArray(named)) return undefined;
+  const record = named as Record<string, unknown>;
+  const fn = record.function && typeof record.function === "object" && !Array.isArray(record.function)
+    ? record.function as Record<string, unknown>
+    : undefined;
+  const args = fn?.arguments ?? record.input ?? record.arguments;
+  if (typeof args === "string") return parseJsonOrThrow(args);
+  if (args && typeof args === "object") return args;
+  return undefined;
+}
+
+function payloadFromChatMessage(message: Record<string, unknown> | undefined): unknown {
+  if (!message) return undefined;
+  const fromTools = payloadFromToolCalls(message);
+  if (fromTools !== undefined) return fromTools;
+  const content = message.content;
+  if (content && typeof content === "object" && !Array.isArray(content)) return content;
+  const text = textFromContent(content);
+  if (!text?.trim()) return undefined;
+  return parseJsonOrThrow(text);
+}
+
+/**
+ * True when the parsed JSON is already the gate envelope. Nested C4 dumps and
+ * string `sourceRefs` fail this check so the live hop can re-ask once. Invented
+ * ids still look like an envelope — the merge gate rejects those.
+ */
+export function looksLikeExtractionEnvelope(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const doc = value as Record<string, unknown>;
+  if (doc.schemaVersion !== 1) return false;
+  if (!Array.isArray(doc.entities) || !Array.isArray(doc.relations)) return false;
+  for (const row of doc.entities) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+    const entity = row as Record<string, unknown>;
+    if (typeof entity.id !== "string" || typeof entity.name !== "string") return false;
+    if (typeof entity.kind !== "string" || !ENTITY_KIND_ENUM.includes(entity.kind as typeof ENTITY_KIND_ENUM[number])) {
+      return false;
+    }
+    if (!Array.isArray(entity.sourceRefs)) return false;
+  }
+  return true;
+}
+
 /**
  * Pull the JSON document out of an OpenAI-compatible chat-completions payload.
- * Fence unwrap + JSON.parse only — nested C4 dumps are not reshaped. Wrong shape
- * still reaches `mergeEnrichment` and that scope stays deterministic (CLA-70).
+ * Prefers a forced-tool call, else fence unwrap + JSON.parse. Nested C4 dumps
+ * are not reshaped. Wrong shape still reaches `mergeEnrichment` after one retry.
  */
 export function parseChatCompletionDocument(json: unknown): unknown {
   const record = typeof json === "object" && json !== null ? json as Record<string, unknown> : undefined;
@@ -386,21 +468,56 @@ function anthropicGenerator(
   };
 }
 
+function mergeGatewayUsage(left?: GatewayUsage, right?: GatewayUsage): GatewayUsage | undefined {
+  if (!left) return right;
+  if (!right) return left;
+  const prompt = (left.promptTokens ?? 0) + (right.promptTokens ?? 0);
+  const completion = (left.completionTokens ?? 0) + (right.completionTokens ?? 0);
+  const cost = left.costUsd !== undefined || right.costUsd !== undefined
+    ? addDollars(left.costUsd ?? 0, right.costUsd ?? 0)
+    : undefined;
+  return {
+    ...(left.promptTokens !== undefined || right.promptTokens !== undefined ? { promptTokens: prompt } : {}),
+    ...(left.completionTokens !== undefined || right.completionTokens !== undefined ? { completionTokens: completion } : {}),
+    totalTokens: (left.totalTokens ?? 0) + (right.totalTokens ?? 0),
+    ...(cost !== undefined ? { costUsd: cost } : {}),
+  };
+}
+
 function gatewayGenerator(
   client: { chatCompletions: (body: Record<string, unknown>) => Promise<LlmChatCompletionResult> },
   modelId: string,
   remainingTokens: () => number,
 ): EnrichmentGenerator {
   return async (packet, kind, systemId) => {
-    const result = await client.chatCompletions(
-      enrichmentChatCompletionsBody(modelId, kind, systemId, packet, remainingTokens()),
-    );
+    const body = enrichmentChatCompletionsBody(modelId, kind, systemId, packet, remainingTokens());
+    const first = await client.chatCompletions(body);
+    let usage = first.usage;
+    let document: unknown | undefined;
+    let parsed = false;
     try {
-      const document = parseChatCompletionDocument(result.json);
-      return result.usage ? { document, usage: result.usage } : { document };
-    } catch (error) {
-      throw attachUsage(error, result.usage);
+      document = parseChatCompletionDocument(first.json);
+      parsed = true;
+    } catch {
+      parsed = false;
     }
+    if (!parsed || !looksLikeExtractionEnvelope(document)) {
+      const retryBody: Record<string, unknown> = {
+        ...body,
+        messages: [
+          ...((body.messages as unknown[]) ?? []),
+          { role: "user", content: ENVELOPE_RETRY_USER_MESSAGE },
+        ],
+      };
+      const second = await client.chatCompletions(retryBody);
+      usage = mergeGatewayUsage(usage, second.usage);
+      try {
+        document = parseChatCompletionDocument(second.json);
+      } catch (error) {
+        throw attachUsage(error, usage);
+      }
+    }
+    return usage ? { document, usage } : { document };
   };
 }
 
