@@ -1018,12 +1018,14 @@ function cla70NestedDump(
     softwareSystems: [{ id: systemId, name: systemName, responsibility: "Demo system." }],
     containers: [{
       id: packet.containerId,
+      parentId: systemId,
       name: packet.containerName,
       responsibility: `Summary of ${packet.containerName}.`,
       sourceRefs: packet.scopePaths[0] ?? "pkg/a/src/index.ts",
     }],
     components: packet.components.map(component => ({
       id: component.id,
+      parentId: packet.containerId,
       name: component.name,
       responsibility: `Summary of ${component.name}.`,
       sourceRefs: { path: component.path },
@@ -1056,12 +1058,14 @@ test("coerceGatewayExtractionDocument flattens CLA-70 nested C4 and wraps source
     softwareSystems: [{ id: "system:okie", name: "okie", responsibility: "Spatial atlas." }],
     containers: [{
       id: "container:apps-server",
+      parentId: "system:okie",
       name: "@okie/server",
       responsibility: "Hosted scan HTTP.",
       sourceRefs: "apps/server/src/main.ts",
     }],
     components: [{
       id: "component:apps-server-src-main-ts",
+      parentId: "container:apps-server",
       name: "src/main.ts",
       responsibility: "Binds the scan process.",
       sourceRefs: { path: "apps/server/src/main.ts", symbol: "main" },
@@ -1130,6 +1134,35 @@ test("coerceGatewayExtractionDocument does not mint entity ids", () => {
   assert.deepEqual(coerced.entities, []);
   assert.ok(!JSON.stringify(coerced).includes("container:"));
   assert.ok(!JSON.stringify(coerced).includes("system:okie"));
+});
+
+test("coerceGatewayExtractionDocument does not synthesize parent ids or trim source anchors", () => {
+  const coerced = coerceGatewayExtractionDocument({
+    softwareSystems: [{ id: "system:okie", name: "okie", responsibility: "Atlas." }],
+    containers: [{
+      id: "container:apps-web",
+      name: "@okie/web",
+      responsibility: "React shell.",
+      sourceRefs: " apps/web/src/App.tsx ",
+    }],
+  }) as { entities: CoercedEntity[] };
+  const container = coerced.entities.find(entity => entity.id === "container:apps-web");
+  assert.equal(container?.parentId, undefined, "sibling arrays must not get a synthesized parentId");
+  assert.deepEqual(container?.sourceRefs, [{ path: " apps/web/src/App.tsx " }]);
+});
+
+test("malformed sourceRefs and duplicate ids still reach the merge gate", () => {
+  const coerced = coerceGatewayExtractionDocument({
+    schemaVersion: 1,
+    entities: [
+      { id: "system:okie", kind: "softwareSystem", name: "okie", sourceRefs: [] },
+      { id: "system:okie", kind: "softwareSystem", name: "okie-dup", sourceRefs: [42] },
+    ],
+    relations: [],
+  }) as ExtractionDoc;
+  assert.equal(coerced.entities.length, 2);
+  assert.equal(coerced.entities[1]!.id, "system:okie");
+  assert.deepEqual((coerced.entities[1] as CoercedEntity).sourceRefs, [42] as unknown as CoercedEntity["sourceRefs"]);
 });
 
 test("a hallucinated id is still present after coerce so the gate can reject it", () => {

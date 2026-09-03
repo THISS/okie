@@ -341,46 +341,34 @@ function kindFromId(id: string): string | undefined {
 
 /** Use an id the model already wrote (including packet-field names). Never mint a new one. */
 function entityIdOf(node: Record<string, unknown>): string | undefined {
-  if (typeof node.id === "string" && node.id.trim()) return node.id;
+  if (typeof node.id === "string") return node.id;
   if (typeof node.containerId === "string" && node.containerId.startsWith("container:")) return node.containerId;
   if (typeof node.systemId === "string" && node.systemId.startsWith("system:")) return node.systemId;
   return undefined;
 }
 
-function coerceSourceAnchor(value: unknown): Record<string, unknown> | undefined {
-  if (typeof value === "string" && value.trim()) return { path: value.trim() };
-  if (!isRecord(value)) return undefined;
-  if (typeof value.path !== "string" || !value.path.trim()) return undefined;
-  const anchor: Record<string, unknown> = { path: value.path };
-  if (typeof value.symbol === "string") anchor.symbol = value.symbol;
-  if (typeof value.startLine === "number" && Number.isSafeInteger(value.startLine)) {
-    anchor.startLine = value.startLine;
+const SOURCE_ANCHOR_KEYS = ["path", "symbol", "startLine", "endLine"] as const;
+
+function wrapSourceAnchor(value: unknown): unknown {
+  if (typeof value === "string") return { path: value };
+  if (!isRecord(value)) return value;
+  const anchor: Record<string, unknown> = {};
+  for (const key of SOURCE_ANCHOR_KEYS) {
+    if (value[key] !== undefined) anchor[key] = value[key];
   }
-  if (typeof value.endLine === "number" && Number.isSafeInteger(value.endLine)) {
-    anchor.endLine = value.endLine;
-  }
-  return anchor;
+  return "path" in anchor ? anchor : value;
 }
 
-function coerceSourceRefs(value: unknown, entity: Record<string, unknown>): unknown[] {
-  if (Array.isArray(value)) {
-    return value.flatMap(item => {
-      const anchor = coerceSourceAnchor(item);
-      return anchor ? [anchor] : [];
-    });
-  }
-  if (value !== undefined && value !== null) {
-    const one = coerceSourceAnchor(value);
-    if (one) return [one];
-  }
+function wrapSourceRefs(value: unknown, entity: Record<string, unknown>): unknown[] {
+  if (Array.isArray(value)) return value.map(wrapSourceAnchor);
+  if (value !== undefined && value !== null) return [wrapSourceAnchor(value)];
   if (typeof entity.path === "string") {
-    const one = coerceSourceAnchor({
+    return [wrapSourceAnchor({
       path: entity.path,
-      ...(typeof entity.symbol === "string" ? { symbol: entity.symbol } : {}),
-      ...(typeof entity.startLine === "number" ? { startLine: entity.startLine } : {}),
-      ...(typeof entity.endLine === "number" ? { endLine: entity.endLine } : {}),
-    });
-    if (one) return [one];
+      ...(entity.symbol !== undefined ? { symbol: entity.symbol } : {}),
+      ...(entity.startLine !== undefined ? { startLine: entity.startLine } : {}),
+      ...(entity.endLine !== undefined ? { endLine: entity.endLine } : {}),
+    })];
   }
   return [];
 }
@@ -416,22 +404,22 @@ function emitEntity(
     : typeof node.containerName === "string" ? node.containerName
     : typeof node.systemName === "string" ? node.systemName
     : undefined;
-  if (typeof kind !== "string" || typeof name !== "string" || !name.trim()) return undefined;
+  if (typeof kind !== "string" || typeof name !== "string") return undefined;
   const parentId = typeof node.parentId === "string" ? node.parentId
     : typeof node.componentId === "string" ? node.componentId
-    : (TOP_LEVEL_KINDS.has(kind) ? undefined : inferredParentId);
+    : (kind && TOP_LEVEL_KINDS.has(kind) ? undefined : inferredParentId);
   const entity: Record<string, unknown> = {
     id,
     kind,
     name,
-    sourceRefs: coerceSourceRefs(node.sourceRefs, node),
+    sourceRefs: wrapSourceRefs(node.sourceRefs, node),
   };
-  if (typeof parentId === "string" && parentId.trim()) entity.parentId = parentId;
+  if (typeof parentId === "string") entity.parentId = parentId;
   if (typeof node.responsibility === "string") entity.responsibility = node.responsibility;
   const technology = coerceTechnology(node.technology);
   if (technology !== undefined) entity.technology = technology;
   if (node.tags !== undefined) entity.tags = node.tags;
-  if (typeof node.confidence === "number") entity.confidence = node.confidence;
+  if (node.confidence !== undefined) entity.confidence = node.confidence;
   return entity;
 }
 
@@ -457,48 +445,24 @@ function collectEntities(
   }
 }
 
-function uniqueIdOfKind(entities: readonly Record<string, unknown>[], kind: string): string | undefined {
-  const ids = [...new Set(entities.flatMap(entity => (
-    entity.kind === kind && typeof entity.id === "string" ? [entity.id] : []
-  )))];
-  return ids.length === 1 ? ids[0] : undefined;
-}
-
-function fillMissingParentIds(entities: Record<string, unknown>[]): void {
-  const systemId = uniqueIdOfKind(entities, "softwareSystem");
-  const containerId = uniqueIdOfKind(entities, "container");
-  const componentId = uniqueIdOfKind(entities, "component");
-  for (const entity of entities) {
-    if (typeof entity.parentId === "string" && entity.parentId) continue;
-    if (entity.kind === "container" && systemId) entity.parentId = systemId;
-    else if (entity.kind === "component" && containerId) entity.parentId = containerId;
-    else if (entity.kind === "code" && componentId) entity.parentId = componentId;
-  }
-}
-
 /**
- * Wrap a live-gateway JSON payload into the flat ArchitectureExtraction the merge
- * gate already expects. OpenRouter often ignores `response_format.json_schema` for
- * Claude and returns nested C4 objects (CLA-70). Does not mint entity ids: objects
- * without an id are dropped; hallucinated ids still reach the gate and reject.
+ * Reshape a live-gateway JSON payload into the flat ArchitectureExtraction envelope
+ * the merge gate already expects. OpenRouter often ignores `response_format.json_schema`
+ * for Claude and returns nested C4 objects (CLA-70).
+ *
+ * Shape only: flatten nested collections, default missing `schemaVersion` to 1, wrap
+ * `sourceRefs` into arrays. Does not mint entity ids, synthesize missing parent ids
+ * for sibling arrays, trim/rewrite source anchors, or drop malformed refs — the gate
+ * still rejects those.
  */
 export function coerceGatewayExtractionDocument(raw: unknown): unknown {
-  const collected: Record<string, unknown>[] = [];
+  const entities: Record<string, unknown>[] = [];
   if (Array.isArray(raw)) {
-    collectEntities(raw, undefined, undefined, collected);
-    fillMissingParentIds(collected);
-    return { schemaVersion: 1, entities: collected, relations: [] };
+    collectEntities(raw, undefined, undefined, entities);
+    return { schemaVersion: 1, entities, relations: [] };
   }
   if (!isRecord(raw)) return raw;
-  collectEntities(raw, undefined, undefined, collected);
-  fillMissingParentIds(collected);
-  const seen = new Set<string>();
-  const entities = collected.filter(entity => {
-    if (typeof entity.id !== "string") return true;
-    if (seen.has(entity.id)) return false;
-    seen.add(entity.id);
-    return true;
-  });
+  collectEntities(raw, undefined, undefined, entities);
   return {
     schemaVersion: typeof raw.schemaVersion === "number" ? raw.schemaVersion : 1,
     entities,
