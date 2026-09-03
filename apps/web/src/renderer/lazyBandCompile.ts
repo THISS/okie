@@ -91,8 +91,8 @@ export function scanNextBand(band: C4Band): C4Band | undefined {
  * compile time; replaying it after another neighborhood was shown misses the
  * renderer’s current revision. Full-snapshot load is the safe reuse path.
  */
-export function cacheableNeighborhoodScene<T extends { protocolPatch?: unknown }>(scene: T): T {
-  if (!('protocolPatch' in scene) || scene.protocolPatch === undefined) return scene;
-  const { protocolPatch: _protocolPatch, ...rest } = scene;
-  return rest as T;
+export function cacheableNeighborhoodScene<T extends object>(scene: T): Omit<T, 'protocolPatch'> {
+  if (!('protocolPatch' in scene) || scene.protocolPatch === undefined) return scene as Omit<T, 'protocolPatch'>;
+  const { protocolPatch: _protocolPatch, ...rest } = scene as T & { protocolPatch?: unknown };
+  return rest as Omit<T, 'protocolPatch'>;
 }
