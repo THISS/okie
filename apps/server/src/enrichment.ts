@@ -366,13 +366,6 @@ function wrapSourceRefs(value: unknown, entity: Record<string, unknown>): unknow
   return [];
 }
 
-function coerceTechnology(value: unknown): unknown {
-  if (value === undefined) return undefined;
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") return [value];
-  return value;
-}
-
 function looksLikeEntity(node: Record<string, unknown>, inferredKind: string | undefined): boolean {
   const id = entityIdOf(node);
   if (typeof id !== "string") return false;
@@ -409,8 +402,7 @@ function emitEntity(
   };
   if (typeof parentId === "string") entity.parentId = parentId;
   if (typeof node.responsibility === "string") entity.responsibility = node.responsibility;
-  const technology = coerceTechnology(node.technology);
-  if (technology !== undefined) entity.technology = technology;
+  if (node.technology !== undefined) entity.technology = node.technology;
   if (node.tags !== undefined) entity.tags = node.tags;
   if (node.confidence !== undefined) entity.confidence = node.confidence;
   return entity;
@@ -457,7 +449,7 @@ export function coerceGatewayExtractionDocument(raw: unknown): unknown {
   if (!isRecord(raw)) return raw;
   collectEntities(raw, undefined, undefined, entities);
   return {
-    schemaVersion: typeof raw.schemaVersion === "number" ? raw.schemaVersion : 1,
+    schemaVersion: raw.schemaVersion === undefined ? 1 : raw.schemaVersion,
     entities,
     relations: raw.relations === undefined ? [] : raw.relations,
   };
