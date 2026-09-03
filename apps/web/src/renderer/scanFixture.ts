@@ -12,37 +12,40 @@ import {
 import { compileAppStoryPlan, createC4Scene, type AppStoryPlan } from './goldenC4Scene';
 import type { AtlasScene, ScanGuardRefusal } from './types';
 
-// Scan-mode scoped-compile levers (documented; Okie's scan sits under the size
-// gate, so band scoping never applies to it). Scoping exists FOR large repos;
-// small repos keep the uninterrupted full-band zoom that is the product's
-// signature feel.
-export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000; // size gate — below this, no band scoping
+// Hang-guard only (CLA-66 / CLA-67): unbounded full-graph compiles above this
+// entity count are refused. Band scoping is the DEFAULT scan path at every
+// size — do not raise this number as a product fix, and do not treat a bigger
+// dump as the slice. CLA-67 measures a healthy per-band count later.
+export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;
 export const SCAN_CONTAINER_EDGE_BUDGET = 24;     // routed edges per band at a container drill-in
 export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a container drill-in
 
 // Relation-pressure gate: the symbol-level `uses` graph makes edge ROUTING the
-// dominant cost even when the entity count sits far under the band-depth gate
+// dominant cost even when the entity count sits far under the hang-guard
 // (okie's own public scan: 850 entities but ~1.7k relations → a two-minute
 // unbounded compile). Above this relation count every compile takes an edge
-// budget — every band stays present (no maxBand), only routing is bounded, and
-// dropped edges stay enumerable via omittedEdgeIds ("+N more"). Below both
-// gates the compile is untouched.
+// budget; dropped edges stay enumerable via omittedEdgeIds ("+N more").
+// Per-kind maxBand still applies (current band + one-down prefetch) — the
+// relation gate never compiles the whole tree.
 export const SCAN_RELATION_EDGE_MIN = 600;   // relation gate — above this, budget the routed edges
 export const SCAN_RELATION_EDGE_BUDGET = 64; // routed edges per band under the relation gate
 
 export type ScanScopedOptions = { maxBand?: C4Band; maxEdgesPerBand?: number; maxGridNodes?: number };
 
 /**
- * Mode-level compile options for scan mode (task #30). Unlike ScanScopedOptions these
- * are NOT gated by the scoped-compile size threshold — they apply to every scan compile
- * at any repo size, because the tall-container problem (a system packing into one narrow
- * column) shows up on repos well below the scoped-compile gate (e.g. Okie's own scan).
- * `targetAspect` is chosen once by the client at bootstrap (device orientation) and is a
- * deterministic compile input, never the live viewport.
+ * Mode-level compile options for scan mode (task #30). Independent of per-kind
+ * maxBand: they apply to every scan compile at any repo size, because the
+ * tall-container problem (a system packing into one narrow column) shows up on
+ * small scans too (e.g. Okie's own scan). `targetAspect` is chosen once by the
+ * client at bootstrap (device orientation) and is a deterministic compile input,
+ * never the live viewport.
  */
 export type ScanModeOptions = { targetAspect?: number };
 
-// Per-focus-kind scoped options, applied only above the size gate.
+// Per-focus-kind scoped options — the default scan compile path (CLA-66).
+// Current C4 band + one band down: system→container; container→component;
+// component→code. Open inside / zoom-target compile uses this mapping, not
+// a panic at SCAN_BAND_DEPTH_MIN_ENTITIES.
 const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>> = {
   person: { maxBand: 'container' },
   softwareSystem: { maxBand: 'container' },
@@ -52,27 +55,23 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
   dataStore: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
   queue: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
   component: { maxBand: 'code' },
-  // code focus → {} (deepest bands already route; no caps)
+  // code focus → {} (deepest bands already route; hang-guard still applies)
 };
 
 /**
- * Deterministic scoped-compile options for a scan-mode focus. Two independent
- * gates, both pure functions of the snapshot (never timing):
- * - Entity gate (> SCAN_BAND_DEPTH_MIN_ENTITIES): band scoping by focus kind —
- *   system→container band; container drill-in→component band + edge budget +
- *   router grid cap; component→code band.
- * - Relation gate (> SCAN_RELATION_EDGE_MIN): a per-band routed-edge budget plus a
- *   router grid cap wherever the options don't already carry one — the symbol-level
- *   `uses` graph makes edge routing the dominant cost at every repo size (okie's own
- *   public scan: 127s unbounded → ~1s with budget 64 + grid 1500; the grid overflow
- *   degrades gracefully to direct edges). Bands are never dropped by this gate.
- * Below both gates the options are {} and small repos render identically to today.
+ * Deterministic scoped-compile options for a scan-mode focus. Band scoping is
+ * the default path at every repo size (CLA-66): system→container band;
+ * container drill-in→component band + edge budget + router grid cap;
+ * component→code band. A second, independent relation gate
+ * (> SCAN_RELATION_EDGE_MIN) adds a per-band routed-edge budget plus a router
+ * grid cap wherever the options don't already carry one. SCAN_BAND_DEPTH_MIN_ENTITIES
+ * is not a compile-strategy switch — it remains the hang-guard in
+ * {@link guardScanCompile} only.
  */
 export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEntityId: string): ScanScopedOptions {
-  const aboveEntityGate = snapshot.entities.length > SCAN_BAND_DEPTH_MIN_ENTITIES;
   const aboveRelationGate = snapshot.relations.length > SCAN_RELATION_EDGE_MIN;
   const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
-  const scoped = aboveEntityGate && focus ? SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind] : undefined;
+  const scoped = focus ? SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind] : undefined;
   const options: ScanScopedOptions = scoped ? { ...scoped } : {};
   if (aboveRelationGate) {
     options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
@@ -142,16 +141,16 @@ export type ScanGuardDecision = {
 
 /**
  * The hard anti-hang guard for scan-mode compiles, and the single choke point all
- * scan compiles pass through. Derives scoped options for the requested focus and,
- * ABOVE the size gate, refuses any focus whose scope exceeds the gate when no
- * option bounds the routing (an unbounded full-graph compile — the deep-link hang
- * vector, and the failure mode a stale package build reintroduces on every path).
+ * scan compiles pass through. Derives scoped options for the requested focus
+ * (per-kind maxBand at every size — CLA-66) and, ABOVE the hang-guard entity
+ * count, refuses any focus whose scope exceeds that count when no option bounds
+ * the routing (an unbounded full-graph compile — the deep-link hang vector).
  * On refusal it substitutes the scoped fallback focus (the view root), forcing a
  * guaranteed-bounded band if even the fallback derives no constraint, so the app
  * renders a safe scene instead of freezing.
  *
- * A provable no-op below the gate: options are always {} there and the gate check
- * short-circuits before any scope walk, so Okie-sized snapshots are never touched.
+ * Below the hang-guard the refusal walk is skipped; per-kind maxBand still
+ * applies so Open inside is the default scoped path, not a panic at 2000.
  * Pure — counts entities/relations, never compiles.
  */
 export function guardScanCompile(
@@ -201,8 +200,7 @@ export type ScanFixture = {
    *  Routed through the anti-hang guard, so no path can compile the whole graph. */
   createScene: (focusEntityId: string, previous?: AtlasScene) => AtlasScene;
   /** Scoped-compile options for a derived (flow/Mermaid) projection of a focus, so
-   *  those direct-`buildC4ProjectionBundle` bypass paths stay scoped too. {} below
-   *  the gate — identical to an unbounded compile for Okie-sized snapshots. */
+   *  those direct-`buildC4ProjectionBundle` bypass paths stay scoped too. */
   scopeCompileOptions: (focusEntityId: string) => ScanScopedOptions;
   /** The mode-level aspect target applied to every compile (task #30); introspectable
    *  so derived projections and diagnostics can reuse the same deterministic value. */
@@ -270,8 +268,9 @@ export function compileScanFixture(raw: RawScanTrio, options: ScanModeOptions = 
   }
 
   const createScene = (focusEntityId: string, previous?: AtlasScene): AtlasScene => {
-    // The guard is the single choke point: it derives the scoped options AND, above
-    // the size gate, swaps a would-hang unbounded focus for the safe fallback focus.
+    // The guard is the single choke point: it derives the scoped options (per-kind
+    // maxBand at every size) AND, above the hang-guard, swaps a would-hang
+    // unbounded focus for the safe fallback focus.
     const decision = guardScanCompile(snapshot, focusEntityId, view.rootEntityId);
     const scoped = decision.options;
     const scene = createC4Scene({
@@ -285,8 +284,8 @@ export function compileScanFixture(raw: RawScanTrio, options: ScanModeOptions = 
       frozenRevision: snapshot.commitSha,
       previous,
       ...scoped,
-      // Aspect target is a per-MODE input applied at every size — deliberately NOT part
-      // of `scoped` (which is size-gated), so Okie's below-gate scan still repacks.
+      // Aspect target is a per-MODE input applied at every size — deliberately NOT
+      // part of per-kind `scoped` maxBand, so the landscape/portrait pack still runs.
       ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
     });
