@@ -16,6 +16,7 @@ import {
   routeOrthogonalWithIntent,
   type GuidedOrthogonalRouteReason,
   type OrthogonalRouteDiagnostic,
+  type OrthogonalRouteIntent,
 } from './orthogonal-router.js';
 
 export type C4Band = StoryDetail;
@@ -588,6 +589,57 @@ export function routeC4BandEdges(
   return routeC4BandEdgesDetailed(projection, visualNodeById, visualEdgeById, nodes, options).edges;
 }
 
+const ROUTING_EPSILON = 1e-9;
+
+function facingGap(source: NodeLayout, target: NodeLayout): { axis: 'x' | 'y'; gap: number } {
+  const dx = target.x + target.width / 2 - (source.x + source.width / 2);
+  const dy = target.y + target.height / 2 - (source.y + source.height / 2);
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const gap = dx >= 0
+      ? target.x - (source.x + source.width)
+      : source.x - (target.x + target.width);
+    return { axis: 'x', gap };
+  }
+  const gap = dy >= 0
+    ? target.y - (source.y + source.height)
+    : source.y - (target.y + target.height);
+  return { axis: 'y', gap };
+}
+
+/**
+ * CLA-68: packed L4 siblings sit about two routing clearances apart, so the
+ * default side-to-side orthogonal hop occupies the inter-card gutter. Prefer a
+ * U along the free edge (bottom/right, then the opposite side) so the stroke
+ * has length a person can see. Far-apart clones keep auto routing. This is
+ * intent on the existing router, not a packing or router rewrite.
+ */
+function tightDuplicatesLoopIntent(
+  source: NodeLayout,
+  target: NodeLayout,
+  clearance: number,
+): OrthogonalRouteIntent | undefined {
+  const facing = facingGap(source, target);
+  if (facing.gap < -ROUTING_EPSILON || facing.gap > clearance * 2 + ROUTING_EPSILON) return undefined;
+  return facing.axis === 'x'
+    ? { sourcePort: 'bottom', targetPort: 'bottom', waypoints: [] }
+    : { sourcePort: 'right', targetPort: 'right', waypoints: [] };
+}
+
+function flipOrthogonalSide(side: OrthogonalRouteIntent['sourcePort'] & string) {
+  if (side === 'bottom') return 'top' as const;
+  if (side === 'top') return 'bottom' as const;
+  if (side === 'right') return 'left' as const;
+  return 'right' as const;
+}
+
+function flipDuplicatesLoopIntent(intent: OrthogonalRouteIntent): OrthogonalRouteIntent {
+  return {
+    waypoints: intent.waypoints,
+    ...(intent.sourcePort !== undefined ? { sourcePort: flipOrthogonalSide(intent.sourcePort) } : {}),
+    ...(intent.targetPort !== undefined ? { targetPort: flipOrthogonalSide(intent.targetPort) } : {}),
+  };
+}
+
 export function routeC4BandEdgesDetailed(
   projection: BandProjection,
   visualNodeById: Readonly<Record<string, VisualNode>>,
@@ -689,6 +741,19 @@ export function routeC4BandEdgesDetailed(
         ...(guided.reason ? { reason: guided.reason } : {}),
         routerDiagnostic: guided.diagnostic,
       });
+    } else if (edge.kind === 'duplicates') {
+      const loop = tightDuplicatesLoopIntent(source, target, options.clearance);
+      const routed = loop
+        ? routeOrthogonalWithIntent(routeOptions, loop)
+        : undefined;
+      const applied = routed?.status === 'applied'
+        ? routed
+        : loop
+          ? routeOrthogonalWithIntent(routeOptions, flipDuplicatesLoopIntent(loop))
+          : undefined;
+      edges[edgeId] = {
+        points: applied?.status === 'applied' ? applied.points : routeOrthogonal(routeOptions).points,
+      };
     } else {
       edges[edgeId] = { points: routeOrthogonal(routeOptions).points };
     }
