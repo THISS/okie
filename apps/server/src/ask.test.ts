@@ -196,6 +196,7 @@ test("Ask keeps observed clone duplicates on packets", () => {
       duplicates: [
         { id: "code:beta", name: "beta" },
         { id: "code:beta", name: "again" },
+        { id: "code:alpha", name: "self" },
         { id: "", name: "ghost" },
       ],
       apiKey: FAKE_GATEWAY_KEY,

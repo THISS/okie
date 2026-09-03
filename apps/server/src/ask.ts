@@ -228,7 +228,7 @@ function sanitizePacket(raw: unknown): AskPacket | undefined {
       const counterpart = row as Record<string, unknown>;
       const counterpartId = optionalTrimmedString(counterpart.id);
       const counterpartName = optionalTrimmedString(counterpart.name);
-      if (!counterpartId || !counterpartName || seen.has(counterpartId)) continue;
+      if (!counterpartId || !counterpartName || seen.has(counterpartId) || counterpartId === packet.id) continue;
       seen.add(counterpartId);
       duplicates.push({
         id: scrubGithubTokens(counterpartId),

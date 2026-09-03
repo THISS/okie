@@ -1088,12 +1088,8 @@ export function attachDuplicateRelations(
       : { ...snapshot, relations: snapshot.relations.filter(relation => relation.kind !== "duplicates") };
   }
   const entityById = new Map(snapshot.entities.map(entity => [entity.id, entity]));
-  const existing = new Set(
-    snapshot.relations
-      .filter(relation => relation.kind === "duplicates")
-      .map(relation => `${relation.from}\0${relation.to}`),
-  );
   const kept = snapshot.relations.filter(relation => relation.kind !== "duplicates");
+  const existing = new Set<string>();
   const added: ArchitectureSnapshot["relations"][number][] = [];
   for (const pair of pairs) {
     const fromEntity = entityById.get(pair.from);
