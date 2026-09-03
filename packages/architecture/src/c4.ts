@@ -1044,7 +1044,9 @@ export function buildC4ProjectionBundle(
     });
     // Edge budget (opt-in): route only the top-N edges, focus-first — an edge touching
     // the focus subtree outranks every global heavy-hitter, so a drilled scope always
-    // shows ITS OWN wiring before the repo's loudest edges; within each tier, rank by
+    // shows ITS OWN wiring before the repo's loudest edges; on the code band, clone
+    // `duplicates` outrank same-count `uses` so packed L4 sibling strokes are not
+    // dropped by the scan relation-gate budget (CLA-68). Within each tier, rank by
     // (aggregate count desc, id asc). The rest stay enumerable via omittedEdgeIds +
     // the bundle index ("+N more").
     let routedEdgeIds = visualEdgeIds;
@@ -1057,8 +1059,12 @@ export function buildC4ProjectionBundle(
         return isDescendantOrSelf(fromEntityId, focus.id, entityById)
           || isDescendantOrSelf(toEntityId, focus.id, entityById) ? 1 : 0;
       };
+      const kindRank = (id: string): number => (
+        band === 'code' && visualEdgeById[id]?.kind === 'duplicates' ? 1 : 0
+      );
       const ranked = [...visualEdgeIds].sort((left, right) =>
         touchesFocus(right) - touchesFocus(left)
+        || kindRank(right) - kindRank(left)
         || visualEdgeById[right]!.aggregate.count - visualEdgeById[left]!.aggregate.count
         || left.localeCompare(right));
       const kept = new Set(ranked.slice(0, options.maxEdgesPerBand));

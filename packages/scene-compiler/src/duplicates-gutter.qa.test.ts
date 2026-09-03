@@ -113,3 +113,33 @@ test('CLA-68: compiled L4 sibling duplicates leave the packed code-card gutter',
     'clone overlay must not mint extra code nodes',
   );
 });
+
+test('CLA-68: code-band edge budget keeps sibling duplicates ahead of uses', () => {
+  const snapshot = packedFileSnapshot();
+  const names = ['alpha', 'beta', 'gamma', 'delta'];
+  for (let i = 0; i < names.length; i += 1) {
+    for (let j = i + 1; j < names.length; j += 1) {
+      snapshot.relations.push({
+        id: `relation:uses:${names[i]}-${names[j]}`,
+        from: `code:${names[i]}`,
+        to: `code:${names[j]}`,
+        kind: 'uses',
+        label: 'uses',
+        evidence,
+      });
+    }
+  }
+  const targetAspect = ASPECT_PRESET_TARGET.landscape;
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:d',
+    focusEntityId: 'component:icons',
+    familyId: 'view-family:duplicates-gutter-budget',
+    targetAspect,
+    maxEdgesPerBand: 1,
+  });
+  const code = bundle.projectionById[bundle.family.projectionIds.code]!;
+  const dupId = bundle.index.visualEdgeIdsByRelationId['relation:dup:alpha-beta']![0]!;
+  assert.ok(code.visualEdgeIds.includes(dupId), 'duplicates must remain routed under a tight code-band budget');
+  assert.equal(code.visualEdgeIds.length, 1);
+  assert.equal(bundle.visualEdgeById[dupId]!.kind, 'duplicates');
+});
