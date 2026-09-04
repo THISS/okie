@@ -205,6 +205,30 @@ function frameEntityIdsAtDetail(
 }
 
 /**
+ * Painted cards at this C4 band — compiled projection members whose native
+ * detail is the band. Fit uses these so ancestor owner-shells (stable packed
+ * bounds that still cover omitted CLA-74 neighbors) cannot yank the camera
+ * into empty space while the explorer still lists resident L4 cards.
+ */
+export function residentVisibleProjectionEntityIds(
+  scene: AtlasScene,
+  entityIds: readonly string[],
+  detail: SemanticDetail,
+): string[] {
+  const painted = new Set(
+    scene.projection?.entityIdsByDetail[detail]
+    ?? scene.entities.filter(entity => (entity.detail ?? 'context') === detail).map(entity => entity.id),
+  );
+  const wanted = new Set(entityIds);
+  const cards = scene.entities
+    .filter(entity => wanted.has(entity.id)
+      && painted.has(entity.id)
+      && (entity.detail ?? 'context') === detail)
+    .map(entity => entity.id);
+  return cards.length ? cards : [...wanted].filter(id => painted.has(id));
+}
+
+/**
  * Frames the entities currently painted at this C4 band (the visible projection),
  * not the root entity's full descendant scope. Fit uses this; load/open-inside keep
  * `frameProjectionScope` so CLA-11 unsolicited refit behavior stays unchanged.
@@ -217,7 +241,15 @@ export function frameVisibleProjection(
   safeArea: SafeArea,
 ): Camera | undefined {
   const { minZoom, maxZoom } = dominantBandZoomRange(detail);
-  return frameEntityIdsAtDetail(scene, entityIds, detail, viewport, safeArea, minZoom, maxZoom);
+  return frameEntityIdsAtDetail(
+    scene,
+    residentVisibleProjectionEntityIds(scene, entityIds, detail),
+    detail,
+    viewport,
+    safeArea,
+    minZoom,
+    maxZoom,
+  );
 }
 
 export function projectedEntitiesFitSafeViewport(
