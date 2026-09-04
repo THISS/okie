@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   regenerateScanManifest,
@@ -74,8 +74,11 @@ function publishArtifacts(scanRoot: string, dirSlug: string, artifacts: ScanArti
   writeFileSync(join(out, "story.json"), stableJson(artifacts.story));
   writeFileSync(join(out, "scene.json"), stableJson(artifacts.scene));
   writeFileSync(join(out, "timeline.json"), stableJson(artifacts.timeline));
+  const reportPath = join(out, "enrichment-report.json");
   if (artifacts.enrichmentReport) {
-    writeFileSync(join(out, "enrichment-report.json"), stableJson(artifacts.enrichmentReport));
+    writeFileSync(reportPath, stableJson(artifacts.enrichmentReport));
+  } else if (existsSync(reportPath)) {
+    unlinkSync(reportPath);
   }
   const manifest = regenerateScanManifest(scanRoot);
   writeFileSync(join(scanRoot, "index.json"), stableJson(manifest));
@@ -87,10 +90,14 @@ function publishEnrichmentStatus(
   dirSlug: string,
   status: PublishedEnrichmentStatus | undefined,
 ): void {
-  if (!status) return;
   const out = join(scanRoot, dirSlug);
+  const path = join(out, "enrichment-status.json");
+  if (!status) {
+    if (existsSync(path)) unlinkSync(path);
+    return;
+  }
   mkdirSync(out, { recursive: true });
-  writeFileSync(join(out, "enrichment-status.json"), stableJson(status));
+  writeFileSync(path, stableJson(status));
 }
 
 function skipNote(config: LlmGatewayConfig): string {

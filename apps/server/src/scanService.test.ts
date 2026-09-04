@@ -437,6 +437,13 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     return queue.list()[0]!;
   };
   try {
+    mkdirSync(join(scanRoot, "acme__app-off"), { recursive: true });
+    writeFileSync(join(scanRoot, "acme__app-off", "enrichment-report.json"), JSON.stringify({
+      results: [{ containerId: "container:stale", accepted: false, reasons: ["gate leftover"] }],
+    }));
+    writeFileSync(join(scanRoot, "acme__app-off", "enrichment-status.json"), JSON.stringify({
+      state: "complete", acceptedContainers: 0, attemptedContainers: 1, why: "rejected",
+    }));
     const off = await run("acme__app-off");
     assert.equal(off.stage, "complete");
     assert.equal(off.atlasReady, true);
