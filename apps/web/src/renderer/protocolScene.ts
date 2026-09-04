@@ -1,4 +1,5 @@
 import type { AtlasScene, SceneEntity } from './types';
+import { NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
 
 type Rgba = readonly [number, number, number, number];
 
@@ -88,7 +89,7 @@ export function toProtocolScene(scene: AtlasScene) {
             kind: 'text' as const,
             position: { x: entity.x + 16, y: entity.y + 66 },
             maxWidth: entity.width - 32,
-            content: entity.responsibility,
+            content: entity.responsibility.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED,
             fontFamily: 'IBM Plex Sans',
             fontSize: 10,
             color: muted,

@@ -7,10 +7,9 @@ import {
   C4_LABEL_MIN_TITLE_PX,
   C4_ZOOM_BANDS,
   compileC4Scene,
+  NO_SUMMARY_SUPPLIED,
 } from './compile-c4.js';
 import { displayMetricsForFontFamily, displayTextWidth } from './display-text.js';
-
-const EMPTY_SUMMARY = 'No summary supplied.';
 
 function scanDogfoodLabels(): ArchitectureSnapshot {
   const externals: ArchitectureEntity[] = [
@@ -94,13 +93,33 @@ test('CLA-53: L1/L2 dogfood labels stay readable without invented summaries', ()
       assert.equal(sample.fill.kind, 'roundedRect');
       assert.ok(contrastRatio(sample.title.color, sample.fill.fill) >= 4.5,
         `${band} ${name} title contrast must hold against the unselected card fill`);
-      assert.equal(sample.support, undefined, `${band} ${name} must not invent canvas copy when responsibility is absent`);
+      assert.ok(sample.support, `${band} ${name} GPU card must include a description primitive`);
+      assert.equal(sample.support.content, NO_SUMMARY_SUPPLIED,
+        `${band} ${name} must surface the honest no-summary placeholder, not invented enrichment`);
     }
   }
 
   const fontsource = snapshot.entities.find(entity => entity.id === 'external:fontsource')!;
   assert.equal(fontsource.responsibility, undefined);
-  assert.notEqual(fontsource.responsibility, EMPTY_SUMMARY);
+  assert.notEqual(fontsource.responsibility, NO_SUMMARY_SUPPLIED);
+});
+
+test('CLA-58: GPU cards keep accepted summaries and do not invent enrichment on the snapshot', () => {
+  const snapshot = scanDogfoodLabels();
+  const okie = compiledTitle(snapshot, 'system:okie', 'context');
+  assert.equal(okie.support?.content, 'Spatial architecture atlas.');
+
+  const react = compiledTitle(snapshot, 'external:react', 'context');
+  assert.equal(react.support?.content, NO_SUMMARY_SUPPLIED);
+
+  const web = compiledTitle(snapshot, 'container:web', 'container');
+  assert.equal(web.support?.content, 'React shell.');
+
+  const scan = compiledTitle(snapshot, 'container:scan', 'container');
+  assert.equal(scan.support?.content, NO_SUMMARY_SUPPLIED);
+
+  const snapshotReact = snapshot.entities.find(entity => entity.id === 'external:react')!;
+  assert.equal(snapshotReact.responsibility, undefined);
 });
 
 test('CLA-53 does not lower the CLA-45 owner-shell stroke floor', () => {

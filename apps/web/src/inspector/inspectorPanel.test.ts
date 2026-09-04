@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
 import {
   clampInspectorWidth,
   defaultInspectorWidth,
@@ -126,6 +127,7 @@ describe('inspector accepted section summaries (CLA-26)', () => {
     expect(inspectorAcceptedSummary({ responsibility: 'Hosts the scan server.' })).toBe('Hosts the scan server.');
     expect(inspectorAcceptedSummary({ responsibility: '  Trimmed summary.  ' })).toBe('Trimmed summary.');
     expect(inspectorAcceptedSummary({ responsibility: INSPECTOR_EMPTY_SUMMARY })).toBeUndefined();
+    expect(INSPECTOR_EMPTY_SUMMARY).toBe(NO_SUMMARY_SUPPLIED);
     expect(inspectorAcceptedSummary({ responsibility: ` ${INSPECTOR_EMPTY_SUMMARY} ` })).toBeUndefined();
     expect(inspectorAcceptedSummary({ responsibility: '' })).toBeUndefined();
     expect(inspectorAcceptedSummary({ responsibility: '   ' })).toBeUndefined();
@@ -174,6 +176,41 @@ describe('inspector accepted section summaries (CLA-26)', () => {
     expect(inspectorTabForEntity(inspectorCanShowSource(container))).toBe('details');
     expect(inspectorTabForEntity(inspectorCanShowSource(code))).toBe('source');
     expect(code.sourceRefs?.length).toBeGreaterThan(0);
+  });
+
+  it('puts the honest placeholder on GPU compiled card descriptions when responsibility is absent (CLA-58)', () => {
+    const scene = createC4Scene({
+      baseSnapshot: scanSnapshot(
+        [
+          { id: 'system:app', kind: 'softwareSystem', name: 'app', responsibility: 'Hosts the atlas.', sourceRefs: [] },
+          { id: 'external:react', kind: 'externalSystem', name: 'react', sourceRefs: [] },
+          { id: 'external:dompurify', kind: 'externalSystem', name: 'dompurify', sourceRefs: [] },
+        ],
+        [],
+      ),
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:cla-58',
+      sceneId: 'cla-58-c4',
+      title: 'CLA-58',
+      subtitle: 'CLA-58',
+      frozenRevision: 'sha',
+    });
+    const protocol = scene.protocolSnapshot as {
+      objects: Array<{ id: string; representations: Array<{ id: string; primitives: Array<{ kind: string; content?: string }> }> }>;
+    };
+    const descriptionOn = (entityId: string, band: 'context' | 'container') => {
+      const visualId = scene.projection?.semanticToVisualEntityId[entityId];
+      const object = protocol.objects.find(candidate => candidate.id === visualId);
+      const representation = object?.representations.find(candidate => candidate.id === `${visualId}:${band}`);
+      return representation?.primitives.filter(primitive => primitive.kind === 'text').at(2)?.content;
+    };
+
+    expect(scene.entities.find(entity => entity.id === 'external:react')?.responsibility).toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(inspectorAcceptedSummary(scene.entities.find(entity => entity.id === 'external:react'))).toBeUndefined();
+    expect(descriptionOn('external:react', 'context')).toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(descriptionOn('external:dompurify', 'context')).toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(descriptionOn('system:app', 'context')).toBe('Hosts the atlas.');
   });
 });
 

@@ -74,6 +74,13 @@ const visualScaleByBand: Readonly<Record<C4Band, number>> = {
 export const C4_BOUNDARY_STROKE_ALPHA = 0.88;
 
 /**
+ * Honest compile-time copy when an entity has no accepted `responsibility`.
+ * Written onto GPU card descriptions (and scene entities) so canvas hover and
+ * the entity list stay truthful. Not an enrichment summary.
+ */
+export const NO_SUMMARY_SUPPLIED = 'No summary supplied.';
+
+/**
  * L1–L3 primary titles must project to at least 12 CSS px (golden-okie-hierarchy).
  * Compiler shrink-to-fit and the Canvas fallback use this as the truncation floor
  * at context zoom so scoped names stay readable before they ellipsize.
@@ -251,7 +258,9 @@ function presentation(
   const titleY = bounds.y + (boundary ? 36 : band === 'context' ? 68 : band === 'code' ? 42 : 50) * visualScale;
   const descriptionY = bounds.y + (band === 'context' ? 112 : band === 'code' ? 68 : 76) * visualScale;
   const sourcePath = entity.sourceRefs[0]?.path;
-  const description = band === 'code' ? sourcePath : node.responsibility;
+  const description = band === 'code'
+    ? sourcePath
+    : (entity.responsibility?.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
   const kindLabel: Record<VisualNode['kind'], string> = {
     person: 'PERSON',
     softwareSystem: 'SOFTWARE SYSTEM',

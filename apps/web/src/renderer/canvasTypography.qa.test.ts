@@ -254,4 +254,51 @@ describe('Canvas2D band-normalized typography', () => {
     expect(fontsource?.startsWith('@fontsource/ibm-') && !fontsource.includes('plex-sans')).toBe(false);
     expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(true);
   });
+
+  it('paints the honest placeholder when Canvas2D entities have no summary (CLA-58)', () => {
+    const scene: AtlasScene = {
+      id: 'cla-58-canvas',
+      title: 'CLA-58 canvas',
+      subtitle: '',
+      entities: [
+        {
+          id: 'external:react',
+          name: 'react',
+          kind: 'system',
+          kindLabel: 'EXTERNAL SYSTEM',
+          detail: 'context',
+          responsibility: '',
+          x: 0,
+          y: 0,
+          width: 480,
+          height: 190,
+        },
+        {
+          id: 'system:okie',
+          name: 'okie',
+          kind: 'system',
+          kindLabel: 'SOFTWARE SYSTEM',
+          detail: 'context',
+          responsibility: 'Spatial architecture atlas.',
+          x: 520,
+          y: 0,
+          width: 480,
+          height: 190,
+        },
+      ],
+      relations: [],
+      regions: [],
+    };
+    const target = fakeCanvas();
+    const renderer = new Canvas2DRenderer(target.canvas, 'canvas2d');
+    renderer.setScene(scene);
+    renderer.resize(1200, 400, 1);
+    renderer.setCamera({ x: 500, y: 95, zoom: 0.75 });
+    renderer.setRenderState(state);
+    renderer.render(0);
+
+    expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(true);
+    expect(target.textCalls.some(call => call.content === 'Spatial architecture atlas.')).toBe(true);
+  });
+  });
 });
