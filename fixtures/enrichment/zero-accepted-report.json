@@ -1,0 +1,14 @@
+{
+  "promptVersion": "okie-enrichment/v2",
+  "enrichedContainers": [],
+  "collapsedSelfEdges": 0,
+  "results": [
+    {
+      "containerId": "container:example",
+      "accepted": false,
+      "reasons": [
+        "gate: <root> must restate exactly the container container:example"
+      ]
+    }
+  ]
+}

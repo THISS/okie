@@ -20,6 +20,12 @@ import {
 import { compileAppStoryPlan, createC4Scene, type AppStoryPlan } from './goldenC4Scene';
 import { rememberPublishedChildCounts } from './lazyBandCompile';
 import type { AtlasScene, ScanGuardRefusal } from './types';
+import {
+  parsePublishedEnrichmentReport,
+  parsePublishedEnrichmentStatus,
+  publishedEnrichmentHonesty,
+  type PublishedEnrichmentHonesty,
+} from '../inspector/publishedEnrichmentHonesty';
 
 // Hang-guard only (CLA-66 / CLA-67): unbounded full-graph compiles above this
 // entity count are refused. Band scoping is the DEFAULT scan path at every
@@ -238,6 +244,11 @@ export type ScanFixture = {
   ensureNeighborhood: (focusEntityId: string) => Promise<void>;
   /** Fetch portable excerpts for one entity when Source opens. */
   ensureExcerpts: (entityId: string) => Promise<SourceExcerpt[] | undefined>;
+  /**
+   * Secret-free skip/reject copy for inspector chrome (CLA-75). Absent when
+   * enrichment never ran (no report / no status sidecar).
+   */
+  enrichmentHonesty?: PublishedEnrichmentHonesty;
 };
 
 export type RawScanTrio = { snapshot: unknown; view: unknown; story: unknown };
@@ -246,6 +257,10 @@ export type ScanNeighborhoodHost = {
   loadNeighborhood: (focusEntityId: string) => Promise<ArchitectureNeighborhoodPacket>;
   loadExcerpts: (entityId: string) => Promise<SourceExcerpt[] | undefined>;
   loadStory: () => Promise<unknown>;
+  /** Optional published `enrichment-report.json`. Missing/404 is undefined, never fatal. */
+  loadEnrichmentReport?: () => Promise<unknown>;
+  /** Optional secret-free `enrichment-status.json`. Missing/404 is undefined, never fatal. */
+  loadEnrichmentStatus?: () => Promise<unknown>;
 };
 
 /** Raised when the scanned trio fails validation; carries every issue found. */
@@ -569,6 +584,53 @@ async function fetchScanDoc(name: 'snapshot' | 'view' | 'story', slug?: string):
   return (await resolveScanDocLoader(name, slug, { root: rootScanLoaders, repo: repoScanLoaders })()).default;
 }
 
+async function fetchOptionalScanJson(path: string, fetchImpl: typeof fetch): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetchImpl(path);
+  } catch {
+    return undefined;
+  }
+  if (response.status === 404 || !response.ok) return undefined;
+  try {
+    return await response.json() as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function loadPublishedEnrichmentHonesty(
+  slug: string | undefined,
+  fetchImpl: typeof fetch = fetch,
+): Promise<PublishedEnrichmentHonesty | undefined> {
+  const [reportRaw, statusRaw] = await Promise.all([
+    fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-report.json'), fetchImpl),
+    fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-status.json'), fetchImpl),
+  ]);
+  return publishedEnrichmentHonesty({
+    report: parsePublishedEnrichmentReport(reportRaw),
+    status: parsePublishedEnrichmentStatus(statusRaw),
+  });
+}
+
+async function honestyFromHost(host: ScanNeighborhoodHost): Promise<PublishedEnrichmentHonesty | undefined> {
+  const [reportRaw, statusRaw] = await Promise.all([
+    host.loadEnrichmentReport?.() ?? Promise.resolve(undefined),
+    host.loadEnrichmentStatus?.() ?? Promise.resolve(undefined),
+  ]);
+  return publishedEnrichmentHonesty({
+    report: parsePublishedEnrichmentReport(reportRaw),
+    status: parsePublishedEnrichmentStatus(statusRaw),
+  });
+}
+
+function withEnrichmentHonesty(
+  fixture: ScanFixture,
+  honesty: PublishedEnrichmentHonesty | undefined,
+): ScanFixture {
+  return honesty ? { ...fixture, enrichmentHonesty: honesty } : fixture;
+}
+
 function scanObjectPath(slug: string | undefined, basename: string, query?: string): string {
   const path = slug
     ? `/scan/${encodeURIComponent(slug)}/${basename}`
@@ -615,7 +677,8 @@ export function bootFocusFromSearch(search: string): string | undefined {
 
 /**
  * Runtime-fetch neighborhood host (CLA-73): `/scan/<slug>/neighborhood.json`
- * plus lazy `/excerpt.json` and `story.json`. Does not GET snapshot.json/view.json.
+ * plus lazy `/excerpt.json`, `story.json`, and optional enrichment honesty
+ * sidecars. Does not GET snapshot.json/view.json.
  */
 export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch = fetch): ScanNeighborhoodHost {
   return {
@@ -637,6 +700,8 @@ export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch
       return raw.sourceExcerpts as SourceExcerpt[];
     },
     loadStory: () => fetchScanJson(scanObjectPath(slug, 'story.json'), fetchImpl, 'story'),
+    loadEnrichmentReport: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-report.json'), fetchImpl),
+    loadEnrichmentStatus: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-status.json'), fetchImpl),
   };
 }
 
@@ -652,8 +717,13 @@ export async function loadScanFixture(
   slug?: string,
 ): Promise<ScanFixture> {
   const loader: ScanTrioLoader = load ?? (name => fetchScanDoc(name, slug));
-  const [snapshot, view, story] = await Promise.all([loader('snapshot'), loader('view'), loader('story')]);
-  return compileScanFixture({ snapshot, view, story }, options);
+  const [snapshot, view, story, honesty] = await Promise.all([
+    loader('snapshot'),
+    loader('view'),
+    loader('story'),
+    load && !slug ? Promise.resolve(undefined) : loadPublishedEnrichmentHonesty(slug),
+  ]);
+  return withEnrichmentHonesty(compileScanFixture({ snapshot, view, story }, options), honesty);
 }
 
 export async function loadScanNeighborhoodFixture(
@@ -661,9 +731,10 @@ export async function loadScanNeighborhoodFixture(
   focusEntityId: string | undefined,
   options: ScanModeOptions = {},
 ): Promise<ScanFixture> {
-  const [packet, story] = await Promise.all([
+  const [packet, story, honesty] = await Promise.all([
     host.loadNeighborhood(focusEntityId ?? ''),
     host.loadStory(),
+    honestyFromHost(host),
   ]);
-  return compileScanNeighborhoodFixture(packet, story, host, options);
+  return withEnrichmentHonesty(compileScanNeighborhoodFixture(packet, story, host, options), honesty);
 }

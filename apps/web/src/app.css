@@ -595,13 +595,15 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .inspector-tabs button:disabled { opacity: .3; cursor: not-allowed; }
 .details-scroll { min-height: 0; overflow-y: auto; padding: 22px 22px 36px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.12) transparent; }
 .inspector-presentation { min-width: 0; }
-.entity-kicker { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.entity-kicker { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 .entity-kicker > span { color: var(--atlas-cyan); font-family: var(--atlas-font-mono); font-size: 11px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
 .provenance-badge { flex: 0 0 auto; padding: 3px 7px; border: 1px solid var(--atlas-line); border-radius: 999px; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; letter-spacing: .05em; }
 .provenance-badge.tone-observed { border-color: rgba(217,255,112,.18); color: #9caf78; }
 .provenance-badge.tone-explanation { border-color: rgba(255,174,112,.2); color: var(--atlas-orange); }
 .entity-hero h2 { overflow-wrap: anywhere; margin: 13px 0 0; font-size: 27px; font-weight: 650; line-height: 1.08; letter-spacing: -.035em; }
 .responsibility { margin: 10px 0 0; color: var(--atlas-muted); font-size: 12px; line-height: 1.6; }
+.enrichment-honesty { color: var(--atlas-quiet); }
+.enrichment-honesty-chip { flex: 0 1 auto; min-width: 0; padding: 3px 7px; border: 1px solid var(--atlas-line); border-radius: 999px; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .entity-metadata { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 13px; }
 .entity-metadata span { display: inline-flex; min-width: 0; padding: 4px 7px; border: 1px solid var(--atlas-line); border-radius: 6px; background: rgba(255,255,255,.02); color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 10px; overflow-wrap: anywhere; }
 .entity-metadata .signal { color: var(--atlas-orange); }

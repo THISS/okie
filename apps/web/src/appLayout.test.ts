@@ -175,8 +175,19 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('inspectorAcceptedSummary(selected)');
     expect(app).toContain("data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'}");
     expect(app).toContain('data-inspector-section-summary=""');
-    expect(app).toContain('{selectedSummary ? <p className="responsibility" data-inspector-section-summary="">{selectedSummary}</p> : null}');
+    expect(app).toContain('{selectedSummary ? <p className="responsibility" data-inspector-section-summary="">{selectedSummary}</p> : scanFixture?.enrichmentHonesty ? <p className="responsibility enrichment-honesty" data-inspector-enrichment-honesty-details="">{scanFixture.enrichmentHonesty.details}</p> : null}');
     expect(app).not.toContain('<p className="responsibility">{selected.responsibility}</p>');
+  });
+
+  it('renders published enrichment honesty when a summary is missing (CLA-75)', () => {
+    expect(app).toContain('data-atlas-enrichment-why={scanFixture?.enrichmentHonesty?.why ?? \'\'}');
+    expect(app).toContain('data-inspector-enrichment-honesty={scanFixture?.enrichmentHonesty?.why ?? \'\'}');
+    expect(app).toContain('data-testid="inspector-enrichment-honesty"');
+    expect(app).toContain('scanFixture.enrichmentHonesty.chip');
+    expect(app).toContain('scanFixture.enrichmentHonesty.details');
+    expect(app).not.toMatch(/enrichmentHonesty\.note/);
+    expect(app).not.toMatch(/results\[.*\]\.reasons/);
+    expect(app).not.toMatch(/scanRoot|OPENROUTER_API_KEY|apiKey/);
   });
 
   it('renders observed CODEOWNERS in Details and omits the section when none exist', () => {

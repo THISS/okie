@@ -15,6 +15,14 @@ test("dogfood slug aliases the root self-scan trio", () => {
     "colinhacks__zod/snapshot.json",
   ]);
   assert.deepEqual(publishedScanCandidates("index.json"), ["index.json"]);
+  assert.deepEqual(publishedScanCandidates("thiss__okie/enrichment-report.json"), [
+    "thiss__okie/enrichment-report.json",
+    "enrichment-report.json",
+  ]);
+  assert.deepEqual(publishedScanCandidates("thiss__okie/enrichment-status.json"), [
+    "thiss__okie/enrichment-status.json",
+    "enrichment-status.json",
+  ]);
   assert.deepEqual(publishedScanCandidates("../secrets.env"), []);
 });
 
