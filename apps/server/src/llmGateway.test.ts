@@ -425,6 +425,7 @@ test("force without a gateway key names anthropic, not the unused OpenRouter hos
 });
 
 test("resolveEnrichmentBudget reads env and keeps documented defaults", () => {
+  assert.equal(DEFAULT_MAX_ENRICHMENT_TOKENS, 200_000);
   assert.deepEqual(resolveEnrichmentBudget({}), {
     requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
     maxScopes: DEFAULT_MAX_ENRICHMENT_SCOPES,
