@@ -2,6 +2,7 @@ export * from "./model.js";
 export * from "./authoring.js";
 export * from "./extraction.js";
 export * from "./c4.js";
+export * from "./viewport-neighborhood.js";
 export * from "./c4-completeness.js";
 export * from "./normalized.js";
 export * from "./neighborhood.js";

@@ -61,9 +61,10 @@ export function scanAncestorAtBand(
 /**
  * Focus id for a per-neighborhood scoped compile of `band`.
  *
- * L1/L2 compile at the view root (current context band + one-down container
- * prefetch). L3 compiles that container. L4 compiles that file-component.
- * Approximate from the zoom/selection/tour target, never the whole tree.
+ * Compiled and resident set (CLA-74): focused entity + siblings + one band
+ * down, then the camera tile window. L1/L2 compile at the view root. L3
+ * compiles that container. L4 compiles that file-component. Approximate from
+ * the zoom/selection/tour target, never the whole tree.
  */
 export function scanCompileFocusForBand(
   snapshot: ArchitectureSnapshot,
@@ -82,8 +83,10 @@ export function scanCompileFocusForBand(
 
 /**
  * Visible parents that have children — prefetch their next-band neighborhood
- * so Open inside / zoom is already warm. Does not skip an opened neighborhood
- * just because some of its entities sit outside the viewport (renderer culling).
+ * so Open inside / zoom is already warm. Prefetch stays on that child
+ * neighborhood (CLA-66 ~25 code children), not the sibling dump. Does not skip
+ * an opened neighborhood just because some of its entities sit outside the
+ * viewport (renderer culling); CLA-74 pages off-screen L3/L4 at compile.
  */
 export function scanPrefetchFocusIds(
   snapshot: ArchitectureSnapshot,

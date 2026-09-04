@@ -6,12 +6,14 @@ import {
   validateSnapshot,
   validateStoryDocument,
   validateView,
+  VIEWPORT_RESIDENT_NODES_PER_BAND,
   type ArchitectureNeighborhoodPacket,
   type ArchitectureSnapshot,
   type ArchitectureStory,
   type ArchitectureView,
   type C4Band,
   type EntityKind,
+  type Rect,
   type SourceExcerpt,
   type ValidationIssue,
 } from '@okie/architecture';
@@ -28,6 +30,8 @@ import type { AtlasScene, ScanGuardRefusal } from './types';
 export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;
 export const SCAN_CONTAINER_EDGE_BUDGET = 24;     // routed edges per band at a container drill-in
 export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a container drill-in
+/** Compiled L3/L4 window (CLA-74 / CLA-67 healthy 50). Not the 2000 hang-guard. */
+export const SCAN_RESIDENT_NODES_PER_BAND = VIEWPORT_RESIDENT_NODES_PER_BAND;
 
 // Relation-pressure gate: the symbol-level `uses` graph makes edge ROUTING the
 // dominant cost even when the entity count sits far under the hang-guard
@@ -39,7 +43,18 @@ export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a c
 export const SCAN_RELATION_EDGE_MIN = 600;   // relation gate — above this, budget the routed edges
 export const SCAN_RELATION_EDGE_BUDGET = 64; // routed edges per band under the relation gate
 
-export type ScanScopedOptions = { maxBand?: C4Band; maxEdgesPerBand?: number; maxGridNodes?: number };
+export type ScanScopedOptions = {
+  maxBand?: C4Band;
+  maxEdgesPerBand?: number;
+  maxGridNodes?: number;
+  maxNodesPerBand?: number;
+};
+
+/** Camera-resident compile window (CLA-74). Does not change CLA-73 fetch. */
+export type ScanViewportResidency = {
+  worldBounds?: Rect;
+  keepEntityIds?: readonly string[];
+};
 
 /**
  * Mode-level compile options for scan mode (task #30). Independent of per-kind
@@ -60,11 +75,11 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
   softwareSystem: { maxBand: 'container' },
   externalSystem: { maxBand: 'container' },
   boundary: { maxBand: 'container' },
-  container: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
-  dataStore: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
-  queue: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES },
-  component: { maxBand: 'code' },
-  // code focus → {} (deepest bands already route; hang-guard still applies)
+  container: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+  dataStore: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+  queue: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+  component: { maxBand: 'code', maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+  code: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
 };
 
 /**
@@ -207,7 +222,7 @@ export type ScanFixture = {
   story: AppStoryPlan;
   /** Recompiles the scan snapshot for a new focus/root (drill-in, restore).
    *  Routed through the anti-hang guard, so no path can compile the whole graph. */
-  createScene: (focusEntityId: string, previous?: AtlasScene) => AtlasScene;
+  createScene: (focusEntityId: string, previous?: AtlasScene, residency?: ScanViewportResidency) => AtlasScene;
   /** Scoped-compile options for a derived (flow/Mermaid) projection of a focus, so
    *  those direct-`buildC4ProjectionBundle` bypass paths stay scoped too. */
   scopeCompileOptions: (focusEntityId: string) => ScanScopedOptions;
@@ -287,7 +302,11 @@ function buildLiveScanFixture(
   const inflight = new Map<string, Promise<void>>();
   const host = extras.host;
 
-  const createScene = (focusEntityId: string, previous?: AtlasScene): AtlasScene => {
+  const createScene = (
+    focusEntityId: string,
+    previous?: AtlasScene,
+    residency?: ScanViewportResidency,
+  ): AtlasScene => {
     const decision = guardScanCompile(snapshot, focusEntityId, view.rootEntityId);
     const scoped = decision.options;
     const scene = createC4Scene({
@@ -303,6 +322,8 @@ function buildLiveScanFixture(
       ...scoped,
       ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
+      ...(residency?.worldBounds ? { residentWorldBounds: residency.worldBounds } : {}),
+      ...(residency?.keepEntityIds ? { keepEntityIds: residency.keepEntityIds } : {}),
     });
     return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;
   };

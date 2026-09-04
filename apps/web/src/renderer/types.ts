@@ -85,6 +85,15 @@ export type OmittedRelation = {
   evidencePaths: string[];
 };
 
+/** An L3/L4 node the camera-resident window kept out of the compiled scene,
+ *  still enumerable for inspector "+N more". */
+export type OmittedNode = {
+  entityId: string;
+  detail: SemanticDetail;
+  name: string;
+  parentId?: string;
+};
+
 /** The unrouted counterpart of a drawn edge: same band, same projected endpoints,
  *  but over the per-band edge budget so the canvas never drew it. Endpoint IDs let
  *  the selected card report exactly its own "+N more". */
@@ -107,6 +116,7 @@ export type ScopedCompileInfo = {
   maxBand?: SemanticDetail;
   maxEdgesPerBand?: number;
   maxGridNodes?: number;
+  maxNodesPerBand?: number;
   entityCount: number;
   bandDepthThreshold: number;
   directFallbackCount: number;
@@ -153,6 +163,8 @@ export type AtlasScene = {
   omittedRelations?: OmittedRelation[];
   /** The same drop, keyed by visual edge and projected endpoints (absent otherwise). */
   omittedEdges?: OmittedEdge[];
+  /** L3/L4 cards the camera-resident window did not compile (inspector +N more). */
+  omittedNodes?: OmittedNode[];
   /** Scan-mode scoped-compile decision, surfaced in the dev diagnostics panel. */
   scopedCompile?: ScopedCompileInfo;
   /** Aspect-preset target the scene was compiled with (scan mode, tasks #30/#33). Present

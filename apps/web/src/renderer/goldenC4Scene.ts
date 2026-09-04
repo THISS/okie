@@ -25,7 +25,7 @@ import {
   type SceneSnapshot,
 } from '@okie/scene-compiler';
 import { scanEntityHasChildren } from './lazyBandCompile';
-import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedEdge, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
+import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedEdge, OmittedNode, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
 
@@ -193,6 +193,9 @@ export type C4SceneOptions = {
   maxBand?: C4Band;
   maxEdgesPerBand?: number;
   maxGridNodes?: number;
+  maxNodesPerBand?: number;
+  residentWorldBounds?: { x: number; y: number; width: number; height: number };
+  keepEntityIds?: readonly string[];
   /** Aspect-aware packing target (scan mode, task #30); omitted for the golden fixture
    *  so its compile stays byte-identical. Applied at all repo sizes (a per-mode opt-in,
    *  independent of the scoped-compile size gates). */
@@ -229,6 +232,30 @@ export function resolveOmittedRelations(bundle: C4ProjectionBundle, snapshot: Ar
     }
   }
   return [...byRelationId.values()].sort((left, right) => left.relationId.localeCompare(right.relationId));
+}
+
+/**
+ * Resolves L3/L4 nodes the camera-resident window kept out of the compiled
+ * scene. Empty when no band carries omittedNodeIds (golden / unbounded).
+ */
+export function resolveOmittedNodes(bundle: C4ProjectionBundle, snapshot: ArchitectureSnapshot): OmittedNode[] {
+  const nameById = new Map(snapshot.entities.map(entity => [entity.id, entity.name]));
+  const parentById = new Map(snapshot.entities.map(entity => [entity.id, entity.parentId]));
+  return bands.flatMap(band => {
+    const projection = bundle.projectionById[bundle.family.projectionIds[band]];
+    return [...(projection?.omittedNodeIds ?? [])].sort().flatMap(visualId => {
+      const node = bundle.visualNodeById[visualId];
+      const entityId = node?.entity.logicalId ?? bundle.index.entityIdByVisualNodeId[visualId];
+      if (!entityId) return [];
+      const parentId = parentById.get(entityId);
+      return [{
+        entityId,
+        detail: band as SemanticDetail,
+        name: nameById.get(entityId) ?? node?.name ?? entityId,
+        ...(parentId ? { parentId } : {}),
+      }];
+    });
+  });
 }
 
 /**
@@ -281,6 +308,9 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     ...(options.maxBand ? { maxBand: options.maxBand } : {}),
     ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
+    ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
+    ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
+    ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
   };
   const authoredProjections = buildC4ProjectionBundle(snapshot, buildOptions);
@@ -288,7 +318,11 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
   const revision = previousSnapshot && previousSnapshot.sceneId === `scene:${baseSnapshot.repositoryId}:c4`
     ? previousSnapshot.revision + 1
     : 1;
-  const scoped = options.maxBand !== undefined || options.maxEdgesPerBand !== undefined || options.maxGridNodes !== undefined;
+  const scoped = options.maxBand !== undefined
+    || options.maxEdgesPerBand !== undefined
+    || options.maxGridNodes !== undefined
+    || options.maxNodesPerBand !== undefined
+    || options.residentWorldBounds !== undefined;
   const compileOptions = {
     revision,
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
@@ -385,10 +419,12 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
   }));
   const omittedRelations = resolveOmittedRelations(authoredProjections, snapshot);
   const omittedEdges = resolveOmittedEdges(authoredProjections, snapshot);
+  const omittedNodes = resolveOmittedNodes(authoredProjections, snapshot);
   const scopedCompile: ScopedCompileInfo | undefined = scoped ? {
     ...(options.maxBand !== undefined ? { maxBand: options.maxBand } : {}),
     ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
+    ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
     entityCount: snapshot.entities.length,
     bandDepthThreshold: options.bandDepthThreshold ?? 0,
     directFallbackCount,
@@ -401,6 +437,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     frozenRevision: options.frozenRevision,
     ...(omittedRelations.length ? { omittedRelations } : {}),
     ...(omittedEdges.length ? { omittedEdges } : {}),
+    ...(omittedNodes.length ? { omittedNodes } : {}),
     ...(scopedCompile ? { scopedCompile } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
     entities,

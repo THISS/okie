@@ -320,6 +320,13 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain('scene.omittedRelations.map');
   });
 
+  it('enumerates off-camera L3/L4 cards as inspector +N more (CLA-74)', () => {
+    expect(app).toContain('data-testid="inspector-omitted-nodes-more"');
+    expect(app).toContain('+{omittedChildNodes.length} more off-camera');
+    expect(app).toContain('data-testid="inspector-omitted-nodes-list"');
+    expect(app).toContain('setOmittedNodesExpanded(false)');
+  });
+
   it('never moves the camera on selection, only on an explicit camera intent', () => {
     const focusStart = app.indexOf('function focusEntity(');
     const focusEnd = app.indexOf('function navigateInspectorHierarchy', focusStart);
