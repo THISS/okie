@@ -191,18 +191,25 @@ export const C4_INTRINSIC_LAYOUT = {
 } as const;
 
 /**
+ * Screen-space routing clearance (CSS px at band focus). Matches the
+ * `8 / focusZoom` world clearance compiled in `@okie/scene-compiler`.
+ */
+export const C4_ROUTING_CLEARANCE_PX = 8;
+
+/**
  * Scan-mode extra L4 sibling gap (CSS px at code focus zoom). Packed code
  * cards otherwise sit two routing clearances apart, so a duplicates U is
  * shorter than the renderer’s 6px corner rounding and collapses into a
  * facing hop. Modest L4 packing bump (CLA-68); golden/demo (no
- * targetAspect) stay byte-identical. Kept below the column-count change
- * for okie’s own icons.tsx scan (4 columns through +32px).
+ * targetAspect) stay byte-identical. A 20-leaf landscape file (okie’s
+ * icons.tsx public surface) reflows 4→5 columns at +32px — enough for a
+ * ~20px U at code-enter zoom, not a packing rewrite.
  */
 export const C4_SCAN_CODE_GAP_EXTRA_PX = 32;
 
 /** World-space packed-gutter ceiling for a tight L4 duplicates loop. */
 function packedDuplicatesGutter(clearance: number): number {
-  return clearance * 2 + clearance * (C4_SCAN_CODE_GAP_EXTRA_PX / 8);
+  return clearance * 2 + clearance * (C4_SCAN_CODE_GAP_EXTRA_PX / C4_ROUTING_CLEARANCE_PX);
 }
 
 /**
@@ -1113,11 +1120,11 @@ export function buildC4ProjectionBundle(
     });
     // Edge budget (opt-in): route only the top-N edges, focus-first — an edge touching
     // the focus subtree outranks every global heavy-hitter, so a drilled scope always
-    // shows ITS OWN wiring before the repo's loudest edges; on the code band, clone
-    // `duplicates` outrank same-count `uses` so packed L4 sibling strokes are not
-    // dropped by the scan relation-gate budget (CLA-68). Within each tier, rank by
-    // (aggregate count desc, id asc). The rest stay enumerable via omittedEdgeIds +
-    // the bundle index ("+N more").
+    // shows ITS OWN wiring before the repo's loudest edges. Within each tier, rank by
+    // aggregate count desc; on the code band, clone `duplicates` beat same-count
+    // `uses` so packed L4 sibling strokes are not dropped by the scan relation-gate
+    // budget (CLA-68); then id asc. Heavier `uses` still outrank a count-1 clone
+    // pair. The rest stay enumerable via omittedEdgeIds + the bundle index ("+N more").
     let routedEdgeIds = visualEdgeIds;
     let omittedEdgeIds: string[] = [];
     if (options.maxEdgesPerBand !== undefined && visualEdgeIds.length > options.maxEdgesPerBand) {
@@ -1133,8 +1140,8 @@ export function buildC4ProjectionBundle(
       );
       const ranked = [...visualEdgeIds].sort((left, right) =>
         touchesFocus(right) - touchesFocus(left)
-        || kindRank(right) - kindRank(left)
         || visualEdgeById[right]!.aggregate.count - visualEdgeById[left]!.aggregate.count
+        || kindRank(right) - kindRank(left)
         || left.localeCompare(right));
       const kept = new Set(ranked.slice(0, options.maxEdgesPerBand));
       routedEdgeIds = visualEdgeIds.filter(id => kept.has(id));

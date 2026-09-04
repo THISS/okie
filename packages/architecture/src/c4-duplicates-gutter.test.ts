@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { NodeLayout, Point } from './model.js';
 import {
+  ASPECT_PRESET_TARGET,
+  C4_INTRINSIC_LAYOUT,
+  C4_ROUTING_CLEARANCE_PX,
   C4_SCAN_CODE_GAP_EXTRA_PX,
+  chooseColumns,
   routeC4BandEdgesDetailed,
   type BandProjection,
   type VisualEdge,
@@ -291,7 +295,7 @@ test('CLA-68: diagonal 2x2 duplicates do not take a tight U through the other ca
 });
 
 test('CLA-68: scan-sized L4 gutter keeps the duplicates U taller than renderer corner rounding', () => {
-  const scanGap = (16 + C4_SCAN_CODE_GAP_EXTRA_PX) / focusZoom;
+  const scanGap = (C4_INTRINSIC_LAYOUT.gap + C4_SCAN_CODE_GAP_EXTRA_PX) / focusZoom;
   const packed: Record<string, NodeLayout> = {
     'visual:file': { x: -4, y: -8, width: 16 * 2 + scanGap + 8, height: 24 },
     'visual:alpha': { x: 0, y: 0, width: 16, height: 8 },
@@ -310,4 +314,27 @@ test('CLA-68: scan-sized L4 gutter keeps the duplicates U taller than renderer c
     span.height * enterZoom >= 16,
     `scan duplicates U must survive 6px corner rounding (height ${span.height.toFixed(3)} world, ${ (span.height * enterZoom).toFixed(1) }px at code enter)`,
   );
+});
+
+test('CLA-68: scan extra gap reflows a 20-leaf landscape file from 4 to 5 columns', () => {
+  const cells = Array.from({ length: 20 }, (_, index) => ({
+    id: `code:${String(index).padStart(2, '0')}`,
+    width: C4_INTRINSIC_LAYOUT.leaf.code.width,
+    height: C4_INTRINSIC_LAYOUT.leaf.code.height,
+  }));
+  const metrics = (gap: number) => ({
+    gap,
+    paddingLeft: C4_INTRINSIC_LAYOUT.sidePadding,
+    paddingRight: C4_INTRINSIC_LAYOUT.sidePadding,
+    paddingTop: C4_INTRINSIC_LAYOUT.header.component,
+    paddingBottom: C4_INTRINSIC_LAYOUT.bottomPadding,
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  assert.equal(chooseColumns(cells, metrics(C4_INTRINSIC_LAYOUT.gap)), 4);
+  assert.equal(
+    chooseColumns(cells, metrics(C4_INTRINSIC_LAYOUT.gap + C4_SCAN_CODE_GAP_EXTRA_PX)),
+    5,
+    'icons.tsx-sized scan packing may add one column; it must not keep drifting',
+  );
+  assert.equal(C4_ROUTING_CLEARANCE_PX * 2, C4_INTRINSIC_LAYOUT.gap);
 });
