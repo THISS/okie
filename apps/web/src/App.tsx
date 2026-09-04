@@ -106,11 +106,19 @@ import {
   ASK_NOT_CONNECTED_LIVE_MESSAGE,
   ASK_PROBE_TIMEOUT_MS,
   ASK_REQUEST_TIMEOUT_MS,
+  ASK_SIGNIN_COPY,
   askScopeKey,
+  askSignInHref,
   buildAskContext,
+  fetchAskAuth,
+  isAskUnauthorized,
+  loadAskThread,
   probeAskConnection,
+  resolveAskAtlasIdentity,
   shouldCommitAskAnswer,
   submitAskQuestion,
+  type AskAuthView,
+  type AskThreadView,
 } from './ask/askAtlas';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
@@ -1265,6 +1273,7 @@ export function App() {
     isolate: () => {},
     startOverviewTour: () => {},
     openAsk: () => {},
+    askSignedIn: () => false,
     readContext: () => ({
       atlas: { fixtureId: 'okie' },
       c4Level: 'context',
@@ -1374,6 +1383,8 @@ export function App() {
   const [askAnswer, setAskAnswer] = useState<string>();
   const [askCitations, setAskCitations] = useState<string[]>([]);
   const [askError, setAskError] = useState<string>();
+  const [askAuth, setAskAuth] = useState<AskAuthView>();
+  const [askThread, setAskThread] = useState<AskThreadView>();
   const [viewport, setViewport] = useState<ViewportSize>(() => ({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight - 68) }));
   const [measuredSafeArea, setMeasuredSafeArea] = useState<SafeArea>(() => storySafeArea({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight - 68) }));
   const [safeAreaEpoch, setSafeAreaEpoch] = useState(0);
@@ -1709,6 +1720,13 @@ export function App() {
     isolatedIds: isolatedEntityIds,
   });
   askScopeKeyRef.current = currentAskScopeKey;
+  const askAtlasIdentity = resolveAskAtlasIdentity({
+    pathname: window.location.pathname,
+    search: window.location.search,
+    commitSha: activeSnapshot.commitSha,
+  });
+  const askReturnPath = `${window.location.pathname}${window.location.search}`;
+  const askSignedIn = askAuth?.authenticated === true;
   const isolatedRelationIds = useMemo(
     () => scene.relations
       .filter(relation => isolatedEntityIdSet.has(relation.from) && isolatedEntityIdSet.has(relation.to))
@@ -3604,6 +3622,7 @@ export function App() {
       setQuestion(question);
       window.setTimeout(() => askInputRef.current?.focus(), 0);
     },
+    askSignedIn: () => askAuth?.authenticated === true,
     readContext: () => ({
       atlas: atlasIdentityFromLocation(window.location.pathname, window.location.search),
       c4Level: activeDetail,
@@ -3640,6 +3659,7 @@ export function App() {
       isolate: active => atlasChromeRef.current.isolate(active),
       startOverviewTour: () => atlasChromeRef.current.startOverviewTour(),
       openAsk: question => atlasChromeRef.current.openAsk(question),
+      askSignedIn: () => atlasChromeRef.current.askSignedIn(),
       readContext: () => atlasChromeRef.current.readContext(),
     });
     void registerWebMcpAtlasTools(globalThis, { signal: controller.signal });
@@ -3907,6 +3927,14 @@ export function App() {
   }, [askOpen, camera, detailsOpen, editingEnabled, mainDiagramActive, navigationIdentity.rootEntityId, pickedRelationId, searchOpen, semanticLensSession, storyStep, viewport]);
 
   useEffect(() => {
+    const controller = new AbortController();
+    void fetchAskAuth({ signal: controller.signal }).then(auth => {
+      if (!controller.signal.aborted) setAskAuth(auth);
+    });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
     if (!askOpen) {
       askAbortRef.current?.abort();
       askAbortRef.current = undefined;
@@ -3917,11 +3945,25 @@ export function App() {
       return;
     }
     const controller = new AbortController();
-    void probeAskConnection({ signal: controller.signal, timeoutMs: ASK_PROBE_TIMEOUT_MS }).then(connected => {
-      if (!controller.signal.aborted) setAskConnected(connected);
+    void fetchAskAuth({ signal: controller.signal }).then(auth => {
+      if (controller.signal.aborted) return;
+      setAskAuth(auth);
+      if (!auth.authenticated) {
+        setAskConnected(false);
+        setAskThread(undefined);
+        return;
+      }
+      if (askAtlasIdentity) {
+        void loadAskThread(askAtlasIdentity, { signal: controller.signal }).then(thread => {
+          if (!controller.signal.aborted) setAskThread(thread);
+        });
+      }
+      void probeAskConnection({ signal: controller.signal, timeoutMs: ASK_PROBE_TIMEOUT_MS }).then(connected => {
+        if (!controller.signal.aborted) setAskConnected(connected);
+      });
     });
     return () => controller.abort();
-  }, [askOpen]);
+  }, [askOpen, askSignedIn, askAtlasIdentity?.owner, askAtlasIdentity?.repo, askAtlasIdentity?.commitSha]);
 
   useEffect(() => {
     if (!askOpen) return;
@@ -3933,7 +3975,9 @@ export function App() {
     setAskError(undefined);
   }, [askOpen, currentAskScopeKey]);
 
-  const askState = askPending ? 'asking' : askError ? 'error' : askAnswer ? 'answered' : askConnected ? 'ready' : 'disconnected';
+  const askState = !askSignedIn && askAuth
+    ? 'signin'
+    : askPending ? 'asking' : askError ? 'error' : askAnswer ? 'answered' : askConnected ? 'ready' : 'disconnected';
 
   function playDisconnectedAsk() {
     setQuestion('');
@@ -3949,6 +3993,7 @@ export function App() {
     event.preventDefault();
     const text = question.trim();
     if (!text || askPending) return;
+    if (!askSignedIn) return;
     const context = buildAskContext({
       entities: scene.entities.map(entity => ({
         id: entity.id,
@@ -4003,9 +4048,20 @@ export function App() {
       const result = await submitAskQuestion(text, context, {
         signal: controller.signal,
         timeoutMs: ASK_REQUEST_TIMEOUT_MS,
+        ...(askAtlasIdentity ? { atlas: askAtlasIdentity } : {}),
       });
       if (controller.signal.aborted) return;
       if (!shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)) return;
+      if (isAskUnauthorized(result)) {
+        setAskAuth({
+          authenticated: false,
+          loginPath: result.loginPath,
+          logoutPath: '/api/auth/logout',
+          ...(result.testLoginPath ? { testLoginPath: result.testLoginPath } : {}),
+        });
+        setAskConnected(false);
+        return;
+      }
       if (!result.connected) {
         playDisconnectedAsk();
         return;
@@ -4021,6 +4077,7 @@ export function App() {
         setAskAnswer(result.answer);
         setAskCitations(result.citations);
         setLiveMessage(result.answer);
+        if (result.thread) setAskThread(result.thread);
       }
     } finally {
       if (askAbortRef.current === controller) askAbortRef.current = undefined;
@@ -4587,7 +4644,7 @@ export function App() {
             <div className="story-launcher">
               <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>
               <button className="saved-story" onClick={() => setStep(0, true, 'push')}><PlayIcon size={14}/> {story.title} <span>{storyDurationLabel}</span></button>
-              {askOpen && <form className="ask-popover" data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label><textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? 'Ask' : 'Preview explanation'}{askPending ? null : <ArrowIcon size={15}/>}</button></form>}
+              {askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? 'Ask' : 'Preview explanation'}{askPending ? null : <ArrowIcon size={15}/>}</button></form>)}
             </div>
           )}
 

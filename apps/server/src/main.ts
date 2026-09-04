@@ -24,7 +24,8 @@ import { createScanJobRunner } from "./scanService.js";
  *   GET  /api/scans/:id            job status with stage + enrichment progress
  *   GET  /api/scans                recent jobs (dev visibility)
  *   GET  /api/ask                  { connected } — gateway key present, never the key
- *   POST /api/ask                  one-shot Q&A grounded in submitted packets/summaries
+ *   GET  /api/ask/thread           GitHub session required — that user's turns for owner/repo@sha
+ *   POST /api/ask                  GitHub session required → one-shot Q&A; persist thread
  *   GET  /scan/*                   the published trio objects + index.json manifest
  *
  * Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (no login wall).

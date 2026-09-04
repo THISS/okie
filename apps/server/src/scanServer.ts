@@ -5,7 +5,17 @@ import type { GithubAuthService } from "./githubOAuth.js";
 import { LOGIN_PATH } from "./githubOAuth.js";
 import { toPublicJob, type ScanJob, type ScanJobQueue } from "./jobs.js";
 import { healthzBody, type EnrichMode } from "./localDefaults.js";
-import { answerAskQuestion, publicAskStatus } from "./ask.js";
+import { answerAskQuestion, HOSTED_ASK_AUTH_ERROR, publicAskStatus } from "./ask.js";
+import {
+  ASK_THREAD_PATH,
+  askAtlasIdentityFromSearch,
+  createAskThreadStore,
+  emptyPublicAskThread,
+  persistAskTurn,
+  publicAskThread,
+  sanitizeAskAtlasIdentity,
+  type AskThreadStore,
+} from "./askThreads.js";
 import { redactGatewayText, type LlmGatewayConfig } from "./llmGateway.js";
 import { normalizeRepoInput } from "./repoUrl.js";
 import { resolvePublishedScanFile } from "./scanObjects.js";
@@ -18,6 +28,7 @@ export interface ScanHttpOptions {
   llm: LlmGatewayConfig;
   enrich: EnrichMode;
   bind: string;
+  threads?: AskThreadStore;
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown): void {
@@ -57,8 +68,16 @@ function serveScanObject(scanRoot: string, pathname: string, response: ServerRes
   createReadStream(target).pipe(response);
 }
 
+function askAuthDenied(): Record<string, unknown> {
+  return {
+    error: HOSTED_ASK_AUTH_ERROR,
+    auth: { required: true, loginPath: LOGIN_PATH },
+  };
+}
+
 export function createScanHttpHandler(options: ScanHttpOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   const { queue, allowSubmit, auth, scanRoot, llm, enrich, bind } = options;
+  const threads = options.threads ?? createAskThreadStore();
 
   function publicJob(job: ScanJob): Record<string, unknown> {
     return toPublicJob(job, text => redactGatewayText(text, llm.apiKey));
@@ -75,15 +94,55 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
       return;
     }
 
+    if (request.method === "GET" && pathname === ASK_THREAD_PATH) {
+      const session = auth.sessionFromRequest(request);
+      if (!session) {
+        sendJson(response, 401, askAuthDenied());
+        return;
+      }
+      const atlas = askAtlasIdentityFromSearch(url.searchParams);
+      if (!atlas) {
+        sendJson(response, 400, { error: "Ask thread needs atlas identity {owner, repo, commitSha}." });
+        return;
+      }
+      const thread = threads.get(session.userId, atlas);
+      sendJson(response, 200, { thread: thread ? publicAskThread(thread) : emptyPublicAskThread(atlas) });
+      return;
+    }
+
     if (request.method === "POST" && pathname === "/api/ask") {
+      const session = auth.sessionFromRequest(request);
+      if (!session) {
+        sendJson(response, 401, askAuthDenied());
+        return;
+      }
       let body: unknown;
       try {
         body = await readJsonBody(request, 48 * 1024);
       } catch {
-        sendJson(response, 400, { error: "Expected a JSON body: {\"question\": \"...\", \"packets\": [...]}" });
+        sendJson(response, 400, { error: "Expected a JSON body: {\"question\": \"...\", \"packets\": [...], \"atlas\": {\"owner\": \"...\", \"repo\": \"...\", \"commitSha\": \"...\"}}" });
         return;
       }
-      sendJson(response, 200, await answerAskQuestion(llm, body));
+      const record = typeof body === "object" && body !== null ? body as Record<string, unknown> : {};
+      const atlas = sanitizeAskAtlasIdentity(record.atlas);
+      if (!atlas) {
+        sendJson(response, 400, { error: "Ask needs atlas identity {owner, repo, commitSha}." });
+        return;
+      }
+      const result = await answerAskQuestion(llm, body);
+      if (result.connected && "answer" in result && result.answer) {
+        const question = typeof record.question === "string" ? record.question : "";
+        const answer = redactGatewayText(result.answer, llm.apiKey);
+        const thread = persistAskTurn(threads, session.userId, atlas, {
+          question,
+          answer,
+          citations: result.citations,
+          scopeIds: result.scopeIds,
+        }, llm.apiKey);
+        sendJson(response, 200, { ...result, answer, thread: publicAskThread(thread) });
+        return;
+      }
+      sendJson(response, 200, result);
       return;
     }
 

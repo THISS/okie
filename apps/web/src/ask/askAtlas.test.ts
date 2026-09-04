@@ -2,13 +2,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { INSPECTOR_EMPTY_SUMMARY } from '../inspector/inspectorPanel';
 import {
   ASK_CONNECTED_COPY,
+  ASK_LOGIN_PATH,
   ASK_NOT_CONNECTED_COPY,
   ASK_NOT_CONNECTED_LIVE_MESSAGE,
+  ASK_SIGNIN_COPY,
   MAX_ASK_PACKETS,
   askScopeEntityIds,
   askScopeKey,
+  askSignInHref,
   buildAskContext,
+  fetchAskAuth,
+  isAskUnauthorized,
+  loadAskThread,
   probeAskConnection,
+  resolveAskAtlasIdentity,
   shouldCommitAskAnswer,
   submitAskQuestion,
   type AskEntity,
@@ -213,26 +220,70 @@ describe('Ask HTTP client', () => {
 
   it('POST returns an answer that only keeps in-scope citations from the server', async () => {
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body)) as { packets: Array<{ id: string }> };
+      const body = JSON.parse(String(init?.body)) as { packets: Array<{ id: string }>; atlas?: { owner: string } };
+      expect(init?.credentials).toBe('include');
       expect(body.packets.map(packet => packet.id)).toEqual(['container:web-app']);
+      expect(body.atlas).toEqual({ owner: 'THISS', repo: 'okie', commitSha: 'abc123' });
       return new Response(JSON.stringify({
         connected: true,
         answer: 'The web app hosts the atlas.',
         citations: ['container:web-app'],
         scopeIds: ['container:web-app'],
+        thread: {
+          owner: 'THISS',
+          repo: 'okie',
+          commitSha: 'abc123',
+          turns: [{
+            id: 't1',
+            question: 'What does the web app do?',
+            answer: 'The web app hosts the atlas.',
+            citations: ['container:web-app'],
+            scopeIds: ['container:web-app'],
+            createdAt: 1,
+          }],
+        },
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }) as unknown as typeof fetch;
     const result = await submitAskQuestion(
       'What does the web app do?',
       { packets: [{ id: 'container:web-app', name: 'Web app', kind: 'container', summary: 'React shell.' }], relations: [] },
-      { fetch: fetchImpl, timeoutMs: 200 },
+      { fetch: fetchImpl, timeoutMs: 200, atlas: { owner: 'THISS', repo: 'okie', commitSha: 'abc123' } },
     );
     expect(result).toEqual({
       connected: true,
       answer: 'The web app hosts the atlas.',
       citations: ['container:web-app'],
       scopeIds: ['container:web-app'],
+      thread: {
+        owner: 'THISS',
+        repo: 'okie',
+        commitSha: 'abc123',
+        turns: [{
+          id: 't1',
+          question: 'What does the web app do?',
+          answer: 'The web app hosts the atlas.',
+          citations: ['container:web-app'],
+          scopeIds: ['container:web-app'],
+          createdAt: 1,
+        }],
+      },
     });
+  });
+
+  it('POST 401 is unauthorized and does not look like a connected answer', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      error: 'Sign in with GitHub to ask about this atlas.',
+      auth: { required: true, loginPath: '/api/auth/github' },
+    }), { status: 401, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const result = await submitAskQuestion(
+      'What is Okie?',
+      { packets: [{ id: 'system:okie', name: 'Okie', kind: 'system' }], relations: [] },
+      { fetch: fetchImpl, timeoutMs: 200, atlas: { owner: 'THISS', repo: 'okie', commitSha: 'abc' } },
+    );
+    expect(isAskUnauthorized(result)).toBe(true);
+    if (!isAskUnauthorized(result)) throw new Error('expected unauthorized');
+    expect(result.loginPath).toBe(ASK_LOGIN_PATH);
+    expect(result).not.toEqual(expect.objectContaining({ connected: true }));
   });
 
   it('aborts a hung POST instead of hanging the popover', async () => {
@@ -250,11 +301,66 @@ describe('Ask HTTP client', () => {
   });
 });
 
+describe('Ask sign-in and thread identity', () => {
+  it('resolves hosted /r/owner/repo plus commitSha', () => {
+    expect(resolveAskAtlasIdentity({
+      pathname: '/r/THISS/okie',
+      commitSha: 'abc123def456',
+    })).toEqual({ owner: 'THISS', repo: 'okie', commitSha: 'abc123def456' });
+    expect(resolveAskAtlasIdentity({
+      pathname: '/',
+      search: '?fixture=scan',
+      commitSha: 'deadbeef',
+    })).toEqual({ owner: 'THISS', repo: 'okie', commitSha: 'deadbeef' });
+    expect(resolveAskAtlasIdentity({
+      pathname: '/',
+      search: '?fixture=okie',
+      commitSha: 'golden-worktree-okie-2026-07-14-v1',
+    })).toEqual({ owner: 'okie', repo: 'golden', commitSha: 'golden-worktree-okie-2026-07-14-v1' });
+    expect(resolveAskAtlasIdentity({ pathname: '/', search: '?fixture=stress', commitSha: 'x' })).toBeUndefined();
+  });
+
+  it('loads a thread with credentials and treats 401 as missing', async () => {
+    const atlas = { owner: 'THISS', repo: 'okie', commitSha: 'abc' };
+    const ok = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toContain('/api/ask/thread?');
+      expect(init?.credentials).toBe('include');
+      return new Response(JSON.stringify({
+        thread: { ...atlas, turns: [{ id: 't1', question: 'Q', answer: 'A', citations: [], scopeIds: [], createdAt: 1 }] },
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    await expect(loadAskThread(atlas, { fetch: ok })).resolves.toMatchObject({
+      owner: 'THISS',
+      turns: [{ question: 'Q', answer: 'A' }],
+    });
+    const denied = vi.fn(async () => new Response(JSON.stringify({ auth: { required: true } }), { status: 401 })) as unknown as typeof fetch;
+    await expect(loadAskThread(atlas, { fetch: denied })).resolves.toBeUndefined();
+  });
+
+  it('fetchAskAuth never treats a missing session as signed-in', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      authenticated: false,
+      loginPath: '/api/auth/github',
+      logoutPath: '/api/auth/logout',
+      testLoginPath: '/api/auth/github/test-login',
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    await expect(fetchAskAuth({ fetch: fetchImpl })).resolves.toEqual({
+      authenticated: false,
+      loginPath: '/api/auth/github',
+      logoutPath: '/api/auth/logout',
+      testLoginPath: '/api/auth/github/test-login',
+    });
+    expect(askSignInHref('/api/auth/github', '/r/THISS/okie')).toBe('/api/auth/github?return=%2Fr%2FTHISS%2Fokie');
+  });
+});
+
 describe('honest disconnected copy', () => {
   it('keeps the not-connected explanation path copy', () => {
     expect(ASK_NOT_CONNECTED_COPY).toContain('Live Q&A is not connected');
     expect(ASK_NOT_CONNECTED_LIVE_MESSAGE).toContain('Live repository Q&A is not connected yet');
     expect(ASK_CONNECTED_COPY).toContain('packets and accepted summaries');
     expect(ASK_CONNECTED_COPY).toContain('selected or isolated');
+    expect(ASK_SIGNIN_COPY).toContain('Sign in with GitHub');
+    expect(ASK_SIGNIN_COPY).toContain('stays public');
   });
 });
