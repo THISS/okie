@@ -631,9 +631,11 @@ function publicSelectedEntity(value: AtlasSelectedEntityFacts | null | undefined
       if (ranges.length >= 32) break;
       if (!row || typeof row !== 'object') continue;
       const range = row as { startLine?: unknown; endLine?: unknown };
-      if (!Number.isInteger(range.startLine) || !Number.isInteger(range.endLine)) continue;
-      if (range.startLine < 1 || range.endLine < range.startLine) continue;
-      ranges.push({ startLine: range.startLine, endLine: range.endLine });
+      const startLine = range.startLine;
+      const endLine = range.endLine;
+      if (typeof startLine !== 'number' || typeof endLine !== 'number') continue;
+      if (!Number.isInteger(startLine) || !Number.isInteger(endLine) || startLine < 1 || endLine < startLine) continue;
+      ranges.push({ startLine, endLine });
     }
     if (ranges.length) facts.coverageUntestedRanges = ranges;
   }
