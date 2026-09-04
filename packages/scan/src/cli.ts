@@ -231,7 +231,7 @@ async function runGithubScan(args: CliArgs): Promise<void> {
   process.stdout.write(
     summaryLines(artifacts) +
     `  source gh:${github.owner}/${github.repo}${github.ref ? `@${github.ref}` : ""} -> ${commitSha.slice(0, 12)}\n` +
-    `  wrote snapshot/view/story/scene/timeline to ${args.out}\n` +
+    `  wrote snapshot/view/story/stories/scene/timeline to ${args.out}\n` +
     `  manifest: ${manifestCount} repo(s) indexed in ${args.scanRoot}/index.json\n` +
     `  load in the app at /r/${github.owner}/${github.repo} or ?fixture=scan:${github.dirSlug}\n`,
   );
@@ -268,7 +268,7 @@ function runLocalScan(args: CliArgs): void {
 
   const packetNote = args.emitPacketsDir ? `  wrote enrichment packets to ${args.emitPacketsDir}\n` : "";
   const promptNote = args.emitPromptDir ? `  wrote enrichment prompts to ${args.emitPromptDir}\n` : "";
-  process.stdout.write(summaryLines(artifacts) + packetNote + promptNote + `  wrote snapshot/view/story/scene/timeline to ${args.out}\n`);
+  process.stdout.write(summaryLines(artifacts) + packetNote + promptNote + `  wrote snapshot/view/story/stories/scene/timeline to ${args.out}\n`);
 }
 
 async function main(): Promise<void> {
