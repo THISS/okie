@@ -226,6 +226,8 @@ export type ScanFixture = {
   snapshot: ArchitectureSnapshot;
   view: ArchitectureView;
   story: AppStoryPlan;
+  /** Overview first, then any published user-flow stories (CLA-77). */
+  stories: AppStoryPlan[];
   /** Recompiles the scan snapshot for a new focus/root (drill-in, restore).
    *  Routed through the anti-hang guard, so no path can compile the whole graph. */
   createScene: (focusEntityId: string, previous?: AtlasScene, residency?: ScanViewportResidency) => AtlasScene;
@@ -251,12 +253,14 @@ export type ScanFixture = {
   enrichmentHonesty?: PublishedEnrichmentHonesty;
 };
 
-export type RawScanTrio = { snapshot: unknown; view: unknown; story: unknown };
+export type RawScanTrio = { snapshot: unknown; view: unknown; story: unknown; stories?: unknown };
 export type ScanTrioLoader = (name: 'snapshot' | 'view' | 'story') => Promise<unknown>;
 export type ScanNeighborhoodHost = {
   loadNeighborhood: (focusEntityId: string) => Promise<ArchitectureNeighborhoodPacket>;
   loadExcerpts: (entityId: string) => Promise<SourceExcerpt[] | undefined>;
   loadStory: () => Promise<unknown>;
+  /** Optional published `stories.json` catalog. Missing/404 is undefined, never fatal. */
+  loadStories?: () => Promise<unknown>;
   /** Optional published `enrichment-report.json`. Missing/404 is undefined, never fatal. */
   loadEnrichmentReport?: () => Promise<unknown>;
   /** Optional secret-free `enrichment-status.json`. Missing/404 is undefined, never fatal. */
@@ -309,6 +313,7 @@ function buildLiveScanFixture(
     childCounts: Record<string, number>;
     host?: ScanNeighborhoodHost;
     loadedFocusIds?: Set<string>;
+    stories?: AppStoryPlan[];
   },
 ): ScanFixture {
   const childCounts = extras.childCounts;
@@ -403,6 +408,7 @@ function buildLiveScanFixture(
     snapshot,
     view,
     story,
+    stories: extras.stories?.length ? extras.stories : [story],
     createScene,
     scopeCompileOptions: (focusEntityId: string) => scanScopeCompileOptions(snapshot, focusEntityId),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
@@ -417,6 +423,34 @@ function buildLiveScanFixture(
     ensureNeighborhood,
     ensureExcerpts,
   };
+}
+
+function parsePublishedStoryCatalog(raw: unknown): ArchitectureStory[] {
+  if (!isRecord(raw) || !Array.isArray(raw.stories)) return [];
+  return raw.stories.filter(item => isRecord(item) && typeof item.id === 'string') as ArchitectureStory[];
+}
+
+/** Overview first; extra catalog entries compile when valid. Invalid extras are skipped. */
+function compilePublishedStories(
+  snapshot: ArchitectureSnapshot,
+  view: ArchitectureView,
+  overview: AppStoryPlan,
+  rawCatalog: unknown,
+  options: { allowMissingFocus?: boolean } = {},
+): AppStoryPlan[] {
+  const plans: AppStoryPlan[] = [overview];
+  const seen = new Set<string>([overview.id]);
+  for (const story of parsePublishedStoryCatalog(rawCatalog)) {
+    if (seen.has(story.id)) continue;
+    try {
+      const plan = compileAppStoryPlan(snapshot, view, story, options);
+      plans.push(plan);
+      seen.add(plan.id);
+    } catch {
+      // Keep the overview; a broken extra story must not take down the atlas.
+    }
+  }
+  return plans;
 }
 
 /**
@@ -452,6 +486,7 @@ export function compileScanFixture(raw: RawScanTrio, options: ScanModeOptions = 
   return buildLiveScanFixture(snapshot, view, story, options, {
     boot: 'full',
     childCounts: childCountsFromSnapshot(snapshot),
+    stories: compilePublishedStories(snapshot, view, story, raw.stories),
   });
 }
 
@@ -460,6 +495,7 @@ export function compileScanNeighborhoodFixture(
   rawStory: unknown,
   host: ScanNeighborhoodHost,
   options: ScanModeOptions = {},
+  rawStories?: unknown,
 ): ScanFixture {
   const packetIssues = validateNeighborhoodPacket(packet);
   if (packetIssues.length) throw new ScanFixtureError(packetIssues);
@@ -475,6 +511,7 @@ export function compileScanNeighborhoodFixture(
     childCounts: { ...packet.childCounts },
     host,
     loadedFocusIds: new Set([packet.focusEntityId]),
+    stories: compilePublishedStories(packet.snapshot, packet.view, story, rawStories, { allowMissingFocus: true }),
   });
 }
 
@@ -488,6 +525,8 @@ export function compileScanNeighborhoodFixture(
 type ScanDocGlob = Record<string, () => Promise<{ default: unknown }>>;
 const rootScanLoaders: ScanDocGlob = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/{snapshot,view,story}.json');
 const repoScanLoaders: ScanDocGlob = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/*/{snapshot,view,story}.json');
+const rootStoryCatalogLoaders: ScanDocGlob = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/stories.json');
+const repoStoryCatalogLoaders: ScanDocGlob = import.meta.glob<{ default: unknown }>('../../../../fixtures/scan/*/stories.json');
 
 /** Sorted slugs of scanned repos present in a per-repo glob map (the loadable set). */
 function slugsFromGlob(repo: ScanDocGlob): string[] {
@@ -584,6 +623,20 @@ async function fetchScanDoc(name: 'snapshot' | 'view' | 'story', slug?: string):
   return (await resolveScanDocLoader(name, slug, { root: rootScanLoaders, repo: repoScanLoaders })()).default;
 }
 
+async function loadOptionalStoryCatalog(slug?: string, fetchImpl: typeof fetch = fetch): Promise<unknown> {
+  const fetched = await fetchOptionalScanJson(scanObjectPath(slug, 'stories.json'), fetchImpl);
+  if (fetched !== undefined) return fetched;
+  const loaders = slug ? repoStoryCatalogLoaders : rootStoryCatalogLoaders;
+  const suffix = slug ? `/fixtures/scan/${slug}/stories.json` : '/stories.json';
+  const key = Object.keys(loaders).find(path => path.endsWith(suffix));
+  if (!key) return undefined;
+  try {
+    return (await loaders[key]!()).default;
+  } catch {
+    return undefined;
+  }
+}
+
 async function fetchOptionalScanJson(path: string, fetchImpl: typeof fetch): Promise<unknown> {
   let response: Response;
   try {
@@ -677,7 +730,7 @@ export function bootFocusFromSearch(search: string): string | undefined {
 
 /**
  * Runtime-fetch neighborhood host (CLA-73): `/scan/<slug>/neighborhood.json`
- * plus lazy `/excerpt.json`, `story.json`, and optional enrichment honesty
+ * plus lazy `/excerpt.json`, `story.json`, optional `stories.json`, and optional enrichment honesty
  * sidecars. Does not GET snapshot.json/view.json.
  */
 export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch = fetch): ScanNeighborhoodHost {
@@ -700,6 +753,7 @@ export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch
       return raw.sourceExcerpts as SourceExcerpt[];
     },
     loadStory: () => fetchScanJson(scanObjectPath(slug, 'story.json'), fetchImpl, 'story'),
+    loadStories: () => fetchOptionalScanJson(scanObjectPath(slug, 'stories.json'), fetchImpl),
     loadEnrichmentReport: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-report.json'), fetchImpl),
     loadEnrichmentStatus: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-status.json'), fetchImpl),
   };
@@ -717,13 +771,14 @@ export async function loadScanFixture(
   slug?: string,
 ): Promise<ScanFixture> {
   const loader: ScanTrioLoader = load ?? (name => fetchScanDoc(name, slug));
-  const [snapshot, view, story, honesty] = await Promise.all([
+  const [snapshot, view, story, catalog, honesty] = await Promise.all([
     loader('snapshot'),
     loader('view'),
     loader('story'),
+    loadOptionalStoryCatalog(slug),
     load && !slug ? Promise.resolve(undefined) : loadPublishedEnrichmentHonesty(slug),
   ]);
-  return withEnrichmentHonesty(compileScanFixture({ snapshot, view, story }, options), honesty);
+  return withEnrichmentHonesty(compileScanFixture({ snapshot, view, story, stories: catalog }, options), honesty);
 }
 
 export async function loadScanNeighborhoodFixture(
@@ -731,10 +786,11 @@ export async function loadScanNeighborhoodFixture(
   focusEntityId: string | undefined,
   options: ScanModeOptions = {},
 ): Promise<ScanFixture> {
-  const [packet, story, honesty] = await Promise.all([
+  const [packet, story, catalog, honesty] = await Promise.all([
     host.loadNeighborhood(focusEntityId ?? ''),
     host.loadStory(),
+    host.loadStories?.() ?? Promise.resolve(undefined),
     honestyFromHost(host),
   ]);
-  return withEnrichmentHonesty(compileScanNeighborhoodFixture(packet, story, host, options), honesty);
+  return withEnrichmentHonesty(compileScanNeighborhoodFixture(packet, story, host, options, catalog), honesty);
 }

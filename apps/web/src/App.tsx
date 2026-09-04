@@ -55,7 +55,7 @@ import {
   type NavigationState,
   type SemanticDetail,
 } from './navigation/navigationState';
-import { createGoldenC4Scene, goldenAppStory, scanDrillDeeperDetail, semanticBounds, type AppStoryPlanStep } from './renderer/goldenC4Scene';
+import { createGoldenC4Scene, goldenAppStory, scanDrillDeeperDetail, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
 import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
@@ -170,19 +170,19 @@ import {
 } from './semantic/semanticLensEngine';
 import {
   STORY_ARRIVAL_SETTLE_MS,
-  STORY_MAX_FLIGHT_DURATION_MS,
   createStoryFlight,
-  cumulativeStoryStepOffsets,
-  decodeStoryCinematicPosition,
-  estimateStoryDuration,
-  formatStoryDuration,
-  resolveStoryHoldDuration,
   resumeStoryFlight,
   sampleStoryFlight,
-  storyCinematicPosition,
   type StoryFlight,
   type StoryFlightSample,
 } from './storyPlayback';
+import {
+  decodeStoryPosition,
+  encodeStoryPosition,
+  selectStoryPlan,
+  storyDurationLabel,
+  storyStepDuration,
+} from './storyCatalog';
 import { atlasEnrichmentStatus, atlasIdentityFromLocation, atlasTourPlaying, bindAtlasChromeActions, registerWebMcpAtlasTools, type AtlasChromeActions } from './webmcp';
 
 // A scanned snapshot (fixture=scan) is fetched, validated and compiled before App
@@ -191,7 +191,8 @@ import { atlasEnrichmentStatus, atlasIdentityFromLocation, atlasTourPlaying, bin
 const scanFixture = getActiveScanFixture();
 const activeSnapshot = scanFixture?.snapshot ?? goldenSnapshot;
 const activeView = scanFixture?.view ?? goldenView;
-const story = scanFixture?.story ?? goldenAppStory;
+const defaultStory = scanFixture?.story ?? goldenAppStory;
+const storyCatalog = scanFixture?.stories?.length ? scanFixture.stories : [defaultStory];
 
 // Recompiles the active fixture for a new focus/root (drill-in, restore). Scanned
 // snapshots are read-only in R1, so the dev-mode authoring overlay stays golden-only.
@@ -207,48 +208,13 @@ function activeCreateScene(
 }
 
 const defaultCamera: Camera = { x: 1_080, y: 375, zoom: levels[0]!.zoom };
-const storyId = story.id;
-const configuredRepositoryRoot = import.meta.env.VITE_OKIE_REPOSITORY_ROOT?.trim() || undefined;
 
 function diagramTabDomId(surfaceId: string) {
   return `diagram-tab-${surfaceId.replace(/[^a-z0-9_-]+/gi, '-')}`;
 }
 
 const preservedNavigationParams = ['backend', 'fixture', 'seed'] as const;
-
-const storyHoldDurations = story.steps.map(step => resolveStoryHoldDuration(step.narration, step.authoredHoldMs));
-const storyStepOffsets = cumulativeStoryStepOffsets(storyHoldDurations);
-const storyDurationLabel = formatStoryDuration(estimateStoryDuration(storyHoldDurations));
-
-function storyStepDuration(step: number) {
-  const bounded = Math.max(0, Math.min(story.steps.length - 1, step));
-  return storyHoldDurations[bounded];
-}
-
-function storyStepOffset(step: number) {
-  const bounded = Math.max(0, Math.min(story.steps.length - 1, step));
-  return storyStepOffsets[bounded];
-}
-
-function encodeStoryPosition(
-  step: number,
-  phase: 'flight' | 'arrival' | 'hold',
-  elapsedMs: number,
-  flightDurationMs = STORY_MAX_FLIGHT_DURATION_MS,
-) {
-  return storyCinematicPosition(
-    step,
-    phase,
-    elapsedMs,
-    flightDurationMs,
-    storyStepDuration(step),
-    storyStepOffset(step),
-  );
-}
-
-function decodeStoryPosition(step: number, positionMs: number) {
-  return decodeStoryCinematicPosition(step, positionMs, storyStepDuration(step), storyStepOffset(step));
-}
+const configuredRepositoryRoot = import.meta.env.VITE_OKIE_REPOSITORY_ROOT?.trim() || undefined;
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1248,7 +1214,7 @@ export function App() {
         hasSnapshot: (id: string) => id === navigationDefaults.snapshotId || id === importedAtlas?.snapshot.id,
         hasView: (id: string) => id === navigationDefaults.viewId || id === `view:${importedAtlas?.snapshot.id}`,
         hasEntity: (id: string) => demoEntityIds?.has(id) || importedAtlas?.snapshot.entities.some(entity => entity.id === id) || query.fixture === 'stress',
-        hasStory: (id: string) => id === storyId,
+        hasStory: (id: string) => storyCatalog.some(plan => plan.id === id),
       },
     };
   }, [goldenScene.entities, importedAtlas, navigationDefaults, query.fixture]);
@@ -1257,6 +1223,9 @@ export function App() {
     navigationDefaults,
     navigationUrlOptions,
   ).state, [navigationDefaults, navigationUrlOptions]);
+  const [activeStoryId, setActiveStoryId] = useState(() => selectStoryPlan(storyCatalog, initialNavigation.story?.id).id);
+  const story = selectStoryPlan(storyCatalog, activeStoryId);
+  const storyId = story.id;
   const [scene, setScene] = useState<AtlasScene>(() => query.fixture === 'stress' ? stressLoadingScene() : goldenScene);
   const [fixtureError, setFixtureError] = useState<string>();
   const reduceMotion = useReducedMotion();
@@ -1365,7 +1334,7 @@ export function App() {
     : -1);
   const [storyPlaying, setStoryPlaying] = useState(false);
   const initialCinematicPosition = initialNavigation.story?.id === storyId
-    ? decodeStoryPosition(initialNavigation.story.step, initialNavigation.story.positionMs)
+    ? decodeStoryPosition(story, initialNavigation.story.step, initialNavigation.story.positionMs)
     : { phase: 'hold' as const, elapsedMs: 0 };
   const initialStoryElapsed = initialCinematicPosition.phase === 'hold'
     ? initialCinematicPosition.elapsedMs
@@ -1532,6 +1501,7 @@ export function App() {
   const storyPositionMs = storyStep < 0
     ? 0
     : encodeStoryPosition(
+        story,
         storyStep,
         storyCanonicalPhase,
         storyPhaseElapsedMs,
@@ -1850,7 +1820,7 @@ export function App() {
       canonicalPhase: storyCanonicalPhase,
       phaseElapsedMs: storyPhaseElapsedMs,
       holdElapsedMs: storyElapsedMs,
-      holdDurationMs: currentStory ? storyStepDuration(storyStep) : 0,
+      holdDurationMs: currentStory ? storyStepDuration(story, storyStep) : 0,
       flightProgress: storyFlightSample?.progress ?? (storyCanonicalPhase === 'flight' ? initialCinematicPosition.progress ?? 0 : 1),
       flightDurationMs: activeStoryFlight?.flight.canonicalDurationMs ?? 0,
       sourceCamera: activeStoryFlight?.flight.source ?? null,
@@ -2125,10 +2095,13 @@ export function App() {
         setInspectorHistory([]);
         setSelectedId(next.selectedId);
         updateCamera(next.camera);
-        const restoredStep = next.story?.id === storyId ? Math.min(story.steps.length - 1, next.story.step) : -1;
+        const restoredPlan = selectStoryPlan(storyCatalog, next.story?.id);
+        const restoredKnown = Boolean(next.story && storyCatalog.some(plan => plan.id === next.story!.id));
+        setActiveStoryId(restoredPlan.id);
+        const restoredStep = restoredKnown ? Math.min(restoredPlan.steps.length - 1, next.story!.step) : -1;
         setStoryStep(restoredStep);
-        const restoredPosition = next.story?.id === storyId
-          ? decodeStoryPosition(restoredStep, next.story.positionMs)
+        const restoredPosition = restoredKnown
+          ? decodeStoryPosition(restoredPlan, restoredStep, next.story!.positionMs)
           : { phase: 'hold' as const, elapsedMs: 0 };
         const restoredElapsed = restoredPosition.phase === 'hold' ? restoredPosition.elapsedMs : 0;
         storyElapsedRef.current = restoredElapsed;
@@ -2144,13 +2117,13 @@ export function App() {
         if (restoredStep >= 0 && restoredPosition.phase === 'flight') {
           const target = frameSemanticEntities(
             scene,
-            story.steps[restoredStep].focusEntityIds,
-            story.steps[restoredStep].reveal,
+            restoredPlan.steps[restoredStep]!.focusEntityIds,
+            restoredPlan.steps[restoredStep]!.reveal,
             viewport,
           ) ?? next.camera;
-          const sourceStep = story.steps[(restoredStep - 1 + story.steps.length) % story.steps.length];
+          const sourceStep = restoredPlan.steps[(restoredStep - 1 + restoredPlan.steps.length) % restoredPlan.steps.length]!;
           const sourceSession = semanticStorySession(sourceStep);
-          const targetSession = semanticStorySession(story.steps[restoredStep]);
+          const targetSession = semanticStorySession(restoredPlan.steps[restoredStep]!);
           const now = performance.now();
           const canonicalDurationMs = 1_100;
           const canonicalElapsedMs = Math.round((restoredPosition.progress ?? 0) * canonicalDurationMs);
@@ -2166,9 +2139,9 @@ export function App() {
             step: restoredStep,
             flight,
             sourceFocusedIds: [...sourceStep.focusEntityIds],
-            targetFocusedIds: [...story.steps[restoredStep].focusEntityIds],
+            targetFocusedIds: [...restoredPlan.steps[restoredStep]!.focusEntityIds],
             sourceRelationIds: [...sourceStep.traceRelationIds],
-            targetRelationIds: [...story.steps[restoredStep].traceRelationIds],
+            targetRelationIds: [...restoredPlan.steps[restoredStep]!.traceRelationIds],
             sourceSession,
             targetSession,
             playAfterArrival: false,
@@ -2263,7 +2236,7 @@ export function App() {
   }, [query.fixture]);
 
   function currentStoryElapsed() {
-    const duration = storyStepDuration(storyStep);
+    const duration = storyStepDuration(story, storyStep);
     if (!storyPlaying || storyStartedAtRef.current === undefined) return storyElapsedRef.current;
     return Math.min(duration, Math.max(0, Math.round(storyElapsedRef.current + performance.now() - storyStartedAtRef.current)));
   }
@@ -2337,6 +2310,7 @@ export function App() {
         id: storyId,
         step: storyStep,
         positionMs: encodeStoryPosition(
+          story,
           storyStep,
           canonicalPhase,
           elapsed,
@@ -2384,7 +2358,7 @@ export function App() {
     setStoryPlaying(true);
     setStorySelectionOverride(false);
     setStoryPhase('hold');
-    setLiveMessage(`Resumed story step ${storyStep + 1} with ${Math.ceil((storyStepDuration(storyStep) - storyElapsedRef.current) / 1000)} seconds remaining.`);
+    setLiveMessage(`Resumed story step ${storyStep + 1} with ${Math.ceil((storyStepDuration(story, storyStep) - storyElapsedRef.current) / 1000)} seconds remaining.`);
   }
 
   function returnToStoryFrame() {
@@ -3597,9 +3571,10 @@ export function App() {
     ));
   }
 
-  function setStep(index: number, play = storyPlaying, historyMode: 'push' | 'replace' = 'replace') {
-    const bounded = (index + story.steps.length) % story.steps.length;
-    const step = story.steps[bounded];
+  function setStep(index: number, play = storyPlaying, historyMode: 'push' | 'replace' = 'replace', plan: AppStoryPlan = story) {
+    setActiveStoryId(plan.id);
+    const bounded = (index + plan.steps.length) % plan.steps.length;
+    const step = plan.steps[bounded];
     if (scanFixture) {
       const compileFocus = scanCompileFocusForBand(
         activeSnapshot,
@@ -3610,15 +3585,15 @@ export function App() {
       void Promise.all([
         scanFixture.ensureNeighborhood(compileFocus),
         scanFixture.ensureNeighborhood(step.focusEntityIds[0] ?? compileFocus),
-      ]).then(() => setStepLoaded(index, play, historyMode));
+      ]).then(() => setStepLoaded(index, play, historyMode, plan));
       return;
     }
-    setStepLoaded(index, play, historyMode);
+    setStepLoaded(index, play, historyMode, plan);
   }
 
-  function setStepLoaded(index: number, play = storyPlaying, historyMode: 'push' | 'replace' = 'replace') {
-    const bounded = (index + story.steps.length) % story.steps.length;
-    const step = story.steps[bounded];
+  function setStepLoaded(index: number, play = storyPlaying, historyMode: 'push' | 'replace' = 'replace', plan: AppStoryPlan = story) {
+    const bounded = (index + plan.steps.length) % plan.steps.length;
+    const step = plan.steps[bounded];
     const liveCamera = abortInspectorCameraFlight();
     setInspectorHistory([]);
     const compileFocus = scanFixture
@@ -3709,12 +3684,12 @@ export function App() {
       detail: canonicalSession.baseDetail,
       lensPath: semanticLensCanonicalPathIds(canonicalSession),
       story: {
-        id: storyId,
+        id: plan.id,
         step: bounded,
-        positionMs: encodeStoryPosition(bounded, reduceMotion ? 'arrival' : 'flight', 0, flight.canonicalDurationMs),
+        positionMs: encodeStoryPosition(plan, bounded, reduceMotion ? 'arrival' : 'flight', 0, flight.canonicalDurationMs),
       },
     }, navigationDefaults), historyMode);
-    const upcoming = story.steps[(bounded + 1) % story.steps.length];
+    const upcoming = plan.steps[(bounded + 1) % plan.steps.length];
     if (upcoming && scanFixture) {
       prefetchCommittedBox(scanCompileFocusForBand(
         activeSnapshot,
@@ -3724,8 +3699,8 @@ export function App() {
       ));
     }
     setLiveMessage(reduceMotion
-      ? `Story step ${bounded + 1} of ${story.steps.length}: ${step.title}. Applying destination.`
-      : `Moving to story step ${bounded + 1} of ${story.steps.length}: ${step.title}.`);
+      ? `Story step ${bounded + 1} of ${plan.steps.length}: ${step.title}. Applying destination.`
+      : `Moving to story step ${bounded + 1} of ${plan.steps.length}: ${step.title}.`);
   }
 
   function closeStory() {
@@ -3764,7 +3739,7 @@ export function App() {
       if (active) changeVisibility('isolate');
       else restoreVisibility();
     },
-    startOverviewTour: () => setStep(0, true, 'push'),
+    startOverviewTour: () => setStep(0, true, 'push', defaultStory),
     openAsk: question => {
       // Ask lives in the story launcher; a playing tour hides that chrome.
       storyOriginAvailableRef.current = false;
@@ -3940,7 +3915,7 @@ export function App() {
           story: {
             id: storyId,
             step: active.step,
-            positionMs: encodeStoryPosition(active.step, 'arrival', 0, active.flight.canonicalDurationMs),
+            positionMs: encodeStoryPosition(story, active.step, 'arrival', 0, active.flight.canonicalDurationMs),
           },
         }, navigationDefaults);
         navigationRef.current = arrived;
@@ -3987,6 +3962,7 @@ export function App() {
           id: storyId,
           step: storyStep,
           positionMs: encodeStoryPosition(
+            story,
             storyStep,
             'hold',
             holdElapsedMs,
@@ -4004,7 +3980,7 @@ export function App() {
 
   useEffect(() => {
     if (!storyPlaying || storyStep < 0) return;
-    const delay = Math.max(0, storyStepDuration(storyStep) - storyElapsedRef.current);
+    const delay = Math.max(0, storyStepDuration(story, storyStep) - storyElapsedRef.current);
     storyStartedAtRef.current = performance.now();
     const timeout = window.setTimeout(() => {
       storyElapsedRef.current = 0;
@@ -4013,7 +3989,7 @@ export function App() {
       if (storyStep === story.steps.length - 1) {
         setStoryPlaying(false);
         pausedStoryPhaseRef.current = 'hold';
-        pausedStoryPhaseElapsedRef.current = storyStepDuration(storyStep);
+        pausedStoryPhaseElapsedRef.current = storyStepDuration(story, storyStep);
         setStoryPhase('paused');
       }
       else setStep(storyStep + 1, true, 'replace');
@@ -4143,7 +4119,7 @@ export function App() {
     setAskAnswer(undefined);
     setAskCitations([]);
     setAskError(undefined);
-    setStep(0, true, 'push');
+    setStep(0, true, 'push', defaultStory);
     setLiveMessage(ASK_NOT_CONNECTED_LIVE_MESSAGE);
   }
 
@@ -4271,6 +4247,7 @@ export function App() {
           id: storyId,
           step: storyStep,
           positionMs: encodeStoryPosition(
+            story,
             storyStep,
             phase,
             elapsed,
@@ -4787,7 +4764,7 @@ export function App() {
           </details>
 
           {currentStory ? (
-            <section aria-label={`Guided architecture story, ${storyPlaybackStatus}`} className="story-player" data-playback-state={storyPhase === 'flight' ? 'moving' : storyPhase === 'arrival' ? 'arriving' : storyPlaying ? 'playing' : 'paused'} data-story-phase={storyPhase}>
+            <section aria-label={`Guided architecture story, ${storyPlaybackStatus}`} className="story-player" data-playback-state={storyPhase === 'flight' ? 'moving' : storyPhase === 'arrival' ? 'arriving' : storyPlaying ? 'playing' : 'paused'} data-story-id={storyId} data-story-phase={storyPhase}>
               <div className="story-topline"><span><SparkIcon size={14}/> GUIDED EXPLANATION <em className="story-state">{storyPlaybackStatus}</em></span><button aria-label="Close story" onClick={closeStory}><CloseIcon size={15}/></button></div>
               <div className="story-copy"><div><small>{storyPhase === 'flight' ? 'MOVING TO ' : storyPhase === 'arrival' ? 'ARRIVING AT ' : ''}STEP {storyStep + 1} OF {story.steps.length}</small><h2>{currentStory.title}</h2><p>{currentStory.narration}</p>{currentStory.sourceRefs[0] && <p className="story-evidence">Evidence: {currentStory.sourceRefs[0].path}{currentStory.sourceRefs[0].symbol ? ` · ${currentStory.sourceRefs[0].symbol}` : ''}</p>}{storyInterruption && <p className="story-interruption">{storyInterruption}</p>}{returnToStoryFrameRequired && <button onClick={returnToStoryFrame}>Return to story frame</button>}</div><button aria-label={storyControlLabel} className="story-play" onClick={returnToStoryFrameRequired ? returnToStoryFrame : toggleStoryPlayback}>{storyControlActive ? <PauseIcon/> : <PlayIcon/>}</button></div>
               <div className="story-progress">{story.steps.map((step, index) => <button aria-label={`Go to story step ${index + 1}: ${step.title}`} className={index === storyStep ? 'active' : index < storyStep ? 'passed' : ''} key={step.id} onClick={() => setStep(index, false)}><span/></button>)}</div>
@@ -4802,9 +4779,20 @@ export function App() {
           ) : query.fixture === 'stress' ? (
             <div className="stress-badge"><ActivityIcon size={15}/><span><b>Renderer stress fixture</b><small>{fixtureError ?? `${scene.entities.length.toLocaleString()} nodes · ${scene.relations.length.toLocaleString()} paths`}</small></span></div>
           ) : (
-            <div className="story-launcher">
+            <div className="story-launcher" data-story-catalog-count={storyCatalog.length}>
               <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>
-              <button className="saved-story" onClick={() => setStep(0, true, 'push')}><PlayIcon size={14}/> {story.title} <span>{storyDurationLabel}</span></button>
+              {storyCatalog.map(plan => (
+                <button
+                  className="saved-story"
+                  data-story-id={plan.id}
+                  data-testid={plan.id === defaultStory.id ? 'story-launch-overview' : 'story-launch-flow'}
+                  key={plan.id}
+                  onClick={() => setStep(0, true, 'push', plan)}
+                  type="button"
+                >
+                  <PlayIcon size={14}/> {plan.title} <span>{storyDurationLabel(plan)}</span>
+                </button>
+              ))}
               {askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? 'Ask' : 'Preview explanation'}{askPending ? null : <ArrowIcon size={15}/>}</button></form>)}
             </div>
           )}

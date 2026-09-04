@@ -55,7 +55,7 @@ test("full scan artifacts are byte-identical across reversed discovery order", (
     repositorySlug: "okie",
     systemName: "Okie",
   });
-  for (const key of ["extraction", "snapshot", "view", "story", "scene", "timeline"] as const) {
+  for (const key of ["extraction", "snapshot", "view", "story", "stories", "catalog", "scene", "timeline"] as const) {
     assert.equal(stableJson(canonical[key]), stableJson(reversed[key]), `${key} differs under reversed discovery order`);
   }
 });

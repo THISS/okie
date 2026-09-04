@@ -18,6 +18,7 @@ import { attachPathOwners, readCodeOwners } from "./codeowners.js";
 import { attachCoverage, coverageByCodeIdFromEntities, parseLcov, readLcov, type LcovSidecar } from "./lcov.js";
 import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
+import { buildUserFlowStories, publishedStoryCatalog, type PublishedStoryCatalog } from "./flow-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
 import {
   attachCyclomaticComplexity,
@@ -80,6 +81,9 @@ export interface ScanArtifacts {
   snapshot: ArchitectureSnapshot;
   view: ArchitectureView;
   story: ArchitectureStory;
+  /** Overview first, then any deterministic user-flow stories (CLA-77). */
+  stories: ArchitectureStory[];
+  catalog: PublishedStoryCatalog;
   scene: SceneSnapshot;
   timeline: Timeline;
   discoverySummary: DiscoverySummary;
@@ -233,6 +237,15 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   if (storyIssues.length) {
     throw new Error(`Scanned story failed validation:\n${storyIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
   }
+  const flowStories = buildUserFlowStories(snapshot, view, repositorySlug, systemName);
+  for (const flow of flowStories) {
+    const flowIssues = validateStory(snapshot, view, flow);
+    if (flowIssues.length) {
+      throw new Error(`Scanned flow story ${flow.id} failed validation:\n${flowIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
+    }
+  }
+  const stories = [story, ...flowStories];
+  const catalog = publishedStoryCatalog(stories);
 
   // scene.json is a debug artifact — the app compiles per-focus live. A big snapshot's
   // full-graph compile would not terminate (edge routing is superlinear in edges), so
@@ -257,6 +270,8 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     snapshot,
     view,
     story,
+    stories,
+    catalog,
     scene: compiled.scene,
     timeline,
     discoverySummary: discovery.summary,

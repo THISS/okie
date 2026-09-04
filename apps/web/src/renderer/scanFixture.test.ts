@@ -66,6 +66,17 @@ describe('scan fixture loader', () => {
     expect((caught as ScanFixtureError).issues[0]!.path).toMatch(/^snapshot\./u);
   });
 
+  it('compiles extra catalog stories after the overview without replacing story.json', () => {
+    const extra = { ...structuredClone(demoStory), id: 'story:okie-paste-a-repo', title: 'Okie: Paste a repository' };
+    const fixture = compileScanFixture({
+      ...validTrio(),
+      stories: { schemaVersion: 1, stories: [structuredClone(demoStory), extra] },
+    });
+    expect(fixture.story.id).toBe((demoStory as { id: string }).id);
+    expect(fixture.stories.map(plan => plan.id)).toEqual([(demoStory as { id: string }).id, extra.id]);
+    expect(compileScanFixture(validTrio()).stories).toHaveLength(1);
+  });
+
   it('never accepts a non-object document silently', () => {
     expect(() => compileScanFixture({ snapshot: null, view: demoView, story: demoStory })).toThrow(/must be a JSON object/u);
   });
