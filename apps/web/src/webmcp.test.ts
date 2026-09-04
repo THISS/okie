@@ -192,6 +192,7 @@ describe('WebMCP foundation (CLA-40)', () => {
     expect(app).toContain('selectedEntity:');
     expect(app).toContain('cyclomaticComplexity: selectedCyclomatic.complexity');
     expect(app).toContain('duplicates: selectedDuplicates');
+    expect(app).toContain('coverageFileHitRate: selectedCoverage.fileHitRate');
     expect(app).not.toMatch(/document\.domain\s*=/);
     expect(app).not.toContain('registerWebMcpLandingTools');
 
@@ -940,6 +941,53 @@ describe('WebMCP page context (CLA-43)', () => {
       askAvailable: true,
     });
     expect(after).not.toHaveProperty('apiKey');
+    expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[0]);
+    expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[1]);
+  });
+
+  it('returns selected-entity lcov coverage on get_atlas_context and drops planted secrets and CRAP', async () => {
+    bindFakeAtlas({
+      readContext: () => ({
+        ...defaultContext({
+          c4Level: 'code',
+          selectedEntityId: 'code:pkg-a-src-index-ts:tangled',
+          selectedEntity: {
+            id: 'code:pkg-a-src-index-ts:tangled',
+            name: 'tangled',
+            kind: 'Source',
+            detail: 'code',
+            coverageFileHitRate: 0.3,
+            coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+            crapScore: 12,
+            apiKey: PLANTED_SECRETS[0],
+          } as AtlasPageContextInput['selectedEntity'],
+        }),
+        OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+      } as AtlasPageContextInput),
+    });
+    const after = await GET_ATLAS_CONTEXT_TOOL.execute({ GITHUB_TOKEN: PLANTED_SECRETS[1] });
+    expect(after).toEqual({
+      ok: true,
+      tool: GET_ATLAS_CONTEXT_TOOL_NAME,
+      atlas: { fixtureId: 'okie' },
+      c4Level: 'code',
+      selectedEntityId: 'code:pkg-a-src-index-ts:tangled',
+      selectedEntity: {
+        id: 'code:pkg-a-src-index-ts:tangled',
+        name: 'tangled',
+        kind: 'Source',
+        detail: 'code',
+        coverageFileHitRate: 0.3,
+        coverageFileHitPercent: 30,
+        coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+      },
+      tourPlaying: false,
+      enrichmentStatus: 'none',
+      scanAvailable: false,
+      askAvailable: true,
+    });
+    expect(after).not.toHaveProperty('crapScore');
+    expect(JSON.stringify(after)).not.toContain('crapScore');
     expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[0]);
     expect(JSON.stringify(after)).not.toContain(PLANTED_SECRETS[1]);
   });

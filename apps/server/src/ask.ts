@@ -34,6 +34,9 @@ export interface AskPacket {
   cyclomaticComplexity?: number;
   cyclomaticFlagged?: boolean;
   duplicates?: Array<{ id: string; name: string }>;
+  coverageFileHitRate?: number;
+  coverageFileHitPercent?: number;
+  coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
 }
 
 export interface AskRelation {
@@ -241,6 +244,27 @@ function sanitizePacket(raw: unknown): AskPacket | undefined {
       });
     }
     if (duplicates.length) packet.duplicates = duplicates;
+  }
+  if (typeof record.coverageFileHitRate === "number"
+    && Number.isFinite(record.coverageFileHitRate)
+    && record.coverageFileHitRate >= 0
+    && record.coverageFileHitRate <= 1) {
+    packet.coverageFileHitRate = record.coverageFileHitRate;
+    packet.coverageFileHitPercent = Math.round(record.coverageFileHitRate * 100);
+  }
+  if (Array.isArray(record.coverageUntestedRanges)) {
+    const ranges: Array<{ startLine: number; endLine: number }> = [];
+    for (const row of record.coverageUntestedRanges) {
+      if (ranges.length >= 32) break;
+      if (!row || typeof row !== "object") continue;
+      const range = row as Record<string, unknown>;
+      const startLine = range.startLine;
+      const endLine = range.endLine;
+      if (typeof startLine !== "number" || typeof endLine !== "number") continue;
+      if (!Number.isInteger(startLine) || !Number.isInteger(endLine) || startLine < 1 || endLine < startLine) continue;
+      ranges.push({ startLine, endLine });
+    }
+    if (ranges.length) packet.coverageUntestedRanges = ranges;
   }
   return packet;
 }

@@ -314,3 +314,34 @@ test('normalize round-trip preserves observed cyclomatic on a code entity', () =
   assert.equal(selected.entities.find(entity => entity.id === 'code:lib-src:handler')?.cyclomaticComplexity, 7);
   assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.cyclomaticComplexity, undefined);
 });
+
+test('normalize round-trip preserves observed lcov coverage on a code entity and omits it elsewhere', () => {
+  const local: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: 'snapshot:cov',
+    repositoryId: 'repo:cov',
+    commitSha: 'abc123',
+    generatedAt: '2026-07-14T00:00:00.000Z',
+    entities: [
+      { id: 'system:cov', kind: 'softwareSystem', name: 'Cov', sourceRefs: [] },
+      { id: 'container:lib', kind: 'container', parentId: 'system:cov', name: 'Lib', sourceRefs: [] },
+      { id: 'component:lib-src', kind: 'component', parentId: 'container:lib', name: 'src', sourceRefs: [source] },
+      {
+        id: 'code:lib-src:handler',
+        kind: 'code',
+        parentId: 'component:lib-src',
+        name: 'handler',
+        sourceRefs: [source],
+        coverageFileHitRate: 0.3,
+        coverageUntestedRanges: [{ startLine: 12, endLine: 14 }],
+      },
+    ],
+    relations: [],
+  };
+  const selected = selectArchitectureSnapshot(normalizeArchitecture({ snapshot: local }), local.id);
+  const handler = selected.entities.find(entity => entity.id === 'code:lib-src:handler');
+  assert.equal(handler?.coverageFileHitRate, 0.3);
+  assert.deepEqual(handler?.coverageUntestedRanges, [{ startLine: 12, endLine: 14 }]);
+  assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.coverageFileHitRate, undefined);
+  assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.coverageUntestedRanges, undefined);
+});

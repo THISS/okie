@@ -35,6 +35,8 @@ export type AskEntity = {
   source?: string;
   cyclomaticComplexity?: number;
   duplicates?: Array<{ id: string; name: string }>;
+  coverageFileHitRate?: number;
+  coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
 };
 
 export type AskSceneRelation = {
@@ -54,6 +56,9 @@ export type AskPacket = {
   cyclomaticComplexity?: number;
   cyclomaticFlagged?: boolean;
   duplicates?: Array<{ id: string; name: string }>;
+  coverageFileHitRate?: number;
+  coverageFileHitPercent?: number;
+  coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
 };
 
 export type AskRelation = {
@@ -464,6 +469,12 @@ function toPacket(entity: AskEntity, knownIds: ReadonlySet<string>): AskPacket {
     .filter(row => knownIds.has(row.id) && row.id !== entity.id)
     .filter(row => typeof row.name === 'string' && row.name.trim())
     .map(row => ({ id: row.id, name: row.name.trim() }));
+  const rate = entity.coverageFileHitRate;
+  const hasCoverageRate = typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate <= 1;
+  const ranges = (entity.coverageUntestedRanges ?? [])
+    .filter(range => Number.isInteger(range.startLine) && Number.isInteger(range.endLine) && range.startLine >= 1 && range.endLine >= range.startLine)
+    .map(range => ({ startLine: range.startLine, endLine: range.endLine }))
+    .slice(0, 32);
   return {
     id: entity.id,
     name: entity.name,
@@ -476,6 +487,11 @@ function toPacket(entity: AskEntity, knownIds: ReadonlySet<string>): AskPacket {
       cyclomaticFlagged: complexity > CYCLOMATIC_FLAG_THRESHOLD,
     } : {}),
     ...(duplicates.length ? { duplicates } : {}),
+    ...(hasCoverageRate ? {
+      coverageFileHitRate: rate,
+      coverageFileHitPercent: Math.round(rate * 100),
+    } : {}),
+    ...(ranges.length ? { coverageUntestedRanges: ranges } : {}),
   };
 }
 

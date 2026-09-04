@@ -173,6 +173,35 @@ describe('Ask packets carry accepted summaries only', () => {
     expect(context.relations.map(relation => relation.id)).toEqual(['relation:dup:alpha-beta']);
   });
 
+  it('carries observed lcov coverage on the same packets and omits CRAP', () => {
+    const context = buildAskContext({
+      entities: [
+        { id: 'component:web-shell', name: 'Application shell', kind: 'component', parentId: 'container:web-app', responsibility: 'Hosts Ask Atlas.' },
+        {
+          id: 'code:tangled',
+          name: 'tangled',
+          kind: 'component',
+          parentId: 'component:web-shell',
+          coverageFileHitRate: 0.3,
+          coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+          source: 'pkg/a.ts',
+        },
+        { id: 'code:helper', name: 'helper', kind: 'component', parentId: 'component:web-shell', source: 'pkg/b.ts' },
+      ],
+      selectedId: 'component:web-shell',
+      isolateActive: true,
+      isolatedIds: ['component:web-shell', 'code:tangled', 'code:helper'],
+    });
+    expect(context.packets.find(packet => packet.id === 'code:tangled')).toMatchObject({
+      coverageFileHitRate: 0.3,
+      coverageFileHitPercent: 30,
+      coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+    });
+    expect(context.packets.find(packet => packet.id === 'code:helper')?.coverageFileHitRate).toBeUndefined();
+    expect(context.packets.find(packet => packet.id === 'component:web-shell')?.coverageFileHitRate).toBeUndefined();
+    expect(JSON.stringify(context)).not.toContain('crap');
+  });
+
   it('drops invented duplicate counterpart ids that are not in the atlas entity set', () => {
     const context = buildAskContext({
       entities: [

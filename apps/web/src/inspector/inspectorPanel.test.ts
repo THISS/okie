@@ -5,6 +5,7 @@ import {
   inspectorAcceptedSummary,
   inspectorCanShowSource,
   inspectorCyclomatic,
+  inspectorCoverage,
   inspectorDuplicates,
   inspectorNotationScope,
   inspectorPathOwners,
@@ -354,6 +355,68 @@ describe('inspector cyclomatic complexity (CLA-49)', () => {
       'code:alias',
       'code:simple',
       'code:tangled',
+    ]);
+  });
+});
+
+describe('inspector lcov coverage (CLA-62)', () => {
+  it('shows file hit rate and untested ranges, and omits when the sidecar is absent', () => {
+    expect(inspectorCoverage({
+      coverageFileHitRate: 0.3,
+      coverageUntestedRanges: [{ startLine: 12, endLine: 14 }, { startLine: 20, endLine: 20 }],
+    })).toEqual({
+      fileHitRate: 0.3,
+      fileHitPercent: 30,
+      untestedRanges: [{ startLine: 12, endLine: 14 }, { startLine: 20, endLine: 20 }],
+    });
+    expect(inspectorCoverage({ coverageFileHitRate: 0 })).toEqual({
+      fileHitRate: 0,
+      fileHitPercent: 0,
+      untestedRanges: [],
+    });
+    expect(inspectorCoverage({ coverageFileHitRate: 1.5 })).toBeUndefined();
+    expect(inspectorCoverage({})).toBeUndefined();
+    expect(inspectorCoverage(undefined)).toBeUndefined();
+  });
+
+  it('does not invent coverage on the golden atlas and carries scan overlay onto compiled L4 nodes', () => {
+    const golden = createGoldenC4Scene();
+    const code = golden.entities.find(entity => entity.id === 'code:web-shell:app')!;
+    expect(inspectorCoverage(code)).toBeUndefined();
+
+    const scene = createC4Scene({
+      baseSnapshot: scanSnapshot(
+        [
+          scanEntity('system:app', 'softwareSystem'),
+          scanEntity('container:web', 'container', 'system:app'),
+          scanEntity('component:web-x', 'component', 'container:web'),
+          {
+            ...scanEntity('code:simple', 'code', 'component:web-x'),
+            coverageFileHitRate: 0.3,
+            coverageUntestedRanges: [{ startLine: 4, endLine: 6 }],
+          },
+          scanEntity('code:alias', 'code', 'component:web-x'),
+        ],
+        [scanRelation('rel:simple-app', 'code:simple', 'system:app')],
+      ),
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    expect(inspectorCoverage(scene.entities.find(entity => entity.id === 'code:simple'))).toEqual({
+      fileHitRate: 0.3,
+      fileHitPercent: 30,
+      untestedRanges: [{ startLine: 4, endLine: 6 }],
+    });
+    expect(inspectorCoverage(scene.entities.find(entity => entity.id === 'code:alias'))).toBeUndefined();
+    expect(inspectorCoverage(scene.entities.find(entity => entity.id === 'component:web-x'))).toBeUndefined();
+    expect(scene.entities.map(entity => entity.id).filter(id => id.startsWith('code:')).sort()).toEqual([
+      'code:alias',
+      'code:simple',
     ]);
   });
 });

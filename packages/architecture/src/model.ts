@@ -75,6 +75,12 @@ export interface Evidence {
   reason?: string;
 }
 
+/** Inclusive one-based instrumented line range from an optional lcov sidecar. */
+export interface CoverageLineRange {
+  startLine: number;
+  endLine: number;
+}
+
 export interface ArchitectureEntity {
   id: EntityId;
   /** Stable semantic identity used to reconcile this entity across immutable snapshots. */
@@ -96,6 +102,18 @@ export interface ArchitectureEntity {
    * declaration has no executable body (types, interfaces, classes, constants).
    */
   cyclomaticComplexity?: number;
+  /**
+   * Observed file-level lcov hit rate (0–1) for this code entity's source file.
+   * Scan-time overlay — never ArchitectureExtraction input. Omit when no
+   * sidecar exists or this file is absent from the report. Never invent 0%.
+   */
+  coverageFileHitRate?: number;
+  /**
+   * Observed untested instrumented line ranges overlapping this code entity.
+   * Scan-time overlay — omit when no sidecar, or when this symbol has no
+   * overlapping uncovered DA lines. Never a CRAP headline.
+   */
+  coverageUntestedRanges?: CoverageLineRange[];
   sourceRefs: SourceRef[];
   sourceExcerpts?: SourceExcerpt[];
   confidence?: number;

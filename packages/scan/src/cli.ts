@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { buildEnrichmentPackets, containerIdFromFileName } from "./packet.js";
 import { GithubAcquisitionError, isGithubSource, parseGithubSource, type GithubSourceRef } from "./github.js";
 import { regenerateScanManifest } from "./manifest.js";
@@ -19,6 +19,7 @@ interface CliArgs {
   emitPromptDir?: string;
   enrichFromDir?: string;
   maxTarballBytes?: number;
+  lcovPath?: string;
 }
 
 function printUsage(): void {
@@ -28,7 +29,7 @@ function printUsage(): void {
     "Usage: okie-scan [--source <path | gh:owner/repo[@ref]>] [--out <dir>]",
     "                 [--system-name <name>] [--repo <slug>] [--max-tarball-mb <n>]",
     "                 [--emit-packets <dir>] [--emit-prompt <dir>] [--enrich-from <dir>]",
-    "                 [--include-members]",
+    "                 [--include-members] [--lcov <path>]",
     "",
     "  --source <src>      local git working tree, or gh:owner/repo[@ref] (default: cwd)",
     "  --out <dir>         output directory (default: <source>/fixtures/scan for a local",
@@ -41,6 +42,9 @@ function printUsage(): void {
     "  --enrich-from <d>   read enrichment docs (same filenames as packets, including remainder `*.2.json`) from <d>, merge accepted",
     "  --include-members   scan fixture/example/playground/e2e workspace members too",
     "  --public-api        L4 code entities cover only the export surface (hosted posture)",
+    "  --lcov <path>       optional lcov.info sidecar (untested ranges + file hit rate).",
+    "                      Default lookup: coverage/lcov.info, lcov.info, coverage/lcov/lcov.info",
+    "                      under the scan root. No sidecar → omit coverage; keep complexity + clones.",
     "",
   ].join("\n"));
 }
@@ -52,6 +56,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
   let emitPromptDir: string | undefined;
   let enrichFromDir: string | undefined;
   let maxTarballBytes: number | undefined;
+  let lcovPath: string | undefined;
   const options: ScanOptions = {};
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]!;
@@ -77,6 +82,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       case "--enrich-from": enrichFromDir = next(); break;
       case "--include-members": options.includeAllMembers = true; break;
       case "--public-api": options.codeSurface = "public"; break;
+      case "--lcov": lcovPath = next(); break;
       case "--help": case "-h": printUsage(); process.exit(0); break;
       default: throw new Error(`Unknown argument: ${arg}`);
     }
@@ -96,6 +102,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       ...(emitPacketsDir ? { emitPacketsDir: resolve(emitPacketsDir) } : {}),
       ...(emitPromptDir ? { emitPromptDir: resolve(emitPromptDir) } : {}),
       ...(maxTarballBytes ? { maxTarballBytes } : {}),
+      ...(lcovPath ? { lcovPath } : {}),
     };
   }
 
@@ -108,6 +115,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
     ...(emitPromptDir ? { emitPromptDir: resolve(emitPromptDir) } : {}),
     ...(enrichFromDir ? { enrichFromDir: resolve(enrichFromDir) } : {}),
     ...(maxTarballBytes ? { maxTarballBytes } : {}),
+    ...(lcovPath ? { lcovPath } : {}),
   };
 }
 
@@ -164,9 +172,13 @@ function summaryLines(artifacts: ScanArtifacts): string {
   const membersNote = discoverySummary.skippedMembers.length > 0
     ? `  skipped ${discoverySummary.skippedMembers.length} fixture/example member(s): ${discoverySummary.skippedMembers.slice(0, 5).join(", ")}${discoverySummary.skippedMembers.length > 5 ? " ..." : ""} (--include-members to scan)\n`
     : "";
+  const coverageCount = snapshot.entities.filter(entity => entity.coverageFileHitRate !== undefined).length;
+  const coverageNote = coverageCount > 0
+    ? `  lcov sidecar: ${coverageCount} code entit${coverageCount === 1 ? "y" : "ies"} with file hit rate / untested ranges\n`
+    : "";
   return `okie-scan: ${snapshot.entities.length} entities, ${snapshot.relations.length} relations\n` +
     `  commit ${pin.commitSha}\n  tree   ${pin.treeHash}\n` +
-    modeNote + jsNote + membersNote + enrichedNote + systemScopeNote;
+    modeNote + jsNote + membersNote + coverageNote + enrichedNote + systemScopeNote;
 }
 
 /** Rewrites <scanRoot>/index.json to index every per-repo scan slot deterministically. */
@@ -175,6 +187,26 @@ function refreshManifest(scanRoot: string): number {
   mkdirSync(scanRoot, { recursive: true });
   writeFileSync(`${scanRoot}/index.json`, stableJson(manifest));
   return manifest.repos.length;
+}
+
+function resolveExplicitLcovPath(sourceRoot: string | undefined, lcovPath: string): string {
+  if (isAbsolute(lcovPath)) return lcovPath;
+  const fromCwd = resolve(lcovPath);
+  if (existsSync(fromCwd)) return fromCwd;
+  if (sourceRoot) {
+    const fromSource = resolve(sourceRoot, lcovPath);
+    if (existsSync(fromSource)) return fromSource;
+  }
+  return fromCwd;
+}
+
+function readExplicitLcov(sourceRoot: string | undefined, lcovPath: string): string {
+  const resolved = resolveExplicitLcovPath(sourceRoot, lcovPath);
+  try {
+    return readFileSync(resolved, "utf8");
+  } catch {
+    throw new Error(`--lcov file not found: ${lcovPath}`);
+  }
 }
 
 async function runGithubScan(args: CliArgs): Promise<void> {
@@ -186,6 +218,7 @@ async function runGithubScan(args: CliArgs): Promise<void> {
     ...args.options,
     ...(args.enrichFromDir ? { enrichmentDocs: readEnrichmentDocs(args.enrichFromDir) } : {}),
     ...(args.maxTarballBytes ? { maxTarballBytes: args.maxTarballBytes } : {}),
+    ...(args.lcovPath ? { lcovText: readExplicitLcov(undefined, args.lcovPath) } : {}),
   };
   const { artifacts, commitSha } = await scanGithubRepository(github, scanOptions);
   writeArtifacts(args.out, artifacts);
@@ -202,6 +235,7 @@ async function runGithubScan(args: CliArgs): Promise<void> {
 function runLocalScan(args: CliArgs): void {
   const scanOptions: ScanOptions = { ...args.options };
   if (args.enrichFromDir) scanOptions.enrichmentDocs = readEnrichmentDocs(args.enrichFromDir);
+  if (args.lcovPath) scanOptions.lcovText = readExplicitLcov(args.source, args.lcovPath);
 
   const artifacts = scanRepository(args.source, scanOptions);
   writeArtifacts(args.out, artifacts);

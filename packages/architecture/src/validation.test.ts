@@ -67,6 +67,41 @@ test("accepts McCabe cyclomatic on code entities and rejects it elsewhere", () =
   assert.ok(validateSnapshot(fractional).some(issue => issue.path.endsWith("cyclomaticComplexity") && issue.message.includes("integer")));
 });
 
+test("accepts lcov coverage on code entities and rejects it elsewhere", () => {
+  const withCode: ArchitectureSnapshot = {
+    ...snapshot,
+    entities: [
+      ...snapshot.entities,
+      {
+        id: "code:api-handler",
+        kind: "code",
+        parentId: "container:api",
+        name: "handler",
+        sourceRefs: [{ path: "src/api.ts", commitSha: "abc123", symbol: "handler", startLine: 12, endLine: 20 }],
+        coverageFileHitRate: 0.3,
+        coverageUntestedRanges: [{ startLine: 14, endLine: 16 }],
+      },
+    ],
+  };
+  assert.deepEqual(validateSnapshot(withCode), []);
+  const onContainer: ArchitectureSnapshot = {
+    ...snapshot,
+    entities: snapshot.entities.map(entity => entity.id === "container:api"
+      ? { ...entity, coverageFileHitRate: 0, coverageUntestedRanges: [{ startLine: 1, endLine: 2 }] }
+      : entity),
+  };
+  assert.ok(validateSnapshot(onContainer).some(issue => issue.path.endsWith("coverageFileHitRate") && issue.message.includes("code entities")));
+  assert.ok(validateSnapshot(onContainer).some(issue => issue.path.endsWith("coverageUntestedRanges") && issue.message.includes("code entities")));
+  const inverted: ArchitectureSnapshot = {
+    ...withCode,
+    entities: withCode.entities.map(entity => entity.id === "code:api-handler"
+      ? { ...entity, coverageFileHitRate: 1.5, coverageUntestedRanges: [{ startLine: 8, endLine: 4 }] }
+      : entity),
+  };
+  assert.ok(validateSnapshot(inverted).some(issue => issue.path.endsWith("coverageFileHitRate") && issue.message.includes("between 0 and 1")));
+  assert.ok(validateSnapshot(inverted).some(issue => issue.path.endsWith("endLine") && issue.message.includes("startLine")));
+});
+
 test("accepts duplicates relations between code entities and rejects them elsewhere", () => {
   const withCode: ArchitectureSnapshot = {
     ...snapshot,

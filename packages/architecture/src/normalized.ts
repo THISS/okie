@@ -261,6 +261,13 @@ export function normalizeArchitecture({ snapshot, views = [], stories = [] }: No
       ...(entity.tags ? { tags: [...entity.tags] } : {}),
       ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
       ...(entity.cyclomaticComplexity !== undefined ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
+      ...(entity.coverageFileHitRate !== undefined ? { coverageFileHitRate: entity.coverageFileHitRate } : {}),
+      ...(entity.coverageUntestedRanges?.length ? {
+        coverageUntestedRanges: entity.coverageUntestedRanges.map(range => ({
+          startLine: range.startLine,
+          endLine: range.endLine,
+        })),
+      } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
       ...(entity.fingerprint ? { fingerprint: entity.fingerprint } : {}),
     };
@@ -475,6 +482,13 @@ export function selectArchitectureSnapshot(state: NormalizedArchitecture, snapsh
       ...(entity.tags ? { tags: [...entity.tags] } : {}),
       ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
       ...(entity.cyclomaticComplexity !== undefined ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
+      ...(entity.coverageFileHitRate !== undefined ? { coverageFileHitRate: entity.coverageFileHitRate } : {}),
+      ...(entity.coverageUntestedRanges?.length ? {
+        coverageUntestedRanges: entity.coverageUntestedRanges.map(range => ({
+          startLine: range.startLine,
+          endLine: range.endLine,
+        })),
+      } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
       ...(entity.fingerprint ? { fingerprint: entity.fingerprint } : {}),
     };

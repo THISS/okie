@@ -15,6 +15,7 @@ import {
 } from "@okie/architecture";
 import { compileC4Scene, compileC4Timeline, type CompiledC4Scene, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
 import { attachPathOwners, readCodeOwners } from "./codeowners.js";
+import { attachCoverage, parseLcov, readLcov, type LcovSidecar } from "./lcov.js";
 import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
@@ -47,6 +48,11 @@ export interface ScanOptions {
   enrichmentDocs?: ReadonlyMap<string, unknown>;
   /** L4 code surface: 'all' (default, every top-level declaration) or 'public' (export surface only). */
   codeSurface?: "all" | "public";
+  /**
+   * Optional lcov.info bytes. When set, wins over conventional sidecar lookup.
+   * Missing / empty → omit coverage (do not invent 0%).
+   */
+  lcovText?: string;
 }
 
 export interface GithubScanOptions extends ScanOptions {
@@ -151,6 +157,8 @@ export interface BuildScanArtifactsParams {
   cyclomaticById?: ReadonlyMap<string, number>;
   /** Clone pairs from the same extract as `baseExtraction`. Recomputed from source when omitted. */
   clonePairs?: readonly ClonePair[];
+  /** Optional lcov.info bytes. Conventional `coverage/lcov.info` is read when omitted. */
+  lcovText?: string;
 }
 
 /** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
@@ -188,18 +196,21 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     commitSha: pin.commitSha,
     generatedAt: pin.generatedAt,
   };
-  const snapshot = attachDuplicateRelations(
-    attachCyclomaticComplexity(
-      attachPathOwners(
-        attachPortableSourceExcerpts(
-          adaptArchitectureExtraction(extraction, metadata),
-          readFile,
+  const snapshot = attachCoverage(
+    attachDuplicateRelations(
+      attachCyclomaticComplexity(
+        attachPathOwners(
+          attachPortableSourceExcerpts(
+            adaptArchitectureExtraction(extraction, metadata),
+            readFile,
+          ),
+          readCodeOwners(readFile)?.rules ?? [],
         ),
-        readCodeOwners(readFile)?.rules ?? [],
+        collected.cyclomaticById,
       ),
-      collected.cyclomaticById,
+      collected.clonePairs,
     ),
-    collected.clonePairs,
+    loadLcovSidecar(readFile, params.lcovText),
   );
   const snapshotIssues = validateSnapshot(snapshot);
   if (snapshotIssues.length) {
@@ -267,6 +278,7 @@ export function scanRepository(sourceRoot: string, options: ScanOptions = {}): S
     systemName,
     ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
     ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
+    ...(options.lcovText ? { lcovText: options.lcovText } : {}),
   });
 }
 
@@ -335,11 +347,23 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       ...(baseExtraction ? { baseExtraction } : {}),
       ...(cyclomaticById ? { cyclomaticById } : {}),
       ...(clonePairs && clonePairs.length ? { clonePairs } : {}),
+      ...(options.lcovText ? { lcovText: options.lcovText } : {}),
     });
     return { source, commitSha: commit.sha, artifacts };
   } finally {
     acquired.cleanup();
   }
+}
+
+function loadLcovSidecar(
+  readFile: (repoRelativePath: string) => string,
+  lcovText?: string,
+): LcovSidecar | undefined {
+  if (lcovText !== undefined) {
+    const files = parseLcov(lcovText);
+    return files.size ? { path: "--lcov", files } : undefined;
+  }
+  return readLcov(readFile);
 }
 
 /** Canonical, byte-stable JSON serialization (trailing newline, 2-space indent). */
