@@ -149,10 +149,11 @@ export type BuildC4ProjectionOptions = {
   maxBand?: C4Band;
   /**
    * Routed-edge budget per band (opt-in). When a band has more visual edges than this,
-   * only the top-N by (aggregate count desc, id asc) are routed; the remainder are
-   * recorded on `BandProjection.omittedEdgeIds` (their VisualEdge records — and thus
-   * relation ids/evidence — stay in the bundle index for `+N more` enumeration).
-   * Default: unbounded (byte-identical).
+   * only the top-N are routed: focus-first, then aggregate count desc, then on the
+   * code band clone `duplicates` ahead of same-count `uses` (CLA-68), then id asc.
+   * The remainder are recorded on `BandProjection.omittedEdgeIds` (their VisualEdge
+   * records — and thus relation ids/evidence — stay in the bundle index for
+   * `+N more` enumeration). Default: unbounded (byte-identical).
    */
   maxEdgesPerBand?: number;
   /**
