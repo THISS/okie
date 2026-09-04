@@ -345,3 +345,33 @@ test('normalize round-trip preserves observed lcov coverage on a code entity and
   assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.coverageFileHitRate, undefined);
   assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.coverageUntestedRanges, undefined);
 });
+
+test('normalize round-trip preserves enrichment-named untested behaviours on a code entity', () => {
+  const local: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: 'snapshot:behaviours',
+    repositoryId: 'repo:behaviours',
+    commitSha: 'abc123',
+    generatedAt: '2026-07-14T00:00:00.000Z',
+    entities: [
+      { id: 'system:cov', kind: 'softwareSystem', name: 'Cov', sourceRefs: [] },
+      { id: 'container:lib', kind: 'container', parentId: 'system:cov', name: 'Lib', sourceRefs: [] },
+      { id: 'component:lib-src', kind: 'component', parentId: 'container:lib', name: 'src', sourceRefs: [source] },
+      {
+        id: 'code:lib-src:handler',
+        kind: 'code',
+        parentId: 'component:lib-src',
+        name: 'handler',
+        sourceRefs: [source],
+        coverageFileHitRate: 0.3,
+        coverageUntestedRanges: [{ startLine: 12, endLine: 14 }],
+        untestedBehaviours: [{ startLine: 12, endLine: 14, behaviour: 'Does not handle the empty token.' }],
+      },
+    ],
+    relations: [],
+  };
+  const selected = selectArchitectureSnapshot(normalizeArchitecture({ snapshot: local }), local.id);
+  const handler = selected.entities.find(entity => entity.id === 'code:lib-src:handler');
+  assert.deepEqual(handler?.untestedBehaviours, [{ startLine: 12, endLine: 14, behaviour: 'Does not handle the empty token.' }]);
+  assert.equal(selected.entities.find(entity => entity.id === 'component:lib-src')?.untestedBehaviours, undefined);
+});

@@ -220,6 +220,14 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain('crapScore');
   });
 
+  it('renders enrichment-named untested behaviours in Details when present', () => {
+    expect(app).toContain('inspectorUntestedBehaviours(selected)');
+    expect(app).toContain("data-inspector-has-untested-behaviours={selectedUntestedBehaviours.length ? 'true' : 'false'}");
+    expect(app).toContain('data-testid="inspector-untested-behaviours"');
+    expect(app).toContain('data-inspector-untested-behaviour');
+    expect(app).not.toContain('CRAP');
+  });
+
   it('samples C4 completeness advisories in Details instead of dumping the full list', () => {
     expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics');
     expect(app).toContain('inspectorNotationScope({');

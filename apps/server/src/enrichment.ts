@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { scrubGithubTokens, type EmittedPackets, type EnrichmentPacket, type SystemPacket } from "@okie/scan";
+import { scrubGithubTokens, type EmittedPackets, type EnrichmentPacket, type SystemPacket, ENRICHMENT_PROMPT_VERSION_V3 } from "@okie/scan";
 import {
   DEFAULT_MAX_ENRICHMENT_DOLLARS,
   DEFAULT_MAX_ENRICHMENT_SCOPES,
@@ -146,6 +146,19 @@ const ENTITY_SCHEMA = {
     responsibility: { type: "string" },
     technology: { type: "array", items: { type: "string" } },
     tags: { type: "array", items: { type: "string" } },
+    untestedBehaviours: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["startLine", "endLine", "behaviour"],
+        properties: {
+          startLine: { type: "integer" },
+          endLine: { type: "integer" },
+          behaviour: { type: "string" },
+        },
+      },
+    },
     sourceRefs: {
       type: "array",
       description: "Always an array of {path, symbol?, startLine?, endLine?} objects, never a string.",
@@ -246,7 +259,13 @@ export function extractionEnvelopeSkeleton(
 }
 
 function allowedEntityIds(kind: PacketKind, systemId: string, packet: EnrichmentPacket | SystemPacket): string[] {
-  return extractionEnvelopeSkeleton(kind, systemId, packet).entities.map(entity => entity.id);
+  const ids = extractionEnvelopeSkeleton(kind, systemId, packet).entities.map(entity => entity.id);
+  if (kind === "container" && !isSystemPacket(packet) && packet.promptVersion === ENRICHMENT_PROMPT_VERSION_V3) {
+    for (const code of packet.code) {
+      if (code.untestedRanges?.length && !ids.includes(code.id)) ids.push(code.id);
+    }
+  }
+  return ids;
 }
 
 function extractionDocSchemaForPacket(
@@ -298,6 +317,10 @@ Emit only {"schemaVersion":1,"entities":[...],"relations":[]}. entities is a fla
 
 Cite only scopePaths. Hallucinated ids or out-of-scope entities reject the whole document. Keep summaries short (one or two sentences). Do not dump the packet.`;
 
+const CONTAINER_SYSTEM_PROMPT_V3 = `${CONTAINER_SYSTEM_PROMPT}
+
+v3 addendum (okie-enrichment/v3): code entries may carry observed untestedRanges, fileHitRate, and nearbyTests from an optional lcov sidecar. When those ranges are present, you MAY name untested behaviours in untestedBehaviours on that code entity or its file-component: {startLine, endLine, behaviour} where the range equals or sits inside an observed untestedRanges entry and behaviour is one short phrase grounded in those lines plus nearbyTests. Without untestedRanges on that entity, omit untestedBehaviours and do not invent coverage, hit rates, or untested-behaviour prose. Do not author coverageFileHitRate, coverageUntestedRanges, or a CRAP score. Hallucinated ranges reject the document.`;
+
 const SYSTEM_SCOPE_PROMPT = `You are an architecture curator for a C4 atlas built from a deterministic repository scan.
 Write a short summary of THIS packet's scope only. Do not reason about files outside the system packet.
 
@@ -312,8 +335,12 @@ Emit only {"schemaVersion":1,"entities":[...],"relations":[]}. entities is a fla
 
 Ground summaries in what the README teasers actually say. Hallucinated ids reject the whole document. Keep summaries short (one or two sentences).`;
 
-function packetSystemPrompt(kind: PacketKind): string {
-  return kind === "container" ? CONTAINER_SYSTEM_PROMPT : SYSTEM_SCOPE_PROMPT;
+function packetSystemPrompt(kind: PacketKind, packet?: EnrichmentPacket | SystemPacket): string {
+  if (kind === "system") return SYSTEM_SCOPE_PROMPT;
+  if (packet && "promptVersion" in packet && packet.promptVersion === ENRICHMENT_PROMPT_VERSION_V3) {
+    return CONTAINER_SYSTEM_PROMPT_V3;
+  }
+  return CONTAINER_SYSTEM_PROMPT;
 }
 
 /** User-message body: one bounded, token-scrubbed packet (or system packet), never the whole repo. */
@@ -324,7 +351,9 @@ export function packetUserMessage(
 ): string {
   const serialized = scrubGithubTokens(JSON.stringify(packet, null, 2));
   const skeleton = scrubGithubTokens(JSON.stringify(extractionEnvelopeSkeleton(kind, systemId, packet), null, 2));
-  const fill = `Fill each entity's "responsibility" on this ArchitectureExtraction envelope and return the filled document via ${EXTRACTION_TOOL_NAME}. Copy id, kind, name, parentId, and sourceRefs unchanged. sourceRefs is already an array of {path} objects. Do not nest softwareSystems, containers, components, or codeEntities, and do not split this envelope across agents.\n\nEnvelope to fill:\n${skeleton}`;
+  const fill = packet.promptVersion === ENRICHMENT_PROMPT_VERSION_V3
+    ? `Fill each entity's "responsibility" on this ArchitectureExtraction envelope and return the filled document via ${EXTRACTION_TOOL_NAME}. Copy id, kind, name, parentId, and sourceRefs unchanged. sourceRefs is already an array of {path} objects. When a restated code or file-component has observed untestedRanges, you may add grounded untestedBehaviours. Do not nest softwareSystems, containers, components, or codeEntities, and do not split this envelope across agents.\n\nEnvelope to fill:\n${skeleton}`
+    : `Fill each entity's "responsibility" on this ArchitectureExtraction envelope and return the filled document via ${EXTRACTION_TOOL_NAME}. Copy id, kind, name, parentId, and sourceRefs unchanged. sourceRefs is already an array of {path} objects. Do not nest softwareSystems, containers, components, or codeEntities, and do not split this envelope across agents.\n\nEnvelope to fill:\n${skeleton}`;
   return kind === "container"
     ? `Summarize THIS packet's scope only. The softwareSystem anchor id your document must restate: ${systemId}\n\n${fill}\n\nEnrichment packet:\n${serialized}`
     : `Summarize THIS packet's scope only.\n\n${fill}\n\nSystem packet:\n${serialized}`;
@@ -350,7 +379,7 @@ export function enrichmentStreamParams(
     model: requireUsableModelId(modelId),
     max_tokens: maxTokens,
     thinking: { type: "adaptive" as const },
-    system: packetSystemPrompt(kind),
+    system: packetSystemPrompt(kind, packet),
     output_config: { format: { type: "json_schema" as const, schema: extractionDocSchemaForPacket(kind, systemId, packet) } },
     messages: [{
       role: "user" as const,
@@ -375,7 +404,7 @@ export function enrichmentChatCompletionsBody(
     model: requireUsableModelId(modelId),
     max_tokens: cappedOutputTokens(maxOutputTokens),
     messages: [
-      { role: "system", content: packetSystemPrompt(kind) },
+      { role: "system", content: packetSystemPrompt(kind, packet) },
       { role: "user", content: packetUserMessage(kind, systemId, packet) },
     ],
     response_format: {

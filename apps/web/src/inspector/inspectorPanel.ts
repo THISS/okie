@@ -226,6 +226,43 @@ export function formatCoverageRange(range: InspectorCoverageRange): string {
     : `L${range.startLine}–${range.endLine}`;
 }
 
+export type InspectorUntestedBehaviour = {
+  startLine: number;
+  endLine: number;
+  behaviour: string;
+};
+
+export type InspectorUntestedBehavioursEntity = {
+  untestedBehaviours?: readonly InspectorUntestedBehaviour[];
+};
+
+/**
+ * Enrichment-named untested behaviours grounded in observed lcov ranges.
+ * Omit when the enrich pass did not name any — never invent coverage prose.
+ */
+export function inspectorUntestedBehaviours(
+  entity: InspectorUntestedBehavioursEntity | undefined,
+): InspectorUntestedBehaviour[] {
+  const items = (entity?.untestedBehaviours ?? [])
+    .filter((item): item is InspectorUntestedBehaviour => Boolean(
+      item
+      && Number.isInteger(item.startLine)
+      && Number.isInteger(item.endLine)
+      && item.startLine >= 1
+      && item.endLine >= item.startLine
+      && typeof item.behaviour === 'string'
+      && item.behaviour.trim(),
+    ))
+    .map(item => ({
+      startLine: item.startLine,
+      endLine: item.endLine,
+      behaviour: item.behaviour.trim(),
+    }))
+    .sort((left, right) => left.startLine - right.startLine || left.endLine - right.endLine || left.behaviour.localeCompare(right.behaviour))
+    .slice(0, 8);
+  return items;
+}
+
 /**
  * Completeness noise (missing descriptions, technology, labels) can number in
  * the thousands on a self-scan. Structural / invalid notation still has to

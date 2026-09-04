@@ -69,7 +69,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, formatCoverageRange, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
+import { canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1441,6 +1441,7 @@ export function App() {
   const selectedOwners = inspectorPathOwners(selected);
   const selectedCyclomatic = inspectorCyclomatic(selected);
   const selectedCoverage = inspectorCoverage(selected);
+  const selectedUntestedBehaviours = inspectorUntestedBehaviours(selected);
   const selectedDuplicates = useMemo(
     () => inspectorDuplicates(selected.id, activeSnapshot.relations, activeSnapshot.entities),
     [activeSnapshot.entities, activeSnapshot.relations, selected.id],
@@ -3643,6 +3644,7 @@ export function App() {
             ...(selectedCoverage.fileHitPercent !== undefined ? { coverageFileHitPercent: selectedCoverage.fileHitPercent } : {}),
             ...(selectedCoverage.untestedRanges.length ? { coverageUntestedRanges: selectedCoverage.untestedRanges } : {}),
           } : {}),
+          ...(selectedUntestedBehaviours.length ? { untestedBehaviours: selectedUntestedBehaviours } : {}),
           ...(selectedDuplicates.length ? { duplicates: selectedDuplicates } : {}),
         },
       } : {}),
@@ -4011,6 +4013,7 @@ export function App() {
         ...(typeof entity.cyclomaticComplexity === 'number' ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
         ...(typeof entity.coverageFileHitRate === 'number' ? { coverageFileHitRate: entity.coverageFileHitRate } : {}),
         ...(entity.coverageUntestedRanges?.length ? { coverageUntestedRanges: entity.coverageUntestedRanges } : {}),
+        ...(entity.untestedBehaviours?.length ? { untestedBehaviours: entity.untestedBehaviours } : {}),
         duplicates: inspectorDuplicates(entity.id, activeSnapshot.relations, activeSnapshot.entities),
       })),
       relations: (() => {
@@ -4715,7 +4718,7 @@ export function App() {
                 <button className="secondary-detail-action" disabled={!authoringEnabled || !selectedRouteOverride} onClick={resetSelectedRelationshipRoute}>Auto route</button>
                 <button className="danger-detail-action" disabled={!authoringEnabled} onClick={deleteSelectedRelationship}>Delete relationship</button>
               </div>}
-            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-has-owners={selectedOwners.length ? 'true' : 'false'} data-inspector-has-cyclomatic={selectedCyclomatic ? 'true' : 'false'} data-inspector-cyclomatic-flagged={selectedCyclomatic?.flagged ? 'true' : 'false'} data-inspector-has-duplicates={selectedDuplicates.length ? 'true' : 'false'} data-inspector-has-coverage={selectedCoverage ? 'true' : 'false'} data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'} data-inspector-presentation="entity">
+            </article> : <article aria-labelledby="inspector-entity-title" className="inspector-presentation inspector-entity-presentation" data-inspector-entity-id={selected.id} data-inspector-has-owners={selectedOwners.length ? 'true' : 'false'} data-inspector-has-cyclomatic={selectedCyclomatic ? 'true' : 'false'} data-inspector-cyclomatic-flagged={selectedCyclomatic?.flagged ? 'true' : 'false'} data-inspector-has-duplicates={selectedDuplicates.length ? 'true' : 'false'} data-inspector-has-coverage={selectedCoverage ? 'true' : 'false'} data-inspector-has-untested-behaviours={selectedUntestedBehaviours.length ? 'true' : 'false'} data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'} data-inspector-presentation="entity">
               <header className="entity-hero">
                 <div className="entity-kicker"><span>{selectedLevelLabel}</span><small className={`provenance-badge tone-${selectedProvenance.tone}`}>{selectedProvenance.badge}</small></div>
                 <h2 id="inspector-entity-title">{selected.name}</h2>
@@ -4764,6 +4767,10 @@ export function App() {
                   {selectedCoverage.fileHitPercent !== undefined ? <span>this file {selectedCoverage.fileHitPercent}%</span> : null}
                   {selectedCoverage.untestedRanges.map(range => <span data-inspector-coverage-range={`${range.startLine}-${range.endLine}`} key={`${range.startLine}-${range.endLine}`}>{formatCoverageRange(range)}</span>)}
                 </div>
+                {selectedUntestedBehaviours.length > 0 ? <div aria-label="untested behaviours" className="entity-metadata" data-testid="inspector-untested-behaviours">{selectedUntestedBehaviours.map(item => <span data-inspector-untested-behaviour={`${item.startLine}-${item.endLine}`} key={`${item.startLine}-${item.endLine}-${item.behaviour}`}>{formatCoverageRange(item)} {item.behaviour}</span>)}</div> : null}
+              </section> : selectedUntestedBehaviours.length > 0 ? <section className="detail-section coverage-section" data-inspector-section="untested-behaviours">
+                <div className="section-title"><h3>Untested behaviours</h3><span>{selectedUntestedBehaviours.length}</span></div>
+                <div aria-label="untested behaviours" className="entity-metadata" data-testid="inspector-untested-behaviours">{selectedUntestedBehaviours.map(item => <span data-inspector-untested-behaviour={`${item.startLine}-${item.endLine}`} key={`${item.startLine}-${item.endLine}-${item.behaviour}`}>{formatCoverageRange(item)} {item.behaviour}</span>)}</div>
               </section> : null}
 
               <section className="detail-section diagrams-section">

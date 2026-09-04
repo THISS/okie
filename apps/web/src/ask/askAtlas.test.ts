@@ -184,6 +184,7 @@ describe('Ask packets carry accepted summaries only', () => {
           parentId: 'component:web-shell',
           coverageFileHitRate: 0.3,
           coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+          untestedBehaviours: [{ startLine: 6, endLine: 8, behaviour: 'Does not cover the empty token branch.' }],
           source: 'pkg/a.ts',
         },
         { id: 'code:helper', name: 'helper', kind: 'component', parentId: 'component:web-shell', source: 'pkg/b.ts' },
@@ -196,6 +197,7 @@ describe('Ask packets carry accepted summaries only', () => {
       coverageFileHitRate: 0.3,
       coverageFileHitPercent: 30,
       coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+      untestedBehaviours: [{ startLine: 6, endLine: 8, behaviour: 'Does not cover the empty token branch.' }],
     });
     expect(context.packets.find(packet => packet.id === 'code:helper')?.coverageFileHitRate).toBeUndefined();
     expect(context.packets.find(packet => packet.id === 'component:web-shell')?.coverageFileHitRate).toBeUndefined();

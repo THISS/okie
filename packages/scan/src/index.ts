@@ -8,6 +8,7 @@ export * from "./codeowners.js";
 export * from "./lcov.js";
 export * from "./scope.js";
 export * from "./packet.js";
+export * from "./nearby-tests.js";
 export * from "./prompt.js";
 export * from "./enrich.js";
 export * from "./github.js";

@@ -37,6 +37,7 @@ export interface AskPacket {
   coverageFileHitRate?: number;
   coverageFileHitPercent?: number;
   coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
+  untestedBehaviours?: Array<{ startLine: number; endLine: number; behaviour: string }>;
 }
 
 export interface AskRelation {
@@ -265,6 +266,21 @@ function sanitizePacket(raw: unknown): AskPacket | undefined {
       ranges.push({ startLine, endLine });
     }
     if (ranges.length) packet.coverageUntestedRanges = ranges;
+  }
+  if (Array.isArray(record.untestedBehaviours)) {
+    const behaviours: Array<{ startLine: number; endLine: number; behaviour: string }> = [];
+    for (const row of record.untestedBehaviours) {
+      if (behaviours.length >= 8) break;
+      if (!row || typeof row !== "object") continue;
+      const item = row as Record<string, unknown>;
+      const startLine = item.startLine;
+      const endLine = item.endLine;
+      const behaviour = optionalTrimmedString(item.behaviour);
+      if (typeof startLine !== "number" || typeof endLine !== "number" || !behaviour) continue;
+      if (!Number.isInteger(startLine) || !Number.isInteger(endLine) || startLine < 1 || endLine < startLine) continue;
+      behaviours.push({ startLine, endLine, behaviour: scrubGithubTokens(behaviour).slice(0, 240) });
+    }
+    if (behaviours.length) packet.untestedBehaviours = behaviours;
   }
   return packet;
 }

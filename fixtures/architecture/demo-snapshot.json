@@ -669,8 +669,8 @@
           "path": "apps/web/src/App.tsx",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "CanvasViewport",
-          "startLine": 4502,
-          "endLine": 4507
+          "startLine": 4505,
+          "endLine": 4510
         }
       ],
       "sourceExcerpts": [
@@ -678,9 +678,9 @@
           "path": "apps/web/src/App.tsx",
           "symbol": "CanvasViewport",
           "language": "tsx",
-          "startLine": 4502,
-          "endLine": 4507,
-          "highlightLine": 4502,
+          "startLine": 4505,
+          "endLine": 4510,
+          "highlightLine": 4505,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "          <CanvasViewport",
@@ -1121,8 +1121,8 @@
           "path": "packages/architecture/src/model.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "ArchitectureSnapshot",
-          "startLine": 138,
-          "endLine": 143
+          "startLine": 154,
+          "endLine": 159
         }
       ],
       "sourceExcerpts": [
@@ -1130,9 +1130,9 @@
           "path": "packages/architecture/src/model.ts",
           "symbol": "ArchitectureSnapshot",
           "language": "typescript",
-          "startLine": 138,
-          "endLine": 143,
-          "highlightLine": 138,
+          "startLine": 154,
+          "endLine": 159,
+          "highlightLine": 154,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export interface ArchitectureSnapshot {",
@@ -1162,8 +1162,8 @@
           "path": "packages/architecture/src/model.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "ArchitectureEntity",
-          "startLine": 84,
-          "endLine": 89
+          "startLine": 94,
+          "endLine": 99
         }
       ],
       "sourceExcerpts": [
@@ -1171,9 +1171,9 @@
           "path": "packages/architecture/src/model.ts",
           "symbol": "ArchitectureEntity",
           "language": "typescript",
-          "startLine": 84,
-          "endLine": 89,
-          "highlightLine": 84,
+          "startLine": 94,
+          "endLine": 99,
+          "highlightLine": 94,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export interface ArchitectureEntity {",
@@ -1203,8 +1203,8 @@
           "path": "packages/architecture/src/model.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "ArchitectureStory",
-          "startLine": 207,
-          "endLine": 212
+          "startLine": 223,
+          "endLine": 228
         }
       ],
       "sourceExcerpts": [
@@ -1212,9 +1212,9 @@
           "path": "packages/architecture/src/model.ts",
           "symbol": "ArchitectureStory",
           "language": "typescript",
-          "startLine": 207,
-          "endLine": 212,
-          "highlightLine": 207,
+          "startLine": 223,
+          "endLine": 228,
+          "highlightLine": 223,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export interface ArchitectureStory {",
@@ -1326,8 +1326,8 @@
           "path": "packages/architecture/src/normalized.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "selectScopedView",
-          "startLine": 586,
-          "endLine": 591
+          "startLine": 600,
+          "endLine": 605
         }
       ],
       "sourceExcerpts": [
@@ -1335,9 +1335,9 @@
           "path": "packages/architecture/src/normalized.ts",
           "symbol": "selectScopedView",
           "language": "typescript",
-          "startLine": 586,
-          "endLine": 591,
-          "highlightLine": 586,
+          "startLine": 600,
+          "endLine": 605,
+          "highlightLine": 600,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function selectScopedView(state: NormalizedArchitecture, viewId: string, rootEntityId: string): ArchitectureView {",
@@ -1367,8 +1367,8 @@
           "path": "packages/architecture/src/normalized.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "selectArchitectureSnapshot",
-          "startLine": 464,
-          "endLine": 469
+          "startLine": 471,
+          "endLine": 476
         }
       ],
       "sourceExcerpts": [
@@ -1376,9 +1376,9 @@
           "path": "packages/architecture/src/normalized.ts",
           "symbol": "selectArchitectureSnapshot",
           "language": "typescript",
-          "startLine": 464,
-          "endLine": 469,
-          "highlightLine": 464,
+          "startLine": 471,
+          "endLine": 476,
+          "highlightLine": 471,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function selectArchitectureSnapshot(state: NormalizedArchitecture, snapshotId: string): ArchitectureSnapshot {",
@@ -1449,8 +1449,8 @@
           "path": "packages/architecture/src/validation.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "validateView",
-          "startLine": 317,
-          "endLine": 322
+          "startLine": 345,
+          "endLine": 350
         }
       ],
       "sourceExcerpts": [
@@ -1458,9 +1458,9 @@
           "path": "packages/architecture/src/validation.ts",
           "symbol": "validateView",
           "language": "typescript",
-          "startLine": 317,
-          "endLine": 322,
-          "highlightLine": 317,
+          "startLine": 345,
+          "endLine": 350,
+          "highlightLine": 345,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function validateView(snapshot: ArchitectureSnapshot, view: ArchitectureView): ValidationIssue[] {",
@@ -1490,8 +1490,8 @@
           "path": "packages/architecture/src/validation.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "validateStory",
-          "startLine": 589,
-          "endLine": 594
+          "startLine": 617,
+          "endLine": 622
         }
       ],
       "sourceExcerpts": [
@@ -1499,9 +1499,9 @@
           "path": "packages/architecture/src/validation.ts",
           "symbol": "validateStory",
           "language": "typescript",
-          "startLine": 589,
-          "endLine": 594,
-          "highlightLine": 589,
+          "startLine": 617,
+          "endLine": 622,
+          "highlightLine": 617,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function validateStory(snapshot: ArchitectureSnapshot, view: ArchitectureView, story: ArchitectureStory): ValidationIssue[] {",

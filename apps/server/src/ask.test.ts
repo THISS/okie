@@ -200,6 +200,7 @@ test("Ask keeps observed lcov coverage on packets and drops CRAP", () => {
       kind: "code",
       coverageFileHitRate: 0.3,
       coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+      untestedBehaviours: [{ startLine: 6, endLine: 8, behaviour: "Does not cover the empty token branch." }],
       crapScore: 12,
       apiKey: FAKE_GATEWAY_KEY,
     },
@@ -216,6 +217,7 @@ test("Ask keeps observed lcov coverage on packets and drops CRAP", () => {
     coverageFileHitRate: 0.3,
     coverageFileHitPercent: 30,
     coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+    untestedBehaviours: [{ startLine: 6, endLine: 8, behaviour: "Does not cover the empty token branch." }],
   });
   assert.equal(kept.find(packet => packet.id === "component:web-shell")?.coverageFileHitRate, undefined);
   const body = askChatCompletionsBody("acme/fast", "Which symbols are untested?", kept, []);

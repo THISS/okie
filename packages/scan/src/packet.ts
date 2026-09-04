@@ -1,9 +1,13 @@
 import { ARCHITECTURE_EXTRACTION_LIMITS, type ArchitectureExtraction } from "@okie/architecture";
 import { containerScopes } from "./scope.js";
 import { scrubGithubTokens } from "./redact.js";
+import type { EntityCoverageOverlay } from "./lcov.js";
+import { nearbyTestsForCode, type NearbyTestExcerpt } from "./nearby-tests.js";
 
-/** Prompt/packet contract version — the promptVersion of the future hash domains. */
+/** Frozen v2 prompt/packet contract. Unchanged by v3. */
 export const ENRICHMENT_PROMPT_VERSION = "okie-enrichment/v2";
+/** v3 adds observed untested ranges + nearby tests so enrich can name untested behaviours. */
+export const ENRICHMENT_PROMPT_VERSION_V3 = "okie-enrichment/v3";
 
 /**
  * Max file-components in one container packet. A summary document restates
@@ -34,6 +38,12 @@ export interface PacketCode {
   startLine?: number;
   endLine?: number;
   componentId: string;
+  /** Observed lcov file hit rate (0–1). Omitted without a sidecar for this file. */
+  fileHitRate?: number;
+  /** Observed untested instrumented ranges overlapping this symbol. */
+  untestedRanges?: Array<{ startLine: number; endLine: number }>;
+  /** Capped sibling-test excerpts that mention this symbol. Context, not scopePaths. */
+  nearbyTests?: NearbyTestExcerpt[];
 }
 
 export interface PacketRelation {
@@ -82,6 +92,14 @@ export interface PacketManifest {
   packets: PacketManifestEntry[];
   /** The system-scope packet entry (present when the base has a system root). */
   systemPacket?: PacketManifestEntry;
+}
+
+export interface BuildEnrichmentPacketsOptions {
+  /**
+   * Observed lcov overlay keyed by code entity id. Absent / empty → packets stay
+   * `okie-enrichment/v2` and carry no coverage fields (do not invent 0%).
+   */
+  coverageByCodeId?: ReadonlyMap<string, EntityCoverageOverlay>;
 }
 
 export interface EmittedPackets {
@@ -153,8 +171,10 @@ function chunkItems<T>(items: readonly T[], size: number): T[][] {
 export function buildEnrichmentPackets(
   extraction: ArchitectureExtraction,
   readFile: (repoRelativePath: string) => string,
+  options: BuildEnrichmentPacketsOptions = {},
 ): EmittedPackets {
   const scopes = containerScopes(extraction);
+  const coverageByCodeId = options.coverageByCodeId;
   const relationsFor = (memberIds: ReadonlySet<string>): PacketRelation[] =>
     extraction.relations
       .filter(relation => memberIds.has(relation.from) || memberIds.has(relation.to))
@@ -172,6 +192,10 @@ export function buildEnrichmentPackets(
     }));
     const code: PacketCode[] = scope.code.map(codeEntity => {
       const source = codeEntity.sourceRefs[0];
+      const overlay = coverageByCodeId?.get(codeEntity.id);
+      const nearbyTests = overlay?.untestedRanges?.length && source?.path
+        ? nearbyTestsForCode(source.path, source.symbol, readFile)
+        : [];
       return {
         id: codeEntity.id,
         name: codeEntity.name,
@@ -180,6 +204,12 @@ export function buildEnrichmentPackets(
         ...(source?.startLine !== undefined ? { startLine: source.startLine } : {}),
         ...(source?.endLine !== undefined ? { endLine: source.endLine } : {}),
         componentId: codeEntity.parentId ?? "",
+        ...(overlay ? { fileHitRate: overlay.fileHitRate } : {}),
+        ...(overlay?.untestedRanges?.length ? { untestedRanges: overlay.untestedRanges.map(range => ({
+          startLine: range.startLine,
+          endLine: range.endLine,
+        })) } : {}),
+        ...(nearbyTests.length ? { nearbyTests } : {}),
       };
     });
     const excerptsByPath = new Map<string, PacketExcerpt>();
@@ -195,8 +225,9 @@ export function buildEnrichmentPackets(
       const chunkCode = code.filter(item => componentIds.has(item.componentId));
       const chunkPaths = [...new Set(chunk.map(component => component.path).filter(path => path.length > 0))].sort();
       const memberIds = new Set<string>([containerId, ...componentIds, ...chunkCode.map(item => item.id)]);
+      const hasUntestedRanges = chunkCode.some(item => (item.untestedRanges?.length ?? 0) > 0);
       packets.push({
-        promptVersion: ENRICHMENT_PROMPT_VERSION,
+        promptVersion: hasUntestedRanges ? ENRICHMENT_PROMPT_VERSION_V3 : ENRICHMENT_PROMPT_VERSION,
         containerId,
         containerName: scope.container.name,
         scopePaths: chunkPaths,
@@ -213,9 +244,10 @@ export function buildEnrichmentPackets(
   }
 
   const systemPacket = buildSystemPacket(extraction, readFile);
+  const usesV3 = packets.some(packet => packet.promptVersion === ENRICHMENT_PROMPT_VERSION_V3);
 
   const manifest: PacketManifest = {
-    promptVersion: ENRICHMENT_PROMPT_VERSION,
+    promptVersion: usesV3 ? ENRICHMENT_PROMPT_VERSION_V3 : ENRICHMENT_PROMPT_VERSION,
     packets: packets.map(packet => ({
       containerId: packet.containerId,
       file: packetFileName(packet.containerId, packet.chunkIndex),

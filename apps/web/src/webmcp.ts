@@ -189,7 +189,7 @@ export const ASK_ATLAS_INPUT_SCHEMA = {
 export const GET_ATLAS_CONTEXT_TOOL_NAME = 'get_atlas_context';
 export const GET_ATLAS_CONTEXT_TOOL_TITLE = 'Get atlas context';
 export const GET_ATLAS_CONTEXT_TOOL_DESCRIPTION =
-  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity (including observed cyclomatic complexity, clone duplicates, and lcov coverage when present), whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
+  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity (including observed cyclomatic complexity, clone duplicates, lcov coverage, and enrichment-named untested behaviours when present), whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
 
 export const GET_ATLAS_CONTEXT_INPUT_SCHEMA = {
   type: 'object',
@@ -220,6 +220,7 @@ export type AtlasSelectedEntityFacts = {
   coverageFileHitRate?: number;
   coverageFileHitPercent?: number;
   coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
+  untestedBehaviours?: Array<{ startLine: number; endLine: number; behaviour: string }>;
 };
 
 export type AtlasPageContextInput = {
@@ -638,6 +639,21 @@ function publicSelectedEntity(value: AtlasSelectedEntityFacts | null | undefined
       ranges.push({ startLine, endLine });
     }
     if (ranges.length) facts.coverageUntestedRanges = ranges;
+  }
+  if (Array.isArray(value.untestedBehaviours)) {
+    const behaviours: Array<{ startLine: number; endLine: number; behaviour: string }> = [];
+    for (const row of value.untestedBehaviours) {
+      if (behaviours.length >= 8) break;
+      if (!row || typeof row !== 'object') continue;
+      const item = row as { startLine?: unknown; endLine?: unknown; behaviour?: unknown };
+      const startLine = item.startLine;
+      const endLine = item.endLine;
+      const behaviour = typeof item.behaviour === 'string' ? item.behaviour.trim().slice(0, 240) : '';
+      if (typeof startLine !== 'number' || typeof endLine !== 'number' || !behaviour) continue;
+      if (!Number.isInteger(startLine) || !Number.isInteger(endLine) || startLine < 1 || endLine < startLine) continue;
+      behaviours.push({ startLine, endLine, behaviour });
+    }
+    if (behaviours.length) facts.untestedBehaviours = behaviours;
   }
   return facts;
 }

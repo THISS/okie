@@ -7,6 +7,7 @@ import {
   inspectorCyclomatic,
   inspectorCoverage,
   inspectorDuplicates,
+  inspectorUntestedBehaviours,
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
@@ -418,6 +419,52 @@ describe('inspector lcov coverage (CLA-62)', () => {
       'code:alias',
       'code:simple',
     ]);
+  });
+});
+
+describe('inspector untested behaviours (CLA-64)', () => {
+  it('lists grounded untested behaviours and omits blank or inverted items', () => {
+    expect(inspectorUntestedBehaviours({
+      untestedBehaviours: [
+        { startLine: 12, endLine: 14, behaviour: 'Rejects a blank token.' },
+        { startLine: 8, endLine: 4, behaviour: 'inverted' },
+        { startLine: 20, endLine: 20, behaviour: '   ' },
+      ],
+    })).toEqual([{ startLine: 12, endLine: 14, behaviour: 'Rejects a blank token.' }]);
+    expect(inspectorUntestedBehaviours({})).toEqual([]);
+    expect(inspectorUntestedBehaviours(undefined)).toEqual([]);
+  });
+
+  it('carries enrichment-named behaviours onto compiled L4 nodes and not onto components without them', () => {
+    const scene = createC4Scene({
+      baseSnapshot: scanSnapshot(
+        [
+          scanEntity('system:app', 'softwareSystem'),
+          scanEntity('container:web', 'container', 'system:app'),
+          scanEntity('component:web-x', 'component', 'container:web'),
+          {
+            ...scanEntity('code:simple', 'code', 'component:web-x'),
+            coverageFileHitRate: 0.3,
+            coverageUntestedRanges: [{ startLine: 4, endLine: 6 }],
+            untestedBehaviours: [{ startLine: 4, endLine: 6, behaviour: 'Does not handle the empty branch.' }],
+          },
+          scanEntity('code:alias', 'code', 'component:web-x'),
+        ],
+        [scanRelation('rel:simple-app', 'code:simple', 'system:app')],
+      ),
+      rootEntityId: 'system:app',
+      focusEntityId: 'system:app',
+      familyId: 'view-family:scan',
+      sceneId: 'scan-c4',
+      title: 'Scan',
+      subtitle: 'Scan',
+      frozenRevision: 'sha',
+    });
+    expect(inspectorUntestedBehaviours(scene.entities.find(entity => entity.id === 'code:simple'))).toEqual([
+      { startLine: 4, endLine: 6, behaviour: 'Does not handle the empty branch.' },
+    ]);
+    expect(inspectorUntestedBehaviours(scene.entities.find(entity => entity.id === 'code:alias'))).toEqual([]);
+    expect(inspectorUntestedBehaviours(scene.entities.find(entity => entity.id === 'component:web-x'))).toEqual([]);
   });
 });
 

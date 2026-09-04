@@ -6,21 +6,35 @@ import {
   type EmittedPackets,
   type EnrichmentPacket,
   type SystemPacket,
+  ENRICHMENT_PROMPT_VERSION,
+  ENRICHMENT_PROMPT_VERSION_V3,
 } from "./packet.js";
 import { pathOwnerFacts, type CodeOwnerRule, type PathOwnerFact } from "./codeowners.js";
 import { scrubGithubTokens } from "./redact.js";
 
 /**
- * Frozen `okie-enrichment/v2` contract. Loaded as file bytes and concatenated;
- * never templated, parameterized, or rewritten.
+ * Frozen enrichment prompt bytes. v2 (`enrichment-prompt.md`) is the default
+ * contract. v3 is a separate file — never a silent rewrite of v2.
  */
-export function frozenEnrichmentPromptPath(): string {
-  return fileURLToPath(new URL("../enrichment-prompt.md", import.meta.url));
+export function frozenEnrichmentPromptPath(version: string = ENRICHMENT_PROMPT_VERSION): string {
+  const file = version === ENRICHMENT_PROMPT_VERSION_V3
+    ? "../enrichment-prompt-v3.md"
+    : "../enrichment-prompt.md";
+  return fileURLToPath(new URL(file, import.meta.url));
 }
 
-/** Exact bytes of `packages/scan/enrichment-prompt.md` (utf8). */
-export function readFrozenEnrichmentPrompt(): string {
-  return readFileSync(frozenEnrichmentPromptPath(), "utf8");
+/** Exact bytes of the frozen prompt for `version` (utf8). */
+export function readFrozenEnrichmentPrompt(version: string = ENRICHMENT_PROMPT_VERSION): string {
+  return readFileSync(frozenEnrichmentPromptPath(version), "utf8");
+}
+
+export function prefixForPromptVersion(version: string, prefixes: EnrichmentPromptPrefixes): string {
+  return version === ENRICHMENT_PROMPT_VERSION_V3 ? prefixes.v3 : prefixes.v2;
+}
+
+export interface EnrichmentPromptPrefixes {
+  v2: string;
+  v3: string;
 }
 
 /** Prompt sidecar next to a packet file: `container__<id>.prompt.md` (`.2` for remainder packets). */
@@ -212,13 +226,16 @@ export function writeEnrichmentPrompts(
   dir: string,
   emitted: EmittedPackets,
   pin: Pick<RepositoryPin, "commitSha" | "treeHash">,
-  prefix: string,
+  prefix: string | EnrichmentPromptPrefixes,
   rules: readonly CodeOwnerRule[] = [],
 ): void {
   mkdirSync(dir, { recursive: true });
+  const prefixes: EnrichmentPromptPrefixes = typeof prefix === "string"
+    ? { v2: prefix, v3: prefix }
+    : prefix;
   const writeOne = (id: string, packet: EnrichmentPacket | SystemPacket, chunkIndex?: number): void => {
     writeFileSync(`${dir}/${promptFileName(id, chunkIndex)}`, concatenateEnrichmentPrompt({
-      prefix,
+      prefix: prefixForPromptVersion(packet.promptVersion, prefixes),
       packet,
       appendix: appendixForPacket(packet, pin, id, chunkIndex, rules),
     }));
@@ -235,7 +252,7 @@ export function writePromptEmission(
   dir: string,
   emitted: EmittedPackets,
   pin: Pick<RepositoryPin, "commitSha" | "treeHash">,
-  prefix: string,
+  prefix: string | EnrichmentPromptPrefixes,
   rules: readonly CodeOwnerRule[] = [],
 ): void {
   writeEnrichmentPackets(dir, emitted);

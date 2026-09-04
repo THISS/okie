@@ -802,6 +802,34 @@ test("chat-completions body is the bounded packet, not Anthropic Messages fields
   assert.throws(() => enrichmentChatCompletionsBody("  ", "system", "system:acme", systemPacket), /empty model id/);
 });
 
+test("v3 packets get the untested-behaviour addendum; v2 packets do not rewrite the frozen contract", () => {
+  const v2 = containerPacket("container:pkg-a");
+  const v2Body = enrichmentChatCompletionsBody("acme/fast", "container", "system:acme", v2);
+  const v2System = (v2Body.messages as Array<{ content: string }>)[0]!.content;
+  assert.doesNotMatch(v2System, /untestedBehaviours/);
+  assert.doesNotMatch(v2System, /okie-enrichment\/v3/);
+
+  const v3: EnrichmentPacket = {
+    ...v2,
+    promptVersion: "okie-enrichment/v3",
+    code: [{
+      id: "code:a-0",
+      name: "symbol0",
+      path: "src/a.ts",
+      componentId: "component:container:pkg-a",
+      untestedRanges: [{ startLine: 4, endLine: 6 }],
+      nearbyTests: [{ path: "src/a.test.ts", startLine: 1, endLine: 2, lines: ["tangled"] }],
+    }],
+  };
+  const v3Body = enrichmentChatCompletionsBody("acme/fast", "container", "system:acme", v3);
+  const v3System = (v3Body.messages as Array<{ content: string }>)[0]!.content;
+  assert.match(v3System, /untestedBehaviours/);
+  assert.match(v3System, /Do not author coverageFileHitRate/);
+  const schema = (v3Body.response_format as { json_schema: { schema: { properties: { entities: { items: { properties: { id: { enum?: string[] }; untestedBehaviours?: unknown } } } } } } }).json_schema.schema;
+  assert.ok(schema.properties.entities.items.properties.untestedBehaviours);
+  assert.ok(schema.properties.entities.items.properties.id.enum?.includes("code:a-0"));
+});
+
 test("prompts ask for a short summary of this packet's scope only", () => {
   const container = enrichmentChatCompletionsBody("acme/fast", "container", "system:acme", containerPacket("container:pkg-a"));
   const system = enrichmentChatCompletionsBody("acme/fast", "system", "system:acme", systemPacket);
