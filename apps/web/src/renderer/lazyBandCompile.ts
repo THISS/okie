@@ -59,12 +59,59 @@ export function scanAncestorAtBand(
 }
 
 /**
+ * First descendant (not self) whose native C4 band matches `band`, walking
+ * children in id-sorted BFS order. Prefers an entity that already has children
+ * (resident or published) so L4 compile can target a file with symbols.
+ */
+export function scanDescendantAtBand(
+  snapshot: ArchitectureSnapshot,
+  ownerId: string,
+  band: C4Band,
+): string | undefined {
+  const byId = entityById(snapshot);
+  if (!byId.has(ownerId)) return undefined;
+  const childrenByParent = new Map<string, string[]>();
+  for (const entity of snapshot.entities) {
+    if (entity.parentId === undefined) continue;
+    const siblings = childrenByParent.get(entity.parentId);
+    if (siblings) siblings.push(entity.id);
+    else childrenByParent.set(entity.parentId, [entity.id]);
+  }
+  for (const siblings of childrenByParent.values()) siblings.sort((left, right) => left.localeCompare(right));
+
+  const targetRank = BANDS.indexOf(band);
+  const queue = [ownerId];
+  const seen = new Set<string>();
+  let fallback: string | undefined;
+  while (queue.length) {
+    const id = queue.shift()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const entity = byId.get(id);
+    if (!entity) continue;
+    const rank = BANDS.indexOf(kindBand(entity.kind));
+    if (id !== ownerId && rank === targetRank) {
+      if (scanEntityHasChildren(snapshot, id)) return id;
+      fallback ??= id;
+    }
+    if (rank < targetRank || id === ownerId) {
+      for (const child of childrenByParent.get(id) ?? []) queue.push(child);
+    }
+  }
+  return fallback;
+}
+
+/**
  * Focus id for a per-neighborhood scoped compile of `band`.
  *
  * Compiled and resident set (CLA-74): focused entity + siblings + one band
  * down, then the camera tile window. L1/L2 compile at the view root. L3
  * compiles that container. L4 compiles that file-component. Approximate from
  * the zoom/selection/tour target, never the whole tree.
+ *
+ * When the Code rail is selected on an opened container (no file in focus),
+ * L4 still compiles a file-component in that neighborhood — never the
+ * container itself (`maxBand: component` would leave the code band empty).
  */
 export function scanCompileFocusForBand(
   snapshot: ArchitectureSnapshot,
@@ -76,8 +123,12 @@ export function scanCompileFocusForBand(
   if (band === 'component') {
     return scanAncestorAtBand(snapshot, preferredEntityId, 'container') ?? viewRootId;
   }
-  return scanAncestorAtBand(snapshot, preferredEntityId, 'component')
-    ?? scanAncestorAtBand(snapshot, preferredEntityId, 'container')
+  const file = scanAncestorAtBand(snapshot, preferredEntityId, 'component')
+    ?? scanDescendantAtBand(snapshot, preferredEntityId, 'component');
+  if (file) return file;
+  const container = scanAncestorAtBand(snapshot, preferredEntityId, 'container');
+  return (container ? scanDescendantAtBand(snapshot, container, 'component') : undefined)
+    ?? container
     ?? viewRootId;
 }
 

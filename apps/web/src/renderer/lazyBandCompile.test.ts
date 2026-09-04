@@ -5,6 +5,7 @@ import {
   rememberPublishedChildCounts,
   scanAncestorAtBand,
   scanCompileFocusForBand,
+  scanDescendantAtBand,
   scanEntityHasChildren,
   scanNextBand,
   scanPrefetchFocusIds,
@@ -77,9 +78,21 @@ describe('scanCompileFocusForBand — neighborhood, not the whole tree', () => {
     expect(scanCompileFocusForBand(tree, 'code:arch-fn', 'code', 'system:root')).toBe('component:arch-a');
   });
 
+  it('CLA-78: Code rail on an opened container compiles a file in that neighborhood, not the container', () => {
+    expect(scanCompileFocusForBand(tree, 'container:architecture', 'code', 'system:root'))
+      .toBe('component:arch-a');
+    expect(scanCompileFocusForBand(tree, 'container:web', 'code', 'system:root'))
+      .toBe('component:web-a');
+    expect(scanCompileFocusForBand(tree, 'container:empty', 'code', 'system:root'))
+      .toBe('container:empty');
+    expect(scanDescendantAtBand(tree, 'container:architecture', 'component')).toBe('component:arch-a');
+  });
+
   it('does not fall through to a sibling neighborhood', () => {
     expect(scanCompileFocusForBand(tree, 'container:architecture', 'component', 'system:root'))
       .not.toBe('container:web');
+    expect(scanCompileFocusForBand(tree, 'container:architecture', 'code', 'system:root'))
+      .not.toBe('component:web-a');
   });
 });
 

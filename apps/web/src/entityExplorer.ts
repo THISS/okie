@@ -66,6 +66,24 @@ export function explorerScopeParentId(input: ExplorerScopeInput): string | undef
     seen.add(current.id);
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
+
+  // CLA-78: Code rail while focused on an opened container has no file-component
+  // ancestor. Scope L4 to that container rather than an empty unscoped list.
+  // Never fall through to the system root — that would dump every L4 row.
+  if (input.detail === 'code') {
+    const settledContainer = [...(input.settledTargetIds ?? [])].reverse()
+      .map(id => byId.get(id))
+      .find(entity => entity?.detail === 'container');
+    if (settledContainer) return settledContainer.id;
+    let owner: Pick<SceneEntity, 'id' | 'parentId' | 'detail'> | undefined =
+      byId.get(input.selected.id) ?? input.selected;
+    const visited = new Set<string>();
+    while (owner && !visited.has(owner.id)) {
+      if (owner.detail === 'container') return owner.id;
+      visited.add(owner.id);
+      owner = owner.parentId ? byId.get(owner.parentId) : undefined;
+    }
+  }
   return undefined;
 }
 

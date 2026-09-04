@@ -101,6 +101,20 @@ describe('explorerScopeParentId', () => {
       entities,
     })).toBeUndefined();
   });
+
+  it('CLA-78: Code rail on an opened container scopes L4 to that container, not empty', () => {
+    expect(explorerScopeParentId({
+      detail: 'code',
+      selected: web,
+      entities,
+    })).toBe('container:web');
+    expect(explorerScopeParentId({
+      detail: 'code',
+      selected: system,
+      entities,
+      settledTargetIds: ['system:okie', 'container:web'],
+    })).toBe('container:web');
+  });
 });
 
 describe('explorerBrowseEntities — code detail is scoped, not a flat L4 dump', () => {
@@ -165,6 +179,17 @@ describe('explorerEntitiesForView', () => {
       visibleIds: scene.projection.entityIdsByDetail.code,
     });
     expect(rows.map(item => item.id)).toEqual(['component:shell', 'code:shell:app', 'code:shell:viewport']);
+  });
+
+  it('CLA-78: Code rail on an opened container lists that neighborhood’s L4, not every declaration', () => {
+    const rows = explorerEntitiesForView(scene, {
+      detail: 'code',
+      selected: web,
+      visibleIds: scene.projection.entityIdsByDetail.code,
+    });
+    expect(rows.map(item => item.id)).toEqual(['component:shell', 'code:shell:app', 'code:shell:viewport']);
+    expect(rows.some(item => item.id.startsWith('code:other:'))).toBe(false);
+    expect(rows.some(item => item.id === 'code:schema:snapshot')).toBe(false);
   });
 });
 
