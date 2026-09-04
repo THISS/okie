@@ -14,6 +14,7 @@ import {
   SCAN_CONTAINER_GRID_NODES,
   SCAN_RELATION_EDGE_BUDGET,
   SCAN_RELATION_EDGE_MIN,
+  SCAN_RESIDENT_NODES_PER_BAND,
   guardScanCompile,
   scanScopeCompileOptions,
   scanScopeStats,
@@ -51,21 +52,28 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
     ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
   ]);
 
-  it('system→container; container→component + edge budget + grid cap; component→code; code→unbounded — below and above the hang-guard', () => {
+  it('system→container; container→component + edge budget + grid cap; component→code; code→resident window — below and above the hang-guard', () => {
     for (const snap of [small, big]) {
       expect(scanScopeCompileOptions(snap, 'system:root')).toEqual({ maxBand: 'container' });
       expect(scanScopeCompileOptions(snap, 'container:c')).toEqual({
         maxBand: 'component',
         maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
         maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+        maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       });
-      expect(scanScopeCompileOptions(snap, 'component:x')).toEqual({ maxBand: 'code' });
-      expect(scanScopeCompileOptions(snap, 'code:0')).toEqual({});
+      expect(scanScopeCompileOptions(snap, 'component:x')).toEqual({
+        maxBand: 'code',
+        maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      });
+      expect(scanScopeCompileOptions(snap, 'code:0')).toEqual({
+        maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      });
     }
   });
 
   it('does not invent a new entity cap or raise the 2000 hang-guard', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(SCAN_RESIDENT_NODES_PER_BAND).toBe(50);
   });
 
   it('is deterministic (pure function of snapshot + focus)', () => {
@@ -164,7 +172,10 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
 
   it('compiles a genuinely small unbounded scope (a code leaf) as requested', () => {
     const leaf = guardScanCompile(aboveGate, 'code:0', 'system:root');
-    expect(leaf).toEqual({ focusEntityId: 'code:0', options: {} });
+    expect(leaf).toEqual({
+      focusEntityId: 'code:0',
+      options: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+    });
     expect(leaf.refusal).toBeUndefined();
   });
 
@@ -212,7 +223,7 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
     });
     expect(guardScanCompile(small, 'code:root', 'system:root')).toEqual({
       focusEntityId: 'code:root',
-      options: {},
+      options: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
     });
     expect(guardScanCompile(small, 'code:5', 'system:root').refusal).toBeUndefined();
   });
@@ -284,15 +295,18 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxBand: 'component',
       maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
     expect(scanScopeCompileOptions(dense, 'component:x')).toEqual({
       maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
     expect(scanScopeCompileOptions(dense, 'code:a')).toEqual({
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
   });
 
@@ -314,6 +328,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxBand: 'component',
       maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual({
       maxBand: 'container',
@@ -323,6 +338,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
     expect(scanScopeCompileOptions(big, 'code:a')).toEqual({
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
   });
 

@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEven
 import {
   applyArchitectureAuthoringCommand,
   buildC4ProjectionBundle,
+  cameraWorldRect,
   createArchitectureAuthoringDocument,
+  expandRectByTileRing,
   relationRouteOverrideId,
   validateC4NotationCompleteness,
+  viewportNeighborhoodCacheKey,
   type ArchitectureStory,
   type ArchitectureAuthoringCommand,
   type ArchitectureAuthoringDocument,
@@ -191,9 +194,14 @@ const story = scanFixture?.story ?? goldenAppStory;
 
 // Recompiles the active fixture for a new focus/root (drill-in, restore). Scanned
 // snapshots are read-only in R1, so the dev-mode authoring overlay stays golden-only.
-function activeCreateScene(focusEntityId: string, previous?: AtlasScene, authoring?: ArchitectureAuthoringDocument): AtlasScene {
+function activeCreateScene(
+  focusEntityId: string,
+  previous?: AtlasScene,
+  authoring?: ArchitectureAuthoringDocument,
+  residency?: { worldBounds?: { x: number; y: number; width: number; height: number }; keepEntityIds?: readonly string[] },
+): AtlasScene {
   return scanFixture
-    ? scanFixture.createScene(focusEntityId, previous)
+    ? scanFixture.createScene(focusEntityId, previous, residency)
     : createGoldenC4Scene(focusEntityId, previous, authoring);
 }
 
@@ -1330,6 +1338,7 @@ export function App() {
   const [inspectorTab, setInspectorTab] = useState<'source' | 'details'>('details');
   const [inspectorHistory, setInspectorHistory] = useState<InspectorHistorySubject[]>([]);
   const [omittedRemainderExpanded, setOmittedRemainderExpanded] = useState(false);
+  const [omittedNodesExpanded, setOmittedNodesExpanded] = useState(false);
   const [detailsWidth, setDetailsWidth] = useState(() => {
     let stored = Number.NaN;
     try {
@@ -1459,6 +1468,14 @@ export function App() {
     () => scene.entities.filter(entity => entity.parentId === selected.id),
     [scene.entities, selected.id],
   );
+  const omittedChildNodes = useMemo(
+    () => (scene.omittedNodes ?? []).filter(node => node.parentId === selected.id),
+    [scene.omittedNodes, selected.id],
+  );
+  const paintedChildren = useMemo(() => {
+    const omitted = new Set(omittedChildNodes.map(node => node.entityId));
+    return selectedChildren.filter(child => !omitted.has(child.id));
+  }, [omittedChildNodes, selectedChildren]);
   const selectedParent = useMemo(
     () => selected.parentId ? scene.entities.find(entity => entity.id === selected.parentId) : undefined,
     [scene.entities, selected.parentId],
@@ -1687,6 +1704,7 @@ export function App() {
   const omittedEnumeration = paintedOmittedRelationRows(canvasRelations.omittedRows, omittedRemainderExpanded);
   useEffect(() => {
     setOmittedRemainderExpanded(false);
+    setOmittedNodesExpanded(false);
   }, [activeDetail, selected.id]);
   const breadcrumbState = useMemo(() => {
     const byId = new Map(scene.entities.map(entity => [entity.id, entity]));
@@ -2594,6 +2612,7 @@ export function App() {
     }, navigationDefaults);
     historyControllerRef.current?.commitSettledCamera(next, base);
     prefetchCommittedBox(semanticLensSessionRef.current.settled.at(-1)?.targetId ?? selected.id);
+    refreshViewportNeighborhood(next);
   }
 
   function flushNavigation(next: Camera) {
@@ -2876,7 +2895,12 @@ export function App() {
     window.requestAnimationFrame(() => visibilityControlRef.current?.focus({ preventScroll: true }));
   }
 
-  function composeScene(focusEntityId: string, previous?: AtlasScene, authoring?: ArchitectureAuthoringDocument): AtlasScene {
+  function composeScene(
+    focusEntityId: string,
+    previous?: AtlasScene,
+    authoring?: ArchitectureAuthoringDocument,
+    cameraOverride?: Camera,
+  ): AtlasScene {
     const imported = importedAtlasRef.current;
     if (imported) {
       const matchingAuthoring = authoring?.repositoryId === imported.snapshot.repositoryId ? authoring : undefined;
@@ -2885,14 +2909,38 @@ export function App() {
     // Scan snapshots are read-only; neighborhood cache is the CLA-66 prefetch.
     // Authoring is golden-only and must not bypass the cache (callers always pass present).
     if (scanFixture) {
-      const cacheKey = `${focusEntityId}@${activeSnapshot.entities.length}:${activeSnapshot.relations.length}`;
+      const cameraForWindow = cameraOverride ?? renderedCameraRef.current;
+      const residency = {
+        worldBounds: expandRectByTileRing(cameraWorldRect(cameraForWindow, viewport)),
+        keepEntityIds: inspectorSelectionRef.current ? [inspectorSelectionRef.current] : undefined,
+      };
+      const cacheKey = [
+        focusEntityId,
+        activeSnapshot.entities.length,
+        activeSnapshot.relations.length,
+        viewportNeighborhoodCacheKey(focusEntityId, cameraForWindow, viewport),
+        inspectorSelectionRef.current ?? '',
+      ].join(':');
       const cached = neighborhoodScenesRef.current.get(cacheKey);
       if (cached) return cached;
-      const compiled = activeCreateScene(focusEntityId, previous);
+      const compiled = activeCreateScene(focusEntityId, previous, undefined, residency);
       neighborhoodScenesRef.current.set(cacheKey, cacheableNeighborhoodScene(compiled));
       return compiled;
     }
     return activeCreateScene(focusEntityId, previous, authoring);
+  }
+
+  /** Recompile the current C4 neighborhood for the camera tile window. Not a full-graph compile. */
+  function refreshViewportNeighborhood(next: Camera) {
+    if (!scanFixture) return;
+    const compileFocus = scanCompileFocusForBand(
+      activeSnapshot,
+      inspectorSelectionRef.current ?? selected.id,
+      semanticLensSessionRef.current.baseDetail,
+      scanFixture.navigation.rootEntityId,
+    );
+    const nextScene = composeScene(compileFocus, scene, authoringHistoryRef.current.present, next);
+    if (nextScene !== scene) setScene(nextScene);
   }
 
   /** Compile the next-band neighborhood without swapping the visible scene or moving the camera (CLA-11). */
@@ -2905,6 +2953,20 @@ export function App() {
         });
       }
     });
+  }
+
+  function revealOmittedEntity(entity: SceneEntity) {
+    inspectorSelectionRef.current = entity.id;
+    if (scanFixture) {
+      const compileFocus = scanCompileFocusForBand(
+        activeSnapshot,
+        entity.id,
+        semanticLensSessionRef.current.baseDetail,
+        scanFixture.navigation.rootEntityId,
+      );
+      setScene(composeScene(compileFocus, scene, authoringHistoryRef.current.present));
+    }
+    focusEntity(entity, 'replace', 'preserve', 'auto', 'panel');
   }
 
   function authoredScene(document: ArchitectureAuthoringDocument, currentScene: AtlasScene) {
@@ -4665,7 +4727,7 @@ export function App() {
               {diagnostics.glyphQuads !== undefined && <div><dt>Glyph quads</dt><dd>{diagnostics.glyphQuads.toLocaleString()}</dd></div>}
               {(diagnostics.deferredTextPrimitives !== undefined || diagnostics.deferredIconPrimitives !== undefined) && <div><dt>Deferred text / icons</dt><dd>{(diagnostics.deferredTextPrimitives ?? 0).toLocaleString()} / {(diagnostics.deferredIconPrimitives ?? 0).toLocaleString()}</dd></div>}
               <div><dt>Fixture / seed</dt><dd>{query.fixture} / {query.seed}</dd></div>
-              {scene.scopedCompile && <div><dt>Scoped compile</dt><dd>bands→{scene.scopedCompile.maxBand ?? 'code'} · {scene.scopedCompile.entityCount.toLocaleString()} entities &gt; {scene.scopedCompile.bandDepthThreshold.toLocaleString()} threshold{scene.scopedCompile.maxEdgesPerBand ? ` · ≤${scene.scopedCompile.maxEdgesPerBand} edges/band` : ''}{scene.scopedCompile.maxGridNodes ? ` · grid ${scene.scopedCompile.maxGridNodes.toLocaleString()}` : ''}{scene.scopedCompile.directFallbackCount ? ` · ${scene.scopedCompile.directFallbackCount} direct-fallback` : ''}</dd></div>}
+              {scene.scopedCompile && <div><dt>Scoped compile</dt><dd>bands→{scene.scopedCompile.maxBand ?? 'code'} · {scene.scopedCompile.entityCount.toLocaleString()} entities &gt; {scene.scopedCompile.bandDepthThreshold.toLocaleString()} threshold{scene.scopedCompile.maxEdgesPerBand ? ` · ≤${scene.scopedCompile.maxEdgesPerBand} edges/band` : ''}{scene.scopedCompile.maxNodesPerBand ? ` · ≤${scene.scopedCompile.maxNodesPerBand} nodes/band` : ''}{scene.omittedNodes?.length ? ` · ${scene.omittedNodes.length} off-camera` : ''}{scene.scopedCompile.maxGridNodes ? ` · grid ${scene.scopedCompile.maxGridNodes.toLocaleString()}` : ''}{scene.scopedCompile.directFallbackCount ? ` · ${scene.scopedCompile.directFallbackCount} direct-fallback` : ''}</dd></div>}
               {scene.scanGuardRefusal && <div><dt>Scan guard</dt><dd>unscoped compile of {scene.scanGuardRefusal.requestedFocusId} refused ({scene.scanGuardRefusal.entityCount.toLocaleString()} entities · {scene.scanGuardRefusal.relationCount.toLocaleString()} relations) → fell back to {scene.scanGuardRefusal.fallbackFocusId}</dd></div>}
               {scene.scanDrillRecompile && <div><dt>Drill recompile</dt><dd>{scene.scanDrillRecompile.targetId} · deeper band {scene.scanDrillRecompile.deeperDetail} absent → recompiled via guarded seam</dd></div>}
             </dl>
@@ -4840,9 +4902,14 @@ export function App() {
                 <div className="inspector-link-list"><button data-inspector-entity-id={selectedParent.id} onClick={() => navigateInspectorHierarchy(selectedParent)}><span><strong>{selectedParent.name}</strong><small>{selectedParent.responsibility || selectedParent.kindLabel || selectedParent.kind}</small></span><ArrowIcon size={15}/></button></div>
               </section>}
 
-              {selectedChildren.length > 0 && <section className="detail-section children-section">
-                <div className="section-title"><h3>Inside this layer</h3><span>{selectedChildren.length}</span></div>
-                <div className="inspector-link-list">{selectedChildren.map(child => <button data-inspector-entity-id={child.id} key={child.id} onClick={() => navigateInspectorHierarchy(child)}><span><strong>{child.name}</strong><small>{child.responsibility || child.kindLabel || child.kind}</small></span><ArrowIcon size={15}/></button>)}</div>
+              {(paintedChildren.length > 0 || omittedChildNodes.length > 0) && <section className="detail-section children-section">
+                <div className="section-title"><h3>Inside this layer</h3><span>{paintedChildren.length + omittedChildNodes.length}</span></div>
+                <div className="inspector-link-list">{paintedChildren.map(child => <button data-inspector-entity-id={child.id} key={child.id} onClick={() => navigateInspectorHierarchy(child)}><span><strong>{child.name}</strong><small>{child.responsibility || child.kindLabel || child.kind}</small></span><ArrowIcon size={15}/></button>)}</div>
+                {omittedChildNodes.length > 0 && <button aria-expanded={omittedNodesExpanded} className="empty-inspector-section relations-omitted-more" data-inspector-omitted-node-count={omittedChildNodes.length} data-testid="inspector-omitted-nodes-more" onClick={() => setOmittedNodesExpanded(open => !open)} type="button">+{omittedChildNodes.length} more off-camera</button>}
+                {omittedChildNodes.length > 0 && omittedNodesExpanded ? <div className="relations-omitted-list" data-testid="inspector-omitted-nodes-list">{omittedChildNodes.map(node => {
+                  const entity = scene.entities.find(candidate => candidate.id === node.entityId);
+                  return <button data-omitted-node-id={node.entityId} disabled={!entity} key={node.entityId} onClick={() => entity && revealOmittedEntity(entity)} type="button"><span><strong>{node.name}</strong><small>off-camera at this zoom</small></span></button>;
+                })}</div> : null}
               </section>}
 
               <section className="detail-section relationships-section">

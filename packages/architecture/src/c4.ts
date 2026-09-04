@@ -5,10 +5,12 @@ import type {
   EdgeLayout,
   EntityKind,
   NodeLayout,
+  Rect,
   RelationId,
   RelationKind,
   StoryDetail,
 } from './model.js';
+import { selectResidentVisualNodeIds } from './viewport-neighborhood.js';
 import type { RelationRouteOverride } from './authoring.js';
 import {
   expandRoutingRect,
@@ -57,6 +59,9 @@ export type BandProjection = {
   /** Present only under an edge budget: visual edges kept out of routing but still
    *  enumerable via the bundle index (the "+N more" set). */
   omittedEdgeIds?: string[];
+  /** Present only under an L3/L4 resident window: packed nodes kept out of the
+   *  compiled scene but still enumerable via inspector `+N more`. */
+  omittedNodeIds?: string[];
   layoutId: string;
 };
 
@@ -169,6 +174,21 @@ export type BuildC4ProjectionOptions = {
    * See {@link ASPECT_PRESET_TARGET} for the discrete client-chosen presets.
    */
   targetAspect?: number;
+  /**
+   * Compiled-scene node window for L3/L4 (opt-in, CLA-74). Packs the full
+   * neighborhood so parent bounds stay stable, then keeps focused entity +
+   * siblings + one band down inside the camera tile window. Remainder goes to
+   * `omittedNodeIds` for inspector `+N more`. Default: unbounded (byte-identical).
+   */
+  maxNodesPerBand?: number;
+  /**
+   * Camera-resident world window (opt-in), typically the viewport plus one
+   * 512-world-unit tile ring. L3/L4 nodes whose packed bounds miss this rect
+   * are omitted from the compiled scene. Default: no camera paging.
+   */
+  residentWorldBounds?: Rect;
+  /** Entity ids that must stay resident even when off-camera (selection). */
+  keepEntityIds?: readonly string[];
 };
 
 /**
@@ -876,17 +896,15 @@ export function routeC4BandEdgesDetailed(
   return { edges, diagnostics };
 }
 
-function layoutProjection(
-  projection: BandProjection,
+function packVisualNodes(
+  nodeIds: readonly string[],
   visualNodeById: Readonly<Record<string, VisualNode>>,
-  visualEdgeById: Readonly<Record<string, VisualEdge>>,
-  maxGridNodes = 20_000,
   targetAspect?: number,
-): BandLayout {
-  const visible = new Set(projection.visualNodeIds);
+): Record<string, NodeLayout> {
+  const visible = new Set(nodeIds);
   const childrenByVisualId = new Map<string, string[]>();
   const roots: string[] = [];
-  for (const nodeId of projection.visualNodeIds) {
+  for (const nodeId of nodeIds) {
     const parentId = visualNodeById[nodeId]?.parentVisualId;
     if (parentId && visible.has(parentId)) {
       const values = childrenByVisualId.get(parentId) ?? [];
@@ -912,12 +930,10 @@ function layoutProjection(
   // and the hierarchy without making the overview wider than a laptop map.
   const contextRouteCorridor = 260;
   let hierarchyX = Math.max(520, leftContextRight + contextRouteCorridor);
-  let maximumBottom = 0;
   for (const rootId of hierarchyRoots) {
     const tree = layoutTree(rootId, childrenByVisualId, visualNodeById, targetAspect);
     Object.assign(nodes, shiftNodes(tree.nodes, hierarchyX, 120));
     hierarchyX += tree.width + 100;
-    maximumBottom = Math.max(maximumBottom, 120 + tree.height);
   }
   contextRoots.forEach((rootId, index) => {
     const size = leafSize(visualNodeById[rootId]!.kind);
@@ -929,7 +945,6 @@ function layoutProjection(
       width: size.width,
       height: size.height,
     };
-    maximumBottom = Math.max(maximumBottom, nodes[rootId]!.y + size.height);
   });
   if (!hierarchyRoots.length) {
     contextRoots.forEach((rootId, index) => {
@@ -937,13 +952,21 @@ function layoutProjection(
       nodes[rootId] = { x: 180 + index * (size.width + 90), y: 180, width: size.width, height: size.height };
     });
   }
+  return nodes;
+}
 
+function bandLayout(
+  projection: BandProjection,
+  visualNodeById: Readonly<Record<string, VisualNode>>,
+  visualEdgeById: Readonly<Record<string, VisualEdge>>,
+  nodes: Record<string, NodeLayout>,
+  maxGridNodes = 20_000,
+): BandLayout {
   const edges = routeC4BandEdges(projection, visualNodeById, visualEdgeById, nodes, {
     clearance: 12,
     laneSpacing: 12,
     maxGridNodes,
   });
-  void maximumBottom;
   return {
     id: projection.layoutId,
     projectionId: projection.id,
@@ -955,6 +978,22 @@ function layoutProjection(
     nodes,
     edges,
   };
+}
+
+function layoutProjection(
+  projection: BandProjection,
+  visualNodeById: Readonly<Record<string, VisualNode>>,
+  visualEdgeById: Readonly<Record<string, VisualEdge>>,
+  maxGridNodes = 20_000,
+  targetAspect?: number,
+): BandLayout {
+  return bandLayout(
+    projection,
+    visualNodeById,
+    visualEdgeById,
+    packVisualNodes(projection.visualNodeIds, visualNodeById, targetAspect),
+    maxGridNodes,
+  );
 }
 
 function aggregateLabel(relations: readonly ArchitectureRelation[], kind: RelationKind): string {
@@ -1079,7 +1118,7 @@ export function buildC4ProjectionBundle(
       }
     }
 
-    const visualNodeIds = [...includedEntities.values()]
+    let visualNodeIds = [...includedEntities.values()]
       .sort((left, right) => left.id.localeCompare(right.id))
       .map(entity => {
         const id = visualNodeId(familyId, entity);
@@ -1119,6 +1158,34 @@ export function buildC4ProjectionBundle(
       };
       return id;
     });
+    // CLA-74: pack the full L3/L4 neighborhood first so parent bounds stay
+    // stable, then keep only the camera-resident window in the compiled scene.
+    // Default (no cap, no camera rect) skips this so golden stays byte-identical.
+    const pageOffscreen = (band === 'component' || band === 'code')
+      && (options.maxNodesPerBand !== undefined || options.residentWorldBounds !== undefined);
+    let omittedNodeIds: string[] = [];
+    let packedNodes: Record<string, NodeLayout> | undefined;
+    let candidateEdgeIds = visualEdgeIds;
+    if (pageOffscreen) {
+      packedNodes = packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect);
+      const selection = selectResidentVisualNodeIds({
+        band,
+        visualNodeIds,
+        packed: packedNodes,
+        visualNodeById,
+        focusEntityId: focus.id,
+        ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
+        ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
+        ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
+      });
+      omittedNodeIds = selection.omittedIds;
+      const resident = new Set(selection.residentIds);
+      visualNodeIds = selection.residentIds;
+      candidateEdgeIds = visualEdgeIds.filter(id => {
+        const edge = visualEdgeById[id]!;
+        return resident.has(edge.fromVisualId) && resident.has(edge.toVisualId);
+      });
+    }
     // Edge budget (opt-in): route only the top-N edges, focus-first — an edge touching
     // the focus subtree outranks every global heavy-hitter, so a drilled scope always
     // shows ITS OWN wiring before the repo's loudest edges. Within each tier, rank by
@@ -1126,9 +1193,9 @@ export function buildC4ProjectionBundle(
     // `uses` so packed L4 sibling strokes are not dropped by the scan relation-gate
     // budget (CLA-68); then id asc. Heavier `uses` still outrank a count-1 clone
     // pair. The rest stay enumerable via omittedEdgeIds + the bundle index ("+N more").
-    let routedEdgeIds = visualEdgeIds;
-    let omittedEdgeIds: string[] = [];
-    if (options.maxEdgesPerBand !== undefined && visualEdgeIds.length > options.maxEdgesPerBand) {
+    let routedEdgeIds = candidateEdgeIds;
+    let omittedEdgeIds = visualEdgeIds.filter(id => !candidateEdgeIds.includes(id));
+    if (options.maxEdgesPerBand !== undefined && candidateEdgeIds.length > options.maxEdgesPerBand) {
       const touchesFocus = (id: string): number => {
         const edge = visualEdgeById[id]!;
         const fromEntityId = visualNodeById[edge.fromVisualId]!.entity.logicalId;
@@ -1139,13 +1206,13 @@ export function buildC4ProjectionBundle(
       const kindRank = (id: string): number => (
         band === 'code' && visualEdgeById[id]?.kind === 'duplicates' ? 1 : 0
       );
-      const ranked = [...visualEdgeIds].sort((left, right) =>
+      const ranked = [...candidateEdgeIds].sort((left, right) =>
         touchesFocus(right) - touchesFocus(left)
         || visualEdgeById[right]!.aggregate.count - visualEdgeById[left]!.aggregate.count
         || kindRank(right) - kindRank(left)
         || left.localeCompare(right));
       const kept = new Set(ranked.slice(0, options.maxEdgesPerBand));
-      routedEdgeIds = visualEdgeIds.filter(id => kept.has(id));
+      routedEdgeIds = candidateEdgeIds.filter(id => kept.has(id));
       omittedEdgeIds = visualEdgeIds.filter(id => !kept.has(id));
     }
     const layoutId = `band-layout:${projectionId}:v2-font-metrics-label-policy`;
@@ -1163,10 +1230,26 @@ export function buildC4ProjectionBundle(
         return !isDescendantOrSelf(entityId, focus.id, entityById) && !focusAncestors.has(entityId);
       }),
       ...(omittedEdgeIds.length ? { omittedEdgeIds } : {}),
+      ...(omittedNodeIds.length ? { omittedNodeIds } : {}),
       layoutId,
     };
     projectionById[projectionId] = projection;
-    bandLayoutById[layoutId] = layoutProjection(projection, visualNodeById, visualEdgeById, options.maxGridNodes, options.targetAspect);
+    if (packedNodes && omittedNodeIds.length) {
+      const residentNodes: Record<string, NodeLayout> = {};
+      for (const id of visualNodeIds) {
+        const bounds = packedNodes[id];
+        if (bounds) residentNodes[id] = bounds;
+      }
+      bandLayoutById[layoutId] = bandLayout(
+        projection,
+        visualNodeById,
+        visualEdgeById,
+        residentNodes,
+        options.maxGridNodes,
+      );
+    } else {
+      bandLayoutById[layoutId] = layoutProjection(projection, visualNodeById, visualEdgeById, options.maxGridNodes, options.targetAspect);
+    }
   }
 
   const index: ProjectionIndex = {

@@ -62,6 +62,7 @@ test("default path is byte-identical and carries no omittedEdgeIds", () => {
   assert.equal(JSON.stringify(first), JSON.stringify(second), "default build is deterministic");
   for (const band of ["context", "container", "component", "code"] as const) {
     assert.equal(first.projectionById[first.family.projectionIds[band]]!.omittedEdgeIds, undefined, `${band} has no omittedEdgeIds by default`);
+    assert.equal(first.projectionById[first.family.projectionIds[band]]!.omittedNodeIds, undefined, `${band} has no omittedNodeIds by default`);
   }
   // a budget large enough to keep everything must equal the default bytes exactly.
   const unbounded = buildC4ProjectionBundle(snapshot, { ...rootFocus, maxEdgesPerBand: 100000 });
@@ -79,4 +80,56 @@ test("maxGridNodes cap degrades gracefully (never throws) and stays deterministi
   const dflt = compileC4Scene(snapshot, buildC4ProjectionBundle(snapshot, rootFocus)).scene;
   const explicit = compileC4Scene(snapshot, buildC4ProjectionBundle(snapshot, { ...rootFocus, maxGridNodes: 20_000 }), { maxGridNodes: 20_000 }).scene;
   assert.equal(JSON.stringify(dflt), JSON.stringify(explicit), "default == maxGridNodes 20000 (byte-identical)");
+});
+
+test("CLA-74: maxNodesPerBand pages off-screen L3/L4 and keeps +N more; default stays byte-identical", () => {
+  const snapshot = denseSnapshot(80);
+  const dflt = buildC4ProjectionBundle(snapshot, { rootEntityId: "container:c", focusEntityId: "container:c", familyId: "f" });
+  const paged = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "container:c",
+    focusEntityId: "container:c",
+    familyId: "f",
+    maxBand: "component",
+    maxNodesPerBand: 20,
+  });
+  const component = paged.projectionById[paged.family.projectionIds.component]!;
+  const defaultComponent = dflt.projectionById[dflt.family.projectionIds.component]!;
+  assert.ok(component.visualNodeIds.length < defaultComponent.visualNodeIds.length, "paged compile keeps fewer L3 nodes");
+  assert.ok((component.omittedNodeIds?.length ?? 0) > 0, "omitted nodes stay enumerable");
+  assert.equal(
+    component.visualNodeIds.length + (component.omittedNodeIds?.length ?? 0),
+    defaultComponent.visualNodeIds.length,
+    "resident + omitted = neighborhood",
+  );
+  const compiled = compileC4Scene(snapshot, paged).scene;
+  const full = compileC4Scene(snapshot, dflt).scene;
+  assert.ok(compiled.objects.length < full.objects.length, "protocol omits off-screen L3 cards");
+  const unbounded = buildC4ProjectionBundle(snapshot, rootFocus);
+  const explicit = buildC4ProjectionBundle(snapshot, { ...rootFocus, maxNodesPerBand: 100000 });
+  assert.equal(JSON.stringify(unbounded), JSON.stringify(explicit), "over-cap == default (opt-in never changes small graphs)");
+});
+
+test("CLA-74: panning the camera window compiles a sibling tile, not the full graph", () => {
+  const snapshot = denseSnapshot(60);
+  const focus = { rootEntityId: "container:c", focusEntityId: "container:c", familyId: "f", maxBand: "component" } as const;
+  const full = buildC4ProjectionBundle(snapshot, focus);
+  const layout = full.bandLayoutById[full.projectionById[full.family.projectionIds.component]!.layoutId]!;
+  const children = Object.entries(layout.nodes)
+    .filter(([id]) => id.includes("component:c-m"))
+    .sort(([left], [right]) => left.localeCompare(right));
+  const first = children[0]![1];
+  const last = children.at(-1)![1];
+  const left = buildC4ProjectionBundle(snapshot, {
+    ...focus,
+    residentWorldBounds: { x: first.x, y: first.y, width: first.width, height: first.height },
+  });
+  const right = buildC4ProjectionBundle(snapshot, {
+    ...focus,
+    residentWorldBounds: { x: last.x, y: last.y, width: last.width, height: last.height },
+  });
+  const leftIds = left.projectionById[left.family.projectionIds.component]!.visualNodeIds;
+  const rightIds = right.projectionById[right.family.projectionIds.component]!.visualNodeIds;
+  assert.notDeepEqual(leftIds, rightIds, "adjacent tile is a different resident set");
+  assert.ok(leftIds.length < children.length, "left tile is not the sibling dump");
+  assert.ok(rightIds.length < children.length, "right tile is not the sibling dump");
 });
