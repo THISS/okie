@@ -18,6 +18,12 @@ import {
 } from "./askThreads.js";
 import { redactGatewayText, type LlmGatewayConfig } from "./llmGateway.js";
 import { normalizeRepoInput } from "./repoUrl.js";
+import {
+  isExcerptScanPath,
+  isNeighborhoodScanPath,
+  serveExcerptPacket,
+  serveNeighborhoodPacket,
+} from "./scanNeighborhood.js";
 import { resolvePublishedScanFile } from "./scanObjects.js";
 
 export interface ScanHttpOptions {
@@ -31,8 +37,8 @@ export interface ScanHttpOptions {
   threads?: AskThreadStore;
 }
 
-function sendJson(response: ServerResponse, status: number, body: unknown): void {
-  const text = `${JSON.stringify(body, null, 2)}\n`;
+function sendJson(response: ServerResponse, status: number, body: unknown, pretty = true): void {
+  const text = `${pretty ? JSON.stringify(body, null, 2) : JSON.stringify(body)}\n`;
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
@@ -204,6 +210,26 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
 
     if (request.method === "GET" && pathname === "/api/scans") {
       sendJson(response, 200, { jobs: queue.list().slice(0, 50).map(publicJob) });
+      return;
+    }
+
+    if (request.method === "GET" && isNeighborhoodScanPath(pathname)) {
+      const packet = serveNeighborhoodPacket(scanRoot, { pathname, searchParams: url.searchParams });
+      if (!packet) {
+        sendJson(response, 404, { error: "not found" });
+        return;
+      }
+      sendJson(response, 200, packet, false);
+      return;
+    }
+
+    if (request.method === "GET" && isExcerptScanPath(pathname)) {
+      const packet = serveExcerptPacket(scanRoot, { pathname, searchParams: url.searchParams });
+      if (!packet) {
+        sendJson(response, 404, { error: "not found" });
+        return;
+      }
+      sendJson(response, 200, packet, false);
       return;
     }
 

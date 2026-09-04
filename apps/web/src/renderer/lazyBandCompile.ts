@@ -2,6 +2,17 @@ import type { ArchitectureEntity, ArchitectureSnapshot, C4Band, EntityKind } fro
 
 const BANDS: readonly C4Band[] = ['context', 'container', 'component', 'code'];
 
+/** Published child counts for a slim snapshot (CLA-73). Same object is mutated in place as neighborhoods merge. */
+const publishedChildCounts = new WeakMap<ArchitectureSnapshot, Readonly<Record<string, number>>>();
+
+/** Remember published child counts so Open inside stays enabled before the subgraph is fetched. */
+export function rememberPublishedChildCounts(
+  snapshot: ArchitectureSnapshot,
+  counts: Readonly<Record<string, number>> | undefined,
+): void {
+  if (counts) publishedChildCounts.set(snapshot, counts);
+}
+
 function kindBand(kind: EntityKind): C4Band {
   if (kind === 'container' || kind === 'dataStore' || kind === 'queue') return 'container';
   if (kind === 'component') return 'component';
@@ -14,7 +25,15 @@ function entityById(snapshot: ArchitectureSnapshot): Map<string, ArchitectureEnt
 }
 
 /** True when the snapshot (not the current scene) has a child under this entity. */
-export function scanEntityHasChildren(snapshot: ArchitectureSnapshot, entityId: string): boolean {
+export function scanEntityHasChildren(
+  snapshot: ArchitectureSnapshot,
+  entityId: string,
+  childCounts?: Readonly<Record<string, number>>,
+): boolean {
+  const counts = childCounts ?? publishedChildCounts.get(snapshot);
+  if (counts && Object.prototype.hasOwnProperty.call(counts, entityId)) {
+    return (counts[entityId] ?? 0) > 0;
+  }
   return snapshot.entities.some(entity => entity.parentId === entityId);
 }
 
@@ -69,11 +88,12 @@ export function scanCompileFocusForBand(
 export function scanPrefetchFocusIds(
   snapshot: ArchitectureSnapshot,
   visibleParentIds: readonly string[],
+  childCounts?: Readonly<Record<string, number>>,
 ): string[] {
   const seen = new Set<string>();
   const ids: string[] = [];
   for (const id of visibleParentIds) {
-    if (seen.has(id) || !scanEntityHasChildren(snapshot, id)) continue;
+    if (seen.has(id) || !scanEntityHasChildren(snapshot, id, childCounts)) continue;
     seen.add(id);
     ids.push(id);
   }

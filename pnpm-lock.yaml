@@ -20,6 +20,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.112.3
         version: 0.112.3
+      '@okie/architecture':
+        specifier: workspace:*
+        version: link:../../packages/architecture
       '@okie/scan':
         specifier: workspace:*
         version: link:../../packages/scan

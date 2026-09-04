@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
+    "@okie/architecture": "workspace:*",
     "@okie/scan": "workspace:*"
   },
   "devDependencies": {

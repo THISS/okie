@@ -26,7 +26,7 @@ import { createScanJobRunner } from "./scanService.js";
  *   GET  /api/ask                  { connected } — gateway key present, never the key
  *   GET  /api/ask/thread           GitHub session required — that user's turns for owner/repo@sha
  *   POST /api/ask                  GitHub session required → one-shot Q&A; persist thread
- *   GET  /scan/*                   the published trio objects + index.json manifest
+ *   GET  /scan/*                   published trio objects, neighborhood packets, excerpts, index.json
  *
  * Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (no login wall).
  * Docs-site oEmbed (`GET /oembed?url=`) is served by the web origin, not here.
