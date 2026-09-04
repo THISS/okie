@@ -180,6 +180,14 @@ describe('Mermaid diagram renderer boundary', () => {
     expect(markup).toContain('<pre><code>flowchart LR');
   });
 
+  it('omits the derived-diagram outline note in compact inspector one-pager mode', () => {
+    const markup = renderToStaticMarkup(<MermaidDiagram compact source={'flowchart TB\n  a["A"]\n'} title="L1 → L2"/>);
+    expect(markup).toContain('data-mermaid-compact="true"');
+    expect(markup).toContain('is-compact');
+    expect(markup).not.toContain('structured outline below');
+    expect(css).toContain('.semantic-mermaid-diagram.is-compact');
+  });
+
   it('fits the complete SVG within the initial mobile canvas instead of forcing a wide discovery surface', () => {
     const mobile = css.slice(css.indexOf('@media (max-width: 470px)'));
     const host = declarations(mobile, '.semantic-mermaid-svg');

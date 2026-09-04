@@ -1,3 +1,4 @@
+import type { InspectorTab } from '../inspector/inspectorPanel';
 import type { Camera } from '../renderer/types';
 
 export const MAIN_DIAGRAM_SURFACE_ID = 'diagram:main';
@@ -7,7 +8,7 @@ export type DiagramSurfaceKind = 'main' | DerivedDiagramKind;
 
 export type DiagramInspectorSession = {
   open: boolean;
-  tab: 'details' | 'source';
+  tab: InspectorTab;
   subjectId?: string;
 };
 

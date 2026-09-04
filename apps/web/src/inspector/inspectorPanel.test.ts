@@ -11,6 +11,7 @@ import {
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
+  inspectorTabSequence,
   inspectorWidthRange,
   inspectorWidthStorageKey,
   presentInspectorNotationDiagnostics,
@@ -52,6 +53,11 @@ describe('inspector panel sizing', () => {
     expect(inspectorTabForEntity(true, 'details')).toBe('details');
     expect(inspectorTabForEntity(false, 'source')).toBe('details');
     expect(inspectorTabForEntity(false, 'auto')).toBe('details');
+  });
+
+  it('places Overview first and keeps Source only when evidence exists (CLA-76)', () => {
+    expect(inspectorTabSequence(true)).toEqual(['overview', 'source', 'details']);
+    expect(inspectorTabSequence(false)).toEqual(['overview', 'details']);
   });
 });
 

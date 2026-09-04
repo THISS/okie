@@ -11,11 +11,14 @@ export {
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
+  inspectorTabSequence,
   inspectorWidthRange,
   inspectorWidthStorageKey,
   presentInspectorNotationDiagnostics,
   INSPECTOR_NOTATION_ADVISORY_SAMPLE,
+  type InspectorTab,
 } from './inspectorPanel';
+export { buildScanOnePager } from './scanOnePager';
 export {
   canvasRelationRowsInIsolate,
   canvasRelationsForEntity,

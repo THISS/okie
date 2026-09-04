@@ -42,8 +42,13 @@ export function inspectorWidthStorageKey(repositoryId: string): string {
   return `okie:inspector-width:${repositoryId}`;
 }
 
-export type InspectorTab = 'source' | 'details';
+export type InspectorTab = 'overview' | 'source' | 'details';
 export type InspectorIntent = 'auto' | 'source' | 'details';
+
+/** Atlas one-pager first, then Source when evidence exists, then Details. */
+export function inspectorTabSequence(sourceAvailable: boolean): InspectorTab[] {
+  return sourceAvailable ? ['overview', 'source', 'details'] : ['overview', 'details'];
+}
 
 /** Minimal entity shape used to decide whether the inspector Source tab can open. */
 export type InspectorSourceEntity = {
