@@ -430,7 +430,7 @@ export function compileScanNeighborhoodFixture(
   if (!isRecord(rawStory)) throw new ScanFixtureError([{ path: 'story', message: 'must be a JSON object' }]);
   let story: AppStoryPlan;
   try {
-    story = compileAppStoryPlan(packet.snapshot, packet.view, rawStory as ArchitectureStory, { allowMissingFocus: true });
+    story = compileAppStoryPlan(packet.snapshot, packet.view, rawStory as unknown as ArchitectureStory, { allowMissingFocus: true });
   } catch (error) {
     throw new ScanFixtureError([{ path: 'story', message: error instanceof Error ? error.message : String(error) }]);
   }

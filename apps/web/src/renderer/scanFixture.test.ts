@@ -1,4 +1,4 @@
-import { sliceArchitectureNeighborhood } from '@okie/architecture';
+import { sliceArchitectureNeighborhood, type ArchitectureSnapshot, type ArchitectureView } from '@okie/architecture';
 import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
@@ -169,8 +169,8 @@ describe('CLA-73 slim neighborhood boot', () => {
   it('GETs neighborhood.json + story.json, never snapshot.json', async () => {
     const calls: string[] = [];
     const packet = sliceArchitectureNeighborhood(
-      structuredClone(demoSnapshot) as typeof demoSnapshot,
-      structuredClone(demoView) as typeof demoView,
+      structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,
+      structuredClone(demoView) as unknown as ArchitectureView,
       { focusEntityId: 'system:okie' },
     );
     const fetchImpl: typeof fetch = async input => {
@@ -198,8 +198,8 @@ describe('CLA-73 slim neighborhood boot', () => {
 
   it('compiles an L1 neighborhood without L4 excerpts and still lazy-loads Source', async () => {
     const packet = sliceArchitectureNeighborhood(
-      structuredClone(demoSnapshot) as typeof demoSnapshot,
-      structuredClone(demoView) as typeof demoView,
+      structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,
+      structuredClone(demoView) as unknown as ArchitectureView,
       { focusEntityId: 'system:okie' },
     );
     expect(packet.snapshot.entities.some(entity => entity.kind === 'code')).toBe(false);
@@ -216,8 +216,8 @@ describe('CLA-73 slim neighborhood boot', () => {
     }];
     const host = {
       loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
-        structuredClone(demoSnapshot) as typeof demoSnapshot,
-        structuredClone(demoView) as typeof demoView,
+        structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,
+        structuredClone(demoView) as unknown as ArchitectureView,
         { focusEntityId: focus || 'system:okie' },
       ),
       loadExcerpts: async () => excerpts,
