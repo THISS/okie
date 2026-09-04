@@ -300,5 +300,4 @@ describe('Canvas2D band-normalized typography', () => {
     expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(true);
     expect(target.textCalls.some(call => call.content === 'Spatial architecture atlas.')).toBe(true);
   });
-  });
 });
