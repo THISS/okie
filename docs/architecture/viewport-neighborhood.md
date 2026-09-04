@@ -17,6 +17,8 @@ L1/L2 stay a handful (unpaged). L3/L4 pack the full neighborhood so parent bound
 
 Panning toward a sibling neighborhood recompiles that tile window for the same focus. It does not compile the full graph.
 
+Open inside, the level rail, story steps, and prefetch compile the **new** focus with the 50-node cap only. They do not inherit the previous band’s camera rect (L3 world space is not the L4 packed layout). After the new camera settles, pan/zoom applies the 512-unit ring.
+
 Prefetch stays on the committed box’s child neighborhood (~55 ms / 25 code children from CLA-66), not the sibling dump.
 
 ## Out of slice

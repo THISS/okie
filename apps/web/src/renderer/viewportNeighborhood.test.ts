@@ -29,6 +29,38 @@ describe('CLA-74: camera-resident L4 compile', () => {
     expect(protocol.objects.length).toBeLessThan(90);
   });
 
+  it('Open inside without a camera window still keeps near-focus children', () => {
+    const inherited = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:d',
+      focusEntityId: 'component:c',
+      familyId: 'f',
+      sceneId: 's',
+      title: 't',
+      subtitle: 's',
+      frozenRevision: 'c',
+      maxBand: 'code',
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      residentWorldBounds: { x: 1_000_000, y: 1_000_000, width: 10, height: 10 },
+    });
+    const opened = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:d',
+      focusEntityId: 'component:c',
+      familyId: 'f',
+      sceneId: 's',
+      title: 't',
+      subtitle: 's',
+      frozenRevision: 'c',
+      maxBand: 'code',
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+    });
+    expect((opened.projection?.entityIdsByDetail.code ?? []).length).toBeGreaterThan(
+      (inherited.projection?.entityIdsByDetail.code ?? []).length,
+    );
+    expect((opened.projection?.entityIdsByDetail.code ?? []).length).toBeGreaterThan(0);
+  });
+
   it('panning the camera window compiles a sibling tile without a full-graph compile', () => {
     const left = createC4Scene({
       baseSnapshot: snapshot,

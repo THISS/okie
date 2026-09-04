@@ -2908,17 +2908,21 @@ export function App() {
     }
     // Scan snapshots are read-only; neighborhood cache is the CLA-66 prefetch.
     // Authoring is golden-only and must not bypass the cache (callers always pass present).
+    // Camera tile window is pan/zoom-only (`cameraOverride` from settleCamera).
+    // Open inside / level / story / prefetch compile the new focus with the
+    // CLA-67 cap alone — L3 camera space is not L4 packed layout, so inheriting
+    // the previous band's camera would omit the destination's children.
     if (scanFixture) {
-      const cameraForWindow = cameraOverride ?? renderedCameraRef.current;
+      const windowCamera = cameraOverride;
       const residency = {
-        worldBounds: expandRectByTileRing(cameraWorldRect(cameraForWindow, viewport)),
+        ...(windowCamera ? { worldBounds: expandRectByTileRing(cameraWorldRect(windowCamera, viewport)) } : {}),
         keepEntityIds: inspectorSelectionRef.current ? [inspectorSelectionRef.current] : undefined,
       };
       const cacheKey = [
         focusEntityId,
         activeSnapshot.entities.length,
         activeSnapshot.relations.length,
-        viewportNeighborhoodCacheKey(focusEntityId, cameraForWindow, viewport),
+        viewportNeighborhoodCacheKey(focusEntityId, windowCamera, windowCamera ? viewport : undefined),
         inspectorSelectionRef.current ?? '',
       ].join(':');
       const cached = neighborhoodScenesRef.current.get(cacheKey);
