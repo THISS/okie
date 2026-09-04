@@ -223,6 +223,12 @@ describe('compact inspector presentation', () => {
   it('grounds Ask Atlas in selected or isolated packets and keeps the disconnected explanation path', () => {
     expect(app).toContain("data-ask-connected={askConnected ? 'true' : 'false'}");
     expect(app).toContain('data-ask-state={askState}');
+    expect(app).toContain('data-ask-auth="signed-out"');
+    expect(app).toContain('data-ask-state="signin"');
+    expect(app).toContain('ASK_SIGNIN_COPY');
+    expect(app).toContain('fetchAskAuth');
+    expect(app).toContain('loadAskThread');
+    expect(app).toContain('isAskUnauthorized(result)');
     expect(app).toContain('buildAskContext(');
     expect(app).toContain('probeAskConnection');
     expect(app).toContain("isolateActive: visibilityMode === 'isolate'");
@@ -232,6 +238,8 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('ASK_CONNECTED_COPY');
     expect(app).toContain('shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)');
     expect(app).toContain('currentAskScopeKey');
+    expect(app).toContain('if (!askSignedIn) return');
+    expect(app).toContain('askAtlasIdentity');
   });
 
   it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {

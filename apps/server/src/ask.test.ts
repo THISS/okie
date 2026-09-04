@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  HOSTED_ASK_AUTH_ERROR,
   MAX_ASK_PACKETS,
   answerAskQuestion,
   askChatCompletionsBody,
@@ -14,8 +15,12 @@ import {
   publicAskStatus,
   sanitizeAskPackets,
 } from "./ask.js";
+import { createAskThreadStore } from "./askThreads.js";
+import { createGithubAuthService, SESSION_COOKIE, TEST_LOGIN_PATH } from "./githubOAuth.js";
+import { createScanJobQueue, createSubmitLimiter } from "./jobs.js";
 import { createLlmGatewayClient, resolveLlmGatewayConfig } from "./llmGateway.js";
 import { healthzBody as healthz } from "./localDefaults.js";
+import { createScanHttpHandler } from "./scanServer.js";
 
 const FAKE_GATEWAY_KEY = "okie-test-llm-key-cla27-fake";
 const PLANTED_SOURCE_SECRET = "gho_okieTestPlantedSecretCla27xxxx";
@@ -343,9 +348,172 @@ test("scan HTTP serves Ask on /api/ask and never puts keys on healthz", () => {
   const server = readFileSync(join(dir, "../src/scanServer.ts"), "utf8");
   assert.match(server, /pathname === "\/api\/ask"/);
   assert.match(server, /publicAskStatus\(llm\)/);
+  assert.match(server, /sessionFromRequest\(request\)/);
+  assert.match(server, /HOSTED_ASK_AUTH_ERROR/);
+  assert.match(server, /persistAskTurn/);
   assert.match(server, /answerAskQuestion\(llm,/);
   assert.match(server, /healthzBody\(\{\s*enrich,\s*bind\s*\}\)/);
   assert.doesNotMatch(server, /healthzBody\([^)]*apiKey/);
   assert.doesNotMatch(server, /healthzBody\([^)]*ask/);
   assert.doesNotMatch(main, /healthzBody\([^)]*apiKey/);
+});
+
+function cookieFromSetCookie(setCookie: string[], name: string): string | undefined {
+  for (const header of setCookie) {
+    if (header.startsWith(`${name}=`)) return header.split(";")[0]!.slice(`${name}=`.length);
+  }
+  return undefined;
+}
+
+test("POST /api/ask is 401 without a session and never calls the gateway", async () => {
+  let hits = 0;
+  const fake = await listenFakeGateway((_request, response) => {
+    hits += 1;
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(completion(JSON.stringify({ answer: "must not run", citations: [] })));
+  });
+  const scanRoot = fileURLToPath(new URL(".", import.meta.url));
+  const auth = createGithubAuthService({
+    bind: "127.0.0.1",
+    env: { OKIE_GITHUB_TEST_DOUBLE: "0", OKIE_PUBLIC_ORIGIN: "http://localhost:4173" },
+  });
+  const handler = createScanHttpHandler({
+    queue: createScanJobQueue(async () => {}),
+    allowSubmit: createSubmitLimiter(),
+    auth,
+    scanRoot,
+    llm: resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+      OPENROUTER_MODEL: "acme/fast",
+    }),
+    enrich: "off",
+    bind: "127.0.0.1",
+    threads: createAskThreadStore(),
+  });
+  const server = createServer((request, response) => { void handler(request, response); });
+  await new Promise<void>(resolve => { server.listen(0, "127.0.0.1", () => resolve()); });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("expected tcp address");
+  const origin = `http://127.0.0.1:${address.port}`;
+  try {
+    const denied = await fetch(`${origin}/api/ask`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${FAKE_GATEWAY_KEY}` },
+      body: JSON.stringify({
+        question: "What is Okie?",
+        packets,
+        atlas: { owner: "THISS", repo: "okie", commitSha: "abc123" },
+      }),
+    });
+    assert.equal(denied.status, 401);
+    const body = await denied.json() as { error: string; auth: { required: boolean; loginPath: string }; connected?: unknown };
+    assert.equal(body.error, HOSTED_ASK_AUTH_ERROR);
+    assert.equal(body.auth.required, true);
+    assert.equal(body.auth.loginPath, "/api/auth/github");
+    assert.equal("connected" in body, false);
+    assert.equal(JSON.stringify(body).includes(FAKE_GATEWAY_KEY), false);
+    assert.equal(hits, 0);
+
+    const threadDenied = await fetch(`${origin}/api/ask/thread?owner=THISS&repo=okie&commitSha=abc123`);
+    assert.equal(threadDenied.status, 401);
+
+    const status = await fetch(`${origin}/api/ask`);
+    assert.equal(status.status, 200);
+    assert.deepEqual(await status.json(), { connected: true });
+
+    const health = await fetch(`${origin}/healthz`);
+    const healthBody = await health.json() as Record<string, unknown>;
+    assert.deepEqual(Object.keys(healthBody).sort(), ["bind", "enrich", "ok", "public", "service"]);
+    assert.equal(JSON.stringify(healthBody).includes(FAKE_GATEWAY_KEY), false);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await fake.close();
+  }
+});
+
+test("loopback test-login can Ask and reload the same user's thread for owner/repo + commitSha", async () => {
+  const fake = await listenFakeGateway((_request, response) => {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(completion(JSON.stringify({
+      answer: `The web app hosts Ask Atlas. key=${FAKE_GATEWAY_KEY}`,
+      citations: ["container:web-app"],
+    })));
+  });
+  const scanRoot = fileURLToPath(new URL(".", import.meta.url));
+  const auth = createGithubAuthService({
+    bind: "127.0.0.1",
+    env: { OKIE_GITHUB_TEST_DOUBLE: "1", OKIE_PUBLIC_ORIGIN: "http://localhost:4173" },
+  });
+  const handler = createScanHttpHandler({
+    queue: createScanJobQueue(async () => {}),
+    allowSubmit: createSubmitLimiter(),
+    auth,
+    scanRoot,
+    llm: resolveLlmGatewayConfig({
+      OPENAI_BASE_URL: fake.baseUrl,
+      OPENROUTER_API_KEY: FAKE_GATEWAY_KEY,
+      OPENROUTER_MODEL: "acme/fast",
+    }),
+    enrich: "off",
+    bind: "127.0.0.1",
+    threads: createAskThreadStore(),
+  });
+  const server = createServer((request, response) => { void handler(request, response); });
+  await new Promise<void>(resolve => { server.listen(0, "127.0.0.1", () => resolve()); });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("expected tcp address");
+  const origin = `http://127.0.0.1:${address.port}`;
+  try {
+    const login = await fetch(`${origin}${TEST_LOGIN_PATH}`, { redirect: "manual" });
+    const session = cookieFromSetCookie(login.headers.getSetCookie(), SESSION_COOKIE);
+    assert.ok(session);
+    const cookie = `${SESSION_COOKIE}=${session}`;
+    const atlas = { owner: "THISS", repo: "okie", commitSha: "abc123def456" };
+
+    const posted = await fetch(`${origin}/api/ask`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({ question: "What does the web app do?", packets, atlas }),
+    });
+    assert.equal(posted.status, 200);
+    const body = await posted.json() as {
+      connected: boolean;
+      answer?: string;
+      thread?: { owner: string; repo: string; commitSha: string; turns: Array<{ question: string; answer: string }> };
+      apiKey?: unknown;
+    };
+    assert.equal(body.connected, true);
+    assert.match(body.answer ?? "", /web app hosts Ask Atlas/);
+    assert.doesNotMatch(body.answer ?? "", new RegExp(FAKE_GATEWAY_KEY));
+    assert.equal("apiKey" in body, false);
+    assert.equal(body.thread?.owner, "THISS");
+    assert.equal(body.thread?.repo, "okie");
+    assert.equal(body.thread?.commitSha, atlas.commitSha);
+    assert.equal(body.thread?.turns.length, 1);
+    const json = JSON.stringify(body);
+    assert.equal(json.includes(FAKE_GATEWAY_KEY), false);
+    assert.equal(json.includes("gho_"), false);
+
+    const reloaded = await fetch(
+      `${origin}/api/ask/thread?owner=THISS&repo=okie&commitSha=${atlas.commitSha}`,
+      { headers: { cookie } },
+    );
+    assert.equal(reloaded.status, 200);
+    const threadBody = await reloaded.json() as { thread: { turns: Array<{ question: string; answer: string }>; userId?: unknown } };
+    assert.equal(threadBody.thread.turns.length, 1);
+    assert.equal(threadBody.thread.turns[0]?.question, "What does the web app do?");
+    assert.equal("userId" in threadBody.thread, false);
+    assert.equal(JSON.stringify(threadBody).includes(FAKE_GATEWAY_KEY), false);
+
+    const otherMap = await fetch(
+      `${origin}/api/ask/thread?owner=THISS&repo=okie&commitSha=othercommit`,
+      { headers: { cookie } },
+    );
+    const otherBody = await otherMap.json() as { thread: { turns: unknown[] } };
+    assert.deepEqual(otherBody.thread.turns, []);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await fake.close();
+  }
 });

@@ -184,6 +184,7 @@ describe('WebMCP foundation (CLA-40)', () => {
     const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
     expect(app).toContain('registerWebMcpAtlasTools');
     expect(app).toContain('bindAtlasChromeActions');
+    expect(app).toContain('askSignedIn');
     expect(app).toContain('readContext');
     expect(app).toContain('atlasIdentityFromLocation');
     expect(app).toContain('atlasTourPlaying');
@@ -457,6 +458,7 @@ function bindFakeAtlas(overrides: Partial<AtlasChromeActions> = {}) {
       live.askAvailable = false;
     },
     openAsk: () => {},
+    askSignedIn: () => true,
     readContext: () => ({ ...live }),
     ...overrides,
   };
@@ -594,6 +596,25 @@ describe('WebMCP atlas tools (CLA-42)', () => {
       open: true,
     });
     expect(openAsk).toHaveBeenCalledWith('How does the golden fixture compile?');
+  });
+
+  it('Ask uses the browsing user session: unsigned is unauthorized and never POSTs /api/ask', async () => {
+    const openAsk = vi.fn();
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    bindFakeAtlas({ openAsk, askSignedIn: () => false });
+
+    await expect(Promise.resolve(ASK_ATLAS_TOOL.execute({
+      question: 'What is Okie?',
+      OPENROUTER_API_KEY: PLANTED_SECRETS[0],
+    }))).resolves.toMatchObject({
+      ok: false,
+      isError: true,
+      error: { code: 'unauthorized' },
+    });
+    expect(openAsk).toHaveBeenCalledWith('What is Okie?');
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it('does not put secrets in atlas tool names, descriptions, inputs, or results', async () => {

@@ -9,10 +9,15 @@ import {
 } from "./llmGateway.js";
 
 /**
- * Ask Atlas Q&A (CLA-27): one-shot answers grounded in the client-supplied
- * packets + accepted summaries for the selected (or isolated) scopes.
- * Same OpenAI-compatible gateway as enrichment. Never loads the whole repo.
+ * Ask Atlas Q&A (CLA-27 + CLA-69): one-shot answers grounded in the
+ * client-supplied packets + accepted summaries for the selected (or isolated)
+ * scopes. Same OpenAI-compatible gateway as enrichment. Never loads the whole
+ * repo. Hosted POST requires a GitHub session; the operator gateway key stays
+ * in process env and is never written onto a user or thread.
  */
+
+export const HOSTED_ASK_AUTH_ERROR =
+  "Sign in with GitHub to ask about this atlas. Viewing a published atlas at /r/owner/repo stays public — there is no login wall on the map.";
 
 export const MAX_ASK_PACKETS = 32;
 export const MAX_ASK_RELATIONS = 64;

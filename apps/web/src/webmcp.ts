@@ -22,7 +22,8 @@
  * atlas (`/` local fixture and `/r/:owner/:repo`). Each calls the same store
  * actions the chrome already uses. No new backend. Unknown entity/level is a
  * structured tool error, never a throw. `ask_atlas` opens the Ask popover and
- * may fill the query; it does not start a live paid answer.
+ * may fill the query; live answers use the browsing user's GitHub session
+ * (CLA-69) and the tool does not start a paid call itself.
  *
  * CLA-43 `get_atlas_context`: a read-only snapshot of the current page so
  * agents stop guessing from the DOM. WebMCP's old `provideContext` /
@@ -123,7 +124,7 @@ export const START_OVERVIEW_TOUR_TOOL_DESCRIPTION =
 export const ASK_ATLAS_TOOL_NAME = 'ask_atlas';
 export const ASK_ATLAS_TOOL_TITLE = 'Ask Atlas';
 export const ASK_ATLAS_TOOL_DESCRIPTION =
-  'Open the Ask Atlas popover on the loaded atlas and optionally fill the question. Does not submit a live paid answer.';
+  'Open the Ask Atlas popover on the loaded atlas and optionally fill the question. Live answers require the browsing user GitHub session. Does not submit a live paid answer.';
 
 export const C4_LEVELS = ['context', 'container', 'component', 'code'] as const;
 export type C4Level = (typeof C4_LEVELS)[number];
@@ -365,6 +366,7 @@ export type AtlasChromeActions = {
   isolate: (active: boolean) => void;
   startOverviewTour: () => void;
   openAsk: (question: string) => void;
+  askSignedIn: () => boolean;
   readContext: () => AtlasPageContextInput;
 };
 
@@ -783,6 +785,12 @@ function executeAskAtlas(input?: Record<string, unknown>): AskAtlasResult {
     const actions = atlasActions;
     if (!actions) return atlasUnavailable();
     actions.openAsk(optionalAskQuestion(input));
+    if (!actions.askSignedIn()) {
+      return webMcpToolError(
+        'unauthorized',
+        'Sign in with GitHub to ask about this atlas. Viewing the map stays public.',
+      );
+    }
     return { ok: true, tool: ASK_ATLAS_TOOL_NAME, open: true };
   } catch {
     return webMcpToolError('unavailable', 'Could not open Ask Atlas.');
