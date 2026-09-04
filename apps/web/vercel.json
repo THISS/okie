@@ -1,10 +1,30 @@
 {
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/",
       "headers": [
         { "key": "Permissions-Policy", "value": "tools=(self)" },
         { "key": "Origin-Agent-Cluster", "value": "?1" }
+      ]
+    },
+    {
+      "source": "/new",
+      "headers": [
+        { "key": "Permissions-Policy", "value": "tools=(self)" },
+        { "key": "Origin-Agent-Cluster", "value": "?1" }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Permissions-Policy", "value": "tools=(self)" },
+        { "key": "Origin-Agent-Cluster", "value": "?1" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Permissions-Policy", "value": "tools=(self)" }
       ]
     }
   ],

@@ -62,7 +62,7 @@ import {
   semanticLevelAtZoom,
 } from './renderer/cameraBounds';
 import { createDemandFrameScheduler, type DemandFrameScheduler } from './renderer/demandFrameScheduler';
-import { listenForWebGlContextLoss } from './renderer/gpuLoss';
+import { EMBED_FRAME_IDLE_KICK_MS, isFramedBrowsingContext, isUsableAtlasViewport, listenForWebGlContextLoss } from './renderer/gpuLoss';
 import { listenForWheel } from './renderer/wheelInput';
 import { presentBackend } from './renderer/backendPresentation';
 import { presentClaimProvenance } from './provenance/presentation';
@@ -490,6 +490,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       renderer?.resize(sizeRef.current.width, sizeRef.current.height, window.devicePixelRatio);
     };
 
+    const framed = isFramedBrowsingContext();
     const scheduler = createDemandFrameScheduler(time => {
       if (disposed || !renderer) return;
       const current = stateRef.current;
@@ -522,6 +523,13 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       } catch (error) {
         void recoverFromLoss(error);
       }
+    }, {
+      requestFrame: callback => requestAnimationFrame(callback),
+      cancelFrame: handle => cancelAnimationFrame(handle),
+      ...(framed ? {
+        requestIdleKick: callback => window.setTimeout(callback, EMBED_FRAME_IDLE_KICK_MS),
+        cancelIdleKick: handle => window.clearTimeout(handle),
+      } : {}),
     });
     schedulerRef.current = scheduler;
 
@@ -2042,7 +2050,9 @@ export function App() {
           window.queueMicrotask(() => controller.replace(corrected));
           setLiveMessage('Invalid or unrelated semantic lens path was truncated to the deepest valid branch.');
         }
-        initialMapFitAppliedRef.current = true;
+        if (!(isFramedBrowsingContext() && !isUsableAtlasViewport(viewport))) {
+          initialMapFitAppliedRef.current = true;
+        }
         storyOriginAvailableRef.current = source === 'popstate' && Boolean(next.story);
         setNavigationIdentity({
           repositoryId: next.repositoryId,
@@ -2119,7 +2129,9 @@ export function App() {
         if (navigationRestoreGenerationRef.current !== restoreGeneration) return;
         restoringNavigationRef.current = false;
         if (source === 'initialize' && !initialCameraExplicit) {
-          initialMapFitAppliedRef.current = true;
+          if (!(isFramedBrowsingContext() && !isUsableAtlasViewport(viewport))) {
+            initialMapFitAppliedRef.current = true;
+          }
           // CLA-11: do not bump safeAreaEpoch; that delayed-fit after load.
         }
       },
@@ -3640,8 +3652,9 @@ export function App() {
   useEffect(() => {
     if (query.fixture === 'stress' || storyStep >= 0 || restoringNavigationRef.current) return;
     const restoreGeneration = navigationRestoreGenerationRef.current;
-    const frame = window.requestAnimationFrame(() => {
+    const applyInitializeFit = () => {
       if (restoringNavigationRef.current || navigationRestoreGenerationRef.current !== restoreGeneration) return;
+      if (!isUsableAtlasViewport(viewport)) return;
       const safeArea = measureCurrentMapSafeArea();
       const requiresFit = !initialMapFitAppliedRef.current;
       initialMapFitAppliedRef.current = true;
@@ -3654,8 +3667,15 @@ export function App() {
         camera: next,
         detail: activeDetail,
       }, navigationDefaults), 'replace');
-    });
-    return () => window.cancelAnimationFrame(frame);
+    };
+    const frame = window.requestAnimationFrame(() => applyInitializeFit());
+    const kick = isFramedBrowsingContext()
+      ? window.setTimeout(() => applyInitializeFit(), EMBED_FRAME_IDLE_KICK_MS)
+      : undefined;
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (kick !== undefined) window.clearTimeout(kick);
+    };
     // Readable framing may intentionally crop remote context. Resize/chrome/load-restore
     // must preserve that map camera; CLA-11: do not re-arm this fit after initialize.
     // eslint-disable-next-line react-hooks/exhaustive-deps

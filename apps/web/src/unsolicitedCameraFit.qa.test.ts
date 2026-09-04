@@ -52,6 +52,8 @@ describe('CLA-11: camera does not re-fit without a user gesture', () => {
     expect(autoFitEffect).toContain('if (!requiresFit) return;');
     expect(autoFitEffect).toContain('frameProjectionScope(');
     expect(autoFitEffect).toContain('updateCamera(next);');
+    expect(app).toContain('if (!isUsableAtlasViewport(viewport)) return;');
+    expect(restoreRestore).toContain('isFramedBrowsingContext()');
     // Click/inspector chrome still bump safeAreaEpoch; the flag, not the dep list,
     // is what stops those from becoming a second unsolicited frame.
     expect(app).toContain('safeAreaEpoch, scene, storyStep, viewport.height, viewport.width]);');

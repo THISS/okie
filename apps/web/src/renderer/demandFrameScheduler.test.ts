@@ -86,4 +86,33 @@ describe('demand frame scheduler', () => {
     harness.step();
     expect(render).not.toHaveBeenCalled();
   });
+
+  it('kicks a frame from the idle timeout when rAF is starved', () => {
+    const render = vi.fn();
+    const timeouts = new Map<number, () => void>();
+    let timeoutId = 0;
+    let nextFrame = 0;
+    const frames = new Map<number, FrameRequestCallback>();
+    const scheduler = createDemandFrameScheduler(render, {
+      requestFrame(callback) {
+        nextFrame += 1;
+        frames.set(nextFrame, callback);
+        return nextFrame;
+      },
+      cancelFrame(handle) { frames.delete(handle); },
+      requestIdleKick(callback) {
+        timeoutId += 1;
+        timeouts.set(timeoutId, callback);
+        return timeoutId;
+      },
+      cancelIdleKick(handle) { timeouts.delete(handle); },
+    });
+    scheduler.wake();
+    expect(frames.size).toBe(1);
+    expect(timeouts.size).toBe(1);
+    [...timeouts.values()][0]!();
+    expect(render).toHaveBeenCalledOnce();
+    expect(frames.size).toBe(0);
+    expect(scheduler.isScheduled()).toBe(false);
+  });
 });
