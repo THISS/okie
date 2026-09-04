@@ -1,7 +1,7 @@
 import { Canvas2DRenderer } from './Canvas2DRenderer';
 import { UnsupportedRenderer } from './UnsupportedRenderer';
 import { WasmRendererAdapter } from './WasmRendererAdapter';
-import { nextBackendAfterLoss } from './gpuLoss';
+import * as gpuPolicy from './gpuLoss';
 import type { AtlasRenderer } from './types';
 
 export type RendererSession = { canvas: HTMLCanvasElement; renderer: AtlasRenderer };
@@ -36,20 +36,31 @@ export async function createRenderer(host: HTMLElement, requestedBackend: string
   };
 
   if (requestedBackend === 'auto') {
-    let webGpuFailure = '';
-    try {
-      return await attemptGpu('webgpu');
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      webGpuFailure = error instanceof Error ? error.message : String(error);
+    const attempts = gpuPolicy.autoGpuAttemptOrder({
+      framed: gpuPolicy.isFramedBrowsingContext(),
+      webGpuAvailable: gpuPolicy.isWebGpuInterfaceAvailable(),
+    });
+    const failures: string[] = [];
+    for (const backend of attempts) {
+      try {
+        const session = attemptGpu(backend);
+        return backend === 'webgpu'
+          ? await gpuPolicy.withDeadline(
+            session,
+            gpuPolicy.WEBGPU_ADAPTER_TIMEOUT_MS,
+            () => new Error('WebGPU adapter request timed out'),
+          )
+          : await session;
+      } catch (error) {
+        if (signal?.aborted) throw error;
+        failures.push(`${backend}: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
-    try {
-      return await attemptGpu('webgl2');
-    } catch (error) {
-      if (signal?.aborted) throw error;
-      const webGlFailure = error instanceof Error ? error.message : String(error);
-      return createCanvasFallback(host, requestedBackend, `GPU initialization failed (WebGPU: ${webGpuFailure}; WebGL2: ${webGlFailure}).`);
-    }
+    const skippedWebGpu = !attempts.includes('webgpu');
+    const detail = skippedWebGpu
+      ? `WebGPU skipped in framed/unavailable context; ${failures.join('; ') || 'no GPU backend succeeded'}`
+      : failures.join('; ') || 'no GPU backend succeeded';
+    return createCanvasFallback(host, requestedBackend, `GPU initialization failed (${detail}).`);
   }
 
   if (requestedBackend !== 'webgpu' && requestedBackend !== 'webgl2') {
@@ -71,7 +82,7 @@ export async function recoverRenderer(
   reason: string,
   signal?: AbortSignal,
 ): Promise<RendererSession> {
-  const nextBackend = nextBackendAfterLoss(requestedBackend, failedBackend);
+  const nextBackend = gpuPolicy.nextBackendAfterLoss(requestedBackend, failedBackend);
   if (nextBackend === 'canvas2d') {
     return createCanvasFallback(host, requestedBackend, `GPU surface lost (${reason}).`);
   }

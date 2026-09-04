@@ -70,6 +70,8 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(body.width).toBe(OEMBED_DEFAULT_WIDTH);
     expect(body.height).toBe(OEMBED_DEFAULT_HEIGHT);
     expect(body.html).toContain(`src="${DOGFOOD}"`);
+    expect(body.html).toContain('allow="fullscreen; gpu"');
+    expect(body.html).toContain('allowfullscreen');
     expect(body.html).toMatch(/^<iframe /);
     expect(body.html).not.toMatch(/login|signin|oauth|authorize/i);
     expect(JSON.stringify(body)).not.toMatch(/apiKey|OPENROUTER|GITHUB_TOKEN|GH_TOKEN|gho_|ghp_/);

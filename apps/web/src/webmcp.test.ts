@@ -31,6 +31,7 @@ import {
   START_PUBLIC_SCAN_TOOL,
   START_PUBLIC_SCAN_TOOL_NAME,
   WEBMCP_HOST_HEADERS,
+  webMcpHostHeadersForFetchDest,
   atlasEnrichmentStatus,
   atlasIdentityFromLocation,
   atlasPageContext,
@@ -150,6 +151,9 @@ describe('WebMCP foundation (CLA-40)', () => {
     expect(WEBMCP_HOST_HEADERS['Permissions-Policy']).not.toMatch(/\*|all/);
     expect(WEBMCP_HOST_HEADERS['Origin-Agent-Cluster']).toBe('?1');
     expect(WEBMCP_HOST_HEADERS['Origin-Agent-Cluster']).not.toBe('?0');
+    expect(webMcpHostHeadersForFetchDest('iframe')['Permissions-Policy']).toBe('tools=(self)');
+    expect(webMcpHostHeadersForFetchDest('iframe')).not.toHaveProperty('Origin-Agent-Cluster');
+    expect(webMcpHostHeadersForFetchDest('document')).toEqual(WEBMCP_HOST_HEADERS);
 
     const webSrc = [
       readFileSync(new URL('./webmcp.ts', import.meta.url), 'utf8'),
@@ -162,6 +166,7 @@ describe('WebMCP foundation (CLA-40)', () => {
     expect(webSrc).not.toMatch(/document\.domain\s*=/);
     expect(webSrc).not.toMatch(/Origin-Agent-Cluster['":\s]+\?0/);
     expect(webSrc).not.toMatch(/tools=\(\*\)|tools=\*|allow=["'][^"']*tools/);
+    expect(webSrc).toContain('webMcpHostHeadersForFetchDest');
   });
 
   it('wires detection into hosted chrome boot and host headers', () => {
@@ -192,6 +197,7 @@ describe('WebMCP foundation (CLA-40)', () => {
     const viteConfig = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
     expect(viteConfig).toContain('WEBMCP_HOST_HEADERS');
     expect(viteConfig).toContain('okieWebMcpHeadersPlugin');
+    expect(viteConfig).toContain('webMcpHostHeadersForFetchDest');
 
     const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
       headers?: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
@@ -202,6 +208,9 @@ describe('WebMCP foundation (CLA-40)', () => {
       { key: 'Origin-Agent-Cluster', value: '?1' },
     ]));
     expect(applied.some(header => header.key === 'Permissions-Policy' && header.value !== 'tools=(self)')).toBe(false);
+    const shareHeaders = vercel.headers?.find(entry => entry.source === '/(.*)')?.headers ?? [];
+    expect(shareHeaders).toEqual([{ key: 'Permissions-Policy', value: 'tools=(self)' }]);
+    expect(shareHeaders.some(header => header.key === 'Origin-Agent-Cluster')).toBe(false);
   });
 });
 

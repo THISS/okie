@@ -1,3 +1,23 @@
+import {
+  autoGpuAttemptOrder,
+  EMBED_FRAME_IDLE_KICK_MS,
+  isFramedBrowsingContext,
+  isUsableAtlasViewport,
+  isWebGpuInterfaceAvailable,
+  WEBGPU_ADAPTER_TIMEOUT_MS,
+  withDeadline,
+} from '../embedCanvas';
+
+export {
+  autoGpuAttemptOrder,
+  EMBED_FRAME_IDLE_KICK_MS,
+  isFramedBrowsingContext,
+  isUsableAtlasViewport,
+  isWebGpuInterfaceAvailable,
+  WEBGPU_ADAPTER_TIMEOUT_MS,
+  withDeadline,
+};
+
 export type RecoveryBackend = 'webgl2' | 'canvas2d';
 
 export function nextBackendAfterLoss(requestedBackend: string, failedBackend: string): RecoveryBackend {

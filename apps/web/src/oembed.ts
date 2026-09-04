@@ -26,6 +26,8 @@ export const OEMBED_CACHE_AGE_SECONDS = 300;
 export const OEMBED_JSON_TYPE = 'application/json+oembed';
 export const OEMBED_THUMBNAIL_WIDTH = 1200;
 export const OEMBED_THUMBNAIL_HEIGHT = 630;
+/** Parent grant so a docs-site iframe can use GPU (default policy is `self`). */
+export const OEMBED_IFRAME_ALLOW = 'fullscreen; gpu';
 export const OG_IMAGE_PATH_PREFIX = '/og';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
@@ -290,7 +292,7 @@ export function buildOembedIframeHtml(
 ): string {
   const src = publicAtlasHref(target);
   const title = publicAtlasTitle(target);
-  return `<iframe src="${escapeAttribute(src)}" width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px" title="${escapeAttribute(title)}" allowfullscreen></iframe>`;
+  return `<iframe src="${escapeAttribute(src)}" width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px" title="${escapeAttribute(title)}" allow="${OEMBED_IFRAME_ALLOW}" allowfullscreen></iframe>`;
 }
 
 export function buildOembedRichResponse(

@@ -17,7 +17,7 @@ import {
   trustedShareOrigin,
 } from './src/openGraph';
 import { isPublicAtlasViewPath as isSharePath } from './src/hostedAtlas';
-import { WEBMCP_HOST_HEADERS } from './src/webmcp';
+import { WEBMCP_HOST_HEADERS, webMcpHostHeadersForFetchDest } from './src/webmcp';
 
 // The local scan process (apps/server) owns /api (submit + job status) and
 // /scan (published trio objects + manifest). Dev and preview proxy both there
@@ -93,9 +93,13 @@ function okieOembedPlugin(): Plugin {
 /** Origin isolation + `tools=(self)` so WebMCP stays same-origin (CLA-40). */
 function okieWebMcpHeadersPlugin(): Plugin {
   const attach = (server: Pick<ViteDevServer, 'middlewares'>) => {
-    server.middlewares.use((_request, response, next) => {
-      for (const [name, value] of Object.entries(WEBMCP_HOST_HEADERS)) {
+    server.middlewares.use((request, response, next) => {
+      const headers = webMcpHostHeadersForFetchDest(request.headers['sec-fetch-dest']);
+      for (const [name, value] of Object.entries(headers)) {
         response.setHeader(name, value);
+      }
+      if (!('Origin-Agent-Cluster' in headers)) {
+        response.removeHeader('Origin-Agent-Cluster');
       }
       next();
     });

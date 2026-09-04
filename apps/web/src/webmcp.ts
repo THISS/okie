@@ -31,8 +31,9 @@
  * at call time — never a snapshot captured at registerTool.
  *
  * Origin isolation: never assign `document.domain`. Hosted chrome sends
- * `Permissions-Policy: tools=(self)` and `Origin-Agent-Cluster: ?1`. Do not
- * widen `tools` unless we later embed ourselves.
+ * `Permissions-Policy: tools=(self)` and `Origin-Agent-Cluster: ?1` for
+ * top-level documents. Framed public atlas views omit origin-keying so the
+ * oEmbed canvas can draw; do not widen `tools`.
  *
  * Refs: https://developer.chrome.com/docs/ai/webmcp
  *       https://webmachinelearning.github.io/webmcp/
@@ -47,6 +48,20 @@ export const WEBMCP_HOST_HEADERS = {
   'Permissions-Policy': 'tools=(self)',
   'Origin-Agent-Cluster': '?1',
 } as const;
+
+/**
+ * Framed public atlas views (oEmbed) omit Origin-Agent-Cluster so WebGL2 can
+ * present inside a cross-origin iframe. Do not widen `tools`.
+ */
+export function webMcpHostHeadersForFetchDest(
+  dest: string | string[] | undefined,
+): Record<string, string> {
+  const token = (Array.isArray(dest) ? dest[0] : dest)?.split(',')[0]?.trim().toLowerCase();
+  if (token === 'iframe' || token === 'embed' || token === 'object' || token === 'frame') {
+    return { 'Permissions-Policy': WEBMCP_HOST_HEADERS['Permissions-Policy'] };
+  }
+  return { ...WEBMCP_HOST_HEADERS };
+}
 
 export const OKIE_PROBE_TOOL_NAME = 'okie_probe';
 export const OKIE_PROBE_TOOL_TITLE = 'Okie probe';
