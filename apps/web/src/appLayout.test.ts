@@ -171,6 +171,24 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain("entity.detail === 'code' && Boolean(entity.sourceExcerpts?.length)");
   });
 
+  it('ships a snapshot-derived Overview one-pager beside Source and Details (CLA-76)', () => {
+    expect(app).toContain('id="overview-tab"');
+    expect(app).toContain("selectInspectorTab('overview')");
+    expect(app).toContain('data-testid="scan-one-pager"');
+    expect(app).toContain('data-testid="one-pager-containers"');
+    expect(app).toContain('data-testid="one-pager-mermaid"');
+    expect(app).toContain('buildScanOnePager({');
+    expect(app).toContain('<MermaidDiagram compact source={onePager.mermaidSource} title={onePager.mermaidTitle}/>');
+    expect(app).toContain('<MermaidSourceDisclosure source={onePager.mermaidSource}/>');
+    expect(app).toContain("scanFixture ? 'overview' : 'details'");
+    expect(app).toContain('inspectorTabSequence(sourceAvailable)');
+    expect(app).toContain('id="source-tab"');
+    expect(app).toContain('id="details-tab"');
+    expect(app).not.toMatch(/scanRoot|OPENROUTER_API_KEY|apiKey/);
+    expect(declarations(css, '.inspector-tabs')).toContain('grid-template-columns: 1fr 1fr 1fr');
+    expect(css).toContain('.semantic-mermaid-diagram.is-compact');
+  });
+
   it('renders an accepted section summary in Details and omits empty enrich copy', () => {
     expect(app).toContain('inspectorAcceptedSummary(selected)');
     expect(app).toContain("data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'}");
@@ -393,7 +411,7 @@ describe('compact inspector presentation', () => {
     expect(restoreImplementation).toContain('targetCamera: plan.state.camera');
     expect(restoreImplementation).toContain('historyMode: plan.mode');
     expect(backImplementation).not.toContain('reframeEntityAfterInspectorChange');
-    expect(backImplementation).toContain("(restoredTab === 'source' ? sourceTabRef : detailsTabRef).current?.focus");
+    expect(backImplementation).toContain('inspectorTabButtonRef(restoredTab).current?.focus');
     expect(backImplementation).not.toContain('window.history.back()');
   });
 
