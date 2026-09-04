@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadScanFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -248,6 +248,57 @@ describe('CLA-73 slim neighborhood boot', () => {
     await l1.ensureNeighborhood('code:web-shell:app');
     expect(requested).toEqual(['code:web-shell:app']);
     expect(l1.snapshot.entities.some(entity => entity.id === 'code:web-shell:app')).toBe(true);
+  });
+
+  it('CLA-75: loads secret-free enrichment honesty from published sidecars, not snapshot.json', async () => {
+    const packet = sliceArchitectureNeighborhood(
+      structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,
+      structuredClone(demoView) as unknown as ArchitectureView,
+      { focusEntityId: 'system:okie' },
+    );
+    const host = {
+      loadNeighborhood: async () => packet,
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+      loadEnrichmentReport: async () => ({
+        promptVersion: 'okie-enrichment/v2',
+        enrichedContainers: [],
+        collapsedSelfEdges: 0,
+        results: [{
+          containerId: 'container:apps-web',
+          accepted: false,
+          reasons: ['gate: <root> llm gateway 401 from https://okietest:okie-test-url-token-cla75-fake@example.invalid/v1'],
+        }],
+        scanRoot: '/secret/scan',
+        apiKey: 'okie-test-llm-key-cla75-fake',
+      }),
+      loadEnrichmentStatus: async () => ({
+        state: 'complete',
+        acceptedContainers: 0,
+        attemptedContainers: 1,
+        why: 'rejected',
+        note: 'do not show',
+      }),
+    };
+    const fixture = await loadScanNeighborhoodFixture(host, 'system:okie');
+    expect(fixture.enrichmentHonesty?.why).toBe('rejected');
+    expect(fixture.enrichmentHonesty?.chip).toContain('0 accepted');
+    expect(JSON.stringify(fixture.enrichmentHonesty)).not.toMatch(/okie-test-url-token|example\.invalid|scanRoot|okie-test-llm-key|do not show/i);
+    expect(fixture.boot).toBe('neighborhood');
+  });
+
+  it('CLA-75: omits honesty chrome when enrichment sidecars are absent', async () => {
+    const packet = sliceArchitectureNeighborhood(
+      structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,
+      structuredClone(demoView) as unknown as ArchitectureView,
+      { focusEntityId: 'system:okie' },
+    );
+    const fixture = await loadScanNeighborhoodFixture({
+      loadNeighborhood: async () => packet,
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    }, 'system:okie');
+    expect(fixture.enrichmentHonesty).toBeUndefined();
   });
 
   it('does not raise the 2000 hang-guard', () => {

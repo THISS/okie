@@ -12,6 +12,8 @@ describe('CLA-73: slim boot fetches the neighborhood, not the whole snapshot', (
     expect(main).toContain('fetchScanNeighborhoodHost(');
     expect(main).toContain('bootFocusFromSearch(window.location.search)');
     expect(fixture).toContain("scanObjectPath(slug, 'neighborhood.json'");
+    expect(fixture).toContain("scanObjectPath(slug, 'enrichment-report.json'");
+    expect(fixture).toContain("scanObjectPath(slug, 'enrichment-status.json'");
     expect(fixture).not.toMatch(/fetchScanNeighborhoodHost[\s\S]*snapshot\.json/u);
   });
 

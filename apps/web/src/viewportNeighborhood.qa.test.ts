@@ -28,5 +28,6 @@ describe('CLA-74: viewport neighborhood is camera-resident tiles', () => {
     expect(VIEWPORT_TILE_WORLD_SIZE).toBe(512);
     expect(app).not.toMatch(/protobuf|SceneSnapshot rewrite/u);
     expect(fixture).toContain("scanObjectPath(slug, 'neighborhood.json'");
+    expect(fixture).toContain("scanObjectPath(slug, 'enrichment-report.json'");
   });
 });

@@ -12,6 +12,7 @@ const PUBLISHED_BASENAMES = new Set([
   "timeline.json",
   "extraction.json",
   "enrichment-report.json",
+  "enrichment-status.json",
   "index.json",
 ]);
 

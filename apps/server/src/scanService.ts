@@ -31,6 +31,7 @@ import {
   type LlmGatewayConfig,
   type LlmGatewayLocalConfig,
 } from "./llmGateway.js";
+import { publishedEnrichmentStatus, type PublishedEnrichmentStatus } from "./publishedEnrichmentStatus.js";
 
 export type EnrichmentHook = (packets: EmittedPackets) => Promise<ReadonlyMap<string, unknown>>;
 
@@ -78,6 +79,18 @@ function publishArtifacts(scanRoot: string, dirSlug: string, artifacts: ScanArti
   }
   const manifest = regenerateScanManifest(scanRoot);
   writeFileSync(join(scanRoot, "index.json"), stableJson(manifest));
+}
+
+/** Secret-free skip/reject sidecar for the published atlas (CLA-75). Absent when enrichment never ran. */
+function publishEnrichmentStatus(
+  scanRoot: string,
+  dirSlug: string,
+  status: PublishedEnrichmentStatus | undefined,
+): void {
+  if (!status) return;
+  const out = join(scanRoot, dirSlug);
+  mkdirSync(out, { recursive: true });
+  writeFileSync(join(out, "enrichment-status.json"), stableJson(status));
 }
 
 function skipNote(config: LlmGatewayConfig): string {
@@ -214,8 +227,21 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
       update({ atlasReady: true });
       log(redact(`${job.id}: deterministic atlas published (${deterministic.artifacts.snapshot.entities.length} entities @ ${deterministic.commitSha.slice(0, 12)})`));
 
+      const writeHonesty = (
+        state: ScanJobEnrichment["state"],
+        note?: string,
+        report?: { results?: ReadonlyArray<{ accepted?: boolean }> },
+      ): void => {
+        publishEnrichmentStatus(
+          options.scanRoot,
+          job.slug,
+          publishedEnrichmentStatus({ state, ...(note ? { note } : {}), ...(report ? { report } : {}) }),
+        );
+      };
+
       if (enrichMode === "off") {
         update({ enrichment: { state: "skipped", note: "enrichment disabled" } });
+        writeHonesty("skipped", "enrichment disabled");
         return;
       }
 
@@ -225,18 +251,21 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
         update({
           enrichment: { state: "failed", note: EMPTY_MODEL_NOTE, ...identity },
         });
+        writeHonesty("failed", EMPTY_MODEL_NOTE);
         log(redact(`${job.id}: enrichment failed (${EMPTY_MODEL_NOTE}); deterministic atlas stands`));
         return;
       }
 
       const enricher = enricherFactory(note => log(redact(`${job.id}: ${note}`)));
       if (!enricher) {
+        const note = skipNote(config);
         update({
           enrichment: {
             state: "skipped",
-            note: skipNote(config),
+            note,
           },
         });
+        writeHonesty("skipped", note);
         return;
       }
 
@@ -244,6 +273,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
         update({
           enrichment: { state: "skipped", note: GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE },
         });
+        writeHonesty("skipped", GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE);
         log(redact(`${job.id}: ${GLOBAL_ENRICHMENT_BUDGET_SKIP_NOTE}; deterministic atlas stands`));
         return;
       }
@@ -271,6 +301,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
               : {}),
           },
         });
+        writeHonesty("complete", undefined, report);
         log(redact(`${job.id}: enriched atlas republished (${report?.enrichedContainers.length ?? 0} containers)`));
       } catch (error) {
         // The deterministic atlas is already live — record the downgrade, don't fail the job.
@@ -282,6 +313,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
             note,
           },
         });
+        writeHonesty("failed", note);
         log(redact(`${job.id}: enrichment failed (${note}); deterministic atlas stands`));
       }
     } catch (error) {

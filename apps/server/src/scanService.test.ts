@@ -210,6 +210,15 @@ test("no LLM key skips enrichment and still publishes the deterministic atlas", 
     assert.doesNotMatch(job.enrichment.note ?? "", /ANTHROPIC_API_KEY=\S+/);
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
     assert.ok(existsSync(join(scanRoot, "index.json")));
+    const honesty = JSON.parse(readFileSync(join(scanRoot, "acme__app", "enrichment-status.json"), "utf8")) as {
+      state: string; why?: string; note?: string; scanRoot?: string;
+    };
+    assert.equal(honesty.state, "skipped");
+    assert.equal(honesty.why, "no-key");
+    assert.equal(honesty.note, undefined);
+    assert.equal(honesty.scanRoot, undefined);
+    assert.doesNotMatch(JSON.stringify(honesty), /OKIE_LLM|OPENROUTER|scanRoot|apiKey|ANTHROPIC_API_KEY/);
+    assert.equal(existsSync(join(scanRoot, "acme__app", "enrichment-report.json")), false);
     assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
   } finally {
     rmSync(scanRoot, { recursive: true, force: true });
@@ -434,6 +443,7 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     assert.equal(off.enrichment.state, "skipped");
     assert.equal(off.enrichment.modelId, undefined);
     const offStory = readFileSync(join(scanRoot, "acme__app-off", "story.json"), "utf8");
+    assert.equal(existsSync(join(scanRoot, "acme__app-off", "enrichment-status.json")), false, "enrich=off must omit honesty sidecar");
 
     const rejected = await run("acme__app-reject", () => async packets => {
       const containerId = packets.packets[0]?.containerId ?? "container:missing";
@@ -451,6 +461,16 @@ test("off and rejected enrichment publish the same overview story; accepted summ
     assert.ok(rejected.enrichment.state === "complete" || rejected.enrichment.state === "failed");
     const rejectedStory = readFileSync(join(scanRoot, "acme__app-reject", "story.json"), "utf8");
     assert.equal(rejectedStory, offStory, "rejected enrichment must not change the overview story");
+    const rejectedHonesty = JSON.parse(readFileSync(join(scanRoot, "acme__app-reject", "enrichment-status.json"), "utf8")) as {
+      why?: string; note?: string;
+    };
+    assert.equal(rejectedHonesty.why, "rejected");
+    assert.equal(rejectedHonesty.note, undefined);
+    assert.doesNotMatch(JSON.stringify(rejectedHonesty), /ghost|not-the-base|OPENROUTER|scanRoot|apiKey/);
+    const rejectedReport = JSON.parse(readFileSync(join(scanRoot, "acme__app-reject", "enrichment-report.json"), "utf8")) as {
+      results: Array<{ accepted: boolean }>;
+    };
+    assert.ok(rejectedReport.results.some(result => result.accepted === false));
 
     const accepted = await run("acme__app-summary", () => async packets => {
       const systemId = packets.systemPacket?.systemId;
