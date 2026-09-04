@@ -26,13 +26,23 @@ const files: Record<string, string> = {
     "  return n0;",
     "}",
   ].join("\n") + "\n",
+  "pkg/a/src/wide.ts": [
+    `export function wideFn(${"x".repeat(SOURCE_EXCERPT_LIMITS.maxLineCharacters)}: string) {`,
+    "  return 1;",
+    "  return 2;",
+    "}",
+  ].join("\n") + "\n",
 };
 
 function discovery(): Discovery {
   return {
-    sourceFiles: ["pkg/a/src/index.ts", "pkg/a/src/long.ts"],
+    sourceFiles: ["pkg/a/src/index.ts", "pkg/a/src/long.ts", "pkg/a/src/wide.ts"],
     units: [{ kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" }],
-    unitByFile: new Map([["pkg/a/src/index.ts", "pkg/a"], ["pkg/a/src/long.ts", "pkg/a"]]),
+    unitByFile: new Map([
+      ["pkg/a/src/index.ts", "pkg/a"],
+      ["pkg/a/src/long.ts", "pkg/a"],
+      ["pkg/a/src/wide.ts", "pkg/a"],
+    ]),
     unitByPackageName: new Map([["@acme/a", "pkg/a"]]),
     summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
   };
@@ -98,6 +108,62 @@ test("portableSourceExcerpt clamps to architecture limits and scrubs GitHub toke
   assert.ok(redacted.text.includes("[redacted-token]"));
 });
 
+test("portableSourceExcerpt skips an overlong first line without raising bounds", () => {
+  assert.equal(SOURCE_EXCERPT_LIMITS.maxLines, 12);
+  assert.equal(SOURCE_EXCERPT_LIMITS.maxLineCharacters, 512);
+
+  const skipped = portableSourceExcerpt({
+    path: "pkg/a/src/wide.ts",
+    symbol: "wideFn",
+    startLine: 1,
+    endLine: 4,
+    frozenRevision: pin.commitSha,
+    fileText: files["pkg/a/src/wide.ts"]!,
+  });
+  assert.ok(skipped);
+  assert.equal(skipped.startLine, 2);
+  assert.equal(skipped.endLine, 4);
+  assert.equal(skipped.highlightLine, 2);
+  assert.equal(skipped.lines[0], "  return 1;");
+  assert.ok(!skipped.text.includes("export function wideFn"));
+  assert.ok(skipped.lines.length <= SOURCE_EXCERPT_LIMITS.maxLines);
+  assert.ok(skipped.lines.every(line => [...line].length <= SOURCE_EXCERPT_LIMITS.maxLineCharacters));
+
+  const exactLimit = "x".repeat(SOURCE_EXCERPT_LIMITS.maxLineCharacters);
+  const atLimit = portableSourceExcerpt({
+    path: "pkg/a/src/index.ts",
+    startLine: 1,
+    endLine: 1,
+    frozenRevision: pin.commitSha,
+    fileText: `${exactLimit}\n`,
+  });
+  assert.ok(atLimit);
+  assert.equal(atLimit.startLine, 1);
+  assert.equal(atLimit.lines[0], exactLimit);
+
+  const onlyOverlong = portableSourceExcerpt({
+    path: "pkg/a/src/index.ts",
+    startLine: 1,
+    endLine: 1,
+    frozenRevision: pin.commitSha,
+    fileText: `${"x".repeat(SOURCE_EXCERPT_LIMITS.maxLineCharacters + 1)}\n`,
+  });
+  assert.equal(onlyOverlong, undefined);
+
+  const planted = `gho_${"A".repeat(600)}`;
+  const scrubbedFits = portableSourceExcerpt({
+    path: "pkg/a/src/index.ts",
+    symbol: "alpha",
+    startLine: 1,
+    endLine: 1,
+    frozenRevision: pin.commitSha,
+    fileText: `export function alpha() { return "${planted}"; }\n`,
+  });
+  assert.ok(scrubbedFits);
+  assert.equal(scrubbedFits.startLine, 1);
+  assert.equal(scrubbedFits.text.includes(planted), false);
+});
+
 test("scan snapshot attaches portable excerpts to code entities and never to containers", () => {
   const artifacts = buildScanArtifacts({
     discovery: discovery(),
@@ -110,6 +176,7 @@ test("scan snapshot attaches portable excerpts to code entities and never to con
 
   const alpha = artifacts.snapshot.entities.find(entity => entity.name === "alpha")!;
   const longFn = artifacts.snapshot.entities.find(entity => entity.name === "longFn")!;
+  const wideFn = artifacts.snapshot.entities.find(entity => entity.name === "wideFn")!;
   const container = artifacts.snapshot.entities.find(entity => entity.kind === "container")!;
   const component = artifacts.snapshot.entities.find(entity => entity.kind === "component" && entity.name === "src/index.ts")!;
 
@@ -122,6 +189,11 @@ test("scan snapshot attaches portable excerpts to code entities and never to con
   assert.equal(longFn.sourceExcerpts?.length, 1);
   assert.equal(longFn.sourceExcerpts![0]!.lines.length, SOURCE_EXCERPT_LIMITS.maxLines);
   assert.equal(longFn.sourceRefs[0]!.endLine, longFn.sourceExcerpts![0]!.endLine);
+
+  assert.equal(wideFn.sourceExcerpts?.length, 1);
+  assert.equal(wideFn.sourceExcerpts![0]!.startLine, 2);
+  assert.equal(wideFn.sourceRefs[0]!.startLine, 2);
+  assert.ok(wideFn.sourceExcerpts![0]!.lines.every(line => [...line].length <= SOURCE_EXCERPT_LIMITS.maxLineCharacters));
 
   assert.equal(container.sourceExcerpts, undefined);
   assert.equal(component.sourceExcerpts, undefined);

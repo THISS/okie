@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { validateArchitectureExtraction, validateSnapshot, validateStory, validateView } from "@okie/architecture";
+import { SOURCE_EXCERPT_LIMITS, validateArchitectureExtraction, validateSnapshot, validateStory, validateView } from "@okie/architecture";
 import { scanRepository } from "./scan.js";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
@@ -42,4 +42,15 @@ test("scanning Okie passes every architecture gate cleanly", () => {
   assert.ok(excerpt, "inspectorAcceptedSummary must carry a portable excerpt");
   assert.ok(excerpt.text.includes("inspectorAcceptedSummary"), "excerpt must show the scanned symbol");
   assert.equal(excerpt.path, "apps/web/src/inspector/inspectorPanel.ts");
+
+  assert.equal(SOURCE_EXCERPT_LIMITS.maxLines, 12);
+  assert.equal(SOURCE_EXCERPT_LIMITS.maxLineCharacters, 512);
+  const canvasViewport = snapshot.entities.find(entity => entity.name === "CanvasViewport" && entity.kind === "code");
+  assert.ok(canvasViewport, "self-scan must include CanvasViewport");
+  const viewportExcerpt = canvasViewport.sourceExcerpts?.[0];
+  assert.ok(viewportExcerpt, "CanvasViewport must carry a portable excerpt even when its signature exceeds maxLineCharacters");
+  assert.equal(viewportExcerpt.path, "apps/web/src/App.tsx");
+  assert.ok(viewportExcerpt.lines.length >= 1 && viewportExcerpt.lines.length <= SOURCE_EXCERPT_LIMITS.maxLines);
+  assert.ok(viewportExcerpt.lines.every(line => [...line].length <= SOURCE_EXCERPT_LIMITS.maxLineCharacters));
+  assert.ok([...viewportExcerpt.text].length <= SOURCE_EXCERPT_LIMITS.maxTextCharacters);
 });
