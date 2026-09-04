@@ -3324,6 +3324,30 @@ export function App() {
   }
 
   function selectLevel(index: number) {
+    if (scanFixture) {
+      const detail = semanticDetails[index];
+      const preferredId = selected.id;
+      const initialFocus = scanCompileFocusForBand(
+        activeSnapshot,
+        preferredId,
+        detail,
+        scanFixture.navigation.rootEntityId,
+      );
+      void scanFixture.ensureNeighborhood(initialFocus).then(() => {
+        const compileFocus = scanCompileFocusForBand(
+          activeSnapshot,
+          preferredId,
+          detail,
+          scanFixture.navigation.rootEntityId,
+        );
+        return scanFixture.ensureNeighborhood(compileFocus);
+      }).then(() => selectLevelLoaded(index));
+      return;
+    }
+    selectLevelLoaded(index);
+  }
+
+  function selectLevelLoaded(index: number) {
     const liveCamera = abortInspectorCameraFlight();
     const level = levels[index];
     const detail = semanticDetails[index];
