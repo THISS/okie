@@ -37,4 +37,23 @@ describe('protocol scene roundedRect radius', () => {
     expect(rects.length).toBeGreaterThan(0);
     for (const rect of rects) expect(rect.radius).toBe(13);
   });
+
+  it('fills missing responsibility with the honest no-summary placeholder (CLA-58)', () => {
+    const protocol = toProtocolScene(scene([{
+      id: 'external:react',
+      name: 'react',
+      kind: 'system',
+      responsibility: '',
+      x: 0,
+      y: 0,
+      width: 220,
+      height: 130,
+    }])) as {
+      objects: Array<{ representations: Array<{ primitives: Array<{ kind: string; content?: string }> }> }>;
+    };
+    const texts = protocol.objects[0]!.representations[1]!.primitives
+      .filter(primitive => primitive.kind === 'text')
+      .map(primitive => primitive.content);
+    expect(texts).toContain('No summary supplied.');
+  });
 });

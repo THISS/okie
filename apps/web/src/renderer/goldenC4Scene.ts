@@ -22,6 +22,7 @@ import {
   goldenSnapshot,
   goldenStory,
   goldenView,
+  NO_SUMMARY_SUPPLIED,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
 import { scanEntityHasChildren } from './lazyBandCompile';
@@ -82,7 +83,7 @@ function entityForScene(
     kind: atlasKind(entity.kind),
     kindLabel: humanKind(entity.kind),
     detail,
-    responsibility: entity.responsibility ?? 'No summary supplied.',
+    responsibility: entity.responsibility?.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED,
     ...(entity.technology?.length ? { technology: entity.technology.join(' · ') } : {}),
     x: bounds.x,
     y: bounds.y,
