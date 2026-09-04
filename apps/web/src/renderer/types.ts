@@ -44,6 +44,10 @@ export type SceneEntity = {
   owners?: string[];
   /** Observed McCabe cyclomatic complexity. Omitted when the entity is not function-like. */
   cyclomaticComplexity?: number;
+  /** Observed lcov file hit rate (0–1). Omitted when no sidecar covers this file. */
+  coverageFileHitRate?: number;
+  /** Observed untested instrumented ranges overlapping this code entity. */
+  coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
 };
 
 export type SceneRelation = {

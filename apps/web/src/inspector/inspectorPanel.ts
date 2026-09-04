@@ -174,6 +174,58 @@ export function inspectorDuplicates(
     .map(([id, name]) => ({ id, name }));
 }
 
+export type InspectorCoverageRange = {
+  startLine: number;
+  endLine: number;
+};
+
+export type InspectorCoverageEntity = {
+  coverageFileHitRate?: number;
+  coverageUntestedRanges?: readonly InspectorCoverageRange[];
+};
+
+export type InspectorCoveragePresentation = {
+  fileHitRate?: number;
+  fileHitPercent?: number;
+  untestedRanges: InspectorCoverageRange[];
+};
+
+function validCoverageRange(range: InspectorCoverageRange | undefined): range is InspectorCoverageRange {
+  return Boolean(
+    range
+    && Number.isInteger(range.startLine)
+    && Number.isInteger(range.endLine)
+    && range.startLine >= 1
+    && range.endLine >= range.startLine,
+  );
+}
+
+/**
+ * Observed lcov sidecar facts for an L4 code entity. Omit when no sidecar
+ * covers this file — never invent 0%. Observed 0% from the sidecar is kept.
+ */
+export function inspectorCoverage(
+  entity: InspectorCoverageEntity | undefined,
+): InspectorCoveragePresentation | undefined {
+  const rate = entity?.coverageFileHitRate;
+  const hasRate = typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 && rate <= 1;
+  const ranges = (entity?.coverageUntestedRanges ?? []).filter(validCoverageRange)
+    .map(range => ({ startLine: range.startLine, endLine: range.endLine }))
+    .sort((left, right) => left.startLine - right.startLine || left.endLine - right.endLine)
+    .slice(0, 32);
+  if (!hasRate && ranges.length === 0) return undefined;
+  return {
+    ...(hasRate ? { fileHitRate: rate, fileHitPercent: Math.round(rate * 100) } : {}),
+    untestedRanges: ranges,
+  };
+}
+
+export function formatCoverageRange(range: InspectorCoverageRange): string {
+  return range.startLine === range.endLine
+    ? `L${range.startLine}`
+    : `L${range.startLine}–${range.endLine}`;
+}
+
 /**
  * Completeness noise (missing descriptions, technology, labels) can number in
  * the thousands on a self-scan. Structural / invalid notation still has to

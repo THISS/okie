@@ -189,7 +189,7 @@ export const ASK_ATLAS_INPUT_SCHEMA = {
 export const GET_ATLAS_CONTEXT_TOOL_NAME = 'get_atlas_context';
 export const GET_ATLAS_CONTEXT_TOOL_TITLE = 'Get atlas context';
 export const GET_ATLAS_CONTEXT_TOOL_DESCRIPTION =
-  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity (including observed cyclomatic complexity and clone duplicates when present), whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
+  'Return a structured snapshot of this atlas page: owner/repo or fixture id, C4 level, selected entity (including observed cyclomatic complexity, clone duplicates, and lcov coverage when present), whether the overview tour is playing, enrichment status, and whether scan or Ask is available on this page. Read-only.';
 
 export const GET_ATLAS_CONTEXT_INPUT_SCHEMA = {
   type: 'object',
@@ -217,6 +217,9 @@ export type AtlasSelectedEntityFacts = {
   cyclomaticComplexity?: number;
   cyclomaticFlagged?: boolean;
   duplicates?: Array<{ id: string; name: string }>;
+  coverageFileHitRate?: number;
+  coverageFileHitPercent?: number;
+  coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
 };
 
 export type AtlasPageContextInput = {
@@ -609,6 +612,30 @@ function publicSelectedEntity(value: AtlasSelectedEntityFacts | null | undefined
       duplicates.push({ id: counterpartId, name: counterpartName });
     }
     if (duplicates.length) facts.duplicates = duplicates;
+  }
+  if (typeof value.coverageFileHitRate === 'number'
+    && Number.isFinite(value.coverageFileHitRate)
+    && value.coverageFileHitRate >= 0
+    && value.coverageFileHitRate <= 1) {
+    facts.coverageFileHitRate = value.coverageFileHitRate;
+    facts.coverageFileHitPercent = Math.round(value.coverageFileHitRate * 100);
+  } else if (typeof value.coverageFileHitPercent === 'number'
+    && Number.isInteger(value.coverageFileHitPercent)
+    && value.coverageFileHitPercent >= 0
+    && value.coverageFileHitPercent <= 100) {
+    facts.coverageFileHitPercent = value.coverageFileHitPercent;
+  }
+  if (Array.isArray(value.coverageUntestedRanges)) {
+    const ranges: Array<{ startLine: number; endLine: number }> = [];
+    for (const row of value.coverageUntestedRanges) {
+      if (ranges.length >= 32) break;
+      if (!row || typeof row !== 'object') continue;
+      const range = row as { startLine?: unknown; endLine?: unknown };
+      if (!Number.isInteger(range.startLine) || !Number.isInteger(range.endLine)) continue;
+      if (range.startLine < 1 || range.endLine < range.startLine) continue;
+      ranges.push({ startLine: range.startLine, endLine: range.endLine });
+    }
+    if (ranges.length) facts.coverageUntestedRanges = ranges;
   }
   return facts;
 }

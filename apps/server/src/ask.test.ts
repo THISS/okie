@@ -192,6 +192,40 @@ test("Ask keeps observed cyclomatic on packets and derives the >6 flag", () => {
   assert.equal("apiKey" in (kept[0] as object), false);
 });
 
+test("Ask keeps observed lcov coverage on packets and drops CRAP", () => {
+  const kept = sanitizeAskPackets([
+    {
+      id: "code:tangled",
+      name: "tangled",
+      kind: "code",
+      coverageFileHitRate: 0.3,
+      coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+      crapScore: 12,
+      apiKey: FAKE_GATEWAY_KEY,
+    },
+    {
+      id: "component:web-shell",
+      name: "Application shell",
+      kind: "component",
+    },
+  ]);
+  assert.deepEqual(kept.find(packet => packet.id === "code:tangled"), {
+    id: "code:tangled",
+    name: "tangled",
+    kind: "code",
+    coverageFileHitRate: 0.3,
+    coverageFileHitPercent: 30,
+    coverageUntestedRanges: [{ startLine: 6, endLine: 8 }],
+  });
+  assert.equal(kept.find(packet => packet.id === "component:web-shell")?.coverageFileHitRate, undefined);
+  const body = askChatCompletionsBody("acme/fast", "Which symbols are untested?", kept, []);
+  const user = (body.messages as Array<{ content: string }>)[1]!.content;
+  assert.match(user, /"coverageFileHitRate": 0.3/);
+  assert.match(user, /"coverageFileHitPercent": 30/);
+  assert.doesNotMatch(user, /crapScore/);
+  assert.doesNotMatch(JSON.stringify(body), new RegExp(FAKE_GATEWAY_KEY));
+});
+
 test("Ask keeps observed clone duplicates on packets", () => {
   const kept = sanitizeAskPackets([
     {

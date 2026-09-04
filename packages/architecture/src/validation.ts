@@ -222,6 +222,42 @@ export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssu
         issues.push({ path: `${path}.cyclomaticComplexity`, message: "must be an integer >= 1 when present" });
       }
     }
+    if (entity.coverageFileHitRate !== undefined) {
+      if (entity.kind !== "code") {
+        issues.push({ path: `${path}.coverageFileHitRate`, message: "is only valid on code entities" });
+      }
+      if (typeof entity.coverageFileHitRate !== "number"
+        || !Number.isFinite(entity.coverageFileHitRate)
+        || entity.coverageFileHitRate < 0
+        || entity.coverageFileHitRate > 1) {
+        issues.push({ path: `${path}.coverageFileHitRate`, message: "must be a finite number between 0 and 1 when present" });
+      }
+    }
+    if (entity.coverageUntestedRanges !== undefined) {
+      if (entity.kind !== "code") {
+        issues.push({ path: `${path}.coverageUntestedRanges`, message: "is only valid on code entities" });
+      }
+      if (!Array.isArray(entity.coverageUntestedRanges) || entity.coverageUntestedRanges.length === 0) {
+        issues.push({ path: `${path}.coverageUntestedRanges`, message: "must be a non-empty array when present" });
+      } else {
+        entity.coverageUntestedRanges.forEach((range, rangeIndex) => {
+          const rangePath = `${path}.coverageUntestedRanges[${rangeIndex}]`;
+          if (!range || typeof range !== "object") {
+            issues.push({ path: rangePath, message: "must be a line range" });
+            return;
+          }
+          if (!Number.isInteger(range.startLine) || range.startLine < 1) {
+            issues.push({ path: `${rangePath}.startLine`, message: "must be an integer >= 1" });
+          }
+          if (!Number.isInteger(range.endLine) || range.endLine < 1) {
+            issues.push({ path: `${rangePath}.endLine`, message: "must be an integer >= 1" });
+          }
+          if (Number.isInteger(range.startLine) && Number.isInteger(range.endLine) && range.endLine < range.startLine) {
+            issues.push({ path: `${rangePath}.endLine`, message: "must be >= startLine" });
+          }
+        });
+      }
+    }
     const excerpts = entity.sourceExcerpts ?? [];
     for (const duplicate of duplicateValues(excerpts.map(excerpt => JSON.stringify([
       excerpt.frozenRevision,

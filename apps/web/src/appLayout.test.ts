@@ -208,6 +208,18 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('data-inspector-duplicate-id={counterpart.id}');
   });
 
+  it('renders observed lcov coverage in Details and omits the section when no sidecar', () => {
+    expect(app).toContain('inspectorCoverage(selected)');
+    expect(app).toContain("data-inspector-has-coverage={selectedCoverage ? 'true' : 'false'}");
+    expect(app).toContain("data-inspector-section=\"coverage\"");
+    expect(app).toContain('<h3>Coverage</h3>');
+    expect(app).toContain('data-testid="inspector-coverage"');
+    expect(app).toContain('this file {selectedCoverage.fileHitPercent}%');
+    expect(app).toContain('{selectedCoverage ? <section');
+    expect(app).not.toContain('CRAP');
+    expect(app).not.toContain('crapScore');
+  });
+
   it('samples C4 completeness advisories in Details instead of dumping the full list', () => {
     expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics');
     expect(app).toContain('inspectorNotationScope({');

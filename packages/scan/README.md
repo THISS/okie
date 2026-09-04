@@ -10,6 +10,7 @@ okie-scan --source <path> [--out <dir>] [--system-name <name>] [--repo <slug>]
 okie-scan --source <path> --emit-packets <dir>
 okie-scan --source <path> --emit-prompt <dir>
 okie-scan --source <path> --enrich-from <dir>
+okie-scan --source <path> --lcov <path>
 ```
 
 Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Outputs
@@ -96,6 +97,21 @@ Discovery generalizes beyond Okie's own layout (validated against third-party cl
 The scan prints a summary of everything it left out (skipped `.js` count, skipped members) so
 omissions are always visible. Large repos currently stress the *scene compile* (edge routing),
 not the deterministic extraction — scoped compilation is tracked separately.
+
+## Optional lcov sidecar (L4 health — untested ranges)
+
+If an `lcov.info` sidecar is present, the scan overlays **untested instrumented line ranges**
+onto overlapping L4 code entities and a **file-level hit rate** ("this file 30%"). No extra
+nodes. Same facts flow to the inspector and WebMCP/Ask.
+
+- `--lcov <path>` points at an lcov.info file (cwd or scan-root relative, or absolute).
+- Without `--lcov`, the scan looks under the scan root for `coverage/lcov.info`, then
+  `lcov.info`, then `coverage/lcov/lcov.info` (first existing file wins).
+- **No sidecar → omit coverage.** Cyclomatic complexity and clone `duplicates` still overlay.
+  Do not invent 0%. Files that are not in the report stay omitted. Observed 0% from the
+  sidecar (LH=0, LF>0) is kept.
+- Coverage is a scan-time overlay, never `ArchitectureExtraction` input. There is no CRAP
+  headline score.
 
 ## Determinism
 

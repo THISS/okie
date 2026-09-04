@@ -97,6 +97,13 @@ function entityForScene(
     } : {}),
     ...(entity.owners?.length ? { owners: [...entity.owners] } : {}),
     ...(entity.cyclomaticComplexity !== undefined ? { cyclomaticComplexity: entity.cyclomaticComplexity } : {}),
+    ...(entity.coverageFileHitRate !== undefined ? { coverageFileHitRate: entity.coverageFileHitRate } : {}),
+    ...(entity.coverageUntestedRanges?.length ? {
+      coverageUntestedRanges: entity.coverageUntestedRanges.map(range => ({
+        startLine: range.startLine,
+        endLine: range.endLine,
+      })),
+    } : {}),
   };
 }
 
