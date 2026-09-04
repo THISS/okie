@@ -38,32 +38,40 @@ export type PortableExcerptInput = {
  * Bounded, commit-pinned source window for one observed code ref. Clamps to
  * architecture excerpt limits and scrubs GitHub-token shapes so a planted
  * credential cannot land in the portable snapshot.
+ *
+ * An overlong first line (over `maxLineCharacters`) is skipped so the window
+ * can still start on the next usable line. Lines are never truncated and the
+ * 12-line / 512-char bounds are not raised.
  */
 export function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerpt | undefined {
   const language = languageForScanPath(input.path);
   if (!language) return undefined;
   const fileLines = input.fileText.replace(/\r\n/g, "\n").split("\n");
-  const startLine = input.startLine;
-  if (!Number.isSafeInteger(startLine) || startLine < 1 || startLine > fileLines.length) return undefined;
-  const declaredEnd = Number.isSafeInteger(input.endLine) ? input.endLine : startLine;
-  const maxEnd = Math.min(fileLines.length, Math.max(startLine, declaredEnd));
-  let endLine = Math.min(maxEnd, startLine + SOURCE_EXCERPT_LIMITS.maxLines - 1);
-  while (endLine >= startLine) {
-    const lines = fileLines.slice(startLine - 1, endLine).map(line => scrubGithubTokens(line));
-    if (excerptWithinLimits(lines)) {
-      return {
-        path: input.path,
-        ...(input.symbol ? { symbol: input.symbol } : {}),
-        language,
-        startLine,
-        endLine,
-        highlightLine: startLine,
-        frozenRevision: input.frozenRevision,
-        lines,
-        text: lines.join("\n"),
-      };
+  const originalStart = input.startLine;
+  if (!Number.isSafeInteger(originalStart) || originalStart < 1 || originalStart > fileLines.length) {
+    return undefined;
+  }
+  const declaredEnd = Number.isSafeInteger(input.endLine) ? input.endLine : originalStart;
+  const maxEnd = Math.min(fileLines.length, Math.max(originalStart, declaredEnd));
+  for (let startLine = originalStart; startLine <= maxEnd; startLine += 1) {
+    let endLine = Math.min(maxEnd, startLine + SOURCE_EXCERPT_LIMITS.maxLines - 1);
+    while (endLine >= startLine) {
+      const lines = fileLines.slice(startLine - 1, endLine).map(line => scrubGithubTokens(line));
+      if (excerptWithinLimits(lines)) {
+        return {
+          path: input.path,
+          ...(input.symbol ? { symbol: input.symbol } : {}),
+          language,
+          startLine,
+          endLine,
+          highlightLine: startLine,
+          frozenRevision: input.frozenRevision,
+          lines,
+          text: lines.join("\n"),
+        };
+      }
+      endLine -= 1;
     }
-    endLine -= 1;
   }
   return undefined;
 }
