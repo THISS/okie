@@ -35,8 +35,8 @@ export function isUsableAtlasViewport(size: { width: number; height: number }): 
   return size.width >= USABLE_ATLAS_VIEWPORT_MIN && size.height >= USABLE_ATLAS_VIEWPORT_MIN;
 }
 
-export function isWebGpuInterfaceAvailable(nav: { gpu?: unknown } = navigator): boolean {
-  return nav.gpu != null;
+export function isWebGpuInterfaceAvailable(nav: object = navigator): boolean {
+  return (nav as { gpu?: unknown }).gpu != null;
 }
 
 export function isFramedFetchDest(dest: FrameDestHeader): boolean {
