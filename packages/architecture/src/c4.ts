@@ -14,6 +14,7 @@ import {
   expandRoutingRect,
   routeOrthogonal,
   routeOrthogonalWithIntent,
+  simplifyOrthogonalPoints,
   type GuidedOrthogonalRouteReason,
   type OrthogonalRouteDiagnostic,
 } from './orthogonal-router.js';
@@ -148,10 +149,11 @@ export type BuildC4ProjectionOptions = {
   maxBand?: C4Band;
   /**
    * Routed-edge budget per band (opt-in). When a band has more visual edges than this,
-   * only the top-N by (aggregate count desc, id asc) are routed; the remainder are
-   * recorded on `BandProjection.omittedEdgeIds` (their VisualEdge records — and thus
-   * relation ids/evidence — stay in the bundle index for `+N more` enumeration).
-   * Default: unbounded (byte-identical).
+   * only the top-N are routed: focus-first, then aggregate count desc, then on the
+   * code band clone `duplicates` ahead of same-count `uses` (CLA-68), then id asc.
+   * The remainder are recorded on `BandProjection.omittedEdgeIds` (their VisualEdge
+   * records — and thus relation ids/evidence — stay in the bundle index for
+   * `+N more` enumeration). Default: unbounded (byte-identical).
    */
   maxEdgesPerBand?: number;
   /**
@@ -188,6 +190,28 @@ export const C4_INTRINSIC_LAYOUT = {
     component: 96,
   },
 } as const;
+
+/**
+ * Screen-space routing clearance (CSS px at band focus). Matches the
+ * `8 / focusZoom` world clearance compiled in `@okie/scene-compiler`.
+ */
+export const C4_ROUTING_CLEARANCE_PX = 8;
+
+/**
+ * Scan-mode extra L4 sibling gap (CSS px at code focus zoom). Packed code
+ * cards otherwise sit two routing clearances apart, so a duplicates U is
+ * shorter than the renderer’s 6px corner rounding and collapses into a
+ * facing hop. Modest L4 packing bump (CLA-68); golden/demo (no
+ * targetAspect) stay byte-identical. A 20-leaf landscape file (okie’s
+ * icons.tsx public surface) reflows 4→5 columns at +32px — enough for a
+ * ~20px U at code-enter zoom, not a packing rewrite.
+ */
+export const C4_SCAN_CODE_GAP_EXTRA_PX = 32;
+
+/** World-space packed-gutter ceiling for a tight L4 duplicates loop. */
+function packedDuplicatesGutter(clearance: number): number {
+  return clearance * 2 + clearance * (C4_SCAN_CODE_GAP_EXTRA_PX / C4_ROUTING_CLEARANCE_PX);
+}
 
 /**
  * Discrete, compile-time aspect targets for grid packing. The CLIENT picks one at
@@ -588,6 +612,146 @@ export function routeC4BandEdges(
   return routeC4BandEdgesDetailed(projection, visualNodeById, visualEdgeById, nodes, options).edges;
 }
 
+const ROUTING_EPSILON = 1e-9;
+
+function facingGap(source: NodeLayout, target: NodeLayout): { axis: 'x' | 'y'; gap: number } {
+  const dx = target.x + target.width / 2 - (source.x + source.width / 2);
+  const dy = target.y + target.height / 2 - (source.y + source.height / 2);
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const gap = dx >= 0
+      ? target.x - (source.x + source.width)
+      : source.x - (target.x + target.width);
+    return { axis: 'x', gap };
+  }
+  const gap = dy >= 0
+    ? target.y - (source.y + source.height)
+    : source.y - (target.y + target.height);
+  return { axis: 'y', gap };
+}
+
+function duplicatesShareLane(
+  source: NodeLayout,
+  target: NodeLayout,
+  axis: 'x' | 'y',
+): boolean {
+  if (axis === 'x') {
+    return source.y < target.y + target.height - ROUTING_EPSILON
+      && target.y < source.y + source.height - ROUTING_EPSILON;
+  }
+  return source.x < target.x + target.width - ROUTING_EPSILON
+    && target.x < source.x + source.width - ROUTING_EPSILON;
+}
+
+function duplicatesLoopSide(axis: 'x' | 'y', flipped: boolean) {
+  if (axis === 'x') return flipped ? 'top' as const : 'bottom' as const;
+  return flipped ? 'left' as const : 'right' as const;
+}
+
+function duplicatesDomainRoom(
+  source: NodeLayout,
+  target: NodeLayout,
+  clearance: number,
+  domain: NodeLayout | undefined,
+  side: 'top' | 'right' | 'bottom' | 'left',
+): number {
+  if (!domain) return Number.POSITIVE_INFINITY;
+  const pad = Math.max(clearance, ROUTING_EPSILON);
+  if (side === 'bottom' || side === 'top') {
+    const outer = side === 'bottom'
+      ? Math.max(source.y + source.height, target.y + target.height)
+      : Math.min(source.y, target.y);
+    return side === 'bottom'
+      ? domain.y + domain.height - pad - outer
+      : outer - (domain.y + pad);
+  }
+  const outer = side === 'right'
+    ? Math.max(source.x + source.width, target.x + target.width)
+    : Math.min(source.x, target.x);
+  return side === 'right'
+    ? domain.x + domain.width - pad - outer
+    : outer - (domain.x + pad);
+}
+
+function duplicatesLoopOffset(
+  source: NodeLayout,
+  target: NodeLayout,
+  clearance: number,
+  domain: NodeLayout | undefined,
+  side: 'top' | 'right' | 'bottom' | 'left',
+): number {
+  const pad = Math.max(clearance, ROUTING_EPSILON);
+  const packingGap = facingGap(source, target).gap;
+  const card = side === 'bottom' || side === 'top'
+    ? Math.min(source.height, target.height)
+    : Math.min(source.width, target.width);
+  const desired = Math.max(pad * 4, card * 0.4);
+  const gutterRoom = packingGap > pad ? packingGap - pad - ROUTING_EPSILON : pad;
+  let offset = Math.min(desired, Math.max(pad, gutterRoom));
+  const domainRoom = duplicatesDomainRoom(source, target, clearance, domain, side);
+  if (Number.isFinite(domainRoom) && domainRoom > ROUTING_EPSILON) {
+    offset = Math.min(offset, domainRoom);
+  }
+  return Math.max(pad, offset);
+}
+
+/**
+ * CLA-68: packed L4 siblings sit about two routing clearances apart, so the
+ * default side-to-side orthogonal hop occupies the inter-card gutter. Emit a
+ * U in the packing gutter next to the pair (bottom/right, then the opposite
+ * side when the owner has more room there) so the stroke stays in the same
+ * viewport as the two cards. The grid router is not used: waypoints in that
+ * gutter sit on expanded-obstacle boundaries and would fall back to the hop.
+ * Far-apart clones keep auto routing. Not a packing or router rewrite.
+ */
+function tightDuplicatesLoopPoints(
+  source: NodeLayout,
+  target: NodeLayout,
+  clearance: number,
+  domain: NodeLayout | undefined,
+): { x: number; y: number }[] | undefined {
+  const facing = facingGap(source, target);
+  if (facing.gap < -ROUTING_EPSILON || facing.gap > packedDuplicatesGutter(clearance) + ROUTING_EPSILON) {
+    return undefined;
+  }
+  if (!duplicatesShareLane(source, target, facing.axis)) return undefined;
+  const primary = duplicatesLoopSide(facing.axis, false);
+  const flipped = duplicatesLoopSide(facing.axis, true);
+  const primaryRoom = duplicatesDomainRoom(source, target, clearance, domain, primary);
+  const flippedRoom = duplicatesDomainRoom(source, target, clearance, domain, flipped);
+  const side = (Number.isFinite(primaryRoom) && primaryRoom < clearance && flippedRoom > primaryRoom)
+    ? flipped
+    : primary;
+  const offset = duplicatesLoopOffset(source, target, clearance, domain, side);
+  if (side === 'bottom' || side === 'top') {
+    const x0 = source.x + source.width / 2;
+    const x1 = target.x + target.width / 2;
+    const y0 = side === 'bottom' ? source.y + source.height : source.y;
+    const y1 = side === 'bottom' ? target.y + target.height : target.y;
+    const y = side === 'bottom'
+      ? Math.max(source.y + source.height, target.y + target.height) + offset
+      : Math.min(source.y, target.y) - offset;
+    return simplifyOrthogonalPoints([
+      { x: x0, y: y0 },
+      { x: x0, y },
+      { x: x1, y },
+      { x: x1, y: y1 },
+    ]);
+  }
+  const y0 = source.y + source.height / 2;
+  const y1 = target.y + target.height / 2;
+  const x0 = side === 'right' ? source.x + source.width : source.x;
+  const x1 = side === 'right' ? target.x + target.width : target.x;
+  const x = side === 'right'
+    ? Math.max(source.x + source.width, target.x + target.width) + offset
+    : Math.min(source.x, target.x) - offset;
+  return simplifyOrthogonalPoints([
+    { x: x0, y: y0 },
+    { x, y: y0 },
+    { x, y: y1 },
+    { x: x1, y: y1 },
+  ]);
+}
+
 export function routeC4BandEdgesDetailed(
   projection: BandProjection,
   visualNodeById: Readonly<Record<string, VisualNode>>,
@@ -668,11 +832,12 @@ export function routeC4BandEdgesDetailed(
       });
     }
     if (selectedOverride) consumedOverrides.add(selectedOverride.id);
+    const domain = lcaBounds ? expandRoutingRect(lcaBounds, options.clearance * 2 + 1) : undefined;
     const routeOptions = {
       source,
       target,
       obstacles,
-      ...(lcaBounds ? { domain: expandRoutingRect(lcaBounds, options.clearance * 2 + 1) } : {}),
+      ...(domain ? { domain } : {}),
       clearance: options.clearance,
       laneOffset,
       maxPoints: options.maxPoints ?? 16,
@@ -689,6 +854,11 @@ export function routeC4BandEdgesDetailed(
         ...(guided.reason ? { reason: guided.reason } : {}),
         routerDiagnostic: guided.diagnostic,
       });
+    } else if (edge.kind === 'duplicates') {
+      const loop = tightDuplicatesLoopPoints(source, target, options.clearance, lcaBounds);
+      edges[edgeId] = {
+        points: loop ?? routeOrthogonal(routeOptions).points,
+      };
     } else {
       edges[edgeId] = { points: routeOrthogonal(routeOptions).points };
     }
@@ -951,9 +1121,11 @@ export function buildC4ProjectionBundle(
     });
     // Edge budget (opt-in): route only the top-N edges, focus-first — an edge touching
     // the focus subtree outranks every global heavy-hitter, so a drilled scope always
-    // shows ITS OWN wiring before the repo's loudest edges; within each tier, rank by
-    // (aggregate count desc, id asc). The rest stay enumerable via omittedEdgeIds +
-    // the bundle index ("+N more").
+    // shows ITS OWN wiring before the repo's loudest edges. Within each tier, rank by
+    // aggregate count desc; on the code band, clone `duplicates` beat same-count
+    // `uses` so packed L4 sibling strokes are not dropped by the scan relation-gate
+    // budget (CLA-68); then id asc. Heavier `uses` still outrank a count-1 clone
+    // pair. The rest stay enumerable via omittedEdgeIds + the bundle index ("+N more").
     let routedEdgeIds = visualEdgeIds;
     let omittedEdgeIds: string[] = [];
     if (options.maxEdgesPerBand !== undefined && visualEdgeIds.length > options.maxEdgesPerBand) {
@@ -964,9 +1136,13 @@ export function buildC4ProjectionBundle(
         return isDescendantOrSelf(fromEntityId, focus.id, entityById)
           || isDescendantOrSelf(toEntityId, focus.id, entityById) ? 1 : 0;
       };
+      const kindRank = (id: string): number => (
+        band === 'code' && visualEdgeById[id]?.kind === 'duplicates' ? 1 : 0
+      );
       const ranked = [...visualEdgeIds].sort((left, right) =>
         touchesFocus(right) - touchesFocus(left)
         || visualEdgeById[right]!.aggregate.count - visualEdgeById[left]!.aggregate.count
+        || kindRank(right) - kindRank(left)
         || left.localeCompare(right));
       const kept = new Set(ranked.slice(0, options.maxEdgesPerBand));
       routedEdgeIds = visualEdgeIds.filter(id => kept.has(id));

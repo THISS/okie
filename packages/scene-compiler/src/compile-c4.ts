@@ -1,6 +1,7 @@
 import {
   C4_BANDS,
   C4_INTRINSIC_LAYOUT,
+  C4_SCAN_CODE_GAP_EXTRA_PX,
   buildC4ProjectionBundle,
   materializeArchitectureAuthoring,
   measureC4Grid,
@@ -555,7 +556,7 @@ function intrinsicMetricsForOwner(entity: ArchitectureEntity, targetAspect?: num
       ? contract.header.system
       : contract.header.container;
   return {
-    gap: contract.gap / focusZoom,
+    gap: (contract.gap + (targetAspect !== undefined && entity.kind === 'component' ? C4_SCAN_CODE_GAP_EXTRA_PX : 0)) / focusZoom,
     paddingLeft: contract.sidePadding / focusZoom,
     paddingRight: contract.sidePadding / focusZoom,
     paddingTop: header / focusZoom,
