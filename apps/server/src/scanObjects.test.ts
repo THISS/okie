@@ -23,6 +23,10 @@ test("dogfood slug aliases the root self-scan trio", () => {
     "thiss__okie/enrichment-status.json",
     "enrichment-status.json",
   ]);
+  assert.deepEqual(publishedScanCandidates("thiss__okie/stories.json"), [
+    "thiss__okie/stories.json",
+    "stories.json",
+  ]);
   assert.deepEqual(publishedScanCandidates("../secrets.env"), []);
 });
 

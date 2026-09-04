@@ -14,7 +14,7 @@ After CLA-66, `/r/THISS/okie` still **downloaded** the full semantic trio (`snap
 - `childCounts` so Open inside stays enabled when children are not resident yet
 - `truncated` when the published snapshot has omitted entities
 
-`GET /scan/<slug>/excerpt.json?entity=<id>` returns that entity’s portable excerpts. `story.json` stays a small third fetch. Full `snapshot.json` / `view.json` remain published for tools; the atlas boot path must not GET them.
+`GET /scan/<slug>/excerpt.json?entity=<id>` returns that entity’s portable excerpts. `story.json` stays a small third fetch (the default overview). `stories.json` is an optional catalog (overview first, then user-flow stories). Full `snapshot.json` / `view.json` remain published for tools; the atlas boot path must not GET them.
 
 Deep links (`sel` / `lens` / `root`) fetch **that** neighborhood first, not the whole tree. Open inside merges the container subgraph into the resident snapshot. Source tab lazy-fetches excerpts.
 

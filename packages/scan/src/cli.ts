@@ -141,13 +141,14 @@ function readEnrichmentDocs(dir: string): Map<string, unknown> {
   return unwrapped;
 }
 
-/** Writes the six-artifact trio (+ enrichment report) to an output directory. */
+/** Writes the six-artifact trio, story catalog, and optional enrichment report. */
 function writeArtifacts(out: string, artifacts: ScanArtifacts): void {
   mkdirSync(out, { recursive: true });
   writeFileSync(`${out}/extraction.json`, stableJson(artifacts.extraction));
   writeFileSync(`${out}/snapshot.json`, stableJson(artifacts.snapshot));
   writeFileSync(`${out}/view.json`, stableJson(artifacts.view));
   writeFileSync(`${out}/story.json`, stableJson(artifacts.story));
+  writeFileSync(`${out}/stories.json`, stableJson(artifacts.catalog));
   writeFileSync(`${out}/scene.json`, stableJson(artifacts.scene));
   writeFileSync(`${out}/timeline.json`, stableJson(artifacts.timeline));
   if (artifacts.enrichmentReport) {
@@ -177,9 +178,12 @@ function summaryLines(artifacts: ScanArtifacts): string {
   const coverageNote = coverageCount > 0
     ? `  lcov sidecar: ${coverageCount} code entit${coverageCount === 1 ? "y" : "ies"} with file hit rate / untested ranges\n`
     : "";
+  const flowNote = artifacts.stories.length > 1
+    ? `  stories: ${artifacts.stories.length} (overview + ${artifacts.stories.length - 1} user-flow)\n`
+    : "  stories: 1 (overview)\n";
   return `okie-scan: ${snapshot.entities.length} entities, ${snapshot.relations.length} relations\n` +
     `  commit ${pin.commitSha}\n  tree   ${pin.treeHash}\n` +
-    modeNote + jsNote + membersNote + coverageNote + enrichedNote + systemScopeNote;
+    modeNote + jsNote + membersNote + coverageNote + flowNote + enrichedNote + systemScopeNote;
 }
 
 /** Rewrites <scanRoot>/index.json to index every per-repo scan slot deterministically. */
@@ -227,7 +231,7 @@ async function runGithubScan(args: CliArgs): Promise<void> {
   process.stdout.write(
     summaryLines(artifacts) +
     `  source gh:${github.owner}/${github.repo}${github.ref ? `@${github.ref}` : ""} -> ${commitSha.slice(0, 12)}\n` +
-    `  wrote snapshot/view/story/scene/timeline to ${args.out}\n` +
+    `  wrote snapshot/view/story/stories/scene/timeline to ${args.out}\n` +
     `  manifest: ${manifestCount} repo(s) indexed in ${args.scanRoot}/index.json\n` +
     `  load in the app at /r/${github.owner}/${github.repo} or ?fixture=scan:${github.dirSlug}\n`,
   );
@@ -264,7 +268,7 @@ function runLocalScan(args: CliArgs): void {
 
   const packetNote = args.emitPacketsDir ? `  wrote enrichment packets to ${args.emitPacketsDir}\n` : "";
   const promptNote = args.emitPromptDir ? `  wrote enrichment prompts to ${args.emitPromptDir}\n` : "";
-  process.stdout.write(summaryLines(artifacts) + packetNote + promptNote + `  wrote snapshot/view/story/scene/timeline to ${args.out}\n`);
+  process.stdout.write(summaryLines(artifacts) + packetNote + promptNote + `  wrote snapshot/view/story/stories/scene/timeline to ${args.out}\n`);
 }
 
 async function main(): Promise<void> {

@@ -8,6 +8,7 @@ const PUBLISHED_BASENAMES = new Set([
   "snapshot.json",
   "view.json",
   "story.json",
+  "stories.json",
   "scene.json",
   "timeline.json",
   "extraction.json",
@@ -20,7 +21,7 @@ const PUBLISHED_BASENAMES = new Set([
  * Relative paths under the scan root to try for one `/scan/...` request.
  *
  * Hosted `/r/THISS/okie` fetches `/scan/thiss__okie/neighborhood.json` (CLA-73)
- * plus `story.json`. Full `{snapshot,view,story}.json` remain published.
+ * plus `story.json` and `stories.json`. Full `{snapshot,view,story}.json` remain published.
  * A local `okie-scan` still writes the self-scan at the scan-root trio
  * (`fixtures/scan/snapshot.json`), so that slot aliases onto the dogfood slug.
  */

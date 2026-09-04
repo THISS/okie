@@ -209,6 +209,15 @@ test("no LLM key skips enrichment and still publishes the deterministic atlas", 
     assert.equal(job.enrichment.provider, undefined);
     assert.doesNotMatch(job.enrichment.note ?? "", /ANTHROPIC_API_KEY=\S+/);
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
+    assert.ok(existsSync(join(scanRoot, "acme__app", "story.json")));
+    assert.ok(existsSync(join(scanRoot, "acme__app", "stories.json")));
+    const publishedStory = JSON.parse(readFileSync(join(scanRoot, "acme__app", "story.json"), "utf8")) as { id: string };
+    const publishedCatalog = JSON.parse(readFileSync(join(scanRoot, "acme__app", "stories.json"), "utf8")) as {
+      schemaVersion: number;
+      stories: { id: string }[];
+    };
+    assert.equal(publishedCatalog.schemaVersion, 1);
+    assert.equal(publishedCatalog.stories[0]?.id, publishedStory.id);
     assert.ok(existsSync(join(scanRoot, "index.json")));
     const honesty = JSON.parse(readFileSync(join(scanRoot, "acme__app", "enrichment-status.json"), "utf8")) as {
       state: string; why?: string; note?: string; scanRoot?: string;

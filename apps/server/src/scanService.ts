@@ -64,7 +64,7 @@ export interface ScanServiceOptions {
   log?: (line: string) => void;
 }
 
-/** Writes the six-artifact trio (+ enrichment report) into the repo's scan slot. */
+/** Writes published scan artifacts (overview `story.json`, catalog `stories.json`, enrichment report) into the repo's scan slot. */
 function publishArtifacts(scanRoot: string, dirSlug: string, artifacts: ScanArtifacts): void {
   const out = join(scanRoot, dirSlug);
   mkdirSync(out, { recursive: true });
@@ -72,6 +72,7 @@ function publishArtifacts(scanRoot: string, dirSlug: string, artifacts: ScanArti
   writeFileSync(join(out, "snapshot.json"), stableJson(artifacts.snapshot));
   writeFileSync(join(out, "view.json"), stableJson(artifacts.view));
   writeFileSync(join(out, "story.json"), stableJson(artifacts.story));
+  writeFileSync(join(out, "stories.json"), stableJson(artifacts.catalog));
   writeFileSync(join(out, "scene.json"), stableJson(artifacts.scene));
   writeFileSync(join(out, "timeline.json"), stableJson(artifacts.timeline));
   const reportPath = join(out, "enrichment-report.json");

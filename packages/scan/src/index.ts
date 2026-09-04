@@ -14,4 +14,5 @@ export * from "./enrich.js";
 export * from "./github.js";
 export * from "./manifest.js";
 export * from "./overview-story.js";
+export * from "./flow-story.js";
 export * from "./scan.js";

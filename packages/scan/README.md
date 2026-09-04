@@ -14,7 +14,7 @@ okie-scan --source <path> --lcov <path>
 ```
 
 Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Outputs
-`extraction.json`, `snapshot.json`, `view.json`, `story.json`, `scene.json`, `timeline.json`.
+`extraction.json`, `snapshot.json`, `view.json`, `story.json`, `stories.json`, `scene.json`, `timeline.json`.
 
 ## Pipeline
 
@@ -33,6 +33,13 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
    `overview-story.ts` `buildOverviewStory`). After a gated enrichment pass, step
    narration may mention accepted section summaries; step count and reveals stay
    the C4 tour. Then `buildC4ProjectionBundle` → `compileC4Scene`/`compileC4Timeline`.
+   The scan also emits **user-flow stories** from documented templates
+   (`flow-story.ts` `USER_FLOW_TEMPLATES`: paste-a-repo `/new`, Ask, embed/oEmbed)
+   when those surfaces exist in the snapshot. Overview stays the default C4 nest
+   tour; flows are additional selectable stories. Copy is structural (entity name,
+   kind, role) unless an accepted `responsibility` is present. `story.json` remains
+   the overview; `stories.json` is the catalog (overview first). Generic repos
+   without those files publish overview only.
 
 ## Structure mapping (R1 — deterministic truth layer)
 
