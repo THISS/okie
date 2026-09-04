@@ -7,6 +7,7 @@
     "esModuleInterop": true
   },
   "references": [
+    { "path": "../../packages/architecture" },
     { "path": "../../packages/scan" }
   ],
   "include": ["src/**/*.ts"]

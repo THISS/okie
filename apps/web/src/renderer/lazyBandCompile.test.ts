@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ArchitectureEntity, ArchitectureSnapshot, EntityKind } from '@okie/architecture';
 import {
   cacheableNeighborhoodScene,
+  rememberPublishedChildCounts,
   scanAncestorAtBand,
   scanCompileFocusForBand,
   scanEntityHasChildren,
@@ -41,6 +42,18 @@ describe('scanEntityHasChildren', () => {
     expect(scanEntityHasChildren(tree, 'container:architecture')).toBe(true);
     expect(scanEntityHasChildren(tree, 'container:empty')).toBe(false);
     expect(scanEntityHasChildren(tree, 'code:arch-fn')).toBe(false);
+  });
+
+  it('uses published childCounts when the subgraph is not resident yet', () => {
+    expect(scanEntityHasChildren(tree, 'container:empty', { 'container:empty': 3 })).toBe(true);
+    expect(scanEntityHasChildren(tree, 'container:architecture', { 'container:architecture': 0 })).toBe(false);
+  });
+
+  it('reads remembered published counts without a call-site override', () => {
+    const slim = snapshot([entity('system:root', 'softwareSystem'), entity('container:empty', 'container', 'system:root')]);
+    rememberPublishedChildCounts(slim, { 'container:empty': 4 });
+    expect(scanEntityHasChildren(slim, 'container:empty')).toBe(true);
+    expect(scanPrefetchFocusIds(slim, ['container:empty'])).toEqual(['container:empty']);
   });
 });
 

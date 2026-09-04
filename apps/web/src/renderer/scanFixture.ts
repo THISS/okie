@@ -1,15 +1,22 @@
 import {
+  assignNeighborhoodSnapshot,
+  isNeighborhoodPacket,
+  mergeChildCounts,
+  validateNeighborhoodPacket,
   validateSnapshot,
   validateStoryDocument,
   validateView,
+  type ArchitectureNeighborhoodPacket,
   type ArchitectureSnapshot,
   type ArchitectureStory,
   type ArchitectureView,
   type C4Band,
   type EntityKind,
+  type SourceExcerpt,
   type ValidationIssue,
 } from '@okie/architecture';
 import { compileAppStoryPlan, createC4Scene, type AppStoryPlan } from './goldenC4Scene';
+import { rememberPublishedChildCounts } from './lazyBandCompile';
 import type { AtlasScene, ScanGuardRefusal } from './types';
 
 // Hang-guard only (CLA-66 / CLA-67): unbounded full-graph compiles above this
@@ -208,10 +215,23 @@ export type ScanFixture = {
    *  so derived projections and diagnostics can reuse the same deterministic value. */
   targetAspect?: number;
   navigation: ScanNavigationDefaults;
+  /** Published child counts, including descendants not yet fetched (CLA-73). */
+  childCounts: Record<string, number>;
+  /** How the snapshot arrived — neighborhood fetch vs the full published trio. */
+  boot: 'neighborhood' | 'full';
+  /** Fetch+merge a container/file subgraph. No-op when the neighborhood is already resident. */
+  ensureNeighborhood: (focusEntityId: string) => Promise<void>;
+  /** Fetch portable excerpts for one entity when Source opens. */
+  ensureExcerpts: (entityId: string) => Promise<SourceExcerpt[] | undefined>;
 };
 
 export type RawScanTrio = { snapshot: unknown; view: unknown; story: unknown };
 export type ScanTrioLoader = (name: 'snapshot' | 'view' | 'story') => Promise<unknown>;
+export type ScanNeighborhoodHost = {
+  loadNeighborhood: (focusEntityId: string) => Promise<ArchitectureNeighborhoodPacket>;
+  loadExcerpts: (entityId: string) => Promise<SourceExcerpt[] | undefined>;
+  loadStory: () => Promise<unknown>;
+};
 
 /** Raised when the scanned trio fails validation; carries every issue found. */
 export class ScanFixtureError extends Error {
@@ -237,6 +257,130 @@ function scopedValidate(label: string, validate: () => ValidationIssue[]): Valid
   } catch (error) {
     return [{ path: label, message: error instanceof Error ? error.message : 'is structurally invalid' }];
   }
+}
+
+function childCountsFromSnapshot(snapshot: ArchitectureSnapshot): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const entity of snapshot.entities) counts[entity.id] = 0;
+  for (const entity of snapshot.entities) {
+    if (entity.parentId === undefined) continue;
+    counts[entity.parentId] = (counts[entity.parentId] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function buildLiveScanFixture(
+  snapshot: ArchitectureSnapshot,
+  view: ArchitectureView,
+  story: AppStoryPlan,
+  options: ScanModeOptions,
+  extras: {
+    boot: ScanFixture['boot'];
+    childCounts: Record<string, number>;
+    host?: ScanNeighborhoodHost;
+    loadedFocusIds?: Set<string>;
+  },
+): ScanFixture {
+  const childCounts = extras.childCounts;
+  rememberPublishedChildCounts(snapshot, childCounts);
+  const loadedFocusIds = extras.loadedFocusIds ?? new Set<string>();
+  const inflight = new Map<string, Promise<void>>();
+  const host = extras.host;
+
+  const createScene = (focusEntityId: string, previous?: AtlasScene): AtlasScene => {
+    const decision = guardScanCompile(snapshot, focusEntityId, view.rootEntityId);
+    const scoped = decision.options;
+    const scene = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: view.rootEntityId,
+      focusEntityId: decision.focusEntityId,
+      familyId: `view-family:${snapshot.repositoryId}:${decision.focusEntityId}`,
+      sceneId: `scan:${snapshot.repositoryId}:c4`,
+      title: view.name,
+      subtitle: `scanned snapshot · ${snapshot.commitSha.slice(0, 12)}`,
+      frozenRevision: snapshot.commitSha,
+      previous,
+      ...scoped,
+      ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
+      ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
+    });
+    return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;
+  };
+
+  const ensureNeighborhood = async (focusEntityId: string): Promise<void> => {
+    if (!host) return;
+    const focus = focusEntityId.trim();
+    if (!focus) return;
+    if (loadedFocusIds.has(focus)) return;
+    const resident = snapshot.entities.some(entity => entity.id === focus);
+    const knownChildren = snapshot.entities.some(entity => entity.parentId === focus);
+    const publishedChildren = childCounts[focus] ?? 0;
+    // Resident leaves and already-expanded boxes skip the network. A deep-link
+    // or tour focus that is not in the slim snapshot must still fetch — L1
+    // childCounts does not list omitted L4 ids.
+    if (resident && (knownChildren || publishedChildren === 0)) {
+      loadedFocusIds.add(focus);
+      return;
+    }
+    const pending = inflight.get(focus);
+    if (pending) {
+      await pending;
+      return;
+    }
+    const work = (async () => {
+      const packet = await host.loadNeighborhood(focus);
+      const packetIssues = validateNeighborhoodPacket(packet);
+      if (packetIssues.length) throw new ScanFixtureError(packetIssues);
+      assignNeighborhoodSnapshot(snapshot, packet.snapshot);
+      for (const id of packet.view.entityIds) {
+        if (!view.entityIds.includes(id)) view.entityIds.push(id);
+      }
+      for (const id of packet.view.relationIds) {
+        if (!view.relationIds.includes(id)) view.relationIds.push(id);
+      }
+      Object.assign(view.layout.nodes, packet.view.layout.nodes);
+      if (packet.view.layout.edges) {
+        view.layout.edges = { ...(view.layout.edges ?? {}), ...packet.view.layout.edges };
+      }
+      Object.assign(childCounts, mergeChildCounts(childCounts, packet.childCounts));
+      loadedFocusIds.add(focus);
+      loadedFocusIds.add(packet.focusEntityId);
+    })();
+    inflight.set(focus, work);
+    try {
+      await work;
+    } finally {
+      inflight.delete(focus);
+    }
+  };
+
+  const ensureExcerpts = async (entityId: string): Promise<SourceExcerpt[] | undefined> => {
+    const existing = snapshot.entities.find(entity => entity.id === entityId);
+    if (existing?.sourceExcerpts?.length) return existing.sourceExcerpts;
+    if (!host) return existing?.sourceExcerpts;
+    const excerpts = await host.loadExcerpts(entityId);
+    if (excerpts?.length && existing) existing.sourceExcerpts = excerpts;
+    return excerpts;
+  };
+
+  return {
+    snapshot,
+    view,
+    story,
+    createScene,
+    scopeCompileOptions: (focusEntityId: string) => scanScopeCompileOptions(snapshot, focusEntityId),
+    ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
+    navigation: {
+      repositoryId: snapshot.repositoryId,
+      snapshotId: snapshot.id,
+      viewId: view.id,
+      rootEntityId: view.rootEntityId,
+    },
+    childCounts,
+    boot: extras.boot,
+    ensureNeighborhood,
+    ensureExcerpts,
+  };
 }
 
 /**
@@ -269,45 +413,33 @@ export function compileScanFixture(raw: RawScanTrio, options: ScanModeOptions = 
     throw new ScanFixtureError([{ path: 'story', message: error instanceof Error ? error.message : String(error) }]);
   }
 
-  const createScene = (focusEntityId: string, previous?: AtlasScene): AtlasScene => {
-    // The guard is the single choke point: it derives the scoped options (per-kind
-    // maxBand at every size) AND, above the hang-guard, swaps a would-hang
-    // unbounded focus for the safe fallback focus.
-    const decision = guardScanCompile(snapshot, focusEntityId, view.rootEntityId);
-    const scoped = decision.options;
-    const scene = createC4Scene({
-      baseSnapshot: snapshot,
-      rootEntityId: view.rootEntityId,
-      focusEntityId: decision.focusEntityId,
-      familyId: `view-family:${snapshot.repositoryId}:${decision.focusEntityId}`,
-      sceneId: `scan:${snapshot.repositoryId}:c4`,
-      title: view.name,
-      subtitle: `scanned snapshot · ${snapshot.commitSha.slice(0, 12)}`,
-      frozenRevision: snapshot.commitSha,
-      previous,
-      ...scoped,
-      // Aspect target is a per-MODE input applied at every size — deliberately NOT
-      // part of per-kind `scoped` maxBand, so the landscape/portrait pack still runs.
-      ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
-      ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
-    });
-    return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;
-  };
+  return buildLiveScanFixture(snapshot, view, story, options, {
+    boot: 'full',
+    childCounts: childCountsFromSnapshot(snapshot),
+  });
+}
 
-  return {
-    snapshot,
-    view,
-    story,
-    createScene,
-    scopeCompileOptions: (focusEntityId: string) => scanScopeCompileOptions(snapshot, focusEntityId),
-    ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
-    navigation: {
-      repositoryId: snapshot.repositoryId,
-      snapshotId: snapshot.id,
-      viewId: view.id,
-      rootEntityId: view.rootEntityId,
-    },
-  };
+export function compileScanNeighborhoodFixture(
+  packet: ArchitectureNeighborhoodPacket,
+  rawStory: unknown,
+  host: ScanNeighborhoodHost,
+  options: ScanModeOptions = {},
+): ScanFixture {
+  const packetIssues = validateNeighborhoodPacket(packet);
+  if (packetIssues.length) throw new ScanFixtureError(packetIssues);
+  if (!isRecord(rawStory)) throw new ScanFixtureError([{ path: 'story', message: 'must be a JSON object' }]);
+  let story: AppStoryPlan;
+  try {
+    story = compileAppStoryPlan(packet.snapshot, packet.view, rawStory as ArchitectureStory, { allowMissingFocus: true });
+  } catch (error) {
+    throw new ScanFixtureError([{ path: 'story', message: error instanceof Error ? error.message : String(error) }]);
+  }
+  return buildLiveScanFixture(packet.snapshot, packet.view, story, options, {
+    boot: 'neighborhood',
+    childCounts: { ...packet.childCounts },
+    host,
+    loadedFocusIds: new Set([packet.focusEntityId]),
+  });
 }
 
 // import.meta.glob tolerates a missing fixtures/scan/ at build time (it resolves
@@ -416,6 +548,77 @@ async function fetchScanDoc(name: 'snapshot' | 'view' | 'story', slug?: string):
   return (await resolveScanDocLoader(name, slug, { root: rootScanLoaders, repo: repoScanLoaders })()).default;
 }
 
+function scanObjectPath(slug: string | undefined, basename: string, query?: string): string {
+  const path = slug
+    ? `/scan/${encodeURIComponent(slug)}/${basename}`
+    : `/scan/${basename}`;
+  return query ? `${path}?${query}` : path;
+}
+
+async function fetchScanJson(path: string, fetchImpl: typeof fetch, label: string): Promise<unknown> {
+  let response: Response;
+  try {
+    response = await fetchImpl(path);
+  } catch (error) {
+    throw new ScanFixtureError([{
+      path: label,
+      message: `Could not reach the scan service for ${path} (${error instanceof Error ? error.message : String(error)}).`,
+    }]);
+  }
+  if (!response.ok) {
+    throw new ScanFixtureError([{
+      path: label,
+      message: response.status === 404
+        ? `No scanned repository is published at ${path}. Paste the repository on the scan page to create it.`
+        : `Failed to load ${path} (HTTP ${response.status}).`,
+    }]);
+  }
+  try {
+    return await response.json() as unknown;
+  } catch {
+    throw new ScanFixtureError([{ path: label, message: `${path} is not valid JSON.` }]);
+  }
+}
+
+/** Deep-link / Open-inside focus from the share URL. `sel` wins over lens/root. */
+export function bootFocusFromSearch(search: string): string | undefined {
+  const params = new URLSearchParams(search);
+  const sel = params.get('sel')?.trim();
+  if (sel) return sel;
+  const lens = params.getAll('lens').map(id => id.trim()).filter(Boolean);
+  const deepest = lens.at(-1);
+  if (deepest) return deepest;
+  const root = params.get('root')?.trim();
+  return root || undefined;
+}
+
+/**
+ * Runtime-fetch neighborhood host (CLA-73): `/scan/<slug>/neighborhood.json`
+ * plus lazy `/excerpt.json` and `story.json`. Does not GET snapshot.json/view.json.
+ */
+export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch = fetch): ScanNeighborhoodHost {
+  return {
+    async loadNeighborhood(focusEntityId: string) {
+      const focus = focusEntityId.trim();
+      const query = focus ? new URLSearchParams({ focus }).toString() : undefined;
+      const raw = await fetchScanJson(scanObjectPath(slug, 'neighborhood.json', query), fetchImpl, 'neighborhood');
+      if (!isNeighborhoodPacket(raw)) {
+        throw new ScanFixtureError([{ path: 'neighborhood', message: 'Scan neighborhood packet is structurally invalid.' }]);
+      }
+      return raw;
+    },
+    async loadExcerpts(entityId: string) {
+      const query = new URLSearchParams({ entity: entityId });
+      const raw = await fetchScanJson(scanObjectPath(slug, 'excerpt.json', query.toString()), fetchImpl, 'excerpt');
+      if (!isRecord(raw) || raw.kind !== 'excerpt' || !Array.isArray(raw.sourceExcerpts)) {
+        throw new ScanFixtureError([{ path: 'excerpt', message: 'Scan excerpt packet is structurally invalid.' }]);
+      }
+      return raw.sourceExcerpts as SourceExcerpt[];
+    },
+    loadStory: () => fetchScanJson(scanObjectPath(slug, 'story.json'), fetchImpl, 'story'),
+  };
+}
+
 /**
  * Fetches the scanned trio from the gitignored fixtures/scan/ path (served by the
  * dev server, like the stress fixture) and compiles it. `slug` selects a per-repo
@@ -430,4 +633,16 @@ export async function loadScanFixture(
   const loader: ScanTrioLoader = load ?? (name => fetchScanDoc(name, slug));
   const [snapshot, view, story] = await Promise.all([loader('snapshot'), loader('view'), loader('story')]);
   return compileScanFixture({ snapshot, view, story }, options);
+}
+
+export async function loadScanNeighborhoodFixture(
+  host: ScanNeighborhoodHost,
+  focusEntityId: string | undefined,
+  options: ScanModeOptions = {},
+): Promise<ScanFixture> {
+  const [packet, story] = await Promise.all([
+    host.loadNeighborhood(focusEntityId ?? ''),
+    host.loadStory(),
+  ]);
+  return compileScanNeighborhoodFixture(packet, story, host, options);
 }

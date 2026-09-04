@@ -1,8 +1,9 @@
+import { sliceArchitectureNeighborhood } from '@okie/architecture';
 import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, fetchScanTrioLoader, loadScanFixture, resolveScanDocLoader, ScanFixtureError, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadScanFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -157,3 +158,101 @@ describe('runtime-fetch scan trio loader (hosted /r URLs)', () => {
     }
   });
 });
+
+describe('CLA-73 slim neighborhood boot', () => {
+  it('reads sel from the share URL for the boot focus', () => {
+    expect(bootFocusFromSearch('?sel=container:web-app&detail=component')).toBe('container:web-app');
+    expect(bootFocusFromSearch('?root=system:okie&lens=container:web-app')).toBe('container:web-app');
+    expect(bootFocusFromSearch('?nav=1')).toBeUndefined();
+  });
+
+  it('GETs neighborhood.json + story.json, never snapshot.json', async () => {
+    const calls: string[] = [];
+    const packet = sliceArchitectureNeighborhood(
+      structuredClone(demoSnapshot) as typeof demoSnapshot,
+      structuredClone(demoView) as typeof demoView,
+      { focusEntityId: 'system:okie' },
+    );
+    const fetchImpl: typeof fetch = async input => {
+      const url = String(input);
+      calls.push(url);
+      if (url.includes('neighborhood.json')) {
+        return new Response(JSON.stringify(packet), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.includes('story.json')) {
+        return new Response(JSON.stringify(demoStory), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url.includes('excerpt.json')) {
+        return new Response(JSON.stringify({ kind: 'excerpt', schemaVersion: 1, entityId: 'x', sourceExcerpts: [] }), { status: 200 });
+      }
+      return new Response('nope', { status: 404 });
+    };
+    const host = fetchScanNeighborhoodHost('thiss__okie', fetchImpl);
+    await host.loadNeighborhood('system:okie');
+    await host.loadStory();
+    expect(calls.some(url => url.includes('neighborhood.json') && url.includes('focus=system%3Aokie'))).toBe(true);
+    expect(calls).toContain('/scan/thiss__okie/story.json');
+    expect(calls.some(url => url.includes('snapshot.json'))).toBe(false);
+    expect(calls.some(url => url.includes('view.json'))).toBe(false);
+  });
+
+  it('compiles an L1 neighborhood without L4 excerpts and still lazy-loads Source', async () => {
+    const packet = sliceArchitectureNeighborhood(
+      structuredClone(demoSnapshot) as typeof demoSnapshot,
+      structuredClone(demoView) as typeof demoView,
+      { focusEntityId: 'system:okie' },
+    );
+    expect(packet.snapshot.entities.some(entity => entity.kind === 'code')).toBe(false);
+    expect(packet.snapshot.entities.some(entity => entity.sourceExcerpts?.length)).toBe(false);
+    const excerpts = [{
+      path: 'apps/web/src/App.tsx',
+      language: 'tsx' as const,
+      startLine: 1,
+      endLine: 2,
+      highlightLine: 1,
+      frozenRevision: 'sha',
+      lines: ['export function App() {', '}'],
+      text: 'export function App() {\n}',
+    }];
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        structuredClone(demoSnapshot) as typeof demoSnapshot,
+        structuredClone(demoView) as typeof demoView,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => excerpts,
+      loadStory: async () => demoStory,
+    };
+    const fixture = compileScanNeighborhoodFixture(packet, demoStory, host);
+    expect(fixture.boot).toBe('neighborhood');
+    expect(fixture.childCounts['container:web-app']).toBeGreaterThan(0);
+    const scene = fixture.createScene(fixture.navigation.rootEntityId);
+    expect(scene.entities.some(entity => entity.kind === 'container')).toBe(true);
+    expect(scene.entities.some(entity => entity.detail === 'code')).toBe(false);
+
+    await fixture.ensureNeighborhood('container:web-app');
+    expect(fixture.snapshot.entities.some(entity => entity.id === 'component:web-shell')).toBe(true);
+
+    const loaded = await fixture.ensureExcerpts('code:web-shell:app');
+    expect(loaded?.[0]?.text).toContain('export function App()');
+
+    const requested: string[] = [];
+    const deepHost = {
+      ...host,
+      loadNeighborhood: async (focus: string) => {
+        requested.push(focus);
+        return host.loadNeighborhood(focus);
+      },
+    };
+    const l1 = compileScanNeighborhoodFixture(packet, demoStory, deepHost);
+    await l1.ensureNeighborhood('code:web-shell:app');
+    expect(requested).toEqual(['code:web-shell:app']);
+    expect(l1.snapshot.entities.some(entity => entity.id === 'code:web-shell:app')).toBe(true);
+  });
+
+  it('does not raise the 2000 hang-guard', () => {
+    const fixture = compileScanFixture(validTrio());
+    expect(fixture.boot).toBe('full');
+  });
+});
+

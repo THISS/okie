@@ -24,6 +24,7 @@ import {
   goldenView,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
+import { scanEntityHasChildren } from './lazyBandCompile';
 import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedEdge, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
@@ -147,8 +148,12 @@ export function compileAppStoryPlan(
   snapshot: ArchitectureSnapshot,
   view: ArchitectureView,
   story: ArchitectureStory,
+  options: { allowMissingFocus?: boolean } = {},
 ): AppStoryPlan {
-  const issues = validateStory(snapshot, view, story);
+  const issues = validateStory(snapshot, view, story).filter(issue => {
+    if (!options.allowMissingFocus) return true;
+    return !/not in view|does not cite snapshot evidence|not connected to a focused entity/u.test(issue.message);
+  });
   if (issues.length) {
     throw new Error(`Cannot prepare invalid app story: ${issues.map(issue => `${issue.path} ${issue.message}`).join('; ')}`);
   }
@@ -475,7 +480,7 @@ export function scanDrillDeeperDetail(
   const deeper = bands[bands.indexOf(target.detail ?? 'context') + 1];
   if (!deeper) return undefined;
   const hasChildren = snapshot
-    ? snapshot.entities.some(entity => entity.parentId === target.id)
+    ? scanEntityHasChildren(snapshot, target.id)
     : scene.entities.some(entity => entity.parentId === target.id);
   if (!hasChildren) return undefined;
   return semanticBounds(scene, target.id, deeper) ? undefined : deeper;

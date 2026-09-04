@@ -1474,6 +1474,21 @@ export function App() {
     inspectorSelectionRef.current = selected.id;
     setInspectorTab(inspectorTabForEntity(inspectorCanShowSource(selected)));
   }, [selected.detail, selected.id, selected.sourceExcerpts, selected.sourceRefs]);
+  useEffect(() => {
+    if (!scanFixture || inspectorTab !== 'source' || selected.detail !== 'code') return;
+    if (selected.sourceExcerpts?.length) return;
+    let cancelled = false;
+    void scanFixture.ensureExcerpts(selected.id).then(excerpts => {
+      if (cancelled || !excerpts?.length) return;
+      setScene(current => ({
+        ...current,
+        entities: current.entities.map(entity => entity.id === selected.id
+          ? { ...entity, sourceExcerpts: excerpts.map(excerpt => ({ ...excerpt, lines: [...excerpt.lines] })) }
+          : entity),
+      }));
+    });
+    return () => { cancelled = true; };
+  }, [inspectorTab, selected.detail, selected.id, selected.sourceExcerpts]);
   useEffect(() => () => inspectorCameraFlightControllerRef.current?.dispose(), []);
   useEffect(() => {
     setDetailsWidth(current => clampInspectorWidth(current, window.innerWidth));
@@ -2870,10 +2885,11 @@ export function App() {
     // Scan snapshots are read-only; neighborhood cache is the CLA-66 prefetch.
     // Authoring is golden-only and must not bypass the cache (callers always pass present).
     if (scanFixture) {
-      const cached = neighborhoodScenesRef.current.get(focusEntityId);
+      const cacheKey = `${focusEntityId}@${activeSnapshot.entities.length}:${activeSnapshot.relations.length}`;
+      const cached = neighborhoodScenesRef.current.get(cacheKey);
       if (cached) return cached;
       const compiled = activeCreateScene(focusEntityId, previous);
-      neighborhoodScenesRef.current.set(focusEntityId, cacheableNeighborhoodScene(compiled));
+      neighborhoodScenesRef.current.set(cacheKey, cacheableNeighborhoodScene(compiled));
       return compiled;
     }
     return activeCreateScene(focusEntityId, previous, authoring);
@@ -2882,9 +2898,13 @@ export function App() {
   /** Compile the next-band neighborhood without swapping the visible scene or moving the camera (CLA-11). */
   function prefetchCommittedBox(entityId: string | undefined) {
     if (!scanFixture || !entityId) return;
-    for (const focusId of scanPrefetchFocusIds(activeSnapshot, [entityId])) {
-      composeScene(focusId, scene, authoringHistoryRef.current.present);
-    }
+    void scanFixture.ensureNeighborhood(entityId).then(() => {
+      for (const focusId of scanPrefetchFocusIds(activeSnapshot, [entityId])) {
+        void scanFixture.ensureNeighborhood(focusId).then(() => {
+          composeScene(focusId, scene, authoringHistoryRef.current.present);
+        });
+      }
+    });
   }
 
   function authoredScene(document: ArchitectureAuthoringDocument, currentScene: AtlasScene) {
@@ -3278,6 +3298,14 @@ export function App() {
   }
 
   function openInside(entityId = selected.id, inspectorNavigation: 'external' | 'preserve' = 'external') {
+    if (scanFixture) {
+      void scanFixture.ensureNeighborhood(entityId).then(() => openInsideLoaded(entityId, inspectorNavigation));
+      return;
+    }
+    openInsideLoaded(entityId, inspectorNavigation);
+  }
+
+  function openInsideLoaded(entityId = selected.id, inspectorNavigation: 'external' | 'preserve' = 'external') {
     const liveCamera = abortInspectorCameraFlight();
     updateInspectorHistoryForNavigation(inspectorNavigation);
     if (query.fixture === 'stress') return;
@@ -3467,6 +3495,25 @@ export function App() {
   }
 
   function setStep(index: number, play = storyPlaying, historyMode: 'push' | 'replace' = 'replace') {
+    const bounded = (index + story.steps.length) % story.steps.length;
+    const step = story.steps[bounded];
+    if (scanFixture) {
+      const compileFocus = scanCompileFocusForBand(
+        activeSnapshot,
+        step.focusEntityIds[0] ?? scanFixture.navigation.rootEntityId,
+        step.reveal,
+        scanFixture.navigation.rootEntityId,
+      );
+      void Promise.all([
+        scanFixture.ensureNeighborhood(compileFocus),
+        scanFixture.ensureNeighborhood(step.focusEntityIds[0] ?? compileFocus),
+      ]).then(() => setStepLoaded(index, play, historyMode));
+      return;
+    }
+    setStepLoaded(index, play, historyMode);
+  }
+
+  function setStepLoaded(index: number, play = storyPlaying, historyMode: 'push' | 'replace' = 'replace') {
     const bounded = (index + story.steps.length) % story.steps.length;
     const step = story.steps[bounded];
     const liveCamera = abortInspectorCameraFlight();
@@ -4396,7 +4443,7 @@ export function App() {
   const storyControlActive = storyPlaying || storyPhase === 'flight' || storyPhase === 'arrival';
 
   return (
-    <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-atlas-source={importedAtlas ? 'imported-mermaid' : scanFixture ? 'scan' : 'golden'} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-dev-mode={devMode ? 'true' : 'false'} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
+    <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-atlas-source={importedAtlas ? 'imported-mermaid' : scanFixture ? 'scan' : 'golden'} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-dev-mode={devMode ? 'true' : 'false'} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-scan-boot={scanFixture?.boot ?? ''} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
       <a className="skip-link" href={mainDiagramActive ? '#entity-explorer' : '#derived-diagram-content'}>{mainDiagramActive ? 'Skip to entity explorer' : 'Skip to active diagram'}</a>
       <header className="topbar">
         <div className="brand-block" aria-label="Atlas home">

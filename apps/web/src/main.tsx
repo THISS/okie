@@ -16,8 +16,11 @@ import { setActiveScanFixture } from './renderer/fixtureBundle';
 import { registerWebMcpFoundation } from './webmcp';
 import {
   availableScanRepoSlugs,
+  bootFocusFromSearch,
+  fetchScanNeighborhoodHost,
   fetchScanTrioLoader,
   loadScanFixture,
+  loadScanNeighborhoodFixture,
   ScanFixtureError,
   type ScanFixture,
   type ScanTrioLoader,
@@ -63,6 +66,22 @@ async function tryBootScanFixture(
   }
 }
 
+async function tryBootNeighborhoodFixture(
+  slug: string | undefined,
+): Promise<{ ok: true } | { ok: false; error: unknown }> {
+  try {
+    const fixture: ScanFixture = await loadScanNeighborhoodFixture(
+      fetchScanNeighborhoodHost(slug),
+      bootFocusFromSearch(window.location.search),
+      { targetAspect: bootstrapScanAspect() },
+    );
+    setActiveScanFixture(fixture);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
 async function bootScanFixture(load: ScanTrioLoader | undefined, slug: string | undefined): Promise<boolean> {
   const result = await tryBootScanFixture(load, slug);
   if (!result.ok) {
@@ -80,11 +99,11 @@ async function boot() {
   //
   // Selection, in order:
   //   /new                       → the paste-a-repo landing (no atlas machinery)
-  //   /r/<owner>/<repo>          → public share URL (no login). Published trio
-  //                                via runtime fetch; THISS/okie also falls back
-  //                                through the bundled self-scan to the golden demo.
-  //   ?fixture=scan[:<slug>]     → the R3a query form (bundled glob; runtime-fetch
-  //                                fallback for a slug published after this build)
+  //   /r/<owner>/<repo>          → public share URL (no login). Neighborhood
+  //                                packet via runtime fetch (CLA-73); THISS/okie
+  //                                also falls back through the bundled self-scan
+  //                                to the golden demo.
+  //   ?fixture=scan[:<slug>]     → neighborhood fetch first, then the R3a glob
   const route = parseAppRoute(window.location.pathname);
   if (route.kind === 'landing') {
     const { ScanLandingScreen } = await import('./scanLanding');
@@ -102,8 +121,16 @@ async function boot() {
         atlasReady = true;
         break;
       }
-      const load = step.kind === 'fetch' ? fetchScanTrioLoader(step.slug) : undefined;
-      const result = await tryBootScanFixture(load, step.slug);
+      if (step.kind === 'fetch') {
+        const neighborhood = await tryBootNeighborhoodFixture(step.slug);
+        if (neighborhood.ok) {
+          atlasReady = true;
+          break;
+        }
+        lastError = neighborhood.error;
+        continue;
+      }
+      const result = await tryBootScanFixture(undefined, step.slug);
       if (result.ok) {
         atlasReady = true;
         break;
@@ -117,9 +144,12 @@ async function boot() {
   } else {
     const query = readDemoQuery(window.location.search);
     if (query.fixture === 'scan') {
-      const bundled = query.scanRepo === undefined || availableScanRepoSlugs().includes(query.scanRepo);
-      const load = bundled ? undefined : fetchScanTrioLoader(query.scanRepo);
-      if (!await bootScanFixture(load, query.scanRepo)) return;
+      const neighborhood = await tryBootNeighborhoodFixture(query.scanRepo);
+      if (!neighborhood.ok) {
+        const bundled = query.scanRepo === undefined || availableScanRepoSlugs().includes(query.scanRepo);
+        const load = bundled ? undefined : fetchScanTrioLoader(query.scanRepo);
+        if (!await bootScanFixture(load, query.scanRepo)) return;
+      }
     }
   }
   const { App } = await import('./App');
