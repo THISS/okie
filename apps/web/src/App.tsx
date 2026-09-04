@@ -3400,27 +3400,58 @@ export function App() {
     // scope (snapshot children, not the compiled scene). Inspector-history mode
     // was already applied above, so 'preserve' survives.
     const drillDetail = scanFixture ? scanDrillDeeperDetail(scene, target, activeSnapshot) : undefined;
-    if (drillDetail) {
+    if (drillDetail && scanFixture) {
+      // Neighborhood compile (CLA-66) then land on the deeper band. Cancelling the
+      // lens first reset data-detail to context (CLA-80); the Components rail
+      // recovered via semanticLevelSession. Open inside must do that landing itself.
       interruptStory(`Opened ${target.name}`);
-      cancelSemanticLensAt('scan drill recompile', liveCamera);
-      const nextScene = composeScene(target.id, scene, authoringHistoryRef.current.present);
-      const nextCamera = frameProjectionScope(nextScene, target.id, baseDetail, viewport, measureCurrentMapSafeArea())
-        ?? (() => {
-          const bounds = semanticBounds(nextScene, target.id, baseDetail) ?? target;
-          return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2, zoom: levels[activeLevel].zoom };
-        })();
+      const currentSession = semanticLensSessionRef.current;
+      const previousDetail = semanticLensSessionDetail(currentSession);
+      const preferredIds = [target.id, ...currentSession.settled.map(entry => entry.targetId).reverse(), navigationIdentity.rootEntityId];
+      const compileFocus = scanCompileFocusForBand(
+        activeSnapshot,
+        target.id,
+        drillDetail,
+        scanFixture.navigation.rootEntityId,
+      );
+      const nextScene = composeScene(compileFocus, scene, authoringHistoryRef.current.present);
+      const nextSession = semanticLevelSession(nextScene, drillDetail, preferredIds);
+      const previousAnchorId = currentSession.settled.at(-1)?.targetId
+        ?? (semanticBounds(scene, target.id, previousDetail) ? target.id : navigationIdentity.rootEntityId);
+      const targetAnchorId = nextSession.settled.at(-1)?.targetId
+        ?? (semanticBounds(nextScene, target.id, drillDetail) ? target.id : compileFocus);
+      const previousBounds = semanticBounds(scene, previousAnchorId, previousDetail);
+      const targetBounds = semanticBounds(nextScene, targetAnchorId, drillDetail)
+        ?? semanticBounds(nextScene, compileFocus, drillDetail)
+        ?? target;
+      semanticLensSessionRef.current = nextSession;
+      semanticMorphStateRef.current = undefined;
+      semanticMorphBaselineRef.current = 0;
+      setSemanticLensSession(nextSession);
+      activeLevelRef.current = semanticDetails.indexOf(drillDetail);
+      const mapSafeArea = measureCurrentMapSafeArea();
+      const anchored = retargetCameraForSemanticBand(
+        liveCamera,
+        previousBounds,
+        targetBounds,
+        levels[semanticDetails.indexOf(drillDetail)]!.zoom,
+        viewport,
+      );
+      const framedCamera = frameProjectionScope(nextScene, compileFocus, drillDetail, viewport, mapSafeArea) ?? anchored;
+      const nextCamera = containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
       setScene({ ...nextScene, scanDrillRecompile: { targetId: target.id, deeperDetail: drillDetail } });
       setSelectedId(target.id);
-      setNavigationIdentity(current => ({ ...current, rootEntityId: target.id }));
+      setNavigationIdentity(current => ({ ...current, rootEntityId: compileFocus }));
       updateCamera(nextCamera);
       commitNavigation(canonicalNavigationState({
         ...navigationRef.current,
-        rootEntityId: target.id,
+        rootEntityId: compileFocus,
         selectedId: target.id,
         camera: nextCamera,
-        detail: baseDetail,
+        detail: nextSession.baseDetail,
+        lensPath: semanticLensCanonicalPathIds(nextSession),
       }, navigationDefaults), 'push');
-      setLiveMessage(`${target.name} opened. Compiled its deeper ${levels[semanticDetails.indexOf(drillDetail)]?.name ?? drillDetail} scope.`);
+      setLiveMessage(`${target.name} opened. ${levels[semanticDetails.indexOf(drillDetail)]?.name ?? drillDetail} detail is now in focus.`);
       return;
     }
     const plan = semanticOpenNextLayer(
