@@ -6,6 +6,7 @@ export {
   inspectorCyclomatic,
   inspectorCoverage,
   inspectorDuplicates,
+  inspectorUntestedBehaviours,
   formatCoverageRange,
   inspectorNotationScope,
   inspectorPathOwners,

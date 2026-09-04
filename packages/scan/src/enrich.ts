@@ -6,11 +6,14 @@ import {
   type ArchitectureExtractionEvidence,
   type ArchitectureExtractionRelation,
   type ArchitectureExtractionSourceRef,
+  type CoverageLineRange,
   type RelationKind,
+  type UntestedBehaviour,
 } from "@okie/architecture";
-import { ENRICHMENT_PROMPT_VERSION } from "./packet.js";
+import { ENRICHMENT_PROMPT_VERSION, ENRICHMENT_PROMPT_VERSION_V3 } from "./packet.js";
 import { containerScopes, type ContainerScope } from "./scope.js";
 import { resolveCollisions, typedId } from "./ids.js";
+import type { EntityCoverageOverlay } from "./lcov.js";
 
 // Preserve the strongest trail when many file→file edges collapse into one
 // logical→logical edge: union their evidence up to the schema's per-relation limit.
@@ -51,11 +54,49 @@ export interface EnrichmentOutcome {
   report: EnrichmentReport;
 }
 
+export interface MergeEnrichmentOptions {
+  /** Observed lcov untested ranges keyed by code id. Absent → any untestedBehaviours is invented. */
+  coverageByCodeId?: ReadonlyMap<string, EntityCoverageOverlay>;
+}
+
+/** True when `cited` equals or sits inside an observed untested range. */
+export function rangeGroundedInObserved(
+  cited: Pick<CoverageLineRange, "startLine" | "endLine">,
+  observed: readonly Pick<CoverageLineRange, "startLine" | "endLine">[],
+): boolean {
+  return observed.some(range => cited.startLine >= range.startLine && cited.endLine <= range.endLine);
+}
+
+function cloneUntestedBehaviours(items: readonly UntestedBehaviour[]): UntestedBehaviour[] {
+  return items.map(item => ({
+    startLine: item.startLine,
+    endLine: item.endLine,
+    behaviour: item.behaviour,
+  }));
+}
+
+function observedRangesFor(
+  codeId: string,
+  coverageByCodeId: ReadonlyMap<string, EntityCoverageOverlay> | undefined,
+): CoverageLineRange[] {
+  return [...(coverageByCodeId?.get(codeId)?.untestedRanges ?? [])];
+}
+
+function reportPromptVersion(
+  coverageByCodeId: ReadonlyMap<string, EntityCoverageOverlay> | undefined,
+): string {
+  if (coverageByCodeId && [...coverageByCodeId.values()].some(overlay => overlay.untestedRanges?.length)) {
+    return ENRICHMENT_PROMPT_VERSION_V3;
+  }
+  return ENRICHMENT_PROMPT_VERSION;
+}
+
 /** LLM-authored judgement on one code entity — additive prose, never observed fact. */
 interface CodeJudgement {
   responsibility?: NonNullable<ArchitectureExtractionEntity["responsibility"]>;
   technology?: NonNullable<ArchitectureExtractionEntity["technology"]>;
   tags?: NonNullable<ArchitectureExtractionEntity["tags"]>;
+  untestedBehaviours?: UntestedBehaviour[];
 }
 
 interface AcceptedProposal {
@@ -71,11 +112,17 @@ interface AcceptedProposal {
 }
 
 function judgementOf(entity: ArchitectureExtractionEntity): CodeJudgement | undefined {
-  if (entity.responsibility === undefined && entity.technology === undefined && entity.tags === undefined) return undefined;
+  if (
+    entity.responsibility === undefined
+    && entity.technology === undefined
+    && entity.tags === undefined
+    && entity.untestedBehaviours === undefined
+  ) return undefined;
   return {
     ...(entity.responsibility !== undefined ? { responsibility: entity.responsibility } : {}),
     ...(entity.technology !== undefined ? { technology: entity.technology } : {}),
     ...(entity.tags !== undefined ? { tags: entity.tags } : {}),
+    ...(entity.untestedBehaviours?.length ? { untestedBehaviours: cloneUntestedBehaviours(entity.untestedBehaviours) } : {}),
   };
 }
 
@@ -105,6 +152,7 @@ function validateDoc(
   scope: ContainerScope,
   baseSystemId: string,
   baseEntityIds: ReadonlySet<string>,
+  coverageByCodeId: ReadonlyMap<string, EntityCoverageOverlay> | undefined,
 ): { proposal?: AcceptedProposal; reasons: string[] } {
   const reasons: string[] = [];
   const doc = record(rawDoc);
@@ -137,9 +185,28 @@ function validateDoc(
   }
 
   if (proposedNew.length > 0) {
-    return validateRegroupDoc(reasons, scope, baseEntityIds, proposedNew, codes, containers);
+    return validateRegroupDoc(reasons, scope, baseEntityIds, proposedNew, codes, containers, coverageByCodeId);
   }
-  return validateSummaryDoc(reasons, scope, restatedExisting, codes, containers);
+  return validateSummaryDoc(reasons, scope, restatedExisting, codes, containers, coverageByCodeId);
+}
+
+function validateGroundedUntestedBehaviours(
+  entity: ArchitectureExtractionEntity,
+  observed: readonly CoverageLineRange[],
+  reasons: string[],
+): void {
+  if (!entity.untestedBehaviours?.length) return;
+  if (observed.length === 0) {
+    reasons.push(`${entity.kind} ${entity.id} must not invent untested behaviours without observed untested ranges`);
+    return;
+  }
+  for (const item of entity.untestedBehaviours) {
+    if (!rangeGroundedInObserved(item, observed)) {
+      reasons.push(
+        `${entity.kind} ${entity.id} untested behaviour L${item.startLine}–${item.endLine} is not grounded in observed untested ranges`,
+      );
+    }
+  }
 }
 
 function validateRegroupDoc(
@@ -149,6 +216,7 @@ function validateRegroupDoc(
   components: ArchitectureExtractionEntity[],
   codes: ArchitectureExtractionEntity[],
   containers: ArchitectureExtractionEntity[],
+  coverageByCodeId: ReadonlyMap<string, EntityCoverageOverlay> | undefined,
 ): { proposal?: AcceptedProposal; reasons: string[] } {
   const namespacePrefix = `component:${localOf(scope.container.id)}-`;
   const proposedIds = new Set(components.map(component => component.id));
@@ -159,6 +227,10 @@ function validateRegroupDoc(
     for (const ref of component.sourceRefs) {
       if (!scope.scopePaths.includes(ref.path)) reasons.push(`component ${component.id} cites out-of-scope path ${ref.path}`);
     }
+    const childObserved = codes
+      .filter(code => code.parentId === component.id)
+      .flatMap(code => observedRangesFor(code.id, coverageByCodeId));
+    validateGroundedUntestedBehaviours(component, childObserved, reasons);
   }
 
   const baseCodeById = new Map(scope.code.map(code => [code.id, code]));
@@ -180,6 +252,7 @@ function validateRegroupDoc(
     // the same contract logical components already enjoy.
     const judgement = judgementOf(code);
     if (judgement) codeJudgements.set(code.id, judgement);
+    validateGroundedUntestedBehaviours(code, observedRangesFor(code.id, coverageByCodeId), reasons);
     const path = code.sourceRefs[0]?.path ?? "";
     const existing = parentByPath.get(path);
     if (existing !== undefined && existing !== code.parentId) reasons.push(`file ${path} is split across components (violates file cohesion)`);
@@ -216,6 +289,7 @@ function validateSummaryDoc(
   restatedExisting: ArchitectureExtractionEntity[],
   codes: ArchitectureExtractionEntity[],
   containers: ArchitectureExtractionEntity[],
+  coverageByCodeId: ReadonlyMap<string, EntityCoverageOverlay> | undefined,
 ): { proposal?: AcceptedProposal; reasons: string[] } {
   const componentJudgements = new Map<string, CodeJudgement>();
   for (const component of restatedExisting) {
@@ -227,6 +301,10 @@ function validateSummaryDoc(
         reasons.push(`component ${component.id} cites out-of-scope path ${ref.path}`);
       }
     }
+    const childObserved = scope.code
+      .filter(code => code.parentId === component.id)
+      .flatMap(code => observedRangesFor(code.id, coverageByCodeId));
+    validateGroundedUntestedBehaviours(component, childObserved, reasons);
     const judgement = judgementOf(component);
     if (judgement) componentJudgements.set(component.id, judgement);
   }
@@ -242,6 +320,7 @@ function validateSummaryDoc(
     if (code.parentId !== base.parentId) {
       reasons.push(`code ${code.id} must keep its scanner parent ${base.parentId ?? "<none>"}`);
     }
+    validateGroundedUntestedBehaviours(code, observedRangesFor(code.id, coverageByCodeId), reasons);
     const judgement = judgementOf(code);
     if (judgement) codeJudgements.set(code.id, judgement);
   }
@@ -404,6 +483,36 @@ function unionSummaryProposals(proposals: readonly AcceptedProposal[]): Accepted
   };
 }
 
+function distributeComponentBehaviours(
+  judgementByCode: Map<string, CodeJudgement>,
+  judgementByComponent: Map<string, CodeJudgement>,
+  base: ArchitectureExtraction,
+  coverageByCodeId: ReadonlyMap<string, EntityCoverageOverlay> | undefined,
+): void {
+  const children = new Map<string, string[]>();
+  for (const entity of base.entities) {
+    if (entity.kind !== "code" || !entity.parentId) continue;
+    const list = children.get(entity.parentId) ?? [];
+    list.push(entity.id);
+    children.set(entity.parentId, list);
+  }
+  for (const [componentId, judgement] of judgementByComponent) {
+    const items = judgement.untestedBehaviours;
+    if (!items?.length) continue;
+    for (const item of items) {
+      const match = (children.get(componentId) ?? []).find(id =>
+        rangeGroundedInObserved(item, coverageByCodeId?.get(id)?.untestedRanges ?? []));
+      if (!match) continue;
+      const existing = judgementByCode.get(match);
+      if (existing?.untestedBehaviours?.length) continue;
+      judgementByCode.set(match, {
+        ...(existing ?? {}),
+        untestedBehaviours: [...(existing?.untestedBehaviours ?? []), item],
+      });
+    }
+  }
+}
+
 /**
  * Merges accepted enrichment proposals into the deterministic base. Rejected or absent
  * scopes stay on their file-component base. Accepted regroup docs replace file-components;
@@ -412,8 +521,14 @@ function unionSummaryProposals(proposals: readonly AcceptedProposal[]): Accepted
  * document is still atomically rejected). Deterministic: same base + docs → byte-identical
  * output, independent of doc order.
  */
-export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: ReadonlyMap<string, unknown>): EnrichmentOutcome {
+export function mergeEnrichment(
+  base: ArchitectureExtraction,
+  docsByContainer: ReadonlyMap<string, unknown>,
+  options: MergeEnrichmentOptions = {},
+): EnrichmentOutcome {
   const scopes = containerScopes(base);
+  const coverageByCodeId = options.coverageByCodeId;
+  const promptVersion = reportPromptVersion(coverageByCodeId);
   const baseSystemId = base.entities.find(entity => entity.kind === "softwareSystem")?.id ?? "";
   const baseEntityIds = new Set(base.entities.map(entity => entity.id));
   const baseById = new Map(base.entities.map(entity => [entity.id, entity]));
@@ -429,7 +544,7 @@ export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: R
     let regroupProposal: AcceptedProposal | undefined;
     const rejectedReasons: string[] = [];
     for (const rawDoc of asDocList(docsByContainer.get(containerId))) {
-      const { proposal, reasons } = validateDoc(rawDoc, scope, baseSystemId, baseEntityIds);
+      const { proposal, reasons } = validateDoc(rawDoc, scope, baseSystemId, baseEntityIds, coverageByCodeId);
       if (!proposal) {
         rejectedReasons.push(...reasons);
         continue;
@@ -473,7 +588,7 @@ export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: R
     return {
       extraction: base,
       report: {
-        promptVersion: ENRICHMENT_PROMPT_VERSION,
+        promptVersion,
         enrichedContainers: [],
         collapsedSelfEdges: 0,
         results: results.sort((left, right) => left.containerId.localeCompare(right.containerId)),
@@ -498,6 +613,7 @@ export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: R
         judgementByComponent.set(componentId, judgement);
       }
     }
+    distributeComponentBehaviours(judgementByCode, judgementByComponent, base, coverageByCodeId);
     const mergedEntities = base.entities.map(entity => {
       if (entity.kind === "code" && judgementByCode.has(entity.id)) {
         return { ...entity, ...judgementByCode.get(entity.id)! };
@@ -516,7 +632,7 @@ export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: R
     return {
       extraction: { schemaVersion: 1, entities: mergedEntities, relations: base.relations },
       report: {
-        promptVersion: ENRICHMENT_PROMPT_VERSION,
+        promptVersion,
         enrichedContainers: [...accepted.keys()].sort(),
         collapsedSelfEdges: 0,
         results: results.sort((left, right) => left.containerId.localeCompare(right.containerId)),
@@ -568,10 +684,13 @@ export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: R
         ...(component.responsibility !== undefined ? { responsibility: component.responsibility } : {}),
         ...(component.technology !== undefined ? { technology: component.technology } : {}),
         ...(component.tags !== undefined ? { tags: component.tags } : {}),
+        ...(component.untestedBehaviours?.length ? { untestedBehaviours: cloneUntestedBehaviours(component.untestedBehaviours) } : {}),
         sourceRefs: paths.map(path => ({ path })),
       });
     }
   }
+
+  distributeComponentBehaviours(judgementByCode, judgementByComponent, base, coverageByCodeId);
 
   const mergedEntities: ArchitectureExtractionEntity[] = [];
   for (const entity of base.entities) {
@@ -644,7 +763,7 @@ export function mergeEnrichment(base: ArchitectureExtraction, docsByContainer: R
   return {
     extraction: { schemaVersion: 1, entities: mergedEntities, relations: mergedRelations },
     report: {
-      promptVersion: ENRICHMENT_PROMPT_VERSION,
+      promptVersion,
       enrichedContainers: [...accepted.keys()].sort(),
       collapsedSelfEdges: totalSelfEdges,
       results: results

@@ -104,6 +104,13 @@ function entityForScene(
         endLine: range.endLine,
       })),
     } : {}),
+    ...(entity.untestedBehaviours?.length ? {
+      untestedBehaviours: entity.untestedBehaviours.map(item => ({
+        startLine: item.startLine,
+        endLine: item.endLine,
+        behaviour: item.behaviour,
+      })),
+    } : {}),
   };
 }
 

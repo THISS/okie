@@ -15,7 +15,7 @@ import {
 } from "@okie/architecture";
 import { compileC4Scene, compileC4Timeline, type CompiledC4Scene, type SceneSnapshot, type Timeline } from "@okie/scene-compiler";
 import { attachPathOwners, readCodeOwners } from "./codeowners.js";
-import { attachCoverage, parseLcov, readLcov, type LcovSidecar } from "./lcov.js";
+import { attachCoverage, coverageByCodeIdFromEntities, parseLcov, readLcov, type LcovSidecar } from "./lcov.js";
 import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
 import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
@@ -182,10 +182,12 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
       ...(params.codeSurface ? { codeSurface: params.codeSurface } : {}),
     });
   const baseExtraction = collected.extraction;
+  const sidecar = loadLcovSidecar(readFile, params.lcovText);
+  const coverageByCodeId = coverageByCodeIdFromEntities(baseExtraction.entities, sidecar);
   let extraction = baseExtraction;
   let enrichmentReport: EnrichmentReport | undefined;
   if (params.enrichmentDocs && params.enrichmentDocs.size > 0) {
-    const outcome = mergeEnrichment(baseExtraction, params.enrichmentDocs);
+    const outcome = mergeEnrichment(baseExtraction, params.enrichmentDocs, { coverageByCodeId });
     extraction = outcome.extraction;
     enrichmentReport = outcome.report;
   }
@@ -208,10 +210,10 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
         ),
         collected.cyclomaticById,
       ),
-      collected.clonePairs,
-    ),
-    loadLcovSidecar(readFile, params.lcovText),
-  );
+        collected.clonePairs,
+      ),
+      sidecar,
+    );
   const snapshotIssues = validateSnapshot(snapshot);
   if (snapshotIssues.length) {
     throw new Error(`Scanned snapshot failed validation:\n${snapshotIssues.map(i => `${i.path}: ${i.message}`).join("\n")}`);
@@ -332,7 +334,9 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       baseExtraction = collected.extraction;
       cyclomaticById = collected.cyclomaticById;
       clonePairs = collected.clonePairs;
-      const packets = buildEnrichmentPackets(baseExtraction, readFile);
+      const sidecar = loadLcovSidecar(readFile, options.lcovText);
+      const coverageByCodeId = coverageByCodeIdFromEntities(baseExtraction.entities, sidecar);
+      const packets = buildEnrichmentPackets(baseExtraction, readFile, { coverageByCodeId });
       const generated = await options.enrichWithPackets(packets);
       enrichmentDocs = generated.size > 0 ? generated : undefined;
     }

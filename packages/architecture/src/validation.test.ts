@@ -102,6 +102,31 @@ test("accepts lcov coverage on code entities and rejects it elsewhere", () => {
   assert.ok(validateSnapshot(inverted).some(issue => issue.path.endsWith("endLine") && issue.message.includes("startLine")));
 });
 
+test("accepts untestedBehaviours on code and rejects them on systems", () => {
+  const withCode: ArchitectureSnapshot = {
+    ...snapshot,
+    entities: [
+      ...snapshot.entities,
+      {
+        id: "code:api-handler",
+        kind: "code",
+        parentId: "container:api",
+        name: "handler",
+        sourceRefs: [{ path: "src/api.ts", commitSha: "abc123", symbol: "handler", startLine: 12, endLine: 20 }],
+        untestedBehaviours: [{ startLine: 14, endLine: 16, behaviour: "Rejects a blank token." }],
+      },
+    ],
+  };
+  assert.deepEqual(validateSnapshot(withCode), []);
+  const onSystem: ArchitectureSnapshot = {
+    ...snapshot,
+    entities: snapshot.entities.map(entity => entity.kind === "softwareSystem"
+      ? { ...entity, untestedBehaviours: [{ startLine: 1, endLine: 1, behaviour: "Invented." }] }
+      : entity),
+  };
+  assert.ok(validateSnapshot(onSystem).some(issue => issue.path.endsWith("untestedBehaviours") && issue.message.includes("code or component")));
+});
+
 test("accepts duplicates relations between code entities and rejects them elsewhere", () => {
   const withCode: ArchitectureSnapshot = {
     ...snapshot,

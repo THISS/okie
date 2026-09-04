@@ -10,6 +10,7 @@ import {
   type RelationKind,
   type SnapshotId,
   type SourceRef,
+  type UntestedBehaviour,
 } from "./model.js";
 import { validateSnapshot, type ValidationIssue } from "./validation.js";
 
@@ -29,6 +30,8 @@ export const ARCHITECTURE_EXTRACTION_LIMITS = {
   maxEvidenceItems: 64,
   maxFingerprintCharacters: 256,
   maxRevisionCharacters: 256,
+  maxUntestedBehaviours: 8,
+  maxUntestedBehaviourCharacters: 240,
 } as const;
 
 /** Synthetic boundaries are derived from parentId and are not extraction facts. */
@@ -55,6 +58,12 @@ export interface ArchitectureExtractionEntity {
   responsibility?: string;
   technology?: string[];
   tags?: string[];
+  /**
+   * Named untested behaviours grounded in observed lcov ranges on this
+   * code entity (or a file-component whose child code carries those ranges).
+   * Judgement — not a scan-time coverage overlay. Omit without ranges.
+   */
+  untestedBehaviours?: UntestedBehaviour[];
   sourceRefs: ArchitectureExtractionSourceRef[];
   confidence?: number;
 }
@@ -254,6 +263,42 @@ function validateStringList(
   value.forEach((item, index) => validateRequiredText(item, `${path}[${index}]`, maximumItemLength, issues));
 }
 
+function validateUntestedBehaviours(
+  value: unknown,
+  kind: ArchitectureExtractionEntityKind | undefined,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  if (value === undefined) return;
+  if (kind !== "code" && kind !== "component") {
+    issues.push({ path, message: "is only valid on code or component entities" });
+  }
+  if (!Array.isArray(value) || value.length === 0) {
+    issues.push({ path, message: "must be a non-empty array when present" });
+    return;
+  }
+  if (value.length > ARCHITECTURE_EXTRACTION_LIMITS.maxUntestedBehaviours) {
+    issues.push({ path, message: `must not contain more than ${ARCHITECTURE_EXTRACTION_LIMITS.maxUntestedBehaviours} items` });
+  }
+  value.forEach((item, index) => {
+    const itemPath = `${path}[${index}]`;
+    const row = record(item);
+    if (!row) {
+      issues.push({ path: itemPath, message: "must be an untested behaviour object" });
+      return;
+    }
+    unknownKeys(row, ["startLine", "endLine", "behaviour"], itemPath, issues);
+    if (!Number.isSafeInteger(row.startLine) || (row.startLine as number) < 1) {
+      issues.push({ path: `${itemPath}.startLine`, message: "must be a positive safe integer" });
+    }
+    if (!Number.isSafeInteger(row.endLine) || (row.endLine as number) < 1
+      || (typeof row.startLine === "number" && (row.endLine as number) < (row.startLine as number))) {
+      issues.push({ path: `${itemPath}.endLine`, message: "must be a positive safe integer not preceding startLine" });
+    }
+    validateRequiredText(row.behaviour, `${itemPath}.behaviour`, ARCHITECTURE_EXTRACTION_LIMITS.maxUntestedBehaviourCharacters, issues);
+  });
+}
+
 function validateSourceAnchor(value: unknown, path: string, issues: ValidationIssue[]): void {
   const source = record(value);
   if (!source) {
@@ -311,7 +356,7 @@ export function validateArchitectureExtraction(value: unknown): ValidationIssue[
       return;
     }
     entityRecords.push({ row: entity, index });
-    unknownKeys(entity, ["id", "kind", "parentId", "name", "responsibility", "technology", "tags", "sourceRefs", "confidence"], path, issues);
+    unknownKeys(entity, ["id", "kind", "parentId", "name", "responsibility", "technology", "tags", "untestedBehaviours", "sourceRefs", "confidence"], path, issues);
     const kind = typeof entity.kind === "string" && extractionEntityKinds.has(entity.kind as ArchitectureExtractionEntityKind)
       ? entity.kind as ArchitectureExtractionEntityKind
       : undefined;
@@ -323,6 +368,7 @@ export function validateArchitectureExtraction(value: unknown): ValidationIssue[
     validateOptionalText(entity.responsibility, `${path}.responsibility`, ARCHITECTURE_EXTRACTION_LIMITS.maxResponsibilityCharacters, issues);
     validateStringList(entity.technology, `${path}.technology`, ARCHITECTURE_EXTRACTION_LIMITS.maxTechnologyCharacters, issues);
     validateStringList(entity.tags, `${path}.tags`, ARCHITECTURE_EXTRACTION_LIMITS.maxTagCharacters, issues);
+    validateUntestedBehaviours(entity.untestedBehaviours, kind, `${path}.untestedBehaviours`, issues);
     validateSourceAnchorList(entity.sourceRefs, `${path}.sourceRefs`, issues);
     validateConfidence(entity.confidence, `${path}.confidence`, issues);
   });
@@ -529,6 +575,13 @@ export function adaptArchitectureExtraction(
       ...(entity.responsibility !== undefined ? { responsibility: entity.responsibility } : {}),
       ...(entity.technology !== undefined ? { technology: sortedUnique(entity.technology) } : {}),
       ...(entity.tags !== undefined ? { tags: sortedUnique(entity.tags) } : {}),
+      ...(entity.untestedBehaviours?.length ? {
+        untestedBehaviours: entity.untestedBehaviours.map(item => ({
+          startLine: item.startLine,
+          endLine: item.endLine,
+          behaviour: item.behaviour,
+        })),
+      } : {}),
       sourceRefs: sourceAnchors,
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
     };

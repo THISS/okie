@@ -37,6 +37,7 @@ export type AskEntity = {
   duplicates?: Array<{ id: string; name: string }>;
   coverageFileHitRate?: number;
   coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
+  untestedBehaviours?: Array<{ startLine: number; endLine: number; behaviour: string }>;
 };
 
 export type AskSceneRelation = {
@@ -59,6 +60,7 @@ export type AskPacket = {
   coverageFileHitRate?: number;
   coverageFileHitPercent?: number;
   coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
+  untestedBehaviours?: Array<{ startLine: number; endLine: number; behaviour: string }>;
 };
 
 export type AskRelation = {
@@ -475,6 +477,10 @@ function toPacket(entity: AskEntity, knownIds: ReadonlySet<string>): AskPacket {
     .filter(range => Number.isInteger(range.startLine) && Number.isInteger(range.endLine) && range.startLine >= 1 && range.endLine >= range.startLine)
     .map(range => ({ startLine: range.startLine, endLine: range.endLine }))
     .slice(0, 32);
+  const behaviours = (entity.untestedBehaviours ?? [])
+    .filter(item => Number.isInteger(item.startLine) && Number.isInteger(item.endLine) && item.startLine >= 1 && item.endLine >= item.startLine && typeof item.behaviour === 'string' && item.behaviour.trim())
+    .map(item => ({ startLine: item.startLine, endLine: item.endLine, behaviour: item.behaviour.trim() }))
+    .slice(0, 8);
   return {
     id: entity.id,
     name: entity.name,
@@ -492,6 +498,7 @@ function toPacket(entity: AskEntity, knownIds: ReadonlySet<string>): AskPacket {
       coverageFileHitPercent: Math.round(rate * 100),
     } : {}),
     ...(ranges.length ? { coverageUntestedRanges: ranges } : {}),
+    ...(behaviours.length ? { untestedBehaviours: behaviours } : {}),
   };
 }
 

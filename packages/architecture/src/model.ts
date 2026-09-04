@@ -81,6 +81,16 @@ export interface CoverageLineRange {
   endLine: number;
 }
 
+/**
+ * Enrichment-named untested behaviour, grounded in an observed lcov range.
+ * Judgement prose — never a scan-time overlay and never a CRAP headline.
+ */
+export interface UntestedBehaviour {
+  startLine: number;
+  endLine: number;
+  behaviour: string;
+}
+
 export interface ArchitectureEntity {
   id: EntityId;
   /** Stable semantic identity used to reconcile this entity across immutable snapshots. */
@@ -114,6 +124,12 @@ export interface ArchitectureEntity {
    * overlapping uncovered DA lines. Never a CRAP headline.
    */
   coverageUntestedRanges?: CoverageLineRange[];
+  /**
+   * Enrichment-named untested behaviours grounded in observed lcov ranges.
+   * Accepted enrich judgement — omit without a sidecar / without overlapping
+   * uncovered ranges. Never invented coverage and never a CRAP headline.
+   */
+  untestedBehaviours?: UntestedBehaviour[];
   sourceRefs: SourceRef[];
   sourceExcerpts?: SourceExcerpt[];
   confidence?: number;

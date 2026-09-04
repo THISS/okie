@@ -48,6 +48,8 @@ export type SceneEntity = {
   coverageFileHitRate?: number;
   /** Observed untested instrumented ranges overlapping this code entity. */
   coverageUntestedRanges?: Array<{ startLine: number; endLine: number }>;
+  /** Enrichment-named untested behaviours grounded in those ranges. */
+  untestedBehaviours?: Array<{ startLine: number; endLine: number; behaviour: string }>;
 };
 
 export type SceneRelation = {

@@ -185,12 +185,18 @@ the gate.
   JSON, then an appendix (scanned `commitSha` / `treeHash`, packet filename, file tree, ownership
   tree, and optional observed CODEOWNERS `pathOwners`). The appendix is data, not new instructions. Same scan SHA → byte-identical prompt+packet
   files. See [`.cursor/skills/okie-enrich/SKILL.md`](../../.cursor/skills/okie-enrich/SKILL.md).
+  Packets that carry observed lcov `untestedRanges` stamp `okie-enrichment/v3` and concatenate
+  [`enrichment-prompt-v3.md`](./enrichment-prompt-v3.md) instead. Frozen v2
+  (`enrichment-prompt.md`) is not rewritten. v3 may name **untested behaviours** in
+  `untestedBehaviours` grounded in those ranges + `nearbyTests`. Without ranges, omit that
+  field — do not invent coverage or a CRAP headline. Hallucinated ranges fail the merge gate.
 - `okie-scan --enrich-from <dir>` reads one `ArchitectureExtraction` per packet (and, optionally,
   one keyed by the **system id**) and merges the accepted ones, emitting `enrichment-report.json`.
   Write each document with the **same filename as the packet**, including remainder
   `container__<id>.2.json`. Multiple accepted summary docs for one container **union** their
-  `responsibility` prose. See [`enrichment-prompt.md`](./enrichment-prompt.md) for the agent
-  contract (`okie-enrichment/v2`).
+  `responsibility` prose. See [`enrichment-prompt.md`](./enrichment-prompt.md) for the v2 agent
+  contract (`okie-enrichment/v2`) and [`enrichment-prompt-v3.md`](./enrichment-prompt-v3.md) when
+  packets carry observed untested ranges (`okie-enrichment/v3`).
 
 ### System-scope enrichment (R2b — top-level actors)
 

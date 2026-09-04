@@ -184,8 +184,14 @@ export function untestedRangesFromHits(
   return ranges;
 }
 
+export type CoverageEntityRef = {
+  id: string;
+  kind: ArchitectureEntity["kind"] | string;
+  sourceRefs: readonly { path?: string; startLine?: number; endLine?: number }[];
+};
+
 export function coverageOverlayForEntity(
-  entity: ArchitectureEntity,
+  entity: CoverageEntityRef,
   files: ReadonlyMap<string, LcovFileRecord>,
 ): EntityCoverageOverlay | undefined {
   if (entity.kind !== "code") return undefined;
@@ -267,6 +273,45 @@ function resolveSidecarFiles(
     resolved.set(matched, { ...record, path: matched, hitsByLine: record.hitsByLine });
   }
   return resolved;
+}
+
+/**
+ * Observed lcov overlay keyed by code entity id. No sidecar → empty map
+ * (callers omit coverage; they never invent 0%).
+ */
+export function coverageByCodeIdFromEntities(
+  entities: readonly CoverageEntityRef[],
+  sidecar: LcovSidecar | undefined,
+): Map<string, EntityCoverageOverlay> {
+  const map = new Map<string, EntityCoverageOverlay>();
+  if (!sidecar || sidecar.files.size === 0) return map;
+  const knownPaths = new Set<string>();
+  for (const entity of entities) {
+    for (const ref of entity.sourceRefs) {
+      if (ref.path) knownPaths.add(ref.path);
+    }
+  }
+  const files = resolveSidecarFiles(sidecar, knownPaths);
+  for (const entity of entities) {
+    const overlay = coverageOverlayForEntity(entity, files);
+    if (overlay) map.set(entity.id, overlay);
+  }
+  return map;
+}
+
+/** Rebuild the overlay map from a snapshot that already ran `attachCoverage`. */
+export function coverageByCodeIdFromSnapshot(
+  entities: readonly ArchitectureEntity[],
+): Map<string, EntityCoverageOverlay> {
+  const map = new Map<string, EntityCoverageOverlay>();
+  for (const entity of entities) {
+    if (entity.kind !== "code" || entity.coverageFileHitRate === undefined) continue;
+    map.set(entity.id, {
+      fileHitRate: entity.coverageFileHitRate,
+      ...(entity.coverageUntestedRanges?.length ? { untestedRanges: entity.coverageUntestedRanges } : {}),
+    });
+  }
+  return map;
 }
 
 function parseDaLine(payload: string): { line: number; hits: number } | undefined {

@@ -258,6 +258,34 @@ export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssu
         });
       }
     }
+    if (entity.untestedBehaviours !== undefined) {
+      if (entity.kind !== "code" && entity.kind !== "component") {
+        issues.push({ path: `${path}.untestedBehaviours`, message: "is only valid on code or component entities" });
+      }
+      if (!Array.isArray(entity.untestedBehaviours) || entity.untestedBehaviours.length === 0) {
+        issues.push({ path: `${path}.untestedBehaviours`, message: "must be a non-empty array when present" });
+      } else {
+        entity.untestedBehaviours.forEach((item, itemIndex) => {
+          const itemPath = `${path}.untestedBehaviours[${itemIndex}]`;
+          if (!item || typeof item !== "object") {
+            issues.push({ path: itemPath, message: "must be an untested behaviour" });
+            return;
+          }
+          if (!Number.isInteger(item.startLine) || item.startLine < 1) {
+            issues.push({ path: `${itemPath}.startLine`, message: "must be an integer >= 1" });
+          }
+          if (!Number.isInteger(item.endLine) || item.endLine < 1) {
+            issues.push({ path: `${itemPath}.endLine`, message: "must be an integer >= 1" });
+          }
+          if (Number.isInteger(item.startLine) && Number.isInteger(item.endLine) && item.endLine < item.startLine) {
+            issues.push({ path: `${itemPath}.endLine`, message: "must be >= startLine" });
+          }
+          if (typeof item.behaviour !== "string" || !item.behaviour.trim()) {
+            issues.push({ path: `${itemPath}.behaviour`, message: "must be a non-blank string" });
+          }
+        });
+      }
+    }
     const excerpts = entity.sourceExcerpts ?? [];
     for (const duplicate of duplicateValues(excerpts.map(excerpt => JSON.stringify([
       excerpt.frozenRevision,

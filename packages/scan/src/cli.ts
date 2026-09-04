@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
-import { buildEnrichmentPackets, containerIdFromFileName } from "./packet.js";
+import { buildEnrichmentPackets, containerIdFromFileName, ENRICHMENT_PROMPT_VERSION_V3 } from "./packet.js";
 import { GithubAcquisitionError, isGithubSource, parseGithubSource, type GithubSourceRef } from "./github.js";
 import { regenerateScanManifest } from "./manifest.js";
 import { readFrozenEnrichmentPrompt, writeEnrichmentPackets, writePromptEmission } from "./prompt.js";
 import { readCodeOwners } from "./codeowners.js";
+import { coverageByCodeIdFromSnapshot } from "./lcov.js";
 import { scanGithubRepository, scanRepository, stableJson, type ScanArtifacts, type ScanOptions } from "./scan.js";
 
 interface CliArgs {
@@ -242,13 +243,17 @@ function runLocalScan(args: CliArgs): void {
 
   if (args.emitPromptDir || args.emitPacketsDir) {
     const readFile = (repoRelativePath: string): string => readFileSync(`${args.source}/${repoRelativePath}`, "utf8");
-    const emitted = buildEnrichmentPackets(artifacts.baseExtraction, readFile);
+    const coverageByCodeId = coverageByCodeIdFromSnapshot(artifacts.snapshot.entities);
+    const emitted = buildEnrichmentPackets(artifacts.baseExtraction, readFile, { coverageByCodeId });
     if (args.emitPromptDir) {
       writePromptEmission(
         args.emitPromptDir,
         emitted,
         artifacts.pin,
-        readFrozenEnrichmentPrompt(),
+        {
+          v2: readFrozenEnrichmentPrompt(),
+          v3: readFrozenEnrichmentPrompt(ENRICHMENT_PROMPT_VERSION_V3),
+        },
         readCodeOwners(readFile)?.rules ?? [],
       );
     }

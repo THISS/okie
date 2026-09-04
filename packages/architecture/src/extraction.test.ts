@@ -287,3 +287,27 @@ test("validation rejects hierarchy cycles and redundant contains relations", () 
   assert.ok(messages.some(message => message.includes("hierarchy contains a cycle")));
   assert.ok(messages.some(message => message.includes("must not duplicate hierarchy")));
 });
+
+test("extraction accepts grounded untestedBehaviours on code and rejects coverage overlays", () => {
+  const withBehaviours: ArchitectureExtraction = {
+    ...extraction,
+    entities: extraction.entities.map(entity => entity.id === "code:selectors:select-scoped-view"
+      ? {
+        ...entity,
+        untestedBehaviours: [{ startLine: 11, endLine: 12, behaviour: "Does not select an empty view." }],
+      }
+      : entity),
+  };
+  assert.deepEqual(validateArchitectureExtraction(withBehaviours), []);
+  const snapshot = adaptArchitectureExtraction(withBehaviours, metadata);
+  assert.deepEqual(
+    snapshot.entities.find(entity => entity.id === "code:selectors:select-scoped-view")?.untestedBehaviours,
+    [{ startLine: 11, endLine: 12, behaviour: "Does not select an empty view." }],
+  );
+
+  const onSystem = structuredClone(extraction) as unknown as Record<string, unknown>;
+  const entities = onSystem.entities as Array<Record<string, unknown>>;
+  entities[0]!.untestedBehaviours = [{ startLine: 1, endLine: 1, behaviour: "Invented." }];
+  const issues = validateArchitectureExtraction(onSystem);
+  assert.ok(issues.some(issue => issue.path === "entities[0].untestedBehaviours" && issue.message.includes("code or component")));
+});

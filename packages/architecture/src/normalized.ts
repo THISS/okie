@@ -268,6 +268,13 @@ export function normalizeArchitecture({ snapshot, views = [], stories = [] }: No
           endLine: range.endLine,
         })),
       } : {}),
+      ...(entity.untestedBehaviours?.length ? {
+        untestedBehaviours: entity.untestedBehaviours.map(item => ({
+          startLine: item.startLine,
+          endLine: item.endLine,
+          behaviour: item.behaviour,
+        })),
+      } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
       ...(entity.fingerprint ? { fingerprint: entity.fingerprint } : {}),
     };
@@ -487,6 +494,13 @@ export function selectArchitectureSnapshot(state: NormalizedArchitecture, snapsh
         coverageUntestedRanges: entity.coverageUntestedRanges.map(range => ({
           startLine: range.startLine,
           endLine: range.endLine,
+        })),
+      } : {}),
+      ...(entity.untestedBehaviours?.length ? {
+        untestedBehaviours: entity.untestedBehaviours.map(item => ({
+          startLine: item.startLine,
+          endLine: item.endLine,
+          behaviour: item.behaviour,
         })),
       } : {}),
       ...(entity.confidence !== undefined ? { confidence: entity.confidence } : {}),
