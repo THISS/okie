@@ -1,0 +1,79 @@
+# CLA-34: deterministic Builder gates. No secrets, no live OpenRouter/Anthropic,
+# no GitHub secret scanning (CLA-19), no cloud-agent QA.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  deterministic:
+    name: Deterministic gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Assert no live LLM or scan-live flags
+        run: |
+          set +x
+          for name in OPENROUTER_API_KEY OPENAI_API_KEY OKIE_LLM_API_KEY ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN OKIE_SCAN_LIVE OKIE_GITHUB_CLIENT_SECRET; do
+            if [ -n "${!name}" ]; then
+              echo "$name must be unset in CI (deterministic gates only)." >&2
+              exit 1
+            fi
+          done
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.10.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.87.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.13.1
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Package `check` scripts typecheck against workspace `dist/` (gitignored).
+      # A clean checkout has no dist, so emit it before `pnpm check`.
+      - name: Build TypeScript packages
+        run: pnpm -r --if-present --filter "./packages/**" --filter "./apps/server" build
+
+      - name: Typecheck (pnpm check)
+        run: pnpm check
+
+      - name: Test TypeScript packages
+        run: pnpm test
+
+      - name: Test Rust workspace
+        run: cargo test --workspace
