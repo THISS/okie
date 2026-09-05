@@ -3400,7 +3400,17 @@ export function App() {
     // scope (snapshot children, not the compiled scene). Inspector-history mode
     // was already applied above, so 'preserve' survives.
     const drillDetail = scanFixture ? scanDrillDeeperDetail(scene, target, activeSnapshot) : undefined;
-    const lensPlan = (!drillDetail || !scanFixture)
+    // CLA-83: Open inside a scan *system* must compile the L2 container peer map at
+    // the view root. Resident CLA-81 shells already publish container bounds, so the
+    // lens drill can "succeed" without a sibling package map (or skip to a child
+    // neighborhood). Force the container-band compile whenever the target is a
+    // context owner with children.
+    const forceContainerBand = scanFixture
+      && (target.detail === 'context' || target.kind === 'system')
+      && scanEntityHasChildren(activeSnapshot, target.id)
+      ? 'container' as const
+      : undefined;
+    const lensPlan = (!drillDetail && !forceContainerBand)
       ? semanticOpenNextLayer(
         scene,
         semanticLensSessionRef.current,
@@ -3410,14 +3420,13 @@ export function App() {
         navigationIdentity.rootEntityId,
       )
       : undefined;
-    // CLA-83: a reserved owner shell can make the lens drill fail even when the
-    // snapshot has children. Fall through to the neighborhood compile for the
-    // next C4 band (system → container peers at the view root, not the first package).
-    const fallbackDetail = !drillDetail && !lensPlan && scanFixture
+    // Reserved owner shells can still fail the lens on L2/L3 targets that have
+    // snapshot children. Fall through to the neighborhood compile for the next band.
+    const fallbackDetail = !drillDetail && !forceContainerBand && !lensPlan && scanFixture
       && scanEntityHasChildren(activeSnapshot, target.id)
       ? scanNextBand(target.detail ?? 'context')
       : undefined;
-    const deeperDetail = drillDetail ?? fallbackDetail;
+    const deeperDetail = forceContainerBand ?? drillDetail ?? fallbackDetail;
     if (deeperDetail && scanFixture) {
       // Neighborhood compile (CLA-66) then land on the deeper band. Cancelling the
       // lens first reset data-detail to context (CLA-80); the Components rail

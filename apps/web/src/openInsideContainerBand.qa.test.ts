@@ -40,10 +40,13 @@ describe('CLA-80: Open inside an L2 container lands on L3', () => {
     expect(drillPath).toContain('frameProjectionScope(nextScene, compileFocus, deeperDetail');
     expect(drillPath).toContain('detail: nextSession.baseDetail');
     expect(drillPath).toContain('lensPath: semanticLensCanonicalPathIds(nextSession)');
+    expect(drillPath).toContain('forceContainerBand');
+    expect(drillPath).toContain("target.detail === 'context' || target.kind === 'system'");
     expect(drillPath).toContain('scanNextBand(target.detail ?? \'context\')');
+    expect(drillPath).toContain('scanEntityHasChildren(activeSnapshot, target.id)');
     expect(drillPath).not.toContain("cancelSemanticLensAt('scan drill recompile'");
     expect(drillPath).not.toContain('detail: baseDetail');
-    expect(openInsideLoaded).toContain('const lensPlan = (!drillDetail || !scanFixture)');
+    expect(openInsideLoaded).toContain('const lensPlan = (!drillDetail && !forceContainerBand)');
     expect(openInsideLoaded).toContain('semanticOpenNextLayer(');
     expect(openInsideLoaded).toContain('const plan = lensPlan');
   });
@@ -229,6 +232,11 @@ describe('CLA-83: Open inside the scan system lands on L2 container peers', () =
     const system = l1Scene.entities.find(entity => entity.id === 'system:okie');
     expect(system).toBeDefined();
     expect(system!.detail).toBe('context');
+
+    const residentContainerIds = (l1Scene.projection?.entityIdsByDetail.container ?? [])
+      .filter(id => l1Scene.entities.find(entity => entity.id === id)?.detail === 'container');
+    expect(residentContainerIds.length).toBeGreaterThanOrEqual(10);
+    expect(scanDrillDeeperDetail(l1Scene, system!, fixture.snapshot)).toBeUndefined();
 
     const culled = {
       ...l1Scene,

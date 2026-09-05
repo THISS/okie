@@ -253,16 +253,32 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
 
   it('CLA-83: reserved owner bounds without descendant peer cards still drill', () => {
     const system = sceneEntities[0]!;
-    const shell = sceneWith({ 'system:root': { context: bounds, container: bounds } });
-    const systemOnly = { ...shell, entities: [system] } as AtlasScene;
     const snap = snapshot([
       entity('system:root', 'softwareSystem'),
       entity('container:apps-server', 'container', 'system:root'),
       entity('container:apps-web', 'container', 'system:root'),
       entity('component:ask', 'component', 'container:apps-server'),
     ]);
-    expect(scanDrillDeeperDetail(systemOnly, system, snap)).toBe('container');
-    expect(scanDrillDeeperDetail(shell, system, snap)).toBeUndefined();
+    const reserved = {
+      ...sceneWith({ 'system:root': { context: bounds, container: bounds } }),
+      entities: [system, sceneEntities[1]!],
+      projection: {
+        boundsByEntityIdAndDetail: { 'system:root': { context: bounds, container: bounds } },
+        entityIdsByDetail: { context: ['system:root'], container: ['system:root'] },
+      },
+    } as unknown as AtlasScene;
+    expect(scanDrillDeeperDetail(reserved, system, snap)).toBe('container');
+    const withPeers = {
+      ...reserved,
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': { context: bounds, container: bounds },
+          'container:c': { container: bounds },
+        },
+        entityIdsByDetail: { context: ['system:root'], container: ['system:root', 'container:c'] },
+      },
+    } as unknown as AtlasScene;
+    expect(scanDrillDeeperDetail(withPeers, system, snap)).toBeUndefined();
   });
 
   it('returns undefined for a leaf (no deeper band) and for a childless target', () => {
