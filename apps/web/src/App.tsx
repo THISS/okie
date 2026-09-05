@@ -4732,7 +4732,7 @@ export function App() {
             <button aria-label="Zoom in" onClick={() => semanticZoomControl('inward')}><ZoomInIcon/></button>
             <button aria-label="Zoom out" onClick={() => semanticZoomControl('outward')}><ZoomOutIcon/></button>
             <button aria-label="Fit architecture to view" onClick={() => {
-              const next = frameVisibleProjection(scene, activeProjectionEntityIds, activeDetail, viewport, measureCurrentMapSafeArea()) ?? defaultCamera;
+              const next = frameVisibleProjection(scene, activeProjectionEntityIds, activeDetail, viewport, measureCurrentMapSafeArea()) ?? camera;
               navigateCamera(next, 'replace', 'Fit the current architecture scope');
             }}><FitIcon/></button>
           </div>

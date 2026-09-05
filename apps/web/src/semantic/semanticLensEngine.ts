@@ -193,7 +193,12 @@ function frameEntityIdsAtDetail(
 ): Camera | undefined {
   const wanted = new Set(entityIds);
   const entities = scene.entities.flatMap(entity => {
-    const bounds = scene.projection?.boundsByEntityIdAndDetail[entity.id]?.[detail];
+    const projected = scene.projection?.boundsByEntityIdAndDetail[entity.id]?.[detail];
+    const native = (entity.detail ?? 'context') === detail
+      && Number.isFinite(entity.width) && Number.isFinite(entity.height)
+      ? { x: entity.x, y: entity.y, width: entity.width, height: entity.height }
+      : undefined;
+    const bounds = projected ?? native;
     return wanted.has(entity.id) && bounds ? [{ ...entity, ...bounds }] : [];
   });
   if (!entities.length) return undefined;
@@ -225,7 +230,10 @@ export function residentVisibleProjectionEntityIds(
       && painted.has(entity.id)
       && (entity.detail ?? 'context') === detail)
     .map(entity => entity.id);
-  return cards.length ? cards : [...wanted].filter(id => painted.has(id));
+  // Empty native-band set: do not restore ancestor owner-shells. Their packed
+  // code-band bounds still cover omitted CLA-74 neighbors, so Fit would land on
+  // empty space (or snap to the L1 default camera) while the explorer lists cards.
+  return cards;
 }
 
 /**

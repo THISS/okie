@@ -81,7 +81,8 @@ describe('CLA-44: Fit frames the visible projection, not the root scope', () => 
     const fitStart = app.indexOf('aria-label="Fit architecture to view"');
     const fitEnd = app.indexOf('><FitIcon/></button>', fitStart);
     const fit = app.slice(fitStart, fitEnd);
-    expect(fit).toContain('frameVisibleProjection(scene, activeProjectionEntityIds, activeDetail, viewport, measureCurrentMapSafeArea())');
+    expect(fit).toContain('frameVisibleProjection(scene, activeProjectionEntityIds, activeDetail, viewport, measureCurrentMapSafeArea()) ?? camera');
+    expect(fit).not.toContain('?? defaultCamera');
     expect(fit).not.toContain('navigationIdentity.rootEntityId');
     expect(fit).not.toContain('false, true');
 
@@ -266,5 +267,18 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
     const aim = fitAim(camera!);
     expect(distance(aim, rectCenter(residentUnion!)))
       .toBeLessThan(distance(aim, rectCenter(ancestorUnion!)));
+  });
+
+  it('does not restore ancestor shells when the native code set is empty', () => {
+    const scene = createGoldenC4Scene();
+    const ancestors = ['system:okie', 'container:web-app', 'component:web-shell'];
+    expect(residentVisibleProjectionEntityIds(scene, ancestors, 'code')).toEqual([]);
+    expect(frameVisibleProjection(
+      scene,
+      ancestors,
+      'code',
+      viewport,
+      chromeSafeArea,
+    )).toBeUndefined();
   });
 });
