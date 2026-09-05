@@ -4,7 +4,7 @@ import { OEMBED_EMBED_PARAM } from './oembed';
 /**
  * CLA-85: default oEmbed is 800×560. The inspector becomes a 94vw overlay at
  * `@media (max-width: 900px)`, but used to auto-open above 780px — so the
- * Overview one-pager covered the L1 map. Overlay width is the open/close gate.
+ * Overview architecture brief covered the L1 map. Overlay width is the open/close gate.
  */
 export const INSPECTOR_OVERLAY_MAX_WIDTH = 900;
 

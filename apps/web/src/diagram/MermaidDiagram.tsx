@@ -287,7 +287,7 @@ type RenderState = 'loading' | 'ready' | 'error';
 type MermaidDiagramProps = {
   source: string;
   title: string;
-  /** Inspector one-pager: smaller chrome, no derived-diagram outline note. */
+  /** Inspector architecture brief: smaller chrome, no derived-diagram outline note. */
   compact?: boolean;
 };
 
@@ -341,7 +341,7 @@ export function MermaidDiagram({ source, title, compact = false }: MermaidDiagra
     <div className={`semantic-mermaid-canvas is-${state}`}>
       <div aria-hidden="true" className="semantic-mermaid-svg" data-render-state={state} ref={hostRef}/>
       {state === 'loading' && <div className="semantic-mermaid-status" role="status"><span/>Rendering diagram…</div>}
-      {state === 'error' && <div className="semantic-mermaid-error" role="alert"><strong>Diagram preview unavailable</strong><span>{compact ? 'The system and container names in this one-pager are still available.' : 'The structured participants and interactions below are still available.'}</span><button onClick={() => setRetry(value => value + 1)} type="button">Retry render</button></div>}
+      {state === 'error' && <div className="semantic-mermaid-error" role="alert"><strong>Diagram preview unavailable</strong><span>{compact ? 'The system and container names in this architecture brief are still available.' : 'The structured participants and interactions below are still available.'}</span><button onClick={() => setRetry(value => value + 1)} type="button">Retry render</button></div>}
     </div>
     {compact ? null : <p className="semantic-mermaid-outline-note">The structured outline below is the accessible and interactive representation of this diagram.</p>}
   </section>;

@@ -45,7 +45,7 @@ export function inspectorWidthStorageKey(repositoryId: string): string {
 export type InspectorTab = 'overview' | 'source' | 'details';
 export type InspectorIntent = 'auto' | 'source' | 'details';
 
-/** Atlas one-pager first, then Source when evidence exists, then Details. */
+/** Architecture brief first, then Source when evidence exists, then Details. */
 export function inspectorTabSequence(sourceAvailable: boolean): InspectorTab[] {
   return sourceAvailable ? ['overview', 'source', 'details'] : ['overview', 'details'];
 }

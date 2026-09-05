@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+const briefView = readFileSync(new URL('./inspector/ArchitectureBrief.tsx', import.meta.url), 'utf8');
 
 function declarations(source: string, selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -171,21 +172,25 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain("entity.detail === 'code' && Boolean(entity.sourceExcerpts?.length)");
   });
 
-  it('ships a snapshot-derived Overview one-pager beside Source and Details (CLA-76)', () => {
+  it('ships a snapshot-derived Overview architecture brief beside Source and Details (CLA-87)', () => {
     expect(app).toContain('id="overview-tab"');
     expect(app).toContain("selectInspectorTab('overview')");
-    expect(app).toContain('data-testid="scan-one-pager"');
-    expect(app).toContain('data-testid="one-pager-containers"');
-    expect(app).toContain('data-testid="one-pager-mermaid"');
-    expect(app).toContain('buildScanOnePager({');
-    expect(app).toContain('<MermaidDiagram compact source={onePager.mermaidSource} title={onePager.mermaidTitle}/>');
-    expect(app).toContain('<MermaidSourceDisclosure source={onePager.mermaidSource}/>');
+    expect(briefView).toContain('data-testid="architecture-brief"');
+    expect(briefView).toContain('data-testid="architecture-brief-context-mermaid"');
+    expect(briefView).toContain('data-testid="architecture-brief-flows"');
+    expect(briefView).toContain('Copy markdown');
+    expect(app).toContain('buildArchitectureBrief({');
+    expect(app).toContain('<ArchitectureBriefView');
     expect(app).toContain("scanFixture ? 'overview' : 'details'");
     expect(app).toContain('inspectorTabSequence(sourceAvailable)');
     expect(app).toContain('id="source-tab"');
     expect(app).toContain('id="details-tab"');
+    expect(app).toContain('Architecture brief');
+    expect(app).not.toContain('data-testid="scan-one-pager"');
+    expect(app).not.toContain('data-testid="one-pager-containers"');
     expect(app).not.toMatch(/scanRoot|OPENROUTER_API_KEY|apiKey/);
     expect(declarations(css, '.inspector-tabs')).toContain('grid-template-columns: 1fr 1fr 1fr');
+    expect(css).toContain('.architecture-brief .brief-prose');
     expect(css).toContain('.semantic-mermaid-diagram.is-compact');
   });
 
@@ -506,7 +511,7 @@ describe('canvas screenshot capture', () => {
 });
 
 describe('oEmbed embed chrome (CLA-85)', () => {
-  it('collapses the Overview one-pager at overlay width and keeps the overview tour on the map', () => {
+  it('collapses the Overview architecture brief at overlay width and keeps the overview tour on the map', () => {
     expect(app).toContain('initialInspectorOpen()');
     expect(app).toContain("data-embed={isEmbedChrome({ framed: isFramedBrowsingContext(), embedQuery: isEmbedQueryFlag(window.location.search) }) ? 'true' : 'false'}");
     expect(app).toContain("'embed'");

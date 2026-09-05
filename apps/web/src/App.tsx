@@ -41,7 +41,7 @@ import {
   type DiagramSurfaceSession,
   type DerivedDiagramSurface,
 } from './diagram/diagramWorkspace';
-import { MermaidDiagram, MermaidSourceDisclosure } from './diagram/MermaidDiagram';
+import { ArchitectureBriefView } from './inspector/ArchitectureBrief';
 import { SemanticDiagramSurface } from './diagram/SemanticDiagramSurface';
 import { ImportMermaidDialog } from './diagram/ImportMermaidDialog';
 import { compileImportedMermaidScene } from './diagram/compileImportedMermaid';
@@ -73,7 +73,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { buildScanOnePager, canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorTabSequence, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow, type InspectorTab } from './inspector/inspectorSupport';
+import { buildArchitectureBrief, canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorTabSequence, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1513,11 +1513,11 @@ export function App() {
     : getLevel(initialNavigation.camera.zoom));
   const activeLevel = Math.max(0, semanticDetails.indexOf(semanticLensSessionDetail(semanticLensSession)));
   const baseDetail = semanticLensSession.baseDetail;
-  const onePager = useMemo(() => buildScanOnePager({
+  const architectureBrief = useMemo(() => buildArchitectureBrief({
     snapshot: activeSnapshot,
     childCounts: scanFixture?.childCounts,
-    band: baseDetail,
-  }), [activeSnapshot.entities, activeSnapshot.relations, baseDetail, scanFixture?.childCounts]);
+  }), [activeSnapshot.entities, activeSnapshot.relations,
+    scanFixture?.childCounts]);
   const activeDetail = semanticDetails[activeLevel];
   const activeDerivedScopeId = activeDiagramSurface.kind === 'main'
     ? undefined
@@ -4877,7 +4877,7 @@ export function App() {
         <aside aria-hidden={detailsOpen ? undefined : true} aria-label={pickedRelationPresentation ? 'Selected architecture relationship inspector' : 'Selected architecture entity inspector'} className={`details-panel ${detailsOpen ? 'open' : ''}`} id="architecture-inspector" inert={!detailsOpen} ref={detailsPanelRef}>
           <div aria-label="Resize inspector" aria-orientation="vertical" aria-valuemax={detailsWidthRange.max} aria-valuemin={detailsWidthRange.min} aria-valuenow={detailsWidth} className="details-resizer" onDoubleClick={() => { setDetailsWidth(defaultInspectorWidth(window.innerWidth)); setSafeAreaEpoch(epoch => epoch + 1); window.setTimeout(() => reframeEntityAfterInspectorChange(selected), 0); }} onKeyDown={resizeInspectorWithKeyboard} onPointerDown={beginInspectorResize} role="separator" tabIndex={0}/>
           <header className="details-header">
-            <div className="details-header-title"><span>{inspectorTab === 'overview' ? 'OVERVIEW' : 'DETAILS'}</span><small>{inspectorTab === 'overview' ? 'One-pager' : 'Evidence-backed'}</small></div>
+            <div className="details-header-title"><span>{inspectorTab === 'overview' ? 'OVERVIEW' : 'DETAILS'}</span><small>{inspectorTab === 'overview' ? 'Architecture brief' : 'Evidence-backed'}</small></div>
             <div className="details-header-actions">
               {inspectorHistory.length > 0 && <button aria-label="Back to previous inspector selection" data-testid="inspector-back" onClick={navigateInspectorBack} title="Back within details panel" type="button"><span aria-hidden="true">←</span></button>}
               <button aria-label="Close details panel" onClick={closeDetails}><CloseIcon/></button>
@@ -4889,31 +4889,15 @@ export function App() {
             <button aria-controls="details-panel" aria-selected={inspectorTab === 'details'} id="details-tab" onClick={() => selectInspectorTab('details')} ref={detailsTabRef} role="tab" tabIndex={inspectorTab === 'details' ? 0 : -1} type="button">Details</button>
           </div>
           {inspectorTab === 'overview' ? <div aria-labelledby="overview-tab" className="details-scroll overview-panel" data-testid="inspector-overview" id="overview-panel" role="tabpanel">
-            <article aria-labelledby="one-pager-title" className="inspector-presentation inspector-one-pager" data-one-pager-band={onePager.band} data-one-pager-summary-kind={onePager.systemSummaryKind} data-testid="scan-one-pager">
-              <header className="entity-hero">
-                <div className="entity-kicker"><span>L1–L2 · One-pager</span>{scanFixture?.enrichmentHonesty && onePager.systemSummaryKind === 'structural' ? <small className="enrichment-honesty-chip" data-testid="one-pager-enrichment-honesty">{scanFixture.enrichmentHonesty.chip}</small> : null}<small className="provenance-badge">Same snapshot</small></div>
-                <h2 id="one-pager-title">{onePager.systemName}</h2>
-                <p className="responsibility" data-one-pager-system-summary="">{onePager.systemSummary}</p>
-              </header>
-              <section className="detail-section one-pager-containers">
-                <div className="section-title"><h3>Containers</h3><span>{onePager.containerCount}</span></div>
-                <div className="inspector-link-list" data-testid="one-pager-containers">
-                  {onePager.containers.length > 0
-                    ? onePager.containers.map(container => {
-                      const entity = scene.entities.find(candidate => candidate.id === container.id);
-                      return <button data-one-pager-container-id={container.id} disabled={!entity} key={container.id} onClick={() => entity && focusEntity(entity, 'replace', 'preserve', 'details', 'panel')} type="button"><span><strong>{container.name}</strong><small>{container.summary ?? container.kind}</small></span><ArrowIcon size={15}/></button>;
-                    })
-                    : <div className="empty-inspector-section">No containers are in this snapshot neighborhood.</div>}
-                </div>
-                {onePager.omittedContainerCount > 0 ? <p className="empty-inspector-section" data-one-pager-omitted-containers={onePager.omittedContainerCount}>{onePager.containers.length} of {onePager.containerCount} containers are loaded in this neighborhood.</p> : null}
-              </section>
-              <section className="detail-section one-pager-mermaid" data-testid="one-pager-mermaid">
-                <div className="section-title"><h3>{onePager.band === 'component' || onePager.band === 'code' ? 'Current band' : 'L1 → L2'}</h3><span>{onePager.graphNodeCount}</span></div>
-                <MermaidDiagram compact source={onePager.mermaidSource} title={onePager.mermaidTitle}/>
-                <MermaidSourceDisclosure source={onePager.mermaidSource}/>
-                {onePager.graphOmittedCount > 0 ? <p className="empty-inspector-section" data-one-pager-omitted-nodes={onePager.graphOmittedCount}>Diagram shows {onePager.graphNodeCount} of {onePager.graphNodeCount + onePager.graphOmittedCount} nodes.</p> : null}
-              </section>
-            </article>
+            <ArchitectureBriefView
+              brief={architectureBrief}
+              containerAvailable={id => Boolean(scene.entities.find(candidate => candidate.id === id))}
+              honestyChip={scanFixture?.enrichmentHonesty?.chip}
+              onOpenContainer={id => {
+                const found = scene.entities.find(candidate => candidate.id === id);
+                if (found) focusEntity(found, 'replace', 'preserve', 'details', 'panel');
+              }}
+            />
           </div> : inspectorTab === 'source' && sourceAvailable ? <div aria-labelledby="source-tab" className="source-panel" id="source-panel" role="tabpanel">
             <SourceViewer excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/>
           </div> : <div aria-labelledby="details-tab" className="details-scroll" id="details-panel" role="tabpanel">
