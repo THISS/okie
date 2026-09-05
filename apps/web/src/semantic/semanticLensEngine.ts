@@ -1,4 +1,4 @@
-import { C4_CONTEXT_CARD_FACE } from '@okie/architecture';
+import { C4_CONTAINER_CARD_FACE, C4_CONTEXT_CARD_FACE } from '@okie/architecture';
 import {
   C4_LABEL_MIN_TITLE_PX,
   C4_PRESENTATION_AT_FOCUS,
@@ -82,6 +82,40 @@ export function contextCardFaceBounds(bounds: WorldRect): WorldRect {
   };
 }
 
+/** CSS px of an L2 authored title at `zoom` (15.5px at focus 1.99). */
+export function containerTitleCssPx(zoom: number): number {
+  return C4_PRESENTATION_AT_FOCUS.container.titleFontSize
+    * (zoom / C4_ZOOM_BANDS[1]!.focusZoom);
+}
+
+/** Zoom at which L2 titles meet `C4_LABEL_MIN_TITLE_PX` (12 CSS px). */
+export const CONTAINER_TITLE_READABLE_MIN_ZOOM = C4_LABEL_MIN_TITLE_PX
+  * C4_ZOOM_BANDS[1]!.focusZoom
+  / C4_PRESENTATION_AT_FOCUS.container.titleFontSize;
+
+/**
+ * Readable L2 card face — the title/header leaf, not a CLA-81 reserved interior.
+ * Golden 420×180 containers are unchanged; scan shells clip to the top-left leaf.
+ */
+export function containerCardFaceBounds(bounds: WorldRect): WorldRect {
+  if (bounds.width <= C4_CONTAINER_CARD_FACE.width * 1.25
+    && bounds.height <= C4_CONTAINER_CARD_FACE.height * 1.25) {
+    return bounds;
+  }
+  return {
+    x: bounds.x,
+    y: bounds.y,
+    width: Math.min(bounds.width, C4_CONTAINER_CARD_FACE.width),
+    height: Math.min(bounds.height, C4_CONTAINER_CARD_FACE.height),
+  };
+}
+
+function readableCardFaceBounds(bounds: WorldRect, detail: SemanticDetail): WorldRect {
+  if (detail === 'context') return contextCardFaceBounds(bounds);
+  if (detail === 'container') return containerCardFaceBounds(bounds);
+  return bounds;
+}
+
 function projectedBoundsAtDetail(
   scene: AtlasScene,
   entity: AtlasScene['entities'][number],
@@ -98,6 +132,11 @@ function projectedBoundsAtDetail(
 function isReservedContextShell(bounds: WorldRect): boolean {
   return bounds.width > C4_CONTEXT_CARD_FACE.width * 1.25
     || bounds.height > C4_CONTEXT_CARD_FACE.height * 1.25;
+}
+
+function isReservedContainerShell(bounds: WorldRect): boolean {
+  return bounds.width > C4_CONTAINER_CARD_FACE.width * 1.25
+    || bounds.height > C4_CONTAINER_CARD_FACE.height * 1.25;
 }
 
 function contextArrivalFace(
@@ -167,6 +206,73 @@ function frameContextArrivalCluster(
     safeArea,
     CONTEXT_TITLE_READABLE_MIN_ZOOM,
     levels[0]!.zoom,
+    true,
+  );
+}
+
+/**
+ * L2 peer card faces that still fit at a title-readable zoom, starting from
+ * the top-left of the packed grid. Fitting every reserved package shell would
+ * re-inflate Open inside to the camera floor (CLA-90).
+ */
+function nearbyContainerArrivalIds(
+  scene: AtlasScene,
+  residentIds: readonly string[],
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): string[] {
+  const faces = residentIds.flatMap(id => {
+    const entity = scene.entities.find(candidate => candidate.id === id);
+    const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'container') : undefined;
+    return bounds ? [{ id, face: containerCardFaceBounds(bounds) }] : [];
+  }).sort((left, right) => left.face.y - right.face.y
+    || left.face.x - right.face.x
+    || left.id.localeCompare(right.id));
+  if (!faces.length) return [...residentIds];
+  const safeWidth = Math.max(80, viewport.width - safeArea.left - safeArea.right);
+  const safeHeight = Math.max(80, viewport.height - safeArea.top - safeArea.bottom);
+  const padding = 48;
+  const maxWorldWidth = (safeWidth - padding) / CONTAINER_TITLE_READABLE_MIN_ZOOM;
+  const maxWorldHeight = (safeHeight - padding) / CONTAINER_TITLE_READABLE_MIN_ZOOM;
+  const cluster = [faces[0]!];
+  let union = { ...faces[0]!.face };
+  for (const candidate of faces.slice(1)) {
+    const left = Math.min(union.x, candidate.face.x);
+    const top = Math.min(union.y, candidate.face.y);
+    const right = Math.max(union.x + union.width, candidate.face.x + candidate.face.width);
+    const bottom = Math.max(union.y + union.height, candidate.face.y + candidate.face.height);
+    if (right - left <= maxWorldWidth && bottom - top <= maxWorldHeight) {
+      cluster.push(candidate);
+      union = { x: left, y: top, width: right - left, height: bottom - top };
+    }
+  }
+  return cluster.map(item => item.id);
+}
+
+/**
+ * Scan Open inside L2: frame resident container peer card faces at band-focus
+ * zoom, not coverage-reveal of the reserved owner shell.
+ */
+export function frameContainerPeerArrivalCamera(
+  scene: AtlasScene,
+  rootEntityId: string,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): Camera | undefined {
+  const scopeIds = projectionScopeEntityIds(scene, rootEntityId, 'container');
+  const residentIds = residentVisibleProjectionEntityIds(scene, scopeIds, 'container');
+  if (!residentIds.length) return undefined;
+  const clusterIds = nearbyContainerArrivalIds(scene, residentIds, viewport, safeArea);
+  const focusZoom = scene.projection?.zoomPolicy?.bands.find(band => band.detail === 'container')?.focusZoom
+    ?? levels[1]!.zoom;
+  return frameEntityIdsAtDetail(
+    scene,
+    clusterIds,
+    'container',
+    viewport,
+    safeArea,
+    CONTAINER_TITLE_READABLE_MIN_ZOOM,
+    focusZoom,
     true,
   );
 }
@@ -320,14 +426,14 @@ function frameEntityIdsAtDetail(
   safeArea: SafeArea,
   minZoom: number,
   maxZoom: number,
-  clipToContextCardFace = false,
+  clipToReadableCardFace = false,
 ): Camera | undefined {
   const wanted = new Set(entityIds);
   const entities = scene.entities.flatMap(entity => {
     const bounds = projectedBoundsAtDetail(scene, entity, detail);
     if (!wanted.has(entity.id) || !bounds) return [];
-    const framed = clipToContextCardFace && detail === 'context'
-      ? contextCardFaceBounds(bounds)
+    const framed = clipToReadableCardFace
+      ? readableCardFaceBounds(bounds, detail)
       : bounds;
     return [{ ...entity, ...framed }];
   });
@@ -456,6 +562,14 @@ export function frameProjectionScope(
   const ids = projectionScopeEntityIds(scene, rootEntityId, detail);
   const { level, minZoom, maxZoom } = dominantBandZoomRange(detail, forceBandOwnership);
   const rootBounds = scene.projection?.boundsByEntityIdAndDetail[rootEntityId]?.[detail];
+  // CLA-90: Open inside a scan system must frame L2 container peer card faces
+  // at a readable band-focus zoom. Coverage-reveal of the CLA-81 reserved owner
+  // commits ATLAS_CAMERA_BOUNDS.minZoom over a hollow shell (same class as CLA-82 L1).
+  if (detail === 'container' && scene.targetAspect !== undefined && rootBounds
+    && isReservedContainerShell(rootBounds)) {
+    const peers = frameContainerPeerArrivalCamera(scene, rootEntityId, viewport, safeArea);
+    if (peers) return peers;
+  }
   // Coverage-reveal landing (scan mode only): frame the focus at COVERAGE_REVEAL.full
   // coverage so its coverage-revealed children are visible on arrival, instead of clamping
   // up to the band floor (which overframes a large scope and hides its interior). Demo/golden

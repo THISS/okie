@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ASPECT_PRESET_TARGET,
+  C4_CONTAINER_CARD_FACE,
+  C4_CONTEXT_CARD_FACE,
+  cameraWorldRect,
   sliceArchitectureNeighborhood,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
@@ -13,11 +16,21 @@ import demoSnapshot from '../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../fixtures/architecture/demo-story.json';
 import { explorerEntitiesForView } from './entityExplorer';
-import { scanDrillDeeperDetail } from './renderer/goldenC4Scene';
+import { ATLAS_CAMERA_BOUNDS } from './renderer/cameraBounds';
+import { createC4Scene, scanDrillDeeperDetail } from './renderer/goldenC4Scene';
 import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
-import { semanticLensSessionDetail } from './semantic/semanticLens';
-import { semanticLevelSession } from './semantic/semanticLensEngine';
+import { containSemanticOwnerCamera, semanticLensSessionDetail } from './semantic/semanticLens';
+import {
+  CONTAINER_TITLE_READABLE_MIN_ZOOM,
+  CONTEXT_TITLE_READABLE_MIN_ZOOM,
+  containerCardFaceBounds,
+  containerTitleCssPx,
+  frameContainerPeerArrivalCamera,
+  frameContextArrivalCamera,
+  frameProjectionScope,
+  semanticLevelSession,
+} from './semantic/semanticLensEngine';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 
@@ -325,5 +338,171 @@ describe('CLA-83: Open inside the scan system lands on L2 container peers', () =
     });
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.every(entity => componentIds.includes(entity.id))).toBe(true);
+  });
+});
+
+const viewport = { width: 1_280, height: 720 };
+const chromeSafeArea = { top: 80, right: 300, bottom: 72, left: 64 };
+
+function reservedShellL2Scene() {
+  const packageNames = [
+    'server', 'web', 'engine', 'gpu', 'protocol', 'wasm',
+    'architecture', 'scan', 'compiler', 'theme',
+  ];
+  const containers = packageNames.map(name => ({
+    id: `container:${name}`,
+    kind: 'container' as const,
+    name: `@okie/${name}`,
+    parentId: 'system:okie',
+    sourceRefs: [],
+  }));
+  const unpublished: Array<{ id: string; kind: 'component'; parentId: string }> = [];
+  const childCounts: Record<string, number> = { 'system:okie': containers.length };
+  for (const container of containers) {
+    childCounts[container.id] = 24;
+    for (let index = 0; index < 24; index += 1) {
+      const componentId = `component:${container.id.slice('container:'.length)}-${String(index).padStart(2, '0')}`;
+      unpublished.push({ id: componentId, kind: 'component', parentId: container.id });
+      childCounts[componentId] = 12;
+    }
+  }
+  const snapshot: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: 'snapshot:cla-90',
+    repositoryId: 'repo:cla-90',
+    commitSha: 'sha',
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    entities: [
+      { id: 'person:developer', kind: 'person', name: 'Developer', sourceRefs: [] },
+      { id: 'system:okie', kind: 'softwareSystem', name: 'okie', sourceRefs: [] },
+      { id: 'external:npm', kind: 'externalSystem', name: 'npm', sourceRefs: [] },
+      ...containers,
+    ],
+    relations: [],
+  };
+  return createC4Scene({
+    baseSnapshot: snapshot,
+    rootEntityId: 'system:okie',
+    focusEntityId: 'system:okie',
+    familyId: 'f',
+    sceneId: 'scan:cla-90:c4',
+    title: 'okie',
+    subtitle: '',
+    frozenRevision: 'sha',
+    maxBand: 'container',
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+    childCounts,
+    unpublishedChildren: unpublished,
+  });
+}
+
+function containerFaceInSafeViewport(
+  bounds: { x: number; y: number; width: number; height: number },
+  camera: { x: number; y: number; zoom: number },
+) {
+  const face = containerCardFaceBounds(bounds);
+  const padding = 24;
+  const left = viewport.width / 2 + (face.x - camera.x) * camera.zoom;
+  const top = viewport.height / 2 + (face.y - camera.y) * camera.zoom;
+  const right = left + face.width * camera.zoom;
+  const bottom = top + face.height * camera.zoom;
+  return left >= chromeSafeArea.left + padding
+    && right <= viewport.width - chromeSafeArea.right - padding
+    && top >= chromeSafeArea.top + padding
+    && bottom <= viewport.height - chromeSafeArea.bottom - padding;
+}
+
+describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('Open inside a reserved system does not contain the owner shell (CLA-90)', () => {
+    expect(openInsideLoaded).toContain(
+      "const nextCamera = deeperDetail === 'container' ? framedCamera : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);",
+    );
+    expect(openInsideLoaded).toContain('frameProjectionScope(nextScene, compileFocus, deeperDetail, viewport, mapSafeArea)');
+  });
+
+  it('frames L2 container peer cards above minZoom, not z=0.32 over a hollow shell', () => {
+    const scene = reservedShellL2Scene();
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.container!;
+    expect(system.height).toBeGreaterThan(C4_CONTAINER_CARD_FACE.height * 4);
+    expect(system.width).toBeGreaterThan(C4_CONTAINER_CARD_FACE.width * 1.5);
+
+    const camera = frameProjectionScope(scene, 'system:okie', 'container', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera).toEqual(frameContainerPeerArrivalCamera(scene, 'system:okie', viewport, chromeSafeArea));
+    expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(camera!.zoom).toBeCloseTo(1.99, 5);
+    expect(containerTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+
+    const peers = scene.entities.filter(entity => entity.detail === 'container');
+    expect(peers.length).toBeGreaterThanOrEqual(10);
+    expect(peers.some(entity => containerFaceInSafeViewport(
+      scene.projection!.boundsByEntityIdAndDetail[entity.id]!.container!,
+      camera!,
+    ))).toBe(true);
+
+    const world = cameraWorldRect(camera!, viewport);
+    const hollow = { x: system.x, y: system.y, width: system.width, height: system.height };
+    expect(world.width * world.height).toBeLessThan(hollow.width * hollow.height * 0.5);
+
+    const contained = containSemanticOwnerCamera(camera!, system, viewport, chromeSafeArea);
+    expect(contained.zoom).toBe(camera!.zoom);
+    expect(contained.zoom).not.toBe(ATLAS_CAMERA_BOUNDS.minZoom);
+  });
+
+  it('CLA-83: Open inside the system keeps root=system and L2 peers visible', async () => {
+    const snapshot = scanLikeSnapshot();
+    const view = scanLikeView(snapshot);
+    const story = scanLikeStory(snapshot, view);
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => story,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, story, host, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+    const l2Focus = scanCompileFocusForBand(
+      fixture.snapshot,
+      'system:okie',
+      'container',
+      fixture.navigation.rootEntityId,
+    );
+    expect(l2Focus).toBe('system:okie');
+    const l2 = fixture.createScene(l2Focus);
+    const containerIds = (l2.projection?.entityIdsByDetail.container ?? [])
+      .filter(id => l2.entities.find(entity => entity.id === id)?.detail === 'container');
+    expect(containerIds.length).toBeGreaterThanOrEqual(10);
+
+    const camera = frameProjectionScope(l2, l2Focus, 'container', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
+
+    const session = semanticLevelSession(l2, 'container', ['system:okie']);
+    const rows = explorerEntitiesForView(l2, {
+      detail: 'container',
+      selected: l2.entities.find(entity => entity.id === 'system:okie')!,
+      settledTargetIds: session.settled.map(entry => entry.targetId),
+      visibleIds: l2.projection?.entityIdsByDetail.container,
+    });
+    expect(rows.filter(entity => entity.detail === 'container').length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('CLA-82 L1 first paint still frames readable card faces', () => {
+    const scene = reservedShellL2Scene();
+    const camera = frameContextArrivalCamera(scene, viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThan(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
+    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
+    expect(cameraWorldRect(camera!, viewport).height).toBeLessThan(system.height);
   });
 });
