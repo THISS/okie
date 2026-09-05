@@ -152,7 +152,7 @@ import {
 import { frameEntities, frameSemanticEntities, measuredStorySafeArea, storySafeArea, type SafeArea, type ViewportSize } from './storyFraming';
 import {
   compensateSemanticInspectorFlightCamera,
-  frameProjectionScope, frameVisibleProjection,
+  frameContextArrivalCamera, frameProjectionScope, frameVisibleProjection,
   levels,
   retargetCameraForSemanticBand,
   scopeFitsSafeViewport,
@@ -1198,12 +1198,12 @@ export function App() {
     return {
       ...identity,
       selectedId: identity.rootEntityId,
-      camera: defaultCamera,
+      camera: scanFixture ? (frameContextArrivalCamera(goldenScene) ?? defaultCamera) : defaultCamera,
       detail: semanticDetails[getLevel(defaultCamera.zoom)],
       minZoom: ATLAS_CAMERA_BOUNDS.minZoom,
       maxZoom: ATLAS_CAMERA_BOUNDS.maxZoom,
     };
-  }, [query.fixture, query.seed]);
+  }, [goldenScene, query.fixture, query.seed]);
   const navigationUrlOptions = useMemo(() => {
     const demoEntityIds = query.fixture === 'stress'
       ? undefined

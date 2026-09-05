@@ -4,6 +4,7 @@ import {
   ASPECT_PRESET_TARGET,
   buildC4ProjectionBundle,
   C4_BANDS,
+  C4_CONTEXT_CARD_FACE,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
   type NodeLayout,
@@ -138,6 +139,20 @@ test('a real aspect-packed compile places context peers clear of the system on b
   }
   const onLeft = boxes.filter(({ box }) => (box.x + box.width) <= system.x).length;
   assert.ok(onLeft > 0 && onLeft < boxes.length, 'compiled peers must flank both sides');
+});
+
+test('CLA-82: peers hug the L1 card face of a tall reserved shell, not its vertical center', () => {
+  const tall: NodeLayout = { x: 400, y: -1_544, width: 1_500, height: 3_579 };
+  const placed = layoutContextPeersAroundSystem(tall, peerItems(8));
+  assert.equal(placed.size, 8);
+  const faceBottom = tall.y + C4_CONTEXT_CARD_FACE.height;
+  const hollowCenterY = tall.y + tall.height / 2;
+  for (const [id, box] of placed) {
+    const mid = box.y + box.height / 2;
+    assert.ok(mid < faceBottom + 900, `${id} must sit near the L1 card face, not down the reserved shell`);
+    assert.ok(Math.abs(mid - hollowCenterY) > 1_000, `${id} must not cluster on the hollow interior center`);
+    assert.ok((box.x + box.width) <= tall.x || box.x >= (tall.x + tall.width), `${id} must still flank the system`);
+  }
 });
 
 test('context peers hold one identical position across every band (persistent shells)', () => {
