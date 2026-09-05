@@ -32,4 +32,13 @@ export function storyFocusPresentation(
   };
 }
 
+/** Inspector/canvas subject for a story step: the first focus id present in the scene. */
+export function storyStepSelectedId(
+  focusEntityIds: readonly string[],
+  presentEntityIds: Iterable<string>,
+): string | undefined {
+  const present = presentEntityIds instanceof Set ? presentEntityIds : new Set(presentEntityIds);
+  return focusEntityIds.find(id => present.has(id)) ?? focusEntityIds[0];
+}
+
 export { isolateNeighborhoodIds } from './isolateNeighborhood';

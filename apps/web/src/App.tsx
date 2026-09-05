@@ -127,7 +127,7 @@ import {
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
-import { isolateNeighborhoodIds, storyFocusPresentation } from './storyFocus';
+import { isolateNeighborhoodIds, storyFocusPresentation, storyStepSelectedId } from './storyFocus';
 import { RelationshipAuthoringOverlay } from './editor/RelationshipAuthoringOverlay';
 import { commitGesture, createGestureHistory, redoGesture, undoGesture, type GestureHistory } from './editor/gestureHistory';
 import {
@@ -152,7 +152,7 @@ import {
 import { frameEntities, frameSemanticEntities, measuredStorySafeArea, storySafeArea, type SafeArea, type ViewportSize } from './storyFraming';
 import {
   compensateSemanticInspectorFlightCamera,
-  frameContextArrivalCamera, frameProjectionScope, frameVisibleProjection,
+  frameContextArrivalCamera, frameProjectionScope, frameStoryStepCamera, frameVisibleProjection,
   levels,
   retargetCameraForSemanticBand,
   scopeFitsSafeViewport,
@@ -2099,6 +2099,13 @@ export function App() {
         const restoredKnown = Boolean(next.story && storyCatalog.some(plan => plan.id === next.story!.id));
         setActiveStoryId(restoredPlan.id);
         const restoredStep = restoredKnown ? Math.min(restoredPlan.steps.length - 1, next.story!.step) : -1;
+        if (restoredStep >= 0) {
+          const restoredFocusId = storyStepSelectedId(
+            restoredPlan.steps[restoredStep]!.focusEntityIds,
+            restoredScene.entities.map(entity => entity.id),
+          );
+          if (restoredFocusId) setSelectedId(restoredFocusId);
+        }
         setStoryStep(restoredStep);
         const restoredPosition = restoredKnown
           ? decodeStoryPosition(restoredPlan, restoredStep, next.story!.positionMs)
@@ -2115,8 +2122,8 @@ export function App() {
         storyFlightRef.current = undefined;
         setStoryFlightSample(undefined);
         if (restoredStep >= 0 && restoredPosition.phase === 'flight') {
-          const target = frameSemanticEntities(
-            scene,
+          const target = frameStoryStepCamera(
+            restoredScene,
             restoredPlan.steps[restoredStep]!.focusEntityIds,
             restoredPlan.steps[restoredStep]!.reveal,
             viewport,
@@ -3687,7 +3694,13 @@ export function App() {
     setStoryInterruption(undefined);
     setStorySelectionOverride(false);
     setReturnToStoryFrameRequired(false);
-    const framing = frameSemanticEntities(stepScene, step.focusEntityIds, step.reveal, viewport, measureCurrentStorySafeArea());
+    const stepSelectedId = storyStepSelectedId(step.focusEntityIds, stepScene.entities.map(entity => entity.id));
+    if (stepSelectedId) {
+      inspectorSelectionRef.current = stepSelectedId;
+      setSelectedId(stepSelectedId);
+      setPickedRelationId(undefined);
+    }
+    const framing = frameStoryStepCamera(stepScene, step.focusEntityIds, step.reveal, viewport, measureCurrentStorySafeArea());
     const nextCamera = framing ?? liveCamera;
     activeLevelRef.current = semanticDetails.indexOf(step.reveal);
     const now = performance.now();
@@ -3731,6 +3744,7 @@ export function App() {
     commitNavigation(canonicalNavigationState({
       ...navigationRef.current,
       rootEntityId: compileFocus,
+      ...(stepSelectedId ? { selectedId: stepSelectedId } : {}),
       camera: reduceMotion ? nextCamera : liveCamera,
       detail: canonicalSession.baseDetail,
       lensPath: semanticLensCanonicalPathIds(canonicalSession),
@@ -3905,7 +3919,7 @@ export function App() {
   useEffect(() => {
     if (storyStep < 0 || (storyPhase !== 'flight' && storyPhase !== 'arrival')) return;
     const step = story.steps[storyStep];
-    const target = frameSemanticEntities(scene, step.focusEntityIds, step.reveal, viewport, measureCurrentStorySafeArea());
+    const target = frameStoryStepCamera(scene, step.focusEntityIds, step.reveal, viewport, measureCurrentStorySafeArea());
     if (!target) return;
     const active = storyFlightRef.current;
     if (storyPhase === 'arrival' && !active) {

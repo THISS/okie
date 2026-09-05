@@ -561,6 +561,56 @@ export function semanticEntityFrameCamera(
   });
 }
 
+function storyStepPrimaryId(scene: AtlasScene, entityIds: readonly string[]): string | undefined {
+  return scene.rootEntityId && entityIds.includes(scene.rootEntityId)
+    ? scene.rootEntityId
+    : entityIds[0];
+}
+
+function storyStepFocusZoom(scene: AtlasScene, detail: SemanticDetail): number {
+  return scene.projection?.zoomPolicy?.bands.find(band => band.detail === detail)?.focusZoom
+    ?? levels[Math.max(0, semanticDetails.indexOf(detail))]!.zoom;
+}
+
+/**
+ * Frames a guided-story step as a readable box at the band's focus zoom.
+ * Scan L1 reserved shells must not fit the hollow interior down to z=0.32
+ * (CLA-84); nearby card faces land at context focus, matching golden.
+ */
+export function frameStoryStepCamera(
+  scene: AtlasScene,
+  entityIds: readonly string[],
+  detail: SemanticDetail,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): Camera | undefined {
+  const focusZoom = storyStepFocusZoom(scene, detail);
+  const primaryId = storyStepPrimaryId(scene, entityIds);
+  if (detail === 'context') {
+    const clustered = frameEntityIdsAtDetail(
+      scene,
+      nearbyContextArrivalIds(scene, entityIds),
+      'context',
+      viewport,
+      safeArea,
+      CONTEXT_TITLE_READABLE_MIN_ZOOM,
+      focusZoom,
+      true,
+    );
+    const entity = primaryId ? scene.entities.find(candidate => candidate.id === primaryId) : undefined;
+    const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'context') : undefined;
+    const face = bounds ? contextCardFaceBounds(bounds) : undefined;
+    if (clustered && face) return readableRootCamera(clustered, face, focusZoom, viewport, safeArea);
+    if (clustered) return clustered;
+  }
+  const fitted = frameSemanticEntities(scene, entityIds, detail, viewport, safeArea);
+  if (!fitted) return undefined;
+  const entity = primaryId ? scene.entities.find(candidate => candidate.id === primaryId) : undefined;
+  const bounds = entity ? projectedBoundsAtDetail(scene, entity, detail) : undefined;
+  if (!bounds) return fitted;
+  return readableRootCamera(fitted, bounds, focusZoom, viewport, safeArea);
+}
+
 export type SemanticInspectorHierarchyPlan = {
   session: SemanticLensSession;
   camera: Camera;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { storyFocusPresentation } from './storyFocus';
+import { storyFocusPresentation, storyStepSelectedId } from './storyFocus';
 
 describe('story focus ownership', () => {
   it('keeps an off-target logical selection out of later story focus and masks', () => {
@@ -37,5 +37,15 @@ describe('story focus ownership', () => {
     expect(overridden.focusedIds.size).toBe(0);
     expect(overridden.requiredIds).toEqual(new Set(['payments']));
     expect(overridden.relationIds).toEqual(new Set(['orders-payments']));
+  });
+});
+
+describe('storyStepSelectedId', () => {
+  it('picks the first focus entity that is present, else the authored primary', () => {
+    expect(storyStepSelectedId(['system:okie', 'external:browser'], ['external:browser', 'system:okie']))
+      .toBe('system:okie');
+    expect(storyStepSelectedId(['code:missing', 'system:okie'], ['system:okie'])).toBe('system:okie');
+    expect(storyStepSelectedId(['system:okie'], [])).toBe('system:okie');
+    expect(storyStepSelectedId([], ['system:okie'])).toBeUndefined();
   });
 });
