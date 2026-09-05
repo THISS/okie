@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { COVERAGE_REVEAL } from '@okie/scene-compiler';
+import { ASPECT_PRESET_TARGET } from '@okie/architecture';
 import type { ArchitectureSnapshot } from '@okie/architecture';
 import { createC4Scene } from '../renderer/goldenC4Scene';
-import { frameProjectionScope } from './semanticLensEngine';
+import { ATLAS_CAMERA_BOUNDS } from '../renderer/cameraBounds';
+import {
+  COMPONENT_TITLE_READABLE_MIN_ZOOM,
+  frameComponentPeerArrivalCamera,
+  frameProjectionScope,
+} from './semanticLensEngine';
 
-// Coverage-reveal drill/rail landing (tasks #30/#33 Stage A framing). Scan mode lands an
-// explicit framing at the focus's children-reveal coverage (~70%) so children are visible on
-// arrival, instead of clamping up to the band floor (which overframes a large scope). Demo
-// (no targetAspect) keeps the band-floor landing → byte-identical, bandPolicy.qa unchanged.
+// Coverage-reveal drill/rail landing (tasks #30/#33 Stage A framing). Scan mode
+// used to land a large reserved owner at COVERAGE_REVEAL.full — that clamped to
+// ATLAS_CAMERA_BOUNDS.minZoom over a hollow CLA-81 shell (CLA-92). Reserved L3
+// owners now frame file-component peer cards at a title-readable zoom. Demo
+// (no targetAspect) keeps the band-floor landing → byte-identical, bandPolicy.qa
+// unchanged.
 
 function denseContainerSnapshot(componentCount: number): ArchitectureSnapshot {
   const entities: ArchitectureSnapshot['entities'] = [
@@ -39,25 +46,21 @@ const safeArea = { top: 80, right: 300, bottom: 72, left: 64 };
 const COMPONENT_BAND_FLOOR = 3.35;
 
 describe('coverage-reveal drill/rail landing (scan mode)', () => {
-  it('lands a large-container drill so the focus covers ~coverageFull, below the band-floor overframe', () => {
-    const scene = scanScene(40, 1.6);
-    expect(scene.targetAspect).toBe(1.6);
+  it('CLA-92: reserved L3 scan drill frames peer cards, not minZoom over the hollow shell', () => {
+    const scene = scanScene(40, ASPECT_PRESET_TARGET.landscape);
+    expect(scene.targetAspect).toBe(ASPECT_PRESET_TARGET.landscape);
     const camera = frameProjectionScope(scene, 'container:c', 'component', viewport, safeArea)!;
-    const box = scene.projection!.boundsByEntityIdAndDetail['container:c']!.component!;
-    const safeWidth = viewport.width - safeArea.left - safeArea.right;
-    const safeHeight = viewport.height - safeArea.top - safeArea.bottom;
-    const coverage = Math.max(box.width / safeWidth, box.height / safeHeight) * camera.zoom;
-    expect(coverage).toBeGreaterThan(COVERAGE_REVEAL.start); // children are revealed on arrival
-    expect(coverage).toBeLessThanOrEqual(1 + 1e-6); // and the focus is not overflowing the viewport
-    expect(camera.zoom).toBeLessThan(COMPONENT_BAND_FLOOR); // not the band-floor overframe
+    expect(camera).toEqual(frameComponentPeerArrivalCamera(scene, 'container:c', viewport, safeArea));
+    expect(camera.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera.zoom).toBeGreaterThanOrEqual(COMPONENT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(camera.zoom).not.toBeCloseTo(ATLAS_CAMERA_BOUNDS.minZoom, 2);
   });
 
-  it('rail framing (preferReadableRoot) also lands at the reveal coverage in scan mode', () => {
-    const scene = scanScene(40, 1.6);
+  it('rail framing (preferReadableRoot) matches Open-inside peer-card landing on a reserved L3 shell', () => {
+    const scene = scanScene(40, ASPECT_PRESET_TARGET.landscape);
     const drill = frameProjectionScope(scene, 'container:c', 'component', viewport, safeArea, false, false)!;
     const rail = frameProjectionScope(scene, 'container:c', 'component', viewport, safeArea, false, true)!;
-    // Rail must not snap up to the component focus preset (5.27) when coverage reveal is active.
-    expect(rail.zoom).toBeLessThan(COMPONENT_BAND_FLOOR);
+    expect(rail.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
     expect(rail.zoom).toBeCloseTo(drill.zoom, 5);
   });
 

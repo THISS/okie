@@ -3476,7 +3476,9 @@ export function App() {
         viewport,
       );
       const framedCamera = frameProjectionScope(nextScene, compileFocus, deeperDetail, viewport, mapSafeArea) ?? anchored;
-      const nextCamera = deeperDetail === 'container' ? framedCamera : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
+      const nextCamera = deeperDetail === 'container' || deeperDetail === 'component'
+        ? framedCamera
+        : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
       setScene({ ...nextScene, scanDrillRecompile: { targetId: target.id, deeperDetail } });
       setSelectedId(target.id);
       setNavigationIdentity(current => ({ ...current, rootEntityId: compileFocus }));
