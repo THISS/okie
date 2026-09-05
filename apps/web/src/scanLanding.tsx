@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { enrichmentStageDetail, type PublicEnrichment } from './scanJobEnrichment';
+import { enrichmentStageDetail, scanEntityCountCopy, type PublicEnrichment } from './scanJobEnrichment';
 import {
   bindScanLandingActions,
   publicScanFetchInit,
@@ -90,16 +90,19 @@ export function ScanLandingScreen() {
         if (body) setAuth(body);
       })
       .catch(() => {});
+    return () => {
+      if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     void fetch('/scan/index.json')
       .then(response => (response.ok ? response.json() : undefined))
       .then((manifest: { repos?: ManifestRepo[] } | undefined) => {
         if (manifest?.repos) setPublished(manifest.repos);
       })
       .catch(() => {});
-    return () => {
-      if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
-    };
-  }, []);
+  }, [job?.atlasReady, job?.entityCount, job?.commitSha]);
 
   const submitRepoRef = useRef<(url: string) => Promise<StartPublicScanResult>>(
     async () => startPublicScanResultFromHttp(0, {}),
@@ -266,7 +269,7 @@ export function ScanLandingScreen() {
           {job.commitSha && (
             <p style={{ ...mutedStyle, marginTop: '0.75rem', fontSize: '0.85rem' }}>
               commit <code>{job.commitSha.slice(0, 12)}</code>
-              {job.entityCount !== undefined ? <> · {job.entityCount.toLocaleString()} entities</> : null}
+              {job.entityCount !== undefined ? <> · {scanEntityCountCopy(job.entityCount)}</> : null}
             </p>
           )}
           {job.atlasReady && (
@@ -305,7 +308,7 @@ export function ScanLandingScreen() {
                   {href
                     ? <a href={href} style={{ color: '#79dfd4' }}>{repo.slug.replace('__', '/')}</a>
                     : <span style={mutedStyle}>{repo.slug}</span>}
-                  <span style={{ ...mutedStyle, fontSize: '0.85rem' }}> · {repo.entityCount.toLocaleString()} entities · {repo.commitSha.slice(0, 10)}</span>
+                  <span style={{ ...mutedStyle, fontSize: '0.85rem' }}> · {scanEntityCountCopy(repo.entityCount)} · {repo.commitSha.slice(0, 10)}</span>
                 </li>
               );
             })}

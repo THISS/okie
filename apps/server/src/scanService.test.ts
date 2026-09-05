@@ -4,6 +4,7 @@ import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSy
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import type { GithubClient } from "@okie/scan";
 import {
@@ -14,6 +15,8 @@ import { healthzBody } from "./localDefaults.js";
 import { createScanJobQueue, toPublicJob } from "./jobs.js";
 import { DEFAULT_GATEWAY_MODEL_ID } from "./llmGateway.js";
 import { createDefaultEnricherFactory, createScanJobRunner, type ScanServiceOptions } from "./scanService.js";
+
+const srcDir = fileURLToPath(new URL(".", import.meta.url));
 
 test("HTTP scan runner fails closed on a private-repo 404 without an explicit token", async () => {
   const calls: string[] = [];
@@ -284,6 +287,60 @@ test("job logs redact a gateway key if a provider error echoes it", async () => 
     assert.equal(job.enrichment.provider, "openrouter.ai");
     assert.ok(logs.every(line => !line.includes(FAKE_GATEWAY_KEY)));
     assert.ok(existsSync(join(scanRoot, "acme__app", "snapshot.json")));
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+    fixture.cleanup();
+  }
+});
+
+test("hosted paste-a-repo uses the CLI default L4 surface (all top-level declarations)", async () => {
+  const service = readFileSync(join(srcDir, "../src/scanService.ts"), "utf8");
+  const cli = readFileSync(join(srcDir, "../../../packages/scan/src/cli.ts"), "utf8");
+  assert.match(service, /codeSurface:\s*"all"/);
+  assert.doesNotMatch(service, /codeSurface:\s*"public"/);
+  assert.match(cli, /--public-api/);
+  assert.match(cli, /CLI opt-in/);
+  assert.doesNotMatch(cli, /hosted posture/);
+
+  const fixture = makeTarball("acme-app-cla88aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {
+    "package.json": JSON.stringify({ name: "acme-app" }),
+    "src/index.ts": [
+      "export const ping = () => 'pong';",
+      "function hiddenHelper() { return 1; }",
+      "",
+    ].join("\n"),
+  });
+  const commitSha = "cla88aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-root-"));
+  try {
+    const queue = createScanJobQueue(createScanJobRunner({
+      scanRoot,
+      enrich: "off",
+      githubClient: githubClientForTarball(commitSha, fixture.tgz),
+    }));
+    queue.submit({ owner: "acme", repo: "app", slug: "acme__app" });
+    await queue.idle();
+    const job = queue.list()[0]!;
+    assert.equal(job.stage, "complete");
+    assert.equal(job.atlasReady, true);
+    const snapshot = JSON.parse(readFileSync(join(scanRoot, "acme__app", "snapshot.json"), "utf8")) as {
+      commitSha: string;
+      entities: Array<{ kind: string; name: string }>;
+    };
+    const codeNames = snapshot.entities.filter(entity => entity.kind === "code").map(entity => entity.name).sort();
+    assert.deepEqual(codeNames, ["hiddenHelper", "ping"]);
+    assert.equal(job.entityCount, snapshot.entities.length);
+    assert.equal(job.commitSha, snapshot.commitSha);
+    const manifest = JSON.parse(readFileSync(join(scanRoot, "index.json"), "utf8")) as {
+      repos: Array<{ slug: string; commitSha: string; entityCount: number }>;
+    };
+    const row = manifest.repos.find(repo => repo.slug === "acme__app");
+    assert.ok(row);
+    assert.equal(row.entityCount, job.entityCount);
+    assert.equal(row.commitSha, job.commitSha);
+    const publicJob = toPublicJob(job);
+    assert.equal(publicJob.entityCount, job.entityCount);
+    assert.equal(JSON.stringify(publicJob).includes("scanRoot"), false);
   } finally {
     rmSync(scanRoot, { recursive: true, force: true });
     fixture.cleanup();
