@@ -71,7 +71,7 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(body.height).toBe(OEMBED_DEFAULT_HEIGHT);
     expect(body.html).toContain(`src="${DOGFOOD}?embed=1"`);
     expect(body.html).toContain('<!-- Okie embed chrome:');
-    expect(body.html).toContain('inspector Overview one-pager starts collapsed');
+    expect(body.html).toContain('inspector Overview architecture brief starts collapsed');
     expect(body.html).toContain('allow="fullscreen; gpu"');
     expect(body.html).toContain('allowfullscreen');
     expect(body.html).toContain('<iframe ');

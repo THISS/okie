@@ -336,6 +336,27 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .semantic-mermaid-diagram.is-compact .semantic-mermaid-svg { padding: 8px; }
 .semantic-mermaid-diagram.is-compact .semantic-mermaid-svg > svg { max-height: 220px; }
 .overview-panel .semantic-mermaid-source { margin-top: 10px; padding: 10px; }
+.architecture-brief { min-width: 0; }
+.architecture-brief .brief-kicker { display: grid; gap: 10px; }
+.architecture-brief .brief-copy-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.architecture-brief .brief-copy-actions span { color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; }
+.architecture-brief .brief-copy-actions button { min-height: 28px; padding: 0 10px; border: 1px solid var(--atlas-line-strong); border-radius: 7px; background: rgba(255,255,255,.025); color: var(--atlas-text); font-family: var(--atlas-font-mono); font-size: 10px; cursor: pointer; }
+.architecture-brief .brief-copy-actions button:hover { border-color: rgba(217,255,112,.28); background: rgba(217,255,112,.04); }
+.architecture-brief .brief-prose { min-width: 0; }
+.architecture-brief .brief-prose h1 { overflow-wrap: anywhere; margin: 16px 0 0; font-size: 28px; font-weight: 650; line-height: 1.08; letter-spacing: -.035em; }
+.architecture-brief .brief-prose h2 { margin: 28px 0 0; padding-top: 16px; border-top: 1px solid var(--atlas-line); color: var(--atlas-text); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.architecture-brief .brief-prose h3 { overflow-wrap: anywhere; margin: 18px 0 0; font-size: 16px; font-weight: 650; line-height: 1.25; }
+.architecture-brief .brief-prose h3 button { display: inline; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.architecture-brief .brief-prose h3 button:hover { color: var(--atlas-accent); }
+.architecture-brief .brief-prose h3 button:disabled { color: inherit; cursor: default; }
+.architecture-brief .brief-prose p { margin: 10px 0 0; color: var(--atlas-muted); font-size: 13px; line-height: 1.65; }
+.architecture-brief .brief-prose .brief-technology { color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 11px; }
+.architecture-brief .brief-prose ul { margin: 12px 0 0; padding: 0 0 0 18px; }
+.architecture-brief .brief-prose li { margin: 0 0 8px; color: var(--atlas-muted); font-size: 13px; line-height: 1.55; }
+.architecture-brief .brief-prose li strong { color: var(--atlas-text); font-weight: 630; }
+.architecture-brief .semantic-mermaid-diagram.is-compact { margin-top: 14px; }
+.architecture-brief .semantic-mermaid-diagram.is-compact .semantic-mermaid-canvas { min-height: 220px; }
+.architecture-brief .semantic-mermaid-diagram.is-compact .semantic-mermaid-svg > svg { max-height: 320px; }
 .semantic-diagram-inspector { align-self: start; position: sticky; top: 0; }
 .semantic-diagram-inspector > header { display: flex; align-items: center; justify-content: space-between; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .semantic-diagram-inspector > header button { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--atlas-quiet); cursor: pointer; }
@@ -910,7 +931,7 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
   .semantic-mermaid-svg > svg { width: 100% !important; min-width: 0; max-width: 100% !important; }
 }
 
-/* CLA-85: oEmbed 800×560 — map first; Overview one-pager is a toggle, not the page.
+/* CLA-85: oEmbed 800×560 — map first; Overview architecture brief is a toggle, not the page.
    Two-row grid: hiding .diagram-view-bar with display:none must not leave workspace
    in the 0px tabs row. */
 .app-shell[data-embed="true"] {

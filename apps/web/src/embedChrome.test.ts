@@ -42,7 +42,7 @@ describe('CLA-85 embed chrome vs Overview overlay', () => {
   });
 
   it('documents reduced chrome in the oEmbed snippet without keys or host paths', () => {
-    expect(OEMBED_SNIPPET_CHROME_NOTE).toMatch(/inspector Overview one-pager starts collapsed/);
+    expect(OEMBED_SNIPPET_CHROME_NOTE).toMatch(/inspector Overview architecture brief starts collapsed/);
     expect(OEMBED_SNIPPET_CHROME_NOTE).toMatch(/800×560/);
     expect(OEMBED_SNIPPET_CHROME_NOTE).toMatch(/Overview tour stays on the map/);
     expect(OEMBED_SNIPPET_CHROME_NOTE).toMatch(/Ask Atlas is hidden/);

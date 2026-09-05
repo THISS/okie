@@ -18,6 +18,7 @@ export {
   INSPECTOR_NOTATION_ADVISORY_SAMPLE,
   type InspectorTab,
 } from './inspectorPanel';
+export { buildArchitectureBrief } from './architectureBrief';
 export { buildScanOnePager } from './scanOnePager';
 export {
   canvasRelationRowsInIsolate,

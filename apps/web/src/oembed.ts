@@ -15,8 +15,8 @@ import { parseAppRoute } from './renderer/route';
  * exact operator/Vercel public origins). A forged Host cannot become the embed
  * target; invalid Host headers 404 instead of falling back.
  *
- * Default iframe chrome (CLA-85): `?embed=1` collapses the Overview one-pager
- * so 800×560 shows the L1 map. The snippet comment documents that reduction.
+ * Default iframe chrome (CLA-85): `?embed=1` collapses the Overview architecture
+ * brief so 800×560 shows the L1 map. The snippet comment documents that reduction.
  */
 
 export const OEMBED_PATH = '/oembed';
@@ -33,7 +33,7 @@ export const OEMBED_THUMBNAIL_HEIGHT = 630;
 export const OEMBED_IFRAME_ALLOW = 'fullscreen; gpu';
 export const OEMBED_EMBED_PARAM = 'embed';
 export const OEMBED_SNIPPET_CHROME_NOTE =
-  'Okie embed chrome: inspector Overview one-pager starts collapsed so the L1 map stays visible at 800×560. Open the panel toggle for the one-pager. Overview tour stays on the map. Ask Atlas is hidden in the iframe.';
+  'Okie embed chrome: inspector Overview architecture brief starts collapsed so the L1 map stays visible at 800×560. Open the panel toggle for the brief. Overview tour stays on the map. Ask Atlas is hidden in the iframe.';
 export const OG_IMAGE_PATH_PREFIX = '/og';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
