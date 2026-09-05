@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ASPECT_PRESET_TARGET, buildC4ProjectionBundle, computeContainmentLayout } from '@okie/architecture';
-import { compileC4Scene, NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
+import { compileC4Scene } from '@okie/scene-compiler';
 import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 import { createC4Scene } from './renderer/goldenC4Scene';
 import { denseNeighborhoodSnapshot } from '@okie/scene-compiler';
@@ -34,15 +34,18 @@ describe('CLA-81: shape-first atlas reserves containment geometry', () => {
     });
     expect((scene.omittedNodes?.length ?? 0)).toBeGreaterThan(0);
     expect((scene.projection?.entityIdsByDetail.code ?? []).length).toBeLessThan(40);
-    const protocol = scene.protocolSnapshot as {
-      objects: Array<{ id: string; representations: Array<{ primitives: Array<{ kind: string; content?: string }> }> }>;
-    };
+    const protocol = scene.protocolSnapshot as { objects: Array<{ id: string }> };
     const omittedVisual = new Set((scene.omittedNodes ?? []).map(node => `visual-node:${node.entityId}`));
-    const shells = protocol.objects.filter(object => omittedVisual.has(object.id));
-    expect(shells.length).toBeGreaterThan(0);
-    expect(shells.every(object => object.representations.every(representation =>
-      representation.primitives.every(primitive => primitive.content !== NO_SUMMARY_SUPPLIED),
-    ))).toBe(true);
+    expect(protocol.objects.some(object => omittedVisual.has(object.id))).toBe(false);
+    expect(protocol.objects.length).toBeLessThan(40);
+    const owner = (scene.protocolSnapshot as {
+      objects: Array<{ id: string; representations: Array<{ primitives: Array<{ kind: string }> }> }>;
+    }).objects.find(object => object.id === 'visual-node:component:c');
+    expect(owner).toBeDefined();
+    const reservedRects = owner!.representations.flatMap(representation =>
+      representation.primitives.filter(primitive => primitive.kind === 'roundedRect'),
+    );
+    expect(reservedRects.length).toBeGreaterThan(scene.omittedNodes!.length);
   });
 
   it('containment layout from childCounts is a committed size hint', () => {

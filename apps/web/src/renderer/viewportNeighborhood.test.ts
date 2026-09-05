@@ -25,13 +25,8 @@ describe('CLA-74: camera-resident L4 compile', () => {
     expect(scene.omittedNodes?.length ?? 0).toBeGreaterThan(0);
     expect(codeIds.length + (scene.omittedNodes?.filter(node => node.detail === 'code').length ?? 0))
       .toBeGreaterThanOrEqual(80);
-    const protocol = scene.protocolSnapshot as { objects: Array<{ id: string; representations: Array<{ primitives: Array<{ kind: string; content?: string }> }> }>; paths: unknown[] };
-    const omittedIds = new Set((scene.omittedNodes ?? []).map(node => `visual-node:${node.entityId}`));
-    const shellObjects = protocol.objects.filter(object => omittedIds.has(object.id));
-    expect(shellObjects.length).toBeGreaterThan(0);
-    expect(shellObjects.every(object => object.representations.every(representation =>
-      representation.primitives.every(primitive => primitive.content !== 'No summary supplied.'),
-    ))).toBe(true);
+    const protocol = scene.protocolSnapshot as { objects: unknown[]; paths: unknown[] };
+    expect(protocol.objects.length).toBeLessThan(90);
     expect(protocol.paths.length).toBeLessThan(80);
     expect((scene.projection?.entityIdsByDetail.code ?? []).length).toBeLessThanOrEqual(SCAN_RESIDENT_NODES_PER_BAND + 5);
   });
@@ -108,11 +103,7 @@ describe('CLA-74: camera-resident L4 compile', () => {
     const omitted = resolveOmittedNodes(bundle, snapshot);
     expect(omitted.length).toBeGreaterThan(0);
     expect(omitted.every(node => node.name && node.entityId)).toBe(true);
-    const compiled = compileC4Scene(snapshot, bundle).scene;
-    const omittedVisualIds = new Set(bundle.projectionById[bundle.family.projectionIds.code]?.omittedNodeIds ?? []);
-    expect(omittedVisualIds.size).toBeGreaterThan(0);
-    expect(compiled.objects.some(object => omittedVisualIds.has(object.id))).toBe(true);
-    expect(compiled.paths.length).toBeLessThan(80);
+    expect(compileC4Scene(snapshot, bundle).scene.objects.length).toBeLessThan(80);
   });
 
   it('does not raise the 2000 hang-guard', () => {

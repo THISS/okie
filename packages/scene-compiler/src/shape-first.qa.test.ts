@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ASPECT_PRESET_TARGET,
+  C4_BAND_FOCUS_ZOOM,
   buildC4ProjectionBundle,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
   type EntityKind,
 } from "@okie/architecture";
-import { NO_SUMMARY_SUPPLIED, compileC4Scene } from "./compile-c4.js";
+import { C4_ZOOM_BANDS, NO_SUMMARY_SUPPLIED, compileC4Scene } from "./compile-c4.js";
 import { BAND_COST_HANG_GUARD_ENTITIES } from "./band-cost-curve.js";
 
 function entity(id: string, kind: EntityKind, parentId?: string): ArchitectureEntity {
@@ -53,13 +54,22 @@ test("CLA-81: omitted L4 cards keep reserved shells without enrichment copy", ()
   const compiled = compileC4Scene(snapshot, bundle, { targetAspect: ASPECT_PRESET_TARGET.landscape });
   const omitted = bundle.projectionById[bundle.family.projectionIds.code]?.omittedNodeIds ?? [];
   assert.ok(omitted.length > 0);
-  const shells = compiled.scene.objects.filter(object => omitted.includes(object.id));
-  assert.equal(shells.length, omitted.length);
-  for (const object of shells) {
+  assert.equal(compiled.scene.objects.some(object => omitted.includes(object.id)), false);
+  const reserved = compiled.projections.bandLayoutById[
+    compiled.projections.projectionById[compiled.projections.family.projectionIds.code]!.layoutId
+  ]?.reservedShells ?? {};
+  assert.ok(omitted.some(id => reserved[id]), "omitted cards keep reserved shells on the owner");
+  const owner = compiled.scene.objects.find(object => object.id === "visual-node:component:file");
+  assert.ok(owner, "resident owner stays a protocol object");
+  const reservedRects = owner.representations.flatMap(representation =>
+    representation.primitives.filter(primitive => primitive.kind === "roundedRect"),
+  );
+  assert.ok(reservedRects.length > omitted.length, "owner paints blank reserved child shells");
+  for (const object of compiled.scene.objects) {
     const texts = object.representations.flatMap(representation =>
       representation.primitives.flatMap(primitive => primitive.kind === "text" ? [primitive.content] : []),
     );
-    assert.equal(texts.includes(NO_SUMMARY_SUPPLIED), false, "shells must not invent summaries");
+    assert.equal(texts.includes(NO_SUMMARY_SUPPLIED) && omitted.includes(object.id), false);
   }
 });
 
@@ -105,6 +115,9 @@ test("CLA-81: childCounts reserve parent size so opening the band does not grow 
   assert.equal(Math.round(reservedFile.height * 1000), Math.round(openedFile.height * 1000));
 });
 
-test("CLA-81: hang-guard stays 2000", () => {
+test("CLA-81: hang-guard stays 2000 and focus zooms stay locked to the compiler", () => {
   assert.equal(BAND_COST_HANG_GUARD_ENTITIES, 2000);
+  for (const band of C4_ZOOM_BANDS) {
+    assert.equal(C4_BAND_FOCUS_ZOOM[band.detail], band.focusZoom);
+  }
 });

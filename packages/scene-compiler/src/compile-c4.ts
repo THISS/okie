@@ -408,7 +408,16 @@ function objectForNode(
     if (!bounds) continue;
     const shell = shellIds?.has(node.id) === true
       || (projection.omittedNodeIds?.includes(node.id) === true);
-    const reservedInside = Object.values(layout.reservedShells ?? {}).filter(shellBounds => contains(bounds, shellBounds));
+    const reservedInside = Object.entries(layout.reservedShells ?? {})
+      .filter(([visualId, shellBounds]) => {
+        if (!contains(bounds, shellBounds)) return false;
+        const child = bundle.visualNodeById[visualId];
+        if (child?.parentVisualId) return child.parentVisualId === node.id;
+        const childEntityId = bundle.index.entityIdByVisualNodeId[visualId];
+        return snapshot.entities.some(entity =>
+          entity.id === childEntityId && entity.parentId === node.entity.logicalId);
+      })
+      .map(([, shellBounds]) => shellBounds);
     const boundary = visibleChildren(projection, bundle).has(node.id) || reservedInside.length > 0;
     // Coverage reveal (opt-in): a child card reveals when its PARENT crosses the coverage
     // target; an owner's boundary shell reveals when ITS OWN box does, at the band where its
@@ -898,20 +907,41 @@ function applyIntrinsicOwnerGeometry(
     const reservedShells: Record<string, NodeLayout> = {};
     for (const [entityId, bounds] of canonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
-      if (resident.has(visualId) || omitted.has(visualId)) {
+      if (resident.has(visualId)) {
         layout.nodes[visualId] = { ...bounds };
         continue;
       }
-      if (!unpublishedIds.has(entityId)) continue;
       const parentId = entities.get(entityId)?.parentId;
       const parentVisualId = parentId
         ? (bundle.index.visualNodeIdsByEntityId[parentId]?.[0] ?? `visual-node:${parentId}`)
         : undefined;
-      if (!parentVisualId || (!resident.has(parentVisualId) && !layout.nodes[parentVisualId])) continue;
+      const parentVisible = Boolean(
+        parentVisualId && (resident.has(parentVisualId) || layout.nodes[parentVisualId]),
+      );
+      if (omitted.has(visualId) && parentVisible) {
+        reservedShells[visualId] = { ...bounds };
+        continue;
+      }
+      if (!unpublishedIds.has(entityId) || !parentVisible) continue;
       reservedShells[visualId] = { ...bounds };
       if (!bundle.index.entityIdByVisualNodeId[visualId]) {
         bundle.index.entityIdByVisualNodeId[visualId] = entityId;
         bundle.index.visualNodeIdsByEntityId[entityId] ??= [visualId];
+      }
+      const child = entities.get(entityId);
+      if (child && !bundle.visualNodeById[visualId]) {
+        bundle.visualNodeById[visualId] = {
+          id: visualId,
+          entity: {
+            snapshotEntityId: `${snapshot.id}::${child.id}`,
+            logicalId: child.id,
+            lineageId: child.id,
+          },
+          kind: child.kind,
+          name: child.name,
+          technology: [],
+          ...(parentVisualId ? { parentVisualId } : {}),
+        };
       }
     }
     if (Object.keys(reservedShells).length) layout.reservedShells = reservedShells;
@@ -1109,9 +1139,15 @@ export function compileC4Scene(
   );
   const theme = options.theme ?? defaultTheme;
   const shellIds = omittedVisualIds(bundle);
+  const reservedIds = new Set(C4_BANDS.flatMap(band => {
+    const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
+    return Object.keys(bundle.bandLayoutById[projection.layoutId]?.reservedShells ?? {});
+  }));
   const entityObjects = Object.values(bundle.visualNodeById)
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(node => objectForNode(snapshot, bundle, node, theme, options.targetAspect, shellIds))
+    .map(node => (shellIds.has(node.id) || reservedIds.has(node.id))
+      ? undefined
+      : objectForNode(snapshot, bundle, node, theme, options.targetAspect, shellIds))
     .filter((object): object is SceneObject => object !== undefined);
   const paths: ScenePath[] = [];
   const labelObjects: SceneObject[] = [];
