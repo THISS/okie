@@ -104,6 +104,48 @@ function rectsOverlap(
     && left.y + left.height > right.y;
 }
 
+function boundsUnion(
+  scene: {
+    projection?: {
+      boundsByEntityIdAndDetail?: Record<string, Partial<Record<'code', { x: number; y: number; width: number; height: number }>>>;
+    };
+  },
+  ids: readonly string[],
+  detail: 'code',
+) {
+  const boxes = ids.flatMap(id => {
+    const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.[detail];
+    return bounds ? [bounds] : [];
+  });
+  if (!boxes.length) return undefined;
+  const left = Math.min(...boxes.map(box => box.x));
+  const top = Math.min(...boxes.map(box => box.y));
+  const right = Math.max(...boxes.map(box => box.x + box.width));
+  const bottom = Math.max(...boxes.map(box => box.y + box.height));
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+function rectCenter(bounds: { x: number; y: number; width: number; height: number }) {
+  return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+}
+
+function distance(
+  left: { x: number; y: number },
+  right: { x: number; y: number },
+) {
+  return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
+/** World point Fit aims at (safe-viewport center), not the raw camera origin. */
+function fitAim(camera: { x: number; y: number; zoom: number }) {
+  const safeWidth = viewport.width - chromeSafeArea.left - chromeSafeArea.right;
+  const safeHeight = viewport.height - chromeSafeArea.top - chromeSafeArea.bottom;
+  return {
+    x: camera.x + (chromeSafeArea.left + safeWidth / 2 - viewport.width / 2) / camera.zoom,
+    y: camera.y + (chromeSafeArea.top + safeHeight / 2 - viewport.height / 2) / camera.zoom,
+  };
+}
+
 describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
   it('does not raise the 2000 hang-guard', () => {
     expect(readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8'))
@@ -143,6 +185,9 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
     expect(residentIds.length).toBeGreaterThan(0);
     expect(residentIds.every(id => codeIds.includes(id))).toBe(true);
     expect(residentIds.every(id => scene.entities.find(entity => entity.id === id)?.detail === 'code')).toBe(true);
+    expect(visibleIds.some(id => scene.entities.find(entity => entity.id === id)?.detail !== 'code')).toBe(true);
+    expect(residentIds).not.toContain('system:d');
+    expect(residentIds).not.toContain('container:c');
 
     const camera = frameVisibleProjection(scene, visibleIds, 'code', viewport, chromeSafeArea);
     expect(camera).toBeDefined();
@@ -152,6 +197,16 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
       return bounds ? rectsOverlap(world, bounds) : false;
     });
     expect(inView.length).toBeGreaterThan(0);
+
+    const ancestorUnion = boundsUnion(scene, visibleIds, 'code');
+    const residentUnion = boundsUnion(scene, residentIds, 'code');
+    expect(ancestorUnion).toBeDefined();
+    expect(residentUnion).toBeDefined();
+    const aim = fitAim(camera!);
+    const split = distance(rectCenter(residentUnion!), rectCenter(ancestorUnion!));
+    if (split > 1) {
+      expect(distance(aim, rectCenter(residentUnion!))).toBeLessThan(distance(aim, rectCenter(ancestorUnion!)));
+    }
   });
 
   it('Code-rail explorer rows at L4 stay inside the Fit camera on a container neighborhood', async () => {
@@ -188,13 +243,28 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
       visibleIds,
     });
     expect(rows.some(entity => entity.detail === 'code')).toBe(true);
+    expect(visibleIds).toContain('system:okie');
     const camera = frameVisibleProjection(l4, visibleIds, 'code', viewport, chromeSafeArea);
     expect(camera).toBeDefined();
     const world = cameraWorldRect(camera!, viewport);
     const codeRows = rows.filter(entity => entity.detail === 'code');
-    expect(codeRows.some(entity => {
+    expect(codeRows.length).toBeGreaterThan(0);
+    expect(codeRows.every(entity => {
       const bounds = l4.projection?.boundsByEntityIdAndDetail[entity.id]?.code;
       return bounds ? rectsOverlap(world, bounds) : false;
     })).toBe(true);
+
+    const ancestorUnion = boundsUnion(l4, visibleIds, 'code');
+    const residentUnion = boundsUnion(
+      l4,
+      residentVisibleProjectionEntityIds(l4, visibleIds, 'code'),
+      'code',
+    );
+    expect(ancestorUnion).toBeDefined();
+    expect(residentUnion).toBeDefined();
+    expect(ancestorUnion!.width).toBeGreaterThan(residentUnion!.width * 2);
+    const aim = fitAim(camera!);
+    expect(distance(aim, rectCenter(residentUnion!)))
+      .toBeLessThan(distance(aim, rectCenter(ancestorUnion!)));
   });
 });
