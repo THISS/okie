@@ -69,9 +69,9 @@ describe('CLA-77 user-flow stories', () => {
     expect(isolated).toEqual([
       'component:scan-service',
       'code:scan-service:create-scan-job-runner',
-      'code:scan-service:publish',
     ]);
     expect(isolated.length).toBeGreaterThan(1);
     expect(isolated).not.toEqual(flow.steps[0]!.focusEntityIds);
+    expect(isolated).not.toContain('code:scan-service:publish');
   });
 });

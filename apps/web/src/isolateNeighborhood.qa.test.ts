@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { isolateNeighborhoodIds, type IsolateNeighborhoodEntity } from './isolateNeighborhood';
+import { VIEWPORT_RESIDENT_NODES_PER_BAND } from '@okie/architecture';
+import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
+import {
+  ISOLATE_NEIGHBORHOOD_MAX,
+  isolateNeighborhoodIds,
+  type IsolateNeighborhoodEntity,
+} from './isolateNeighborhood';
 import { storyFocusPresentation } from './storyFocus';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
@@ -29,7 +35,7 @@ const leaf = entity('code:webmcp:host-headers', 'code', 'component:webmcp');
 const container = entity('container:web-app', 'container', 'system:okie');
 const scene = [container, fileComponent, leaf, sibling];
 
-describe('CLA-55: isolate from a code story step keeps a file-component neighborhood', () => {
+describe('CLA-55/89: isolate from a code story step keeps a file neighborhood', () => {
   it('does not collapse a code story step to a single leaf', () => {
     const story = storyFocusPresentation('system:okie', [leaf.id], [], {
       storyOpen: true,
@@ -39,9 +45,27 @@ describe('CLA-55: isolate from a code story step keeps a file-component neighbor
       liftCodeStoryFocus: true,
     });
     expect(story.requiredIds.size).toBe(1);
-    expect(isolated).toEqual([fileComponent.id, leaf.id, sibling.id]);
+    expect(isolated).toEqual([fileComponent.id, leaf.id]);
     expect(isolated.length).toBeGreaterThan(1);
     expect(isolated).not.toContain(container.id);
+    expect(isolated).not.toContain(sibling.id);
+  });
+
+  it('does not dump a fat file’s declarations into Isolate (CLA-89)', () => {
+    const crowd = Array.from({ length: 127 }, (_, index) =>
+      entity(`code:webmcp:decl-${index}`, 'code', fileComponent.id));
+    const peers = Array.from({ length: 8 }, (_, index) =>
+      entity(`component:peer-${index}`, 'component', container.id));
+    const fatScene = [container, fileComponent, ...peers, leaf, sibling, ...crowd];
+    const isolated = isolateNeighborhoodIds(fatScene, [leaf.id], { liftCodeStoryFocus: true });
+    expect(isolated).toContain(fileComponent.id);
+    expect(isolated).toContain(leaf.id);
+    expect(isolated).toContain(peers[0]!.id);
+    expect(isolated).not.toContain(sibling.id);
+    expect(isolated.filter(id => id.startsWith('code:'))).toEqual([leaf.id]);
+    expect(isolated.length).toBeLessThanOrEqual(ISOLATE_NEIGHBORHOOD_MAX);
+    expect(isolated.length).toBeGreaterThan(1);
+    expect(isolated.length).toBeLessThan(40);
   });
 
   it('still collapses a user-selected code leaf to that leaf', () => {
@@ -83,5 +107,13 @@ describe('CLA-55 restore full view and CLA-11 isolate camera', () => {
     expect(app).toContain("const focusedIds = visibilityMode === 'isolate' ? isolatedEntityIdSet : storyFocus.focusedIds");
     expect(app).toContain('canvasRelationRowsInIsolate(related, selected.id, isolatedEntityIdSet)');
     expect(app).not.toContain('row.semanticIds.some(id => isolatedRelationIdSet.has(id))');
+  });
+
+  it('does not raise the 2000 hang-guard or rewrite lazy band compile', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(ISOLATE_NEIGHBORHOOD_MAX).toBe(VIEWPORT_RESIDENT_NODES_PER_BAND);
+    expect(ISOLATE_NEIGHBORHOOD_MAX).toBe(50);
+    expect(app).not.toContain('SCAN_BAND_DEPTH_MIN_ENTITIES = 3000');
+    expect(app).toContain('scanCompileFocusForBand(');
   });
 });
