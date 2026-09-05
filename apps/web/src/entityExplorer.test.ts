@@ -362,7 +362,7 @@ describe('CLA-86: L1 explorer leads with system/people before npm externals', ()
           name,
           sourceRefs: [],
         })),
-        { id: 'system:okie', kind: 'softwareSystem', name: 'okie', responsibility: okie.responsibility, sourceRefs: [] },
+        { id: 'system:okie', kind: 'softwareSystem' as const, name: 'okie', responsibility: okie.responsibility, sourceRefs: [] },
       ].sort((left, right) => left.id.localeCompare(right.id)),
       relations: [],
     };
