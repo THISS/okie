@@ -1,8 +1,11 @@
 import {
   C4_BANDS,
+  C4_BAND_FOCUS_ZOOM,
   C4_INTRINSIC_LAYOUT,
-  C4_SCAN_CODE_GAP_EXTRA_PX,
   buildC4ProjectionBundle,
+  c4ExpectedChildKind,
+  c4IntrinsicOwnerMetrics,
+  computeContainmentLayout,
   materializeArchitectureAuthoring,
   measureC4Grid,
   routeC4BandEdgesDetailed,
@@ -18,6 +21,7 @@ import {
   type C4Band,
   type C4GridMetrics,
   type C4ProjectionBundle,
+  type ContainmentEntity,
   type NodeLayout,
   type RelationRouteOverride,
   type VisualEdge,
@@ -125,6 +129,13 @@ export type CompileC4SceneOptions = {
    * stages agree (the intrinsic size is `max(stage-1 baseline, stage-2 grid)`).
    */
   targetAspect?: number;
+  /**
+   * Published child counts (CLA-81 / CLA-73). Owners grow to the nested
+   * footprint even when children are not in this compile snapshot.
+   */
+  childCounts?: Readonly<Record<string, number>>;
+  /** Direct unpublished children (id/kind/parentId) reserved as blank shells. */
+  unpublishedChildren?: readonly ContainmentEntity[];
 };
 
 export type CompileAuthoredC4SceneOptions = Omit<CompileC4SceneOptions, 'routeOverrides'>;
@@ -243,12 +254,13 @@ function expand(rect: Rect, padding: number): Rect {
 
 function presentation(
   node: VisualNode,
-  entity: ArchitectureEntity,
+  entity: ArchitectureEntity | undefined,
   bounds: NodeLayout,
   band: C4Band,
   boundary: boolean,
   theme: SceneTheme,
   revealLod?: LodRange,
+  shell = false,
 ): Representation {
   const visualScale = visualScaleByBand[band];
   const fill = theme.entityFill[node.kind];
@@ -257,10 +269,12 @@ function presentation(
   const kickerY = bounds.y + (band === 'context' ? 30 : 24) * visualScale;
   const titleY = bounds.y + (boundary ? 36 : band === 'context' ? 68 : band === 'code' ? 42 : 50) * visualScale;
   const descriptionY = bounds.y + (band === 'context' ? 112 : band === 'code' ? 68 : 76) * visualScale;
-  const sourcePath = entity.sourceRefs[0]?.path;
-  const description = band === 'code'
-    ? sourcePath
-    : (entity.responsibility?.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
+  const sourcePath = entity?.sourceRefs[0]?.path;
+  const description = shell
+    ? undefined
+    : band === 'code'
+      ? sourcePath
+      : (entity?.responsibility?.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
   const kindLabel: Record<VisualNode['kind'], string> = {
     person: 'PERSON',
     softwareSystem: 'SOFTWARE SYSTEM',
@@ -347,13 +361,27 @@ function presentation(
 }
 
 function visibleChildren(projection: BandProjection, bundle: C4ProjectionBundle) {
-  const visible = new Set(projection.visualNodeIds);
+  const layout = bundle.bandLayoutById[projection.layoutId];
+  const visible = new Set([
+    ...projection.visualNodeIds,
+    ...(projection.omittedNodeIds ?? []),
+    ...Object.keys(layout?.reservedShells ?? {}),
+  ]);
   const parents = new Set<string>();
-  for (const id of projection.visualNodeIds) {
+  for (const id of visible) {
     const parent = bundle.visualNodeById[id]?.parentVisualId;
-    if (parent && visible.has(parent)) parents.add(parent);
+    if (parent && (visible.has(parent) || projection.visualNodeIds.includes(parent))) parents.add(parent);
   }
   return parents;
+}
+
+function omittedVisualIds(bundle: C4ProjectionBundle): Set<string> {
+  const omitted = new Set<string>();
+  for (const band of C4_BANDS) {
+    const projection = bundle.projectionById[bundle.family.projectionIds[band]];
+    for (const id of projection?.omittedNodeIds ?? []) omitted.add(id);
+  }
+  return omitted;
 }
 
 function objectForNode(
@@ -362,16 +390,26 @@ function objectForNode(
   node: VisualNode,
   theme: SceneTheme,
   targetAspect?: number,
+  shellIds?: ReadonlySet<string>,
 ): SceneObject | undefined {
   const entity = snapshot.entities.find(candidate => candidate.id === node.entity.logicalId);
-  if (!entity) return undefined;
-  const appearances: Array<{ band: C4Band; bounds: NodeLayout; boundary: boolean; revealLod?: LodRange }> = [];
+  const appearances: Array<{
+    band: C4Band;
+    bounds: NodeLayout;
+    boundary: boolean;
+    revealLod?: LodRange;
+    shell: boolean;
+    reservedInside: NodeLayout[];
+  }> = [];
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
     const layout = bundle.bandLayoutById[projection.layoutId]!;
-    const bounds = layout.nodes[node.id];
+    const bounds = layout.nodes[node.id] ?? layout.reservedShells?.[node.id];
     if (!bounds) continue;
-    const boundary = visibleChildren(projection, bundle).has(node.id);
+    const shell = shellIds?.has(node.id) === true
+      || (projection.omittedNodeIds?.includes(node.id) === true);
+    const reservedInside = Object.values(layout.reservedShells ?? {}).filter(shellBounds => contains(bounds, shellBounds));
+    const boundary = visibleChildren(projection, bundle).has(node.id) || reservedInside.length > 0;
     // Coverage reveal (opt-in): a child card reveals when its PARENT crosses the coverage
     // target; an owner's boundary shell reveals when ITS OWN box does, at the band where its
     // direct children first appear. Both key off the same owner box → one reveal moment.
@@ -380,11 +418,11 @@ function objectForNode(
       if (boundary && band === childRevealBand(node.kind)) {
         revealLod = coverageRevealLod(bounds, band, targetAspect);
       } else if (!boundary && band === semanticBandForKind(node.kind) && node.parentVisualId) {
-        const parentBounds = layout.nodes[node.parentVisualId];
+        const parentBounds = layout.nodes[node.parentVisualId] ?? layout.reservedShells?.[node.parentVisualId];
         if (parentBounds) revealLod = coverageRevealLod(parentBounds, band, targetAspect);
       }
     }
-    appearances.push({ band, bounds, boundary, ...(revealLod ? { revealLod } : {}) });
+    appearances.push({ band, bounds, boundary, shell, reservedInside, ...(revealLod ? { revealLod } : {}) });
   }
   if (!appearances.length) return undefined;
   const bounds = union(appearances.map(value => value.bounds));
@@ -393,8 +431,29 @@ function objectForNode(
     ...(node.parentVisualId && bundle.visualNodeById[node.parentVisualId] ? { parentId: node.parentVisualId } : {}),
     zIndex: node.kind === 'softwareSystem' ? -4 : node.kind === 'container' || node.kind === 'dataStore' || node.kind === 'queue' ? -3 : node.kind === 'component' ? -2 : 1,
     bounds,
-    pickable: true,
-    representations: appearances.map(value => presentation(node, entity, value.bounds, value.band, value.boundary, theme, value.revealLod)),
+    pickable: !appearances.every(value => value.shell),
+    representations: appearances.map(value => {
+      const representation = presentation(node, entity, value.bounds, value.band, value.boundary, theme, value.revealLod, value.shell);
+      if (value.shell || !value.reservedInside.length) return representation;
+      const visualScale = visualScaleByBand[value.band];
+      const fill = theme.entityFill[node.kind];
+      return {
+        ...representation,
+        primitives: [
+          ...representation.primitives,
+          ...value.reservedInside.map(shellBounds => ({
+            kind: 'roundedRect' as const,
+            rect: shellBounds,
+            radius: Math.max(0, Math.min(10 * visualScale, shellBounds.width / 2, shellBounds.height / 2)),
+            fill: [fill[0], fill[1], fill[2], 0.2] as [number, number, number, number],
+            stroke: {
+              color: [Math.min(1, fill[0] + 0.18), Math.min(1, fill[1] + 0.18), Math.min(1, fill[2] + 0.18), 0.55] as [number, number, number, number],
+              width: 1.25 * visualScale,
+            },
+          })),
+        ],
+      };
+    }),
   };
 }
 
@@ -550,42 +609,16 @@ function semanticBandForEntity(entity: ArchitectureEntity): C4Band {
 type IntrinsicSize = { width: number; height: number };
 
 function intrinsicMetricsForOwner(entity: ArchitectureEntity, targetAspect?: number): C4GridMetrics | undefined {
-  const contract = C4_INTRINSIC_LAYOUT;
-  const focusZoom = entity.kind === 'component'
-    ? C4_ZOOM_BANDS[3]!.focusZoom
-    : entity.kind === 'container' || entity.kind === 'dataStore' || entity.kind === 'queue'
-      ? C4_ZOOM_BANDS[2]!.focusZoom
-      : entity.kind === 'softwareSystem'
-        ? C4_ZOOM_BANDS[1]!.focusZoom
-        : undefined;
-  if (!focusZoom) return undefined;
-  const header = entity.kind === 'component'
-    ? contract.header.component
-    : entity.kind === 'softwareSystem'
-      ? contract.header.system
-      : contract.header.container;
-  return {
-    gap: (contract.gap + (targetAspect !== undefined && entity.kind === 'component' ? C4_SCAN_CODE_GAP_EXTRA_PX : 0)) / focusZoom,
-    paddingLeft: contract.sidePadding / focusZoom,
-    paddingRight: contract.sidePadding / focusZoom,
-    paddingTop: header / focusZoom,
-    paddingBottom: contract.bottomPadding / focusZoom,
-    maxColumns: contract.maxColumns,
-    // A ratio is scale-invariant, so it is NOT divided by focusZoom. When set it
-    // overrides the fixed maxColumns cap inside chooseColumns.
-    ...(targetAspect !== undefined ? { targetAspect } : {}),
-  };
+  return c4IntrinsicOwnerMetrics(entity.kind, targetAspect);
 }
 
 function expectedChildKind(owner: ArchitectureEntity, child: ArchitectureEntity): boolean {
-  if (owner.kind === 'component') return child.kind === 'code';
-  if (owner.kind === 'container' || owner.kind === 'dataStore' || owner.kind === 'queue') {
-    return child.kind === 'component';
-  }
+  const expected = c4ExpectedChildKind(owner.kind);
+  if (!expected) return false;
   if (owner.kind === 'softwareSystem') {
     return child.kind === 'container' || child.kind === 'dataStore' || child.kind === 'queue';
   }
-  return false;
+  return child.kind === expected;
 }
 
 /**
@@ -677,18 +710,52 @@ function applyIntrinsicOwnerGeometry(
   routeDiagnostics: C4RouteOverrideDiagnostic[],
   maxGridNodes: number,
   targetAspect?: number,
+  childCounts?: Readonly<Record<string, number>>,
+  unpublishedChildren: readonly ContainmentEntity[] = [],
 ): void {
   const rootId = bundle.family.rootEntity.logicalId;
+  const unpublishedIds = new Set(unpublishedChildren.map(child => child.id));
+  const entities = new Map(entityById);
   const childrenByOwner = new Map<string, ArchitectureEntity[]>();
   for (const entity of snapshot.entities) {
     if (!entity.parentId) continue;
-    const owner = entityById.get(entity.parentId);
+    const owner = entities.get(entity.parentId);
     if (!owner || !expectedChildKind(owner, entity)) continue;
     const children = childrenByOwner.get(owner.id) ?? [];
     children.push(entity);
     childrenByOwner.set(owner.id, children);
   }
+  for (const child of unpublishedChildren) {
+    const owner = entities.get(child.parentId ?? '');
+    if (!owner) continue;
+    if ((childrenByOwner.get(owner.id) ?? []).some(existing => existing.id === child.id)) continue;
+    const stub: ArchitectureEntity = {
+      id: child.id,
+      kind: child.kind,
+      name: child.id,
+      sourceRefs: [],
+      ...(child.parentId ? { parentId: child.parentId } : {}),
+    };
+    const children = childrenByOwner.get(owner.id) ?? [];
+    children.push(stub);
+    childrenByOwner.set(owner.id, children);
+    if (!entities.has(child.id)) entities.set(child.id, stub);
+  }
   for (const children of childrenByOwner.values()) children.sort((left, right) => left.id.localeCompare(right.id));
+
+  const containmentSizes = childCounts || unpublishedChildren.length
+    ? computeContainmentLayout([
+      ...snapshot.entities.map(entity => ({
+        id: entity.id,
+        kind: entity.kind,
+        ...(entity.parentId ? { parentId: entity.parentId } : {}),
+      })),
+      ...unpublishedChildren,
+    ], {
+      ...(childCounts ? { childCounts } : {}),
+      ...(targetAspect !== undefined ? { targetAspect } : {}),
+    })
+    : undefined;
 
   const boundsFor = (entity: ArchitectureEntity): NodeLayout | undefined => {
     const visualId = bundle.index.visualNodeIdsByEntityId[entity.id]?.[0];
@@ -705,6 +772,16 @@ function applyIntrinsicOwnerGeometry(
     measuring.add(entity.id);
     const baseline = boundsFor(entity) ?? { x: 0, y: 0, width: 0, height: 0 };
     let required: IntrinsicSize = { width: baseline.width, height: baseline.height };
+    const reserved = containmentSizes?.[entity.id];
+    if (reserved) {
+      // CLA-81: containment sizes are the committed shell. Do not grow from
+      // stage-1 packed children or the camera jumps when a band fills in.
+      required = { width: reserved.width, height: reserved.height };
+      measuring.delete(entity.id);
+      requiredByEntityId.set(entity.id, required);
+      for (const child of childrenByOwner.get(entity.id) ?? []) requiredFor(child);
+      return required;
+    }
     if (entity.kind === 'code') {
       const focusZoom = C4_ZOOM_BANDS[3]!.focusZoom;
       required = {
@@ -727,9 +804,9 @@ function applyIntrinsicOwnerGeometry(
         // OWN band's focus zoom. Demo/golden (no targetAspect) keeps byte-identical
         // geometry.
         const ownBandFocusZoom = entity.kind === "component"
-          ? C4_ZOOM_BANDS[2]!.focusZoom
+          ? C4_BAND_FOCUS_ZOOM.component
           : entity.kind === "container" || entity.kind === "dataStore" || entity.kind === "queue"
-            ? C4_ZOOM_BANDS[1]!.focusZoom
+            ? C4_BAND_FOCUS_ZOOM.container
             : undefined;
         if (ownBandFocusZoom !== undefined) {
           required = {
@@ -744,7 +821,7 @@ function applyIntrinsicOwnerGeometry(
     return required;
   };
 
-  const root = entityById.get(rootId);
+  const root = entities.get(rootId);
   if (!root) return;
   requiredFor(root);
   const canonical = new Map<string, NodeLayout>();
@@ -816,11 +893,29 @@ function applyIntrinsicOwnerGeometry(
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
     const layout = bundle.bandLayoutById[projection.layoutId]!;
-    for (const visualId of projection.visualNodeIds) {
-      const entityId = bundle.index.entityIdByVisualNodeId[visualId]!;
-      const bounds = canonical.get(entityId);
-      if (bounds) layout.nodes[visualId] = { ...bounds };
+    const resident = new Set(projection.visualNodeIds);
+    const omitted = new Set(projection.omittedNodeIds ?? []);
+    const reservedShells: Record<string, NodeLayout> = {};
+    for (const [entityId, bounds] of canonical) {
+      const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
+      if (resident.has(visualId) || omitted.has(visualId)) {
+        layout.nodes[visualId] = { ...bounds };
+        continue;
+      }
+      if (!unpublishedIds.has(entityId)) continue;
+      const parentId = entities.get(entityId)?.parentId;
+      const parentVisualId = parentId
+        ? (bundle.index.visualNodeIdsByEntityId[parentId]?.[0] ?? `visual-node:${parentId}`)
+        : undefined;
+      if (!parentVisualId || (!resident.has(parentVisualId) && !layout.nodes[parentVisualId])) continue;
+      reservedShells[visualId] = { ...bounds };
+      if (!bundle.index.entityIdByVisualNodeId[visualId]) {
+        bundle.index.entityIdByVisualNodeId[visualId] = entityId;
+        bundle.index.visualNodeIdsByEntityId[entityId] ??= [visualId];
+      }
     }
+    if (Object.keys(reservedShells).length) layout.reservedShells = reservedShells;
+    else delete layout.reservedShells;
     const focusZoom = C4_ZOOM_BANDS.find(value => value.detail === band)!.focusZoom;
     const routed = routeC4BandEdgesDetailed(
       projection,
@@ -852,6 +947,8 @@ export function normalizeC4OwnerGeometry(
   routeDiagnostics: C4RouteOverrideDiagnostic[] = [],
   maxGridNodes = 20_000,
   targetAspect?: number,
+  childCounts?: Readonly<Record<string, number>>,
+  unpublishedChildren: readonly ContainmentEntity[] = [],
 ): C4ProjectionBundle {
   const bundle: C4ProjectionBundle = {
     ...source,
@@ -862,6 +959,9 @@ export function normalizeC4OwnerGeometry(
       edges: Object.fromEntries(Object.entries(layout.edges).map(([edgeId, route]) => [edgeId, {
         points: route.points.map(point => ({ ...point })),
       }])),
+      ...(layout.reservedShells ? {
+        reservedShells: Object.fromEntries(Object.entries(layout.reservedShells).map(([nodeId, bounds]) => [nodeId, { ...bounds }])),
+      } : {}),
     }])),
     index: {
       ...source.index,
@@ -971,7 +1071,7 @@ export function normalizeC4OwnerGeometry(
       });
     }
   }
-  applyIntrinsicOwnerGeometry(snapshot, bundle, entityById, routeOverrides, routeDiagnostics, maxGridNodes, targetAspect);
+  applyIntrinsicOwnerGeometry(snapshot, bundle, entityById, routeOverrides, routeDiagnostics, maxGridNodes, targetAspect, childCounts, unpublishedChildren);
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
     const layout = bundle.bandLayoutById[projection.layoutId]!;
@@ -979,6 +1079,12 @@ export function normalizeC4OwnerGeometry(
       const entityId = bundle.index.entityIdByVisualNodeId[visualId]!;
       bundle.index.boundsByEntityIdAndBand[entityId] ??= {};
       bundle.index.boundsByEntityIdAndBand[entityId]![band] = { ...bounds };
+    }
+    for (const [visualId, bounds] of Object.entries(layout.reservedShells ?? {})) {
+      const entityId = bundle.index.entityIdByVisualNodeId[visualId];
+      if (!entityId) continue;
+      bundle.index.boundsByEntityIdAndBand[entityId] ??= {};
+      bundle.index.boundsByEntityIdAndBand[entityId]![band] ??= { ...bounds };
     }
   }
   return bundle;
@@ -991,11 +1097,21 @@ export function compileC4Scene(
 ): CompiledC4Scene {
   if (bundle.family.snapshotId !== snapshot.id) throw new Error('C4 projection bundle does not match snapshot');
   const routeDiagnostics: C4RouteOverrideDiagnostic[] = [];
-  bundle = normalizeC4OwnerGeometry(snapshot, bundle, options.routeOverrides ?? [], routeDiagnostics, options.maxGridNodes, options.targetAspect);
+  bundle = normalizeC4OwnerGeometry(
+    snapshot,
+    bundle,
+    options.routeOverrides ?? [],
+    routeDiagnostics,
+    options.maxGridNodes,
+    options.targetAspect,
+    options.childCounts,
+    options.unpublishedChildren ?? [],
+  );
   const theme = options.theme ?? defaultTheme;
+  const shellIds = omittedVisualIds(bundle);
   const entityObjects = Object.values(bundle.visualNodeById)
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(node => objectForNode(snapshot, bundle, node, theme, options.targetAspect))
+    .map(node => objectForNode(snapshot, bundle, node, theme, options.targetAspect, shellIds))
     .filter((object): object is SceneObject => object !== undefined);
   const paths: ScenePath[] = [];
   const labelObjects: SceneObject[] = [];

@@ -12,6 +12,7 @@ import {
   type ArchitectureStory,
   type ArchitectureView,
   type C4Band,
+  type ContainmentEntity,
   type EntityKind,
   type Rect,
   type SourceExcerpt,
@@ -240,6 +241,8 @@ export type ScanFixture = {
   navigation: ScanNavigationDefaults;
   /** Published child counts, including descendants not yet fetched (CLA-73). */
   childCounts: Record<string, number>;
+  /** Direct unpublished children reserved as nested footprints (CLA-81). */
+  unpublishedChildren: ContainmentEntity[];
   /** How the snapshot arrived — neighborhood fetch vs the full published trio. */
   boot: 'neighborhood' | 'full';
   /** Fetch+merge a container/file subgraph. No-op when the neighborhood is already resident. */
@@ -311,6 +314,7 @@ function buildLiveScanFixture(
   extras: {
     boot: ScanFixture['boot'];
     childCounts: Record<string, number>;
+    unpublishedChildren?: ContainmentEntity[];
     host?: ScanNeighborhoodHost;
     loadedFocusIds?: Set<string>;
     stories?: AppStoryPlan[];
@@ -318,6 +322,7 @@ function buildLiveScanFixture(
 ): ScanFixture {
   const childCounts = extras.childCounts;
   rememberPublishedChildCounts(snapshot, childCounts);
+  const unpublishedChildren: ContainmentEntity[] = [...(extras.unpublishedChildren ?? [])];
   const loadedFocusIds = extras.loadedFocusIds ?? new Set<string>();
   const inflight = new Map<string, Promise<void>>();
   const host = extras.host;
@@ -344,6 +349,8 @@ function buildLiveScanFixture(
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
       ...(residency?.worldBounds ? { residentWorldBounds: residency.worldBounds } : {}),
       ...(residency?.keepEntityIds ? { keepEntityIds: residency.keepEntityIds } : {}),
+      childCounts,
+      ...(unpublishedChildren.length ? { unpublishedChildren } : {}),
     });
     return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;
   };
@@ -384,6 +391,14 @@ function buildLiveScanFixture(
         view.layout.edges = { ...(view.layout.edges ?? {}), ...packet.view.layout.edges };
       }
       Object.assign(childCounts, mergeChildCounts(childCounts, packet.childCounts));
+      const residentIds = new Set(snapshot.entities.map(entity => entity.id));
+      const incoming = packet.unpublishedChildren ?? [];
+      const kept = unpublishedChildren.filter(child => !residentIds.has(child.id));
+      unpublishedChildren.splice(0, unpublishedChildren.length, ...kept);
+      for (const child of incoming) {
+        if (residentIds.has(child.id) || unpublishedChildren.some(existing => existing.id === child.id)) continue;
+        unpublishedChildren.push(child);
+      }
       loadedFocusIds.add(focus);
       loadedFocusIds.add(packet.focusEntityId);
     })();
@@ -419,6 +434,7 @@ function buildLiveScanFixture(
       rootEntityId: view.rootEntityId,
     },
     childCounts,
+    unpublishedChildren,
     boot: extras.boot,
     ensureNeighborhood,
     ensureExcerpts,
@@ -509,6 +525,7 @@ export function compileScanNeighborhoodFixture(
   return buildLiveScanFixture(packet.snapshot, packet.view, story, options, {
     boot: 'neighborhood',
     childCounts: { ...packet.childCounts },
+    unpublishedChildren: [...(packet.unpublishedChildren ?? [])],
     host,
     loadedFocusIds: new Set([packet.focusEntityId]),
     stories: compilePublishedStories(packet.snapshot, packet.view, story, rawStories, { allowMissingFocus: true }),
