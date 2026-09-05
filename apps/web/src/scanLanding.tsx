@@ -102,7 +102,7 @@ export function ScanLandingScreen() {
         if (manifest?.repos) setPublished(manifest.repos);
       })
       .catch(() => {});
-  }, [job?.atlasReady, job?.entityCount, job?.commitSha]);
+  }, [job?.atlasReady]);
 
   const submitRepoRef = useRef<(url: string) => Promise<StartPublicScanResult>>(
     async () => startPublicScanResultFromHttp(0, {}),

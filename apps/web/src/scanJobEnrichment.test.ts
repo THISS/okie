@@ -66,7 +66,8 @@ describe('enrichmentStageDetail (CLA-29)', () => {
     const src = readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8');
     expect(src).toMatch(/scanEntityCountCopy\(job\.entityCount\)/);
     expect(src).toMatch(/scanEntityCountCopy\(repo\.entityCount\)/);
-    expect(src).toMatch(/job\?\.atlasReady, job\?\.entityCount, job\?\.commitSha/);
+    expect(src).toMatch(/job\?\.atlasReady/);
+    expect(src).not.toMatch(/job\?\.entityCount, job\?\.commitSha/);
     expect(src).not.toMatch(/export surface/);
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
   });
