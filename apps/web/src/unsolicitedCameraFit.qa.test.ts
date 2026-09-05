@@ -77,7 +77,7 @@ describe('CLA-11: camera does not re-fit without a user gesture', () => {
     expect(app).toContain("onClick={() => semanticZoomControl('inward')}");
     expect(app).toContain("onClick={() => semanticZoomControl('outward')}");
     expect(app).toContain("aria-label=\"Fit architecture to view\"");
-    expect(app).toContain('frameVisibleProjection(scene, activeProjectionEntityIds, activeDetail, viewport, measureCurrentMapSafeArea())');
+    expect(app).toContain('frameVisibleProjection(scene, activeProjectionEntityIds, activeDetail, viewport, measureCurrentMapSafeArea()) ?? camera');
     expect(app).toContain("navigateCamera(next, 'replace', 'Fit the current architecture scope')");
     expect(app).toContain("onClick={() => focusEntity(selected, 'replace', 'frame', 'details', 'preserve')}");
     expect(app).toContain("onClick={() => focusEntity(entity, 'push', 'frame')}");
