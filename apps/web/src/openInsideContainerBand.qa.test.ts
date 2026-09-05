@@ -30,6 +30,7 @@ import {
   componentTitleCssPx,
   containerCardFaceBounds,
   containerTitleCssPx,
+  contextCardFaceBounds,
   frameComponentPeerArrivalCamera,
   frameContainerPeerArrivalCamera,
   frameContextArrivalCamera,
@@ -47,6 +48,7 @@ function sliceBetween(source: string, startNeedle: string, endNeedle: string, la
 }
 
 const openInsideLoaded = sliceBetween(app, 'function openInsideLoaded(', 'function navigateRoot(', 'openInsideLoaded');
+const selectLevelLoaded = sliceBetween(app, 'function selectLevelLoaded(', 'function openInside(', 'selectLevelLoaded');
 const drillPath = sliceBetween(openInsideLoaded, 'const drillDetail =', 'const plan = lensPlan;', 'scan drill path');
 
 describe('CLA-80: Open inside an L2 container lands on L3', () => {
@@ -682,5 +684,72 @@ describe('CLA-92: Open inside scan L3 frames file-component peer cards at readab
     expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
     expect(camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
     expect(containerTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe('CLA-93: rail Step-out to scan L1 frames readable card faces', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('scan L1 rail Step-out does not contain the reserved system shell', () => {
+    expect(selectLevelLoaded).toContain('frameProjectionScope(levelScene, compileFocus, detail, viewport, mapSafeArea)');
+    expect(selectLevelLoaded).toContain(
+      'const nextCamera = scanFixture && index === 0 ? framedCamera : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);',
+    );
+  });
+
+  it('frames L1 system + external card faces above minZoom, not z=0.32 over a hollow shell', () => {
+    const scene = reservedShellL2Scene();
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
+    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
+    expect(system.width).toBeGreaterThan(C4_CONTEXT_CARD_FACE.width * 1.5);
+
+    const camera = frameProjectionScope(scene, 'system:okie', 'context', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera).toEqual(frameContextArrivalCamera(scene, viewport, chromeSafeArea));
+    expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera!.zoom).toBeGreaterThanOrEqual(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(camera!.zoom).not.toBeCloseTo(ATLAS_CAMERA_BOUNDS.minZoom, 2);
+
+    const world = cameraWorldRect(camera!, viewport);
+    expect(world.height).toBeLessThan(system.height);
+    const face = contextCardFaceBounds(system);
+    expect(world.width * world.height).toBeGreaterThan(face.width * face.height);
+
+    const contained = containSemanticOwnerCamera(camera!, system, viewport, chromeSafeArea);
+    expect(contained.zoom).toBe(camera!.zoom);
+    expect(contained.zoom).not.toBe(ATLAS_CAMERA_BOUNDS.minZoom);
+  });
+
+  it('CLA-82 L1 first paint / Fit still frames readable card faces', () => {
+    const scene = reservedShellL2Scene();
+    const arrival = frameContextArrivalCamera(scene, viewport, chromeSafeArea);
+    const rail = frameProjectionScope(scene, 'system:okie', 'context', viewport, chromeSafeArea);
+    const boot = frameProjectionScope(
+      scene,
+      'system:okie',
+      'context',
+      viewport,
+      chromeSafeArea,
+      false,
+      true,
+    );
+    expect(arrival).toBeDefined();
+    expect(rail).toEqual(arrival);
+    expect(boot).toEqual(arrival);
+    expect(arrival!.zoom).toBeGreaterThan(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+  });
+
+  it('CLA-90 L2 Open inside and CLA-92 L3 Open inside stay readable', () => {
+    const l2 = reservedShellL2Scene();
+    const l2Camera = frameProjectionScope(l2, 'system:okie', 'container', viewport, chromeSafeArea);
+    expect(l2Camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(l2Camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
+
+    const l3 = reservedShellL3Scene();
+    const l3Camera = frameProjectionScope(l3, 'container:web', 'component', viewport, chromeSafeArea);
+    expect(l3Camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(l3Camera!.zoom).toBeGreaterThanOrEqual(COMPONENT_TITLE_READABLE_MIN_ZOOM - 1e-9);
   });
 });

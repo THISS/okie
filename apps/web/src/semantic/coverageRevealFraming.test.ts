@@ -5,16 +5,18 @@ import { createC4Scene } from '../renderer/goldenC4Scene';
 import { ATLAS_CAMERA_BOUNDS } from '../renderer/cameraBounds';
 import {
   COMPONENT_TITLE_READABLE_MIN_ZOOM,
+  CONTEXT_TITLE_READABLE_MIN_ZOOM,
   frameComponentPeerArrivalCamera,
+  frameContextArrivalCamera,
   frameProjectionScope,
 } from './semanticLensEngine';
 
 // Coverage-reveal drill/rail landing (tasks #30/#33 Stage A framing). Scan mode
 // used to land a large reserved owner at COVERAGE_REVEAL.full — that clamped to
-// ATLAS_CAMERA_BOUNDS.minZoom over a hollow CLA-81 shell (CLA-92). Reserved L3
-// owners now frame file-component peer cards at a title-readable zoom. Demo
-// (no targetAspect) keeps the band-floor landing → byte-identical, bandPolicy.qa
-// unchanged.
+// ATLAS_CAMERA_BOUNDS.minZoom over a hollow CLA-81 shell (CLA-92/93). Reserved
+// L3 owners frame file-component peer cards; reserved L1 rail Step-out frames
+// the CLA-82 title-row cluster. Demo (no targetAspect) keeps the band-floor
+// landing → byte-identical, bandPolicy.qa unchanged.
 
 function denseContainerSnapshot(componentCount: number): ArchitectureSnapshot {
   const entities: ArchitectureSnapshot['entities'] = [
@@ -69,5 +71,56 @@ describe('coverage-reveal drill/rail landing (scan mode)', () => {
     expect(scene.targetAspect).toBeUndefined();
     const camera = frameProjectionScope(scene, 'container:c', 'component', viewport, safeArea)!;
     expect(camera.zoom).toBeGreaterThanOrEqual(COMPONENT_BAND_FLOOR - 1e-9);
+  });
+
+  it('CLA-93: reserved L1 rail Step-out (preferReadableRoot=false) frames the arrival cluster, not minZoom', () => {
+    const entities: ArchitectureSnapshot['entities'] = [
+      { id: 'system:okie', kind: 'softwareSystem', name: 'okie', sourceRefs: [] },
+    ];
+    for (let index = 0; index < 8; index += 1) {
+      entities.push({
+        id: `external:npm-${String(index).padStart(2, '0')}`,
+        kind: 'externalSystem',
+        name: `pkg-${index}`,
+        sourceRefs: [],
+      });
+    }
+    const unpublished: Array<{ id: string; kind: 'container'; parentId: string }> = [];
+    const childCounts: Record<string, number> = { 'system:okie': 16 };
+    for (let index = 0; index < 16; index += 1) {
+      unpublished.push({
+        id: `container:reserved-${String(index).padStart(2, '0')}`,
+        kind: 'container',
+        parentId: 'system:okie',
+      });
+    }
+    const snapshot: ArchitectureSnapshot = {
+      schemaVersion: 1,
+      id: 'snapshot:cla-93',
+      repositoryId: 'repo:cla-93',
+      commitSha: 'c',
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      entities,
+      relations: [],
+    };
+    const scene = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:okie',
+      focusEntityId: 'system:okie',
+      familyId: 'f',
+      sceneId: 'scan:cla-93:c4',
+      title: 'okie',
+      subtitle: '',
+      frozenRevision: 'c',
+      targetAspect: ASPECT_PRESET_TARGET.landscape,
+      childCounts,
+      unpublishedChildren: unpublished,
+    });
+    const rail = frameProjectionScope(scene, 'system:okie', 'context', viewport, safeArea)!;
+    const arrival = frameContextArrivalCamera(scene, viewport, safeArea)!;
+    expect(rail).toEqual(arrival);
+    expect(rail.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(rail.zoom).toBeGreaterThanOrEqual(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(rail.zoom).not.toBeCloseTo(ATLAS_CAMERA_BOUNDS.minZoom, 2);
   });
 });
