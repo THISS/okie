@@ -608,7 +608,8 @@ export interface ExtractInput {
    * Which top-level declarations become L4 code entities. 'all' (default) keeps every
    * top-level declaration — required for the Okie self-scan's golden-anchor coverage.
    * 'public' keeps only the module's export surface: the readable public API of the
-   * repo, with private helpers left to the file card (the hosted paste-a-repo posture).
+   * repo, with private helpers left to the file card (`okie-scan --public-api`).
+   * Hosted `/new` uses the CLI default (`all`).
    */
   codeSurface?: "all" | "public";
 }

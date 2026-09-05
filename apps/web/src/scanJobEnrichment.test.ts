@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { enrichmentStageDetail } from './scanJobEnrichment';
+import { enrichmentStageDetail, scanEntityCountCopy } from './scanJobEnrichment';
+import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 
 describe('enrichmentStageDetail (CLA-29)', () => {
   it('says skipped (no key) without dumping operator notes', () => {
@@ -57,5 +58,17 @@ describe('enrichmentStageDetail (CLA-29)', () => {
     expect(src).toMatch(/no login wall on the map/);
     expect(src).not.toMatch(/no account needed/);
     expect(src).not.toMatch(/gho_|GITHUB_TOKEN|GH_TOKEN|client_secret/);
+  });
+
+  it('CLA-88: job card and Already mapped share one entity-count copy and refresh the manifest', () => {
+    expect(scanEntityCountCopy(271)).toBe('271 entities');
+    expect(scanEntityCountCopy(378)).toBe('378 entities');
+    const src = readFileSync(new URL('./scanLanding.tsx', import.meta.url), 'utf8');
+    expect(src).toMatch(/scanEntityCountCopy\(job\.entityCount\)/);
+    expect(src).toMatch(/scanEntityCountCopy\(repo\.entityCount\)/);
+    expect(src).toMatch(/job\?\.atlasReady/);
+    expect(src).not.toMatch(/job\?\.entityCount, job\?\.commitSha/);
+    expect(src).not.toMatch(/export surface/);
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
   });
 });

@@ -14,6 +14,11 @@ export type PublicEnrichment = {
   provider?: string;
 };
 
+/** Same SHA, same count copy on the job card and Already mapped (CLA-88). */
+export function scanEntityCountCopy(count: number): string {
+  return `${count.toLocaleString()} entities`;
+}
+
 /** Suffix on the "Writing AI descriptions" step. `undefined` while pending/running. */
 export function enrichmentStageDetail(enrichment: PublicEnrichment): string | undefined {
   if (enrichment.state === 'skipped') {

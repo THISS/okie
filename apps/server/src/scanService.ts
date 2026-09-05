@@ -217,7 +217,9 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
       };
       const scanOptions = {
         client: clientForJob(job),
-        codeSurface: "public" as const,
+        // CLA-88: same L4 surface as `okie-scan` without `--public-api` (every
+        // top-level declaration). `--public-api` stays a CLI opt-in.
+        codeSurface: "all" as const,
         ...(options.maxTarballBytes ? { maxTarballBytes: options.maxTarballBytes } : {}),
       };
 
