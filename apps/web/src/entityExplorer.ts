@@ -88,9 +88,38 @@ export function explorerScopeParentId(input: ExplorerScopeInput): string | undef
 }
 
 /**
+ * L1 third-party peers (npm packages, SaaS). Not people, not the software
+ * system under study. Scan snapshots sort by id, so `external:*` currently
+ * precedes `system:okie` — the explorer reorders that, it does not invent copy.
+ */
+export function isThirdPartyContextPeer(
+  entity: Pick<SceneEntity, 'id' | 'kind' | 'kindLabel' | 'tags'>,
+): boolean {
+  if (entity.kind === 'person') return false;
+  const label = entity.kindLabel?.trim().toLowerCase();
+  if (label === 'external system') return true;
+  if (entity.id.startsWith('external:')) return true;
+  return entity.kind === 'system' && (entity.tags?.includes('external') ?? false);
+}
+
+/**
+ * L1 list: system and people first, then third-party externals. Relative order
+ * inside each group is kept. Deeper bands stay in scene order.
+ */
+export function orderExplorerBrowseRows(
+  detail: SemanticDetail,
+  rows: readonly SceneEntity[],
+): SceneEntity[] {
+  if (detail !== 'context' || rows.length < 2) return [...rows];
+  return [...rows].sort((left, right) =>
+    Number(isThirdPartyContextPeer(left)) - Number(isThirdPartyContextPeer(right)));
+}
+
+/**
  * Keyboard-explorer browse set: entities in the current C4 band that sit under
  * the current parent (and in the visible projection when one is supplied).
- * Scene order is preserved. An unscoped deep band returns an empty list rather
+ * L1 leads with system/people before third-party externals (CLA-86); deeper
+ * bands keep scene order. An unscoped deep band returns an empty list rather
  * than every L4 declaration.
  */
 export function explorerBrowseEntities(
@@ -105,12 +134,13 @@ export function explorerBrowseEntities(
   );
   const visible = options.visibleIds ? new Set(options.visibleIds) : undefined;
   const byId = new Map(scene.entities.map(entity => [entity.id, entity]));
-  return scene.entities.filter(entity => {
+  const rows = scene.entities.filter(entity => {
     if (!bandIds.has(entity.id)) return false;
     if (visible && !visible.has(entity.id)) return false;
     if (!options.parentId) return options.detail === 'context';
     return ancestorOrSelf(entity, options.parentId, byId);
   });
+  return orderExplorerBrowseRows(options.detail, rows);
 }
 
 /** Browse rows for the current canvas band / nested lens / selection. */
