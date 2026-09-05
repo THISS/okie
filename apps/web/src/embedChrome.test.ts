@@ -59,7 +59,7 @@ describe('CLA-85 embed chrome vs Overview overlay', () => {
     expect(css).toContain('.app-shell[data-embed="true"] .saved-story { display: flex; }');
     expect(css).toContain('.app-shell[data-embed="true"] .ask-button { display: none; }');
     expect(app).toContain('initialInspectorOpen()');
-    expect(app).toContain("data-embed={embedChrome ? 'true' : 'false'}");
+    expect(app).toContain("data-embed={isEmbedChrome({ framed: isFramedBrowsingContext(), embedQuery: isEmbedQueryFlag(window.location.search) }) ? 'true' : 'false'}");
     expect(app).toContain("preserveParams: preservedNavigationParams");
     expect(app).toContain("'embed'");
     expect(oembed).toContain('publicAtlasEmbedHref');

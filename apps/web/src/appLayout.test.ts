@@ -508,7 +508,7 @@ describe('canvas screenshot capture', () => {
 describe('oEmbed embed chrome (CLA-85)', () => {
   it('collapses the Overview one-pager at overlay width and keeps the overview tour on the map', () => {
     expect(app).toContain('initialInspectorOpen()');
-    expect(app).toContain("data-embed={embedChrome ? 'true' : 'false'}");
+    expect(app).toContain("data-embed={isEmbedChrome({ framed: isFramedBrowsingContext(), embedQuery: isEmbedQueryFlag(window.location.search) }) ? 'true' : 'false'}");
     expect(app).toContain("'embed'");
     expect(app).not.toContain('window.innerWidth > 780');
     expect(css).toContain('@media (max-width: 900px)');
