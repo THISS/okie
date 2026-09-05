@@ -55,7 +55,7 @@ describe('CLA-85 embed chrome vs Overview overlay', () => {
     const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
     const oembed = readFileSync(new URL('./oembed.ts', import.meta.url), 'utf8');
     expect(css).toContain('@media (max-width: 900px)');
-    expect(css).toContain('.app-shell[data-embed="true"]');
+    expect(css).toContain('grid-template-rows: var(--topbar-height) minmax(0, 1fr)');
     expect(css).toContain('.app-shell[data-embed="true"] .saved-story { display: flex; }');
     expect(css).toContain('.app-shell[data-embed="true"] .ask-button { display: none; }');
     expect(app).toContain('initialInspectorOpen()');

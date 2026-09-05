@@ -515,6 +515,7 @@ describe('oEmbed embed chrome (CLA-85)', () => {
     expect(css).toContain('.app-shell[data-embed="true"] .saved-story { display: flex; }');
     expect(css).toContain('.app-shell[data-embed="true"] .ask-button { display: none; }');
     expect(css).toContain('.app-shell[data-embed="true"] .diagram-view-bar { display: none; }');
+    expect(css).toContain('grid-template-rows: var(--topbar-height) minmax(0, 1fr)');
     expect(app).toContain("'story-launch-overview'");
     expect(app).not.toMatch(/scanRoot|OPENROUTER_API_KEY|apiKey/);
   });

@@ -910,10 +910,13 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
   .semantic-mermaid-svg > svg { width: 100% !important; min-width: 0; max-width: 100% !important; }
 }
 
-/* CLA-85: oEmbed 800×560 — map first; Overview one-pager is a toggle, not the page. */
+/* CLA-85: oEmbed 800×560 — map first; Overview one-pager is a toggle, not the page.
+   Two-row grid: hiding .diagram-view-bar with display:none must not leave workspace
+   in the 0px tabs row. */
 .app-shell[data-embed="true"] {
   --topbar-height: 60px;
   --diagram-tabs-height: 0px;
+  grid-template-rows: var(--topbar-height) minmax(0, 1fr);
 }
 .app-shell[data-embed="true"] .diagram-view-bar { display: none; }
 .app-shell[data-embed="true"] .ask-button { display: none; }
