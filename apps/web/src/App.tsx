@@ -3413,7 +3413,7 @@ export function App() {
     // CLA-83: a reserved owner shell can make the lens drill fail even when the
     // snapshot has children. Fall through to the neighborhood compile for the
     // next C4 band (system → container peers at the view root, not the first package).
-    const fallbackDetail = !drillDetail && !lensPlan && scanFixture && target.detail !== 'code'
+    const fallbackDetail = !drillDetail && !lensPlan && scanFixture
       && scanEntityHasChildren(activeSnapshot, target.id)
       ? scanNextBand(target.detail ?? 'context')
       : undefined;
