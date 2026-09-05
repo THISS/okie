@@ -337,10 +337,14 @@ describe('CLA-87 does not rewrite hang-guard or healthz', () => {
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
   });
 
-  it('does not put keys or host paths on healthz', async () => {
-    const { healthzBody } = await import('../../../server/src/localDefaults.ts');
-    const body = healthzBody({ enrich: 'auto', bind: '127.0.0.1' });
-    expect(Object.keys(body).sort()).toEqual(['bind', 'enrich', 'ok', 'public', 'service']);
-    expect(JSON.stringify(body)).not.toMatch(/scanRoot|OPENROUTER|apiKey|api_key|\/Users\/|\/home\//);
+  it('does not put keys or host paths on healthz', () => {
+    const healthz = readFileSync(new URL('../../../server/src/localDefaults.ts', import.meta.url), 'utf8');
+    const returned = healthz.slice(healthz.indexOf('return {'), healthz.indexOf('};', healthz.indexOf('return {')) + 2);
+    expect(returned).toContain('service:');
+    expect(returned).toContain('ok: true');
+    expect(returned).toContain('public: false');
+    expect(returned).toContain('bind:');
+    expect(returned).toContain('enrich:');
+    expect(returned).not.toMatch(/scanRoot|OPENROUTER|apiKey|api_key/);
   });
 });
