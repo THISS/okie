@@ -3372,7 +3372,7 @@ export function App() {
     )
       ? frameProjectionScope(levelScene, compileFocus, detail, viewport, mapSafeArea) ?? anchored
       : anchored;
-    const nextCamera = containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
+    const nextCamera = scanFixture && index === 0 ? framedCamera : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
     interruptStory(`Changed to ${level.name} detail`);
     updateCamera(nextCamera);
     commitNavigation(canonicalNavigationState({

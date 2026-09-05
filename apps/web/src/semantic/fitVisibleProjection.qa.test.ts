@@ -459,4 +459,32 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     const fit = frameVisibleProjection(scene, visibleIds, 'context', viewport, chromeSafeArea);
     expect(fit).toEqual(camera);
   });
+
+  it('CLA-93: rail Step-out (preferReadableRoot=false) matches L1 Fit/boot, not z=0.32', () => {
+    const scene = reservedShellContextScene();
+    const rail = frameProjectionScope(scene, 'system:okie', 'context', viewport, chromeSafeArea);
+    const boot = frameProjectionScope(
+      scene,
+      'system:okie',
+      'context',
+      viewport,
+      chromeSafeArea,
+      false,
+      true,
+    );
+    const arrival = frameContextArrivalCamera(scene, viewport, chromeSafeArea);
+    expect(rail).toEqual(arrival);
+    expect(rail).toEqual(boot);
+    expect(rail).toBeDefined();
+    expect(rail!.zoom).toBeGreaterThan(0.32);
+    expect(rail!.zoom).toBeGreaterThan(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(contextTitleCssPx(rail!.zoom)).toBeGreaterThanOrEqual(12);
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
+    expect(cardFaceInSafeViewport(system, rail!, viewport, chromeSafeArea)).toBe(true);
+    const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
+    expect(visibleIds.filter(id => id.startsWith('external:')).some(id => {
+      const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
+      return bounds ? cardFaceInSafeViewport(bounds, rail!, viewport, chromeSafeArea) : false;
+    })).toBe(true);
+  });
 });
