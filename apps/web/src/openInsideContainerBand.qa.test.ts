@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ASPECT_PRESET_TARGET,
+  C4_COMPONENT_CARD_FACE,
   C4_CONTAINER_CARD_FACE,
   C4_CONTEXT_CARD_FACE,
   cameraWorldRect,
@@ -22,10 +23,14 @@ import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES } from './
 import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
 import { containSemanticOwnerCamera, semanticLensSessionDetail } from './semantic/semanticLens';
 import {
+  COMPONENT_TITLE_READABLE_MIN_ZOOM,
   CONTAINER_TITLE_READABLE_MIN_ZOOM,
   CONTEXT_TITLE_READABLE_MIN_ZOOM,
+  componentCardFaceBounds,
+  componentTitleCssPx,
   containerCardFaceBounds,
   containerTitleCssPx,
+  frameComponentPeerArrivalCamera,
   frameContainerPeerArrivalCamera,
   frameContextArrivalCamera,
   frameProjectionScope,
@@ -418,10 +423,9 @@ describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () =>
   });
 
   it('Open inside a reserved system does not contain the owner shell (CLA-90)', () => {
-    expect(openInsideLoaded).toContain(
-      "const nextCamera = deeperDetail === 'container' ? framedCamera : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);",
-    );
+    expect(openInsideLoaded).toContain("deeperDetail === 'container' || deeperDetail === 'component'");
     expect(openInsideLoaded).toContain('frameProjectionScope(nextScene, compileFocus, deeperDetail, viewport, mapSafeArea)');
+    expect(openInsideLoaded).toContain('containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea)');
   });
 
   it('frames L2 container peer cards above minZoom, not z=0.32 over a hollow shell', () => {
@@ -504,5 +508,179 @@ describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () =>
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
     expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
     expect(cameraWorldRect(camera!, viewport).height).toBeLessThan(system.height);
+  });
+});
+
+/** 41 scan file-components under `@okie/web`, matching the CLA-92 repro. */
+function reservedShellL3Scene() {
+  const files = Array.from({ length: 41 }, (_, index) => ({
+    id: `component:web-${String(index).padStart(2, '0')}`,
+    kind: 'component' as const,
+    name: index === 0 ? 'App.tsx' : `file-${index}.ts`,
+    parentId: 'container:web',
+    sourceRefs: [],
+  }));
+  const unpublished: Array<{ id: string; kind: 'code'; parentId: string }> = [];
+  const childCounts: Record<string, number> = {
+    'system:okie': 1,
+    'container:web': files.length,
+  };
+  for (const file of files) {
+    childCounts[file.id] = 12;
+    for (let index = 0; index < 12; index += 1) {
+      unpublished.push({
+        id: `code:${file.id.slice('component:'.length)}-${String(index).padStart(2, '0')}`,
+        kind: 'code',
+        parentId: file.id,
+      });
+    }
+  }
+  const snapshot: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: 'snapshot:cla-92',
+    repositoryId: 'repo:cla-92',
+    commitSha: 'sha',
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    entities: [
+      { id: 'person:developer', kind: 'person', name: 'Developer', sourceRefs: [] },
+      { id: 'system:okie', kind: 'softwareSystem', name: 'okie', sourceRefs: [] },
+      { id: 'external:npm', kind: 'externalSystem', name: 'npm', sourceRefs: [] },
+      {
+        id: 'container:web',
+        kind: 'container',
+        name: '@okie/web',
+        parentId: 'system:okie',
+        sourceRefs: [],
+      },
+      ...files,
+    ],
+    relations: [],
+  };
+  return createC4Scene({
+    baseSnapshot: snapshot,
+    rootEntityId: 'system:okie',
+    focusEntityId: 'container:web',
+    familyId: 'f',
+    sceneId: 'scan:cla-92:c4',
+    title: '@okie/web',
+    subtitle: '',
+    frozenRevision: 'sha',
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+    childCounts,
+    unpublishedChildren: unpublished,
+  });
+}
+
+function componentFaceInSafeViewport(
+  bounds: { x: number; y: number; width: number; height: number },
+  camera: { x: number; y: number; zoom: number },
+) {
+  const face = componentCardFaceBounds(bounds);
+  const padding = 24;
+  const left = viewport.width / 2 + (face.x - camera.x) * camera.zoom;
+  const top = viewport.height / 2 + (face.y - camera.y) * camera.zoom;
+  const right = left + face.width * camera.zoom;
+  const bottom = top + face.height * camera.zoom;
+  return left >= chromeSafeArea.left + padding
+    && right <= viewport.width - chromeSafeArea.right - padding
+    && top >= chromeSafeArea.top + padding
+    && bottom <= viewport.height - chromeSafeArea.bottom - padding;
+}
+
+describe('CLA-92: Open inside scan L3 frames file-component peer cards at readable zoom', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('Open inside a reserved container does not contain the owner shell (CLA-92)', () => {
+    expect(openInsideLoaded).toContain("deeperDetail === 'container' || deeperDetail === 'component'");
+    expect(openInsideLoaded).toContain('frameProjectionScope(nextScene, compileFocus, deeperDetail, viewport, mapSafeArea)');
+    expect(openInsideLoaded).not.toContain(
+      "const nextCamera = deeperDetail === 'container' ? framedCamera : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);",
+    );
+  });
+
+  it('frames L3 file-component peer cards above minZoom, not z=0.32 over a hollow shell', () => {
+    const scene = reservedShellL3Scene();
+    const owner = scene.projection!.boundsByEntityIdAndDetail['container:web']!.component!;
+    expect(owner.height).toBeGreaterThan(C4_COMPONENT_CARD_FACE.height * 1.25);
+    expect(owner.width).toBeGreaterThan(C4_COMPONENT_CARD_FACE.width * 1.25);
+
+    const camera = frameProjectionScope(scene, 'container:web', 'component', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera).toEqual(frameComponentPeerArrivalCamera(scene, 'container:web', viewport, chromeSafeArea));
+    expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera!.zoom).toBeGreaterThanOrEqual(COMPONENT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(componentTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+
+    const peers = scene.entities.filter(entity => entity.detail === 'component');
+    expect(peers.length).toBe(41);
+    expect(peers.some(entity => componentFaceInSafeViewport(
+      scene.projection!.boundsByEntityIdAndDetail[entity.id]!.component!,
+      camera!,
+    ))).toBe(true);
+
+    const world = cameraWorldRect(camera!, viewport);
+    const hollow = { x: owner.x, y: owner.y, width: owner.width, height: owner.height };
+    expect(world.width * world.height).toBeLessThan(hollow.width * hollow.height * 0.5);
+
+    const contained = containSemanticOwnerCamera(camera!, owner, viewport, chromeSafeArea);
+    expect(contained.zoom).toBe(camera!.zoom);
+    expect(contained.zoom).not.toBe(ATLAS_CAMERA_BOUNDS.minZoom);
+  });
+
+  it('CLA-80: Open inside the container keeps root=container and L3 peers visible', async () => {
+    const snapshot = scanLikeSnapshot();
+    const view = scanLikeView(snapshot);
+    const story = scanLikeStory(snapshot, view);
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => story,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, story, host, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+    await fixture.ensureNeighborhood('container:apps-web');
+    const l3Focus = scanCompileFocusForBand(
+      fixture.snapshot,
+      'container:apps-web',
+      'component',
+      fixture.navigation.rootEntityId,
+    );
+    expect(l3Focus).toBe('container:apps-web');
+    const l3 = fixture.createScene(l3Focus);
+    const componentIds = (l3.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => l3.entities.find(entity => entity.id === id)?.detail === 'component');
+    expect(componentIds.length).toBeGreaterThan(0);
+    expect(l3.entities.some(entity => entity.detail === 'component' && entity.parentId === 'container:apps-web')).toBe(true);
+
+    const camera = frameProjectionScope(l3, l3Focus, 'component', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera!.zoom).toBeGreaterThanOrEqual(COMPONENT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+
+    const session = semanticLevelSession(l3, 'component', ['container:apps-web']);
+    expect(semanticLensSessionDetail(session)).toBe('component');
+    const rows = explorerEntitiesForView(l3, {
+      detail: 'component',
+      selected: l3.entities.find(entity => entity.id === 'container:apps-web')!,
+      settledTargetIds: session.settled.map(entry => entry.targetId),
+      visibleIds: componentIds,
+    });
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every(entity => componentIds.includes(entity.id))).toBe(true);
+  });
+
+  it('CLA-90 L2 Open inside still frames readable container peer cards', () => {
+    const scene = reservedShellL2Scene();
+    const camera = frameProjectionScope(scene, 'system:okie', 'container', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(containerTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
   });
 });
