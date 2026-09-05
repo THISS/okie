@@ -30,6 +30,7 @@ import {
   frameEntities,
   frameSemanticEntities,
   readableRootCamera,
+  storySafeArea,
 } from '../storyFraming';
 import type { SafeArea, ViewportSize } from '../storyFraming';
 import type { SemanticDetail } from '../navigation/navigationState';
@@ -582,7 +583,7 @@ export function frameStoryStepCamera(
   entityIds: readonly string[],
   detail: SemanticDetail,
   viewport: ViewportSize,
-  safeArea: SafeArea,
+  safeArea: SafeArea = storySafeArea(viewport),
 ): Camera | undefined {
   const focusZoom = storyStepFocusZoom(scene, detail);
   const primaryId = storyStepPrimaryId(scene, entityIds);

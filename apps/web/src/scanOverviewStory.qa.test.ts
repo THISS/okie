@@ -103,6 +103,9 @@ describe('CLA-84: scan overview story frames the step box at band focus zoom', (
   it('wires step jumps to select the focus entity and frameStoryStepCamera', () => {
     const setStepLoaded = sliceBetween(app, 'function setStepLoaded', 'function closeStory', 'setStepLoaded');
     expect(setStepLoaded).toContain('storyStepSelectedId(step.focusEntityIds');
+    expect(setStepLoaded).toContain('inspectorSelectionRef.current = stepSelectedId');
+    expect(setStepLoaded.indexOf('inspectorSelectionRef.current = stepSelectedId'))
+      .toBeLessThan(setStepLoaded.indexOf('composeScene(compileFocus'));
     expect(setStepLoaded).toContain('setSelectedId(stepSelectedId)');
     expect(setStepLoaded).toContain('selectedId: stepSelectedId');
     expect(setStepLoaded).toContain('frameStoryStepCamera(stepScene, step.focusEntityIds, step.reveal');

@@ -2104,7 +2104,10 @@ export function App() {
             restoredPlan.steps[restoredStep]!.focusEntityIds,
             restoredScene.entities.map(entity => entity.id),
           );
-          if (restoredFocusId) setSelectedId(restoredFocusId);
+          if (restoredFocusId) {
+            inspectorSelectionRef.current = restoredFocusId;
+            setSelectedId(restoredFocusId);
+          }
         }
         setStoryStep(restoredStep);
         const restoredPosition = restoredKnown
@@ -2127,6 +2130,7 @@ export function App() {
             restoredPlan.steps[restoredStep]!.focusEntityIds,
             restoredPlan.steps[restoredStep]!.reveal,
             viewport,
+            measureCurrentStorySafeArea(),
           ) ?? next.camera;
           const sourceStep = restoredPlan.steps[(restoredStep - 1 + restoredPlan.steps.length) % restoredPlan.steps.length]!;
           const sourceSession = semanticStorySession(sourceStep);
@@ -3662,6 +3666,11 @@ export function App() {
           scanFixture.navigation.rootEntityId,
         )
       : navigationIdentity.rootEntityId;
+    const presentIds = scanFixture
+      ? activeSnapshot.entities.map(entity => entity.id)
+      : scene.entities.map(entity => entity.id);
+    const stepSelectedId = storyStepSelectedId(step.focusEntityIds, presentIds);
+    if (stepSelectedId) inspectorSelectionRef.current = stepSelectedId;
     const stepScene = scanFixture ? composeScene(compileFocus, scene, authoringHistoryRef.current.present) : scene;
     if (stepScene !== scene) {
       setScene(stepScene);
@@ -3694,7 +3703,6 @@ export function App() {
     setStoryInterruption(undefined);
     setStorySelectionOverride(false);
     setReturnToStoryFrameRequired(false);
-    const stepSelectedId = storyStepSelectedId(step.focusEntityIds, stepScene.entities.map(entity => entity.id));
     if (stepSelectedId) {
       inspectorSelectionRef.current = stepSelectedId;
       setSelectedId(stepSelectedId);
