@@ -910,6 +910,28 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
   .semantic-mermaid-svg > svg { width: 100% !important; min-width: 0; max-width: 100% !important; }
 }
 
+/* CLA-85: oEmbed 800×560 — map first; Overview one-pager is a toggle, not the page.
+   Two-row grid: hiding .diagram-view-bar with display:none must not leave workspace
+   in the 0px tabs row. */
+.app-shell[data-embed="true"] {
+  --topbar-height: 60px;
+  --diagram-tabs-height: 0px;
+  grid-template-rows: var(--topbar-height) minmax(0, 1fr);
+}
+.app-shell[data-embed="true"] .diagram-view-bar { display: none; }
+.app-shell[data-embed="true"] .ask-button { display: none; }
+.app-shell[data-embed="true"] .saved-story { display: flex; }
+.app-shell[data-embed="true"] .story-launcher { bottom: 16px; max-width: min(96vw, 760px); }
+.app-shell[data-embed="true"] .story-player { bottom: 16px; }
+.app-shell[data-embed="true"] .canvas-hint { display: none; }
+
+@media (max-width: 900px) {
+  .app-shell[data-embed="true"] .details-panel {
+    width: min(360px, 48vw);
+    max-width: min(360px, 48vw);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

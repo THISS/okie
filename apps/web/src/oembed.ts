@@ -14,6 +14,9 @@ import { parseAppRoute } from './renderer/route';
  * Iframe origins are allowlisted (loopback only for loopback requests, plus
  * exact operator/Vercel public origins). A forged Host cannot become the embed
  * target; invalid Host headers 404 instead of falling back.
+ *
+ * Default iframe chrome (CLA-85): `?embed=1` collapses the Overview one-pager
+ * so 800×560 shows the L1 map. The snippet comment documents that reduction.
  */
 
 export const OEMBED_PATH = '/oembed';
@@ -28,6 +31,9 @@ export const OEMBED_THUMBNAIL_WIDTH = 1200;
 export const OEMBED_THUMBNAIL_HEIGHT = 630;
 /** Parent grant so a docs-site iframe can use GPU (default policy is `self`). */
 export const OEMBED_IFRAME_ALLOW = 'fullscreen; gpu';
+export const OEMBED_EMBED_PARAM = 'embed';
+export const OEMBED_SNIPPET_CHROME_NOTE =
+  'Okie embed chrome: inspector Overview one-pager starts collapsed so the L1 map stays visible at 800×560. Open the panel toggle for the one-pager. Overview tour stays on the map. Ask Atlas is hidden in the iframe.';
 export const OG_IMAGE_PATH_PREFIX = '/og';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
@@ -274,6 +280,13 @@ export function publicAtlasHref(target: PublicAtlasOembedTarget): string {
   return new URL(`${publicAtlasPath(target)}${target.search}`, target.origin).href;
 }
 
+/** Iframe src: same public view plus URL-sourced embed chrome (`?embed=1`). */
+export function publicAtlasEmbedHref(target: PublicAtlasOembedTarget): string {
+  const href = new URL(publicAtlasHref(target));
+  href.searchParams.set(OEMBED_EMBED_PARAM, '1');
+  return href.href;
+}
+
 export function publicAtlasTitle(target: PublicAtlasOembedTarget): string {
   return `${target.owner}/${target.repo} architecture atlas`;
 }
@@ -290,9 +303,9 @@ export function buildOembedIframeHtml(
   target: PublicAtlasOembedTarget,
   size: { width: number; height: number },
 ): string {
-  const src = publicAtlasHref(target);
+  const src = publicAtlasEmbedHref(target);
   const title = publicAtlasTitle(target);
-  return `<iframe src="${escapeAttribute(src)}" width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px" title="${escapeAttribute(title)}" allow="${OEMBED_IFRAME_ALLOW}" allowfullscreen></iframe>`;
+  return `<!-- ${OEMBED_SNIPPET_CHROME_NOTE} --><iframe src="${escapeAttribute(src)}" width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px" title="${escapeAttribute(title)}" allow="${OEMBED_IFRAME_ALLOW}" allowfullscreen></iframe>`;
 }
 
 export function buildOembedRichResponse(
