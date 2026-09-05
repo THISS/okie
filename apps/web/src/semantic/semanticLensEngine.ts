@@ -1,4 +1,10 @@
-import { COVERAGE_REVEAL } from '@okie/scene-compiler';
+import { C4_CONTEXT_CARD_FACE } from '@okie/architecture';
+import {
+  C4_LABEL_MIN_TITLE_PX,
+  C4_PRESENTATION_AT_FOCUS,
+  C4_ZOOM_BANDS,
+  COVERAGE_REVEAL,
+} from '@okie/scene-compiler';
 import {
   ATLAS_CAMERA_BOUNDS,
   ATLAS_SEMANTIC_ZOOM_BANDS,
@@ -40,6 +46,67 @@ export const levels = [
 ];
 
 const bandDominantIntervals = semanticDominantZoomIntervals();
+
+/** Inspector-open desktop crop used when scan L1 boot has no live map chrome yet. */
+export const ATLAS_L1_BOOT_VIEWPORT: ViewportSize = { width: 1_280, height: 720 };
+export const ATLAS_L1_BOOT_SAFE_AREA: SafeArea = { top: 80, right: 300, bottom: 72, left: 64 };
+
+type WorldRect = { x: number; y: number; width: number; height: number };
+
+/** CSS px of an L1 authored title at `zoom` (20px at focus 0.75). */
+export function contextTitleCssPx(zoom: number): number {
+  return C4_PRESENTATION_AT_FOCUS.context.titleFontSize
+    * (zoom / C4_ZOOM_BANDS[0]!.focusZoom);
+}
+
+/** Zoom at which L1 titles meet `C4_LABEL_MIN_TITLE_PX` (12 CSS px). */
+export const CONTEXT_TITLE_READABLE_MIN_ZOOM = C4_LABEL_MIN_TITLE_PX
+  * C4_ZOOM_BANDS[0]!.focusZoom
+  / C4_PRESENTATION_AT_FOCUS.context.titleFontSize;
+
+/**
+ * Readable L1 card face — the title/header leaf, not a CLA-81 reserved interior.
+ * Golden 480×250 systems are unchanged; scan shells clip to the top-left leaf.
+ */
+export function contextCardFaceBounds(bounds: WorldRect): WorldRect {
+  if (bounds.width <= C4_CONTEXT_CARD_FACE.width * 1.25
+    && bounds.height <= C4_CONTEXT_CARD_FACE.height * 1.25) {
+    return bounds;
+  }
+  return {
+    x: bounds.x,
+    y: bounds.y,
+    width: Math.min(bounds.width, C4_CONTEXT_CARD_FACE.width),
+    height: Math.min(bounds.height, C4_CONTEXT_CARD_FACE.height),
+  };
+}
+
+function projectedBoundsAtDetail(
+  scene: AtlasScene,
+  entity: AtlasScene['entities'][number],
+  detail: SemanticDetail,
+): WorldRect | undefined {
+  const projected = scene.projection?.boundsByEntityIdAndDetail[entity.id]?.[detail];
+  const native = (entity.detail ?? 'context') === detail
+    && Number.isFinite(entity.width) && Number.isFinite(entity.height)
+    ? { x: entity.x, y: entity.y, width: entity.width, height: entity.height }
+    : undefined;
+  return projected ?? native;
+}
+
+function contextArrivalFace(
+  scene: AtlasScene,
+  entityIds: readonly string[],
+  detail: SemanticDetail,
+): WorldRect | undefined {
+  const preferred = scene.rootEntityId && entityIds.includes(scene.rootEntityId)
+    ? scene.rootEntityId
+    : entityIds[0];
+  if (!preferred) return undefined;
+  const entity = scene.entities.find(candidate => candidate.id === preferred);
+  const bounds = entity ? projectedBoundsAtDetail(scene, entity, detail) : undefined;
+  return bounds ? contextCardFaceBounds(bounds) : undefined;
+}
 
 /** Explicit rail selection chooses one valid nested branch at the requested depth. */
 export function semanticLevelSession(
@@ -190,16 +257,16 @@ function frameEntityIdsAtDetail(
   safeArea: SafeArea,
   minZoom: number,
   maxZoom: number,
+  clipToContextCardFace = false,
 ): Camera | undefined {
   const wanted = new Set(entityIds);
   const entities = scene.entities.flatMap(entity => {
-    const projected = scene.projection?.boundsByEntityIdAndDetail[entity.id]?.[detail];
-    const native = (entity.detail ?? 'context') === detail
-      && Number.isFinite(entity.width) && Number.isFinite(entity.height)
-      ? { x: entity.x, y: entity.y, width: entity.width, height: entity.height }
-      : undefined;
-    const bounds = projected ?? native;
-    return wanted.has(entity.id) && bounds ? [{ ...entity, ...bounds }] : [];
+    const bounds = projectedBoundsAtDetail(scene, entity, detail);
+    if (!wanted.has(entity.id) || !bounds) return [];
+    const framed = clipToContextCardFace && detail === 'context'
+      ? contextCardFaceBounds(bounds)
+      : bounds;
+    return [{ ...entity, ...framed }];
   });
   if (!entities.length) return undefined;
   return frameEntities({ ...scene, entities }, entityIds, viewport, safeArea, {
@@ -240,6 +307,9 @@ export function residentVisibleProjectionEntityIds(
  * Frames the entities currently painted at this C4 band (the visible projection),
  * not the root entity's full descendant scope. Fit uses this; load/open-inside keep
  * `frameProjectionScope` so CLA-11 unsolicited refit behavior stays unchanged.
+ *
+ * At L1, Fit frames readable card faces / exterior peers — not the CLA-81 reserved
+ * interior of the system shell — and will not collapse below a 12 CSS px title.
  */
 export function frameVisibleProjection(
   scene: AtlasScene,
@@ -249,15 +319,46 @@ export function frameVisibleProjection(
   safeArea: SafeArea,
 ): Camera | undefined {
   const { minZoom, maxZoom } = dominantBandZoomRange(detail);
-  return frameEntityIdsAtDetail(
-    scene,
-    residentVisibleProjectionEntityIds(scene, entityIds, detail),
-    detail,
-    viewport,
-    safeArea,
-    minZoom,
-    maxZoom,
+  const residentIds = residentVisibleProjectionEntityIds(scene, entityIds, detail);
+  if (detail !== 'context') {
+    return frameEntityIdsAtDetail(scene, residentIds, detail, viewport, safeArea, minZoom, maxZoom);
+  }
+  const shellCamera = frameEntityIdsAtDetail(
+    scene, residentIds, detail, viewport, safeArea, minZoom, maxZoom, false,
   );
+  const faceCamera = frameEntityIdsAtDetail(
+    scene, residentIds, detail, viewport, safeArea, minZoom, maxZoom, true,
+  );
+  const camera = faceCamera ?? shellCamera;
+  if (!camera) return undefined;
+  // Compact L1 graphs (golden) keep the Fit that shows every context peer (CLA-44).
+  // A CLA-81 reserved shell whose Fit would drop titles below 12 CSS px is pinned
+  // to the readable card face at the L1 focus zoom instead of the hollow interior.
+  const reservedShell = residentIds.some(id => {
+    const entity = scene.entities.find(candidate => candidate.id === id);
+    const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'context') : undefined;
+    return bounds !== undefined
+      && (bounds.width > C4_CONTEXT_CARD_FACE.width * 1.25
+        || bounds.height > C4_CONTEXT_CARD_FACE.height * 1.25);
+  });
+  if (!reservedShell || camera.zoom + 1e-9 >= CONTEXT_TITLE_READABLE_MIN_ZOOM) return camera;
+  const face = contextArrivalFace(scene, residentIds, 'context');
+  if (!face) return camera;
+  return readableRootCamera(camera, face, levels[0]!.zoom, viewport, safeArea);
+}
+
+/**
+ * Scan/hosted L1 boot camera: same readable card-face framing as Fit, computed
+ * from the compiled scene so first paint is not the golden toy camera.
+ */
+export function frameContextArrivalCamera(
+  scene: AtlasScene,
+  viewport: ViewportSize = ATLAS_L1_BOOT_VIEWPORT,
+  safeArea: SafeArea = ATLAS_L1_BOOT_SAFE_AREA,
+): Camera | undefined {
+  const ids = scene.projection?.entityIdsByDetail.context
+    ?? scene.entities.filter(entity => (entity.detail ?? 'context') === 'context').map(entity => entity.id);
+  return frameVisibleProjection(scene, ids, 'context', viewport, safeArea);
 }
 
 export function projectedEntitiesFitSafeViewport(
@@ -306,6 +407,14 @@ export function frameProjectionScope(
   const fitted = frameEntityIdsAtDetail(scene, ids, detail, viewport, safeArea, ownershipFloor, maxZoom);
   if (!fitted || !preferReadableRoot) return fitted;
   if (!rootBounds) return fitted;
+  // L1 scan: center the readable card face at the context focus zoom. Coverage-reveal
+  // of a reserved interior would land at the camera floor over a hollow shell.
+  if (detail === 'context') {
+    const face = contextCardFaceBounds(rootBounds);
+    const focusZoom = scene.projection?.zoomPolicy?.bands.find(band => band.detail === detail)?.focusZoom
+      ?? levels[level]!.zoom;
+    return readableRootCamera(fitted, face, focusZoom, viewport, safeArea);
+  }
   // The rail's readable-root target is the reveal-coverage zoom in scan mode (frame the focus
   // at its children's reveal coverage), else the band focus preset (unchanged for the demo).
   const focusZoom = coverageLanding

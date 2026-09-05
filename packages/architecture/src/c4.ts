@@ -198,6 +198,12 @@ export type BuildC4ProjectionOptions = {
 };
 
 /**
+ * World-space L1 card face for a software system (stage-1 leaf). Scan Fit / boot
+ * frame this readable face instead of the CLA-81 reserved interior footprint.
+ */
+export const C4_CONTEXT_CARD_FACE = { width: 480, height: 250 } as const;
+
+/**
  * Screen-space geometry contract used when a semantic owner reveals its
  * children. The scene compiler converts these values to world units at the
  * focus zoom of the incoming band.
@@ -582,7 +588,7 @@ function leafSize(kind: EntityKind): { width: number; height: number } {
     case 'externalSystem':
       return { width: 480, height: 190 };
     case 'softwareSystem':
-      return { width: 480, height: 250 };
+      return { ...C4_CONTEXT_CARD_FACE };
     case 'container':
     case 'dataStore':
     case 'queue':

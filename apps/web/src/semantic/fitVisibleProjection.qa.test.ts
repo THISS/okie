@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   cameraWorldRect,
   sliceArchitectureNeighborhood,
+  ASPECT_PRESET_TARGET,
+  C4_CONTEXT_CARD_FACE,
   type ArchitectureSnapshot,
   type ArchitectureView,
 } from '@okie/architecture';
@@ -13,9 +15,13 @@ import demoStory from '../../../../fixtures/architecture/demo-story.json';
 import { explorerEntitiesForView } from '../entityExplorer';
 import { createC4Scene, createGoldenC4Scene } from '../renderer/goldenC4Scene';
 import { scanCompileFocusForBand } from '../renderer/lazyBandCompile';
-import { compileScanNeighborhoodFixture, SCAN_RESIDENT_NODES_PER_BAND } from '../renderer/scanFixture';
+import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES, SCAN_RESIDENT_NODES_PER_BAND } from '../renderer/scanFixture';
 import { idleSemanticLensSession, semanticLensSessionVisibleEntityIds } from './semanticLens';
 import {
+  CONTEXT_TITLE_READABLE_MIN_ZOOM,
+  contextCardFaceBounds,
+  contextTitleCssPx,
+  frameContextArrivalCamera,
   frameProjectionScope,
   frameVisibleProjection,
   projectedEntitiesFitSafeViewport,
@@ -280,5 +286,127 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
       viewport,
       chromeSafeArea,
     )).toBeUndefined();
+  });
+});
+
+function reservedShellContextScene() {
+  const externals = Array.from({ length: 8 }, (_, index) => ({
+    id: `external:npm-${String(index).padStart(2, '0')}`,
+    kind: 'externalSystem' as const,
+    name: `pkg-${index}`,
+    sourceRefs: [],
+  }));
+  const unpublished: Array<{ id: string; kind: 'container' | 'component'; parentId: string }> = [];
+  const childCounts: Record<string, number> = { 'system:okie': 16 };
+  for (let container = 0; container < 16; container += 1) {
+    const containerId = `container:reserved-${String(container).padStart(2, '0')}`;
+    unpublished.push({ id: containerId, kind: 'container', parentId: 'system:okie' });
+    childCounts[containerId] = 10;
+    for (let component = 0; component < 10; component += 1) {
+      const componentId = `component:${containerId}:${String(component).padStart(2, '0')}`;
+      unpublished.push({ id: componentId, kind: 'component', parentId: containerId });
+      childCounts[componentId] = 12;
+    }
+  }
+  const snapshot: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: 'snapshot:cla-82',
+    repositoryId: 'repo:cla-82',
+    commitSha: 'c',
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    entities: [
+      { id: 'system:okie', kind: 'softwareSystem', name: 'okie', sourceRefs: [] },
+      ...externals,
+    ],
+    relations: [],
+  };
+  return createC4Scene({
+    baseSnapshot: snapshot,
+    rootEntityId: 'system:okie',
+    focusEntityId: 'system:okie',
+    familyId: 'f',
+    sceneId: 's',
+    title: 't',
+    subtitle: 's',
+    frozenRevision: 'c',
+    maxBand: 'container',
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+    childCounts,
+    unpublishedChildren: unpublished,
+  });
+}
+
+describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8'))
+      .toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
+  });
+
+  it('scan boot uses card-face arrival, not the golden toy camera', () => {
+    expect(app).toContain('camera: scanFixture ? (frameContextArrivalCamera(goldenScene) ?? defaultCamera) : defaultCamera');
+    expect(app).toContain('const defaultCamera: Camera = { x: 1_080, y: 375, zoom: levels[0]!.zoom };');
+    const autoFitStart = app.indexOf('const requiresFit = !initialMapFitAppliedRef.current;');
+    const autoFitEnd = app.indexOf('}, [detailsOpen, navigationIdentity.rootEntityId, query.fixture, safeAreaEpoch, scene, storyStep, viewport.height, viewport.width]);');
+    const autoFit = app.slice(autoFitStart, autoFitEnd);
+    expect(autoFit).toContain('if (!requiresFit) return;');
+    expect(autoFit).toContain('frameProjectionScope(scene, navigationIdentity.rootEntityId, activeDetail, viewport, safeArea, false, true)');
+    expect(autoFit).not.toContain('frameVisibleProjection(');
+    expect(autoFit).not.toContain('frameContextArrivalCamera(');
+  });
+
+  it('golden L1 Fit still shows every painted context peer', () => {
+    const scene = createGoldenC4Scene();
+    const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
+    const camera = frameVisibleProjection(scene, visibleIds, 'context', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(projectedEntitiesFitSafeViewport(
+      scene,
+      visibleIds,
+      'context',
+      camera!,
+      viewport,
+      chromeSafeArea,
+    )).toBe(true);
+  });
+
+  it('Fit at L1 does not collapse to z=0.32 over a reserved shell', () => {
+    const scene = reservedShellContextScene();
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
+    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
+    expect(system.width).toBeGreaterThan(C4_CONTEXT_CARD_FACE.width * 1.5);
+
+    const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
+    expect(visibleIds.some(id => id.startsWith('external:'))).toBe(true);
+
+    const camera = frameVisibleProjection(scene, visibleIds, 'context', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThan(0.32);
+    expect(camera!.zoom).toBeGreaterThan(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(contextTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+
+    const world = cameraWorldRect(camera!, viewport);
+    const face = contextCardFaceBounds(system);
+    expect(rectsOverlap(world, face)).toBe(true);
+    const hollow = { x: system.x, y: system.y, width: system.width, height: system.height };
+    const aim = fitAim(camera!);
+    expect(distance(aim, rectCenter(face)))
+      .toBeLessThan(distance(aim, rectCenter(hollow)));
+    const peerInView = visibleIds.filter(id => id.startsWith('external:')).some(id => {
+      const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
+      return bounds ? rectsOverlap(world, bounds) : false;
+    });
+    expect(peerInView).toBe(true);
+  });
+
+  it('scan L1 arrival camera frames the card face without the golden default', () => {
+    const scene = reservedShellContextScene();
+    const camera = frameContextArrivalCamera(scene, viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera).not.toEqual({ x: 1_080, y: 375, zoom: 0.75 });
+    expect(camera!.zoom).toBeGreaterThan(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(contextTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
+    expect(rectsOverlap(cameraWorldRect(camera!, viewport), contextCardFaceBounds(system))).toBe(true);
   });
 });

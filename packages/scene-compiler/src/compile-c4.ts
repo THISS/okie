@@ -1,6 +1,7 @@
 import {
   C4_BANDS,
   C4_BAND_FOCUS_ZOOM,
+  C4_CONTEXT_CARD_FACE,
   C4_INTRINSIC_LAYOUT,
   buildC4ProjectionBundle,
   c4ExpectedChildKind,
@@ -672,7 +673,11 @@ export function layoutContextPeersAroundSystem(
   const placed = new Map<string, NodeLayout>();
   if (!peers.length) return placed;
   const { systemClearance, columnGap, rowGap, stackHeightBudget } = CONTEXT_PEER_LAYOUT;
-  const systemCenterY = system.y + system.height / 2;
+  // Hug the readable L1 card face (title/header), not the vertical center of a
+  // CLA-81 reserved shell. Left/right clearance still uses the full system width
+  // so peers stay outside the packed interior.
+  const faceHeight = Math.min(system.height, C4_CONTEXT_CARD_FACE.height);
+  const systemCenterY = system.y + faceHeight / 2;
   // Sort by id so the placement is order-independent (like measureC4Grid): a shuffled peer
   // list yields byte-identical geometry, which is what keeps a shared/restored scene stable.
   const ordered = [...peers].sort((left, right) => left.id.localeCompare(right.id));
