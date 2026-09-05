@@ -101,9 +101,14 @@ test("CLA-74: maxNodesPerBand pages off-screen L3/L4 and keeps +N more; default 
     defaultComponent.visualNodeIds.length,
     "resident + omitted = neighborhood",
   );
-  const compiled = compileC4Scene(snapshot, paged).scene;
+  const compiledFull = compileC4Scene(snapshot, paged);
+  const compiled = compiledFull.scene;
   const full = compileC4Scene(snapshot, dflt).scene;
   assert.ok(compiled.objects.length < full.objects.length, "protocol omits off-screen L3 cards");
+  const omitted = new Set(component.omittedNodeIds ?? []);
+  assert.equal(compiled.objects.some(object => omitted.has(object.id)), false, "omitted cards are not extra protocol objects");
+  const reserved = compiledFull.projections.bandLayoutById[component.layoutId]?.reservedShells ?? {};
+  assert.ok(Object.keys(reserved).some(id => omitted.has(id)), "omitted children keep reserved shells on the owner");
   const unbounded = buildC4ProjectionBundle(snapshot, rootFocus);
   const explicit = buildC4ProjectionBundle(snapshot, { ...rootFocus, maxNodesPerBand: 100000 });
   assert.equal(JSON.stringify(unbounded), JSON.stringify(explicit), "over-cap == default (opt-in never changes small graphs)");

@@ -10,6 +10,7 @@ import {
   type ArchitectureStory,
   type ArchitectureView,
   type C4Band,
+  type ContainmentEntity,
   type EntityKind,
   type SourceRef,
 } from '@okie/architecture';
@@ -203,6 +204,9 @@ export type C4SceneOptions = {
   targetAspect?: number;
   /** Size gate value for the dev diagnostics line (scan mode); display-only. */
   bandDepthThreshold?: number;
+  /** Published child counts so owners reserve nested footprints (CLA-81). */
+  childCounts?: Readonly<Record<string, number>>;
+  unpublishedChildren?: readonly ContainmentEntity[];
 };
 
 /**
@@ -328,6 +332,8 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     revision,
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
+    ...(options.childCounts ? { childCounts: options.childCounts } : {}),
+    ...(options.unpublishedChildren?.length ? { unpublishedChildren: options.unpublishedChildren } : {}),
   };
   const compiled = authoring
     ? compileAuthoredC4Scene(baseSnapshot, authoring, buildOptions, compileOptions)

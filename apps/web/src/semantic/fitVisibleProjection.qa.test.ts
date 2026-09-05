@@ -115,7 +115,7 @@ function boundsUnion(
   detail: 'code',
 ) {
   const boxes = ids.flatMap(id => {
-    const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.[detail];
+    const bounds = scene.projection?.boundsByEntityIdAndDetail?.[id]?.[detail];
     return bounds ? [bounds] : [];
   });
   if (!boxes.length) return undefined;

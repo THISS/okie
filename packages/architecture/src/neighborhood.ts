@@ -7,6 +7,7 @@ import type {
   SourceExcerpt,
 } from "./model.js";
 import { C4_BANDS, type C4Band } from "./c4.js";
+import { computeContainmentLayout, type ContainmentEntity } from "./containment-layout.js";
 import { validateSnapshot, validateView, type ValidationIssue } from "./validation.js";
 
 export const NEIGHBORHOOD_PACKET_KIND = "neighborhood" as const;
@@ -44,6 +45,12 @@ export type ArchitectureNeighborhoodPacket = {
   truncated: boolean;
   /** Children in the published snapshot, including ones not shipped in this packet. */
   childCounts: Record<string, number>;
+  /**
+   * Direct unpublished children of packet members (id/kind/parentId only).
+   * Lets the client reserve nested footprints without fetching the subgraph.
+   * Absent when every child is already in `snapshot`.
+   */
+  unpublishedChildren?: readonly ContainmentEntity[];
   snapshot: ArchitectureSnapshot;
   view: ArchitectureView;
 };
@@ -192,6 +199,17 @@ export function sliceArchitectureNeighborhood(
     const count = fullChildCounts[id];
     if (count !== undefined) childCounts[id] = count;
   }
+  const unpublishedChildren: ContainmentEntity[] = [];
+  for (const id of [...included].sort()) {
+    for (const childId of [...(childrenByParent.get(id) ?? [])].sort()) {
+      if (included.has(childId)) continue;
+      const child = byId.get(childId);
+      if (!child) continue;
+      unpublishedChildren.push({ id: child.id, kind: child.kind, parentId: id });
+      const nested = fullChildCounts[child.id];
+      if (nested !== undefined) childCounts[child.id] = nested;
+    }
+  }
 
   const includeExcerpts = options.includeExcerpts === true;
   const entities = snapshot.entities
@@ -215,9 +233,15 @@ export function sliceArchitectureNeighborhood(
     ...view.relationIds.filter(id => relations.some(relation => relation.id === id)),
     ...relations.map(relation => relation.id).filter(id => !view.relationIds.includes(id)).sort(),
   ];
+  const containment = computeContainmentLayout([
+    ...entities.map(entity => ({ id: entity.id, kind: entity.kind, ...(entity.parentId ? { parentId: entity.parentId } : {}) })),
+    ...unpublishedChildren,
+  ], { childCounts });
   const nodes = Object.fromEntries(entityIds.map(id => {
-    const layout = view.layout.nodes[id];
-    return [id, layout ?? placeholderLayout()];
+    const authored = view.layout.nodes[id];
+    const reserved = containment[id];
+    if (reserved) return [id, { x: reserved.x, y: reserved.y, width: reserved.width, height: reserved.height }];
+    return [id, authored && authored.width > 1 && authored.height > 1 ? authored : placeholderLayout()];
   }));
   const publishedEdges = view.layout.edges ?? {};
   const edges = Object.fromEntries(
@@ -238,6 +262,7 @@ export function sliceArchitectureNeighborhood(
     focusEntityId: focus.id,
     truncated: included.size < snapshot.entities.length,
     childCounts,
+    ...(unpublishedChildren.length ? { unpublishedChildren } : {}),
     snapshot: slimSnapshot,
     view: slimView,
   };

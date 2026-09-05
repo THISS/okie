@@ -104,6 +104,12 @@ export type BandLayout = {
   };
   nodes: Record<string, NodeLayout>;
   edges: Record<string, EdgeLayout>;
+  /**
+   * CLA-81 reserved shells: packed bounds for omitted / unpublished children
+   * that stay out of `visualNodeIds` (details stay lazy). Keys are visual node
+   * ids. Absent on the golden/default path.
+   */
+  reservedShells?: Record<string, NodeLayout>;
 };
 
 export type ProjectionIndex = {
@@ -227,6 +233,81 @@ export const C4_ROUTING_CLEARANCE_PX = 8;
  * ~20px U at code-enter zoom, not a packing rewrite.
  */
 export const C4_SCAN_CODE_GAP_EXTRA_PX = 32;
+
+/**
+ * Focus-zoom contract the intrinsic owner grid uses (CLA-81). Must match
+ * `C4_ZOOM_BANDS[].focusZoom` in `@okie/scene-compiler` so containment
+ * precompute and band compile paint into the same world shells.
+ */
+export const C4_BAND_FOCUS_ZOOM: Readonly<Record<C4Band, number>> = Object.freeze({
+  context: 0.75,
+  container: 1.99,
+  component: 5.27,
+  code: 13.96,
+});
+
+/** Next-band child kind a C4 owner packs. Undefined for leaves / context peers. */
+export function c4ExpectedChildKind(kind: EntityKind): EntityKind | undefined {
+  if (kind === 'component') return 'code';
+  if (kind === 'container' || kind === 'dataStore' || kind === 'queue') return 'component';
+  if (kind === 'softwareSystem') return 'container';
+  return undefined;
+}
+
+/**
+ * World-space grid metrics for an owner's direct children (CLA-81 / intrinsic
+ * grow). Component owners pack at code focus zoom; containers at component;
+ * systems at container. Absent kind → undefined (persons / externals / code).
+ */
+export function c4IntrinsicOwnerMetrics(kind: EntityKind, targetAspect?: number): C4GridMetrics | undefined {
+  const contract = C4_INTRINSIC_LAYOUT;
+  const focusZoom = kind === 'component'
+    ? C4_BAND_FOCUS_ZOOM.code
+    : kind === 'container' || kind === 'dataStore' || kind === 'queue'
+      ? C4_BAND_FOCUS_ZOOM.component
+      : kind === 'softwareSystem'
+        ? C4_BAND_FOCUS_ZOOM.container
+        : undefined;
+  if (!focusZoom) return undefined;
+  const header = kind === 'component'
+    ? contract.header.component
+    : kind === 'softwareSystem'
+      ? contract.header.system
+      : contract.header.container;
+  return {
+    gap: (contract.gap + (targetAspect !== undefined && kind === 'component' ? C4_SCAN_CODE_GAP_EXTRA_PX : 0)) / focusZoom,
+    paddingLeft: contract.sidePadding / focusZoom,
+    paddingRight: contract.sidePadding / focusZoom,
+    paddingTop: header / focusZoom,
+    paddingBottom: contract.bottomPadding / focusZoom,
+    maxColumns: contract.maxColumns,
+    ...(targetAspect !== undefined ? { targetAspect } : {}),
+  };
+}
+
+/** World-space floor for one unpublished / childless occupant of `kind`. */
+export function c4ContainmentLeafSize(kind: EntityKind, targetAspect?: number): { width: number; height: number } {
+  const code = {
+    width: C4_INTRINSIC_LAYOUT.leaf.code.width / C4_BAND_FOCUS_ZOOM.code,
+    height: C4_INTRINSIC_LAYOUT.leaf.code.height / C4_BAND_FOCUS_ZOOM.code,
+  };
+  if (kind === 'code') return code;
+  const ownBand: C4Band | undefined = kind === 'component'
+    ? 'component'
+    : kind === 'container' || kind === 'dataStore' || kind === 'queue'
+      ? 'container'
+      : kind === 'softwareSystem'
+        ? 'context'
+        : undefined;
+  if (targetAspect !== undefined && ownBand && ownBand !== 'context') {
+    const zoom = C4_BAND_FOCUS_ZOOM[ownBand];
+    return {
+      width: C4_INTRINSIC_LAYOUT.leaf.code.width / zoom * 2,
+      height: C4_INTRINSIC_LAYOUT.leaf.code.height / zoom * 2,
+    };
+  }
+  return code;
+}
 
 /** World-space packed-gutter ceiling for a tight L4 duplicates loop. */
 function packedDuplicatesGutter(clearance: number): number {
@@ -1235,16 +1316,13 @@ export function buildC4ProjectionBundle(
     };
     projectionById[projectionId] = projection;
     if (packedNodes && omittedNodeIds.length) {
-      const residentNodes: Record<string, NodeLayout> = {};
-      for (const id of visualNodeIds) {
-        const bounds = packedNodes[id];
-        if (bounds) residentNodes[id] = bounds;
-      }
+      // CLA-81: keep packed bounds for omitted children so band compile can
+      // paint reserved shells. Routing still uses resident-only visualEdgeIds.
       bandLayoutById[layoutId] = bandLayout(
         projection,
         visualNodeById,
         visualEdgeById,
-        residentNodes,
+        packedNodes,
         options.maxGridNodes,
       );
     } else {

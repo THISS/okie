@@ -25,8 +25,10 @@ describe('CLA-74: camera-resident L4 compile', () => {
     expect(scene.omittedNodes?.length ?? 0).toBeGreaterThan(0);
     expect(codeIds.length + (scene.omittedNodes?.filter(node => node.detail === 'code').length ?? 0))
       .toBeGreaterThanOrEqual(80);
-    const protocol = scene.protocolSnapshot as { objects: unknown[] };
+    const protocol = scene.protocolSnapshot as { objects: unknown[]; paths: unknown[] };
     expect(protocol.objects.length).toBeLessThan(90);
+    expect(protocol.paths.length).toBeLessThan(80);
+    expect((scene.projection?.entityIdsByDetail.code ?? []).length).toBeLessThanOrEqual(SCAN_RESIDENT_NODES_PER_BAND + 5);
   });
 
   it('Open inside without a camera window still keeps near-focus children', () => {

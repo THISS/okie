@@ -138,6 +138,8 @@ test("CLA-73: L1 neighborhood omits L4 excerpts and the import graph", () => {
   assert.equal(packet.snapshot.relations.some(item => item.kind === "uses" && item.from.startsWith("code:")), false);
   assert.ok(packet.childCounts["container:c0"] === 4);
   assert.ok(packet.childCounts["system:root"] === 8);
+  assert.ok((packet.unpublishedChildren?.length ?? 0) > 0);
+  assert.ok(packet.view.layout.nodes["container:c0"]!.width > 1);
   assert.ok(slimBytes * 8 < fullBytes, `L1 snapshot ${slimBytes}B should be far under full ${fullBytes}B`);
   assert.ok(slimBytes < 80_000, `L1 snapshot ${slimBytes}B must not approach the 4MB full trio`);
   assert.deepEqual(validateNeighborhoodPacket(packet), []);
