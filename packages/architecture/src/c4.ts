@@ -204,6 +204,12 @@ export type BuildC4ProjectionOptions = {
 export const C4_CONTEXT_CARD_FACE = { width: 480, height: 250 } as const;
 
 /**
+ * World-space L2 card face for a container (stage-1 leaf). Scan Open inside
+ * frames this readable face instead of a CLA-81 reserved interior footprint.
+ */
+export const C4_CONTAINER_CARD_FACE = { width: 420, height: 180 } as const;
+
+/**
  * Screen-space geometry contract used when a semantic owner reveals its
  * children. The scene compiler converts these values to world units at the
  * focus zoom of the incoming band.
@@ -592,7 +598,7 @@ function leafSize(kind: EntityKind): { width: number; height: number } {
     case 'container':
     case 'dataStore':
     case 'queue':
-      return { width: 420, height: 180 };
+      return { ...C4_CONTAINER_CARD_FACE };
     case 'component':
       return { width: 300, height: 150 };
     case 'code':
