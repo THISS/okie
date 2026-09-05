@@ -2849,11 +2849,6 @@ export function App() {
         pickedRelationId,
         visibilityMode,
       };
-      if (isolatedEntityIds.length > 0 && !isolatedEntityIdSet.has(selected.id)) {
-        const isolateSubject = isolatedEntityIds.find(id => visibilityFocusIds.has(id)) ?? isolatedEntityIds[0]!;
-        inspectorSelectionRef.current = isolateSubject;
-        setSelectedId(isolateSubject);
-      }
     } else if (visibilityMode === 'isolate') {
       isolationOriginRef.current = undefined;
     }

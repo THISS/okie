@@ -109,14 +109,6 @@ describe('CLA-55 restore full view and CLA-11 isolate camera', () => {
     expect(app).not.toContain('row.semanticIds.some(id => isolatedRelationIdSet.has(id))');
   });
 
-  it('retargets the inspector to an isolated focus when leftover selection sits outside', () => {
-    expect(changeVisibility).toContain('isolatedEntityIdSet.has(selected.id)');
-    expect(changeVisibility).toContain('inspectorSelectionRef.current = isolateSubject');
-    expect(changeVisibility).toContain('setSelectedId(isolateSubject)');
-    expect(changeVisibility).not.toContain('frameProjectionScope(');
-    expect(changeVisibility).not.toContain('updateCamera(');
-  });
-
   it('does not raise the 2000 hang-guard or rewrite lazy band compile', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
     expect(ISOLATE_NEIGHBORHOOD_MAX).toBe(VIEWPORT_RESIDENT_NODES_PER_BAND);
