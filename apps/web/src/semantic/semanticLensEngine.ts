@@ -190,6 +190,7 @@ function frameEntityIdsAtDetail(
   safeArea: SafeArea,
   minZoom: number,
   maxZoom: number,
+  overflowAlign?: 'center' | 'start',
 ): Camera | undefined {
   const wanted = new Set(entityIds);
   const entities = scene.entities.flatMap(entity => {
@@ -206,6 +207,7 @@ function frameEntityIdsAtDetail(
     screenPadding: 24,
     minZoom,
     maxZoom,
+    overflowAlign,
   });
 }
 
@@ -240,6 +242,14 @@ export function residentVisibleProjectionEntityIds(
  * Frames the entities currently painted at this C4 band (the visible projection),
  * not the root entity's full descendant scope. Fit uses this; load/open-inside keep
  * `frameProjectionScope` so CLA-11 unsolicited refit behavior stays unchanged.
+ *
+ * L4 Fit floors at the code focus preset. Code cards are authored for that
+ * readable scale; layout-fitting their small world rects lands near code enter
+ * and cancels label size (golden-okie-hierarchy). Code rail already lands at
+ * focus — Fit must not zoom back out into an empty-looking frame. When that
+ * floor overflows the card, pin its top-left to the safe origin so the header
+ * stays on-screen instead of centering into blank fill. L1 still uses the
+ * full dominant interval so every context peer can fit (CLA-44).
  */
 export function frameVisibleProjection(
   scene: AtlasScene,
@@ -249,14 +259,20 @@ export function frameVisibleProjection(
   safeArea: SafeArea,
 ): Camera | undefined {
   const { minZoom, maxZoom } = dominantBandZoomRange(detail);
+  const band = scene.projection?.zoomPolicy?.bands.find(candidate => candidate.detail === detail)
+    ?? ATLAS_SEMANTIC_ZOOM_BANDS[semanticDetails.indexOf(detail)];
+  const fitMinZoom = detail === 'code' && band
+    ? Math.max(minZoom, band.focusZoom)
+    : minZoom;
   return frameEntityIdsAtDetail(
     scene,
     residentVisibleProjectionEntityIds(scene, entityIds, detail),
     detail,
     viewport,
     safeArea,
-    minZoom,
+    fitMinZoom,
     maxZoom,
+    detail === 'code' ? 'start' : undefined,
   );
 }
 

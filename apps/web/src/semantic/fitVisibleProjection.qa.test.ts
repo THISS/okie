@@ -6,7 +6,7 @@ import {
   type ArchitectureSnapshot,
   type ArchitectureView,
 } from '@okie/architecture';
-import { denseNeighborhoodSnapshot } from '@okie/scene-compiler';
+import { C4_ZOOM_BANDS, denseNeighborhoodSnapshot } from '@okie/scene-compiler';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
@@ -137,6 +137,17 @@ function distance(
   return Math.hypot(left.x - right.x, left.y - right.y);
 }
 
+/** Layout-only Fit zoom (dominant-interval floor omitted) — L4 cards undershoot focus without the code floor. */
+function layoutFitZoom(bounds: { width: number; height: number }) {
+  const safeWidth = viewport.width - chromeSafeArea.left - chromeSafeArea.right;
+  const safeHeight = viewport.height - chromeSafeArea.top - chromeSafeArea.bottom;
+  const screenPadding = 24;
+  return Math.min(
+    (safeWidth - screenPadding * 2) / Math.max(1, bounds.width),
+    (safeHeight - screenPadding * 2) / Math.max(1, bounds.height),
+  );
+}
+
 /** World point Fit aims at (safe-viewport center), not the raw camera origin. */
 function fitAim(camera: { x: number; y: number; zoom: number }) {
   const safeWidth = viewport.width - chromeSafeArea.left - chromeSafeArea.right;
@@ -192,6 +203,7 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
 
     const camera = frameVisibleProjection(scene, visibleIds, 'code', viewport, chromeSafeArea);
     expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThanOrEqual(C4_ZOOM_BANDS[3]!.focusZoom);
     const world = cameraWorldRect(camera!, viewport);
     const inView = residentIds.filter(id => {
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.code;
@@ -203,10 +215,19 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
     const residentUnion = boundsUnion(scene, residentIds, 'code');
     expect(ancestorUnion).toBeDefined();
     expect(residentUnion).toBeDefined();
+    expect(layoutFitZoom(residentUnion!)).toBeLessThan(C4_ZOOM_BANDS[3]!.focusZoom);
+    const header = {
+      x: viewport.width / 2 + (residentUnion!.x - camera!.x) * camera!.zoom,
+      y: viewport.height / 2 + (residentUnion!.y - camera!.y) * camera!.zoom,
+    };
+    expect(header.x).toBeGreaterThanOrEqual(chromeSafeArea.left + 24 - 0.5);
+    expect(header.y).toBeGreaterThanOrEqual(chromeSafeArea.top + 24 - 0.5);
     const aim = fitAim(camera!);
-    const split = distance(rectCenter(residentUnion!), rectCenter(ancestorUnion!));
+    const origin = { x: residentUnion!.x, y: residentUnion!.y };
+    const ancestorOrigin = { x: ancestorUnion!.x, y: ancestorUnion!.y };
+    const split = distance(origin, ancestorOrigin);
     if (split > 1) {
-      expect(distance(aim, rectCenter(residentUnion!))).toBeLessThan(distance(aim, rectCenter(ancestorUnion!)));
+      expect(distance(aim, origin)).toBeLessThan(distance(aim, ancestorOrigin));
     }
   });
 
@@ -247,6 +268,7 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
     expect(visibleIds).toContain('system:okie');
     const camera = frameVisibleProjection(l4, visibleIds, 'code', viewport, chromeSafeArea);
     expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThanOrEqual(C4_ZOOM_BANDS[3]!.focusZoom);
     const world = cameraWorldRect(camera!, viewport);
     const codeRows = rows.filter(entity => entity.detail === 'code');
     expect(codeRows.length).toBeGreaterThan(0);
@@ -263,6 +285,13 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
     );
     expect(ancestorUnion).toBeDefined();
     expect(residentUnion).toBeDefined();
+    expect(layoutFitZoom(residentUnion!)).toBeLessThan(C4_ZOOM_BANDS[3]!.focusZoom);
+    const header = {
+      x: viewport.width / 2 + (residentUnion!.x - camera!.x) * camera!.zoom,
+      y: viewport.height / 2 + (residentUnion!.y - camera!.y) * camera!.zoom,
+    };
+    expect(header.x).toBeGreaterThanOrEqual(chromeSafeArea.left + 24 - 0.5);
+    expect(header.y).toBeGreaterThanOrEqual(chromeSafeArea.top + 24 - 0.5);
     expect(ancestorUnion!.width).toBeGreaterThan(residentUnion!.width * 2);
     const aim = fitAim(camera!);
     expect(distance(aim, rectCenter(residentUnion!)))

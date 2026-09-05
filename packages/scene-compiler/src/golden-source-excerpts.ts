@@ -723,9 +723,9 @@ export const GOLDEN_SOURCE_EXCERPTS = {
     "path": "apps/web/src/storyFraming.ts",
     "symbol": "frameEntities",
     "language": "typescript",
-    "startLine": 119,
-    "endLine": 124,
-    "highlightLine": 119,
+    "startLine": 125,
+    "endLine": 130,
+    "highlightLine": 125,
     "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
     "lines": [
       "export function frameEntities(",
