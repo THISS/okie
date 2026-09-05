@@ -1,11 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import type { ArchitectureSnapshot } from '@okie/architecture';
+import { NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
 import {
   explorerBrowseEntities,
   explorerEntitiesForView,
   explorerScopeParentId,
+  isThirdPartyContextPeer,
+  orderExplorerBrowseRows,
 } from './entityExplorer';
-import { createGoldenC4Scene } from './renderer/goldenC4Scene';
+import { createC4Scene, createGoldenC4Scene } from './renderer/goldenC4Scene';
+import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 import type { SceneEntity, SemanticDetail } from './renderer/types';
 import { DEFAULT_SEARCH_RESULT_LIMIT, searchArchitectureEntities } from './searchSuggestions';
 import { semanticLevelSession } from './semantic/semanticLensEngine';
@@ -235,5 +240,153 @@ describe('App wires scoped browse and unscoped search', () => {
     expect(app).toContain('explorerEntitiesForView(');
     expect(app).not.toContain('scene.entities.length > 200');
     expect(app).toContain('searchArchitectureEntities(');
+  });
+});
+
+function contextPeer(
+  id: string,
+  kind: 'person' | 'system',
+  kindLabel: string,
+  name = id,
+  responsibility = name,
+  tags?: string[],
+): SceneEntity {
+  return {
+    ...entity(id, 'context', undefined, name),
+    kind,
+    kindLabel,
+    responsibility,
+    ...(tags ? { tags } : {}),
+  };
+}
+
+describe('CLA-86: L1 explorer leads with system/people before npm externals', () => {
+  const npmNames = ['react', 'dompurify', '@fontsource/ibm-plex-sans', 'mermaid', 'react-dom', 'vite', 'zod', 'typescript'];
+  const npmExternals = npmNames.map(name => contextPeer(
+    `external:${name}`,
+    'system',
+    'External system',
+    name,
+    NO_SUMMARY_SUPPLIED,
+  ));
+  const okie = contextPeer(
+    'system:okie',
+    'system',
+    'Software system',
+    'okie',
+    'Evidence-backed architecture atlas with semantic zoom and deterministic guided stories.',
+  );
+  const developer = contextPeer(
+    'person:developer',
+    'person',
+    'Person',
+    'Developer',
+    'Explores an unfamiliar codebase from system context to source evidence.',
+  );
+
+  it('does not raise the 2000 hang-guard or invent external summaries', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(npmExternals.every(item => item.responsibility === NO_SUMMARY_SUPPLIED)).toBe(true);
+    expect(isThirdPartyContextPeer(okie)).toBe(false);
+    expect(isThirdPartyContextPeer(developer)).toBe(false);
+    expect(isThirdPartyContextPeer(npmExternals[0]!)).toBe(true);
+  });
+
+  it('orders eight id-sorted npm packages after the software system', () => {
+    const scene = { entities: [...npmExternals, okie] };
+    expect(scene.entities[0]!.id).toBe('external:react');
+    expect(scene.entities.at(-1)!.id).toBe('system:okie');
+    const rows = explorerBrowseEntities(scene, { detail: 'context' });
+    expect(rows.map(item => item.id)).toEqual(['system:okie', ...npmExternals.map(item => item.id)]);
+    expect(rows).toHaveLength(9);
+    expect(rows[0]!.responsibility).not.toBe(NO_SUMMARY_SUPPLIED);
+    expect(rows.slice(1).every(item => item.responsibility === NO_SUMMARY_SUPPLIED)).toBe(true);
+  });
+
+  it('keeps people with the system, still ahead of third-party externals', () => {
+    const scene = { entities: [...npmExternals, developer, okie] };
+    expect(explorerBrowseEntities(scene, { detail: 'context' }).map(item => item.id)).toEqual([
+      'person:developer',
+      'system:okie',
+      ...npmExternals.map(item => item.id),
+    ]);
+  });
+
+  it('does not invent copy when reordering — externals stay No summary supplied', () => {
+    const rows = orderExplorerBrowseRows('context', [...npmExternals, okie]);
+    expect(rows.filter(item => isThirdPartyContextPeer(item)).map(item => item.responsibility))
+      .toEqual(Array(8).fill(NO_SUMMARY_SUPPLIED));
+  });
+
+  it('does not reorder L2/L3/L4 browse sets', () => {
+    const mixed = [
+      entity('container:z', 'container', 'system:okie', 'z'),
+      entity('system:okie', 'context'),
+      entity('container:a', 'container', 'system:okie', 'a'),
+    ];
+    expect(explorerBrowseEntities({ entities: mixed }, {
+      detail: 'container',
+      parentId: 'system:okie',
+    }).map(item => item.id)).toEqual(['container:z', 'container:a']);
+  });
+
+  it('golden L1 still starts Developer / Okie / curated externals', () => {
+    const golden = createGoldenC4Scene();
+    const system = golden.entities.find(item => item.id === 'system:okie')!;
+    const rows = explorerEntitiesForView(golden, {
+      detail: 'context',
+      selected: system,
+      visibleIds: golden.projection?.entityIdsByDetail.context,
+    });
+    expect(rows.map(item => item.id)).toEqual([
+      'actor:developer',
+      'system:okie',
+      'external:source-repository',
+      'external:browser-graphics',
+    ]);
+    expect(rows.every(item => item.responsibility !== NO_SUMMARY_SUPPLIED)).toBe(true);
+    expect(rows).toHaveLength(4);
+  });
+
+  it('scan-like id-sorted snapshot still lists only the L1 band, system first', () => {
+    const snapshot: ArchitectureSnapshot = {
+      schemaVersion: 1,
+      id: 'snapshot:cla-86',
+      repositoryId: 'repo:cla-86',
+      commitSha: 'sha',
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      entities: [
+        ...npmNames.map(name => ({
+          id: `external:${name}`,
+          kind: 'externalSystem' as const,
+          name,
+          sourceRefs: [],
+        })),
+        { id: 'system:okie', kind: 'softwareSystem', name: 'okie', responsibility: okie.responsibility, sourceRefs: [] },
+      ].sort((left, right) => left.id.localeCompare(right.id)),
+      relations: [],
+    };
+    expect(snapshot.entities[0]!.id.startsWith('external:')).toBe(true);
+    const compiled = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:okie',
+      focusEntityId: 'system:okie',
+      familyId: 'f',
+      sceneId: 's',
+      title: 't',
+      subtitle: 's',
+      frozenRevision: 'sha',
+      maxBand: 'container',
+    });
+    const rows = explorerEntitiesForView(compiled, {
+      detail: 'context',
+      selected: compiled.entities.find(item => item.id === 'system:okie')!,
+      visibleIds: compiled.projection?.entityIdsByDetail.context,
+    });
+    expect(rows[0]!.id).toBe('system:okie');
+    expect(rows.slice(1).every(item => item.id.startsWith('external:'))).toBe(true);
+    expect(rows).toHaveLength(9);
+    expect(rows.slice(1).every(item => item.responsibility === NO_SUMMARY_SUPPLIED)).toBe(true);
+    expect(compiled.entities.filter(item => (item.detail ?? 'context') === 'code')).toHaveLength(0);
   });
 });
