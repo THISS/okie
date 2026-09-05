@@ -216,10 +216,18 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
     expect(ancestorUnion).toBeDefined();
     expect(residentUnion).toBeDefined();
     expect(layoutFitZoom(residentUnion!)).toBeLessThan(C4_ZOOM_BANDS[3]!.focusZoom);
+    const header = {
+      x: viewport.width / 2 + (residentUnion!.x - camera!.x) * camera!.zoom,
+      y: viewport.height / 2 + (residentUnion!.y - camera!.y) * camera!.zoom,
+    };
+    expect(header.x).toBeGreaterThanOrEqual(chromeSafeArea.left + 24 - 0.5);
+    expect(header.y).toBeGreaterThanOrEqual(chromeSafeArea.top + 24 - 0.5);
     const aim = fitAim(camera!);
-    const split = distance(rectCenter(residentUnion!), rectCenter(ancestorUnion!));
+    const origin = { x: residentUnion!.x, y: residentUnion!.y };
+    const ancestorOrigin = { x: ancestorUnion!.x, y: ancestorUnion!.y };
+    const split = distance(origin, ancestorOrigin);
     if (split > 1) {
-      expect(distance(aim, rectCenter(residentUnion!))).toBeLessThan(distance(aim, rectCenter(ancestorUnion!)));
+      expect(distance(aim, origin)).toBeLessThan(distance(aim, ancestorOrigin));
     }
   });
 
@@ -278,6 +286,12 @@ describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
     expect(ancestorUnion).toBeDefined();
     expect(residentUnion).toBeDefined();
     expect(layoutFitZoom(residentUnion!)).toBeLessThan(C4_ZOOM_BANDS[3]!.focusZoom);
+    const header = {
+      x: viewport.width / 2 + (residentUnion!.x - camera!.x) * camera!.zoom,
+      y: viewport.height / 2 + (residentUnion!.y - camera!.y) * camera!.zoom,
+    };
+    expect(header.x).toBeGreaterThanOrEqual(chromeSafeArea.left + 24 - 0.5);
+    expect(header.y).toBeGreaterThanOrEqual(chromeSafeArea.top + 24 - 0.5);
     expect(ancestorUnion!.width).toBeGreaterThan(residentUnion!.width * 2);
     const aim = fitAim(camera!);
     expect(distance(aim, rectCenter(residentUnion!)))

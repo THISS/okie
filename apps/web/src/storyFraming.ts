@@ -22,6 +22,12 @@ export type FrameEntitiesOptions = {
   screenPadding?: number;
   minZoom?: number;
   maxZoom?: number;
+  /**
+   * When minZoom forces the frame past layout-fit, `start` pins the bounds'
+   * top-left to the padded safe origin so card headers stay on-screen.
+   * Default keeps the historical centered crop.
+   */
+  overflowAlign?: 'center' | 'start';
 };
 
 export type FrameSemanticEntitiesOptions = FrameEntitiesOptions & {
@@ -141,19 +147,32 @@ export function frameEntities(
   const screenPadding = options.screenPadding ?? (viewportWidth <= 780 ? 24 : 42);
   const minZoom = Math.max(ATLAS_CAMERA_BOUNDS.minZoom, options.minZoom ?? ATLAS_CAMERA_BOUNDS.minZoom);
   const maxZoom = Math.min(ATLAS_CAMERA_BOUNDS.maxZoom, options.maxZoom ?? 1.24);
+  const widthFit = (safeWidth - screenPadding * 2) / boundsWidth;
+  const heightFit = (safeHeight - screenPadding * 2) / boundsHeight;
   const zoom = Math.min(
     maxZoom,
-    Math.max(minZoom, (safeWidth - screenPadding * 2) / boundsWidth),
-    Math.max(minZoom, (safeHeight - screenPadding * 2) / boundsHeight),
+    Math.max(minZoom, widthFit),
+    Math.max(minZoom, heightFit),
   );
+  const contentLeft = safeArea.left + screenPadding;
+  const contentTop = safeArea.top + screenPadding;
+  const contentWidth = safeWidth - screenPadding * 2;
+  const contentHeight = safeHeight - screenPadding * 2;
+  const overflowX = boundsWidth * zoom > contentWidth + 0.5;
+  const overflowY = boundsHeight * zoom > contentHeight + 0.5;
+  const pinStart = options.overflowAlign === 'start';
   const safeCenterX = safeArea.left + safeWidth / 2;
   const safeCenterY = safeArea.top + safeHeight / 2;
   const worldCenterX = left + boundsWidth / 2;
   const worldCenterY = top + boundsHeight / 2;
+  const anchorWorldX = pinStart && overflowX ? left : worldCenterX;
+  const anchorWorldY = pinStart && overflowY ? top : worldCenterY;
+  const anchorScreenX = pinStart && overflowX ? contentLeft : safeCenterX;
+  const anchorScreenY = pinStart && overflowY ? contentTop : safeCenterY;
 
   return {
-    x: worldCenterX - (safeCenterX - viewportWidth / 2) / zoom,
-    y: worldCenterY - (safeCenterY - viewportHeight / 2) / zoom,
+    x: anchorWorldX - (anchorScreenX - viewportWidth / 2) / zoom,
+    y: anchorWorldY - (anchorScreenY - viewportHeight / 2) / zoom,
     zoom,
   };
 }
