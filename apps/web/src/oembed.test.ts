@@ -69,12 +69,24 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(body.thumbnail_height).toBe(OEMBED_THUMBNAIL_HEIGHT);
     expect(body.width).toBe(OEMBED_DEFAULT_WIDTH);
     expect(body.height).toBe(OEMBED_DEFAULT_HEIGHT);
-    expect(body.html).toContain(`src="${DOGFOOD}"`);
+    expect(body.html).toContain(`src="${DOGFOOD}?embed=1"`);
+    expect(body.html).toContain('<!-- Okie embed chrome:');
+    expect(body.html).toContain('inspector Overview one-pager starts collapsed');
     expect(body.html).toContain('allow="fullscreen; gpu"');
     expect(body.html).toContain('allowfullscreen');
-    expect(body.html).toMatch(/^<iframe /);
+    expect(body.html).toContain('<iframe ');
     expect(body.html).not.toMatch(/login|signin|oauth|authorize/i);
-    expect(JSON.stringify(body)).not.toMatch(/apiKey|OPENROUTER|GITHUB_TOKEN|GH_TOKEN|gho_|ghp_/);
+    expect(JSON.stringify(body)).not.toMatch(/apiKey|OPENROUTER|GITHUB_TOKEN|GH_TOKEN|gho_|ghp_|scanRoot/);
+  });
+
+  it('appends embed chrome without dropping an existing public-view search', () => {
+    const result = request(`url=${encodeURIComponent(`${ORIGIN}/r/THISS/okie/v1?nav=1`)}`);
+    expect(result.status).toBe(200);
+    const body = JSON.parse(result.body) as { html: string; width: number; height: number };
+    expect(body.width).toBe(OEMBED_DEFAULT_WIDTH);
+    expect(body.height).toBe(OEMBED_DEFAULT_HEIGHT);
+    expect(body.html).toContain('src="http://localhost:4173/r/THISS/okie/v1?nav=1&amp;embed=1"');
+    expect(body.html).not.toMatch(/apiKey|OPENROUTER|GITHUB_TOKEN|scanRoot/);
   });
 
   it('rebuilds the iframe src from the request origin, not a foreign host', () => {
@@ -114,7 +126,7 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     });
     expect(result.status).toBe(200);
     const body = JSON.parse(result.body) as { html: string };
-    expect(body.html).toContain('src="https://atlas.example.test/r/THISS/okie"');
+    expect(body.html).toContain('src="https://atlas.example.test/r/THISS/okie?embed=1"');
     expect(body.html).not.toMatch(/@/);
   });
 

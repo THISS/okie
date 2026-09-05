@@ -505,6 +505,21 @@ describe('canvas screenshot capture', () => {
   });
 });
 
+describe('oEmbed embed chrome (CLA-85)', () => {
+  it('collapses the Overview one-pager at overlay width and keeps the overview tour on the map', () => {
+    expect(app).toContain('initialInspectorOpen()');
+    expect(app).toContain("data-embed={embedChrome ? 'true' : 'false'}");
+    expect(app).toContain("'embed'");
+    expect(app).not.toContain('window.innerWidth > 780');
+    expect(css).toContain('@media (max-width: 900px)');
+    expect(css).toContain('.app-shell[data-embed="true"] .saved-story { display: flex; }');
+    expect(css).toContain('.app-shell[data-embed="true"] .ask-button { display: none; }');
+    expect(css).toContain('.app-shell[data-embed="true"] .diagram-view-bar { display: none; }');
+    expect(app).toContain("'story-launch-overview'");
+    expect(app).not.toMatch(/scanRoot|OPENROUTER_API_KEY|apiKey/);
+  });
+});
+
 describe('production dev-mode gate', () => {
   it('defaults dev mode off, persists it, and toggles with Shift+Alt+D', () => {
     expect(app).toContain("localStorage.getItem('okie.devMode') === '1'");

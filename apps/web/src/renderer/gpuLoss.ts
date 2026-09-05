@@ -7,10 +7,14 @@ import {
   WEBGPU_ADAPTER_TIMEOUT_MS,
   withDeadline,
 } from '../embedCanvas';
+import { initialInspectorOpen, isEmbedChrome, isEmbedQueryFlag } from '../embedChrome';
 
 export {
   autoGpuAttemptOrder,
   EMBED_FRAME_IDLE_KICK_MS,
+  initialInspectorOpen,
+  isEmbedChrome,
+  isEmbedQueryFlag,
   isFramedBrowsingContext,
   isUsableAtlasViewport,
   isWebGpuInterfaceAvailable,
