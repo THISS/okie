@@ -509,11 +509,39 @@ export function semanticBounds(scene: AtlasScene, entityId: string, detail: Sema
 }
 
 /**
+ * True when `ownerId` has at least one descendant card at `detail` in the
+ * compiled scene. CLA-81 reserved owner shells publish bounds at the next
+ * band without those peer cards — that is not a laid-out C4 map.
+ */
+export function scanDeeperBandHasPeerCards(
+  scene: AtlasScene,
+  ownerId: string,
+  detail: SemanticDetail,
+): boolean {
+  const listed = scene.projection?.entityIdsByDetail?.[detail];
+  const visible = listed ? new Set(listed) : undefined;
+  const byId = new Map(scene.entities.map(entity => [entity.id, entity]));
+  return scene.entities.some(entity => {
+    if (entity.id === ownerId || (entity.detail ?? 'context') !== detail) return false;
+    if (visible && !visible.has(entity.id)) return false;
+    let current: SceneEntity | undefined = entity;
+    const seen = new Set<string>();
+    while (current && !seen.has(current.id)) {
+      if (current.id === ownerId) return true;
+      seen.add(current.id);
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    return false;
+  });
+}
+
+/**
  * The band a scan-mode "Open inside" must recompile into when the target's deeper
  * scope was scoped OUT of the current scene, or undefined when a plain lens drill
  * suffices. Children are read from the snapshot when provided (the compiled scene
  * is per-neighborhood and may omit descendants). Returns undefined for a leaf,
- * a childless target, or a target whose deeper band is ALREADY laid out.
+ * a childless target, or a target whose deeper band is ALREADY laid out as peer
+ * cards. A reserved owner shell (bounds without descendant peers) is not laid out.
  * Pure — never compiles.
  */
 export function scanDrillDeeperDetail(
@@ -527,5 +555,8 @@ export function scanDrillDeeperDetail(
     ? scanEntityHasChildren(snapshot, target.id)
     : scene.entities.some(entity => entity.parentId === target.id);
   if (!hasChildren) return undefined;
-  return semanticBounds(scene, target.id, deeper) ? undefined : deeper;
+  if (semanticBounds(scene, target.id, deeper) && scanDeeperBandHasPeerCards(scene, target.id, deeper)) {
+    return undefined;
+  }
+  return deeper;
 }

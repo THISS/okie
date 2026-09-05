@@ -251,6 +251,20 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
     expect(scanDrillDeeperDetail(full, container)).toBeUndefined();
   });
 
+  it('CLA-83: reserved owner bounds without descendant peer cards still drill', () => {
+    const system = sceneEntities[0]!;
+    const shell = sceneWith({ 'system:root': { context: bounds, container: bounds } });
+    const systemOnly = { ...shell, entities: [system] } as AtlasScene;
+    const snap = snapshot([
+      entity('system:root', 'softwareSystem'),
+      entity('container:apps-server', 'container', 'system:root'),
+      entity('container:apps-web', 'container', 'system:root'),
+      entity('component:ask', 'component', 'container:apps-server'),
+    ]);
+    expect(scanDrillDeeperDetail(systemOnly, system, snap)).toBe('container');
+    expect(scanDrillDeeperDetail(shell, system, snap)).toBeUndefined();
+  });
+
   it('returns undefined for a leaf (no deeper band) and for a childless target', () => {
     const scene = sceneWith({ 'component:x': { component: bounds } });
     const codeLeaf: SceneEntity = { id: 'code:a', parentId: 'component:x', name: 'a', kind: 'component', detail: 'code', responsibility: '', x: 0, y: 0, width: 1, height: 1 };

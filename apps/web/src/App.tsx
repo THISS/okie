@@ -56,7 +56,7 @@ import {
   type SemanticDetail,
 } from './navigation/navigationState';
 import { createGoldenC4Scene, goldenAppStory, scanDrillDeeperDetail, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
-import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
+import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanNextBand, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
 import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
@@ -3400,7 +3400,25 @@ export function App() {
     // scope (snapshot children, not the compiled scene). Inspector-history mode
     // was already applied above, so 'preserve' survives.
     const drillDetail = scanFixture ? scanDrillDeeperDetail(scene, target, activeSnapshot) : undefined;
-    if (drillDetail && scanFixture) {
+    const lensPlan = (!drillDetail || !scanFixture)
+      ? semanticOpenNextLayer(
+        scene,
+        semanticLensSessionRef.current,
+        target.id,
+        viewport,
+        measureCurrentMapSafeArea(),
+        navigationIdentity.rootEntityId,
+      )
+      : undefined;
+    // CLA-83: a reserved owner shell can make the lens drill fail even when the
+    // snapshot has children. Fall through to the neighborhood compile for the
+    // next C4 band (system → container peers at the view root, not the first package).
+    const fallbackDetail = !drillDetail && !lensPlan && scanFixture && target.detail !== 'code'
+      && scanEntityHasChildren(activeSnapshot, target.id)
+      ? scanNextBand(target.detail ?? 'context')
+      : undefined;
+    const deeperDetail = drillDetail ?? fallbackDetail;
+    if (deeperDetail && scanFixture) {
       // Neighborhood compile (CLA-66) then land on the deeper band. Cancelling the
       // lens first reset data-detail to context (CLA-80); the Components rail
       // recovered via semanticLevelSession. Open inside must do that landing itself.
@@ -3411,35 +3429,35 @@ export function App() {
       const compileFocus = scanCompileFocusForBand(
         activeSnapshot,
         target.id,
-        drillDetail,
+        deeperDetail,
         scanFixture.navigation.rootEntityId,
       );
       const nextScene = composeScene(compileFocus, scene, authoringHistoryRef.current.present);
-      const nextSession = semanticLevelSession(nextScene, drillDetail, preferredIds);
+      const nextSession = semanticLevelSession(nextScene, deeperDetail, preferredIds);
       const previousAnchorId = currentSession.settled.at(-1)?.targetId
         ?? (semanticBounds(scene, target.id, previousDetail) ? target.id : navigationIdentity.rootEntityId);
       const targetAnchorId = nextSession.settled.at(-1)?.targetId
-        ?? (semanticBounds(nextScene, target.id, drillDetail) ? target.id : compileFocus);
+        ?? (semanticBounds(nextScene, target.id, deeperDetail) ? target.id : compileFocus);
       const previousBounds = semanticBounds(scene, previousAnchorId, previousDetail);
-      const targetBounds = semanticBounds(nextScene, targetAnchorId, drillDetail)
-        ?? semanticBounds(nextScene, compileFocus, drillDetail)
+      const targetBounds = semanticBounds(nextScene, targetAnchorId, deeperDetail)
+        ?? semanticBounds(nextScene, compileFocus, deeperDetail)
         ?? target;
       semanticLensSessionRef.current = nextSession;
       semanticMorphStateRef.current = undefined;
       semanticMorphBaselineRef.current = 0;
       setSemanticLensSession(nextSession);
-      activeLevelRef.current = semanticDetails.indexOf(drillDetail);
+      activeLevelRef.current = semanticDetails.indexOf(deeperDetail);
       const mapSafeArea = measureCurrentMapSafeArea();
       const anchored = retargetCameraForSemanticBand(
         liveCamera,
         previousBounds,
         targetBounds,
-        levels[semanticDetails.indexOf(drillDetail)]!.zoom,
+        levels[semanticDetails.indexOf(deeperDetail)]!.zoom,
         viewport,
       );
-      const framedCamera = frameProjectionScope(nextScene, compileFocus, drillDetail, viewport, mapSafeArea) ?? anchored;
+      const framedCamera = frameProjectionScope(nextScene, compileFocus, deeperDetail, viewport, mapSafeArea) ?? anchored;
       const nextCamera = containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
-      setScene({ ...nextScene, scanDrillRecompile: { targetId: target.id, deeperDetail: drillDetail } });
+      setScene({ ...nextScene, scanDrillRecompile: { targetId: target.id, deeperDetail } });
       setSelectedId(target.id);
       setNavigationIdentity(current => ({ ...current, rootEntityId: compileFocus }));
       updateCamera(nextCamera);
@@ -3451,17 +3469,10 @@ export function App() {
         detail: nextSession.baseDetail,
         lensPath: semanticLensCanonicalPathIds(nextSession),
       }, navigationDefaults), 'push');
-      setLiveMessage(`${target.name} opened. ${levels[semanticDetails.indexOf(drillDetail)]?.name ?? drillDetail} detail is now in focus.`);
+      setLiveMessage(`${target.name} opened. ${levels[semanticDetails.indexOf(deeperDetail)]?.name ?? deeperDetail} detail is now in focus.`);
       return;
     }
-    const plan = semanticOpenNextLayer(
-      scene,
-      semanticLensSessionRef.current,
-      target.id,
-      viewport,
-      measureCurrentMapSafeArea(),
-      navigationIdentity.rootEntityId,
-    );
+    const plan = lensPlan;
     if (!plan) {
       setLiveMessage(target.source
         ? `Source viewer is not connected. Evidence path: ${target.source}.`
