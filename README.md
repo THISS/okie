@@ -31,7 +31,7 @@ If wasm-pack is unavailable, generation stops with an explicit prerequisite erro
 
 ## Continuous integration
 
-Pull requests and pushes to `main` run GitHub Actions (`.github/workflows/ci.yml`) with the same deterministic gates used locally: `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm test`, and `cargo test --workspace`. That covers typecheck plus tests for `@okie/web`, `@okie/server`, `@okie/scan`, `@okie/architecture`, `@okie/scene-compiler`, and the Rust crates. Live GitHub/LLM tests stay skipped (`OKIE_SCAN_LIVE` and gateway keys are unset). The workflow uses no repository secrets and no `.env` files.
+Pull requests and pushes to `main` run GitHub Actions (`.github/workflows/ci.yml`) with the same deterministic gates used locally: `pnpm install --frozen-lockfile`, emit workspace `dist/` (gitignored; package `check` typechecks `@okie/*` exports), `pnpm check`, `pnpm test`, and `cargo test --workspace`. That covers typecheck plus tests for `@okie/web`, `@okie/server`, `@okie/scan`, `@okie/architecture`, `@okie/scene-compiler`, and the Rust crates. Live GitHub/LLM tests stay skipped (`OKIE_SCAN_LIVE` and gateway keys are unset). The workflow uses no repository secrets and no `.env` files.
 
 Making the **Deterministic gates** check required to merge is a GitHub branch-protection setting and is not applied from this repository.
 

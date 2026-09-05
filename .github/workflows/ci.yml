@@ -64,6 +64,11 @@ jobs:
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
 
+      # Package `check` scripts typecheck against workspace `dist/` (gitignored).
+      # A clean checkout has no dist, so emit it before `pnpm check`.
+      - name: Build TypeScript packages
+        run: pnpm -r --if-present --filter "./packages/**" --filter "./apps/server" build
+
       - name: Typecheck (pnpm check)
         run: pnpm check
 
