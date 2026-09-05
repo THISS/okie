@@ -143,6 +143,24 @@ function distance(
   return Math.hypot(left.x - right.x, left.y - right.y);
 }
 
+function cardFaceInSafeViewport(
+  bounds: { x: number; y: number; width: number; height: number },
+  camera: { x: number; y: number; zoom: number },
+  view: { width: number; height: number },
+  safeArea: { top: number; right: number; bottom: number; left: number },
+) {
+  const face = contextCardFaceBounds(bounds);
+  const padding = 24;
+  const left = view.width / 2 + (face.x - camera.x) * camera.zoom;
+  const top = view.height / 2 + (face.y - camera.y) * camera.zoom;
+  const right = left + face.width * camera.zoom;
+  const bottom = top + face.height * camera.zoom;
+  return left >= safeArea.left + padding
+    && right <= view.width - safeArea.right - padding
+    && top >= safeArea.top + padding
+    && bottom <= view.height - safeArea.bottom - padding;
+}
+
 /** World point Fit aims at (safe-viewport center), not the raw camera origin. */
 function fitAim(camera: { x: number; y: number; zoom: number }) {
   const safeWidth = viewport.width - chromeSafeArea.left - chromeSafeArea.right;
@@ -388,18 +406,19 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     const world = cameraWorldRect(camera!, viewport);
     const face = contextCardFaceBounds(system);
     expect(rectsOverlap(world, face)).toBe(true);
+    expect(cardFaceInSafeViewport(system, camera!, viewport, chromeSafeArea)).toBe(true);
     const hollow = { x: system.x, y: system.y, width: system.width, height: system.height };
     const aim = fitAim(camera!);
     expect(distance(aim, rectCenter(face)))
       .toBeLessThan(distance(aim, rectCenter(hollow)));
-    const peerInView = visibleIds.filter(id => id.startsWith('external:')).some(id => {
+    const nearbyPeers = visibleIds.filter(id => id.startsWith('external:'));
+    expect(nearbyPeers.some(id => {
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
-      return bounds ? rectsOverlap(world, bounds) : false;
-    });
-    expect(peerInView).toBe(true);
+      return bounds ? cardFaceInSafeViewport(bounds, camera!, viewport, chromeSafeArea) : false;
+    })).toBe(true);
   });
 
-  it('scan L1 arrival camera frames the card face without the golden default', () => {
+  it('scan L1 arrival camera frames the title-row cluster, not the golden default', () => {
     const scene = reservedShellContextScene();
     const camera = frameContextArrivalCamera(scene, viewport, chromeSafeArea);
     expect(camera).toBeDefined();
@@ -408,5 +427,36 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     expect(contextTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
     expect(rectsOverlap(cameraWorldRect(camera!, viewport), contextCardFaceBounds(system))).toBe(true);
+    expect(cardFaceInSafeViewport(system, camera!, viewport, chromeSafeArea)).toBe(true);
+    const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
+    expect(visibleIds.filter(id => id.startsWith('external:')).some(id => {
+      const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
+      return bounds ? cardFaceInSafeViewport(bounds, camera!, viewport, chromeSafeArea) : false;
+    })).toBe(true);
+  });
+
+  it('initialize readable-root at L1 frames the same nearby cluster, not the hollow shell', () => {
+    const scene = reservedShellContextScene();
+    const camera = frameProjectionScope(
+      scene,
+      'system:okie',
+      'context',
+      viewport,
+      chromeSafeArea,
+      false,
+      true,
+    );
+    expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThan(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(contextTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
+    expect(cardFaceInSafeViewport(system, camera!, viewport, chromeSafeArea)).toBe(true);
+    const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
+    expect(visibleIds.filter(id => id.startsWith('external:')).some(id => {
+      const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
+      return bounds ? cardFaceInSafeViewport(bounds, camera!, viewport, chromeSafeArea) : false;
+    })).toBe(true);
+    const fit = frameVisibleProjection(scene, visibleIds, 'context', viewport, chromeSafeArea);
+    expect(fit).toEqual(camera);
   });
 });

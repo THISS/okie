@@ -94,6 +94,11 @@ function projectedBoundsAtDetail(
   return projected ?? native;
 }
 
+function isReservedContextShell(bounds: WorldRect): boolean {
+  return bounds.width > C4_CONTEXT_CARD_FACE.width * 1.25
+    || bounds.height > C4_CONTEXT_CARD_FACE.height * 1.25;
+}
+
 function contextArrivalFace(
   scene: AtlasScene,
   entityIds: readonly string[],
@@ -106,6 +111,63 @@ function contextArrivalFace(
   const entity = scene.entities.find(candidate => candidate.id === preferred);
   const bounds = entity ? projectedBoundsAtDetail(scene, entity, detail) : undefined;
   return bounds ? contextCardFaceBounds(bounds) : undefined;
+}
+
+/**
+ * System card face plus exterior peers that share the L1 title row and sit in
+ * the adjacent column — not the far flank across a CLA-81 reserved shell, which
+ * would re-inflate Fit to the camera floor.
+ */
+function nearbyContextArrivalIds(
+  scene: AtlasScene,
+  residentIds: readonly string[],
+): string[] {
+  const face = contextArrivalFace(scene, residentIds, 'context');
+  const focusId = scene.rootEntityId && residentIds.includes(scene.rootEntityId)
+    ? scene.rootEntityId
+    : residentIds[0];
+  if (!face || !focusId) return [...residentIds];
+  const padY = C4_CONTEXT_CARD_FACE.height;
+  const bandTop = face.y - padY;
+  const bandBottom = face.y + face.height + padY;
+  const maxGapX = C4_CONTEXT_CARD_FACE.width + 200;
+  const cluster: string[] = [];
+  for (const id of residentIds) {
+    if (id === focusId) {
+      cluster.push(id);
+      continue;
+    }
+    const entity = scene.entities.find(candidate => candidate.id === id);
+    const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'context') : undefined;
+    if (!bounds) continue;
+    const card = contextCardFaceBounds(bounds);
+    if (card.y + card.height < bandTop || card.y > bandBottom) continue;
+    const gap = card.x >= face.x + face.width
+      ? card.x - (face.x + face.width)
+      : face.x >= card.x + card.width
+        ? face.x - (card.x + card.width)
+        : 0;
+    if (gap <= maxGapX) cluster.push(id);
+  }
+  return cluster.length > 0 ? cluster : [focusId];
+}
+
+function frameContextArrivalCluster(
+  scene: AtlasScene,
+  residentIds: readonly string[],
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): Camera | undefined {
+  return frameEntityIdsAtDetail(
+    scene,
+    nearbyContextArrivalIds(scene, residentIds),
+    'context',
+    viewport,
+    safeArea,
+    CONTEXT_TITLE_READABLE_MIN_ZOOM,
+    levels[0]!.zoom,
+    true,
+  );
 }
 
 /** Explicit rail selection chooses one valid nested branch at the requested depth. */
@@ -332,23 +394,20 @@ export function frameVisibleProjection(
   const camera = faceCamera ?? shellCamera;
   if (!camera) return undefined;
   // Compact L1 graphs (golden) keep the Fit that shows every context peer (CLA-44).
-  // A CLA-81 reserved shell whose Fit would drop titles below 12 CSS px is pinned
-  // to the readable card face at the L1 focus zoom instead of the hollow interior.
+  // A CLA-81 reserved shell whose Fit would drop titles below 12 CSS px frames the
+  // adjacent title-row cluster (system card + nearby exterior peers), not the hollow
+  // interior or the far flank across the reserved width.
   const reservedShell = residentIds.some(id => {
     const entity = scene.entities.find(candidate => candidate.id === id);
     const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'context') : undefined;
-    return bounds !== undefined
-      && (bounds.width > C4_CONTEXT_CARD_FACE.width * 1.25
-        || bounds.height > C4_CONTEXT_CARD_FACE.height * 1.25);
+    return bounds !== undefined && isReservedContextShell(bounds);
   });
   if (!reservedShell || camera.zoom + 1e-9 >= CONTEXT_TITLE_READABLE_MIN_ZOOM) return camera;
-  const face = contextArrivalFace(scene, residentIds, 'context');
-  if (!face) return camera;
-  return readableRootCamera(camera, face, levels[0]!.zoom, viewport, safeArea);
+  return frameContextArrivalCluster(scene, residentIds, viewport, safeArea) ?? camera;
 }
 
 /**
- * Scan/hosted L1 boot camera: same readable card-face framing as Fit, computed
+ * Scan/hosted L1 boot camera: same readable title-row cluster as Fit, computed
  * from the compiled scene so first paint is not the golden toy camera.
  */
 export function frameContextArrivalCamera(
@@ -407,9 +466,22 @@ export function frameProjectionScope(
   const fitted = frameEntityIdsAtDetail(scene, ids, detail, viewport, safeArea, ownershipFloor, maxZoom);
   if (!fitted || !preferReadableRoot) return fitted;
   if (!rootBounds) return fitted;
-  // L1 scan: center the readable card face at the context focus zoom. Coverage-reveal
-  // of a reserved interior would land at the camera floor over a hollow shell.
+  // L1 scan: frame the readable card face (and adjacent title-row peers) at a
+  // title-readable zoom. Coverage-reveal of a reserved interior would land at
+  // the camera floor over a hollow shell.
   if (detail === 'context') {
+    if (isReservedContextShell(rootBounds)) {
+      const contextIds = scene.projection?.entityIdsByDetail.context
+        ?? scene.entities.filter(entity => (entity.detail ?? 'context') === 'context').map(entity => entity.id);
+      const residentIds = residentVisibleProjectionEntityIds(scene, contextIds, 'context');
+      const cluster = frameContextArrivalCluster(
+        scene,
+        residentIds.length ? residentIds : [rootEntityId],
+        viewport,
+        safeArea,
+      );
+      if (cluster) return cluster;
+    }
     const face = contextCardFaceBounds(rootBounds);
     const focusZoom = scene.projection?.zoomPolicy?.bands.find(band => band.detail === detail)?.focusZoom
       ?? levels[level]!.zoom;
