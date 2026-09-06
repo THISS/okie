@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import {
   adaptArchitectureExtraction,
+  ASPECT_PRESET_TARGET,
   buildC4ProjectionBundle,
   validateSnapshot,
   validateStory,
@@ -253,10 +254,19 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   // with an edge budget. Okie (well below the threshold) stays a full, byte-identical scene.
   const SCENE_RELATION_BUDGET = 400;
   const familyId = typedId("view-family", repositorySlug, "system-root");
+  // CLA-96: published scan scene.json must use the same landscape ~1.6 the
+  // browser neighborhood compile uses. Golden/demo omit targetAspect.
+  const targetAspect = ASPECT_PRESET_TARGET.landscape;
+  const focus = {
+    rootEntityId: system.id,
+    focusEntityId: system.id,
+    familyId,
+    targetAspect,
+  };
   const bundle = snapshot.relations.length > SCENE_RELATION_BUDGET
-    ? buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId, maxBand: "container", maxEdgesPerBand: 64 })
-    : buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId });
-  const compiled = compileC4Scene(snapshot, bundle);
+    ? buildC4ProjectionBundle(snapshot, { ...focus, maxBand: "container", maxEdgesPerBand: 64 })
+    : buildC4ProjectionBundle(snapshot, focus);
+  const compiled = compileC4Scene(snapshot, bundle, { targetAspect });
   const visibleSteps = storyStepsVisibleInScene(compiled, story);
   if (!visibleSteps.length) {
     throw new Error("Scanned overview story has no steps visible in the compiled scene");

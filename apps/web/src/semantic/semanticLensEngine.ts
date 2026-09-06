@@ -562,15 +562,15 @@ export function frameVisibleProjection(
   const camera = faceCamera ?? shellCamera;
   if (!camera) return undefined;
   // Compact L1 graphs (golden) keep the Fit that shows every context peer (CLA-44).
-  // A CLA-81 reserved shell whose Fit would drop titles below 12 CSS px frames the
-  // adjacent title-row cluster (system card + nearby exterior peers), not the hollow
-  // interior or the far flank across the reserved width.
+  // Scan L1 (and any reserved shell) must not drop below a 12 CSS px title: if the
+  // full set would hit the camera floor, frame the title-row cluster instead.
+  if (camera.zoom + 1e-9 >= CONTEXT_TITLE_READABLE_MIN_ZOOM) return camera;
   const reservedShell = residentIds.some(id => {
     const entity = scene.entities.find(candidate => candidate.id === id);
     const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'context') : undefined;
     return bounds !== undefined && isReservedContextShell(bounds);
   });
-  if (!reservedShell || camera.zoom + 1e-9 >= CONTEXT_TITLE_READABLE_MIN_ZOOM) return camera;
+  if (scene.targetAspect === undefined && !reservedShell) return camera;
   return frameContextArrivalCluster(scene, residentIds, viewport, safeArea) ?? camera;
 }
 
@@ -623,12 +623,10 @@ export function frameProjectionScope(
   const ids = projectionScopeEntityIds(scene, rootEntityId, detail);
   const { level, minZoom, maxZoom } = dominantBandZoomRange(detail, forceBandOwnership);
   const rootBounds = scene.projection?.boundsByEntityIdAndDetail[rootEntityId]?.[detail];
-  // CLA-93: rail Step-out to scan L1 (preferReadableRoot=false) must frame
-  // readable card faces (system + externals). Coverage-reveal of the CLA-81
-  // reserved system shell commits ATLAS_CAMERA_BOUNDS.minZoom (z=0.32).
-  // CLA-82 only applied that cluster when preferReadableRoot=true (Fit/boot).
-  if (detail === 'context' && scene.targetAspect !== undefined && rootBounds
-    && isReservedContextShell(rootBounds)) {
+  // CLA-93/96: scan L1 (preferReadableRoot or rail Step-out) frames the
+  // landscape context map — system card + kept L1 peers — not coverage-reveal
+  // of a CLA-81 reserved shell (z=0.32) and not a one-card crop.
+  if (detail === 'context' && scene.targetAspect !== undefined) {
     const cluster = frameContextArrivalCamera(scene, viewport, safeArea);
     if (cluster) return cluster;
   }

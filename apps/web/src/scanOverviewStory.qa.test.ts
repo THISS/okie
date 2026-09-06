@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ASPECT_PRESET_TARGET,
-  C4_CONTEXT_CARD_FACE,
   cameraWorldRect,
   type ArchitectureSnapshot,
 } from '@okie/architecture';
@@ -119,10 +118,8 @@ describe('CLA-84: scan overview story frames the step box at band focus zoom', (
     expect(app).toContain('currentStory.narration');
   });
 
-  it('raw semantic fit of a reserved L1 shell still collapses to the camera floor', () => {
+  it('raw semantic fit of L1 system + externals still collapses under story chrome', () => {
     const scene = reservedShellContextScene();
-    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
-    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
     const focusIds = ['system:okie', ...scene.entities.filter(entity => entity.id.startsWith('external:')).map(entity => entity.id)];
     const collapsed = frameSemanticEntities(scene, focusIds, 'context', viewport, storySafeArea);
     expect(collapsed?.zoom).toBe(ATLAS_CAMERA_BOUNDS.minZoom);

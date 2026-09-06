@@ -69,9 +69,9 @@ export type ScanViewportResidency = {
  * Mode-level compile options for scan mode (task #30). Independent of per-kind
  * maxBand: they apply to every scan compile at any repo size, because the
  * tall-container problem (a system packing into one narrow column) shows up on
- * small scans too (e.g. Okie's own scan). `targetAspect` is chosen once by the
- * client at bootstrap (device orientation) and is a deterministic compile input,
- * never the live viewport.
+ * small scans too (e.g. Okie's own scan). `targetAspect` is landscape ~1.6 for
+ * published scan / neighborhood (CLA-96) and is a deterministic compile input,
+ * never the live viewport. Golden/demo omit it.
  */
 export type ScanModeOptions = { targetAspect?: number };
 

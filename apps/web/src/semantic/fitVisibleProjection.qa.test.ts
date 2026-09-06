@@ -391,11 +391,11 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
   it('Fit at L1 does not collapse to z=0.32 over a reserved shell', () => {
     const scene = reservedShellContextScene();
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
-    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
-    expect(system.width).toBeGreaterThan(C4_CONTEXT_CARD_FACE.width * 1.5);
+    expect(system.width).toBe(C4_CONTEXT_CARD_FACE.width);
+    expect(system.height).toBe(C4_CONTEXT_CARD_FACE.height);
 
     const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
-    expect(visibleIds.some(id => id.startsWith('external:'))).toBe(true);
+    expect(visibleIds.filter(id => id.startsWith('external:'))).toHaveLength(8);
 
     const camera = frameVisibleProjection(scene, visibleIds, 'context', viewport, chromeSafeArea);
     expect(camera).toBeDefined();
@@ -407,10 +407,6 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     const face = contextCardFaceBounds(system);
     expect(rectsOverlap(world, face)).toBe(true);
     expect(cardFaceInSafeViewport(system, camera!, viewport, chromeSafeArea)).toBe(true);
-    const hollow = { x: system.x, y: system.y, width: system.width, height: system.height };
-    const aim = fitAim(camera!);
-    expect(distance(aim, rectCenter(face)))
-      .toBeLessThan(distance(aim, rectCenter(hollow)));
     const nearbyPeers = visibleIds.filter(id => id.startsWith('external:'));
     expect(nearbyPeers.some(id => {
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
@@ -486,5 +482,59 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
       return bounds ? cardFaceInSafeViewport(bounds, rail!, viewport, chromeSafeArea) : false;
     })).toBe(true);
+  });
+});
+
+describe('CLA-96: published scan L1 Fit is a landscape context map', () => {
+  const inspectorClosed = { top: 80, right: 24, bottom: 72, left: 64 };
+
+  it('boot always compiles published scans at landscape 1.6', () => {
+    const main = readFileSync(new URL('../main.tsx', import.meta.url), 'utf8');
+    expect(main).toContain('return ASPECT_PRESET_TARGET.landscape;');
+    expect(main).not.toContain('orientation: portrait');
+  });
+
+  it('neighborhood L1 worldBounds are landscape and Fit keeps system + all peers in the safe viewport', () => {
+    const scene = reservedShellContextScene();
+    expect(scene.targetAspect).toBe(ASPECT_PRESET_TARGET.landscape);
+    const world = (scene.protocolSnapshot as { worldBounds: { width: number; height: number } }).worldBounds;
+    expect(world.width / world.height).toBeGreaterThanOrEqual(1.4);
+
+    const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
+    const peers = visibleIds.filter(id => id.startsWith('external:'));
+    expect(peers).toHaveLength(8);
+    expect(visibleIds).toContain('system:okie');
+
+    const camera = frameVisibleProjection(scene, visibleIds, 'context', viewport, inspectorClosed);
+    expect(camera).toBeDefined();
+    expect(projectedEntitiesFitSafeViewport(
+      scene,
+      visibleIds,
+      'context',
+      camera!,
+      viewport,
+      inspectorClosed,
+    )).toBe(true);
+    const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
+    expect(cardFaceInSafeViewport(system, camera!, viewport, inspectorClosed)).toBe(true);
+    for (const id of peers) {
+      const bounds = scene.projection!.boundsByEntityIdAndDetail[id]!.context!;
+      expect(cardFaceInSafeViewport(bounds, camera!, viewport, inspectorClosed)).toBe(true);
+    }
+  });
+
+  it('golden L1 Fit is unchanged', () => {
+    const scene = createGoldenC4Scene();
+    expect(scene.targetAspect).toBeUndefined();
+    const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
+    const camera = frameVisibleProjection(scene, visibleIds, 'context', viewport, chromeSafeArea);
+    expect(projectedEntitiesFitSafeViewport(
+      scene,
+      visibleIds,
+      'context',
+      camera!,
+      viewport,
+      chromeSafeArea,
+    )).toBe(true);
   });
 });

@@ -185,3 +185,41 @@ test('default path (no targetAspect) keeps the stage-1 peer columns byte-for-byt
   const firstPeerId = peersOf(snapshot)[0]!;
   assert.equal(bounds[firstPeerId]!.context!.x, 80, 'default compile must keep the stage-1 left peer column (x=80)');
 });
+
+test('CLA-96: neighborhood L1 compiles a landscape context map, not a tall reserved shell', () => {
+  const snapshot = scanLike(8, 16);
+  const unpublished = snapshot.entities
+    .filter(entity => entity.kind === 'container')
+    .flatMap(container => Array.from({ length: 10 }, (_, index) => ({
+      id: `component:${container.id.slice('container:'.length)}-${String(index).padStart(2, '0')}`,
+      kind: 'component' as const,
+      parentId: container.id,
+    })));
+  const childCounts: Record<string, number> = { 'system:s': 16 };
+  for (const entity of snapshot.entities) {
+    if (entity.kind === 'container') childCounts[entity.id] = 10;
+  }
+  const target = ASPECT_PRESET_TARGET.landscape;
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:s',
+    focusEntityId: 'system:s',
+    familyId: 'f',
+    maxBand: 'container',
+    targetAspect: target,
+  });
+  const compiled = compileC4Scene(snapshot, bundle, {
+    targetAspect: target,
+    childCounts,
+    unpublishedChildren: unpublished,
+  });
+  const system = compiled.projections.index.boundsByEntityIdAndBand['system:s']!.context!;
+  assert.equal(system.width, C4_CONTEXT_CARD_FACE.width, 'L1 system is the readable card, not the reserved interior');
+  assert.equal(system.height, C4_CONTEXT_CARD_FACE.height);
+  const aspect = compiled.scene.worldBounds.width / compiled.scene.worldBounds.height;
+  assert.ok(aspect >= 1.4, `neighborhood L1 world aspect ${aspect.toFixed(3)} should be landscape ≥ 1.4`);
+  const boxes = peersOf(snapshot).map(id => ({ id, box: compiled.projections.index.boundsByEntityIdAndBand[id]!.context! }));
+  for (const { id, box } of boxes) {
+    assert.ok(!intersects(box, system), `${id} must not overlap the L1 card`);
+    assert.ok((box.x + box.width) <= system.x || box.x >= (system.x + system.width), `${id} must flank the L1 card`);
+  }
+});
