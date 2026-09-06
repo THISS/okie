@@ -168,6 +168,19 @@ test("CLA-95: scan L2 packs container peer tiles, not reserved L3/L4 shells", ()
   };
   assert.ok(Math.abs(l2First.width - tile.width) < 1e-6, "L2 container is a peer tile, not a reserved shell");
   assert.ok(Math.abs(l2First.height - tile.height) < 1e-6);
+  const l2LayoutId = compiled.projections.family.projectionIds.container;
+  const l2Layout = compiled.projections.bandLayoutById[
+    compiled.projections.projectionById[l2LayoutId]!.layoutId
+  ];
+  const l2ReservedKinds = Object.keys(l2Layout?.reservedShells ?? {}).map(visualId =>
+    compiled.projections.visualNodeById[visualId]?.kind
+    ?? compiled.projections.index.entityIdByVisualNodeId[visualId]);
+  assert.equal(
+    l2ReservedKinds.some(kind => kind === "component" || kind === "code"
+      || (typeof kind === "string" && (kind.startsWith("component:") || kind.startsWith("code:")))),
+    false,
+    "L2 peer tiles must not paint unpublished L3/L4 reserved interiors",
+  );
   assert.ok(l2System.width < tile.width * 8, "L2 system wraps the compact peer grid");
   assert.ok(l2Last.y > l2First.y || l2Last.x > l2First.x, "peer tiles are packed as a grid");
 

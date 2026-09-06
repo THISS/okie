@@ -653,7 +653,7 @@ function packScanContainerPeerMap(
   canonical: ReadonlyMap<string, NodeLayout>,
   root: ArchitectureEntity,
   childrenByOwner: ReadonlyMap<string, ArchitectureEntity[]>,
-  snapshot: ArchitectureSnapshot,
+  entities: ReadonlyMap<string, ArchitectureEntity>,
   targetAspect: number,
 ): Map<string, NodeLayout> {
   const origin = canonical.get(root.id);
@@ -690,7 +690,7 @@ function packScanContainerPeerMap(
   });
   for (const [entityId, bounds] of canonical) {
     if (packed.has(entityId)) continue;
-    const entity = snapshot.entities.find(candidate => candidate.id === entityId);
+    const entity = entities.get(entityId);
     if (entity && (entity.kind === 'component' || entity.kind === 'code')) continue;
     packed.set(entityId, bounds);
   }
@@ -977,7 +977,7 @@ function applyIntrinsicOwnerGeometry(
     const omitted = new Set(projection.omittedNodeIds ?? []);
     const reservedShells: Record<string, NodeLayout> = {};
     const bandCanonical = band === 'container' && targetAspect !== undefined && root.kind === 'softwareSystem'
-      ? packScanContainerPeerMap(canonical, root, childrenByOwner, snapshot, targetAspect)
+      ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect)
       : canonical;
     for (const [entityId, bounds] of bandCanonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
