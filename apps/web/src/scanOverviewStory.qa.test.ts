@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ASPECT_PRESET_TARGET,
-  C4_CONTEXT_CARD_FACE,
   cameraWorldRect,
   type ArchitectureSnapshot,
 } from '@okie/architecture';
