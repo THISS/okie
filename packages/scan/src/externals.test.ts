@@ -54,6 +54,13 @@ test("runtimeDependencyLines anchors keys inside dependencies only (not devDepen
   assert.equal(lines.get("typescript"), undefined);
 });
 
+test("runtimeDependencyLines handles an empty single-line dependencies object", () => {
+  const manifest = ['{', '  "dependencies": {},', '  "devDependencies": { "typescript": "^5" }', "}"].join("\n");
+  const lines = runtimeDependencyLines(manifest);
+  assert.equal(lines.get("typescript"), undefined, "devDependencies after an empty deps block are not captured");
+  assert.equal(lines.size, 0);
+});
+
 test("isL1ExternalSystemPackage keeps APIs/platforms and drops UI/framework/utils", () => {
   for (const keep of [
     "@anthropic-ai/sdk",
@@ -250,7 +257,7 @@ test("Okie scan L1 keeps the Anthropic SDK and drops UI/framework/utility packag
   const ext = snapshot.entities.filter(entity => entity.kind === "externalSystem");
   const names = new Set(ext.map(entity => entity.name));
 
-  assert.ok(names.has("@anthropic-ai/sdk"), `expected Anthropic SDK as L1; saw ${[...names].sort().join(", ")}`);
+  assert.deepEqual([...names].sort(), ["@anthropic-ai/sdk"], "Okie L1 externals are the Anthropic SDK only");
   for (const excluded of [
     "react", "react-dom", "mermaid", "typescript", "dompurify", "clsx",
     "@fontsource/ibm-plex-sans", "@fontsource/ibm-plex-mono",
@@ -268,7 +275,9 @@ test("Okie scan L1 keeps the Anthropic SDK and drops UI/framework/utility packag
   const web = snapshot.entities.find(entity => entity.id === "container:apps-web");
   const scan = snapshot.entities.find(entity => entity.id === "container:packages-scan");
   assert.ok(web?.technology?.includes("react"), "react remains on the web container for inspector/detail");
+  assert.ok(web?.technology?.includes("react-dom"), "react-dom remains on the web container");
   assert.ok(web?.technology?.includes("dompurify"), "dompurify remains on the web container");
+  assert.ok(web?.technology?.includes("mermaid"), "mermaid remains on the web container, not L1");
   assert.ok(web?.technology?.some(name => name.startsWith("@fontsource/")), "font packages remain on the web container");
   assert.ok(scan?.technology?.includes("typescript"), "typescript remains on the scan container");
   assert.equal(web?.technology?.includes("@anthropic-ai/sdk"), false, "L1 service boundaries are not duplicated as technology");
@@ -284,7 +293,11 @@ test("Okie externalSystems render in the L1 context band as system-context nodes
   const contextExternals = context.visualNodeIds
     .map(id => bundle.visualNodeById[id]!)
     .filter(node => node.kind === "externalSystem");
-  assert.ok(contextExternals.length >= 1, "external systems appear as L1 context nodes");
+  assert.equal(contextExternals.length, 1, "only service-boundary externals appear as L1 context nodes");
+  assert.equal(contextExternals[0]?.name, "@anthropic-ai/sdk");
+  for (const banned of ["react", "dompurify", "mermaid", "typescript"]) {
+    assert.equal(contextExternals.some(node => node.name === banned), false, `${banned} must not be an L1 visual node`);
+  }
   // At L1 the container->external edges collapse to system->external interactions.
   const systemToExternal = context.visualEdgeIds
     .map(id => bundle.visualEdgeById[id]!)
