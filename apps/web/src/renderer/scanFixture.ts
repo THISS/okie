@@ -350,16 +350,18 @@ function buildLiveScanFixture(
   ): AtlasScene => {
     const decision = guardScanCompile(snapshot, focusEntityId, view.rootEntityId);
     const scoped = decision.options;
-    // Neighborhood boot: compile the view-root L1/L2 packet, not the union of
-    // every opened L3/L4 subgraph. Matches CLA-66 (current band + one down).
+    // Neighborhood boot: compile the view-root L1/L2 *entities*, not the union of
+    // every opened L3/L4 subgraph. Keep live published childCounts + CLA-81
+    // unpublished stubs — a re-slice of an already-slim L1 packet would zero
+    // container counts and collapse reserved shells.
     const rootPacket = extras.boot === 'neighborhood' && decision.focusEntityId === view.rootEntityId
       ? sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: decision.focusEntityId })
       : undefined;
     const compileSnapshot = rootPacket?.snapshot ?? snapshot;
-    const compileUnpublished = rootPacket?.unpublishedChildren ?? unpublishedChildren;
-    const compileChildCounts = rootPacket
-      ? mergeChildCounts(childCounts, rootPacket.childCounts)
-      : childCounts;
+    const compileIds = new Set(compileSnapshot.entities.map(entity => entity.id));
+    const compileUnpublished = unpublishedChildren.filter(child =>
+      !rootPacket
+      || (Boolean(child.parentId) && compileIds.has(child.parentId!) && !compileIds.has(child.id)));
     const scene = createC4Scene({
       baseSnapshot: compileSnapshot,
       rootEntityId: view.rootEntityId,
@@ -375,7 +377,7 @@ function buildLiveScanFixture(
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
       ...(residency?.worldBounds ? { residentWorldBounds: residency.worldBounds } : {}),
       ...(residency?.keepEntityIds ? { keepEntityIds: residency.keepEntityIds } : {}),
-      childCounts: compileChildCounts,
+      childCounts,
       ...(compileUnpublished.length ? { unpublishedChildren: compileUnpublished } : {}),
     });
     return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;

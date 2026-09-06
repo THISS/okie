@@ -722,6 +722,10 @@ describe('CLA-94: rail step-out from L4 restores L1 system + externals', () => {
     const l1BootIds = l1Boot.projection?.entityIdsByDetail.context ?? [];
     expect(l1BootIds).toContain('system:okie');
     expect(l1BootIds.filter(id => id.startsWith('external:')).length).toBeGreaterThanOrEqual(8);
+    const l1BootSystem = l1Boot.projection?.boundsByEntityIdAndDetail['system:okie']?.context;
+    expect(l1BootSystem).toBeDefined();
+    expect(l1Packet.childCounts['container:apps-web']).toBeGreaterThan(0);
+    expect(fixture.childCounts['container:apps-web']).toBe(l1Packet.childCounts['container:apps-web']);
 
     await fixture.ensureNeighborhood('container:apps-web');
     const l4Focus = scanCompileFocusForBand(
@@ -756,13 +760,20 @@ describe('CLA-94: rail step-out from L4 restores L1 system + externals', () => {
     expect(l1RailIds.filter(id => id.startsWith('external:')).length).toBeGreaterThanOrEqual(8);
     expect(explorer.length).toBeGreaterThanOrEqual(9);
     expect(requested, 'rail L1 must re-fetch the view-root neighborhood for L1 peers').toContain('system:okie');
+    expect(fixture.childCounts['container:apps-web']).toBeGreaterThan(0);
+    const l1RailSystem = l1Rail.projection?.boundsByEntityIdAndDetail['system:okie']?.context;
+    expect(l1RailSystem).toBeDefined();
+    expect(l1RailSystem!.width).toBeGreaterThanOrEqual(l1BootSystem!.width * 0.9);
+    expect(l1RailSystem!.height).toBeGreaterThanOrEqual(l1BootSystem!.height * 0.9);
 
     const fit = frameVisibleProjection(l1Rail, visible, 'context', viewport, chromeSafeArea);
     const rail = frameProjectionScope(l1Rail, railFocus, 'context', viewport, chromeSafeArea);
+    const okieOnly = frameVisibleProjection(l1Rail, ['system:okie'], 'context', viewport, chromeSafeArea);
     expect(fit).toBeDefined();
-    expect(rail).toEqual(fit);
-    expect(fit!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
-    expect(fit!.zoom).toBeGreaterThanOrEqual(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(rail).toBeDefined();
+    expect(rail!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(rail!.zoom).toBeGreaterThanOrEqual(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(fit).not.toEqual(okieOnly);
   });
 
   it('L4 neighborhood boot then rail L1 fetches missing context peers', async () => {
