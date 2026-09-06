@@ -645,6 +645,42 @@ function scanContainerPeerTile(): { width: number; height: number } {
 }
 
 /**
+ * CLA-96: L1 paints the readable system card, not the CLA-81 reserved interior.
+ * Peers already hug this card in `canonical`; this swap keeps context-band
+ * layout (and the painted L1 shell) from inheriting the tall/wide descendant
+ * footprint that made Fit clip. L2+ bands keep their own maps.
+ */
+function packScanContextPeerMap(
+  canonical: ReadonlyMap<string, NodeLayout>,
+  root: ArchitectureEntity,
+): Map<string, NodeLayout> {
+  const origin = canonical.get(root.id);
+  if (!origin) return new Map(canonical);
+  const packed = new Map(canonical);
+  packed.set(root.id, {
+    x: origin.x,
+    y: origin.y,
+    width: C4_CONTEXT_CARD_FACE.width,
+    height: C4_CONTEXT_CARD_FACE.height,
+  });
+  return packed;
+}
+
+/**
+ * Peer-column anchor for scan L1: card width so externals hug the readable
+ * face, reserved height so a handful of peers stay one column per side
+ * (stackHeightBudget × a 250u card would wrap outward and over-widen).
+ */
+function scanContextPeerAnchor(system: NodeLayout): NodeLayout {
+  return {
+    x: system.x,
+    y: system.y,
+    width: C4_CONTEXT_CARD_FACE.width,
+    height: system.height,
+  };
+}
+
+/**
  * CLA-95: scan L2 paints a compact container peer map, not CLA-81 reserved
  * interiors. Each package is a leaf tile so Open inside can frame siblings
  * together; L3/L4 bands keep the reserved shells.
@@ -964,7 +1000,10 @@ function applyIntrinsicOwnerGeometry(
         })
         .filter((value): value is ContextPeerItem => value !== undefined)
         .sort((left, right) => left.id.localeCompare(right.id));
-      for (const [entityId, bounds] of layoutContextPeersAroundSystem(systemBounds, peers)) {
+      for (const [entityId, bounds] of layoutContextPeersAroundSystem(
+        scanContextPeerAnchor(systemBounds),
+        peers,
+      )) {
         canonical.set(entityId, bounds);
       }
     }
@@ -976,9 +1015,11 @@ function applyIntrinsicOwnerGeometry(
     const resident = new Set(projection.visualNodeIds);
     const omitted = new Set(projection.omittedNodeIds ?? []);
     const reservedShells: Record<string, NodeLayout> = {};
-    const bandCanonical = band === 'container' && targetAspect !== undefined && root.kind === 'softwareSystem'
+    const bandCanonical = targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'container'
       ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect)
-      : canonical;
+      : targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'context'
+        ? packScanContextPeerMap(canonical, root)
+        : canonical;
     for (const [entityId, bounds] of bandCanonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
       if (resident.has(visualId)) {

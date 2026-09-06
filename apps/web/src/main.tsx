@@ -29,15 +29,12 @@ import {
 const root = createRoot(document.getElementById('root')!);
 
 /**
- * Deterministic per-session aspect target for scan mode (task #30): the device
- * orientation at bootstrap picks one discrete preset ONCE. It is a compile input,
- * NOT the live viewport, so the compiled scene stays deterministic and shareable —
- * re-orienting the device is an explicit reload/recompile, not a continuous reflow.
+ * Published scan / neighborhood compile aspect (CLA-96). Landscape ~1.6 is a
+ * compile input, not the live viewport, so `/r/…` L1 Fit is a shareable
+ * context map. Portrait reflow is not this slice; golden/demo omit targetAspect.
  */
 function bootstrapScanAspect(): number {
-  const portrait = window.matchMedia?.('(orientation: portrait)')?.matches
-    ?? window.innerHeight > window.innerWidth;
-  return portrait ? ASPECT_PRESET_TARGET.portrait : ASPECT_PRESET_TARGET.landscape;
+  return ASPECT_PRESET_TARGET.landscape;
 }
 
 function ScanErrorScreen({ error }: { error: unknown }) {

@@ -119,13 +119,14 @@ describe('CLA-84: scan overview story frames the step box at band focus zoom', (
     expect(app).toContain('currentStory.narration');
   });
 
-  it('raw semantic fit of a reserved L1 shell still collapses to the camera floor', () => {
+  it('L1 context map is the readable card so Fit does not collapse to the camera floor', () => {
     const scene = reservedShellContextScene();
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
-    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
+    expect(system.width).toBe(C4_CONTEXT_CARD_FACE.width);
+    expect(system.height).toBe(C4_CONTEXT_CARD_FACE.height);
     const focusIds = ['system:okie', ...scene.entities.filter(entity => entity.id.startsWith('external:')).map(entity => entity.id)];
-    const collapsed = frameSemanticEntities(scene, focusIds, 'context', viewport, storySafeArea);
-    expect(collapsed?.zoom).toBe(ATLAS_CAMERA_BOUNDS.minZoom);
+    const fitted = frameSemanticEntities(scene, focusIds, 'context', viewport, storySafeArea);
+    expect(fitted?.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
   });
 
   it('overview step 1 centers the system card face at context focus zoom, not z=0.32', () => {

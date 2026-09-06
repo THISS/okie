@@ -405,6 +405,22 @@ function reservedShellL2Scene() {
   });
 }
 
+function contextFaceInSafeViewport(
+  bounds: { x: number; y: number; width: number; height: number },
+  camera: { x: number; y: number; zoom: number },
+) {
+  const face = contextCardFaceBounds(bounds);
+  const padding = 24;
+  const left = viewport.width / 2 + (face.x - camera.x) * camera.zoom;
+  const top = viewport.height / 2 + (face.y - camera.y) * camera.zoom;
+  const right = left + face.width * camera.zoom;
+  const bottom = top + face.height * camera.zoom;
+  return left >= chromeSafeArea.left + padding
+    && right <= viewport.width - chromeSafeArea.right - padding
+    && top >= chromeSafeArea.top + padding
+    && bottom <= viewport.height - chromeSafeArea.bottom - padding;
+}
+
 function containerFaceInSafeViewport(
   bounds: { x: number; y: number; width: number; height: number },
   camera: { x: number; y: number; zoom: number },
@@ -524,8 +540,9 @@ describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () =>
     expect(camera).toBeDefined();
     expect(camera!.zoom).toBeGreaterThan(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
-    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
-    expect(cameraWorldRect(camera!, viewport).height).toBeLessThan(system.height);
+    expect(system.width).toBe(C4_CONTEXT_CARD_FACE.width);
+    expect(system.height).toBe(C4_CONTEXT_CARD_FACE.height);
+    expect(contextFaceInSafeViewport(system, camera!)).toBe(true);
   });
 });
 
@@ -902,8 +919,8 @@ describe('CLA-93: rail Step-out to scan L1 frames readable card faces', () => {
   it('frames L1 system + external card faces above minZoom, not z=0.32 over a hollow shell', () => {
     const scene = reservedShellL2Scene();
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
-    expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
-    expect(system.width).toBeGreaterThan(C4_CONTEXT_CARD_FACE.width * 1.5);
+    expect(system.width).toBe(C4_CONTEXT_CARD_FACE.width);
+    expect(system.height).toBe(C4_CONTEXT_CARD_FACE.height);
 
     const camera = frameProjectionScope(scene, 'system:okie', 'context', viewport, chromeSafeArea);
     expect(camera).toBeDefined();
@@ -913,7 +930,6 @@ describe('CLA-93: rail Step-out to scan L1 frames readable card faces', () => {
     expect(camera!.zoom).not.toBeCloseTo(ATLAS_CAMERA_BOUNDS.minZoom, 2);
 
     const world = cameraWorldRect(camera!, viewport);
-    expect(world.height).toBeLessThan(system.height);
     const face = contextCardFaceBounds(system);
     expect(world.width * world.height).toBeGreaterThan(face.width * face.height);
 

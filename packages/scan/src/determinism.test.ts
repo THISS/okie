@@ -6,6 +6,7 @@ import { discoverRepository } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
 import { pinRepository } from "./pin.js";
 import { buildScanArtifacts, stableJson } from "./scan.js";
+import { ASPECT_PRESET_TARGET } from "@okie/architecture";
 
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
 const readFile = (path: string): string => readFileSync(`${repoRoot}${path}`, "utf8");
@@ -58,4 +59,8 @@ test("full scan artifacts are byte-identical across reversed discovery order", (
   for (const key of ["extraction", "snapshot", "view", "story", "stories", "catalog", "scene", "timeline"] as const) {
     assert.equal(stableJson(canonical[key]), stableJson(reversed[key]), `${key} differs under reversed discovery order`);
   }
+  const world = canonical.scene.worldBounds;
+  const aspect = world.width / world.height;
+  assert.ok(aspect >= 1.4, `scan CLI scene.json aspect ${aspect.toFixed(3)} must be landscape ≥ 1.4 (CLA-96)`);
+  assert.equal(ASPECT_PRESET_TARGET.landscape, 1.6);
 });
