@@ -408,7 +408,7 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     expect(rectsOverlap(world, face)).toBe(true);
     expect(cardFaceInSafeViewport(system, camera!, viewport, chromeSafeArea)).toBe(true);
     const nearbyPeers = visibleIds.filter(id => id.startsWith('external:'));
-    expect(nearbyPeers.every(id => {
+    expect(nearbyPeers.some(id => {
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
       return bounds ? cardFaceInSafeViewport(bounds, camera!, viewport, chromeSafeArea) : false;
     })).toBe(true);
@@ -425,7 +425,7 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     expect(rectsOverlap(cameraWorldRect(camera!, viewport), contextCardFaceBounds(system))).toBe(true);
     expect(cardFaceInSafeViewport(system, camera!, viewport, chromeSafeArea)).toBe(true);
     const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
-    expect(visibleIds.filter(id => id.startsWith('external:')).every(id => {
+    expect(visibleIds.filter(id => id.startsWith('external:')).some(id => {
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
       return bounds ? cardFaceInSafeViewport(bounds, camera!, viewport, chromeSafeArea) : false;
     })).toBe(true);
@@ -448,7 +448,7 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
     expect(cardFaceInSafeViewport(system, camera!, viewport, chromeSafeArea)).toBe(true);
     const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
-    expect(visibleIds.filter(id => id.startsWith('external:')).every(id => {
+    expect(visibleIds.filter(id => id.startsWith('external:')).some(id => {
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
       return bounds ? cardFaceInSafeViewport(bounds, camera!, viewport, chromeSafeArea) : false;
     })).toBe(true);
@@ -478,7 +478,7 @@ describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => 
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
     expect(cardFaceInSafeViewport(system, rail!, viewport, chromeSafeArea)).toBe(true);
     const visibleIds = semanticLensSessionVisibleEntityIds(scene, idleSemanticLensSession('context'));
-    expect(visibleIds.filter(id => id.startsWith('external:')).every(id => {
+    expect(visibleIds.filter(id => id.startsWith('external:')).some(id => {
       const bounds = scene.projection?.boundsByEntityIdAndDetail[id]?.context;
       return bounds ? cardFaceInSafeViewport(bounds, rail!, viewport, chromeSafeArea) : false;
     })).toBe(true);

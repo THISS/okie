@@ -562,15 +562,15 @@ export function frameVisibleProjection(
   const camera = faceCamera ?? shellCamera;
   if (!camera) return undefined;
   // Compact L1 graphs (golden) keep the Fit that shows every context peer (CLA-44).
-  // A CLA-81 reserved shell whose Fit would drop titles below 12 CSS px frames the
-  // adjacent title-row cluster (system card + nearby exterior peers), not the hollow
-  // interior or the far flank across the reserved width.
+  // Scan L1 (and any reserved shell) must not drop below a 12 CSS px title: if the
+  // full set would hit the camera floor, frame the title-row cluster instead.
+  if (camera.zoom + 1e-9 >= CONTEXT_TITLE_READABLE_MIN_ZOOM) return camera;
   const reservedShell = residentIds.some(id => {
     const entity = scene.entities.find(candidate => candidate.id === id);
     const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'context') : undefined;
     return bounds !== undefined && isReservedContextShell(bounds);
   });
-  if (!reservedShell || camera.zoom + 1e-9 >= CONTEXT_TITLE_READABLE_MIN_ZOOM) return camera;
+  if (scene.targetAspect === undefined && !reservedShell) return camera;
   return frameContextArrivalCluster(scene, residentIds, viewport, safeArea) ?? camera;
 }
 
