@@ -632,9 +632,9 @@ export function frameProjectionScope(
     const cluster = frameContextArrivalCamera(scene, viewport, safeArea);
     if (cluster) return cluster;
   }
-  // CLA-90: Open inside a scan system must frame L2 container peer card faces
-  // at a readable band-focus zoom. Coverage-reveal of the CLA-81 reserved owner
-  // commits ATLAS_CAMERA_BOUNDS.minZoom over a hollow shell (same class as CLA-82 L1).
+  // CLA-90/95: Open inside a scan system frames the L2 container peer map
+  // (readable card faces together), not coverage-reveal of the CLA-81 reserved
+  // owner which commits ATLAS_CAMERA_BOUNDS.minZoom over a hollow shell.
   if (detail === 'container' && scene.targetAspect !== undefined && rootBounds
     && isReservedContainerShell(rootBounds)) {
     const peers = frameContainerPeerArrivalCamera(scene, rootEntityId, viewport, safeArea);
