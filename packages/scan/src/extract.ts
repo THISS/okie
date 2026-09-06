@@ -1,5 +1,6 @@
 import ts from "typescript";
 import {
+  ARCHITECTURE_EXTRACTION_LIMITS,
   CYCLOMATIC_FLAG_THRESHOLD,
   type ArchitectureExtraction,
   type ArchitectureExtractionEntity,
@@ -16,10 +17,12 @@ import { pathSlug, resolveCollisions, slug, typedId } from "./ids.js";
 const MAX_EVIDENCE_PER_RELATION = 24;
 
 /**
- * How many externalSystem entities the deterministic scan emits — the top-N most-imported
- * third-party runtime dependencies. Kept small so the L1 system-context band stays legible
- * (the hand-authored golden fixture carries ~3 context nodes); selection is deterministic by
- * (import-site count desc, package name asc). Bumping this only widens the context band.
+ * How many L1 `externalSystem` entities the deterministic scan emits — the top-N
+ * most-imported **service-boundary** runtime dependencies (APIs/platforms), never
+ * UI/framework/utility libraries (CLA-97). Kept small so the context band stays
+ * legible (the hand-authored golden fixture carries ~3 context nodes). Selection
+ * is deterministic by (import-site count desc, package name asc) among packages
+ * that pass {@link isL1ExternalSystemPackage}. Bumping this only widens L1.
  */
 export const MAX_EXTERNAL_SYSTEMS = 8;
 
@@ -537,6 +540,112 @@ export function packageNameOfSpecifier(specifier: string): string | undefined {
 }
 
 /**
+ * npm scopes that are UI kits, fonts, compilers, or other implementation libraries —
+ * never L1 External Systems (CLA-97).
+ */
+const L1_LIBRARY_SCOPES = new Set([
+  "@babel",
+  "@emotion",
+  "@fontsource",
+  "@fontsource-variable",
+  "@mui",
+  "@radix-ui",
+  "@types",
+  "@vitejs",
+]);
+
+/**
+ * Well-known UI/framework/utility packages named in CLA-97 plus the usual
+ * compilers and class-name helpers. Default-exclude (below) also drops unknown
+ * libraries; this set documents the locked product examples.
+ */
+const L1_LIBRARY_PACKAGES = new Set([
+  "clsx",
+  "classnames",
+  "dompurify",
+  "esbuild",
+  "isomorphic-dompurify",
+  "lodash",
+  "mermaid",
+  "preact",
+  "react",
+  "react-dom",
+  "rollup",
+  "solid-js",
+  "svelte",
+  "typescript",
+  "vite",
+  "vue",
+  "webpack",
+  "zod",
+]);
+
+/** Cloud/API/database platforms that are meaningful L1 service boundaries. */
+const L1_SERVICE_SCOPES = new Set([
+  "@anthropic-ai",
+  "@aws-sdk",
+  "@azure",
+  "@datadog",
+  "@google-cloud",
+  "@octokit",
+  "@sentry",
+  "@slack",
+  "@supabase",
+]);
+
+const L1_SERVICE_PACKAGES = new Set([
+  "aws-sdk",
+  "cassandra-driver",
+  "firebase",
+  "googleapis",
+  "ioredis",
+  "mongodb",
+  "mongoose",
+  "mysql",
+  "mysql2",
+  "neo4j-driver",
+  "openai",
+  "pg",
+  "postgres",
+  "posthog-js",
+  "posthog-node",
+  "redis",
+  "stripe",
+  "twilio",
+  "@elastic/elasticsearch",
+]);
+
+function packageScope(packageName: string): string | undefined {
+  if (!packageName.startsWith("@")) return undefined;
+  const slash = packageName.indexOf("/");
+  return slash === -1 ? packageName : packageName.slice(0, slash);
+}
+
+/**
+ * True when a declared runtime dependency is a **service boundary** (another
+ * system/API/platform the software talks to) and therefore belongs on L1 as an
+ * `externalSystem`. UI frameworks, fonts, compilers, bundlers, and utility libs
+ * return false — they stay reachable as container `technology` and import
+ * evidence, not as L1 cards (CLA-97). Unknown npm packages default to false:
+ * most `dependencies` entries are implementation libraries.
+ */
+export function isL1ExternalSystemPackage(packageName: string): boolean {
+  const scope = packageScope(packageName);
+  const unscoped = packageName.startsWith("@")
+    ? packageName.slice(packageName.indexOf("/") + 1)
+    : packageName;
+  if (scope && L1_LIBRARY_SCOPES.has(scope)) return false;
+  if (L1_LIBRARY_PACKAGES.has(packageName) || L1_LIBRARY_PACKAGES.has(unscoped)) return false;
+  if (unscoped.startsWith("react-") || unscoped.startsWith("lodash.")) return false;
+  if (scope && L1_SERVICE_SCOPES.has(scope)) return true;
+  if (L1_SERVICE_PACKAGES.has(packageName) || L1_SERVICE_PACKAGES.has(unscoped)) return true;
+  // `@org/foo-sdk`, `foo-sdk`, `foo-api-client`.
+  if (/(?:^|\/|-)sdk$/i.test(packageName) || /(?:^|\/)sdk(?:-|$)/i.test(unscoped)) return true;
+  if (/-api-client$/.test(unscoped)) return true;
+  return false;
+}
+
+/**
  * 1-based line numbers of each key inside a package.json `"dependencies"` object (best-effort
  * evidence anchoring; membership itself comes from JSON.parse). Scans only within the
  * dependencies block via brace depth so a name that also appears under devDependencies is not
@@ -572,6 +681,8 @@ interface EntityDescriptor {
   name: string;
   parentKey?: string;
   sourceRefs: ArchitectureExtractionSourceRef[];
+  /** Observed runtime libraries on a container (CLA-97) — inspector/detail, not L1 cards. */
+  technology?: string[];
   /** Observed McCabe for function-like code entities — snapshot overlay, not extraction. */
   cyclomaticComplexity?: number;
   /** Token+AST clone fingerprint for function-like code entities — snapshot overlay. */
@@ -645,14 +756,18 @@ function dependencyManifestPaths(discovery: Discovery): string[] {
 }
 
 /**
- * Aggregates third-party import usage into the top-N externalSystem entities plus
- * container→externalSystem relations. The allowlist is the union of every manifest's runtime
- * `dependencies` (NOT devDependencies) — so a bare import counts only if its package is a
- * declared runtime dependency, which drops node builtins, dev/type-only tooling, and
- * first-party `@okie/*` packages. Selection is deterministic: (import-site count desc, name asc).
- * At L1 the container→external edges collapse to system→external; at L2 they attribute the
- * dependency to the specific container that imports it. Rust crate dependencies (Cargo.toml,
- * e.g. wgpu) are a documented follow-up — R1 does not parse `.rs`, so there is no import evidence.
+ * Aggregates third-party import usage into L1 `externalSystem` entities (service
+ * boundaries only — CLA-97) plus container→externalSystem relations. The allowlist
+ * is the union of every manifest's runtime `dependencies` (NOT devDependencies) —
+ * so a bare import counts only if its package is a declared runtime dependency,
+ * which drops node builtins, dev/type-only tooling, and first-party `@okie/*`
+ * packages. UI/framework/utility libs are not L1 cards: they attach to the
+ * importing container's `technology` (inspector/detail) instead. L1 selection is
+ * the top-N service-boundary packages by (import-site count desc, name asc).
+ * At L1 the container→external edges collapse to system→external; at L2 they
+ * attribute the dependency to the specific container that imports it. Rust crate
+ * dependencies (Cargo.toml, e.g. wgpu) are a documented follow-up — R1 does not
+ * parse `.rs`, so there is no import evidence.
  */
 function emitExternalSystems(input: ExternalEmitInput): void {
   const { discovery, readFile, externalUsagesByPackage, entityDescriptors, addRelation } = input;
@@ -683,12 +798,31 @@ function emitExternalSystems(input: ExternalEmitInput): void {
     }
   }
 
-  // Rank the actually-imported runtime deps and keep the top-N (deterministic tie-break by name).
-  const selected = [...externalUsagesByPackage.entries()]
-    .filter(([pkg]) => declaringRefsByPackage.has(pkg) && !discovery.unitByPackageName.has(pkg))
+  const importedRuntime = [...externalUsagesByPackage.entries()]
+    .filter(([pkg]) => declaringRefsByPackage.has(pkg) && !discovery.unitByPackageName.has(pkg));
+
+  // Rank service-boundary packages only; utility/framework deps never occupy an L1 slot.
+  const selected = importedRuntime
+    .filter(([pkg]) => isL1ExternalSystemPackage(pkg))
     .sort(([leftPkg, leftUses], [rightPkg, rightUses]) =>
       rightUses.length - leftUses.length || leftPkg.localeCompare(rightPkg))
     .slice(0, MAX_EXTERNAL_SYSTEMS);
+
+  const libraryByContainer = new Map<string, Set<string>>();
+  for (const [pkg, usages] of importedRuntime) {
+    if (isL1ExternalSystemPackage(pkg)) continue;
+    for (const usage of usages) {
+      const bucket = libraryByContainer.get(usage.container) ?? new Set();
+      bucket.add(pkg);
+      libraryByContainer.set(usage.container, bucket);
+    }
+  }
+  for (const descriptor of entityDescriptors) {
+    if (descriptor.kind !== "container") continue;
+    const names = libraryByContainer.get(descriptor.naturalKey);
+    if (!names || names.size === 0) continue;
+    descriptor.technology = [...names].sort().slice(0, ARCHITECTURE_EXTRACTION_LIMITS.maxListItems);
+  }
 
   for (const [pkg, usages] of selected) {
     const importRefs = usages.map(usage => usage.source)
@@ -964,6 +1098,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     kind: descriptor.kind,
     ...(descriptor.parentKey !== undefined ? { parentId: idByKey.get(descriptor.parentKey)! } : {}),
     name: descriptor.name,
+    ...(descriptor.technology?.length ? { technology: [...descriptor.technology] } : {}),
     sourceRefs: descriptor.sourceRefs,
   }));
   const cyclomaticById = new Map<string, number>();

@@ -46,7 +46,7 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
 | C4 level | Derived from |
 |---|---|
 | `softwareSystem` | the repository (one) |
-| `externalSystem` | the **top-N most-imported third-party runtime dependencies** (system context / L1) |
+| `externalSystem` | the **top-N most-imported service-boundary runtime dependencies** (APIs/platforms at L1; not UI/framework/utils) |
 | `container` | each workspace member with source, a synthetic **tooling** container for non-member scripts, and each Rust crate |
 | `component` | **one per source file** |
 | `code` | **one per top-level named declaration** (exported or not), anchored `path`+`symbol`+line range |
@@ -54,19 +54,28 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
 ### System context (L1) — external dependencies
 
 The top level must show how the system meets the world. The scan derives `externalSystem` entities
-deterministically from **third-party runtime dependencies**:
+deterministically from **third-party runtime dependencies that are service boundaries**
+(APIs/platforms), not UI/framework/utility libraries (CLA-97):
 
 - **Allowlist = runtime `dependencies`** (never `devDependencies`) declared by the root and every
   workspace member. Local protocols (`workspace:`/`file:`/`link:`) are first-party and excluded — so a
   CSS-only member like `@okie/theme` never appears. A bare import counts only if its package is on
   the allowlist, which also drops node builtins and type-only/dev tooling.
-- **Selection** is the top `MAX_EXTERNAL_SYSTEMS` (8) by `(import-site count desc, package name asc)` —
-  a documented, deterministic constant. Evidence is a capped canonical selection of the real import
-  statements (`path`+line) plus the `package.json` declaration line.
+- **L1 classification** (`isL1ExternalSystemPackage`): keep SDKs/cloud/database/API clients
+  (e.g. `@anthropic-ai/sdk`, `stripe`, `pg`); drop fonts, UI frameworks, compilers, bundlers, and
+  utilities (`@fontsource/*`, `react`, `react-dom`, `dompurify`, `clsx`, `mermaid`, `typescript`,
+  `vite`, `zod`, …). Unknown npm packages default to drop — most `dependencies` entries are
+  implementation libraries. Dropped packages attach to the importing container's `technology` so
+  they remain reachable in inspector/detail, not as L1 cards.
+- **Selection** is the top `MAX_EXTERNAL_SYSTEMS` (8) **service-boundary** packages by
+  `(import-site count desc, package name asc)` — a documented, deterministic constant. Evidence is
+  a capped canonical selection of the real import statements (`path`+line) plus the `package.json`
+  declaration line.
 - **Relations** are `container → externalSystem` (`dependsOn`), so at **L1** they collapse to
   `system → externalSystem` interactions and at **L2** they attribute the dependency to the importing
   container. Persons/externalSystems are laid out in the context band by the C4 projection automatically.
-- Scanning Okie yields e.g. `react`, `@fontsource/ibm-plex-sans`, `mermaid`, `react-dom`, `typescript`.
+- Scanning Okie yields e.g. `@anthropic-ai/sdk` at L1; `react` / `@fontsource/*` / `dompurify` stay
+  on the web container's technology list.
 - **Rust crate dependencies** (`Cargo.toml`, e.g. `wgpu`) are a documented follow-up: R1 does not parse
   `.rs`, so there is no import-frequency evidence to rank or anchor them.
 
