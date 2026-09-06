@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ASPECT_PRESET_TARGET,
+  C4_BAND_FOCUS_ZOOM,
   C4_COMPONENT_CARD_FACE,
-  C4_CONTAINER_CARD_FACE,
   C4_CONTEXT_CARD_FACE,
+  C4_INTRINSIC_LAYOUT,
   cameraWorldRect,
   sliceArchitectureNeighborhood,
   type ArchitectureEntity,
@@ -420,6 +421,17 @@ function containerFaceInSafeViewport(
     && bottom <= viewport.height - chromeSafeArea.bottom - padding;
 }
 
+function containerFacesInSafeViewport(
+  scene: ReturnType<typeof reservedShellL2Scene>,
+  camera: { x: number; y: number; zoom: number },
+) {
+  return scene.entities.filter(entity => entity.detail === 'container'
+    && containerFaceInSafeViewport(
+      scene.projection!.boundsByEntityIdAndDetail[entity.id]!.container!,
+      camera,
+    ));
+}
+
 describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () => {
   it('does not raise the 2000 hang-guard', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
@@ -434,27 +446,30 @@ describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () =>
   it('frames L2 container peer cards above minZoom, not z=0.32 over a hollow shell', () => {
     const scene = reservedShellL2Scene();
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.container!;
-    expect(system.height).toBeGreaterThan(C4_CONTAINER_CARD_FACE.height * 4);
-    expect(system.width).toBeGreaterThan(C4_CONTAINER_CARD_FACE.width * 1.5);
+    const tile = {
+      width: C4_INTRINSIC_LAYOUT.leaf.code.width / C4_BAND_FOCUS_ZOOM.container,
+      height: C4_INTRINSIC_LAYOUT.leaf.code.height / C4_BAND_FOCUS_ZOOM.container,
+    };
+    const web = scene.projection!.boundsByEntityIdAndDetail['container:web']!.container!;
+    expect(web.width).toBeCloseTo(tile.width, 5);
+    expect(web.height).toBeCloseTo(tile.height, 5);
+    expect(system.width).toBeGreaterThan(tile.width);
+    expect(system.height).toBeGreaterThan(tile.height);
 
     const camera = frameProjectionScope(scene, 'system:okie', 'container', viewport, chromeSafeArea);
     expect(camera).toBeDefined();
     expect(camera).toEqual(frameContainerPeerArrivalCamera(scene, 'system:okie', viewport, chromeSafeArea));
     expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
     expect(camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
-    expect(camera!.zoom).toBeCloseTo(1.99, 5);
+    expect(camera!.zoom).not.toBeCloseTo(ATLAS_CAMERA_BOUNDS.minZoom, 2);
     expect(containerTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
 
     const peers = scene.entities.filter(entity => entity.detail === 'container');
     expect(peers.length).toBeGreaterThanOrEqual(10);
-    expect(peers.some(entity => containerFaceInSafeViewport(
-      scene.projection!.boundsByEntityIdAndDetail[entity.id]!.container!,
-      camera!,
-    ))).toBe(true);
-
-    const world = cameraWorldRect(camera!, viewport);
-    const hollow = { x: system.x, y: system.y, width: system.width, height: system.height };
-    expect(world.width * world.height).toBeLessThan(hollow.width * hollow.height * 0.5);
+    const visible = containerFacesInSafeViewport(scene, camera!);
+    expect(visible.length).toBeGreaterThanOrEqual(2);
+    expect(visible.some(entity => entity.id === 'container:web')).toBe(true);
+    expect(visible.some(entity => entity.id !== 'container:web')).toBe(true);
 
     const contained = containSemanticOwnerCamera(camera!, system, viewport, chromeSafeArea);
     expect(contained.zoom).toBe(camera!.zoom);
@@ -511,6 +526,66 @@ describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () =>
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.context!;
     expect(system.height).toBeGreaterThan(C4_CONTEXT_CARD_FACE.height * 2);
     expect(cameraWorldRect(camera!, viewport).height).toBeLessThan(system.height);
+  });
+});
+
+describe('CLA-95: Open inside scan L2 frames the container peer map', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('Open inside frames @okie/web and sibling containers together in the safe viewport', () => {
+    const scene = reservedShellL2Scene();
+    const camera = frameProjectionScope(scene, 'system:okie', 'container', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
+    expect(camera!.zoom).not.toBeCloseTo(ATLAS_CAMERA_BOUNDS.minZoom, 2);
+    expect(containerTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+
+    const peers = scene.entities.filter(entity => entity.detail === 'container');
+    expect(peers.length).toBeGreaterThanOrEqual(10);
+    const visible = containerFacesInSafeViewport(scene, camera!);
+    expect(visible.map(entity => entity.id)).toEqual(expect.arrayContaining([
+      'container:web',
+      'container:server',
+    ]));
+    expect(visible.length).toBeGreaterThanOrEqual(Math.min(peers.length, 8));
+  });
+
+  it('CLA-83: Open inside the system keeps root=system and L2 peers visible', async () => {
+    const snapshot = scanLikeSnapshot();
+    const view = scanLikeView(snapshot);
+    const story = scanLikeStory(snapshot, view);
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => story,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, story, host, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+    const l2Focus = scanCompileFocusForBand(
+      fixture.snapshot,
+      'system:okie',
+      'container',
+      fixture.navigation.rootEntityId,
+    );
+    expect(l2Focus).toBe('system:okie');
+    const l2 = fixture.createScene(l2Focus);
+    const camera = frameProjectionScope(l2, l2Focus, 'container', viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    const visible = l2.entities.filter(entity => entity.detail === 'container'
+      && containerFaceInSafeViewport(
+        l2.projection!.boundsByEntityIdAndDetail[entity.id]!.container!,
+        camera!,
+      ));
+    expect(visible.some(entity => entity.id === 'container:apps-web')).toBe(true);
+    expect(visible.some(entity => entity.id === 'container:apps-server')).toBe(true);
+    expect(visible.length).toBeGreaterThanOrEqual(8);
   });
 });
 

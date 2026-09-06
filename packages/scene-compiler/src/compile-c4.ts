@@ -631,6 +631,72 @@ function expectedChildKind(owner: ArchitectureEntity, child: ArchitectureEntity)
   return child.kind === expected;
 }
 
+function isContainerPeerKind(kind: ArchitectureEntity['kind']): boolean {
+  return kind === 'container' || kind === 'dataStore' || kind === 'queue';
+}
+
+/** Scan L2 package tile — one intrinsic leaf at container focus, not the reserved L3/L4 shell. */
+function scanContainerPeerTile(): { width: number; height: number } {
+  const zoom = C4_BAND_FOCUS_ZOOM.container;
+  return {
+    width: C4_INTRINSIC_LAYOUT.leaf.code.width / zoom,
+    height: C4_INTRINSIC_LAYOUT.leaf.code.height / zoom,
+  };
+}
+
+/**
+ * CLA-95: scan L2 paints a compact container peer map, not CLA-81 reserved
+ * interiors. Each package is a leaf tile so Open inside can frame siblings
+ * together; L3/L4 bands keep the reserved shells.
+ */
+function packScanContainerPeerMap(
+  canonical: ReadonlyMap<string, NodeLayout>,
+  root: ArchitectureEntity,
+  childrenByOwner: ReadonlyMap<string, ArchitectureEntity[]>,
+  entities: ReadonlyMap<string, ArchitectureEntity>,
+  targetAspect: number,
+): Map<string, NodeLayout> {
+  const origin = canonical.get(root.id);
+  const metrics = c4IntrinsicOwnerMetrics(root.kind, targetAspect);
+  const containers = (childrenByOwner.get(root.id) ?? []).filter(child => isContainerPeerKind(child.kind));
+  if (!origin || !metrics || !containers.length) return new Map(canonical);
+  const tile = scanContainerPeerTile();
+  const items = containers.map(child => ({ id: child.id, ...tile }));
+  const measurement = measureC4Grid(items, metrics);
+  const systemBounds: NodeLayout = {
+    x: origin.x,
+    y: origin.y,
+    width: measurement.width,
+    height: measurement.height,
+  };
+  const packed = new Map<string, NodeLayout>();
+  packed.set(root.id, systemBounds);
+  const ordered = [...containers].sort((left, right) => left.id.localeCompare(right.id));
+  const gridX = systemBounds.x + metrics.paddingLeft;
+  const gridY = systemBounds.y + metrics.paddingTop;
+  ordered.forEach((child, index) => {
+    const column = index % measurement.columns;
+    const row = Math.floor(index / measurement.columns);
+    const columnX = measurement.columnWidths.slice(0, column).reduce((sum, value) => sum + value, 0)
+      + metrics.gap * column;
+    const rowY = measurement.rowHeights.slice(0, row).reduce((sum, value) => sum + value, 0)
+      + metrics.gap * row;
+    packed.set(child.id, {
+      x: gridX + columnX + (measurement.columnWidths[column]! - tile.width) / 2,
+      y: gridY + rowY + (measurement.rowHeights[row]! - tile.height) / 2,
+      width: tile.width,
+      height: tile.height,
+    });
+  });
+  for (const [entityId, bounds] of canonical) {
+    if (packed.has(entityId)) continue;
+    const entity = entities.get(entityId);
+    if (entity && (entity.kind === 'component' || entity.kind === 'code')) continue;
+    packed.set(entityId, bounds);
+  }
+  return packed;
+}
+
 /**
  * Context-peer flanking geometry (task #35). Persons/externalSystems sit in columns to the
  * LEFT and RIGHT of the system rectangle, deriving their x from the system's ACTUAL settled
@@ -910,7 +976,10 @@ function applyIntrinsicOwnerGeometry(
     const resident = new Set(projection.visualNodeIds);
     const omitted = new Set(projection.omittedNodeIds ?? []);
     const reservedShells: Record<string, NodeLayout> = {};
-    for (const [entityId, bounds] of canonical) {
+    const bandCanonical = band === 'container' && targetAspect !== undefined && root.kind === 'softwareSystem'
+      ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect)
+      : canonical;
+    for (const [entityId, bounds] of bandCanonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
       if (resident.has(visualId)) {
         layout.nodes[visualId] = { ...bounds };

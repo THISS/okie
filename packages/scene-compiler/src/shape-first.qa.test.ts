@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   ASPECT_PRESET_TARGET,
   C4_BAND_FOCUS_ZOOM,
+  C4_INTRINSIC_LAYOUT,
   buildC4ProjectionBundle,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
@@ -113,6 +114,91 @@ test("CLA-81: childCounts reserve parent size so opening the band does not grow 
   assert.ok(openedFile);
   assert.equal(Math.round(reservedFile.width * 1000), Math.round(openedFile.width * 1000));
   assert.equal(Math.round(reservedFile.height * 1000), Math.round(openedFile.height * 1000));
+});
+
+test("CLA-95: scan L2 packs container peer tiles, not reserved L3/L4 shells", () => {
+  const containers = Array.from({ length: 10 }, (_, index) =>
+    entity(`container:p${String(index).padStart(2, "0")}`, "container", "system:d"));
+  const unpublished: Array<{ id: string; kind: "component"; parentId: string }> = [];
+  const entities: ArchitectureEntity[] = [
+    entity("system:d", "softwareSystem"),
+    ...containers,
+  ];
+  const childCounts: Record<string, number> = { "system:d": containers.length };
+  for (const container of containers) {
+    childCounts[container.id] = 24;
+    for (let index = 0; index < 24; index += 1) {
+      unpublished.push({
+        id: `component:${container.id.slice("container:".length)}-${String(index).padStart(2, "0")}`,
+        kind: "component",
+        parentId: container.id,
+      });
+    }
+  }
+  const snapshot: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: "snapshot:cla-95",
+    repositoryId: "repo:cla-95",
+    commitSha: "c",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    entities,
+    relations: [],
+  };
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "container",
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  const compiled = compileC4Scene(snapshot, bundle, {
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+    childCounts,
+    unpublishedChildren: unpublished,
+  });
+  const l2System = compiled.projections.index.boundsByEntityIdAndBand["system:d"]?.container;
+  const l2First = compiled.projections.index.boundsByEntityIdAndBand["container:p00"]?.container;
+  const l2Last = compiled.projections.index.boundsByEntityIdAndBand["container:p09"]?.container;
+  assert.ok(l2System);
+  assert.ok(l2First);
+  assert.ok(l2Last);
+  const tile = {
+    width: C4_INTRINSIC_LAYOUT.leaf.code.width / C4_BAND_FOCUS_ZOOM.container,
+    height: C4_INTRINSIC_LAYOUT.leaf.code.height / C4_BAND_FOCUS_ZOOM.container,
+  };
+  assert.ok(Math.abs(l2First.width - tile.width) < 1e-6, "L2 container is a peer tile, not a reserved shell");
+  assert.ok(Math.abs(l2First.height - tile.height) < 1e-6);
+  const l2LayoutId = compiled.projections.family.projectionIds.container;
+  const l2Layout = compiled.projections.bandLayoutById[
+    compiled.projections.projectionById[l2LayoutId]!.layoutId
+  ];
+  const l2ReservedKinds = Object.keys(l2Layout?.reservedShells ?? {}).map(visualId =>
+    compiled.projections.visualNodeById[visualId]?.kind
+    ?? compiled.projections.index.entityIdByVisualNodeId[visualId]);
+  assert.equal(
+    l2ReservedKinds.some(kind => kind === "component" || kind === "code"
+      || (typeof kind === "string" && (kind.startsWith("component:") || kind.startsWith("code:")))),
+    false,
+    "L2 peer tiles must not paint unpublished L3/L4 reserved interiors",
+  );
+  assert.ok(l2System.width < tile.width * 8, "L2 system wraps the compact peer grid");
+  assert.ok(l2Last.y > l2First.y || l2Last.x > l2First.x, "peer tiles are packed as a grid");
+
+  const l3Bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "system:d",
+    focusEntityId: "container:p00",
+    familyId: "f",
+    maxBand: "component",
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  const l3 = compileC4Scene(snapshot, l3Bundle, {
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+    childCounts,
+    unpublishedChildren: unpublished,
+  });
+  const l3Owner = l3.projections.index.boundsByEntityIdAndBand["container:p00"]?.component;
+  assert.ok(l3Owner);
+  assert.ok(l3Owner.height > l2First.height * 2, "L3 keeps the CLA-81 reserved owner shell");
 });
 
 test("CLA-81: hang-guard stays 2000 and focus zooms stay locked to the compiler", () => {
