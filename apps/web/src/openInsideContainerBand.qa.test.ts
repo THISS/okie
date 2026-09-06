@@ -35,6 +35,7 @@ import {
   frameContainerPeerArrivalCamera,
   frameContextArrivalCamera,
   frameProjectionScope,
+  frameVisibleProjection,
   semanticLevelSession,
 } from './semantic/semanticLensEngine';
 
@@ -684,6 +685,119 @@ describe('CLA-92: Open inside scan L3 frames file-component peer cards at readab
     expect(camera!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
     expect(camera!.zoom).toBeGreaterThanOrEqual(CONTAINER_TITLE_READABLE_MIN_ZOOM - 1e-9);
     expect(containerTitleCssPx(camera!.zoom)).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe('CLA-94: rail step-out from L4 restores L1 system + externals', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('after Open inside to L4, rail L1 compiles context peers, not okie-only', async () => {
+    const snapshot = scanLikeSnapshot();
+    const externals = Array.from({ length: 8 }, (_, index) =>
+      scanEntity(`external:pkg-${index}`, 'externalSystem', undefined, `pkg-${index}`));
+    snapshot.entities.push(...externals);
+    snapshot.relations = externals.map(external => ({
+      id: `rel:${external.id}`,
+      from: 'container:apps-web',
+      to: external.id,
+      kind: 'dependsOn' as const,
+      evidence: [{ source: { path: 'apps/web/package.json', commitSha: 'sha' } }],
+    }));
+    const view = scanLikeView(snapshot);
+    const story = scanLikeStory(snapshot, view);
+    const requested: string[] = [];
+    const host = {
+      loadNeighborhood: async (focus: string) => {
+        requested.push(focus);
+        return sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: focus || 'system:okie' });
+      },
+      loadExcerpts: async () => undefined,
+      loadStory: async () => story,
+    };
+    const l1Packet = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1Packet, story, host, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+    const l1Boot = fixture.createScene(fixture.navigation.rootEntityId);
+    const l1BootIds = l1Boot.projection?.entityIdsByDetail.context ?? [];
+    expect(l1BootIds).toContain('system:okie');
+    expect(l1BootIds.filter(id => id.startsWith('external:')).length).toBeGreaterThanOrEqual(8);
+
+    await fixture.ensureNeighborhood('container:apps-web');
+    const l4Focus = scanCompileFocusForBand(
+      fixture.snapshot,
+      'container:apps-web',
+      'code',
+      fixture.navigation.rootEntityId,
+    );
+    await fixture.ensureNeighborhood(l4Focus);
+    expect(fixture.snapshot.entities.filter(entity => entity.kind === 'externalSystem').length).toBeGreaterThanOrEqual(8);
+
+    requested.length = 0;
+    const railFocus = scanCompileFocusForBand(
+      fixture.snapshot,
+      l4Focus,
+      'context',
+      fixture.navigation.rootEntityId,
+    );
+    expect(railFocus).toBe('system:okie');
+    await fixture.ensureNeighborhood(railFocus);
+    const l1Rail = fixture.createScene(railFocus);
+    const l1RailIds = l1Rail.projection?.entityIdsByDetail.context ?? [];
+    const l1Session = semanticLevelSession(l1Rail, 'context', [l4Focus, 'system:okie']);
+    const visible = l1RailIds.slice().sort();
+    const explorer = explorerEntitiesForView(l1Rail, {
+      detail: 'context',
+      selected: l1Rail.entities.find(entity => entity.id === 'system:okie')!,
+      settledTargetIds: l1Session.settled.map(entry => entry.targetId),
+      visibleIds: visible,
+    });
+    expect(l1RailIds).toContain('system:okie');
+    expect(l1RailIds.filter(id => id.startsWith('external:')).length).toBeGreaterThanOrEqual(8);
+    expect(explorer.length).toBeGreaterThanOrEqual(9);
+    expect(requested, 'rail L1 must re-fetch the view-root neighborhood for L1 peers').toContain('system:okie');
+
+    const fit = frameVisibleProjection(l1Rail, visible, 'context', viewport, chromeSafeArea);
+    const rail = frameProjectionScope(l1Rail, railFocus, 'context', viewport, chromeSafeArea);
+    expect(fit).toBeDefined();
+    expect(rail).toEqual(fit);
+    expect(fit!.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(fit!.zoom).toBeGreaterThanOrEqual(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
+  });
+
+  it('L4 neighborhood boot then rail L1 fetches missing context peers', async () => {
+    const snapshot = scanLikeSnapshot();
+    snapshot.entities.push(...Array.from({ length: 8 }, (_, index) =>
+      scanEntity(`external:pkg-${index}`, 'externalSystem', undefined, `pkg-${index}`)));
+    const view = scanLikeView(snapshot);
+    const story = scanLikeStory(snapshot, view);
+    const requested: string[] = [];
+    const host = {
+      loadNeighborhood: async (focus: string) => {
+        requested.push(focus);
+        return sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: focus || 'system:okie' });
+      },
+      loadExcerpts: async () => undefined,
+      loadStory: async () => story,
+    };
+    const l4Packet = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'component:apps-web-f0' });
+    expect(l4Packet.snapshot.entities.some(entity => entity.kind === 'externalSystem')).toBe(false);
+    const fixture = compileScanNeighborhoodFixture(l4Packet, story, host, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+    const before = fixture.createScene(fixture.navigation.rootEntityId);
+    expect((before.projection?.entityIdsByDetail.context ?? []).filter(id => id.startsWith('external:'))).toEqual([]);
+
+    const railFocus = scanCompileFocusForBand(
+      fixture.snapshot,
+      'component:apps-web-f0',
+      'context',
+      fixture.navigation.rootEntityId,
+    );
+    expect(railFocus).toBe('system:okie');
+    await fixture.ensureNeighborhood(railFocus);
+    expect(requested).toContain('system:okie');
+    const l1 = fixture.createScene(railFocus);
+    expect((l1.projection?.entityIdsByDetail.context ?? []).filter(id => id.startsWith('external:')).length)
+      .toBeGreaterThanOrEqual(8);
   });
 });
 

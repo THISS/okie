@@ -261,6 +261,31 @@ describe('CLA-73 slim neighborhood boot', () => {
     expect(l1.snapshot.entities.some(entity => entity.id === 'code:web-shell:app')).toBe(true);
   });
 
+  it('CLA-94: rail step-out re-fetches the view-root neighborhood after a nested merge', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const requested: string[] = [];
+    const host = {
+      loadNeighborhood: async (focus: string) => {
+        requested.push(focus);
+        return sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: focus || 'system:okie' });
+      },
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    requested.length = 0;
+    await fixture.ensureNeighborhood('system:okie');
+    expect(requested).toEqual([]);
+
+    await fixture.ensureNeighborhood('container:web-app');
+    requested.length = 0;
+    await fixture.ensureNeighborhood('system:okie');
+    expect(requested).toEqual(['system:okie']);
+    expect(fixture.snapshot.entities.some(entity => entity.kind === 'externalSystem' || entity.kind === 'person')).toBe(true);
+  });
+
   it('CLA-75: loads secret-free enrichment honesty from published sidecars, not snapshot.json', async () => {
     const packet = sliceArchitectureNeighborhood(
       structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,

@@ -1,7 +1,9 @@
 import {
   assignNeighborhoodSnapshot,
+  c4BandForKind,
   isNeighborhoodPacket,
   mergeChildCounts,
+  sliceArchitectureNeighborhood,
   validateNeighborhoodPacket,
   validateSnapshot,
   validateStoryDocument,
@@ -326,6 +328,20 @@ function buildLiveScanFixture(
   const loadedFocusIds = extras.loadedFocusIds ?? new Set<string>();
   const inflight = new Map<string, Promise<void>>();
   const host = extras.host;
+  // CLA-94: after a nested (L3/L4) neighborhood merge, the view-root packet
+  // must be fetched again before compiling L1/L2. loadedFocusIds + "already
+  // resident with children" would otherwise skip it, leaving okie-only context.
+  let fetchedDeeperThanRoot = false;
+
+  const snapshotHasContextPeers = (): boolean => snapshot.entities.some(entity =>
+    entity.id !== view.rootEntityId
+    && entity.parentId === undefined
+    && (entity.kind === 'person' || entity.kind === 'externalSystem' || entity.kind === 'softwareSystem'));
+
+  const viewRootNeedsContextRefresh = (focus: string): boolean => {
+    if (extras.boot !== 'neighborhood' || focus !== view.rootEntityId) return false;
+    return fetchedDeeperThanRoot || !snapshotHasContextPeers();
+  };
 
   const createScene = (
     focusEntityId: string,
@@ -334,8 +350,18 @@ function buildLiveScanFixture(
   ): AtlasScene => {
     const decision = guardScanCompile(snapshot, focusEntityId, view.rootEntityId);
     const scoped = decision.options;
+    // Neighborhood boot: compile the view-root L1/L2 packet, not the union of
+    // every opened L3/L4 subgraph. Matches CLA-66 (current band + one down).
+    const rootPacket = extras.boot === 'neighborhood' && decision.focusEntityId === view.rootEntityId
+      ? sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: decision.focusEntityId })
+      : undefined;
+    const compileSnapshot = rootPacket?.snapshot ?? snapshot;
+    const compileUnpublished = rootPacket?.unpublishedChildren ?? unpublishedChildren;
+    const compileChildCounts = rootPacket
+      ? mergeChildCounts(childCounts, rootPacket.childCounts)
+      : childCounts;
     const scene = createC4Scene({
-      baseSnapshot: snapshot,
+      baseSnapshot: compileSnapshot,
       rootEntityId: view.rootEntityId,
       focusEntityId: decision.focusEntityId,
       familyId: `view-family:${snapshot.repositoryId}:${decision.focusEntityId}`,
@@ -349,8 +375,8 @@ function buildLiveScanFixture(
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
       ...(residency?.worldBounds ? { residentWorldBounds: residency.worldBounds } : {}),
       ...(residency?.keepEntityIds ? { keepEntityIds: residency.keepEntityIds } : {}),
-      childCounts,
-      ...(unpublishedChildren.length ? { unpublishedChildren } : {}),
+      childCounts: compileChildCounts,
+      ...(compileUnpublished.length ? { unpublishedChildren: compileUnpublished } : {}),
     });
     return decision.refusal ? { ...scene, scanGuardRefusal: decision.refusal } : scene;
   };
@@ -359,14 +385,16 @@ function buildLiveScanFixture(
     if (!host) return;
     const focus = focusEntityId.trim();
     if (!focus) return;
-    if (loadedFocusIds.has(focus)) return;
+    const refreshRoot = viewRootNeedsContextRefresh(focus);
+    if (loadedFocusIds.has(focus) && !refreshRoot) return;
     const resident = snapshot.entities.some(entity => entity.id === focus);
     const knownChildren = snapshot.entities.some(entity => entity.parentId === focus);
     const publishedChildren = childCounts[focus] ?? 0;
     // Resident leaves and already-expanded boxes skip the network. A deep-link
     // or tour focus that is not in the slim snapshot must still fetch — L1
-    // childCounts does not list omitted L4 ids.
-    if (resident && (knownChildren || publishedChildren === 0)) {
+    // childCounts does not list omitted L4 ids. CLA-94: the view root still
+    // refetches after a nested neighborhood so L1 peers are not skipped.
+    if (resident && (knownChildren || publishedChildren === 0) && !refreshRoot) {
       loadedFocusIds.add(focus);
       return;
     }
@@ -401,6 +429,14 @@ function buildLiveScanFixture(
       }
       loadedFocusIds.add(focus);
       loadedFocusIds.add(packet.focusEntityId);
+      const owner = snapshot.entities.find(entity => entity.id === packet.focusEntityId)
+        ?? snapshot.entities.find(entity => entity.id === focus);
+      if (owner && c4BandForKind(owner.kind) !== 'context') {
+        fetchedDeeperThanRoot = true;
+        loadedFocusIds.delete(view.rootEntityId);
+      } else if (focus === view.rootEntityId || packet.focusEntityId === view.rootEntityId) {
+        fetchedDeeperThanRoot = false;
+      }
     })();
     inflight.set(focus, work);
     try {
