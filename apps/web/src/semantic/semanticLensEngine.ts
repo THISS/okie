@@ -245,47 +245,9 @@ function frameContextArrivalCluster(
 }
 
 /**
- * L2 peer card faces that still fit at a title-readable zoom, starting from
- * the top-left of the packed grid. Fitting every reserved package shell would
- * re-inflate Open inside to the camera floor (CLA-90).
- */
-function nearbyContainerArrivalIds(
-  scene: AtlasScene,
-  residentIds: readonly string[],
-  viewport: ViewportSize,
-  safeArea: SafeArea,
-): string[] {
-  const faces = residentIds.flatMap(id => {
-    const entity = scene.entities.find(candidate => candidate.id === id);
-    const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'container') : undefined;
-    return bounds ? [{ id, face: containerCardFaceBounds(bounds) }] : [];
-  }).sort((left, right) => left.face.y - right.face.y
-    || left.face.x - right.face.x
-    || left.id.localeCompare(right.id));
-  if (!faces.length) return [...residentIds];
-  const safeWidth = Math.max(80, viewport.width - safeArea.left - safeArea.right);
-  const safeHeight = Math.max(80, viewport.height - safeArea.top - safeArea.bottom);
-  const padding = 48;
-  const maxWorldWidth = (safeWidth - padding) / CONTAINER_TITLE_READABLE_MIN_ZOOM;
-  const maxWorldHeight = (safeHeight - padding) / CONTAINER_TITLE_READABLE_MIN_ZOOM;
-  const cluster = [faces[0]!];
-  let union = { ...faces[0]!.face };
-  for (const candidate of faces.slice(1)) {
-    const left = Math.min(union.x, candidate.face.x);
-    const top = Math.min(union.y, candidate.face.y);
-    const right = Math.max(union.x + union.width, candidate.face.x + candidate.face.width);
-    const bottom = Math.max(union.y + union.height, candidate.face.y + candidate.face.height);
-    if (right - left <= maxWorldWidth && bottom - top <= maxWorldHeight) {
-      cluster.push(candidate);
-      union = { x: left, y: top, width: right - left, height: bottom - top };
-    }
-  }
-  return cluster.map(item => item.id);
-}
-
-/**
- * Scan Open inside L2: frame resident container peer card faces at band-focus
- * zoom, not coverage-reveal of the reserved owner shell.
+ * Scan Open inside L2: frame the resident container peer map (next-band fitter
+ * on card faces), not coverage-reveal of the reserved owner shell and not a
+ * one-card crop at focus zoom (CLA-90 / CLA-95).
  */
 export function frameContainerPeerArrivalCamera(
   scene: AtlasScene,
@@ -296,17 +258,15 @@ export function frameContainerPeerArrivalCamera(
   const scopeIds = projectionScopeEntityIds(scene, rootEntityId, 'container');
   const residentIds = residentVisibleProjectionEntityIds(scene, scopeIds, 'container');
   if (!residentIds.length) return undefined;
-  const clusterIds = nearbyContainerArrivalIds(scene, residentIds, viewport, safeArea);
-  const focusZoom = scene.projection?.zoomPolicy?.bands.find(band => band.detail === 'container')?.focusZoom
-    ?? levels[1]!.zoom;
+  const { minZoom, maxZoom } = dominantBandZoomRange('container');
   return frameEntityIdsAtDetail(
     scene,
-    clusterIds,
+    residentIds,
     'container',
     viewport,
     safeArea,
-    CONTAINER_TITLE_READABLE_MIN_ZOOM,
-    focusZoom,
+    Math.max(minZoom, CONTAINER_TITLE_READABLE_MIN_ZOOM),
+    maxZoom,
     true,
   );
 }
