@@ -78,7 +78,7 @@ test("discovers .mts/.cts/.cjs/.jsx; skips .js in a TS repo (counted); includes 
   });
 });
 
-test("excludes *.spec.*, __tests__/, __mocks__/, *.bench.*", () => {
+test("excludes *.spec.*, __tests__/, __mocks__/, *.bench.*, rust tests/ and *_qa.rs", () => {
   withRepo({
     "package.json": JSON.stringify({ name: "m" }),
     "tsconfig.json": "{}",
@@ -88,8 +88,14 @@ test("excludes *.spec.*, __tests__/, __mocks__/, *.bench.*", () => {
     "src/bar.bench.ts": "1;\n",
     "src/__tests__/z.ts": "1;\n",
     "src/__mocks__/m.ts": "1;\n",
+    "crates/engine/Cargo.toml": "[package]\nname = \"engine\"\n",
+    "crates/engine/src/lib.rs": "pub fn f() {}\n",
+    "crates/engine/src/lib_qa.rs": "fn qa() {}\n",
+    "crates/engine/tests/smoke.rs": "fn smoke() {}\n",
   }, dir => {
-    assert.deepEqual(discoverRepository(dir).sourceFiles, ["src/index.ts"]);
+    const discovery = discoverRepository(dir);
+    assert.deepEqual(discovery.sourceFiles, ["crates/engine/src/lib.rs", "src/index.ts"]);
+    assert.equal(discovery.unitByFile.get("crates/engine/src/lib.rs"), "crates/engine");
   });
 });
 
@@ -174,6 +180,8 @@ test("tarball walk (discoverExtractedTree) equals git discovery on identical con
     assert.ok(tarball.units.some(unit => unit.dir === "apps/web"), "member from tarball walk");
     assert.ok(tarball.units.some(unit => unit.kind === "tooling"), "tooling from tarball walk");
     assert.ok(tarball.units.some(unit => unit.kind === "rust" && unit.dir === "crates/engine"), "rust crate from tarball walk");
+    assert.ok(tarball.sourceFiles.includes("crates/engine/src/lib.rs"), "crate .rs files are scanned");
+    assert.equal(tarball.unitByFile.get("crates/engine/src/lib.rs"), "crates/engine");
   });
 });
 

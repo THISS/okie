@@ -338,8 +338,8 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     if (discovery.sourceFiles.length === 0) {
       throw new Error(
         `No scannable source files in ${source.owner}/${source.repo} at ${commit.sha.slice(0, 12)}. ` +
-        "The scanner extracts .ts/.tsx/.mts/.cts/.mjs/.cjs/.jsx (and .js only for a pure-JS repo); " +
-        "this looks like a non-TypeScript/JavaScript repository.",
+        "The scanner extracts .ts/.tsx/.mts/.cts/.mjs/.cjs/.jsx/.rs (and .js only for a pure-JS repo); " +
+        "this looks like a repository with no TypeScript, JavaScript, or Rust sources.",
       );
     }
     // Live enrichment (M3) must run inside this window: packets read source bytes from

@@ -279,8 +279,8 @@ test("Okie scan L1 keeps the Anthropic SDK and drops UI/framework/utility packag
   const system = snapshot.entities.find(entity => entity.kind === "softwareSystem");
   assert.ok(web?.technology?.includes("TypeScript"), "web container names observed TypeScript");
   assert.ok(architecture?.technology?.includes("TypeScript"), "TS packages without L1 libraries still name TypeScript");
-  assert.ok(engine?.technology?.includes("Rust"), "opaque Rust crates name Rust");
-  assert.equal(snapshot.entities.some(entity => entity.parentId === engine?.id), false, "Rust crates stay opaque — no L3/L4 children");
+  assert.ok(engine?.technology?.includes("Rust"), "Rust crates name Rust");
+  assert.ok(snapshot.entities.some(entity => entity.parentId === engine?.id), "Rust crates drill to L3/L4 outline children");
   assert.ok(system?.technology?.includes("TypeScript") && system?.technology?.includes("Rust"), "system unions observed languages");
   assert.ok(web?.technology?.includes("react"), "react remains on the web container for inspector/detail");
   assert.ok(web?.technology?.includes("react-dom"), "react-dom remains on the web container");

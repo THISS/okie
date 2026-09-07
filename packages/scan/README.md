@@ -76,8 +76,8 @@ deterministically from **third-party runtime dependencies that are service bound
   container. Persons/externalSystems are laid out in the context band by the C4 projection automatically.
 - Scanning Okie yields e.g. `@anthropic-ai/sdk` at L1; `react` / `@fontsource/*` / `dompurify` stay
   on the web container's technology list.
-- **Rust crate dependencies** (`Cargo.toml`, e.g. `wgpu`) are a documented follow-up: R1 does not parse
-  `.rs`, so there is no import-frequency evidence to rank or anchor them.
+- **Rust crate dependencies** (`Cargo.toml`, e.g. `wgpu`) are a documented follow-up: crate
+  outline does not rank third-party `use` frequency for L1 externals.
 
 ### Deliberate calls (do not "fix" without reading this)
 
@@ -89,17 +89,18 @@ deterministically from **third-party runtime dependencies that are service bound
   `CanvasViewport` in `App.tsx`) are non-exported top-level functions.
 - **`packages/theme` is skipped** — it ships CSS tokens only, zero `.ts`, so it yields no
   container (the golden fixture has no theme container either).
-- **Rust crates are opaque containers** — path-only evidence, no `.rs` parsing in R1.
-  They still get an observed `Rust` technology tag so inspector cards are not
-  "Technology not specified"; Open inside stays disabled until a Rust extractor
-  (CLA-103) exists.
+- **Rust crates drill to L3/L4** — each crate `.rs` file is a file-component; top-level
+  `mod` / struct / enum / fn and impl methods (`Type::method`) are code entities
+  (tree-sitter-rust). Technology stays `Rust` (CLA-102). Hang-guard stays 2000.
+  Integration tests under `tests/` and `*_qa.rs` are excluded like TS tests.
 - **Observed language tags** (CLA-102) — `TypeScript` / `JavaScript` / `Rust` from
   file extensions (and Rust crate units). They prepend onto CLA-97 library names
   on the same container. `.tsx` is TypeScript, not a React claim. Golden curated
   badges (`TypeScript · Rust · WebAssembly · wgpu`) are a different fixture.
 - Derived structure legitimately differs from the golden fixture's *conceptual* grouping and IDs.
   The dogfooding gate is about **evidence coverage** (every golden `.ts/.tsx/.mjs` `path`+`symbol`
-  anchor appears among scan `code` entities), not ID equality. Rust anchors are excluded.
+  anchor appears among scan `code` entities), not ID equality. Rust golden path+symbol
+  anchors are covered the same way once outlined.
 
 ## Coverage & repository shapes
 
@@ -108,11 +109,11 @@ Discovery generalizes beyond Okie's own layout (validated against third-party cl
 - **Single-package repos** (no pnpm workspace) become **one root container**, named and
   evidenced from the root `package.json` (falling back to the directory name). The synthetic
   `tooling` container only appears when non-member scripts sit beside real workspace members.
-- **Extensions:** `.ts/.tsx/.mts/.cts/.mjs/.cjs/.jsx` are always scanned. `.js` is scanned
+- **Extensions:** `.ts/.tsx/.mts/.cts/.mjs/.cjs/.jsx/.rs` are always scanned. `.js` is scanned
   **only for a genuinely pure-JS repo** (no root tsconfig *and* no TypeScript source) — otherwise
   `.js` files are skipped and **counted in the scan summary**, never dropped silently.
 - **Excluded** (a named, tested list): `*.d.ts`, `dist/`, `*.test.*`, `*.spec.*`, `*.bench.*`,
-  `__tests__/`, `__mocks__/`.
+  `__tests__/`, `__mocks__/`, Rust `tests/` / `benches/` / `examples/` / `*_qa.rs` / `*_test.rs`.
 - **Fixture members** whose path matches `playground/example/e2e/fixtures/demo/sandbox` are skipped
   by default (with a summary count); pass `--include-members` to scan them.
 - **System name** comes from the root `package.json` `name` (fallback: directory basename).
