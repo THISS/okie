@@ -26,7 +26,7 @@ import {
   NO_SUMMARY_SUPPLIED,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
-import { scanEntityHasChildren } from './lazyBandCompile';
+import { scanCompileFocusForBand, scanEntityHasChildren } from './lazyBandCompile';
 import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedEdge, OmittedNode, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
@@ -559,4 +559,32 @@ export function scanDrillDeeperDetail(
     return undefined;
   }
   return deeper;
+}
+
+/**
+ * CLA-104: continuous-zoom compile target for scan mode.
+ *
+ * L1 already includes container bounds (`maxBand: container`), so L1→L2 wheel
+ * stays in the current scene. L2→L3 (and L3→L4 / zoom-out) need the same
+ * neighborhood swap Open inside performs via {@link scanCompileFocusForBand}.
+ * Pure — never compiles. Undefined when the current scene already shows that
+ * band's peer graph, or when the focused container has no children to open.
+ */
+export function scanZoomCompileHandoff(
+  scene: AtlasScene,
+  snapshot: ArchitectureSnapshot,
+  preferredEntityId: string,
+  viewRootId: string,
+  detail: SemanticDetail,
+  currentCompileFocus = scene.rootEntityId ?? viewRootId,
+): { detail: SemanticDetail; compileFocus: string } | undefined {
+  const compileFocus = scanCompileFocusForBand(snapshot, preferredEntityId, detail, viewRootId);
+  if (detail === 'context' || detail === 'container') {
+    return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
+  }
+  if (compileFocus === currentCompileFocus && scanDeeperBandHasPeerCards(scene, compileFocus, detail)) {
+    return undefined;
+  }
+  if (detail === 'component' && !scanEntityHasChildren(snapshot, compileFocus)) return undefined;
+  return { detail, compileFocus };
 }
