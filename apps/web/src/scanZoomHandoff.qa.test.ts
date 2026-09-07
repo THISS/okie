@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cameraWorldRect,
   expandRectByTileRing,
+  neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
   type ArchitectureSnapshot,
   type ArchitectureView,
@@ -73,6 +74,8 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     expect(app).toContain('scanZoomAdoptRawRef={scanZoomAdoptRawRef}');
     expect(applyScanZoomHandoff).toContain("historyControllerRef.current?.replace(navigation)");
     expect(refreshViewportNeighborhood).toContain('semanticLensSessionDetail(semanticLensSessionRef.current)');
+    expect(refreshViewportNeighborhood).toContain('scanZoomCompileHandoff(');
+    expect(refreshViewportNeighborhood).toContain('handoff?.compileFocus ?? currentFocus');
     expect(refreshViewportNeighborhood).toContain('scanWindowedCompileDropsPeerGraph(');
     expect(refreshViewportNeighborhood).not.toContain('semanticLensSessionRef.current.baseDetail');
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
@@ -488,5 +491,117 @@ describe('CLA-106: L2→L3 handoff keeps peer containers (no pan into void)', ()
     expect(scanDeeperBandHasPeerCards(windowed, 'container:web-app', 'component')).toBe(true);
     expect(scanPeerContainerIds(windowed, 'container:web-app').length).toBeGreaterThan(0);
     expect(scanWindowedCompileDropsPeerGraph(l3, windowed, 'container:web-app', 'component')).toBe(false);
+  });
+});
+
+describe('CLA-107: small-repo pre-place L2↔L3 wheel morphs in place', () => {
+  it('rail/pan stay on the current scene when L3 landmarks are already compiled', () => {
+    const selectLevelLoaded = sliceBetween(app, 'function selectLevelLoaded(', 'function openInside(', 'selectLevelLoaded');
+    expect(selectLevelLoaded).toContain('scanZoomCompileHandoff(scene, activeSnapshot, selected.id, viewRootId, detail, currentFocus)');
+    expect(selectLevelLoaded).toContain('handoff?.compileFocus ?? currentFocus');
+    expect(refreshViewportNeighborhood).toContain('handoff?.compileFocus ?? currentFocus');
+  });
+
+  it('opt-in L1 packet keeps L2↔L3 wheel on system:okie (both directions)', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const sliceOptions = neighborhoodSliceOptionsForFocus(snapshot, 'system:okie');
+    expect(sliceOptions).toEqual({ maxBand: 'component' });
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        {
+          focusEntityId: focus || 'system:okie',
+          ...neighborhoodSliceOptionsForFocus(snapshot, focus || 'system:okie'),
+        },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, {
+      focusEntityId: 'system:okie',
+      ...sliceOptions,
+    });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    const l2 = fixture.createScene(fixture.navigation.rootEntityId);
+    expect(l2.rootEntityId).toBe('system:okie');
+    expect((l2.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => l2.entities.find(entity => entity.id === id)?.detail === 'component').length).toBeGreaterThan(0);
+
+    const webApp = semanticBounds(l2, 'container:web-app', 'container');
+    expect(webApp).toBeDefined();
+    const camera = {
+      x: webApp!.x + webApp!.width / 2,
+      y: webApp!.y + webApp!.height / 2,
+      zoom: 4,
+    };
+    const pointer = { x: viewport.width / 2, y: viewport.height / 2 };
+    expect(scanZoomEntityUnderPointer(l2, camera, viewport, pointer, 'container'))
+      .toBe('container:web-app');
+
+    expect(getLevel(2.10)).toBe(1);
+    expect(getLevel(4)).toBe(2);
+    expect(scanZoomCompileHandoff(
+      l2,
+      fixture.snapshot,
+      'container:web-app',
+      fixture.navigation.rootEntityId,
+      'container',
+    )).toBeUndefined();
+    expect(scanZoomCompileHandoff(
+      l2,
+      fixture.snapshot,
+      'container:web-app',
+      fixture.navigation.rootEntityId,
+      'component',
+    )).toBeUndefined();
+
+    const preferred = scanZoomHandoffPreferredId(
+      l2,
+      fixture.snapshot,
+      fixture.navigation.rootEntityId,
+      'component',
+      l2.rootEntityId ?? fixture.navigation.rootEntityId,
+      camera,
+      viewport,
+      pointer,
+      'container',
+      'system:okie',
+    );
+    expect(preferred).toBe('system:okie');
+    expect(scanZoomCompileHandoff(
+      l2,
+      fixture.snapshot,
+      preferred,
+      fixture.navigation.rootEntityId,
+      'component',
+    )).toBeUndefined();
+
+    const container = l2.entities.find(entity => entity.id === 'container:web-app');
+    expect(container).toBeDefined();
+    expect(scanDrillDeeperDetail(l2, container!, fixture.snapshot)).toBe('component');
+
+    const session = semanticLevelSession(l2, 'component', ['container:web-app']);
+    expect(semanticLensSessionDetail(session)).toBe('component');
+    const rows = explorerEntitiesForView(l2, {
+      detail: 'component',
+      selected: container!,
+      settledTargetIds: session.settled.map(entry => entry.targetId),
+    });
+    expect(rows.some(row => row.detail === 'component')).toBe(true);
+
+    await fixture.ensureNeighborhood('container:web-app');
+    const opened = fixture.createScene('container:web-app');
+    expect(scanZoomCompileHandoff(
+      opened,
+      fixture.snapshot,
+      'container:web-app',
+      fixture.navigation.rootEntityId,
+      'container',
+    )).toEqual({
+      detail: 'container',
+      compileFocus: 'system:okie',
+    });
   });
 });

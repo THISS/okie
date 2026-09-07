@@ -422,6 +422,34 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
       compileFocus: 'system:root',
     });
   });
+
+  it('CLA-107: pre-placed L3 peers keep L2↔L3 wheel on the system scene', () => {
+    const preplaced: AtlasScene = {
+      ...l2Scene,
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': { context: bounds, container: bounds },
+          'container:c': { container: bounds, component: bounds },
+          'container:empty': { container: bounds },
+          'component:x': { component: bounds },
+        },
+        entityIdsByDetail: {
+          context: ['system:root'],
+          container: ['system:root', 'container:c', 'container:empty'],
+          component: ['component:x'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'container')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, snap, 'system:root', 'system:root', 'component')).toBeUndefined();
+    const opened: AtlasScene = { ...preplaced, rootEntityId: 'container:c' } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(opened, snap, 'container:c', 'system:root', 'container')).toEqual({
+      detail: 'container',
+      compileFocus: 'system:root',
+    });
+  });
 });
 
 describe('CLA-105: scan zoom prefers the container under the pointer', () => {
@@ -519,6 +547,38 @@ describe('CLA-105: scan zoom prefers the container under the pointer', () => {
     );
     expect(preferred).toBe('system:root');
     expect(scanZoomCompileHandoff(l2Scene, snap, preferred, 'system:root', 'component')).toBeUndefined();
+  });
+
+  it('CLA-107: pointer over a pre-placed container does not invent an L3 re-root', () => {
+    const preplaced: AtlasScene = {
+      ...l2Scene,
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': {
+            context: { x: 0, y: 0, width: 400, height: 200 },
+            container: { x: 0, y: 0, width: 400, height: 200 },
+          },
+          'container:c': {
+            container: { x: 10, y: 10, width: 100, height: 80 },
+            component: { x: 10, y: 10, width: 100, height: 80 },
+          },
+          'container:empty': { container: { x: 200, y: 10, width: 100, height: 80 } },
+          'component:x': { component: { x: 20, y: 20, width: 20, height: 20 } },
+        },
+        entityIdsByDetail: {
+          context: ['system:root'],
+          container: ['system:root', 'container:c', 'container:empty'],
+          component: ['component:x'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    const preferred = scanZoomHandoffPreferredId(
+      preplaced, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, pointerAt(60, 50), 'container', 'system:root',
+    );
+    expect(preferred).toBe('system:root');
+    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
   });
 });
 
