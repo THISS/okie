@@ -189,4 +189,13 @@ test("CLA-109: camera window keeps L4 of the on-screen file via parent faces", (
   assert.ok(codeKindCount > 0, "on-screen file keeps L4 landmarks");
   assert.ok(codeKindCount <= 20, "resident L4 respects the window");
   assert.ok((code.omittedNodeIds?.length ?? 0) > 0, "off-camera L4 stays enumerable");
+  const compiled = compileC4Scene(snapshot, paged, { targetAspect: 1.6 });
+  const fileVisualId = paged.index.visualNodeIdsByEntityId["component:c"]?.[0];
+  const componentLayout = compiled.projections.bandLayoutById[paged.projectionById[paged.family.projectionIds.component]!.layoutId];
+  const codeLayout = compiled.projections.bandLayoutById[code.layoutId];
+  const compact = fileVisualId ? componentLayout?.nodes[fileVisualId] : undefined;
+  const codeFace = fileVisualId ? codeLayout?.nodes[fileVisualId] : undefined;
+  assert.ok(compact && codeFace);
+  assert.equal(codeFace!.width, compact!.width);
+  assert.equal(codeFace!.height, compact!.height);
 });

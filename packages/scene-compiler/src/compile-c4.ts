@@ -818,6 +818,43 @@ export function layoutContextPeersAroundSystem(
  * Grows the squeeze-normalized hierarchy from its leaves upward, then reflows
  * every direct-child grid inside the resulting persistent owner shells.
  */
+function placeResidentCodeInParents(
+  nodes: Record<string, NodeLayout>,
+  visualNodeIds: readonly string[],
+  visualNodeById: Readonly<Record<string, VisualNode>>,
+): void {
+  const byParent = new Map<string, string[]>();
+  for (const id of visualNodeIds) {
+    const node = visualNodeById[id];
+    if (node?.kind !== 'code' || !node.parentVisualId || !nodes[node.parentVisualId]) continue;
+    const list = byParent.get(node.parentVisualId) ?? [];
+    list.push(id);
+    byParent.set(node.parentVisualId, list);
+  }
+  for (const [parentId, kids] of [...byParent.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    const parent = nodes[parentId]!;
+    kids.sort((left, right) => left.localeCompare(right));
+    const pad = 16;
+    const top = 40;
+    const cols = Math.max(1, Math.ceil(Math.sqrt(kids.length)));
+    const rows = Math.ceil(kids.length / cols);
+    const innerW = Math.max(8, parent.width - pad * 2);
+    const innerH = Math.max(8, parent.height - top - pad);
+    const cellW = innerW / cols;
+    const cellH = innerH / rows;
+    kids.forEach((id, index) => {
+      const column = index % cols;
+      const row = Math.floor(index / cols);
+      nodes[id] = {
+        x: parent.x + pad + column * cellW + 4,
+        y: parent.y + top + row * cellH + 4,
+        width: Math.max(4, cellW - 8),
+        height: Math.max(4, cellH - 8),
+      };
+    });
+  }
+}
+
 function applyIntrinsicOwnerGeometry(
   snapshot: ArchitectureSnapshot,
   bundle: C4ProjectionBundle,
@@ -1036,7 +1073,10 @@ function applyIntrinsicOwnerGeometry(
     for (const [entityId, bounds] of bandCanonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
       if (resident.has(visualId)) {
-        layout.nodes[visualId] = { ...bounds };
+        const compact = band === 'code' && omitted.size && entities.get(entityId)?.kind === 'component'
+          ? bundle.bandLayoutById[bundle.projectionById[bundle.family.projectionIds.component]!.layoutId]?.nodes[visualId]
+          : undefined;
+        layout.nodes[visualId] = { ...(compact ?? bounds) };
         continue;
       }
       const parentId = entities.get(entityId)?.parentId;
@@ -1074,6 +1114,9 @@ function applyIntrinsicOwnerGeometry(
     }
     if (Object.keys(reservedShells).length) layout.reservedShells = reservedShells;
     else delete layout.reservedShells;
+    if (band === 'code' && omitted.size) {
+      placeResidentCodeInParents(layout.nodes, projection.visualNodeIds, bundle.visualNodeById);
+    }
     const focusZoom = C4_ZOOM_BANDS.find(value => value.detail === band)!.focusZoom;
     const routed = routeC4BandEdgesDetailed(
       projection,
