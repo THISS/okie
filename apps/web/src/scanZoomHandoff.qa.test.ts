@@ -271,7 +271,7 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     } as unknown as AtlasScene;
     expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'component')).toBe(true);
     expect(scanWindowedCompileDropsPeerGraph(withPeers, withPeers, 'container:c', 'component')).toBe(false);
-    expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'container')).toBe(false);
+    expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'container')).toBe(true);
   });
 });
 

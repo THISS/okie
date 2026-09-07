@@ -185,3 +185,29 @@ test('CLA-109: pagedKinds code keeps L3 shells and pages L4 using parent bounds'
   assert.ok(selection.omittedIds.includes('far'));
   assert.equal(selection.residentIds.filter(id => id === 'near' || id === 'mid' || id === 'far').length, 1);
 });
+
+test('CLA-109: miss-camera L4 paging keeps a landmark floor instead of zero', () => {
+  const packed = {
+    file: { x: 0, y: 0, width: 400, height: 100 },
+    peer: { x: 3000, y: 0, width: 400, height: 100 },
+  };
+  const visualNodeById = {
+    file: { kind: 'component' as const, entity: { logicalId: 'component:file' } },
+    peer: { kind: 'component' as const, entity: { logicalId: 'component:peer' } },
+    near: { kind: 'code' as const, entity: { logicalId: 'code:near' }, parentVisualId: 'file' },
+    far: { kind: 'code' as const, entity: { logicalId: 'code:far' }, parentVisualId: 'peer' },
+  };
+  const selection = selectResidentVisualNodeIds({
+    band: 'code',
+    visualNodeIds: ['file', 'peer', 'near', 'far'],
+    packed,
+    visualNodeById,
+    focusEntityId: 'system:root',
+    maxNodesPerBand: 1,
+    pagedKinds: ['code'],
+    residentWorldBounds: { x: 1_000_000, y: 1_000_000, width: 10, height: 10 },
+  });
+  assert.ok(selection.residentIds.includes('file'));
+  assert.ok(selection.residentIds.includes('peer'));
+  assert.equal(selection.residentIds.filter(id => id === 'near' || id === 'far').length, 1);
+});

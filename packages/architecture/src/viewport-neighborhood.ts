@@ -210,6 +210,20 @@ export function selectResidentVisualNodeIds(
     eligible.add(id);
   }
 
+  // CLA-109: L1/L2 camera tiles can miss every L4 box (compact container
+  // faces vs file interiors). Never page the landmark set to zero — keep the
+  // nearest cap so L3↔L4 can still morph instead of re-rooting.
+  if (input.pagedKinds && input.maxNodesPerBand !== undefined) {
+    const pagedEligible = [...eligible].filter(id => paged(byId[id]?.kind));
+    if (pagedEligible.length === 0) {
+      for (const id of ordered) {
+        if (always.has(id) || !paged(byId[id]?.kind)) continue;
+        if (!pagingBounds(id, input.packed, byId)) continue;
+        eligible.add(id);
+      }
+    }
+  }
+
   const pagedEligibleCount = [...eligible].filter(id => paged(byId[id]?.kind)).length;
   if (input.maxNodesPerBand === undefined || pagedEligibleCount <= input.maxNodesPerBand) {
     const residentIds = ordered.filter(id => eligible.has(id));

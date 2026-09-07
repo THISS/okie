@@ -249,5 +249,35 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
     const pannedCode = (panned.projection?.entityIdsByDetail.code ?? [])
       .filter(id => panned.entities.find(entity => entity.id === id)?.detail === 'code');
     expect(pannedCode.some(id => id.startsWith('code:f7-'))).toBe(true);
+    const farFileBounds = panned.projection?.boundsByEntityIdAndDetail['component:f7']?.component
+      ?? panned.projection?.boundsByEntityIdAndDetail['component:f7']?.code;
+    expect(farFileBounds).toBeDefined();
+    const inFile = pannedCode.filter(id => {
+      const bounds = panned.projection?.boundsByEntityIdAndDetail[id]?.code;
+      return bounds
+        && bounds.x >= farFileBounds!.x - 1
+        && bounds.y >= farFileBounds!.y - 1
+        && bounds.x + bounds.width <= farFileBounds!.x + farFileBounds!.width + 1
+        && bounds.y + bounds.height <= farFileBounds!.y + farFileBounds!.height + 1;
+    });
+    expect(inFile.length).toBeGreaterThan(0);
+  });
+
+  it('miss-camera system scene still stays on L3↔L4 instead of re-rooting into a file', () => {
+    const compiled = compileScanFixture({
+      snapshot: structuredClone(demoSnapshot),
+      view: structuredClone(demoView),
+      story: structuredClone(demoStory),
+    });
+    const viewRoot = compiled.navigation.rootEntityId;
+    const scene = compiled.createScene(viewRoot);
+    const missed = compiled.createScene(viewRoot, scene, {
+      worldBounds: { x: 1_000_000, y: 1_000_000, width: 10, height: 10 },
+    });
+    expect(scanDeeperBandHasPeerCards(missed, viewRoot, 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(missed, viewRoot, 'code')).toBe(true);
+    expect(scanZoomCompileHandoff(missed, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(missed, compiled.snapshot, viewRoot, viewRoot, 'code')).toBeUndefined();
+    expect(scanCompileFocusForBand(compiled.snapshot, 'container:web-app', 'code', viewRoot)).not.toBe(viewRoot);
   });
 });

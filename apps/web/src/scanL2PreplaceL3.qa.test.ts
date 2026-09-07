@@ -15,6 +15,7 @@ import demoStory from '../../../fixtures/architecture/demo-story.json';
 import {
   scanDeeperBandHasPeerCards,
   scanDrillDeeperDetail,
+  scanWindowedCompileDropsPeerGraph,
   scanZoomCompileHandoff,
 } from './renderer/goldenC4Scene';
 import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
@@ -115,7 +116,10 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(farIds.sort()).toEqual([...componentIds].sort());
     const farCode = (far.projection?.entityIdsByDetail.code ?? [])
       .filter(id => far.entities.find(entity => entity.id === id)?.detail === 'code');
+    expect(farCode.length).toBeGreaterThan(0);
     expect(farCode.length).toBeLessThanOrEqual(codeIds.length);
+    expect(scanZoomCompileHandoff(far, compiled.snapshot, compiled.navigation.rootEntityId, compiled.navigation.rootEntityId, 'code')).toBeUndefined();
+    expect(scanWindowedCompileDropsPeerGraph(scene, far, compiled.navigation.rootEntityId, 'container')).toBe(false);
   });
 
   it('hosted-style L1 packet (server opt-in) compiles L2 with in-place landmarks without Open inside', () => {

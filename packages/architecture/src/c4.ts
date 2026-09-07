@@ -201,9 +201,11 @@ export type BuildC4ProjectionOptions = {
    */
   pageCodeLandmarks?: boolean;
   /**
-   * World-space entity bounds for L4 paging (containment or the previous
-   * scene). When set, `pageCodeLandmarks` selects L4 in camera space instead
-   * of stage-1 leaf packing, and does not re-pack parents after the window.
+   * World-space entity bounds for L4 paging (previous compiled scene). When
+   * set, `pageCodeLandmarks` selects L4 in that camera space instead of
+   * stage-1 leaf packing, and does not re-pack parents after the window.
+   * Omit on first compile so parent file shells (packed with L3) provide the
+   * overlap test — containment layout is a different space from L1/L2 tiles.
    */
   entityLayoutHints?: Readonly<Record<string, NodeLayout>>;
 };
@@ -1316,9 +1318,10 @@ export function buildC4ProjectionBundle(
     });
     // CLA-74: pack the full L3/L4 neighborhood first so parent bounds stay
     // stable, then keep only the camera-resident window in the compiled scene.
-    // CLA-109 `pageCodeLandmarks`: select L4 in containment/previous-scene
-    // coordinates (camera space), keep L3 shells, do not re-pack parents.
-    // Default (no cap, no camera rect) skips this so golden stays byte-identical.
+    // CLA-109 `pageCodeLandmarks`: keep L3 shells, select L4 against packed
+    // parent faces (and previous-scene hints when present). Do not re-pack
+    // parents after the window. Default (no cap, no camera rect) skips this
+    // so golden stays byte-identical.
     const pageOffscreen = (options.pageCodeLandmarks ? band === 'code' : (band === 'component' || band === 'code'))
       && (options.maxNodesPerBand !== undefined || options.residentWorldBounds !== undefined);
     let omittedNodeIds: string[] = [];
@@ -1328,15 +1331,16 @@ export function buildC4ProjectionBundle(
       const hinted = options.pageCodeLandmarks && options.entityLayoutHints
         ? packedFromEntityHints(visualNodeIds, visualNodeById, options.entityLayoutHints)
         : undefined;
-      const packedForSelect = hinted && Object.keys(hinted).length
-        ? hinted
-        : packVisualNodes(
-          options.pageCodeLandmarks
-            ? visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code')
-            : visualNodeIds,
-          visualNodeById,
-          options.targetAspect,
-        );
+      const packedForSelect = options.pageCodeLandmarks
+        ? {
+          ...packVisualNodes(
+            visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code'),
+            visualNodeById,
+            options.targetAspect,
+          ),
+          ...(hinted ?? {}),
+        }
+        : packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect);
       const selection = selectResidentVisualNodeIds({
         band,
         visualNodeIds,
@@ -1359,6 +1363,9 @@ export function buildC4ProjectionBundle(
         )
         : packedForSelect;
       if (options.pageCodeLandmarks) {
+        for (const id of visualNodeIds) {
+          if (!packedNodes[id] && packedForSelect[id]) packedNodes[id] = packedForSelect[id];
+        }
         const missingShells = visualNodeIds.filter(id =>
           !packedNodes![id] && visualNodeById[id]?.kind !== 'code');
         if (missingShells.length) {

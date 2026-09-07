@@ -1,8 +1,8 @@
 import {
   buildC4ProjectionBundle,
-  computeContainmentLayout,
   materializeArchitectureAuthoring,
   selectC4BandProjection,
+  snapshotPreplacesL3InL2,
   validateStory,
   type C4ProjectionBundle,
   type ArchitectureSnapshot,
@@ -299,28 +299,14 @@ export function resolveOmittedEdges(bundle: C4ProjectionBundle, snapshot: Archit
 }
 
 function entityLayoutHintsForCodePaging(
-  snapshot: ArchitectureSnapshot,
   previous: AtlasScene | undefined,
-  targetAspect: number | undefined,
-  childCounts: Readonly<Record<string, number>> | undefined,
-): Record<string, NodeLayout> {
+): Record<string, NodeLayout> | undefined {
   const fromPrevious: Record<string, NodeLayout> = {};
   for (const [id, bands] of Object.entries(previous?.projection?.boundsByEntityIdAndDetail ?? {})) {
     const bounds = bands.code ?? bands.component ?? bands.container ?? bands.context;
     if (bounds) fromPrevious[id] = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
   }
-  if (Object.keys(fromPrevious).length > 0) return fromPrevious;
-  return computeContainmentLayout(
-    snapshot.entities.map(entity => ({
-      id: entity.id,
-      kind: entity.kind,
-      ...(entity.parentId ? { parentId: entity.parentId } : {}),
-    })),
-    {
-      ...(targetAspect !== undefined ? { targetAspect } : {}),
-      ...(childCounts ? { childCounts } : {}),
-    },
-  );
+  return Object.keys(fromPrevious).length > 0 ? fromPrevious : undefined;
 }
 
 /**
@@ -334,6 +320,9 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
   const snapshot = authoring
     ? materializeArchitectureAuthoring(baseSnapshot, authoring)
     : baseSnapshot;
+  const entityLayoutHints = options.pageCodeLandmarks
+    ? entityLayoutHintsForCodePaging(previous)
+    : undefined;
   const buildOptions = {
     rootEntityId: options.rootEntityId,
     focusEntityId: options.focusEntityId,
@@ -343,14 +332,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
     ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
     ...(options.pageCodeLandmarks ? { pageCodeLandmarks: true } : {}),
-    ...(options.pageCodeLandmarks ? {
-      entityLayoutHints: entityLayoutHintsForCodePaging(
-        snapshot,
-        previous,
-        options.targetAspect,
-        options.childCounts,
-      ),
-    } : {}),
+    ...(entityLayoutHints ? { entityLayoutHints } : {}),
     ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
     ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
@@ -556,9 +538,16 @@ export function scanWindowedCompileDropsPeerGraph(
   ownerId: string,
   detail: SemanticDetail,
 ): boolean {
-  if (detail !== 'component' && detail !== 'code') return false;
-  return scanDeeperBandHasPeerCards(current, ownerId, detail)
-    && !scanDeeperBandHasPeerCards(next, ownerId, detail);
+  const drops = (band: SemanticDetail) =>
+    scanDeeperBandHasPeerCards(current, ownerId, band)
+    && !scanDeeperBandHasPeerCards(next, ownerId, band);
+  if ((detail === 'component' || detail === 'code') && drops(detail)) return true;
+  // CLA-109: L1/L2 camera settles must not strip the L3/L4 landmarks the
+  // next wheel crossfade needs. CLA-74 still pages at L3/L4 themselves.
+  if ((detail === 'context' || detail === 'container') && (drops('component') || drops('code'))) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -677,6 +666,17 @@ export function scanZoomCompileHandoff(
   if (
     (detail === 'component' || detail === 'code')
     && scanDeeperBandHasPeerCards(scene, currentCompileFocus, detail)
+  ) {
+    return undefined;
+  }
+  // CLA-109: small-repo system scenes keep L3 file shells even when this
+  // L1/L2 tile window dropped every L4 card. Stay for code so wheel does not
+  // re-root into a file. Large-repo L2 (no L3 peers) still hands off.
+  if (
+    detail === 'code'
+    && snapshotPreplacesL3InL2(snapshot)
+    && currentCompileFocus === viewRootId
+    && scanDeeperBandHasPeerCards(scene, currentCompileFocus, 'component')
   ) {
     return undefined;
   }
