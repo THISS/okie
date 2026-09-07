@@ -58,9 +58,14 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
     ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
   ]);
 
-  it('system→container; container→component + edge budget + grid cap; component→code; code→resident window — below and above the hang-guard', () => {
+  it('system→container above the hang-guard; small-repo system compiles L3 landmarks (CLA-107)', () => {
+    expect(scanScopeCompileOptions(big, 'system:root')).toEqual({ maxBand: 'container' });
+    expect(scanScopeCompileOptions(small, 'system:root')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
     for (const snap of [small, big]) {
-      expect(scanScopeCompileOptions(snap, 'system:root')).toEqual({ maxBand: 'container' });
       expect(scanScopeCompileOptions(snap, 'container:c')).toEqual({
         maxBand: 'component',
         maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
@@ -510,7 +515,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
   it('budgets routed edges + router grid above the relation gate, composed with per-kind maxBand', () => {
     const dense = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN + 1));
     expect(scanScopeCompileOptions(dense, 'system:root')).toEqual({
-      maxBand: 'container',
+      maxBand: 'component',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
     });
@@ -533,9 +538,28 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
     });
   });
 
-  it('stays at per-kind maxBand at or below the relation gate', () => {
+  it('CLA-107: small-repo system overlay still applies at or below the relation gate', () => {
     const sparse = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN));
-    expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({ maxBand: 'container' });
+    expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+  });
+
+  it('CLA-107: 11+ containers stay CLA-66 lazy (maxBand container, no L3 overlay)', () => {
+    const large = snapshot([
+      entity('system:root', 'softwareSystem'),
+      ...Array.from({ length: 11 }, (_, index) => entity(`container:c${index}`, 'container', 'system:root')),
+      entity('component:x', 'component', 'container:c0'),
+    ]);
+    expect(scanScopeCompileOptions(large, 'system:root')).toEqual({ maxBand: 'container' });
+    expect(scanScopeCompileOptions(large, 'container:c0')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+    });
   });
 
   it('composes with the entity gate: per-kind options win where set, budgets fill the gaps', () => {
@@ -604,10 +628,10 @@ describe('CLA-66: per-neighborhood compile — quiet containers drill without a 
     return selectC4BandProjection(compiled, band).nodes.map(node => node.entity.logicalId);
   }
 
-  it('root compile is a handful of L1/L2 nodes, not L4 rows', () => {
+  it('root compile is a handful of L1–L3 nodes, not L4 rows (CLA-107 pre-places L3)', () => {
     const root = bundle('system:root');
     expect(ids(root, 'container')).toEqual(expect.arrayContaining(['container:web', 'container:architecture']));
-    expect(ids(root, 'component')).toEqual([]);
+    expect(ids(root, 'component')).toEqual(expect.arrayContaining(['component:web-a', 'component:arch-a']));
     expect(ids(root, 'code')).toEqual([]);
   });
 

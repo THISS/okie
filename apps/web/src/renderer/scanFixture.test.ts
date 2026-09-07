@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadPublishedEnrichmentHonesty, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadPublishedEnrichmentHonesty, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, SCAN_CONTAINER_GRID_NODES, SCAN_RELATION_EDGE_BUDGET, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -30,12 +30,17 @@ describe('scan fixture loader', () => {
     expect(refocused.id).toBe(scene.id);
     expect(refocused.entities).toHaveLength(demoSnapshot.entities.length);
 
-    // Hang-guard is a no-op on the demo-sized snapshot; per-kind maxBand still
-    // scopes the root compile (CLA-66) so L1 stays a handful, not every L4 row.
+    // Hang-guard is a no-op on the demo-sized snapshot. CLA-107 pre-places L3
+    // in the small-repo system compile; L4 (code) stays scoped out.
     expect(fixture.createScene(fixture.navigation.rootEntityId).scanGuardRefusal).toBeUndefined();
     expect(refocused.scanGuardRefusal).toBeUndefined();
-    expect(fixture.scopeCompileOptions(fixture.navigation.rootEntityId)).toEqual({ maxBand: 'container' });
-    expect(scene.projection?.entityIdsByDetail.component ?? []).toEqual([]);
+    expect(fixture.scopeCompileOptions(fixture.navigation.rootEntityId)).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect((scene.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => scene.entities.find(entity => entity.id === id)?.detail === 'component').length).toBeGreaterThan(0);
     expect(scene.projection?.entityIdsByDetail.code ?? []).toEqual([]);
   });
 
@@ -51,7 +56,11 @@ describe('scan fixture loader', () => {
     const off = JSON.stringify(base.createScene(root).protocolSnapshot);
     const on = JSON.stringify(landscape.createScene(root).protocolSnapshot);
     expect(on).not.toEqual(off);
-    expect(landscape.scopeCompileOptions(root)).toEqual({ maxBand: 'container' });
+    expect(landscape.scopeCompileOptions(root)).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
   });
 
 

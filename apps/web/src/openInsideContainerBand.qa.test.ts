@@ -95,7 +95,8 @@ describe('CLA-80: Open inside an L2 container lands on L3', () => {
     const container = l1Scene.entities.find(entity => entity.id === 'container:web-app');
     expect(container).toBeDefined();
     expect(scanDrillDeeperDetail(l1Scene, container!, fixture.snapshot)).toBe('component');
-    expect((l1Scene.projection?.entityIdsByDetail.component ?? []).length).toBe(0);
+    expect((l1Scene.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => l1Scene.entities.find(entity => entity.id === id)?.detail === 'component').length).toBe(0);
 
     await fixture.ensureNeighborhood('container:web-app');
     const l3Focus = scanCompileFocusForBand(
@@ -291,7 +292,8 @@ describe('CLA-83: Open inside the scan system lands on L2 container peers', () =
       'container:apps-web',
       'container:packages-architecture',
     ]));
-    expect((l2.projection?.entityIdsByDetail.component ?? []).length).toBe(0);
+    expect((l2.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => l2.entities.find(entity => entity.id === id)?.detail === 'component').length).toBe(0);
 
     const session = semanticLevelSession(l2, 'container', ['system:okie']);
     expect(semanticLensSessionDetail(session)).toBe('container');

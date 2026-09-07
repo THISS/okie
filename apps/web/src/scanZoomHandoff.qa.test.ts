@@ -97,7 +97,8 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     const l2Scene = fixture.createScene(fixture.navigation.rootEntityId);
     expect(l2Scene.rootEntityId).toBe('system:okie');
     expect((l2Scene.projection?.entityIdsByDetail.container ?? []).length).toBeGreaterThan(1);
-    expect((l2Scene.projection?.entityIdsByDetail.component ?? []).length).toBe(0);
+    expect((l2Scene.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => l2Scene.entities.find(entity => entity.id === id)?.detail === 'component').length).toBe(0);
 
     expect(getLevel(2.10)).toBe(1);
     expect(scanZoomCompileHandoff(

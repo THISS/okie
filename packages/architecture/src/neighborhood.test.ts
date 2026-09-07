@@ -13,6 +13,7 @@ import type {
 import {
   excerptPacketForEntity,
   mergeArchitectureNeighborhoods,
+  neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
   validateNeighborhoodPacket,
 } from "./neighborhood.js";
@@ -223,6 +224,65 @@ test("golden L1 neighborhood stays a handful and validates", async () => {
   assert.equal(kinds.has("code"), false);
   assert.ok(packet.snapshot.entities.length < 20);
   assert.deepEqual(validateNeighborhoodPacket(packet), []);
+});
+
+test("CLA-107: small-repo L1 opt-in includes components, not code", async () => {
+  const snapshot = await readJson<ArchitectureSnapshot>("architecture/demo-snapshot.json");
+  const view = await readJson<ArchitectureView>("architecture/demo-view.json");
+  const options = neighborhoodSliceOptionsForFocus(snapshot, "system:okie");
+  assert.deepEqual(options, { maxBand: "component" });
+  const packet = sliceArchitectureNeighborhood(snapshot, view, {
+    focusEntityId: "system:okie",
+    ...options,
+  });
+  const kinds = new Set(packet.snapshot.entities.map(item => item.kind));
+  assert.ok(kinds.has("softwareSystem"));
+  assert.ok(kinds.has("container"));
+  assert.ok(kinds.has("component"));
+  assert.equal(kinds.has("code"), false);
+  assert.ok(packet.truncated);
+  assert.ok(packet.snapshot.entities.some(item => item.kind === "component" && item.parentId?.startsWith("container:")));
+  assert.deepEqual(validateNeighborhoodPacket(packet), []);
+});
+
+test("CLA-107: default L1 slice stays CLA-73 (no auto-rewrite of +1 band)", () => {
+  const snapshot = fatSnapshot();
+  const view = viewFor(snapshot, "system:root");
+  const packet = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: "system:root" });
+  assert.equal(packet.snapshot.entities.some(item => item.kind === "component"), false);
+  const opted = sliceArchitectureNeighborhood(snapshot, view, {
+    focusEntityId: "system:root",
+    ...neighborhoodSliceOptionsForFocus(snapshot, "system:root"),
+  });
+  assert.ok(opted.snapshot.entities.some(item => item.kind === "component"));
+  assert.equal(opted.snapshot.entities.some(item => item.kind === "code"), false);
+});
+
+test("CLA-107: 11+ containers do not opt into L3-in-L1", () => {
+  const entities: ArchitectureEntity[] = [
+    entity("system:root", "softwareSystem"),
+  ];
+  for (let index = 0; index < 11; index += 1) {
+    const containerId = `container:c${index}`;
+    entities.push(entity(containerId, "container", "system:root"));
+    entities.push(entity(`component:c${index}-f0`, "component", containerId));
+  }
+  const snapshot: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: "snapshot:large",
+    repositoryId: "repo:large",
+    commitSha: "sha",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    entities,
+    relations: [],
+  };
+  assert.deepEqual(neighborhoodSliceOptionsForFocus(snapshot, "system:root"), {});
+  const view = viewFor(snapshot, "system:root");
+  const packet = sliceArchitectureNeighborhood(snapshot, view, {
+    focusEntityId: "system:root",
+    ...neighborhoodSliceOptionsForFocus(snapshot, "system:root"),
+  });
+  assert.equal(packet.snapshot.entities.some(item => item.kind === "component"), false);
 });
 
 test("neighborhood payload never carries host paths or key-shaped fields", () => {
