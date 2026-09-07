@@ -47,6 +47,8 @@ describe('CLA-77 user-flow stories', () => {
     expect(app).toContain('storyCatalog');
     expect(app).toContain('data-story-catalog-count={storyCatalog.length}');
     expect(app).toContain('data-testid={plan.id === defaultStory.id ? \'story-launch-overview\' : \'story-launch-flow\'}');
+    expect(app).toContain('className="story-catalog-menu"');
+    expect(app).toContain('className="story-catalog-item"');
     expect(app).toContain('startOverviewTour: () => setStep(0, true, \'push\', defaultStory)');
     expect(app).toContain('hasStory: (id: string) => storyCatalog.some(plan => plan.id === id)');
   });

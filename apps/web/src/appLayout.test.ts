@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 
 const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
@@ -507,6 +508,30 @@ describe('canvas screenshot capture', () => {
     expect(app).toContain('captureSceneBlob({');
     expect(app).toContain("new ClipboardItem({ 'image/png': blob })");
     expect(app).toContain('downloadBlob(blob, screenshotFilename(activeDiagramSurface.title');
+  });
+});
+
+describe('story launcher chrome (CLA-98)', () => {
+  it('keeps Ask Atlas plus a catalog on one row and does not wrap over minimap chrome', () => {
+    expect(declarations(css, '.story-launcher')).toContain('flex-wrap: nowrap');
+    expect(declarations(css, '.story-launcher')).toContain('bottom: 62px');
+    expect(css).toMatch(/\.saved-story,\s*\.story-catalog-menu > summary \{[^}]*height: 51px/);
+    expect(declarations(css, '.story-catalog-menu > div')).toContain('bottom: 59px');
+    expect(app).toContain('storyCatalog.length === 1');
+    expect(app).toContain('className="story-catalog-menu"');
+    expect(app).toContain('className="saved-story"');
+    expect(app).toContain('className="story-catalog-item"');
+    expect(app).toContain("data-testid={plan.id === defaultStory.id ? 'story-launch-overview' : 'story-launch-flow'}");
+    expect(app).toContain('Guided tours');
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('leaves the golden single-story chip on the launcher and collapses N stories into the menu', () => {
+    expect(app).toContain('{storyCatalog.length === 1 ? storyCatalog.map(plan => (');
+    expect(app).toContain('<details className="story-catalog-menu">');
+    const compact = css.slice(css.indexOf('@media (max-width: 1060px)'));
+    expect(declarations(compact, '.saved-story')).toContain('display: none');
+    expect(compact).not.toMatch(/\.story-catalog-menu\s*\{[^}]*display:\s*none/);
   });
 });
 
