@@ -4,6 +4,8 @@ import {
   SMALL_REPO_L3_PREPLACE_CONTAINERS,
   SMALL_REPO_L3_PREPLACE_MAX_COMPONENTS,
   snapshotPreplacesL3InL2,
+  type ArchitectureEntity,
+  type ArchitectureSnapshot,
 } from '@okie/architecture';
 import demoSnapshot from '../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../fixtures/architecture/demo-view.json';
@@ -169,24 +171,24 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
     expect(fileId).toBeDefined();
     expect(compiled.scopeCompileOptions(fileId!).pageCodeLandmarks).toBeUndefined();
 
-    const entities = [
-      { id: 'system:okie', kind: 'softwareSystem' as const, name: 'Okie', sourceRefs: [] },
-      { id: 'container:web', kind: 'container' as const, parentId: 'system:okie', name: 'Web', sourceRefs: [] },
+    const entities: ArchitectureEntity[] = [
+      { id: 'system:okie', kind: 'softwareSystem', name: 'Okie', sourceRefs: [] },
+      { id: 'container:web', kind: 'container', parentId: 'system:okie', name: 'Web', sourceRefs: [] },
     ];
     for (let index = 0; index < 8; index += 1) {
-      const fileId = `component:f${index}`;
-      entities.push({ id: fileId, kind: 'component', parentId: 'container:web', name: `f${index}`, sourceRefs: [] });
+      const nextFileId = `component:f${index}`;
+      entities.push({ id: nextFileId, kind: 'component', parentId: 'container:web', name: `f${index}`, sourceRefs: [] });
       for (let code = 0; code < 12; code += 1) {
         entities.push({
           id: `code:f${index}-${code}`,
           kind: 'code',
-          parentId: fileId,
+          parentId: nextFileId,
           name: `k${code}`,
           sourceRefs: [],
         });
       }
     }
-    const snapshot = {
+    const snapshot: ArchitectureSnapshot = {
       schemaVersion: 1,
       id: 'snapshot:cla109',
       repositoryId: 'repo:cla109',
