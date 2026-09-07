@@ -541,11 +541,10 @@ export function scanWindowedCompileDropsPeerGraph(
   const drops = (band: SemanticDetail) =>
     scanDeeperBandHasPeerCards(current, ownerId, band)
     && !scanDeeperBandHasPeerCards(next, ownerId, band);
-  if ((detail === 'component' || detail === 'code') && drops(detail)) return true;
-  // CLA-109: L1/L2 camera settles must not strip the L3/L4 landmarks the
-  // next wheel crossfade needs. CLA-74 still pages at L3/L4 themselves.
-  if ((detail === 'context' || detail === 'container') && (drops('component') || drops('code'))) {
-    return true;
+  // Dropping the current band's peer graph, or stripping L4 landmarks during
+  // an L3 camera settle, would leave wheel with no code targets to morph into.
+  if (detail === 'context' || detail === 'container' || detail === 'component' || detail === 'code') {
+    return drops('component') || drops('code');
   }
   return false;
 }
