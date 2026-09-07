@@ -238,3 +238,30 @@ test('CLA-109: L4 camera overlap uses the parent file face, not hinted symbol in
   assert.ok(selection.residentIds.includes('near'), 'on-screen file keeps L4 even when symbol interiors miss the camera');
   assert.ok(selection.omittedIds.includes('far'));
 });
+
+test('CLA-109: L4 camera overlap walks to a packed L2 container when the file is not packed', () => {
+  const packed = {
+    crate: { x: 0, y: 0, width: 120, height: 60 },
+    other: { x: 3000, y: 0, width: 120, height: 60 },
+  };
+  const visualNodeById = {
+    crate: { kind: 'container' as const, entity: { logicalId: 'container:crate' } },
+    other: { kind: 'container' as const, entity: { logicalId: 'container:other' } },
+    file: { kind: 'component' as const, entity: { logicalId: 'component:file' }, parentVisualId: 'crate' },
+    peer: { kind: 'component' as const, entity: { logicalId: 'component:peer' }, parentVisualId: 'other' },
+    near: { kind: 'code' as const, entity: { logicalId: 'code:near' }, parentVisualId: 'file' },
+    far: { kind: 'code' as const, entity: { logicalId: 'code:far' }, parentVisualId: 'peer' },
+  };
+  const selection = selectResidentVisualNodeIds({
+    band: 'code',
+    visualNodeIds: ['crate', 'other', 'file', 'peer', 'near', 'far'],
+    packed,
+    visualNodeById,
+    focusEntityId: 'system:root',
+    maxNodesPerBand: 1,
+    pagedKinds: ['code'],
+    residentWorldBounds: { x: 0, y: 0, width: 120, height: 60 },
+  });
+  assert.ok(selection.residentIds.includes('near'), 'L2-tile camera keeps that crate\'s L4');
+  assert.ok(selection.omittedIds.includes('far'));
+});

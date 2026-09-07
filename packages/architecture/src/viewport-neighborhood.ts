@@ -130,14 +130,19 @@ function pagingBounds(
   pagedKinds?: readonly EntityKind[],
 ): NodeLayout | undefined {
   const node = visualNodeById[id];
-  // CLA-109: L4 overlap/ranking uses the parent file face. Hinted symbol
-  // interiors sit in a different space than L3 compact cards, so using them
-  // for the camera test pages the on-screen file to zero L4 and wheel cannot
-  // enter the code band.
+  // CLA-109: L4 overlap/ranking walks to a packed ancestor. Hinted symbol
+  // interiors and reserved file faces sit in a different space than compact
+  // L2 tiles, so using those for the camera test pages the on-screen crate
+  // to zero L4 and wheel cannot enter the code band.
   if (node && pagedKinds?.includes(node.kind)) {
-    const parentId = node.parentVisualId;
-    const parent = parentId ? packed[parentId] : undefined;
-    if (parent) return parent;
+    let currentId: string | undefined = node.parentVisualId;
+    const seen = new Set<string>();
+    while (currentId && !seen.has(currentId)) {
+      seen.add(currentId);
+      const ancestor = packed[currentId];
+      if (ancestor) return ancestor;
+      currentId = visualNodeById[currentId]?.parentVisualId;
+    }
   }
   const own = packed[id];
   if (own) return own;

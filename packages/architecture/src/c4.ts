@@ -1334,7 +1334,10 @@ export function buildC4ProjectionBundle(
       const packedForSelect = options.pageCodeLandmarks
         ? {
           ...packVisualNodes(
-            visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code'),
+            visualNodeIds.filter(id => {
+              const kind = visualNodeById[id]?.kind;
+              return kind !== 'code' && kind !== 'component';
+            }),
             visualNodeById,
             options.targetAspect,
           ),
