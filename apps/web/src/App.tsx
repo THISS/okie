@@ -73,7 +73,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { buildArchitectureBrief, canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorTabSequence, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow, type InspectorTab } from './inspector/inspectorSupport';
+import { buildArchitectureBrief, canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorTabSequence, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -1556,6 +1556,10 @@ export function App() {
       }),
     }),
     [activeDetail, notationDiagnostics, scene.entities, scene.projection, selected.id],
+  );
+  const notationDetails = useMemo(
+    () => inspectorNotationDetailsView(notationPresentation, devMode ? 'diagnostics' : 'user'),
+    [devMode, notationPresentation],
   );
   const activeDynamicFlowArtifact = useMemo(() => {
     if (query.fixture === 'stress' || activeDiagramSurface.kind === 'main' || activeDiagramSurface.kind === 'code') return undefined;
@@ -5015,12 +5019,12 @@ export function App() {
 
               <section className="detail-section diagrams-section">
                 <div className="section-title"><h3>Diagrams</h3><span>{selected.detail === 'component' || selected.detail === 'code' ? 3 : 2}</span></div>
-                <div className={`notation-readiness ${notationPresentation.ready ? 'ready' : 'advisory'}`} data-inspector-notation="" data-inspector-notation-errors={notationPresentation.errors.length} data-inspector-notation-hidden={notationPresentation.hiddenCount} data-inspector-notation-total={notationPresentation.total} data-testid="inspector-notation">
-                  <span>{notationPresentation.ready ? 'C4 notation ready' : `${notationPresentation.total} C4 ${notationPresentation.total === 1 ? 'advisory' : 'advisories'}`}</span>
+                {notationDetails.visible ? <div className={`notation-readiness ${notationDetails.ready ? 'ready' : 'advisory'}`} data-inspector-notation="" data-inspector-notation-errors={notationDetails.errorCount} data-inspector-notation-hidden={notationDetails.hiddenCount} data-inspector-notation-mode={devMode ? 'diagnostics' : 'user'} data-inspector-notation-total={notationDetails.total} data-testid="inspector-notation">
+                  <span>{notationDetails.headline}</span>
                   <small>Title, scope, descriptions, technology, and relationship labels</small>
-                  {notationPresentation.errors.length + notationPresentation.sample.length > 0 ? <ul className="notation-readiness-list">{[...notationPresentation.errors, ...notationPresentation.sample].map(row => <li data-inspector-notation-code={row.code} data-inspector-notation-tone={row.tone} key={`${row.path}:${row.code}:${row.subjectId}`}>{row.message}</li>)}</ul> : null}
-                  {notationPresentation.hiddenCount > 0 ? <small className="notation-readiness-more" data-inspector-notation-more="">{`+${notationPresentation.hiddenCount} more completeness notes`}</small> : null}
-                </div>
+                  {notationDetails.rows.length > 0 ? <ul className="notation-readiness-list">{notationDetails.rows.map(row => <li data-inspector-notation-code={row.code} data-inspector-notation-tone={row.tone} key={`${row.path}:${row.code}:${row.subjectId}`}>{row.message}</li>)}</ul> : null}
+                  {notationDetails.hiddenCount > 0 ? <small className="notation-readiness-more" data-inspector-notation-more="">{`+${notationDetails.hiddenCount} more completeness notes`}</small> : null}
+                </div> : null}
                 <div className="inspector-link-list">
                   <button data-diagram-action="open-flow" onClick={() => openDerivedDiagram('flow')}><span><strong>Open dynamic flow</strong><small>Evidence-backed ordered interactions around this scope</small></span><ArrowIcon size={15}/></button>
                   <button data-diagram-action="open-mermaid" onClick={() => openDerivedDiagram('mermaid')}><span><strong>Open Mermaid view</strong><small>Deterministic semantic export for this flow</small></span><ArrowIcon size={15}/></button>

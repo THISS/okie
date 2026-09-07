@@ -263,16 +263,18 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain('CRAP');
   });
 
-  it('samples C4 completeness advisories in Details instead of dumping the full list', () => {
+  it('hides C4 completeness advisory ids from default Details (CLA-99)', () => {
     expect(app).toContain('presentInspectorNotationDiagnostics(notationDiagnostics');
     expect(app).toContain('inspectorNotationScope({');
-    expect(app).toContain('selectedId: selected.id');
-    expect(app).toContain('data-testid="inspector-notation"');
-    expect(app).toContain('data-inspector-notation-total={notationPresentation.total}');
-    expect(app).toContain('data-inspector-notation-hidden={notationPresentation.hiddenCount}');
-    expect(app).toContain('notationPresentation.errors.length');
-    expect(app).toContain('+${notationPresentation.hiddenCount} more completeness notes');
+    expect(app).toContain('inspectorNotationDetailsView(notationPresentation');
+    expect(app).toContain("devMode ? 'diagnostics' : 'user'");
+    expect(app).toContain('notationDetails.visible');
+    expect(app).toContain('notationDetails.rows.map');
+    expect(app).toContain('notationDetails.hiddenCount');
+    expect(app).toContain('+${notationDetails.hiddenCount} more completeness notes');
+    expect(app).not.toContain('notationPresentation.sample');
     expect(app).not.toContain('notationDiagnostics.map');
+    expect(app).not.toMatch(/enrichmentHonesty\.note/);
   });
 
   it('grounds Ask Atlas in selected or isolated packets and keeps the disconnected explanation path', () => {

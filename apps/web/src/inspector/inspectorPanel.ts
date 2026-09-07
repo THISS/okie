@@ -302,6 +302,21 @@ export type InspectorNotationPresentation = {
   ready: boolean;
 };
 
+/** Default Details hides completeness noise; Dev Mode keeps the CLA-59 sample. */
+export type InspectorNotationDetailsMode = 'user' | 'diagnostics';
+
+export type InspectorNotationDetailsView = {
+  /** Errors always; completeness sample only in diagnostics mode. */
+  rows: InspectorNotationDiagnosticRow[];
+  hiddenCount: number;
+  headline: string;
+  /** User Details hides the widget when the only content is completeness noise. */
+  visible: boolean;
+  ready: boolean;
+  total: number;
+  errorCount: number;
+};
+
 export type InspectorNotationScope = {
   entityIds: ReadonlySet<string>;
   relationIds: ReadonlySet<string>;
@@ -408,5 +423,35 @@ export function presentInspectorNotationDiagnostics(
     sample,
     hiddenCount: Math.max(0, advisories.length - sample.length),
     ready: total === 0,
+  };
+}
+
+/**
+ * CLA-99: user Details must not list completeness advisory entity ids
+ * (`container:…` / `component:…` dumps, “+N more completeness notes”).
+ * Real notation errors stay visible. Dev Mode keeps the sampled dump.
+ */
+export function inspectorNotationDetailsView(
+  presented: InspectorNotationPresentation,
+  mode: InspectorNotationDetailsMode = 'user',
+): InspectorNotationDetailsView {
+  const diagnostics = mode === 'diagnostics';
+  const errorCount = presented.errors.length;
+  const rows = diagnostics
+    ? [...presented.errors, ...presented.sample]
+    : [...presented.errors];
+  const headline = presented.ready
+    ? 'C4 notation ready'
+    : diagnostics || errorCount === 0
+      ? `${presented.total} C4 ${presented.total === 1 ? 'advisory' : 'advisories'}`
+      : `${errorCount} C4 ${errorCount === 1 ? 'error' : 'errors'}`;
+  return {
+    rows,
+    hiddenCount: diagnostics ? presented.hiddenCount : 0,
+    headline,
+    visible: presented.ready || errorCount > 0 || diagnostics,
+    ready: presented.ready,
+    total: presented.total,
+    errorCount,
   };
 }
