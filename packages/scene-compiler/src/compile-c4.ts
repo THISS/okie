@@ -859,6 +859,17 @@ function applyIntrinsicOwnerGeometry(
   }
   for (const children of childrenByOwner.values()) children.sort((left, right) => left.id.localeCompare(right.id));
 
+  // CLA-109: omitted L4 that were never packed must not become reserved-shell
+  // primitives (THISS/okie ~3k symbols). CLA-74 still packs omitted nodes first,
+  // so they remain in layout.nodes and keep hollow footprints.
+  const packedVisualIds = new Set<string>();
+  for (const band of C4_BANDS) {
+    const projection = bundle.projectionById[bundle.family.projectionIds[band]];
+    const layout = projection ? bundle.bandLayoutById[projection.layoutId] : undefined;
+    for (const id of Object.keys(layout?.nodes ?? {})) packedVisualIds.add(id);
+  }
+  const omittedVisual = omittedVisualIds(bundle);
+
   const containmentSizes = childCounts || unpublishedChildren.length
     ? computeContainmentLayout([
       ...snapshot.entities.map(entity => ({
@@ -972,6 +983,8 @@ function applyIntrinsicOwnerGeometry(
         + metrics.gap * column;
       const rowY = measurement.rowHeights.slice(0, row).reduce((sum, value) => sum + value, 0)
         + metrics.gap * row;
+      const visualId = bundle.index.visualNodeIdsByEntityId[child.id]?.[0];
+      if (visualId && omittedVisual.has(visualId) && !packedVisualIds.has(visualId)) return;
       canonical.set(child.id, {
         x: gridX + columnX + (measurement.columnWidths[column]! - size.width) / 2,
         y: gridY + rowY + (measurement.rowHeights[row]! - size.height) / 2,

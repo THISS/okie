@@ -30,6 +30,8 @@ export type SelectResidentVisualNodesInput = {
   maxNodesPerBand?: number;
   residentWorldBounds?: Rect;
   keepEntityIds?: readonly string[];
+  /** When set, only these kinds consume the L3/L4 card cap (CLA-109 code-only). */
+  pagedKinds?: readonly EntityKind[];
 };
 
 export type ResidentVisualNodeSelection = {
@@ -121,6 +123,17 @@ export function viewportNeighborhoodCacheKey(
   return `${focusEntityId}@${tileKeysForRect(windowed).join(";")}`;
 }
 
+function pagingBounds(
+  id: string,
+  packed: Readonly<Record<string, NodeLayout>>,
+  visualNodeById: Readonly<Record<string, ResidentVisualNode>>,
+): NodeLayout | undefined {
+  const own = packed[id];
+  if (own) return own;
+  const parentId = visualNodeById[id]?.parentVisualId;
+  return parentId ? packed[parentId] : undefined;
+}
+
 function ancestorVisualIds(
   startId: string,
   visualNodeById: Readonly<Record<string, ResidentVisualNode>>,
@@ -137,7 +150,8 @@ function ancestorVisualIds(
 }
 
 /** L3/L4 cards CLA-74 pages. Coarser shells stay resident (CLA-106). */
-function isPagedBandKind(kind: EntityKind | undefined): boolean {
+function isPagedBandKind(kind: EntityKind | undefined, pagedKinds?: readonly EntityKind[]): boolean {
+  if (pagedKinds) return Boolean(kind && pagedKinds.includes(kind));
   return kind === "component" || kind === "code";
 }
 
@@ -163,6 +177,7 @@ export function selectResidentVisualNodeIds(
   if (input.band === "context" || input.band === "container") return all();
   if (input.maxNodesPerBand === undefined && input.residentWorldBounds === undefined) return all();
 
+  const paged = (kind: EntityKind | undefined) => isPagedBandKind(kind, input.pagedKinds);
   const byId = input.visualNodeById;
   const keepEntities = new Set([input.focusEntityId, ...(input.keepEntityIds ?? [])]);
   const always = new Set<string>();
@@ -172,7 +187,7 @@ export function selectResidentVisualNodeIds(
     if (keepEntities.has(node.entity.logicalId)
       || node.kind === "person"
       || node.kind === "externalSystem"
-      || !isPagedBandKind(node.kind)) {
+      || !paged(node.kind)) {
       for (const ancestor of ancestorVisualIds(id, byId)) always.add(ancestor);
     }
   }
@@ -181,20 +196,21 @@ export function selectResidentVisualNodeIds(
     ? rectCenter(input.residentWorldBounds)
     : (() => {
       const focusId = ordered.find(id => byId[id]?.entity.logicalId === input.focusEntityId);
-      const bounds = (focusId ? input.packed[focusId] : undefined) ?? input.packed[ordered[0] ?? ""];
+      const bounds = (focusId ? pagingBounds(focusId, input.packed, byId) : undefined)
+        ?? pagingBounds(ordered[0] ?? "", input.packed, byId);
       return bounds ? rectCenter(bounds) : { x: 0, y: 0 };
     })();
 
   const eligible = new Set<string>(always);
   for (const id of ordered) {
     if (always.has(id)) continue;
-    const bounds = input.packed[id];
+    const bounds = pagingBounds(id, input.packed, byId);
     if (!bounds) continue;
     if (input.residentWorldBounds && !rectsOverlap(bounds, input.residentWorldBounds)) continue;
     eligible.add(id);
   }
 
-  const pagedEligibleCount = [...eligible].filter(id => isPagedBandKind(byId[id]?.kind)).length;
+  const pagedEligibleCount = [...eligible].filter(id => paged(byId[id]?.kind)).length;
   if (input.maxNodesPerBand === undefined || pagedEligibleCount <= input.maxNodesPerBand) {
     const residentIds = ordered.filter(id => eligible.has(id));
     return {
@@ -204,16 +220,16 @@ export function selectResidentVisualNodeIds(
   }
 
   const ranked = [...eligible]
-    .filter(id => !always.has(id) && isPagedBandKind(byId[id]?.kind))
+    .filter(id => !always.has(id) && paged(byId[id]?.kind))
     .sort((left, right) => {
-      const leftBounds = input.packed[left];
-      const rightBounds = input.packed[right];
+      const leftBounds = pagingBounds(left, input.packed, byId);
+      const rightBounds = pagingBounds(right, input.packed, byId);
       const leftDistance = leftBounds ? distanceSquared(rectCenter(leftBounds), origin) : Number.POSITIVE_INFINITY;
       const rightDistance = rightBounds ? distanceSquared(rectCenter(rightBounds), origin) : Number.POSITIVE_INFINITY;
       return leftDistance - rightDistance || left.localeCompare(right);
     });
   const kept = new Set(always);
-  const alwaysPaged = [...always].filter(id => isPagedBandKind(byId[id]?.kind)).length;
+  const alwaysPaged = [...always].filter(id => paged(byId[id]?.kind)).length;
   const remaining = Math.max(0, input.maxNodesPerBand - alwaysPaged);
   for (const id of ranked.slice(0, remaining)) kept.add(id);
   const residentIds = ordered.filter(id => kept.has(id));

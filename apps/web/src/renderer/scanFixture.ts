@@ -59,6 +59,7 @@ export type ScanScopedOptions = {
   maxEdgesPerBand?: number;
   maxGridNodes?: number;
   maxNodesPerBand?: number;
+  pageCodeLandmarks?: boolean;
 };
 
 /** Camera-resident compile window (CLA-74). Does not change CLA-73 fetch. */
@@ -113,8 +114,9 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
   const options: ScanScopedOptions = scoped ? { ...scoped } : {};
   // CLA-107/109: small-repo L2 compiles through code (component + symbol
   // landmarks in global coordinates) so L2↔L3↔L4 morph like L1↔L2. 13+
-  // containers stay CLA-66 `maxBand: container`. No maxNodesPerBand — L3/L4
-  // stay resident in memory on the system scene; renderer culling still skips
+  // containers stay CLA-66 `maxBand: container`. L3 file shells stay resident;
+  // only L4 cards use the CLA-74 window (`pageCodeLandmarks`) so THISS/okie
+  // (~3k symbols) cannot freeze the system scene. Renderer culling still skips
   // drawing.
   if (
     snapshotPreplacesL3InL2(snapshot)
@@ -123,6 +125,8 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
     options.maxBand = 'code';
     options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
     options.maxGridNodes ??= SCAN_CONTAINER_GRID_NODES;
+    options.maxNodesPerBand ??= SCAN_RESIDENT_NODES_PER_BAND;
+    options.pageCodeLandmarks = true;
   }
   if (aboveRelationGate) {
     options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
@@ -132,19 +136,17 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
 }
 
 /**
- * CLA-107/109: keep pre-placed L3+L4 landmarks in the system-scene graph.
- * Thousands of nodes/edges can stay in memory; the GPU still culls what is
- * off-screen. CLA-74 camera paging must not drop them (that made L2↔L3 look
- * like a re-root into a hollow box). Open-inside L3/L4 and large-repo L2 stay
- * windowed.
+ * CLA-107 kept L3 by skipping the camera window. CLA-109 still keeps those
+ * file shells, but via `pageCodeLandmarks` (code-band-only paging) so the
+ * shell can pass the camera tile window and L4 can morph without compiling
+ * every symbol. Always false: skipping residency would freeze ~3k L4 meshes
+ * on THISS/okie. Open-inside and large-repo compiles stay CLA-74 windowed.
  */
 export function scanKeepsResidentL3Landmarks(
-  snapshot: ArchitectureSnapshot,
-  focusEntityId: string,
+  _snapshot: ArchitectureSnapshot,
+  _focusEntityId: string,
 ): boolean {
-  if (!snapshotPreplacesL3InL2(snapshot)) return false;
-  const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
-  return Boolean(focus && c4BandForKind(focus.kind) === 'context');
+  return false;
 }
 
 /**

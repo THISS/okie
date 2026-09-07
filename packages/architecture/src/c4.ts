@@ -195,6 +195,11 @@ export type BuildC4ProjectionOptions = {
   residentWorldBounds?: Rect;
   /** Entity ids that must stay resident even when off-camera (selection). */
   keepEntityIds?: readonly string[];
+  /**
+   * CLA-109: page only L4 `code` cards (keep L3 file shells). Default pages
+   * both component and code (CLA-74). Additive; omitted → byte-identical.
+   */
+  pageCodeLandmarks?: boolean;
 };
 
 /**
@@ -1291,27 +1296,39 @@ export function buildC4ProjectionBundle(
     });
     // CLA-74: pack the full L3/L4 neighborhood first so parent bounds stay
     // stable, then keep only the camera-resident window in the compiled scene.
+    // CLA-109 `pageCodeLandmarks`: pack L3 shells only, select L4 by parent
+    // overlap (do not layout ~3k symbols), then pack the resident set.
     // Default (no cap, no camera rect) skips this so golden stays byte-identical.
-    const pageOffscreen = (band === 'component' || band === 'code')
+    const pageOffscreen = (options.pageCodeLandmarks ? band === 'code' : (band === 'component' || band === 'code'))
       && (options.maxNodesPerBand !== undefined || options.residentWorldBounds !== undefined);
     let omittedNodeIds: string[] = [];
     let packedNodes: Record<string, NodeLayout> | undefined;
     let candidateEdgeIds = visualEdgeIds;
     if (pageOffscreen) {
-      packedNodes = packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect);
+      const packedForSelect = options.pageCodeLandmarks
+        ? packVisualNodes(
+          visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code'),
+          visualNodeById,
+          options.targetAspect,
+        )
+        : packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect);
       const selection = selectResidentVisualNodeIds({
         band,
         visualNodeIds,
-        packed: packedNodes,
+        packed: packedForSelect,
         visualNodeById,
         focusEntityId: focus.id,
         ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
         ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
         ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
+        ...(options.pageCodeLandmarks ? { pagedKinds: ['code'] as const } : {}),
       });
       omittedNodeIds = selection.omittedIds;
       const resident = new Set(selection.residentIds);
       visualNodeIds = selection.residentIds;
+      packedNodes = options.pageCodeLandmarks
+        ? packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect)
+        : packedForSelect;
       candidateEdgeIds = visualEdgeIds.filter(id => {
         const edge = visualEdgeById[id]!;
         return resident.has(edge.fromVisualId) && resident.has(edge.toVisualId);

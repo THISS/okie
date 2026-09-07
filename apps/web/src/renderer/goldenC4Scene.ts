@@ -196,6 +196,7 @@ export type C4SceneOptions = {
   maxEdgesPerBand?: number;
   maxGridNodes?: number;
   maxNodesPerBand?: number;
+  pageCodeLandmarks?: boolean;
   residentWorldBounds?: { x: number; y: number; width: number; height: number };
   keepEntityIds?: readonly string[];
   /** Aspect-aware packing target (scan mode, task #30); omitted for the golden fixture
@@ -314,6 +315,7 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
     ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
+    ...(options.pageCodeLandmarks ? { pageCodeLandmarks: true } : {}),
     ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
     ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),

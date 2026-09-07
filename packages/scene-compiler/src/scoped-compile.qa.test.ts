@@ -7,7 +7,7 @@ import {
   type C4Band,
 } from "@okie/architecture";
 import { compileC4Scene } from "./compile-c4.js";
-import { denseSnapshot } from "./band-cost-curve.js";
+import { denseNeighborhoodSnapshot, denseSnapshot } from "./band-cost-curve.js";
 
 // Opt-in scoped compile (task #26): band-depth + per-band edge budget bound the routing
 // cost of large-repo scenes. Defaults are OFF and must stay byte-identical.
@@ -137,4 +137,27 @@ test("CLA-74: panning the camera window compiles a sibling tile, not the full gr
   assert.notDeepEqual(leftIds, rightIds, "adjacent tile is a different resident set");
   assert.ok(leftIds.length < children.length, "left tile is not the sibling dump");
   assert.ok(rightIds.length < children.length, "right tile is not the sibling dump");
+});
+
+test("CLA-109: pageCodeLandmarks keeps L3 and caps L4 without reserved-shell dump", () => {
+  const snapshot = denseNeighborhoodSnapshot("code", 80);
+  const focus = {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "code" as const,
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+  };
+  const paged = buildC4ProjectionBundle(snapshot, focus);
+  const component = paged.projectionById[paged.family.projectionIds.component]!;
+  const code = paged.projectionById[paged.family.projectionIds.code]!;
+  assert.equal((component.omittedNodeIds ?? []).length, 0, "L3 file shells stay resident");
+  assert.ok((code.omittedNodeIds?.length ?? 0) > 0, "L4 omitted stay enumerable");
+  const codeKindCount = code.visualNodeIds.filter(id => paged.visualNodeById[id]?.kind === "code").length;
+  assert.ok(codeKindCount <= 20, "resident L4 respects the window");
+  const compiled = compileC4Scene(snapshot, paged);
+  const reserved = compiled.projections.bandLayoutById[code.layoutId]?.reservedShells ?? {};
+  assert.equal(Object.keys(reserved).length, 0, "unpacked omitted L4 are not reserved-shell primitives");
+  assert.ok(compiled.scene.objects.length < 40, "protocol stays a neighborhood, not 80 symbol meshes");
 });

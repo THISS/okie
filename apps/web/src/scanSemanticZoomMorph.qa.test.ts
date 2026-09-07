@@ -9,6 +9,7 @@ import demoSnapshot from '../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../fixtures/architecture/demo-story.json';
 import {
+  createC4Scene,
   scanDeeperBandHasPeerCards,
   scanDrillDeeperDetail,
   scanZoomCompileHandoff,
@@ -22,6 +23,7 @@ import {
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_GRID_NODES,
   SCAN_RELATION_EDGE_BUDGET,
+  SCAN_RESIDENT_NODES_PER_BAND,
   scanKeepsResidentL3Landmarks,
 } from './renderer/scanFixture';
 import { getLevel } from './App';
@@ -48,8 +50,10 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
       maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
     });
-    expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(true);
+    expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(false);
 
     const viewRoot = compiled.navigation.rootEntityId;
     const scene = compiled.createScene(viewRoot);
@@ -150,5 +154,69 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
       detail: 'container',
       compileFocus: viewRoot,
     });
+  });
+
+  it('pages L4 only on the small-repo system overlay so L3 stays resident', () => {
+    const compiled = compileScanFixture({
+      snapshot: structuredClone(demoSnapshot),
+      view: structuredClone(demoView),
+      story: structuredClone(demoStory),
+    });
+    expect(compiled.scopeCompileOptions(compiled.navigation.rootEntityId).pageCodeLandmarks).toBe(true);
+    expect(compiled.scopeCompileOptions(compiled.navigation.rootEntityId).maxNodesPerBand)
+      .toBe(SCAN_RESIDENT_NODES_PER_BAND);
+    const fileId = compiled.snapshot.entities.find(entity => entity.kind === 'component')?.id;
+    expect(fileId).toBeDefined();
+    expect(compiled.scopeCompileOptions(fileId!).pageCodeLandmarks).toBeUndefined();
+
+    const entities = [
+      { id: 'system:okie', kind: 'softwareSystem' as const, name: 'Okie', sourceRefs: [] },
+      { id: 'container:web', kind: 'container' as const, parentId: 'system:okie', name: 'Web', sourceRefs: [] },
+    ];
+    for (let index = 0; index < 8; index += 1) {
+      const fileId = `component:f${index}`;
+      entities.push({ id: fileId, kind: 'component', parentId: 'container:web', name: `f${index}`, sourceRefs: [] });
+      for (let code = 0; code < 12; code += 1) {
+        entities.push({
+          id: `code:f${index}-${code}`,
+          kind: 'code',
+          parentId: fileId,
+          name: `k${code}`,
+          sourceRefs: [],
+        });
+      }
+    }
+    const snapshot = {
+      schemaVersion: 1,
+      id: 'snapshot:cla109',
+      repositoryId: 'repo:cla109',
+      commitSha: 'c'.repeat(40),
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      entities,
+      relations: [],
+    };
+    const scene = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:okie',
+      focusEntityId: 'system:okie',
+      familyId: 'f',
+      sceneId: 's',
+      title: 't',
+      subtitle: 's',
+      frozenRevision: 'c',
+      maxBand: 'code',
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
+    });
+    const files = (scene.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => scene.entities.find(entity => entity.id === id)?.detail === 'component');
+    const symbols = (scene.projection?.entityIdsByDetail.code ?? [])
+      .filter(id => scene.entities.find(entity => entity.id === id)?.detail === 'code');
+    expect(files.length).toBe(8);
+    expect(symbols.length).toBeGreaterThan(0);
+    expect(symbols.length).toBeLessThanOrEqual(SCAN_RESIDENT_NODES_PER_BAND);
+    expect(scene.omittedNodes?.some(node => node.detail === 'code')).toBe(true);
+    const protocol = scene.protocolSnapshot as { objects: unknown[] };
+    expect(protocol.objects.length).toBeLessThan(8 + 2 + SCAN_RESIDENT_NODES_PER_BAND + 8);
   });
 });

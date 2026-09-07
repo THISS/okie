@@ -156,3 +156,32 @@ test('CLA-74: cache key follows camera tiles, not the full graph', () => {
   assert.equal(left, same);
   assert.match(left, /^component:file@/);
 });
+
+test('CLA-109: pagedKinds code keeps L3 shells and pages L4 using parent bounds', () => {
+  const packed = {
+    file: { x: 0, y: 0, width: 400, height: 100 },
+    peer: { x: 3000, y: 0, width: 400, height: 100 },
+  };
+  const visualNodeById = {
+    file: { kind: 'component' as const, entity: { logicalId: 'component:file' } },
+    peer: { kind: 'component' as const, entity: { logicalId: 'component:peer' } },
+    near: { kind: 'code' as const, entity: { logicalId: 'code:near' }, parentVisualId: 'file' },
+    mid: { kind: 'code' as const, entity: { logicalId: 'code:mid' }, parentVisualId: 'file' },
+    far: { kind: 'code' as const, entity: { logicalId: 'code:far' }, parentVisualId: 'peer' },
+  };
+  const selection = selectResidentVisualNodeIds({
+    band: 'code',
+    visualNodeIds: ['file', 'peer', 'near', 'mid', 'far'],
+    packed,
+    visualNodeById,
+    focusEntityId: 'component:file',
+    maxNodesPerBand: 1,
+    pagedKinds: ['code'],
+    residentWorldBounds: { x: 0, y: 0, width: 200, height: 200 },
+  });
+  assert.ok(selection.residentIds.includes('file'));
+  assert.ok(selection.residentIds.includes('peer'), 'L3 peer file stays resident');
+  assert.ok(selection.residentIds.includes('near') || selection.residentIds.includes('mid'));
+  assert.ok(selection.omittedIds.includes('far'));
+  assert.equal(selection.residentIds.filter(id => id === 'near' || id === 'mid' || id === 'far').length, 1);
+});

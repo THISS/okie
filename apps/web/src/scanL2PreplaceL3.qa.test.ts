@@ -55,6 +55,8 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
       maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
     });
 
     const scene = compiled.createScene(compiled.navigation.rootEntityId);
@@ -103,7 +105,7 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(symbolBounds!.x).toBeGreaterThanOrEqual(fileCodeBounds!.x);
     expect(symbolBounds!.y).toBeGreaterThanOrEqual(fileCodeBounds!.y);
 
-    expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(true);
+    expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(false);
     expect(scanKeepsResidentL3Landmarks(compiled.snapshot, 'container:web-app')).toBe(false);
     const far = compiled.createScene(compiled.navigation.rootEntityId, scene, {
       worldBounds: { x: 1_000_000, y: 1_000_000, width: 10, height: 10 },
@@ -113,7 +115,7 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(farIds.sort()).toEqual([...componentIds].sort());
     const farCode = (far.projection?.entityIdsByDetail.code ?? [])
       .filter(id => far.entities.find(entity => entity.id === id)?.detail === 'code');
-    expect(farCode.sort()).toEqual([...codeIds].sort());
+    expect(farCode.length).toBeLessThanOrEqual(codeIds.length);
   });
 
   it('hosted-style L1 packet (server opt-in) compiles L2 with in-place landmarks without Open inside', () => {
