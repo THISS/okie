@@ -4868,7 +4868,7 @@ export function App() {
               )) : (
                 <details className="story-catalog-menu">
                   <summary aria-label="Guided architecture tours"><PlayIcon size={14}/> Guided tours <em>{storyCatalog.length}</em></summary>
-                  <div aria-label="Guided architecture tours" role="menu">
+                  <div>
                     {storyCatalog.map(plan => (
                       <button
                         className="story-catalog-item"
@@ -4876,7 +4876,6 @@ export function App() {
                         data-testid={plan.id === defaultStory.id ? 'story-launch-overview' : 'story-launch-flow'}
                         key={plan.id}
                         onClick={() => setStep(0, true, 'push', plan)}
-                        role="menuitem"
                         type="button"
                       >
                         <PlayIcon size={14}/><span><strong>{plan.title}</strong><small>{storyDurationLabel(plan)}</small></span>
