@@ -92,9 +92,10 @@ test("excludes *.spec.*, __tests__/, __mocks__/, *.bench.*, rust tests/ and *_qa
     "crates/engine/src/lib.rs": "pub fn f() {}\n",
     "crates/engine/src/lib_qa.rs": "fn qa() {}\n",
     "crates/engine/tests/smoke.rs": "fn smoke() {}\n",
+    "crates/engine/src/hit_test.rs": "pub fn hit_test() {}\n",
   }, dir => {
     const discovery = discoverRepository(dir);
-    assert.deepEqual(discovery.sourceFiles, ["crates/engine/src/lib.rs", "src/index.ts"]);
+    assert.deepEqual(discovery.sourceFiles, ["crates/engine/src/hit_test.rs", "crates/engine/src/lib.rs", "src/index.ts"]);
     assert.equal(discovery.unitByFile.get("crates/engine/src/lib.rs"), "crates/engine");
   });
 });

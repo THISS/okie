@@ -113,7 +113,7 @@ Discovery generalizes beyond Okie's own layout (validated against third-party cl
   **only for a genuinely pure-JS repo** (no root tsconfig *and* no TypeScript source) — otherwise
   `.js` files are skipped and **counted in the scan summary**, never dropped silently.
 - **Excluded** (a named, tested list): `*.d.ts`, `dist/`, `*.test.*`, `*.spec.*`, `*.bench.*`,
-  `__tests__/`, `__mocks__/`, Rust `tests/` / `benches/` / `examples/` / `*_qa.rs` / `*_test.rs`.
+  `__tests__/`, `__mocks__/`, Rust `tests/` / `benches/` / `examples/` / `*_qa.rs`.
 - **Fixture members** whose path matches `playground/example/e2e/fixtures/demo/sandbox` are skipped
   by default (with a summary count); pass `--include-members` to scan them.
 - **System name** comes from the root `package.json` `name` (fallback: directory basename).

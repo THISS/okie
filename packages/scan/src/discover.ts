@@ -72,7 +72,8 @@ function isExcludedPath(path: string): boolean {
     || /\.bench\.[cm]?[jt]sx?$/.test(path)
     || /(^|\/)__tests__\//.test(path)
     || /(^|\/)__mocks__\//.test(path)
-    || /_(test|qa)\.rs$/.test(path)
+    || /_qa\.rs$/.test(path)
+    // Not `*_test.rs`: production modules can be named `hit_test.rs`.
     || (path.endsWith(".rs") && /(^|\/)(tests|benches|examples)\//.test(path));
 }
 
