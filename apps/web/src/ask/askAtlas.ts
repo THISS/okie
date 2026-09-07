@@ -1,4 +1,5 @@
 import { inspectorAcceptedSummary, CYCLOMATIC_FLAG_THRESHOLD } from '../inspector/inspectorPanel';
+import { DOGFOOD_ATLAS_OWNER, DOGFOOD_ATLAS_REPO } from '../hostedAtlas';
 import { readDemoQuery } from '../renderer/query';
 import { parseAppRoute } from '../renderer/route';
 
@@ -188,6 +189,27 @@ export function resolveAskAtlasIdentity(input: {
     return sanitizeAskAtlasIdentity({ owner: 'okie', repo: 'golden', commitSha });
   }
   return undefined;
+}
+
+/**
+ * Public GitHub URL for the atlas on screen. Hosted `/r/owner/repo` and scan
+ * fixtures map to that tree. The golden demo's `okie/golden` stand-in is this
+ * product (`THISS/okie`). Stress has no repository identity, so it still links
+ * the dogfood source rather than a dead header control.
+ */
+export function atlasSourceRepositoryUrl(identity: AskAtlasIdentity | undefined): string {
+  if (identity && (identity.owner !== 'okie' || identity.repo !== 'golden')) {
+    return `https://github.com/${identity.owner}/${identity.repo}`;
+  }
+  return `https://github.com/${DOGFOOD_ATLAS_OWNER}/${DOGFOOD_ATLAS_REPO}`;
+}
+
+/** Two-letter badge for the header account control. Unknown session → "?". */
+export function accountInitials(login?: string): string {
+  const letters = (login ?? '').replace(/[^A-Za-z0-9]/g, '');
+  if (letters.length >= 2) return letters.slice(0, 2).toUpperCase();
+  if (letters.length === 1) return letters.toUpperCase();
+  return '?';
 }
 
 export function askSignInHref(loginPath: string, returnPath: string): string {

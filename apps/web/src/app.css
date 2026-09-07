@@ -183,6 +183,7 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .avatar-button { height: 34px; border: 1px solid var(--atlas-line); background: rgba(255,255,255,.025); cursor: pointer; }
 .icon-button { width: 34px; display: grid; place-items: center; padding: 0; border-radius: 9px; color: var(--atlas-muted); }
 .icon-button:hover { border-color: var(--atlas-line-strong); color: var(--atlas-text); }
+a.icon-button { text-decoration: none; }
 .share-view-button.copied { border-color: rgba(217,255,112,.3); color: var(--atlas-accent); }
 .avatar-button { width: 34px; border-radius: 50%; background: linear-gradient(145deg, #202b27, #111815); color: var(--atlas-accent); font-family: var(--atlas-font-mono); font-size: 11px; font-weight: 700; }
 
@@ -248,6 +249,29 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .screenshot-menu[open] summary svg { color: var(--atlas-text); }
 .screenshot-menu > div { top: 36px; width: 150px; }
 .screenshot-menu > div button { grid-template-columns: 1fr; color: var(--atlas-text); font-size: 11px; }
+
+.account-menu summary.avatar-button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  list-style: none;
+}
+.account-menu summary.avatar-button::-webkit-details-marker { display: none; }
+.account-menu[open] summary.avatar-button { border-color: rgba(217,255,112,.22); }
+.account-menu > div { width: 196px; }
+.account-menu > div p { margin: 0; padding: 8px; color: var(--atlas-muted); font-size: 11px; }
+.account-menu > div a {
+  display: block;
+  padding: 8px;
+  border-radius: 6px;
+  color: var(--atlas-text);
+  font-size: 11px;
+  text-decoration: none;
+}
+.account-menu > div a:hover { background: rgba(255,255,255,.045); }
 
 .workspace {
   position: relative;

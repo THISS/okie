@@ -113,8 +113,8 @@ import {
   ASK_PROBE_TIMEOUT_MS,
   ASK_REQUEST_TIMEOUT_MS,
   ASK_SIGNIN_COPY,
-  askScopeKey,
-  askSignInHref,
+  accountInitials, askScopeKey,
+  askSignInHref, atlasSourceRepositoryUrl,
   buildAskContext,
   fetchAskAuth,
   isAskUnauthorized,
@@ -4846,8 +4846,8 @@ export function App() {
           >
             {shareFeedback?.tone === 'success' ? <CheckIcon/> : <ShareIcon/>}
           </button>
-          <button aria-label="Open source repository" className="icon-button"><CodeIcon/></button>
-          <button aria-label="Open account menu" className="avatar-button">BC</button>
+          <a aria-label="Open source repository" className="icon-button" data-testid="open-source-repo" href={atlasSourceRepositoryUrl(askAtlasIdentity)} rel="noreferrer" target="_blank" title="Open source repository"><CodeIcon/></a>
+          <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>
         </div>
       </header>
 
