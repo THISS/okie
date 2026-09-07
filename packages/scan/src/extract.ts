@@ -13,7 +13,6 @@ import {
 import type { Discovery } from "./discover.js";
 import { pathSlug, resolveCollisions, slug, typedId } from "./ids.js";
 import { rustTopLevelItems } from "./extract-rust.js";
-export { rustTopLevelItems };
 
 /** Max import sites retained as evidence on one aggregated relation. */
 const MAX_EVIDENCE_PER_RELATION = 24;
