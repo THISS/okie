@@ -106,6 +106,8 @@ import { defaultSearchSuggestions, searchArchitectureEntities } from './searchSu
 import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldOpenSearch, shouldToggleDevMode } from './shortcuts';
 import {
   ASK_CONNECTED_COPY,
+  ASK_CONNECTED_SUBMIT_LABEL,
+  ASK_DISCONNECTED_SUBMIT_LABEL,
   ASK_NOT_CONNECTED_COPY,
   ASK_NOT_CONNECTED_LIVE_MESSAGE,
   ASK_PROBE_TIMEOUT_MS,
@@ -4190,13 +4192,11 @@ export function App() {
     ? 'signin'
     : askPending ? 'asking' : askError ? 'error' : askAnswer ? 'answered' : askConnected ? 'ready' : 'disconnected';
 
-  function playDisconnectedAsk() {
-    setQuestion('');
-    setAskOpen(false);
+  function showDisconnectedAsk() {
+    setAskConnected(false);
     setAskAnswer(undefined);
     setAskCitations([]);
     setAskError(undefined);
-    setStep(0, true, 'push', defaultStory);
     setLiveMessage(ASK_NOT_CONNECTED_LIVE_MESSAGE);
   }
 
@@ -4205,6 +4205,10 @@ export function App() {
     const text = question.trim();
     if (!text || askPending) return;
     if (!askSignedIn) return;
+    if (!askConnected) {
+      showDisconnectedAsk();
+      return;
+    }
     const context = buildAskContext({
       entities: scene.entities.map(entity => ({
         id: entity.id,
@@ -4277,7 +4281,7 @@ export function App() {
         return;
       }
       if (!result.connected) {
-        playDisconnectedAsk();
+        showDisconnectedAsk();
         return;
       }
       if ('error' in result && result.error) {
@@ -4857,7 +4861,10 @@ export function App() {
             <div className="stress-badge"><ActivityIcon size={15}/><span><b>Renderer stress fixture</b><small>{fixtureError ?? `${scene.entities.length.toLocaleString()} nodes · ${scene.relations.length.toLocaleString()} paths`}</small></span></div>
           ) : (
             <div className="story-launcher" data-story-catalog-count={storyCatalog.length}>
+              <div className="ask-anchor">
               <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>
+              {askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!askConnected || !question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? ASK_CONNECTED_SUBMIT_LABEL : ASK_DISCONNECTED_SUBMIT_LABEL}{askPending || !askConnected ? null : <ArrowIcon size={15}/>}</button></form>)}
+              </div>
               {storyCatalog.length === 1 ? storyCatalog.map(plan => (
                 <button
                   className="saved-story"
@@ -4888,7 +4895,6 @@ export function App() {
                   </div>
                 </details>
               )}
-              {askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? 'Ask' : 'Preview explanation'}{askPending ? null : <ArrowIcon size={15}/>}</button></form>)}
             </div>
           )}
 
