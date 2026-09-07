@@ -198,4 +198,17 @@ test("CLA-109: camera window keeps L4 of the on-screen file via parent faces", (
   assert.ok(compact && codeFace);
   assert.equal(codeFace!.width, compact!.width);
   assert.equal(codeFace!.height, compact!.height);
+  const residentCode = code.visualNodeIds.filter(id => {
+    const node = paged.visualNodeById[id];
+    return node?.kind === "code" && node.parentVisualId === fileVisualId;
+  });
+  assert.ok(residentCode.length > 0);
+  for (const id of residentCode) {
+    const bounds = codeLayout?.nodes[id];
+    assert.ok(bounds);
+    assert.ok(bounds!.x >= codeFace!.x - 1, "L4 stays on the L3 file face");
+    assert.ok(bounds!.y >= codeFace!.y - 1, "L4 stays on the L3 file face");
+    assert.ok(bounds!.x + bounds!.width <= codeFace!.x + codeFace!.width + 1, "L4 stays on the L3 file face");
+    assert.ok(bounds!.y + bounds!.height <= codeFace!.y + codeFace!.height + 1, "L4 stays on the L3 file face");
+  }
 });

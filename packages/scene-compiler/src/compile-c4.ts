@@ -815,8 +815,9 @@ export function layoutContextPeersAroundSystem(
 }
 
 /**
- * Grows the squeeze-normalized hierarchy from its leaves upward, then reflows
- * every direct-child grid inside the resulting persistent owner shells.
+ * Packs camera-resident L4 into the compact L3 file face. Padding is the
+ * C4 intrinsic header/side metrics in world units at code focus zoom.
+ * Treating those CSS-px values as world units overflows a ~64×44 L3 card.
  */
 function placeResidentCodeInParents(
   nodes: Record<string, NodeLayout>,
@@ -831,25 +832,48 @@ function placeResidentCodeInParents(
     list.push(id);
     byParent.set(node.parentVisualId, list);
   }
+  const focusZoom = C4_ZOOM_BANDS[3]!.focusZoom;
+  const padX = C4_INTRINSIC_LAYOUT.sidePadding / focusZoom;
+  const padTop = C4_INTRINSIC_LAYOUT.header.component / focusZoom;
+  const padBottom = C4_INTRINSIC_LAYOUT.bottomPadding / focusZoom;
+  const gap = 8 / focusZoom;
   for (const [parentId, kids] of [...byParent.entries()].sort(([left], [right]) => left.localeCompare(right))) {
     const parent = nodes[parentId]!;
     kids.sort((left, right) => left.localeCompare(right));
-    const pad = 16;
-    const top = 40;
+    let innerX = parent.x + padX;
+    let innerY = parent.y + padTop;
+    let innerW = parent.width - padX * 2;
+    let innerH = parent.height - padTop - padBottom;
+    if (innerW < 4) {
+      innerX = parent.x + Math.min(padX, parent.width * 0.04);
+      innerW = Math.max(1, parent.width - (innerX - parent.x) * 2);
+    }
+    if (innerH < 4) {
+      innerY = parent.y + Math.min(padTop, parent.height * 0.12);
+      const bottom = Math.min(padBottom, parent.height * 0.04);
+      innerH = Math.max(1, parent.y + parent.height - bottom - innerY);
+    }
+    const maxX = parent.x + parent.width;
+    const maxY = parent.y + parent.height;
+    innerX = Math.min(Math.max(parent.x, innerX), maxX);
+    innerY = Math.min(Math.max(parent.y, innerY), maxY);
+    innerW = Math.max(1, Math.min(innerW, maxX - innerX));
+    innerH = Math.max(1, Math.min(innerH, maxY - innerY));
     const cols = Math.max(1, Math.ceil(Math.sqrt(kids.length)));
     const rows = Math.ceil(kids.length / cols);
-    const innerW = Math.max(8, parent.width - pad * 2);
-    const innerH = Math.max(8, parent.height - top - pad);
     const cellW = innerW / cols;
     const cellH = innerH / rows;
+    const inset = Math.min(gap, cellW / 4, cellH / 4);
     kids.forEach((id, index) => {
       const column = index % cols;
       const row = Math.floor(index / cols);
+      const x = innerX + column * cellW + inset;
+      const y = innerY + row * cellH + inset;
       nodes[id] = {
-        x: parent.x + pad + column * cellW + 4,
-        y: parent.y + top + row * cellH + 4,
-        width: Math.max(4, cellW - 8),
-        height: Math.max(4, cellH - 8),
+        x,
+        y,
+        width: Math.max(1, Math.min(cellW - inset * 2, maxX - x)),
+        height: Math.max(1, Math.min(cellH - inset * 2, maxY - y)),
       };
     });
   }

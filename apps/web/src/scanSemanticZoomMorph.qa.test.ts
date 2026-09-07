@@ -94,8 +94,10 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
     const symbolBounds = scene.projection?.boundsByEntityIdAndDetail[symbol!.id]?.code;
     expect(fileBounds).toBeDefined();
     expect(symbolBounds).toBeDefined();
-    expect(symbolBounds!.x).toBeGreaterThanOrEqual(fileBounds!.x);
-    expect(symbolBounds!.y).toBeGreaterThanOrEqual(fileBounds!.y);
+    expect(symbolBounds!.x).toBeGreaterThanOrEqual(fileBounds!.x - 1);
+    expect(symbolBounds!.y).toBeGreaterThanOrEqual(fileBounds!.y - 1);
+    expect(symbolBounds!.x + symbolBounds!.width).toBeLessThanOrEqual(fileBounds!.x + fileBounds!.width + 1);
+    expect(symbolBounds!.y + symbolBounds!.height).toBeLessThanOrEqual(fileBounds!.y + fileBounds!.height + 1);
 
     const webApp = semanticBounds(scene, 'container:web-app', 'container');
     expect(webApp).toBeDefined();
