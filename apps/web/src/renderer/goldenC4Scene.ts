@@ -26,7 +26,7 @@ import {
   NO_SUMMARY_SUPPLIED,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
-import { scanEntityHasChildren } from './lazyBandCompile';
+import { scanCompileFocusForBand, scanEntityHasChildren } from './lazyBandCompile';
 import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedEdge, OmittedNode, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
@@ -509,6 +509,22 @@ export function semanticBounds(scene: AtlasScene, entityId: string, detail: Sema
 }
 
 /**
+ * CLA-104: a camera-tile refresh after L2→L3 handoff can look at the reserved
+ * owner-shell interior and page every file-component out of the compiled scene.
+ * Keep the unwindowed neighborhood when the windowed compile would drop that graph.
+ */
+export function scanWindowedCompileDropsPeerGraph(
+  current: AtlasScene,
+  next: AtlasScene,
+  ownerId: string,
+  detail: SemanticDetail,
+): boolean {
+  if (detail !== 'component' && detail !== 'code') return false;
+  return scanDeeperBandHasPeerCards(current, ownerId, detail)
+    && !scanDeeperBandHasPeerCards(next, ownerId, detail);
+}
+
+/**
  * True when `ownerId` has at least one descendant card at `detail` in the
  * compiled scene. CLA-81 reserved owner shells publish bounds at the next
  * band without those peer cards — that is not a laid-out C4 map.
@@ -559,4 +575,36 @@ export function scanDrillDeeperDetail(
     return undefined;
   }
   return deeper;
+}
+
+/**
+ * CLA-104: continuous-zoom compile target for scan mode.
+ *
+ * L1 already includes container bounds (`maxBand: container`), so L1→L2 wheel
+ * stays in the current scene. L2→L3 (and L3→L4 / zoom-out) need the same
+ * neighborhood swap Open inside performs via {@link scanCompileFocusForBand}.
+ * Pure — never compiles. Undefined when the current scene already shows that
+ * band's peer graph, or when the focused container has no children to open.
+ */
+export function scanZoomCompileHandoff(
+  scene: AtlasScene,
+  snapshot: ArchitectureSnapshot,
+  preferredEntityId: string,
+  viewRootId: string,
+  detail: SemanticDetail,
+  currentCompileFocus = scene.rootEntityId ?? viewRootId,
+): { detail: SemanticDetail; compileFocus: string } | undefined {
+  const compileFocus = scanCompileFocusForBand(snapshot, preferredEntityId, detail, viewRootId);
+  if (detail === 'context' || detail === 'container') {
+    return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
+  }
+  // CLA-66 system compile is maxBand: container — recompiling the view root
+  // at component/code cannot grow L3/L4 peers. Stay on the L2 scene until a
+  // code-bearing container (or file) is the compile focus.
+  if (compileFocus === viewRootId && currentCompileFocus === viewRootId) return undefined;
+  if (compileFocus === currentCompileFocus && scanDeeperBandHasPeerCards(scene, compileFocus, detail)) {
+    return undefined;
+  }
+  if (detail === 'component' && !scanEntityHasChildren(snapshot, compileFocus)) return undefined;
+  return { detail, compileFocus };
 }

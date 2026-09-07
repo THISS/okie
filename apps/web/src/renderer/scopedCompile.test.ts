@@ -19,7 +19,7 @@ import {
   scanScopeCompileOptions,
   scanScopeStats,
 } from './scanFixture';
-import { resolveOmittedRelations, scanDrillDeeperDetail } from './goldenC4Scene';
+import { resolveOmittedRelations, scanDrillDeeperDetail, scanZoomCompileHandoff } from './goldenC4Scene';
 import type { AtlasScene, SceneEntity } from './types';
 
 function entity(id: string, kind: EntityKind, parentId?: string): ArchitectureEntity {
@@ -300,6 +300,95 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
       entity('component:x', 'component', 'container:c'),
     ]);
     expect(scanDrillDeeperDetail(emptyScene, containerOnly, snap)).toBe('component');
+  });
+});
+
+describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused neighborhood', () => {
+  const bounds = { x: 0, y: 0, width: 1, height: 1 };
+  const sceneEntities: SceneEntity[] = [
+    { id: 'system:root', name: 'root', kind: 'system', detail: 'context', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+    { id: 'container:c', parentId: 'system:root', name: 'c', kind: 'container', detail: 'container', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+    { id: 'container:empty', parentId: 'system:root', name: 'empty', kind: 'container', detail: 'container', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+    { id: 'component:x', parentId: 'container:c', name: 'x', kind: 'component', detail: 'component', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+  ];
+  const snap = snapshot([
+    entity('system:root', 'softwareSystem'),
+    entity('container:c', 'container', 'system:root'),
+    entity('container:empty', 'container', 'system:root'),
+    entity('component:x', 'component', 'container:c'),
+  ]);
+  const l2Scene: AtlasScene = {
+    id: 's',
+    title: '',
+    subtitle: '',
+    rootEntityId: 'system:root',
+    entities: sceneEntities,
+    relations: [],
+    regions: [],
+    projection: {
+      boundsByEntityIdAndDetail: {
+        'system:root': { context: bounds, container: bounds },
+        'container:c': { container: bounds },
+        'container:empty': { container: bounds },
+      },
+      entityIdsByDetail: {
+        context: ['system:root'],
+        container: ['system:root', 'container:c', 'container:empty'],
+        component: [],
+        code: [],
+      },
+    },
+  } as unknown as AtlasScene;
+
+  it('does not swap on L1→L2 — the system compile already includes container peers', () => {
+    expect(scanZoomCompileHandoff(l2Scene, snap, 'container:c', 'system:root', 'context')).toBeUndefined();
+    expect(scanZoomCompileHandoff(l2Scene, snap, 'container:c', 'system:root', 'container')).toBeUndefined();
+  });
+
+  it('swaps L2→L3 into the focused code-bearing container, not the view root', () => {
+    expect(scanZoomCompileHandoff(l2Scene, snap, 'container:c', 'system:root', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
+  });
+
+  it('does not swap into an empty container', () => {
+    expect(scanZoomCompileHandoff(l2Scene, snap, 'container:empty', 'system:root', 'component')).toBeUndefined();
+  });
+
+  it('does not recompile the view root at L3 — system maxBand cannot grow component peers', () => {
+    expect(scanZoomCompileHandoff(l2Scene, snap, 'system:root', 'system:root', 'component')).toBeUndefined();
+  });
+
+  it('does not swap again once the L3 peer graph is resident', () => {
+    const l3Scene: AtlasScene = {
+      ...l2Scene,
+      rootEntityId: 'container:c',
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'container:c': { container: bounds, component: bounds },
+          'component:x': { component: bounds },
+        },
+        entityIdsByDetail: {
+          context: [],
+          container: ['container:c'],
+          component: ['component:x'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(l3Scene, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
+  });
+
+  it('swaps back to the view root when zooming out of an L3 neighborhood', () => {
+    const l3Scene: AtlasScene = {
+      ...l2Scene,
+      rootEntityId: 'container:c',
+    } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(l3Scene, snap, 'container:c', 'system:root', 'container')).toEqual({
+      detail: 'container',
+      compileFocus: 'system:root',
+    });
   });
 });
 

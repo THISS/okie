@@ -338,6 +338,31 @@ export function frameComponentPeerArrivalCamera(
   );
 }
 
+/**
+ * CLA-104: after a continuous-zoom neighborhood swap, keep the user's zoom
+ * and pan onto the compiled file-component peer cluster. Mapping the reserved
+ * owner shell at live zoom lands in the hollow interior; Fit stays a Fit click.
+ */
+export function scanZoomHandoffCamera(
+  liveCamera: Camera,
+  nextScene: AtlasScene,
+  compileFocus: string,
+  detail: SemanticDetail,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+  previousBounds?: WorldRect,
+  targetBounds?: WorldRect,
+): Camera {
+  if (detail === 'component') {
+    const peer = frameComponentPeerArrivalCamera(nextScene, compileFocus, viewport, safeArea);
+    if (peer) return { x: peer.x, y: peer.y, zoom: liveCamera.zoom };
+  }
+  if (previousBounds && targetBounds) {
+    return retargetCameraForSemanticBand(liveCamera, previousBounds, targetBounds, liveCamera.zoom, viewport);
+  }
+  return liveCamera;
+}
+
 /** Explicit rail selection chooses one valid nested branch at the requested depth. */
 export function semanticLevelSession(
   scene: AtlasScene,
