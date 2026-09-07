@@ -15,6 +15,7 @@ import {
   mergeArchitectureNeighborhoods,
   neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
+  snapshotPreplacesL3InL2,
   validateNeighborhoodPacket,
 } from "./neighborhood.js";
 
@@ -256,6 +257,32 @@ test("CLA-107: default L1 slice stays CLA-73 (no auto-rewrite of +1 band)", () =
   });
   assert.ok(opted.snapshot.entities.some(item => item.kind === "component"));
   assert.equal(opted.snapshot.entities.some(item => item.kind === "code"), false);
+});
+
+test("CLA-107: 10 containers still pre-place when L4 code exceeds 2000", () => {
+  const entities: ArchitectureEntity[] = [
+    entity("system:root", "softwareSystem"),
+  ];
+  for (let index = 0; index < 10; index += 1) {
+    const containerId = `container:c${index}`;
+    entities.push(entity(containerId, "container", "system:root"));
+    entities.push(entity(`component:c${index}-f0`, "component", containerId));
+  }
+  for (let index = 0; index < 3000; index += 1) {
+    entities.push(entity(`code:n${index}`, "code", "component:c0-f0"));
+  }
+  const snapshot: ArchitectureSnapshot = {
+    schemaVersion: 1,
+    id: "snapshot:okie-shaped",
+    repositoryId: "repo:okie",
+    commitSha: "sha",
+    generatedAt: "2026-01-01T00:00:00.000Z",
+    entities,
+    relations: [],
+  };
+  assert.ok(snapshot.entities.length > 2000);
+  assert.equal(snapshotPreplacesL3InL2(snapshot), true);
+  assert.deepEqual(neighborhoodSliceOptionsForFocus(snapshot, "system:root"), { maxBand: "component" });
 });
 
 test("CLA-107: 13+ containers do not opt into L3-in-L1", () => {

@@ -47,10 +47,11 @@ export function snapshotContainerCount(snapshot: ArchitectureSnapshot): number {
 /**
  * True when a scan may compile L3 landmarks into the L2 (system) scene.
  * Default CLA-73/CLA-66 path stays one band down; this is the additive
- * small-repo gate (container handful + under the hang-guard).
+ * small-repo gate (container handful). Total entity count is not the switch —
+ * THISS/okie is ~3k entities mostly L4 code, but only ~10 containers / ~170
+ * file-components. The hang-guard still refuses unbounded compiles elsewhere.
  */
 export function snapshotPreplacesL3InL2(snapshot: ArchitectureSnapshot): boolean {
-  if (snapshot.entities.length > SMALL_REPO_L3_PREPLACE_MAX_ENTITIES) return false;
   const containers = snapshotContainerCount(snapshot);
   if (containers === 0 || containers > SMALL_REPO_L3_PREPLACE_CONTAINERS) return false;
   const components = snapshot.entities.filter(entity => entity.kind === "component").length;

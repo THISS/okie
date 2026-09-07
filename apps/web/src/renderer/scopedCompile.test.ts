@@ -58,13 +58,14 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
     ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
   ]);
 
-  it('system→container above the hang-guard; small-repo system compiles L3 landmarks (CLA-107)', () => {
-    expect(scanScopeCompileOptions(big, 'system:root')).toEqual({ maxBand: 'container' });
-    expect(scanScopeCompileOptions(small, 'system:root')).toEqual({
+  it('CLA-107: handful of containers compiles L3 into L2 even when L4 exceeds the hang-guard', () => {
+    const overlay = {
       maxBand: 'component',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
-    });
+    } as const;
+    expect(scanScopeCompileOptions(big, 'system:root')).toEqual(overlay);
+    expect(scanScopeCompileOptions(small, 'system:root')).toEqual(overlay);
     for (const snap of [small, big]) {
       expect(scanScopeCompileOptions(snap, 'container:c')).toEqual({
         maxBand: 'component',
@@ -171,7 +172,14 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
     // The deep-link restore compiles the URL `root` (e.g. system root while the
     // restored detail is `code`); the guard keeps that focus, scoped to container.
     const system = guardScanCompile(aboveGate, 'system:root', 'system:root');
-    expect(system).toEqual({ focusEntityId: 'system:root', options: { maxBand: 'container' } });
+    expect(system).toEqual({
+      focusEntityId: 'system:root',
+      options: {
+        maxBand: 'component',
+        maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+        maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      },
+    });
     expect(system.refusal).toBeUndefined();
 
     // A container drill carries a router-grid cap → bounded → passed through.
@@ -591,7 +599,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual({
-      maxBand: 'container',
+      maxBand: 'component',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
     });

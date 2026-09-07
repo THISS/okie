@@ -98,8 +98,9 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
  * the default path at every repo size (CLA-66): system→container band;
  * container drill-in→component band + edge budget + router grid cap;
  * component→code band. CLA-107 overlays `maxBand: component` on the system
- * compile when the snapshot is a small repo (≤12 containers, under the
- * hang-guard) so L2 is not a hollow shell. A second, independent relation gate
+ * compile when the snapshot is a small repo (≤12 containers, ≤2000 components)
+ * so L2 is not a hollow shell. Total entity count is not the switch — THISS/okie
+ * is ~3k entities mostly L4 code. A second, independent relation gate
  * (> SCAN_RELATION_EDGE_MIN) adds a per-band routed-edge budget plus a router
  * grid cap wherever the options don't already carry one. SCAN_BAND_DEPTH_MIN_ENTITIES
  * is not a compile-strategy switch — it remains the hang-guard in
@@ -111,9 +112,9 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
   const scoped = focus ? SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind] : undefined;
   const options: ScanScopedOptions = scoped ? { ...scoped } : {};
   // CLA-107: small-repo L2 compiles one band deeper (component landmarks in
-  // global coordinates) so containers are not hollow shells. Large-repo and
-  // hang-guard paths keep CLA-66 `maxBand: container`. No maxNodesPerBand —
-  // L1/L2 stay unpaged; paging would drop the in-place L3 cards.
+  // global coordinates) so containers are not hollow shells. 13+ containers
+  // stay CLA-66 `maxBand: container`. No maxNodesPerBand — L1/L2 stay unpaged;
+  // paging would drop the in-place L3 cards.
   if (
     snapshotPreplacesL3InL2(snapshot)
     && (options.maxBand === 'container' || (focus && c4BandForKind(focus.kind) === 'context' && options.maxBand === undefined))
