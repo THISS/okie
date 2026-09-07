@@ -303,7 +303,7 @@ function entityLayoutHintsForCodePaging(
 ): Record<string, NodeLayout> | undefined {
   const fromPrevious: Record<string, NodeLayout> = {};
   for (const [id, bands] of Object.entries(previous?.projection?.boundsByEntityIdAndDetail ?? {})) {
-    const bounds = bands.code ?? bands.component ?? bands.container ?? bands.context;
+    const bounds = bands.component ?? bands.container ?? bands.context ?? bands.code;
     if (bounds) fromPrevious[id] = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
   }
   return Object.keys(fromPrevious).length > 0 ? fromPrevious : undefined;

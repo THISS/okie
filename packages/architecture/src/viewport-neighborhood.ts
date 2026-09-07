@@ -127,10 +127,21 @@ function pagingBounds(
   id: string,
   packed: Readonly<Record<string, NodeLayout>>,
   visualNodeById: Readonly<Record<string, ResidentVisualNode>>,
+  pagedKinds?: readonly EntityKind[],
 ): NodeLayout | undefined {
+  const node = visualNodeById[id];
+  // CLA-109: L4 overlap/ranking uses the parent file face. Hinted symbol
+  // interiors sit in a different space than L3 compact cards, so using them
+  // for the camera test pages the on-screen file to zero L4 and wheel cannot
+  // enter the code band.
+  if (node && pagedKinds?.includes(node.kind)) {
+    const parentId = node.parentVisualId;
+    const parent = parentId ? packed[parentId] : undefined;
+    if (parent) return parent;
+  }
   const own = packed[id];
   if (own) return own;
-  const parentId = visualNodeById[id]?.parentVisualId;
+  const parentId = node?.parentVisualId;
   return parentId ? packed[parentId] : undefined;
 }
 
@@ -196,15 +207,15 @@ export function selectResidentVisualNodeIds(
     ? rectCenter(input.residentWorldBounds)
     : (() => {
       const focusId = ordered.find(id => byId[id]?.entity.logicalId === input.focusEntityId);
-      const bounds = (focusId ? pagingBounds(focusId, input.packed, byId) : undefined)
-        ?? pagingBounds(ordered[0] ?? "", input.packed, byId);
+      const bounds = (focusId ? pagingBounds(focusId, input.packed, byId, input.pagedKinds) : undefined)
+        ?? pagingBounds(ordered[0] ?? "", input.packed, byId, input.pagedKinds);
       return bounds ? rectCenter(bounds) : { x: 0, y: 0 };
     })();
 
   const eligible = new Set<string>(always);
   for (const id of ordered) {
     if (always.has(id)) continue;
-    const bounds = pagingBounds(id, input.packed, byId);
+    const bounds = pagingBounds(id, input.packed, byId, input.pagedKinds);
     if (!bounds) continue;
     if (input.residentWorldBounds && !rectsOverlap(bounds, input.residentWorldBounds)) continue;
     eligible.add(id);
@@ -218,7 +229,7 @@ export function selectResidentVisualNodeIds(
     if (pagedEligible.length === 0) {
       for (const id of ordered) {
         if (always.has(id) || !paged(byId[id]?.kind)) continue;
-        if (!pagingBounds(id, input.packed, byId)) continue;
+        if (!pagingBounds(id, input.packed, byId, input.pagedKinds)) continue;
         eligible.add(id);
       }
     }
@@ -236,8 +247,8 @@ export function selectResidentVisualNodeIds(
   const ranked = [...eligible]
     .filter(id => !always.has(id) && paged(byId[id]?.kind))
     .sort((left, right) => {
-      const leftBounds = pagingBounds(left, input.packed, byId);
-      const rightBounds = pagingBounds(right, input.packed, byId);
+      const leftBounds = pagingBounds(left, input.packed, byId, input.pagedKinds);
+      const rightBounds = pagingBounds(right, input.packed, byId, input.pagedKinds);
       const leftDistance = leftBounds ? distanceSquared(rectCenter(leftBounds), origin) : Number.POSITIVE_INFINITY;
       const rightDistance = rightBounds ? distanceSquared(rectCenter(rightBounds), origin) : Number.POSITIVE_INFINITY;
       return leftDistance - rightDistance || left.localeCompare(right);

@@ -211,3 +211,30 @@ test('CLA-109: miss-camera L4 paging keeps a landmark floor instead of zero', ()
   assert.ok(selection.residentIds.includes('peer'));
   assert.equal(selection.residentIds.filter(id => id === 'near' || id === 'far').length, 1);
 });
+
+test('CLA-109: L4 camera overlap uses the parent file face, not hinted symbol interiors', () => {
+  const packed = {
+    file: { x: 0, y: 0, width: 400, height: 100 },
+    near: { x: 1_000_000, y: 1_000_000, width: 10, height: 10 },
+    far: { x: 2_000_000, y: 2_000_000, width: 10, height: 10 },
+    peer: { x: 3000, y: 0, width: 400, height: 100 },
+  };
+  const visualNodeById = {
+    file: { kind: 'component' as const, entity: { logicalId: 'component:file' } },
+    peer: { kind: 'component' as const, entity: { logicalId: 'component:peer' } },
+    near: { kind: 'code' as const, entity: { logicalId: 'code:near' }, parentVisualId: 'file' },
+    far: { kind: 'code' as const, entity: { logicalId: 'code:far' }, parentVisualId: 'peer' },
+  };
+  const selection = selectResidentVisualNodeIds({
+    band: 'code',
+    visualNodeIds: ['file', 'peer', 'near', 'far'],
+    packed,
+    visualNodeById,
+    focusEntityId: 'component:file',
+    maxNodesPerBand: 1,
+    pagedKinds: ['code'],
+    residentWorldBounds: { x: 0, y: 0, width: 200, height: 200 },
+  });
+  assert.ok(selection.residentIds.includes('near'), 'on-screen file keeps L4 even when symbol interiors miss the camera');
+  assert.ok(selection.omittedIds.includes('far'));
+});
