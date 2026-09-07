@@ -227,11 +227,11 @@ test("golden L1 neighborhood stays a handful and validates", async () => {
   assert.deepEqual(validateNeighborhoodPacket(packet), []);
 });
 
-test("CLA-107: small-repo L1 opt-in includes components, not code", async () => {
+test("CLA-107/109: small-repo L1 opt-in includes components and code", async () => {
   const snapshot = await readJson<ArchitectureSnapshot>("architecture/demo-snapshot.json");
   const view = await readJson<ArchitectureView>("architecture/demo-view.json");
   const options = neighborhoodSliceOptionsForFocus(snapshot, "system:okie");
-  assert.deepEqual(options, { maxBand: "component" });
+  assert.deepEqual(options, { maxBand: "code" });
   const packet = sliceArchitectureNeighborhood(snapshot, view, {
     focusEntityId: "system:okie",
     ...options,
@@ -240,9 +240,8 @@ test("CLA-107: small-repo L1 opt-in includes components, not code", async () => 
   assert.ok(kinds.has("softwareSystem"));
   assert.ok(kinds.has("container"));
   assert.ok(kinds.has("component"));
-  assert.equal(kinds.has("code"), false);
-  assert.ok(packet.truncated);
-  assert.ok(packet.snapshot.entities.some(item => item.kind === "component" && item.parentId?.startsWith("container:")));
+  assert.ok(kinds.has("code"));
+  assert.ok(packet.snapshot.entities.some(item => item.kind === "code" && item.parentId?.startsWith("component:")));
   assert.deepEqual(validateNeighborhoodPacket(packet), []);
 });
 
@@ -256,7 +255,7 @@ test("CLA-107: default L1 slice stays CLA-73 (no auto-rewrite of +1 band)", () =
     ...neighborhoodSliceOptionsForFocus(snapshot, "system:root"),
   });
   assert.ok(opted.snapshot.entities.some(item => item.kind === "component"));
-  assert.equal(opted.snapshot.entities.some(item => item.kind === "code"), false);
+  assert.ok(opted.snapshot.entities.some(item => item.kind === "code"));
 });
 
 test("CLA-107: 10 containers still pre-place when L4 code exceeds 2000", () => {
@@ -282,7 +281,7 @@ test("CLA-107: 10 containers still pre-place when L4 code exceeds 2000", () => {
   };
   assert.ok(snapshot.entities.length > 2000);
   assert.equal(snapshotPreplacesL3InL2(snapshot), true);
-  assert.deepEqual(neighborhoodSliceOptionsForFocus(snapshot, "system:root"), { maxBand: "component" });
+  assert.deepEqual(neighborhoodSliceOptionsForFocus(snapshot, "system:root"), { maxBand: "code" });
 });
 
 test("CLA-107: 13+ containers do not opt into L3-in-L1", () => {

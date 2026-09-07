@@ -46,11 +46,12 @@ export function snapshotContainerCount(snapshot: ArchitectureSnapshot): number {
 }
 
 /**
- * True when a scan may compile L3 landmarks into the L2 (system) scene.
+ * True when a scan may compile L3+L4 landmarks into the L2 (system) scene.
  * Default CLA-73/CLA-66 path stays one band down; this is the additive
  * small-repo gate (container handful). Total entity count is not the switch —
  * THISS/okie is ~3k entities mostly L4 code, but only ~10 containers / ~170
  * file-components. The hang-guard still refuses unbounded compiles elsewhere.
+ * CLA-109 extends the same gate through code so L3↔L4 can morph like L1↔L2.
  */
 export function snapshotPreplacesL3InL2(snapshot: ArchitectureSnapshot): boolean {
   const containers = snapshotContainerCount(snapshot);
@@ -60,8 +61,8 @@ export function snapshotPreplacesL3InL2(snapshot: ArchitectureSnapshot): boolean
 }
 
 /**
- * Opt-in deeper L1 slice for CLA-107. Empty for container/file focus and for
- * large repos so CLA-73 default packets stay current-band + one down.
+ * Opt-in deeper L1 slice for CLA-107/109. Empty for container/file focus and
+ * for large repos so CLA-73 default packets stay current-band + one down.
  */
 export function neighborhoodSliceOptionsForFocus(
   snapshot: ArchitectureSnapshot,
@@ -73,7 +74,7 @@ export function neighborhoodSliceOptionsForFocus(
     : undefined;
   if (focus && c4BandForKind(focus.kind) !== "context") return {};
   if (!snapshotPreplacesL3InL2(snapshot)) return {};
-  return { maxBand: "component" };
+  return { maxBand: "code" };
 }
 
 export type SliceNeighborhoodOptions = {
@@ -83,9 +84,10 @@ export type SliceNeighborhoodOptions = {
   includeExcerpts?: boolean;
   /**
    * Deepest C4 band to include (opt-in). Default: native band + one layer down
-   * (CLA-73). CLA-107 small-repo L2 pre-place passes `component` on a context
-   * focus so file-component landmarks ship with L1/L2. Never includes code
-   * unless the focus is already at component/code.
+   * (CLA-73). CLA-107/109 small-repo L2 pre-place passes `code` on a context
+   * focus so file-component and symbol landmarks ship with L1–L4. Large-repo
+   * context packets still stop at containers unless the focus is already
+   * component/code.
    */
   maxBand?: C4Band;
 };
@@ -198,7 +200,7 @@ function childCountMap(snapshot: ArchitectureSnapshot): Record<string, number> {
 
 /**
  * Slice a published snapshot+view down to the focus neighborhood (current C4
- * band + one layer down by default). `maxBand` is an additive opt-in (CLA-107)
+ * band + one layer down by default). `maxBand` is an additive opt-in (CLA-107/109)
  * and does not change CLA-66 compile options on its own.
  */
 export function sliceArchitectureNeighborhood(

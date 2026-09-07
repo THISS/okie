@@ -506,7 +506,7 @@ describe('CLA-107: small-repo pre-place L2↔L3 wheel morphs in place', () => {
     const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
     const view = structuredClone(demoView) as unknown as ArchitectureView;
     const sliceOptions = neighborhoodSliceOptionsForFocus(snapshot, 'system:okie');
-    expect(sliceOptions).toEqual({ maxBand: 'component' });
+    expect(sliceOptions).toEqual({ maxBand: 'code' });
     const host = {
       loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
         snapshot,
@@ -555,6 +555,20 @@ describe('CLA-107: small-repo pre-place L2↔L3 wheel morphs in place', () => {
       'container:web-app',
       fixture.navigation.rootEntityId,
       'component',
+    )).toBeUndefined();
+    expect(scanZoomCompileHandoff(
+      l2,
+      fixture.snapshot,
+      'container:web-app',
+      fixture.navigation.rootEntityId,
+      'code',
+    )).toBeUndefined();
+    expect(scanZoomCompileHandoff(
+      l2,
+      fixture.snapshot,
+      fixture.navigation.rootEntityId,
+      fixture.navigation.rootEntityId,
+      'code',
     )).toBeUndefined();
 
     const preferred = scanZoomHandoffPreferredId(

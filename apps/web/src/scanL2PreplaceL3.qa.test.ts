@@ -44,7 +44,7 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(fixture).not.toMatch(/SCAN_BAND_DEPTH_MIN_ENTITIES\s*=\s*[3-9]\d{3}/u);
   });
 
-  it('full small-repo compile puts component landmarks inside L2 containers, not code', () => {
+  it('full small-repo compile puts component and code landmarks inside L2 containers', () => {
     const compiled = compileScanFixture({
       snapshot: structuredClone(demoSnapshot),
       view: structuredClone(demoView),
@@ -52,7 +52,7 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     });
     expect(snapshotPreplacesL3InL2(compiled.snapshot)).toBe(true);
     expect(compiled.scopeCompileOptions(compiled.navigation.rootEntityId)).toEqual({
-      maxBand: 'component',
+      maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
     });
@@ -61,8 +61,11 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     const componentIds = (scene.projection?.entityIdsByDetail.component ?? [])
       .filter(id => scene.entities.find(entity => entity.id === id)?.detail === 'component');
     expect(componentIds.length).toBeGreaterThan(0);
-    expect(scene.projection?.entityIdsByDetail.code ?? []).toEqual([]);
+    const codeIds = (scene.projection?.entityIdsByDetail.code ?? [])
+      .filter(id => scene.entities.find(entity => entity.id === id)?.detail === 'code');
+    expect(codeIds.length).toBeGreaterThan(0);
     expect(componentIds.every(id => id.startsWith('component:'))).toBe(true);
+    expect(codeIds.every(id => id.startsWith('code:'))).toBe(true);
 
     const containers = scene.entities.filter(entity => entity.detail === 'container');
     expect(containers.length).toBeGreaterThan(1);
@@ -86,6 +89,20 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(childBounds!.x + childBounds!.width).toBeLessThanOrEqual(ownerBounds!.x + ownerBounds!.width + 1);
     expect(childBounds!.y + childBounds!.height).toBeLessThanOrEqual(ownerBounds!.y + ownerBounds!.height + 1);
 
+    const symbol = scene.entities.find(entity =>
+      entity.parentId === child!.id && entity.detail === 'code');
+    expect(symbol).toBeDefined();
+    expect(scanDeeperBandHasPeerCards(scene, child!.id, 'code')).toBe(true);
+    const symbolBounds = scene.projection?.boundsByEntityIdAndDetail[symbol!.id]?.code;
+    const fileCodeBounds = scene.projection?.boundsByEntityIdAndDetail[child!.id]?.code
+      ?? scene.projection?.boundsByEntityIdAndDetail[child!.id]?.component;
+    expect(symbolBounds).toBeDefined();
+    expect(fileCodeBounds).toBeDefined();
+    expect(symbolBounds!.width).toBeGreaterThan(0);
+    expect(symbolBounds!.height).toBeGreaterThan(0);
+    expect(symbolBounds!.x).toBeGreaterThanOrEqual(fileCodeBounds!.x);
+    expect(symbolBounds!.y).toBeGreaterThanOrEqual(fileCodeBounds!.y);
+
     expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(true);
     expect(scanKeepsResidentL3Landmarks(compiled.snapshot, 'container:web-app')).toBe(false);
     const far = compiled.createScene(compiled.navigation.rootEntityId, scene, {
@@ -94,19 +111,22 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     const farIds = (far.projection?.entityIdsByDetail.component ?? [])
       .filter(id => far.entities.find(entity => entity.id === id)?.detail === 'component');
     expect(farIds.sort()).toEqual([...componentIds].sort());
+    const farCode = (far.projection?.entityIdsByDetail.code ?? [])
+      .filter(id => far.entities.find(entity => entity.id === id)?.detail === 'code');
+    expect(farCode.sort()).toEqual([...codeIds].sort());
   });
 
   it('hosted-style L1 packet (server opt-in) compiles L2 with in-place landmarks without Open inside', () => {
     const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
     const view = structuredClone(demoView) as unknown as ArchitectureView;
     const sliceOptions = neighborhoodSliceOptionsForFocus(snapshot, 'system:okie');
-    expect(sliceOptions).toEqual({ maxBand: 'component' });
+    expect(sliceOptions).toEqual({ maxBand: 'code' });
     const l1 = sliceArchitectureNeighborhood(snapshot, view, {
       focusEntityId: 'system:okie',
       ...sliceOptions,
     });
     expect(l1.snapshot.entities.some(entity => entity.kind === 'component')).toBe(true);
-    expect(l1.snapshot.entities.some(entity => entity.kind === 'code')).toBe(false);
+    expect(l1.snapshot.entities.some(entity => entity.kind === 'code')).toBe(true);
 
     const host = {
       loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
@@ -127,10 +147,11 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect((l2.projection?.entityIdsByDetail.component ?? [])
       .filter(id => l2.entities.find(entity => entity.id === id)?.detail === 'component').length).toBeGreaterThan(0);
     expect(scanDeeperBandHasPeerCards(l2, 'container:web-app', 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(l2, 'container:web-app', 'code')).toBe(true);
     const web = l2.entities.find(entity => entity.id === 'container:web-app');
     expect(web).toBeDefined();
     expect(scanDrillDeeperDetail(l2, web!, fixture.snapshot)).toBe('component');
-    expect((l2.projection?.entityIdsByDetail.code ?? []).length).toBe(0);
+    expect((l2.projection?.entityIdsByDetail.code ?? []).length).toBeGreaterThan(0);
   });
 
   it('CLA-107: pre-placed L2↔L3 wheel stays on the system scene like L1↔L2; Open inside still drills', () => {
@@ -149,15 +170,24 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'container')).toBeUndefined();
     expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'component')).toBeUndefined();
     expect(scanZoomCompileHandoff(l2, compiled.snapshot, viewRoot, viewRoot, 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(l2, compiled.snapshot, viewRoot, viewRoot, 'code')).toBeUndefined();
 
     const l1Morph = l2.projection?.semanticTransitionsByEntityId?.[viewRoot]?.container;
     const l2Morph = l2.projection?.semanticTransitionsByEntityId?.['container:web-app']?.component;
+    const file = l2.entities.find(entity =>
+      entity.parentId === 'container:web-app' && entity.detail === 'component');
+    expect(file).toBeDefined();
+    const l3Morph = l2.projection?.semanticTransitionsByEntityId?.[file!.id]?.code;
     expect(l1Morph?.sourceRepresentationId).toBeTruthy();
     expect(l1Morph?.targetRepresentationId).toBeTruthy();
     expect(l1Morph?.sourceRepresentationId).not.toBe(l1Morph?.targetRepresentationId);
     expect(l2Morph?.sourceRepresentationId).toBeTruthy();
     expect(l2Morph?.targetRepresentationId).toBeTruthy();
     expect(l2Morph?.sourceRepresentationId).not.toBe(l2Morph?.targetRepresentationId);
+    expect(l3Morph?.sourceRepresentationId).toBeTruthy();
+    expect(l3Morph?.targetRepresentationId).toBeTruthy();
+    expect(l3Morph?.sourceRepresentationId).not.toBe(l3Morph?.targetRepresentationId);
 
     const containerBounds = l2.projection?.boundsByEntityIdAndDetail['container:web-app']?.container;
     const componentOwnerBounds = l2.projection?.boundsByEntityIdAndDetail['container:web-app']?.component;

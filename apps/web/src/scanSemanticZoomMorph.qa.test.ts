@@ -1,0 +1,154 @@
+import { describe, expect, it } from 'vitest';
+import {
+  neighborhoodSliceOptionsForFocus,
+  SMALL_REPO_L3_PREPLACE_CONTAINERS,
+  SMALL_REPO_L3_PREPLACE_MAX_COMPONENTS,
+  snapshotPreplacesL3InL2,
+} from '@okie/architecture';
+import demoSnapshot from '../../../fixtures/architecture/demo-snapshot.json';
+import demoView from '../../../fixtures/architecture/demo-view.json';
+import demoStory from '../../../fixtures/architecture/demo-story.json';
+import {
+  scanDeeperBandHasPeerCards,
+  scanDrillDeeperDetail,
+  scanZoomCompileHandoff,
+  scanZoomEntityUnderPointer,
+  scanZoomHandoffPreferredId,
+  semanticBounds,
+} from './renderer/goldenC4Scene';
+import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
+import {
+  compileScanFixture,
+  SCAN_BAND_DEPTH_MIN_ENTITIES,
+  SCAN_CONTAINER_GRID_NODES,
+  SCAN_RELATION_EDGE_BUDGET,
+  scanKeepsResidentL3Landmarks,
+} from './renderer/scanFixture';
+import { getLevel } from './App';
+
+const viewport = { width: 1_280, height: 720 };
+
+describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', () => {
+  it('does not raise the 2000 hang-guard or rewrite CLA-66 per-kind mapping', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(SMALL_REPO_L3_PREPLACE_MAX_COMPONENTS).toBe(2000);
+    expect(SMALL_REPO_L3_PREPLACE_CONTAINERS).toBe(12);
+  });
+
+  it('small-repo system scene keeps L1–L4 on one compile root with representation morphs', () => {
+    const compiled = compileScanFixture({
+      snapshot: structuredClone(demoSnapshot),
+      view: structuredClone(demoView),
+      story: structuredClone(demoStory),
+    });
+    expect(snapshotPreplacesL3InL2(compiled.snapshot)).toBe(true);
+    expect(neighborhoodSliceOptionsForFocus(compiled.snapshot, compiled.navigation.rootEntityId))
+      .toEqual({ maxBand: 'code' });
+    expect(compiled.scopeCompileOptions(compiled.navigation.rootEntityId)).toEqual({
+      maxBand: 'code',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+    expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(true);
+
+    const viewRoot = compiled.navigation.rootEntityId;
+    const scene = compiled.createScene(viewRoot);
+    expect(scene.rootEntityId).toBe(viewRoot);
+    expect(scanDeeperBandHasPeerCards(scene, viewRoot, 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(scene, viewRoot, 'code')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(scene, 'container:web-app', 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(scene, 'container:web-app', 'code')).toBe(true);
+
+    expect(getLevel(0.75)).toBe(0);
+    expect(getLevel(2.10)).toBe(1);
+    expect(getLevel(4)).toBe(2);
+    expect(getLevel(10)).toBe(3);
+
+    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'context')).toBeUndefined();
+    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'container')).toBeUndefined();
+    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(scene, compiled.snapshot, viewRoot, viewRoot, 'code')).toBeUndefined();
+
+    const l1Morph = scene.projection?.semanticTransitionsByEntityId?.[viewRoot]?.container;
+    const l2Morph = scene.projection?.semanticTransitionsByEntityId?.['container:web-app']?.component;
+    const file = scene.entities.find(entity =>
+      entity.parentId === 'container:web-app' && entity.detail === 'component');
+    expect(file).toBeDefined();
+    const l3Morph = scene.projection?.semanticTransitionsByEntityId?.[file!.id]?.code;
+    for (const morph of [l1Morph, l2Morph, l3Morph]) {
+      expect(morph?.sourceRepresentationId).toBeTruthy();
+      expect(morph?.targetRepresentationId).toBeTruthy();
+      expect(morph?.sourceRepresentationId).not.toBe(morph?.targetRepresentationId);
+    }
+
+    const fileBounds = scene.projection?.boundsByEntityIdAndDetail[file!.id]?.component;
+    const symbol = scene.entities.find(entity => entity.parentId === file!.id && entity.detail === 'code');
+    expect(symbol).toBeDefined();
+    const symbolBounds = scene.projection?.boundsByEntityIdAndDetail[symbol!.id]?.code;
+    expect(fileBounds).toBeDefined();
+    expect(symbolBounds).toBeDefined();
+    expect(symbolBounds!.x).toBeGreaterThanOrEqual(fileBounds!.x);
+    expect(symbolBounds!.y).toBeGreaterThanOrEqual(fileBounds!.y);
+
+    const webApp = semanticBounds(scene, 'container:web-app', 'container');
+    expect(webApp).toBeDefined();
+    const l3Camera = {
+      x: webApp!.x + webApp!.width / 2,
+      y: webApp!.y + webApp!.height / 2,
+      zoom: 4,
+    };
+    const pointer = { x: viewport.width / 2, y: viewport.height / 2 };
+    expect(scanZoomEntityUnderPointer(scene, l3Camera, viewport, pointer, 'container'))
+      .toBe('container:web-app');
+    const preferredL3 = scanZoomHandoffPreferredId(
+      scene,
+      compiled.snapshot,
+      viewRoot,
+      'component',
+      scene.rootEntityId ?? viewRoot,
+      l3Camera,
+      viewport,
+      pointer,
+      'container',
+      'system:okie',
+    );
+    expect(preferredL3).toBe('system:okie');
+    const preferredL4 = scanZoomHandoffPreferredId(
+      scene,
+      compiled.snapshot,
+      viewRoot,
+      'code',
+      scene.rootEntityId ?? viewRoot,
+      { ...l3Camera, zoom: 10 },
+      viewport,
+      pointer,
+      'component',
+      'system:okie',
+    );
+    expect(preferredL4).toBe('system:okie');
+    expect(scanZoomCompileHandoff(
+      scene,
+      compiled.snapshot,
+      preferredL4,
+      viewRoot,
+      'code',
+    )).toBeUndefined();
+
+    const web = scene.entities.find(entity => entity.id === 'container:web-app')!;
+    expect(scanDrillDeeperDetail(scene, web, compiled.snapshot)).toBe('component');
+    const openedFocus = scanCompileFocusForBand(
+      compiled.snapshot,
+      'container:web-app',
+      'component',
+      viewRoot,
+    );
+    expect(openedFocus).toBe('container:web-app');
+    const opened = compiled.createScene(openedFocus);
+    expect(opened.rootEntityId).toBe('container:web-app');
+    expect(scanZoomCompileHandoff(opened, compiled.snapshot, 'container:web-app', viewRoot, 'container')).toEqual({
+      detail: 'container',
+      compileFocus: viewRoot,
+    });
+  });
+});
