@@ -21,6 +21,7 @@ import {
 } from './scanFixture';
 import {
   resolveOmittedRelations,
+  scanDeeperBandHasPeerCards,
   scanDrillDeeperDetail,
   scanZoomCompileHandoff,
   scanZoomEntityUnderPointer,
@@ -449,6 +450,43 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
       detail: 'container',
       compileFocus: 'system:root',
     });
+  });
+
+  it('CLA-107: camera-paged L3 for one container still stays when sibling landmarks remain', () => {
+    const siblingSnap = snapshot([
+      entity('system:root', 'softwareSystem'),
+      entity('container:c', 'container', 'system:root'),
+      entity('container:empty', 'container', 'system:root'),
+      entity('container:d', 'container', 'system:root'),
+      entity('component:x', 'component', 'container:c'),
+      entity('component:y', 'component', 'container:d'),
+    ]);
+    const siblingScene: AtlasScene = {
+      ...l2Scene,
+      entities: [
+        ...sceneEntities,
+        { id: 'container:d', parentId: 'system:root', name: 'd', kind: 'container', detail: 'container', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+        { id: 'component:y', parentId: 'container:d', name: 'y', kind: 'component', detail: 'component', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+      ],
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': { context: bounds, container: bounds },
+          'container:c': { container: bounds, component: bounds },
+          'container:d': { container: bounds, component: bounds },
+          'container:empty': { container: bounds },
+          'component:y': { component: bounds },
+        },
+        entityIdsByDetail: {
+          context: ['system:root'],
+          container: ['system:root', 'container:c', 'container:empty', 'container:d'],
+          component: ['component:y'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    expect(scanDeeperBandHasPeerCards(siblingScene, 'container:c', 'component')).toBe(false);
+    expect(scanDeeperBandHasPeerCards(siblingScene, 'system:root', 'component')).toBe(true);
+    expect(scanZoomCompileHandoff(siblingScene, siblingSnap, 'container:c', 'system:root', 'component')).toBeUndefined();
   });
 });
 
