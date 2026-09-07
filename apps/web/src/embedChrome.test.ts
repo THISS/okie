@@ -58,6 +58,8 @@ describe('CLA-85 embed chrome vs Overview overlay', () => {
     expect(css).toContain('grid-template-rows: var(--topbar-height) minmax(0, 1fr)');
     expect(css).toContain('.app-shell[data-embed="true"] .saved-story { display: flex; }');
     expect(css).toContain('.app-shell[data-embed="true"] .ask-button { display: none; }');
+    expect(css).toContain('.story-catalog-menu');
+    expect(css).not.toContain('.app-shell[data-embed="true"] .story-catalog-menu { display: none; }');
     expect(app).toContain('initialInspectorOpen()');
     expect(app).toContain("data-embed={isEmbedChrome({ framed: isFramedBrowsingContext(), embedQuery: isEmbedQueryFlag(window.location.search) }) ? 'true' : 'false'}");
     expect(app).toContain("preserveParams: preservedNavigationParams");

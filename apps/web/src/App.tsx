@@ -4854,7 +4854,7 @@ export function App() {
           ) : (
             <div className="story-launcher" data-story-catalog-count={storyCatalog.length}>
               <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>
-              {storyCatalog.map(plan => (
+              {storyCatalog.length === 1 ? storyCatalog.map(plan => (
                 <button
                   className="saved-story"
                   data-story-id={plan.id}
@@ -4865,7 +4865,25 @@ export function App() {
                 >
                   <PlayIcon size={14}/> {plan.title} <span>{storyDurationLabel(plan)}</span>
                 </button>
-              ))}
+              )) : (
+                <details className="story-catalog-menu">
+                  <summary aria-label="Guided architecture tours"><PlayIcon size={14}/> Guided tours <em>{storyCatalog.length}</em></summary>
+                  <div>
+                    {storyCatalog.map(plan => (
+                      <button
+                        className="story-catalog-item"
+                        data-story-id={plan.id}
+                        data-testid={plan.id === defaultStory.id ? 'story-launch-overview' : 'story-launch-flow'}
+                        key={plan.id}
+                        onClick={() => setStep(0, true, 'push', plan)}
+                        type="button"
+                      >
+                        <PlayIcon size={14}/><span><strong>{plan.title}</strong><small>{storyDurationLabel(plan)}</small></span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
               {askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? 'Ask' : 'Preview explanation'}{askPending ? null : <ArrowIcon size={15}/>}</button></form>)}
             </div>
           )}
