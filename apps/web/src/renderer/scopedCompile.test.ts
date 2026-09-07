@@ -61,9 +61,11 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
 
   it('CLA-107: handful of containers compiles L3 into L2 even when L4 exceeds the hang-guard', () => {
     const overlay = {
-      maxBand: 'component',
+      maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
     } as const;
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual(overlay);
     expect(scanScopeCompileOptions(small, 'system:root')).toEqual(overlay);
@@ -176,9 +178,11 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
     expect(system).toEqual({
       focusEntityId: 'system:root',
       options: {
-        maxBand: 'component',
+        maxBand: 'code',
         maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
         maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+        maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+        pageCodeLandmarks: true,
       },
     });
     expect(system.refusal).toBeUndefined();
@@ -452,6 +456,43 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
     });
   });
 
+  it('CLA-109: pre-placed L4 peers keep L3↔L4 wheel on the system scene', () => {
+    const codeSnap = snapshot([
+      entity('system:root', 'softwareSystem'),
+      entity('container:c', 'container', 'system:root'),
+      entity('container:empty', 'container', 'system:root'),
+      entity('component:x', 'component', 'container:c'),
+      entity('code:fn', 'code', 'component:x'),
+    ]);
+    const preplaced: AtlasScene = {
+      ...l2Scene,
+      entities: [
+        ...sceneEntities,
+        { id: 'code:fn', parentId: 'component:x', name: 'fn', kind: 'code', detail: 'code', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+      ],
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': { context: bounds, container: bounds },
+          'container:c': { container: bounds, component: bounds },
+          'container:empty': { container: bounds },
+          'component:x': { component: bounds, code: bounds },
+          'code:fn': { code: bounds },
+        },
+        entityIdsByDetail: {
+          context: ['system:root'],
+          container: ['system:root', 'container:c', 'container:empty'],
+          component: ['component:x'],
+          code: ['code:fn'],
+        },
+      },
+    } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'component:x', 'system:root', 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'system:root', 'system:root', 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'container')).toBeUndefined();
+  });
+
   it('CLA-107: camera-paged L3 for one container still stays when sibling landmarks remain', () => {
     const siblingSnap = snapshot([
       entity('system:root', 'softwareSystem'),
@@ -634,9 +675,11 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
   it('budgets routed edges + router grid above the relation gate, composed with per-kind maxBand', () => {
     const dense = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN + 1));
     expect(scanScopeCompileOptions(dense, 'system:root')).toEqual({
-      maxBand: 'component',
+      maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
     });
     expect(scanScopeCompileOptions(dense, 'container:c')).toEqual({
       maxBand: 'component',
@@ -660,9 +703,11 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
   it('CLA-107: small-repo system overlay still applies at or below the relation gate', () => {
     const sparse = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN));
     expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({
-      maxBand: 'component',
+      maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
     });
   });
 
@@ -697,9 +742,11 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual({
-      maxBand: 'component',
+      maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
     });
     expect(scanScopeCompileOptions(big, 'code:a')).toEqual({
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
@@ -747,11 +794,11 @@ describe('CLA-66: per-neighborhood compile — quiet containers drill without a 
     return selectC4BandProjection(compiled, band).nodes.map(node => node.entity.logicalId);
   }
 
-  it('root compile is a handful of L1–L3 nodes, not L4 rows (CLA-107 pre-places L3)', () => {
+  it('root compile is a handful of L1–L4 nodes on the small-repo overlay (CLA-109)', () => {
     const root = bundle('system:root');
     expect(ids(root, 'container')).toEqual(expect.arrayContaining(['container:web', 'container:architecture']));
     expect(ids(root, 'component')).toEqual(expect.arrayContaining(['component:web-a', 'component:arch-a']));
-    expect(ids(root, 'code')).toEqual([]);
+    expect(ids(root, 'code')).toEqual(expect.arrayContaining(['code:web-fn', 'code:arch-fn']));
   });
 
   it('Open inside a quiet package compiles that container’s L3, not a sibling neighborhood', () => {

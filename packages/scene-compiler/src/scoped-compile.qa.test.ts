@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildC4ProjectionBundle,
+  computeContainmentLayout,
   selectC4BandProjection,
   type ArchitectureSnapshot,
   type C4Band,
 } from "@okie/architecture";
 import { compileC4Scene } from "./compile-c4.js";
-import { denseSnapshot } from "./band-cost-curve.js";
+import { denseNeighborhoodSnapshot, denseSnapshot } from "./band-cost-curve.js";
 
 // Opt-in scoped compile (task #26): band-depth + per-band edge budget bound the routing
 // cost of large-repo scenes. Defaults are OFF and must stay byte-identical.
@@ -137,4 +138,111 @@ test("CLA-74: panning the camera window compiles a sibling tile, not the full gr
   assert.notDeepEqual(leftIds, rightIds, "adjacent tile is a different resident set");
   assert.ok(leftIds.length < children.length, "left tile is not the sibling dump");
   assert.ok(rightIds.length < children.length, "right tile is not the sibling dump");
+});
+
+test("CLA-109: pageCodeLandmarks keeps L3 and caps L4 without reserved-shell dump", () => {
+  const snapshot = denseNeighborhoodSnapshot("code", 80);
+  const focus = {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "code" as const,
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+  };
+  const paged = buildC4ProjectionBundle(snapshot, focus);
+  const component = paged.projectionById[paged.family.projectionIds.component]!;
+  const code = paged.projectionById[paged.family.projectionIds.code]!;
+  assert.equal((component.omittedNodeIds ?? []).length, 0, "L3 file shells stay resident");
+  assert.ok((code.omittedNodeIds?.length ?? 0) > 0, "L4 omitted stay enumerable");
+  const codeKindCount = code.visualNodeIds.filter(id => paged.visualNodeById[id]?.kind === "code").length;
+  assert.ok(codeKindCount <= 20, "resident L4 respects the window");
+  const compiled = compileC4Scene(snapshot, paged);
+  const reserved = compiled.projections.bandLayoutById[code.layoutId]?.reservedShells ?? {};
+  assert.equal(Object.keys(reserved).length, 0, "unpacked omitted L4 are not reserved-shell primitives");
+  assert.ok(compiled.scene.objects.length < 40, "protocol stays a neighborhood, not 80 symbol meshes");
+});
+
+test("CLA-109: camera window keeps L4 of the on-screen file via parent faces", () => {
+  const snapshot = denseNeighborhoodSnapshot("code", 80);
+  const hints = computeContainmentLayout(
+    snapshot.entities.map(entity => ({
+      id: entity.id,
+      kind: entity.kind,
+      ...(entity.parentId ? { parentId: entity.parentId } : {}),
+    })),
+    { targetAspect: 1.6 },
+  );
+  const file = hints["component:c"]!;
+  const paged = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "code",
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+    entityLayoutHints: hints,
+    residentWorldBounds: { x: file.x, y: file.y, width: Math.max(1, file.width), height: Math.max(1, file.height) },
+  });
+  const code = paged.projectionById[paged.family.projectionIds.code]!;
+  const codeKindCount = code.visualNodeIds.filter(id => paged.visualNodeById[id]?.kind === "code").length;
+  assert.ok(codeKindCount > 0, "on-screen file keeps L4 landmarks");
+  assert.ok(codeKindCount <= 20, "resident L4 respects the window");
+  assert.ok((code.omittedNodeIds?.length ?? 0) > 0, "off-camera L4 stays enumerable");
+  const compiled = compileC4Scene(snapshot, paged, { targetAspect: 1.6 });
+  const fileVisualId = paged.index.visualNodeIdsByEntityId["component:c"]?.[0];
+  const componentLayout = compiled.projections.bandLayoutById[paged.projectionById[paged.family.projectionIds.component]!.layoutId];
+  const codeLayout = compiled.projections.bandLayoutById[code.layoutId];
+  const compact = fileVisualId ? componentLayout?.nodes[fileVisualId] : undefined;
+  const codeFace = fileVisualId ? codeLayout?.nodes[fileVisualId] : undefined;
+  assert.ok(compact && codeFace);
+  assert.equal(codeFace!.width, compact!.width);
+  assert.equal(codeFace!.height, compact!.height);
+  const residentCode = code.visualNodeIds.filter(id => {
+    const node = paged.visualNodeById[id];
+    return node?.kind === "code" && node.parentVisualId === fileVisualId;
+  });
+  assert.ok(residentCode.length > 0);
+  for (const id of residentCode) {
+    const bounds = codeLayout?.nodes[id];
+    assert.ok(bounds);
+    assert.ok(bounds!.x >= codeFace!.x - 1, "L4 stays on the L3 file face");
+    assert.ok(bounds!.y >= codeFace!.y - 1, "L4 stays on the L3 file face");
+    assert.ok(bounds!.x + bounds!.width <= codeFace!.x + codeFace!.width + 1, "L4 stays on the L3 file face");
+    assert.ok(bounds!.y + bounds!.height <= codeFace!.y + codeFace!.height + 1, "L4 stays on the L3 file face");
+  }
+});
+
+test("CLA-109: scan system L3 files sit on the compact L2 container tile", () => {
+  const snapshot = denseNeighborhoodSnapshot("code", 80);
+  const paged = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "code",
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+    targetAspect: 1.6,
+  });
+  const compiled = compileC4Scene(snapshot, paged, { targetAspect: 1.6 });
+  const containerVisualId = paged.index.visualNodeIdsByEntityId["container:c"]?.[0];
+  const fileVisualId = paged.index.visualNodeIdsByEntityId["component:c"]?.[0];
+  const containerLayout = compiled.projections.bandLayoutById[
+    paged.projectionById[paged.family.projectionIds.container]!.layoutId
+  ];
+  const componentLayout = compiled.projections.bandLayoutById[
+    paged.projectionById[paged.family.projectionIds.component]!.layoutId
+  ];
+  const l2 = containerVisualId ? containerLayout?.nodes[containerVisualId] : undefined;
+  const l3 = containerVisualId ? componentLayout?.nodes[containerVisualId] : undefined;
+  const fileFace = fileVisualId ? componentLayout?.nodes[fileVisualId] : undefined;
+  assert.ok(l2 && l3 && fileFace);
+  assert.equal(l3!.width, l2!.width);
+  assert.equal(l3!.height, l2!.height);
+  assert.ok(Math.abs(l3!.x - l2!.x) < 1e-6);
+  assert.ok(Math.abs(l3!.y - l2!.y) < 1e-6);
+  assert.ok(fileFace!.x >= l2!.x - 1, "L3 file stays on the L2 tile");
+  assert.ok(fileFace!.y >= l2!.y - 1, "L3 file stays on the L2 tile");
+  assert.ok(fileFace!.x + fileFace!.width <= l2!.x + l2!.width + 1, "L3 file stays on the L2 tile");
+  assert.ok(fileFace!.y + fileFace!.height <= l2!.y + l2!.height + 1, "L3 file stays on the L2 tile");
 });

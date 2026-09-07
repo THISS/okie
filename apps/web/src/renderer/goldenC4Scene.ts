@@ -2,6 +2,7 @@ import {
   buildC4ProjectionBundle,
   materializeArchitectureAuthoring,
   selectC4BandProjection,
+  snapshotPreplacesL3InL2,
   validateStory,
   type C4ProjectionBundle,
   type ArchitectureSnapshot,
@@ -12,6 +13,7 @@ import {
   type C4Band,
   type ContainmentEntity,
   type EntityKind,
+  type NodeLayout,
   type SourceRef,
 } from '@okie/architecture';
 import {
@@ -196,6 +198,7 @@ export type C4SceneOptions = {
   maxEdgesPerBand?: number;
   maxGridNodes?: number;
   maxNodesPerBand?: number;
+  pageCodeLandmarks?: boolean;
   residentWorldBounds?: { x: number; y: number; width: number; height: number };
   keepEntityIds?: readonly string[];
   /** Aspect-aware packing target (scan mode, task #30); omitted for the golden fixture
@@ -295,6 +298,17 @@ export function resolveOmittedEdges(bundle: C4ProjectionBundle, snapshot: Archit
   });
 }
 
+function entityLayoutHintsForCodePaging(
+  previous: AtlasScene | undefined,
+): Record<string, NodeLayout> | undefined {
+  const fromPrevious: Record<string, NodeLayout> = {};
+  for (const [id, bands] of Object.entries(previous?.projection?.boundsByEntityIdAndDetail ?? {})) {
+    const bounds = bands.component ?? bands.container ?? bands.context ?? bands.code;
+    if (bounds) fromPrevious[id] = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+  }
+  return Object.keys(fromPrevious).length > 0 ? fromPrevious : undefined;
+}
+
 /**
  * Compiles an architecture snapshot into the renderer scene + projection bundle.
  * Shared by the golden fixture and any live-loaded fixture (e.g. scanned
@@ -306,6 +320,9 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
   const snapshot = authoring
     ? materializeArchitectureAuthoring(baseSnapshot, authoring)
     : baseSnapshot;
+  const entityLayoutHints = options.pageCodeLandmarks
+    ? entityLayoutHintsForCodePaging(previous)
+    : undefined;
   const buildOptions = {
     rootEntityId: options.rootEntityId,
     focusEntityId: options.focusEntityId,
@@ -314,6 +331,8 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     ...(options.maxEdgesPerBand !== undefined ? { maxEdgesPerBand: options.maxEdgesPerBand } : {}),
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
     ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
+    ...(options.pageCodeLandmarks ? { pageCodeLandmarks: true } : {}),
+    ...(entityLayoutHints ? { entityLayoutHints } : {}),
     ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
     ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
@@ -519,9 +538,15 @@ export function scanWindowedCompileDropsPeerGraph(
   ownerId: string,
   detail: SemanticDetail,
 ): boolean {
-  if (detail !== 'component' && detail !== 'code') return false;
-  return scanDeeperBandHasPeerCards(current, ownerId, detail)
-    && !scanDeeperBandHasPeerCards(next, ownerId, detail);
+  const drops = (band: SemanticDetail) =>
+    scanDeeperBandHasPeerCards(current, ownerId, band)
+    && !scanDeeperBandHasPeerCards(next, ownerId, band);
+  // Dropping the current band's peer graph, or stripping L4 landmarks during
+  // an L3 camera settle, would leave wheel with no code targets to morph into.
+  if (detail === 'context' || detail === 'container' || detail === 'component' || detail === 'code') {
+    return drops('component') || drops('code');
+  }
+  return false;
 }
 
 /**
@@ -613,12 +638,12 @@ export function scanDrillDeeperDetail(
  *
  * L1 already includes container bounds (`maxBand: container`), so L1→L2 wheel
  * stays in the current scene (stable identities + representation crossfade).
- * CLA-107 small-repo L2 pre-places L3 cards in that same system scene, so
- * L2↔L3 wheel stays too — a re-root would snap into a hollow box or void.
- * Stay is keyed off the current scene root having L3 peers, not the pointer
- * container: CLA-74 camera paging can omit one package's files while siblings
- * remain. Large-repo L2 (no L3 peers) still hands off via
- * {@link scanCompileFocusForBand}. L3↔L4 is out of scope. Pure — never
+ * CLA-107/109 small-repo L2 pre-places L3 and L4 cards in that same system
+ * scene, so L2↔L3 and L3↔L4 wheel stay too — a re-root would snap into a
+ * hollow box or void. Stay is keyed off the current scene root having peers
+ * at the target band, not the pointer container/file: CLA-74 camera paging
+ * can omit one package's children while siblings remain. Large-repo L2 (no
+ * L3 peers) still hands off via {@link scanCompileFocusForBand}. Pure — never
  * compiles. Undefined when the current scene already shows that band's
  * peer graph, or the focused container has no children to open.
  */
@@ -634,10 +659,24 @@ export function scanZoomCompileHandoff(
   if (detail === 'context' || detail === 'container') {
     return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
   }
-  // CLA-107: L3 landmarks already laid out in this neighborhood — stay, like
-  // L1→L2. Use the current compile root, not the pointer container: camera
-  // paging can omit one owner's files while the system scene still has L3.
-  if (detail === 'component' && scanDeeperBandHasPeerCards(scene, currentCompileFocus, detail)) {
+  // CLA-107/109: L3/L4 landmarks already laid out in this neighborhood — stay,
+  // like L1→L2. Use the current compile root, not the pointer owner: camera
+  // paging can omit one owner's children while the system scene still has peers.
+  if (
+    (detail === 'component' || detail === 'code')
+    && scanDeeperBandHasPeerCards(scene, currentCompileFocus, detail)
+  ) {
+    return undefined;
+  }
+  // CLA-109: small-repo system scenes keep L3 file shells even when this
+  // L1/L2 tile window dropped every L4 card. Stay for code so wheel does not
+  // re-root into a file. Large-repo L2 (no L3 peers) still hands off.
+  if (
+    detail === 'code'
+    && snapshotPreplacesL3InL2(snapshot)
+    && currentCompileFocus === viewRootId
+    && scanDeeperBandHasPeerCards(scene, currentCompileFocus, 'component')
+  ) {
     return undefined;
   }
   // CLA-66 system compile is maxBand: container on large repos, so recompiling

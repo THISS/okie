@@ -683,7 +683,8 @@ function scanContextPeerAnchor(system: NodeLayout): NodeLayout {
 /**
  * CLA-95: scan L2 paints a compact container peer map, not CLA-81 reserved
  * interiors. Each package is a leaf tile so Open inside can frame siblings
- * together; L3/L4 bands keep the reserved shells.
+ * together. CLA-109 reuses those tiles on the system-scene L3/L4 bands so
+ * wheel morphs in place; drilled container compiles keep reserved shells.
  */
 function packScanContainerPeerMap(
   canonical: ReadonlyMap<string, NodeLayout>,
@@ -815,9 +816,72 @@ export function layoutContextPeersAroundSystem(
 }
 
 /**
- * Grows the squeeze-normalized hierarchy from its leaves upward, then reflows
- * every direct-child grid inside the resulting persistent owner shells.
+ * Packs resident children into an already-written parent face. Padding is
+ * C4 intrinsic header/side metrics in world units at `focusZoom`. CSS-px
+ * values as world units overflow compact L2/L3 cards (~112×56 / ~64×44).
  */
+function placeResidentKidsInParents(
+  nodes: Record<string, NodeLayout>,
+  visualNodeIds: readonly string[],
+  visualNodeById: Readonly<Record<string, VisualNode>>,
+  kidKind: VisualNode['kind'],
+  focusZoom: number,
+  headerPx: number,
+): void {
+  const byParent = new Map<string, string[]>();
+  for (const id of visualNodeIds) {
+    const node = visualNodeById[id];
+    if (node?.kind !== kidKind || !node.parentVisualId || !nodes[node.parentVisualId]) continue;
+    const list = byParent.get(node.parentVisualId) ?? [];
+    list.push(id);
+    byParent.set(node.parentVisualId, list);
+  }
+  const padX = C4_INTRINSIC_LAYOUT.sidePadding / focusZoom;
+  const padTop = headerPx / focusZoom;
+  const padBottom = C4_INTRINSIC_LAYOUT.bottomPadding / focusZoom;
+  const gap = 8 / focusZoom;
+  for (const [parentId, kids] of [...byParent.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+    const parent = nodes[parentId]!;
+    kids.sort((left, right) => left.localeCompare(right));
+    let innerX = parent.x + padX;
+    let innerY = parent.y + padTop;
+    let innerW = parent.width - padX * 2;
+    let innerH = parent.height - padTop - padBottom;
+    if (innerW < 4) {
+      innerX = parent.x + Math.min(padX, parent.width * 0.04);
+      innerW = Math.max(1, parent.width - (innerX - parent.x) * 2);
+    }
+    if (innerH < 4) {
+      innerY = parent.y + Math.min(padTop, parent.height * 0.12);
+      const bottom = Math.min(padBottom, parent.height * 0.04);
+      innerH = Math.max(1, parent.y + parent.height - bottom - innerY);
+    }
+    const maxX = parent.x + parent.width;
+    const maxY = parent.y + parent.height;
+    innerX = Math.min(Math.max(parent.x, innerX), maxX);
+    innerY = Math.min(Math.max(parent.y, innerY), maxY);
+    innerW = Math.max(1, Math.min(innerW, maxX - innerX));
+    innerH = Math.max(1, Math.min(innerH, maxY - innerY));
+    const cols = Math.max(1, Math.ceil(Math.sqrt(kids.length)));
+    const rows = Math.ceil(kids.length / cols);
+    const cellW = innerW / cols;
+    const cellH = innerH / rows;
+    const inset = Math.min(gap, cellW / 4, cellH / 4);
+    kids.forEach((id, index) => {
+      const column = index % cols;
+      const row = Math.floor(index / cols);
+      const x = innerX + column * cellW + inset;
+      const y = innerY + row * cellH + inset;
+      nodes[id] = {
+        x,
+        y,
+        width: Math.max(1, Math.min(cellW - inset * 2, maxX - x)),
+        height: Math.max(1, Math.min(cellH - inset * 2, maxY - y)),
+      };
+    });
+  }
+}
+
 function applyIntrinsicOwnerGeometry(
   snapshot: ArchitectureSnapshot,
   bundle: C4ProjectionBundle,
@@ -858,6 +922,17 @@ function applyIntrinsicOwnerGeometry(
     if (!entities.has(child.id)) entities.set(child.id, stub);
   }
   for (const children of childrenByOwner.values()) children.sort((left, right) => left.id.localeCompare(right.id));
+
+  // CLA-109: omitted L4 that were never packed must not become reserved-shell
+  // primitives (THISS/okie ~3k symbols). CLA-74 still packs omitted nodes first,
+  // so they remain in layout.nodes and keep hollow footprints.
+  const packedVisualIds = new Set<string>();
+  for (const band of C4_BANDS) {
+    const projection = bundle.projectionById[bundle.family.projectionIds[band]];
+    const layout = projection ? bundle.bandLayoutById[projection.layoutId] : undefined;
+    for (const id of Object.keys(layout?.nodes ?? {})) packedVisualIds.add(id);
+  }
+  const omittedVisual = omittedVisualIds(bundle);
 
   const containmentSizes = childCounts || unpublishedChildren.length
     ? computeContainmentLayout([
@@ -972,6 +1047,8 @@ function applyIntrinsicOwnerGeometry(
         + metrics.gap * column;
       const rowY = measurement.rowHeights.slice(0, row).reduce((sum, value) => sum + value, 0)
         + metrics.gap * row;
+      const visualId = bundle.index.visualNodeIdsByEntityId[child.id]?.[0];
+      if (visualId && omittedVisual.has(visualId) && !packedVisualIds.has(visualId)) return;
       canonical.set(child.id, {
         x: gridX + columnX + (measurement.columnWidths[column]! - size.width) / 2,
         y: gridY + rowY + (measurement.rowHeights[row]! - size.height) / 2,
@@ -1015,6 +1092,10 @@ function applyIntrinsicOwnerGeometry(
     const resident = new Set(projection.visualNodeIds);
     const omitted = new Set(projection.omittedNodeIds ?? []);
     const reservedShells: Record<string, NodeLayout> = {};
+    const scanMorphPlane = targetAspect !== undefined
+      && root.kind === 'softwareSystem'
+      && bundle.family.focusEntity.logicalId === root.id
+      && Boolean(bundle.projectionById[bundle.family.projectionIds.code]?.omittedNodeIds?.length);
     const bandCanonical = targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'container'
       ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect)
       : targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'context'
@@ -1023,7 +1104,18 @@ function applyIntrinsicOwnerGeometry(
     for (const [entityId, bounds] of bandCanonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
       if (resident.has(visualId)) {
-        layout.nodes[visualId] = { ...bounds };
+        const kind = entities.get(entityId)?.kind;
+        const containerFace = scanMorphPlane
+          ? bundle.bandLayoutById[bundle.projectionById[bundle.family.projectionIds.container]!.layoutId]?.nodes[visualId]
+          : undefined;
+        const componentFace = bundle.bandLayoutById[bundle.projectionById[bundle.family.projectionIds.component]!.layoutId]?.nodes[visualId];
+        const compact = scanMorphPlane && (band === 'component' || band === 'code')
+          && (kind === 'softwareSystem' || (kind !== undefined && isContainerPeerKind(kind)))
+          ? containerFace
+          : band === 'code' && omitted.size && kind === 'component'
+            ? componentFace
+            : undefined;
+        layout.nodes[visualId] = { ...(compact ?? bounds) };
         continue;
       }
       const parentId = entities.get(entityId)?.parentId;
@@ -1061,6 +1153,26 @@ function applyIntrinsicOwnerGeometry(
     }
     if (Object.keys(reservedShells).length) layout.reservedShells = reservedShells;
     else delete layout.reservedShells;
+    if (band === 'component' && scanMorphPlane) {
+      placeResidentKidsInParents(
+        layout.nodes,
+        projection.visualNodeIds,
+        bundle.visualNodeById,
+        'component',
+        C4_ZOOM_BANDS[2]!.focusZoom,
+        C4_INTRINSIC_LAYOUT.header.container,
+      );
+    }
+    if (band === 'code' && omitted.size) {
+      placeResidentKidsInParents(
+        layout.nodes,
+        projection.visualNodeIds,
+        bundle.visualNodeById,
+        'code',
+        C4_ZOOM_BANDS[3]!.focusZoom,
+        C4_INTRINSIC_LAYOUT.header.component,
+      );
+    }
     const focusZoom = C4_ZOOM_BANDS.find(value => value.detail === band)!.focusZoom;
     const routed = routeC4BandEdgesDetailed(
       projection,

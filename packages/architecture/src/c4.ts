@@ -195,6 +195,19 @@ export type BuildC4ProjectionOptions = {
   residentWorldBounds?: Rect;
   /** Entity ids that must stay resident even when off-camera (selection). */
   keepEntityIds?: readonly string[];
+  /**
+   * CLA-109: page only L4 `code` cards (keep L3 file shells). Default pages
+   * both component and code (CLA-74). Additive; omitted → byte-identical.
+   */
+  pageCodeLandmarks?: boolean;
+  /**
+   * World-space entity bounds for L4 paging (previous compiled scene). When
+   * set, `pageCodeLandmarks` selects L4 in that camera space instead of
+   * stage-1 leaf packing, and does not re-pack parents after the window.
+   * Omit on first compile so parent file shells (packed with L3) provide the
+   * overlap test — containment layout is a different space from L1/L2 tiles.
+   */
+  entityLayoutHints?: Readonly<Record<string, NodeLayout>>;
 };
 
 /**
@@ -1022,6 +1035,20 @@ export function routeC4BandEdgesDetailed(
   return { edges, diagnostics };
 }
 
+function packedFromEntityHints(
+  visualNodeIds: readonly string[],
+  visualNodeById: Readonly<Record<string, VisualNode>>,
+  hints: Readonly<Record<string, NodeLayout>>,
+): Record<string, NodeLayout> {
+  const packed: Record<string, NodeLayout> = {};
+  for (const id of visualNodeIds) {
+    const entityId = visualNodeById[id]?.entity.logicalId;
+    const hint = entityId ? hints[entityId] : undefined;
+    if (hint) packed[id] = { ...hint };
+  }
+  return packed;
+}
+
 function packVisualNodes(
   nodeIds: readonly string[],
   visualNodeById: Readonly<Record<string, VisualNode>>,
@@ -1291,27 +1318,70 @@ export function buildC4ProjectionBundle(
     });
     // CLA-74: pack the full L3/L4 neighborhood first so parent bounds stay
     // stable, then keep only the camera-resident window in the compiled scene.
-    // Default (no cap, no camera rect) skips this so golden stays byte-identical.
-    const pageOffscreen = (band === 'component' || band === 'code')
+    // CLA-109 `pageCodeLandmarks`: keep L3 shells, select L4 against packed
+    // parent faces (and previous-scene hints when present). Do not re-pack
+    // parents after the window. Default (no cap, no camera rect) skips this
+    // so golden stays byte-identical.
+    const pageOffscreen = (options.pageCodeLandmarks ? band === 'code' : (band === 'component' || band === 'code'))
       && (options.maxNodesPerBand !== undefined || options.residentWorldBounds !== undefined);
     let omittedNodeIds: string[] = [];
     let packedNodes: Record<string, NodeLayout> | undefined;
     let candidateEdgeIds = visualEdgeIds;
     if (pageOffscreen) {
-      packedNodes = packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect);
+      const hinted = options.pageCodeLandmarks && options.entityLayoutHints
+        ? packedFromEntityHints(visualNodeIds, visualNodeById, options.entityLayoutHints)
+        : undefined;
+      const packedForSelect = options.pageCodeLandmarks
+        ? {
+          ...packVisualNodes(
+            visualNodeIds.filter(id => {
+              const kind = visualNodeById[id]?.kind;
+              return kind !== 'code' && kind !== 'component';
+            }),
+            visualNodeById,
+            options.targetAspect,
+          ),
+          ...(hinted ?? {}),
+        }
+        : packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect);
       const selection = selectResidentVisualNodeIds({
         band,
         visualNodeIds,
-        packed: packedNodes,
+        packed: packedForSelect,
         visualNodeById,
         focusEntityId: focus.id,
         ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
         ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
         ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
+        ...(options.pageCodeLandmarks ? { pagedKinds: ['code'] as const } : {}),
       });
       omittedNodeIds = selection.omittedIds;
       const resident = new Set(selection.residentIds);
       visualNodeIds = selection.residentIds;
+      packedNodes = options.pageCodeLandmarks
+        ? packedFromEntityHints(
+          visualNodeIds,
+          visualNodeById,
+          options.entityLayoutHints ?? {},
+        )
+        : packedForSelect;
+      if (options.pageCodeLandmarks) {
+        for (const id of visualNodeIds) {
+          if (!packedNodes[id] && packedForSelect[id]) packedNodes[id] = packedForSelect[id];
+        }
+        const missingShells = visualNodeIds.filter(id =>
+          !packedNodes![id] && visualNodeById[id]?.kind !== 'code');
+        if (missingShells.length) {
+          const shells = packVisualNodes(
+            visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code'),
+            visualNodeById,
+            options.targetAspect,
+          );
+          for (const id of missingShells) {
+            if (shells[id]) packedNodes[id] = shells[id];
+          }
+        }
+      }
       candidateEdgeIds = visualEdgeIds.filter(id => {
         const edge = visualEdgeById[id]!;
         return resident.has(edge.fromVisualId) && resident.has(edge.toVisualId);

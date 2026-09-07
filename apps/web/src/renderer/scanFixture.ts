@@ -59,6 +59,7 @@ export type ScanScopedOptions = {
   maxEdgesPerBand?: number;
   maxGridNodes?: number;
   maxNodesPerBand?: number;
+  pageCodeLandmarks?: boolean;
 };
 
 /** Camera-resident compile window (CLA-74). Does not change CLA-73 fetch. */
@@ -97,9 +98,9 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
  * Deterministic scoped-compile options for a scan-mode focus. Band scoping is
  * the default path at every repo size (CLA-66): system→container band;
  * container drill-in→component band + edge budget + router grid cap;
- * component→code band. CLA-107 overlays `maxBand: component` on the system
+ * component→code band. CLA-107/109 overlays `maxBand: code` on the system
  * compile when the snapshot is a small repo (≤12 containers, ≤2000 components)
- * so L2 is not a hollow shell. Total entity count is not the switch — THISS/okie
+ * so L2–L4 are not hollow shells. Total entity count is not the switch — THISS/okie
  * is ~3k entities mostly L4 code. A second, independent relation gate
  * (> SCAN_RELATION_EDGE_MIN) adds a per-band routed-edge budget plus a router
  * grid cap wherever the options don't already carry one. SCAN_BAND_DEPTH_MIN_ENTITIES
@@ -111,17 +112,21 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
   const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
   const scoped = focus ? SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind] : undefined;
   const options: ScanScopedOptions = scoped ? { ...scoped } : {};
-  // CLA-107: small-repo L2 compiles one band deeper (component landmarks in
-  // global coordinates) so containers are not hollow shells. 13+ containers
-  // stay CLA-66 `maxBand: container`. No maxNodesPerBand — L3 stays resident in
-  // memory on the system scene; renderer culling still skips drawing.
+  // CLA-107/109: small-repo L2 compiles through code (component + symbol
+  // landmarks in global coordinates) so L2↔L3↔L4 morph like L1↔L2. 13+
+  // containers stay CLA-66 `maxBand: container`. L3 file shells stay resident;
+  // only L4 cards use the CLA-74 window (`pageCodeLandmarks`) so THISS/okie
+  // (~3k symbols) cannot freeze the system scene. Renderer culling still skips
+  // drawing.
   if (
     snapshotPreplacesL3InL2(snapshot)
     && (options.maxBand === 'container' || (focus && c4BandForKind(focus.kind) === 'context' && options.maxBand === undefined))
   ) {
-    options.maxBand = 'component';
+    options.maxBand = 'code';
     options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
     options.maxGridNodes ??= SCAN_CONTAINER_GRID_NODES;
+    options.maxNodesPerBand ??= SCAN_RESIDENT_NODES_PER_BAND;
+    options.pageCodeLandmarks = true;
   }
   if (aboveRelationGate) {
     options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
@@ -131,18 +136,17 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
 }
 
 /**
- * CLA-107: keep pre-placed L3 landmarks in the system-scene graph. Thousands of
- * nodes/edges can stay in memory; the GPU still culls what is off-screen.
- * CLA-74 camera paging must not drop them (that made L2↔L3 look like a re-root
- * into a hollow box). Open-inside L3/L4 and large-repo L2 stay windowed.
+ * CLA-107 kept L3 by skipping the camera window. CLA-109 still keeps those
+ * file shells, but via `pageCodeLandmarks` (code-band-only paging) so the
+ * shell can pass the camera tile window and L4 can morph without compiling
+ * every symbol. Always false: skipping residency would freeze ~3k L4 meshes
+ * on THISS/okie. Open-inside and large-repo compiles stay CLA-74 windowed.
  */
 export function scanKeepsResidentL3Landmarks(
-  snapshot: ArchitectureSnapshot,
-  focusEntityId: string,
+  _snapshot: ArchitectureSnapshot,
+  _focusEntityId: string,
 ): boolean {
-  if (!snapshotPreplacesL3InL2(snapshot)) return false;
-  const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
-  return Boolean(focus && c4BandForKind(focus.kind) === 'context');
+  return false;
 }
 
 /**
