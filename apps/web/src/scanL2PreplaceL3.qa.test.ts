@@ -25,6 +25,7 @@ import {
   SCAN_CONTAINER_GRID_NODES,
   SCAN_RELATION_EDGE_BUDGET,
   SCAN_RESIDENT_NODES_PER_BAND,
+  scanKeepsResidentL3Landmarks,
 } from './renderer/scanFixture';
 
 const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
@@ -38,6 +39,7 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
     expect(fixture).toContain("maxBand: 'container'");
     expect(fixture).toContain('snapshotPreplacesL3InL2(snapshot)');
+    expect(fixture).toContain('scanKeepsResidentL3Landmarks');
     expect(neighborhood).toContain('maxBand?: C4Band');
     expect(fixture).not.toMatch(/SCAN_BAND_DEPTH_MIN_ENTITIES\s*=\s*[3-9]\d{3}/u);
   });
@@ -83,6 +85,15 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect(childBounds!.y).toBeGreaterThanOrEqual(ownerBounds!.y);
     expect(childBounds!.x + childBounds!.width).toBeLessThanOrEqual(ownerBounds!.x + ownerBounds!.width + 1);
     expect(childBounds!.y + childBounds!.height).toBeLessThanOrEqual(ownerBounds!.y + ownerBounds!.height + 1);
+
+    expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(true);
+    expect(scanKeepsResidentL3Landmarks(compiled.snapshot, 'container:web-app')).toBe(false);
+    const far = compiled.createScene(compiled.navigation.rootEntityId, scene, {
+      worldBounds: { x: 1_000_000, y: 1_000_000, width: 10, height: 10 },
+    });
+    const farIds = (far.projection?.entityIdsByDetail.component ?? [])
+      .filter(id => far.entities.find(entity => entity.id === id)?.detail === 'component');
+    expect(farIds.sort()).toEqual([...componentIds].sort());
   });
 
   it('hosted-style L1 packet (server opt-in) compiles L2 with in-place landmarks without Open inside', () => {

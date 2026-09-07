@@ -57,7 +57,7 @@ import {
 } from './navigation/navigationState';
 import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDrillDeeperDetail, scanWindowedCompileDropsPeerGraph, scanZoomCompileHandoff, scanZoomHandoffPreferredId, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
 import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanNextBand, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
-import { getActiveScanFixture } from './renderer/fixtureBundle';
+import { getActiveScanFixture, scanKeepsResidentL3Landmarks } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
 import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
 import {
@@ -2960,7 +2960,9 @@ export function App() {
     // CLA-67 cap alone — L3 camera space is not L4 packed layout, so inheriting
     // the previous band's camera would omit the destination's children.
     if (scanFixture) {
-      const windowCamera = cameraOverride;
+      const windowCamera = scanKeepsResidentL3Landmarks(activeSnapshot, focusEntityId)
+        ? undefined
+        : cameraOverride;
       const residency = {
         ...(windowCamera ? { worldBounds: expandRectByTileRing(cameraWorldRect(windowCamera, viewport)) } : {}),
         keepEntityIds: inspectorSelectionRef.current ? [inspectorSelectionRef.current] : undefined,
