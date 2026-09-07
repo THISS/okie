@@ -583,7 +583,10 @@ export function scanPeerContainerIds(scene: AtlasScene, focusContainerId: string
  * suffices. Children are read from the snapshot when provided (the compiled scene
  * is per-neighborhood and may omit descendants). Returns undefined for a leaf,
  * a childless target, or a target whose deeper band is ALREADY laid out as peer
- * cards. A reserved owner shell (bounds without descendant peers) is not laid out.
+ * cards in *this* neighborhood (compile root is the target). A reserved owner
+ * shell (bounds without descendant peers) is not laid out. CLA-107 pre-places
+ * L3 cards in the system scene so wheel morphs in place; Open inside a
+ * container still returns the deeper band (explicit drill, CLA-104/105/106).
  * Pure — never compiles.
  */
 export function scanDrillDeeperDetail(
@@ -598,7 +601,9 @@ export function scanDrillDeeperDetail(
     : scene.entities.some(entity => entity.parentId === target.id);
   if (!hasChildren) return undefined;
   if (semanticBounds(scene, target.id, deeper) && scanDeeperBandHasPeerCards(scene, target.id, deeper)) {
-    return undefined;
+    // Already compiled this neighborhood. Landmarks in a parent (system) scene
+    // are not the container graph — Open inside still drills (wheel morphs).
+    if (!scene.rootEntityId || scene.rootEntityId === target.id) return undefined;
   }
   return deeper;
 }
@@ -607,10 +612,15 @@ export function scanDrillDeeperDetail(
  * CLA-104: continuous-zoom compile target for scan mode.
  *
  * L1 already includes container bounds (`maxBand: container`), so L1→L2 wheel
- * stays in the current scene. L2→L3 (and L3→L4 / zoom-out) need the same
- * neighborhood swap Open inside performs via {@link scanCompileFocusForBand}.
- * Pure — never compiles. Undefined when the current scene already shows that
- * band's peer graph, or when the focused container has no children to open.
+ * stays in the current scene (stable identities + representation crossfade).
+ * CLA-107 small-repo L2 pre-places L3 cards in that same system scene, so
+ * L2↔L3 wheel stays too — a re-root would snap into a hollow box or void.
+ * Stay is keyed off the current scene root having L3 peers, not the pointer
+ * container: CLA-74 camera paging can omit one package's files while siblings
+ * remain. Large-repo L2 (no L3 peers) still hands off via
+ * {@link scanCompileFocusForBand}. L3↔L4 is out of scope. Pure — never
+ * compiles. Undefined when the current scene already shows that band's
+ * peer graph, or the focused container has no children to open.
  */
 export function scanZoomCompileHandoff(
   scene: AtlasScene,
@@ -624,9 +634,14 @@ export function scanZoomCompileHandoff(
   if (detail === 'context' || detail === 'container') {
     return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
   }
-  // CLA-66 system compile is maxBand: container — recompiling the view root
-  // at component/code cannot grow L3/L4 peers. Stay on the L2 scene until a
-  // code-bearing container (or file) is the compile focus.
+  // CLA-107: L3 landmarks already laid out in this neighborhood — stay, like
+  // L1→L2. Use the current compile root, not the pointer container: camera
+  // paging can omit one owner's files while the system scene still has L3.
+  if (detail === 'component' && scanDeeperBandHasPeerCards(scene, currentCompileFocus, detail)) {
+    return undefined;
+  }
+  // CLA-66 system compile is maxBand: container on large repos, so recompiling
+  // the view root at component/code cannot grow L3/L4 peers.
   if (compileFocus === viewRootId && currentCompileFocus === viewRootId) return undefined;
   if (compileFocus === currentCompileFocus && scanDeeperBandHasPeerCards(scene, compileFocus, detail)) {
     return undefined;

@@ -17,7 +17,7 @@ describe('CLA-74: viewport neighborhood is camera-resident tiles', () => {
 
   it('does not inherit the previous band camera on Open inside / prefetch', () => {
     expect(app).not.toContain('cameraOverride ?? renderedCameraRef.current');
-    expect(app).toContain('const windowCamera = cameraOverride;');
+    expect(app).toContain('const windowCamera = scanKeepsResidentL3Landmarks(activeSnapshot, focusEntityId)');
     expect(app).toContain('composeScene(focusId, scene, authoringHistoryRef.current.present)');
   });
 

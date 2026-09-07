@@ -7,6 +7,7 @@ import type {
 } from "@okie/architecture";
 import {
   excerptPacketForEntity,
+  neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
 } from "@okie/architecture";
 import { resolvePublishedScanFile } from "./scanObjects.js";
@@ -94,6 +95,7 @@ export function serveNeighborhoodPacket(
   return sliceArchitectureNeighborhood(trio.snapshot, trio.view, {
     ...(focusEntityId ? { focusEntityId } : {}),
     ...(includeExcerpts ? { includeExcerpts: true } : {}),
+    ...neighborhoodSliceOptionsForFocus(trio.snapshot, focusEntityId),
   });
 }
 

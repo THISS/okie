@@ -57,7 +57,7 @@ import {
 } from './navigation/navigationState';
 import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDrillDeeperDetail, scanWindowedCompileDropsPeerGraph, scanZoomCompileHandoff, scanZoomHandoffPreferredId, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
 import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanNextBand, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
-import { getActiveScanFixture } from './renderer/fixtureBundle';
+import { getActiveScanFixture, scanKeepsResidentL3Landmarks } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
 import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
 import {
@@ -2960,7 +2960,9 @@ export function App() {
     // CLA-67 cap alone — L3 camera space is not L4 packed layout, so inheriting
     // the previous band's camera would omit the destination's children.
     if (scanFixture) {
-      const windowCamera = cameraOverride;
+      const windowCamera = scanKeepsResidentL3Landmarks(activeSnapshot, focusEntityId)
+        ? undefined
+        : cameraOverride;
       const residency = {
         ...(windowCamera ? { worldBounds: expandRectByTileRing(cameraWorldRect(windowCamera, viewport)) } : {}),
         keepEntityIds: inspectorSelectionRef.current ? [inspectorSelectionRef.current] : undefined,
@@ -2985,12 +2987,18 @@ export function App() {
   function refreshViewportNeighborhood(next: Camera) {
     if (!scanFixture) return;
     const detail = semanticLensSessionDetail(semanticLensSessionRef.current);
-    const compileFocus = scanCompileFocusForBand(
+    const viewRootId = scanFixture.navigation.rootEntityId;
+    const currentFocus = sceneRef.current.rootEntityId ?? viewRootId;
+    const preferredId = inspectorSelectionRef.current ?? selected.id;
+    const handoff = scanZoomCompileHandoff(
+      sceneRef.current,
       activeSnapshot,
-      inspectorSelectionRef.current ?? selected.id,
+      preferredId,
+      viewRootId,
       detail,
-      scanFixture.navigation.rootEntityId,
+      currentFocus,
     );
+    const compileFocus = handoff?.compileFocus ?? currentFocus;
     const nextScene = composeScene(compileFocus, sceneRef.current, authoringHistoryRef.current.present, next);
     if (nextScene !== sceneRef.current) {
       if (scanWindowedCompileDropsPeerGraph(sceneRef.current, nextScene, compileFocus, detail)) return;
@@ -3001,9 +3009,10 @@ export function App() {
 
   /**
    * CLA-104/105: swap the scan neighborhood when continuous zoom crosses a band
-   * the current scene did not compile (L2→L3 into the pointer container, else
-   * inspector selection). Mirrors Open inside's ensureNeighborhood + compile-focus
-   * + setScene, without Fit or a history push. Hang-guard stays 2000.
+   * the current scene did not compile (hollow L2→L3 into the pointer container,
+   * else inspector selection). CLA-107 pre-placed L2 stays put — wheel morphs
+   * like L1→L2. Mirrors Open inside's ensureNeighborhood + compile-focus +
+   * setScene, without Fit or a history push. Hang-guard stays 2000.
    */
   function applyScanZoomHandoff(
     handoff: { detail: SemanticDetail; compileFocus: string },
@@ -3517,8 +3526,13 @@ export function App() {
     const currentSession = semanticLensSessionRef.current;
     const previousDetail = semanticLensSessionDetail(currentSession);
     const preferredIds = [selected.id, ...currentSession.settled.map(entry => entry.targetId).reverse(), navigationIdentity.rootEntityId];
+    const viewRootId = scanFixture?.navigation.rootEntityId ?? navigationIdentity.rootEntityId;
+    const currentFocus = scene.rootEntityId ?? viewRootId;
+    const handoff = scanFixture
+      ? scanZoomCompileHandoff(scene, activeSnapshot, selected.id, viewRootId, detail, currentFocus)
+      : undefined;
     const compileFocus = scanFixture
-      ? scanCompileFocusForBand(activeSnapshot, selected.id, detail, scanFixture.navigation.rootEntityId)
+      ? (handoff?.compileFocus ?? currentFocus)
       : navigationIdentity.rootEntityId;
     const levelScene = scanFixture ? composeScene(compileFocus, scene, authoringHistoryRef.current.present) : scene;
     if (levelScene !== scene) {

@@ -21,6 +21,7 @@ import {
 } from './scanFixture';
 import {
   resolveOmittedRelations,
+  scanDeeperBandHasPeerCards,
   scanDrillDeeperDetail,
   scanZoomCompileHandoff,
   scanZoomEntityUnderPointer,
@@ -58,9 +59,15 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
     ...Array.from({ length: SCAN_BAND_DEPTH_MIN_ENTITIES }, (_, index) => entity(`code:${index}`, 'code', 'component:x')),
   ]);
 
-  it('system→container; container→component + edge budget + grid cap; component→code; code→resident window — below and above the hang-guard', () => {
+  it('CLA-107: handful of containers compiles L3 into L2 even when L4 exceeds the hang-guard', () => {
+    const overlay = {
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    } as const;
+    expect(scanScopeCompileOptions(big, 'system:root')).toEqual(overlay);
+    expect(scanScopeCompileOptions(small, 'system:root')).toEqual(overlay);
     for (const snap of [small, big]) {
-      expect(scanScopeCompileOptions(snap, 'system:root')).toEqual({ maxBand: 'container' });
       expect(scanScopeCompileOptions(snap, 'container:c')).toEqual({
         maxBand: 'component',
         maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
@@ -166,7 +173,14 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
     // The deep-link restore compiles the URL `root` (e.g. system root while the
     // restored detail is `code`); the guard keeps that focus, scoped to container.
     const system = guardScanCompile(aboveGate, 'system:root', 'system:root');
-    expect(system).toEqual({ focusEntityId: 'system:root', options: { maxBand: 'container' } });
+    expect(system).toEqual({
+      focusEntityId: 'system:root',
+      options: {
+        maxBand: 'component',
+        maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+        maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      },
+    });
     expect(system.refusal).toBeUndefined();
 
     // A container drill carries a router-grid cap → bounded → passed through.
@@ -255,6 +269,19 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
   it('returns undefined when the deeper band is already laid out', () => {
     const full = sceneWith({ 'container:c': { container: bounds, component: bounds } });
     expect(scanDrillDeeperDetail(full, container)).toBeUndefined();
+  });
+
+  it('CLA-107: pre-placed L3 in the system scene still Open-inside drills the container', () => {
+    const preplaced = {
+      ...sceneWith({
+        'container:c': { container: bounds, component: bounds },
+        'component:x': { component: bounds },
+      }),
+      rootEntityId: 'system:root',
+    } as AtlasScene;
+    expect(scanDrillDeeperDetail(preplaced, container)).toBe('component');
+    const atContainer = { ...preplaced, rootEntityId: 'container:c' };
+    expect(scanDrillDeeperDetail(atContainer, container)).toBeUndefined();
   });
 
   it('CLA-83: reserved owner bounds without descendant peer cards still drill', () => {
@@ -396,6 +423,71 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
       compileFocus: 'system:root',
     });
   });
+
+  it('CLA-107: pre-placed L3 peers keep L2↔L3 wheel on the system scene', () => {
+    const preplaced: AtlasScene = {
+      ...l2Scene,
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': { context: bounds, container: bounds },
+          'container:c': { container: bounds, component: bounds },
+          'container:empty': { container: bounds },
+          'component:x': { component: bounds },
+        },
+        entityIdsByDetail: {
+          context: ['system:root'],
+          container: ['system:root', 'container:c', 'container:empty'],
+          component: ['component:x'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'container')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, snap, 'system:root', 'system:root', 'component')).toBeUndefined();
+    const opened: AtlasScene = { ...preplaced, rootEntityId: 'container:c' } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(opened, snap, 'container:c', 'system:root', 'container')).toEqual({
+      detail: 'container',
+      compileFocus: 'system:root',
+    });
+  });
+
+  it('CLA-107: camera-paged L3 for one container still stays when sibling landmarks remain', () => {
+    const siblingSnap = snapshot([
+      entity('system:root', 'softwareSystem'),
+      entity('container:c', 'container', 'system:root'),
+      entity('container:empty', 'container', 'system:root'),
+      entity('container:d', 'container', 'system:root'),
+      entity('component:x', 'component', 'container:c'),
+      entity('component:y', 'component', 'container:d'),
+    ]);
+    const siblingScene: AtlasScene = {
+      ...l2Scene,
+      entities: [
+        ...sceneEntities,
+        { id: 'container:d', parentId: 'system:root', name: 'd', kind: 'container', detail: 'container', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+        { id: 'component:y', parentId: 'container:d', name: 'y', kind: 'component', detail: 'component', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+      ],
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': { context: bounds, container: bounds },
+          'container:c': { container: bounds, component: bounds },
+          'container:d': { container: bounds, component: bounds },
+          'container:empty': { container: bounds },
+          'component:y': { component: bounds },
+        },
+        entityIdsByDetail: {
+          context: ['system:root'],
+          container: ['system:root', 'container:c', 'container:empty', 'container:d'],
+          component: ['component:y'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    expect(scanDeeperBandHasPeerCards(siblingScene, 'container:c', 'component')).toBe(false);
+    expect(scanDeeperBandHasPeerCards(siblingScene, 'system:root', 'component')).toBe(true);
+    expect(scanZoomCompileHandoff(siblingScene, siblingSnap, 'container:c', 'system:root', 'component')).toBeUndefined();
+  });
 });
 
 describe('CLA-105: scan zoom prefers the container under the pointer', () => {
@@ -494,6 +586,38 @@ describe('CLA-105: scan zoom prefers the container under the pointer', () => {
     expect(preferred).toBe('system:root');
     expect(scanZoomCompileHandoff(l2Scene, snap, preferred, 'system:root', 'component')).toBeUndefined();
   });
+
+  it('CLA-107: pointer over a pre-placed container does not invent an L3 re-root', () => {
+    const preplaced: AtlasScene = {
+      ...l2Scene,
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'system:root': {
+            context: { x: 0, y: 0, width: 400, height: 200 },
+            container: { x: 0, y: 0, width: 400, height: 200 },
+          },
+          'container:c': {
+            container: { x: 10, y: 10, width: 100, height: 80 },
+            component: { x: 10, y: 10, width: 100, height: 80 },
+          },
+          'container:empty': { container: { x: 200, y: 10, width: 100, height: 80 } },
+          'component:x': { component: { x: 20, y: 20, width: 20, height: 20 } },
+        },
+        entityIdsByDetail: {
+          context: ['system:root'],
+          container: ['system:root', 'container:c', 'container:empty'],
+          component: ['component:x'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    const preferred = scanZoomHandoffPreferredId(
+      preplaced, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, pointerAt(60, 50), 'container', 'system:root',
+    );
+    expect(preferred).toBe('system:root');
+    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
+  });
 });
 
 describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` graphs)', () => {
@@ -510,7 +634,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
   it('budgets routed edges + router grid above the relation gate, composed with per-kind maxBand', () => {
     const dense = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN + 1));
     expect(scanScopeCompileOptions(dense, 'system:root')).toEqual({
-      maxBand: 'container',
+      maxBand: 'component',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
     });
@@ -533,9 +657,28 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
     });
   });
 
-  it('stays at per-kind maxBand at or below the relation gate', () => {
+  it('CLA-107: small-repo system overlay still applies at or below the relation gate', () => {
     const sparse = snapshot(smallEntities, manyRelations(SCAN_RELATION_EDGE_MIN));
-    expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({ maxBand: 'container' });
+    expect(scanScopeCompileOptions(sparse, 'system:root')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+    });
+  });
+
+  it('CLA-107: more than 12 containers stay CLA-66 lazy (maxBand container, no L3 overlay)', () => {
+    const large = snapshot([
+      entity('system:root', 'softwareSystem'),
+      ...Array.from({ length: 13 }, (_, index) => entity(`container:c${index}`, 'container', 'system:root')),
+      entity('component:x', 'component', 'container:c0'),
+    ]);
+    expect(scanScopeCompileOptions(large, 'system:root')).toEqual({ maxBand: 'container' });
+    expect(scanScopeCompileOptions(large, 'container:c0')).toEqual({
+      maxBand: 'component',
+      maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
+      maxGridNodes: SCAN_CONTAINER_GRID_NODES,
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+    });
   });
 
   it('composes with the entity gate: per-kind options win where set, budgets fill the gaps', () => {
@@ -554,7 +697,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
     });
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual({
-      maxBand: 'container',
+      maxBand: 'component',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
     });
@@ -604,10 +747,10 @@ describe('CLA-66: per-neighborhood compile — quiet containers drill without a 
     return selectC4BandProjection(compiled, band).nodes.map(node => node.entity.logicalId);
   }
 
-  it('root compile is a handful of L1/L2 nodes, not L4 rows', () => {
+  it('root compile is a handful of L1–L3 nodes, not L4 rows (CLA-107 pre-places L3)', () => {
     const root = bundle('system:root');
     expect(ids(root, 'container')).toEqual(expect.arrayContaining(['container:web', 'container:architecture']));
-    expect(ids(root, 'component')).toEqual([]);
+    expect(ids(root, 'component')).toEqual(expect.arrayContaining(['component:web-a', 'component:arch-a']));
     expect(ids(root, 'code')).toEqual([]);
   });
 

@@ -154,6 +154,7 @@ test("CLA-73: neighborhood HTTP is far smaller than snapshot.json and strips exc
       assert.equal(packet.focusEntityId, "system:root");
       assert.equal(packet.truncated, true);
       assert.equal(packet.snapshot.entities.some(item => item.kind === "code"), false);
+      assert.ok(packet.snapshot.entities.some(item => item.kind === "component"));
       assert.equal(packet.snapshot.entities.some(item => item.sourceExcerpts?.length), false);
       assert.ok(slimBytes * 3 < fullBytes || slimBytes < 8_000, `neighborhood ${slimBytes}B vs snapshot ${fullBytes}B`);
       assert.doesNotMatch(slimText, /apiKey|scanRoot|gho_|OPENROUTER|\/home\//);

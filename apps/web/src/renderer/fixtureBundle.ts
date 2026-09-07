@@ -13,3 +13,5 @@ export function setActiveScanFixture(fixture: ScanFixture): void {
 export function getActiveScanFixture(): ScanFixture | undefined {
   return activeScanFixture;
 }
+
+export { scanKeepsResidentL3Landmarks } from './scanFixture';

@@ -26,11 +26,68 @@ export function nextC4Band(band: C4Band): C4Band | undefined {
   return C4_BANDS[C4_BANDS.indexOf(band) + 1];
 }
 
+const CONTAINER_KINDS: ReadonlySet<EntityKind> = new Set(["container", "dataStore", "queue"]);
+
+/**
+ * CLA-107: small-repo L2 pre-places L3 when the published tree has this many
+ * containers or fewer (THISS/okie dogfood is ~10). Large-repo L2 stays CLA-66 lazy.
+ */
+export const SMALL_REPO_L3_PREPLACE_CONTAINERS = 12;
+
+/**
+ * File-component cap, same number as the scan hang-guard
+ * (`SCAN_BAND_DEPTH_MIN_ENTITIES`). Do not raise it here — CLA-107 must not
+ * become a 2000-cap rewrite. Counts components, not total snapshot size.
+ */
+export const SMALL_REPO_L3_PREPLACE_MAX_COMPONENTS = 2000;
+
+export function snapshotContainerCount(snapshot: ArchitectureSnapshot): number {
+  return snapshot.entities.filter(entity => CONTAINER_KINDS.has(entity.kind)).length;
+}
+
+/**
+ * True when a scan may compile L3 landmarks into the L2 (system) scene.
+ * Default CLA-73/CLA-66 path stays one band down; this is the additive
+ * small-repo gate (container handful). Total entity count is not the switch —
+ * THISS/okie is ~3k entities mostly L4 code, but only ~10 containers / ~170
+ * file-components. The hang-guard still refuses unbounded compiles elsewhere.
+ */
+export function snapshotPreplacesL3InL2(snapshot: ArchitectureSnapshot): boolean {
+  const containers = snapshotContainerCount(snapshot);
+  if (containers === 0 || containers > SMALL_REPO_L3_PREPLACE_CONTAINERS) return false;
+  const components = snapshot.entities.filter(entity => entity.kind === "component").length;
+  return components <= SMALL_REPO_L3_PREPLACE_MAX_COMPONENTS;
+}
+
+/**
+ * Opt-in deeper L1 slice for CLA-107. Empty for container/file focus and for
+ * large repos so CLA-73 default packets stay current-band + one down.
+ */
+export function neighborhoodSliceOptionsForFocus(
+  snapshot: ArchitectureSnapshot,
+  focusEntityId?: string,
+): Pick<SliceNeighborhoodOptions, "maxBand"> {
+  const requested = focusEntityId?.trim() ?? "";
+  const focus = requested
+    ? snapshot.entities.find(entity => entity.id === requested)
+    : undefined;
+  if (focus && c4BandForKind(focus.kind) !== "context") return {};
+  if (!snapshotPreplacesL3InL2(snapshot)) return {};
+  return { maxBand: "component" };
+}
+
 export type SliceNeighborhoodOptions = {
   /** Entity to center the packet on. Unknown ids fall back to the view root. */
   focusEntityId?: string;
   /** When false (default), drop portable source excerpts from every entity. */
   includeExcerpts?: boolean;
+  /**
+   * Deepest C4 band to include (opt-in). Default: native band + one layer down
+   * (CLA-73). CLA-107 small-repo L2 pre-place passes `component` on a context
+   * focus so file-component landmarks ship with L1/L2. Never includes code
+   * unless the focus is already at component/code.
+   */
+  maxBand?: C4Band;
 };
 
 /**
@@ -141,7 +198,8 @@ function childCountMap(snapshot: ArchitectureSnapshot): Record<string, number> {
 
 /**
  * Slice a published snapshot+view down to the focus neighborhood (current C4
- * band + one layer down). Does not compile and does not change CLA-66 options.
+ * band + one layer down by default). `maxBand` is an additive opt-in (CLA-107)
+ * and does not change CLA-66 compile options on its own.
  */
 export function sliceArchitectureNeighborhood(
   snapshot: ArchitectureSnapshot,
@@ -167,7 +225,11 @@ export function sliceArchitectureNeighborhood(
   }
 
   const native = c4BandForKind(focus.kind);
-  const maxBand = nextC4Band(native) ?? native;
+  const defaultMax = nextC4Band(native) ?? native;
+  const requestedMax = options.maxBand;
+  const maxBand = requestedMax && bandRank(requestedMax) >= bandRank(native)
+    ? requestedMax
+    : defaultMax;
   const maxRank = bandRank(maxBand);
   const ownerId = neighborhoodOwnerId(snapshot, view.rootEntityId, focus.id);
   const included = new Set<string>(ancestorIds(byId, focus.id));

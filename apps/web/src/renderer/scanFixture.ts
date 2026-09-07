@@ -3,7 +3,9 @@ import {
   c4BandForKind,
   isNeighborhoodPacket,
   mergeChildCounts,
+  neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
+  snapshotPreplacesL3InL2,
   validateNeighborhoodPacket,
   validateSnapshot,
   validateStoryDocument,
@@ -95,7 +97,10 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
  * Deterministic scoped-compile options for a scan-mode focus. Band scoping is
  * the default path at every repo size (CLA-66): system→container band;
  * container drill-in→component band + edge budget + router grid cap;
- * component→code band. A second, independent relation gate
+ * component→code band. CLA-107 overlays `maxBand: component` on the system
+ * compile when the snapshot is a small repo (≤12 containers, ≤2000 components)
+ * so L2 is not a hollow shell. Total entity count is not the switch — THISS/okie
+ * is ~3k entities mostly L4 code. A second, independent relation gate
  * (> SCAN_RELATION_EDGE_MIN) adds a per-band routed-edge budget plus a router
  * grid cap wherever the options don't already carry one. SCAN_BAND_DEPTH_MIN_ENTITIES
  * is not a compile-strategy switch — it remains the hang-guard in
@@ -106,11 +111,38 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
   const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
   const scoped = focus ? SCAN_SCOPED_OPTIONS_BY_KIND[focus.kind] : undefined;
   const options: ScanScopedOptions = scoped ? { ...scoped } : {};
+  // CLA-107: small-repo L2 compiles one band deeper (component landmarks in
+  // global coordinates) so containers are not hollow shells. 13+ containers
+  // stay CLA-66 `maxBand: container`. No maxNodesPerBand — L3 stays resident in
+  // memory on the system scene; renderer culling still skips drawing.
+  if (
+    snapshotPreplacesL3InL2(snapshot)
+    && (options.maxBand === 'container' || (focus && c4BandForKind(focus.kind) === 'context' && options.maxBand === undefined))
+  ) {
+    options.maxBand = 'component';
+    options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
+    options.maxGridNodes ??= SCAN_CONTAINER_GRID_NODES;
+  }
   if (aboveRelationGate) {
     options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
     options.maxGridNodes ??= SCAN_CONTAINER_GRID_NODES;
   }
   return options;
+}
+
+/**
+ * CLA-107: keep pre-placed L3 landmarks in the system-scene graph. Thousands of
+ * nodes/edges can stay in memory; the GPU still culls what is off-screen.
+ * CLA-74 camera paging must not drop them (that made L2↔L3 look like a re-root
+ * into a hollow box). Open-inside L3/L4 and large-repo L2 stay windowed.
+ */
+export function scanKeepsResidentL3Landmarks(
+  snapshot: ArchitectureSnapshot,
+  focusEntityId: string,
+): boolean {
+  if (!snapshotPreplacesL3InL2(snapshot)) return false;
+  const focus = snapshot.entities.find(entity => entity.id === focusEntityId);
+  return Boolean(focus && c4BandForKind(focus.kind) === 'context');
 }
 
 /**
@@ -355,13 +387,17 @@ function buildLiveScanFixture(
     // unpublished stubs — a re-slice of an already-slim L1 packet would zero
     // container counts and collapse reserved shells.
     const rootPacket = extras.boot === 'neighborhood' && decision.focusEntityId === view.rootEntityId
-      ? sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: decision.focusEntityId })
+      ? sliceArchitectureNeighborhood(snapshot, view, {
+        focusEntityId: decision.focusEntityId,
+        ...neighborhoodSliceOptionsForFocus(snapshot, decision.focusEntityId),
+      })
       : undefined;
     const compileSnapshot = rootPacket?.snapshot ?? snapshot;
     const compileIds = new Set(compileSnapshot.entities.map(entity => entity.id));
     const compileUnpublished = unpublishedChildren.filter(child =>
       !rootPacket
       || (Boolean(child.parentId) && compileIds.has(child.parentId!) && !compileIds.has(child.id)));
+    const keepResidentL3 = scanKeepsResidentL3Landmarks(snapshot, decision.focusEntityId);
     const scene = createC4Scene({
       baseSnapshot: compileSnapshot,
       rootEntityId: view.rootEntityId,
@@ -375,7 +411,7 @@ function buildLiveScanFixture(
       ...scoped,
       ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
       ...(scoped.maxBand !== undefined ? { bandDepthThreshold: SCAN_BAND_DEPTH_MIN_ENTITIES } : {}),
-      ...(residency?.worldBounds ? { residentWorldBounds: residency.worldBounds } : {}),
+      ...(residency?.worldBounds && !keepResidentL3 ? { residentWorldBounds: residency.worldBounds } : {}),
       ...(residency?.keepEntityIds ? { keepEntityIds: residency.keepEntityIds } : {}),
       childCounts,
       ...(compileUnpublished.length ? { unpublishedChildren: compileUnpublished } : {}),
