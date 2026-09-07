@@ -14,6 +14,11 @@ import { ENRICHMENT_PROMPT_VERSION, ENRICHMENT_PROMPT_VERSION_V3 } from "./packe
 import { containerScopes, type ContainerScope } from "./scope.js";
 import { resolveCollisions, typedId } from "./ids.js";
 import type { EntityCoverageOverlay } from "./lcov.js";
+import {
+  isObservedLanguageTag,
+  languageTagForScanPath,
+  mergeObservedLanguageTechnology,
+} from "./extract.js";
 
 // Preserve the strongest trail when many file→file edges collapse into one
 // logical→logical edge: union their evidence up to the schema's per-relation limit.
@@ -139,6 +144,21 @@ function sourceRefsEqual(left: readonly ArchitectureExtractionSourceRef[], right
   const a = left.map(sourceRefKey).sort();
   const b = right.map(sourceRefKey).sort();
   return a.every((value, index) => value === b[index]);
+}
+
+/** Observed language tags (CLA-102) survive enrichment that omits or replaces `technology`. */
+function preserveObservedLanguageTechnology(
+  base: ArchitectureExtractionEntity,
+  next: ArchitectureExtractionEntity,
+): ArchitectureExtractionEntity {
+  const languages = (base.technology ?? []).filter(isObservedLanguageTag);
+  const merged = mergeObservedLanguageTechnology(languages, next.technology);
+  if (!merged) return next;
+  const current = next.technology;
+  if (current && current.length === merged.length && current.every((value, index) => value === merged[index])) {
+    return next;
+  }
+  return { ...next, technology: merged };
 }
 
 function localOf(id: string): string {
@@ -615,19 +635,17 @@ export function mergeEnrichment(
     }
     distributeComponentBehaviours(judgementByCode, judgementByComponent, base, coverageByCodeId);
     const mergedEntities = base.entities.map(entity => {
+      let next = entity;
       if (entity.kind === "code" && judgementByCode.has(entity.id)) {
-        return { ...entity, ...judgementByCode.get(entity.id)! };
+        next = { ...entity, ...judgementByCode.get(entity.id)! };
+      } else if (entity.kind === "component" && judgementByComponent.has(entity.id)) {
+        next = { ...entity, ...judgementByComponent.get(entity.id)! };
+      } else if (entity.kind === "container" && judgementByContainer.has(entity.id)) {
+        next = { ...entity, ...judgementByContainer.get(entity.id)! };
+      } else if (entity.kind === "softwareSystem" && systemJudgement) {
+        next = { ...entity, ...systemJudgement };
       }
-      if (entity.kind === "component" && judgementByComponent.has(entity.id)) {
-        return { ...entity, ...judgementByComponent.get(entity.id)! };
-      }
-      if (entity.kind === "container" && judgementByContainer.has(entity.id)) {
-        return { ...entity, ...judgementByContainer.get(entity.id)! };
-      }
-      if (entity.kind === "softwareSystem" && systemJudgement) {
-        return { ...entity, ...systemJudgement };
-      }
-      return entity;
+      return preserveObservedLanguageTechnology(entity, next);
     });
     return {
       extraction: { schemaVersion: 1, entities: mergedEntities, relations: base.relations },
@@ -676,13 +694,18 @@ export function mergeEnrichment(
     }
     for (const component of proposal.logicalComponents) {
       const paths = [...(pathsByLogical.get(component.id) ?? new Set<string>())].sort().slice(0, MAX_COMPONENT_SOURCE_REFS);
+      const languages = paths.flatMap(path => {
+        const tag = languageTagForScanPath(path);
+        return tag ? [tag] : [];
+      });
+      const technology = mergeObservedLanguageTechnology(languages, component.technology);
       logicalComponentsFinal.push({
         id: component.id,
         kind: "component",
         parentId: containerId,
         name: component.name,
         ...(component.responsibility !== undefined ? { responsibility: component.responsibility } : {}),
-        ...(component.technology !== undefined ? { technology: component.technology } : {}),
+        ...(technology ? { technology } : {}),
         ...(component.tags !== undefined ? { tags: component.tags } : {}),
         ...(component.untestedBehaviours?.length ? { untestedBehaviours: cloneUntestedBehaviours(component.untestedBehaviours) } : {}),
         sourceRefs: paths.map(path => ({ path })),
@@ -695,17 +718,21 @@ export function mergeEnrichment(
   const mergedEntities: ArchitectureExtractionEntity[] = [];
   for (const entity of base.entities) {
     if (entity.kind === "component" && removedCodeBearing.has(entity.id)) continue;
+    let next: ArchitectureExtractionEntity;
     if (entity.kind === "code" && reparentByCode.has(entity.id)) {
-      mergedEntities.push({ ...entity, parentId: reparentByCode.get(entity.id)!, ...(judgementByCode.get(entity.id) ?? {}) });
+      next = { ...entity, parentId: reparentByCode.get(entity.id)!, ...(judgementByCode.get(entity.id) ?? {}) };
     } else if (entity.kind === "code" && judgementByCode.has(entity.id)) {
-      mergedEntities.push({ ...entity, ...judgementByCode.get(entity.id)! });
+      next = { ...entity, ...judgementByCode.get(entity.id)! };
     } else if (entity.kind === "component" && judgementByComponent.has(entity.id)) {
-      mergedEntities.push({ ...entity, ...judgementByComponent.get(entity.id)! });
+      next = { ...entity, ...judgementByComponent.get(entity.id)! };
     } else if (entity.kind === "container" && judgementByContainer.has(entity.id)) {
-      mergedEntities.push({ ...entity, ...judgementByContainer.get(entity.id)! });
+      next = { ...entity, ...judgementByContainer.get(entity.id)! };
     } else if (entity.kind === "softwareSystem" && systemJudgement) {
-      mergedEntities.push({ ...entity, ...systemJudgement });
-    } else mergedEntities.push(entity);
+      next = { ...entity, ...systemJudgement };
+    } else {
+      next = entity;
+    }
+    mergedEntities.push(preserveObservedLanguageTechnology(entity, next));
   }
   mergedEntities.push(...logicalComponentsFinal);
   // Accepted top-level actors — normalized to the fact fields, always top-level (no parentId).

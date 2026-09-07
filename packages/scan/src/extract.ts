@@ -29,6 +29,38 @@ export const MAX_EXTERNAL_SYSTEMS = 8;
 /** Cap on evidence anchors carried by one externalSystem entity (declaration + import sites). */
 const MAX_EXTERNAL_SOURCE_REFS = 12;
 
+/**
+ * Honest language tags from observed source (CLA-102). `.tsx` is TypeScript, not a
+ * React claim. Order is the inspector display order before `adapt` sorts.
+ */
+export const OBSERVED_LANGUAGE_TAGS = ["TypeScript", "JavaScript", "Rust"] as const;
+export type ObservedLanguageTag = (typeof OBSERVED_LANGUAGE_TAGS)[number];
+
+const OBSERVED_LANGUAGE_TAG_SET: ReadonlySet<string> = new Set(OBSERVED_LANGUAGE_TAGS);
+
+export function isObservedLanguageTag(value: string): value is ObservedLanguageTag {
+  return OBSERVED_LANGUAGE_TAG_SET.has(value);
+}
+
+/** Language tag for a scanned path. Unsupported extensions stay untagged. */
+export function languageTagForScanPath(path: string): ObservedLanguageTag | undefined {
+  if (/\.(tsx|ts|mts|cts)$/.test(path)) return "TypeScript";
+  if (/\.(jsx|js|mjs|cjs)$/.test(path)) return "JavaScript";
+  if (path.endsWith(".rs")) return "Rust";
+  return undefined;
+}
+
+/** Languages first (canonical order), then other tags (CLA-97 libraries), capped. */
+export function mergeObservedLanguageTechnology(
+  languages: readonly string[],
+  other: readonly string[] | undefined,
+): string[] | undefined {
+  const orderedLanguages = OBSERVED_LANGUAGE_TAGS.filter(tag => languages.includes(tag));
+  const rest = (other ?? []).filter(name => !OBSERVED_LANGUAGE_TAG_SET.has(name));
+  const merged = [...orderedLanguages, ...rest].slice(0, ARCHITECTURE_EXTRACTION_LIMITS.maxListItems);
+  return merged.length ? merged : undefined;
+}
+
 export interface TopLevelDeclaration {
   name: string;
   startLine: number;
@@ -681,7 +713,10 @@ interface EntityDescriptor {
   name: string;
   parentKey?: string;
   sourceRefs: ArchitectureExtractionSourceRef[];
-  /** Observed runtime libraries on a container (CLA-97) — inspector/detail, not L1 cards. */
+  /**
+   * Observed language tags (CLA-102) plus dropped runtime libraries (CLA-97).
+   * Inspector/detail — not L1 cards.
+   */
   technology?: string[];
   /** Observed McCabe for function-like code entities — snapshot overlay, not extraction. */
   cyclomaticComplexity?: number;
@@ -859,6 +894,50 @@ function emitExternalSystems(input: ExternalEmitInput): void {
       for (const evidence of byContainer.get(container)!) {
         addRelation(container, `ext:${pkg}`, typedId("relation", container, pkg), `ext:${container}->${pkg}`, evidence);
       }
+    }
+  }
+}
+
+/**
+ * Attach observed TypeScript / JavaScript / Rust tags so inspector cards are not
+ * "Technology not specified" when the language is known (CLA-102). Opaque Rust
+ * crates get `Rust` from the crate unit — no `.rs` parse, no L3/L4 children.
+ * Prepends languages onto CLA-97 library names already on the container.
+ */
+function attachObservedLanguageTags(
+  discovery: Discovery,
+  entityDescriptors: EntityDescriptor[],
+): void {
+  const tagsByUnit = new Map<string, Set<ObservedLanguageTag>>();
+  const systemTags = new Set<ObservedLanguageTag>();
+  const add = (unitDir: string | undefined, tag: ObservedLanguageTag): void => {
+    systemTags.add(tag);
+    if (!unitDir) return;
+    const bucket = tagsByUnit.get(unitDir) ?? new Set();
+    bucket.add(tag);
+    tagsByUnit.set(unitDir, bucket);
+  };
+  for (const file of discovery.sourceFiles) {
+    const tag = languageTagForScanPath(file);
+    if (tag) add(discovery.unitByFile.get(file), tag);
+  }
+  for (const unit of discovery.units) {
+    if (unit.kind === "rust") add(unit.dir, "Rust");
+  }
+  for (const descriptor of entityDescriptors) {
+    if (descriptor.kind === "softwareSystem") {
+      const merged = mergeObservedLanguageTechnology([...systemTags], descriptor.technology);
+      if (merged) descriptor.technology = merged;
+    } else if (descriptor.kind === "container") {
+      const merged = mergeObservedLanguageTechnology(
+        [...(tagsByUnit.get(descriptor.naturalKey) ?? [])],
+        descriptor.technology,
+      );
+      if (merged) descriptor.technology = merged;
+    } else if (descriptor.kind === "component") {
+      const tag = languageTagForScanPath(descriptor.naturalKey);
+      const merged = mergeObservedLanguageTechnology(tag ? [tag] : [], descriptor.technology);
+      if (merged) descriptor.technology = merged;
     }
   }
 }
@@ -1086,6 +1165,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
   }
 
   emitExternalSystems({ discovery, readFile, externalUsagesByPackage, entityDescriptors, addRelation });
+  attachObservedLanguageTags(discovery, entityDescriptors);
 
   // Assign collision-free IDs in a fully canonical order (independent of discovery order).
   const sortedEntities = [...entityDescriptors].sort((left, right) =>
