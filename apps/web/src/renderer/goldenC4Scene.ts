@@ -583,7 +583,10 @@ export function scanPeerContainerIds(scene: AtlasScene, focusContainerId: string
  * suffices. Children are read from the snapshot when provided (the compiled scene
  * is per-neighborhood and may omit descendants). Returns undefined for a leaf,
  * a childless target, or a target whose deeper band is ALREADY laid out as peer
- * cards. A reserved owner shell (bounds without descendant peers) is not laid out.
+ * cards in *this* neighborhood (compile root is the target). A reserved owner
+ * shell (bounds without descendant peers) is not laid out. CLA-107 may pre-place
+ * L3 cards in the system scene; Open inside a container still returns the
+ * deeper band so the shell swaps to that neighborhood (CLA-104/105/106).
  * Pure — never compiles.
  */
 export function scanDrillDeeperDetail(
@@ -598,7 +601,9 @@ export function scanDrillDeeperDetail(
     : scene.entities.some(entity => entity.parentId === target.id);
   if (!hasChildren) return undefined;
   if (semanticBounds(scene, target.id, deeper) && scanDeeperBandHasPeerCards(scene, target.id, deeper)) {
-    return undefined;
+    // Already compiled this neighborhood. Landmarks in a parent (system) scene
+    // are not the container graph — keep drilling so Open inside matches wheel.
+    if (!scene.rootEntityId || scene.rootEntityId === target.id) return undefined;
   }
   return deeper;
 }
@@ -624,9 +629,10 @@ export function scanZoomCompileHandoff(
   if (detail === 'context' || detail === 'container') {
     return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
   }
-  // CLA-66 system compile is maxBand: container — recompiling the view root
-  // at component/code cannot grow L3/L4 peers. Stay on the L2 scene until a
-  // code-bearing container (or file) is the compile focus.
+  // CLA-66 system compile is maxBand: container on large repos, so recompiling
+  // the view root at component/code cannot grow L3/L4 peers. CLA-107 small-repo
+  // L2 may already include L3 landmarks; still do not treat the view root as the
+  // L3 compile focus — Open inside / wheel hands off to the container.
   if (compileFocus === viewRootId && currentCompileFocus === viewRootId) return undefined;
   if (compileFocus === currentCompileFocus && scanDeeperBandHasPeerCards(scene, compileFocus, detail)) {
     return undefined;

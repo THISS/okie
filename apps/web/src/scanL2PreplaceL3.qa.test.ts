@@ -14,6 +14,7 @@ import demoView from '../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../fixtures/architecture/demo-story.json';
 import {
   scanDeeperBandHasPeerCards,
+  scanDrillDeeperDetail,
   scanZoomCompileHandoff,
 } from './renderer/goldenC4Scene';
 import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
@@ -115,6 +116,9 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect((l2.projection?.entityIdsByDetail.component ?? [])
       .filter(id => l2.entities.find(entity => entity.id === id)?.detail === 'component').length).toBeGreaterThan(0);
     expect(scanDeeperBandHasPeerCards(l2, 'container:web-app', 'component')).toBe(true);
+    const web = l2.entities.find(entity => entity.id === 'container:web-app');
+    expect(web).toBeDefined();
+    expect(scanDrillDeeperDetail(l2, web!, fixture.snapshot)).toBe('component');
     expect((l2.projection?.entityIdsByDetail.code ?? []).length).toBe(0);
   });
 
@@ -125,6 +129,8 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
       story: structuredClone(demoStory),
     });
     const l2 = compiled.createScene(compiled.navigation.rootEntityId);
+    const web = l2.entities.find(entity => entity.id === 'container:web-app')!;
+    expect(scanDrillDeeperDetail(l2, web, compiled.snapshot)).toBe('component');
     expect(scanZoomCompileHandoff(
       l2,
       compiled.snapshot,

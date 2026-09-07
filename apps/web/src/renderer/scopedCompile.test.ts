@@ -262,6 +262,19 @@ describe('scanDrillDeeperDetail — "Open inside" recompiles a scoped-out deeper
     expect(scanDrillDeeperDetail(full, container)).toBeUndefined();
   });
 
+  it('CLA-107: pre-placed L3 in the system scene still Open-inside drills the container', () => {
+    const preplaced = {
+      ...sceneWith({
+        'container:c': { container: bounds, component: bounds },
+        'component:x': { component: bounds },
+      }),
+      rootEntityId: 'system:root',
+    } as AtlasScene;
+    expect(scanDrillDeeperDetail(preplaced, container)).toBe('component');
+    const atContainer = { ...preplaced, rootEntityId: 'container:c' };
+    expect(scanDrillDeeperDetail(atContainer, container)).toBeUndefined();
+  });
+
   it('CLA-83: reserved owner bounds without descendant peer cards still drill', () => {
     const system = sceneEntities[0]!;
     const snap = snapshot([
