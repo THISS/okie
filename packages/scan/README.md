@@ -90,6 +90,13 @@ deterministically from **third-party runtime dependencies that are service bound
 - **`packages/theme` is skipped** — it ships CSS tokens only, zero `.ts`, so it yields no
   container (the golden fixture has no theme container either).
 - **Rust crates are opaque containers** — path-only evidence, no `.rs` parsing in R1.
+  They still get an observed `Rust` technology tag so inspector cards are not
+  "Technology not specified"; Open inside stays disabled until a Rust extractor
+  (CLA-103) exists.
+- **Observed language tags** (CLA-102) — `TypeScript` / `JavaScript` / `Rust` from
+  file extensions (and Rust crate units). They prepend onto CLA-97 library names
+  on the same container. `.tsx` is TypeScript, not a React claim. Golden curated
+  badges (`TypeScript · Rust · WebAssembly · wgpu`) are a different fixture.
 - Derived structure legitimately differs from the golden fixture's *conceptual* grouping and IDs.
   The dogfooding gate is about **evidence coverage** (every golden `.ts/.tsx/.mjs` `path`+`symbol`
   anchor appears among scan `code` entities), not ID equality. Rust anchors are excluded.

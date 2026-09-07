@@ -175,8 +175,8 @@ test("emits externalSystems for service-boundary deps; libraries become containe
 
   const app = extraction.entities.find(entity => entity.id === "container:pkg-app")!;
   const lib = extraction.entities.find(entity => entity.id === "container:pkg-lib")!;
-  assert.deepEqual(app.technology, ["@scope/ui", "rare", "react"], "excluded deps stay on the importing container");
-  assert.deepEqual(lib.technology, ["react"]);
+  assert.deepEqual(app.technology, ["TypeScript", "@scope/ui", "rare", "react"], "language first, then excluded deps");
+  assert.deepEqual(lib.technology, ["TypeScript", "react"]);
 });
 
 test("external ids/kinds are gate-valid and top-level (no parentId)", () => {
@@ -274,6 +274,14 @@ test("Okie scan L1 keeps the Anthropic SDK and drops UI/framework/utility packag
 
   const web = snapshot.entities.find(entity => entity.id === "container:apps-web");
   const scan = snapshot.entities.find(entity => entity.id === "container:packages-scan");
+  const architecture = snapshot.entities.find(entity => entity.id === "container:packages-architecture");
+  const engine = snapshot.entities.find(entity => entity.id === "container:crates-atlas-engine");
+  const system = snapshot.entities.find(entity => entity.kind === "softwareSystem");
+  assert.ok(web?.technology?.includes("TypeScript"), "web container names observed TypeScript");
+  assert.ok(architecture?.technology?.includes("TypeScript"), "TS packages without L1 libraries still name TypeScript");
+  assert.ok(engine?.technology?.includes("Rust"), "opaque Rust crates name Rust");
+  assert.equal(snapshot.entities.some(entity => entity.parentId === engine?.id), false, "Rust crates stay opaque — no L3/L4 children");
+  assert.ok(system?.technology?.includes("TypeScript") && system?.technology?.includes("Rust"), "system unions observed languages");
   assert.ok(web?.technology?.includes("react"), "react remains on the web container for inspector/detail");
   assert.ok(web?.technology?.includes("react-dom"), "react-dom remains on the web container");
   assert.ok(web?.technology?.includes("dompurify"), "dompurify remains on the web container");

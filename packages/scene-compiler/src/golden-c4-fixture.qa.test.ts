@@ -190,3 +190,9 @@ test('checked C4 bundle and Mermaid-ready materialized projections are canonical
     assert.equal(JSON.stringify(selectC4BandProjection(reversed, band)), JSON.stringify(selectC4BandProjection(checked, band)));
   }
 });
+
+test('CLA-102: golden curated system technology badge string is unchanged', () => {
+  const system = goldenSnapshot.entities.find(entity => entity.id === 'system:okie');
+  assert.deepEqual(system?.technology, ['TypeScript', 'Rust', 'WebAssembly', 'wgpu']);
+  assert.equal(system?.technology?.join(' · '), 'TypeScript · Rust · WebAssembly · wgpu');
+});

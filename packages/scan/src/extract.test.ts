@@ -21,6 +21,7 @@ import {
   resolvePackageImport,
   resolveRelativeImport,
   topLevelDeclarations,
+  languageTagForScanPath,
 } from "./extract.js";
 
 test("topLevelDeclarations captures every top-level named decl, exported or not", () => {
@@ -443,6 +444,60 @@ test("Cargo path dependencies become container edges between crate units", () =>
   assert.ok(edge, "expected engine-wasm → engine-core edge from Cargo path dependency");
   assert.equal(edge!.evidence[0]!.source.path, "crates/engine-wasm/Cargo.toml");
   assert.equal(edge!.evidence[0]!.source.startLine, 2);
+});
+
+test("languageTagForScanPath maps observed extensions; jsx is JavaScript, tsx is TypeScript", () => {
+  assert.equal(languageTagForScanPath("apps/web/src/App.tsx"), "TypeScript");
+  assert.equal(languageTagForScanPath("packages/scan/src/excerpt.ts"), "TypeScript");
+  assert.equal(languageTagForScanPath("scripts/build-wasm.mjs"), "JavaScript");
+  assert.equal(languageTagForScanPath("crates/atlas-engine/src/lod.rs"), "Rust");
+  assert.equal(languageTagForScanPath("README.md"), undefined);
+});
+
+test("observed language tags land on system, containers, and file components (CLA-102)", () => {
+  const discovery: Discovery = {
+    sourceFiles: ["pkg/app/src/a.ts", "pkg/app/src/widget.tsx", "scripts/build.mjs"],
+    units: [
+      { kind: "member", dir: "pkg/app", name: "@acme/app", packageName: "@acme/app", evidencePath: "pkg/app" },
+      { kind: "tooling", dir: "tooling", name: "Build tooling", evidencePath: "scripts" },
+      { kind: "rust", dir: "crates/engine", name: "engine", evidencePath: "crates/engine" },
+    ],
+    unitByFile: new Map([
+      ["pkg/app/src/a.ts", "pkg/app"],
+      ["pkg/app/src/widget.tsx", "pkg/app"],
+      ["scripts/build.mjs", "tooling"],
+    ]),
+    unitByPackageName: new Map([["@acme/app", "pkg/app"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "pkg/app/src/a.ts": "export const a = 1;\n",
+    "pkg/app/src/widget.tsx": "export const Widget = () => null;\n",
+    "scripts/build.mjs": "export const build = 1;\n",
+    "crates/engine/Cargo.toml": "[dependencies]\n",
+  };
+  const extraction = extractArchitecture({
+    discovery,
+    readFile: path => {
+      const text = files[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    },
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  const byId = new Map(extraction.entities.map(entity => [entity.id, entity]));
+  assert.deepEqual(byId.get("system:acme")!.technology, ["TypeScript", "JavaScript", "Rust"]);
+  assert.deepEqual(byId.get("container:pkg-app")!.technology, ["TypeScript"]);
+  assert.deepEqual(byId.get("container:tooling")!.technology, ["JavaScript"]);
+  assert.deepEqual(byId.get("container:crates-engine")!.technology, ["Rust"]);
+  assert.deepEqual(byId.get("component:pkg-app-src-a-ts")!.technology, ["TypeScript"]);
+  assert.deepEqual(byId.get("component:pkg-app-src-widget-tsx")!.technology, ["TypeScript"]);
+  assert.deepEqual(byId.get("component:scripts-build-mjs")!.technology, ["JavaScript"]);
+  assert.equal(extraction.entities.some(entity => entity.parentId === "container:crates-engine"), false, "opaque crate has no L3/L4 drill");
+  assert.equal(byId.get("code:pkg-app-src-a-ts:a")!.technology, undefined, "L4 stays untagged — language lives on the file card");
 });
 
 function declarationNamed(source: string, name: string) {

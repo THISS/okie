@@ -345,6 +345,36 @@ test("accepts scanner-scoped section summaries without regrouping files", () => 
   assert.deepEqual(merged.relations, extraction.relations, "summaries must not rewrite deterministic relations");
 });
 
+test("observed language tags survive enrichment that replaces or omits technology (CLA-102)", () => {
+  const extraction = base();
+  const containerId = "container:pkg-a";
+  assert.deepEqual(extraction.entities.find(entity => entity.id === containerId)?.technology, ["TypeScript"]);
+
+  const summary = summaryDoc(extraction, containerId) as { entities: ArchitectureExtractionEntity[] };
+  const container = summary.entities.find(entity => entity.id === containerId)!;
+  container.technology = ["React"];
+  const summarized = mergeEnrichment(extraction, new Map([[containerId, summary]]));
+  assert.equal(summarized.report.results[0]!.accepted, true, summarized.report.results[0]?.reasons.join("; "));
+  assert.deepEqual(
+    summarized.extraction.entities.find(entity => entity.id === containerId)?.technology,
+    ["TypeScript", "React"],
+    "observed TypeScript stays ahead of enrichment libraries",
+  );
+  assert.deepEqual(
+    summarized.extraction.entities.find(entity => entity.id === "component:pkg-a-src-index-ts")?.technology,
+    ["TypeScript"],
+  );
+
+  const regrouped = mergeEnrichment(extraction, new Map([[containerId, validDoc(extraction, containerId)]]));
+  assert.equal(regrouped.report.results[0]!.accepted, true, regrouped.report.results[0]?.reasons.join("; "));
+  assert.deepEqual(regrouped.extraction.entities.find(entity => entity.id === containerId)?.technology, ["TypeScript"]);
+  assert.deepEqual(
+    regrouped.extraction.entities.find(entity => entity.id === "component:pkg-a-core")?.technology,
+    ["TypeScript"],
+    "logical components inherit language from grouped file paths",
+  );
+});
+
 test("section summaries reject hallucinated ids and out-of-scope citations; the base is unchanged", () => {
   const extraction = base();
   const ghost = summaryDoc(extraction, "container:pkg-a", true) as { entities: ArchitectureExtractionEntity[] };
