@@ -19,7 +19,13 @@ import {
   scanScopeCompileOptions,
   scanScopeStats,
 } from './scanFixture';
-import { resolveOmittedRelations, scanDrillDeeperDetail, scanZoomCompileHandoff } from './goldenC4Scene';
+import {
+  resolveOmittedRelations,
+  scanDrillDeeperDetail,
+  scanZoomCompileHandoff,
+  scanZoomEntityUnderPointer,
+  scanZoomHandoffPreferredId,
+} from './goldenC4Scene';
 import type { AtlasScene, SceneEntity } from './types';
 
 function entity(id: string, kind: EntityKind, parentId?: string): ArchitectureEntity {
@@ -389,6 +395,104 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
       detail: 'container',
       compileFocus: 'system:root',
     });
+  });
+});
+
+describe('CLA-105: scan zoom prefers the container under the pointer', () => {
+  const viewport = { width: 400, height: 200 };
+  const camera = { x: 200, y: 100, zoom: 1 };
+  const sceneEntities: SceneEntity[] = [
+    { id: 'system:root', name: 'root', kind: 'system', detail: 'context', responsibility: '', x: 0, y: 0, width: 400, height: 200 },
+    { id: 'container:c', parentId: 'system:root', name: 'c', kind: 'container', detail: 'container', responsibility: '', x: 10, y: 10, width: 100, height: 80 },
+    { id: 'container:empty', parentId: 'system:root', name: 'empty', kind: 'container', detail: 'container', responsibility: '', x: 200, y: 10, width: 100, height: 80 },
+    { id: 'component:x', parentId: 'container:c', name: 'x', kind: 'component', detail: 'component', responsibility: '', x: 20, y: 20, width: 20, height: 20 },
+  ];
+  const snap = snapshot([
+    entity('system:root', 'softwareSystem'),
+    entity('container:c', 'container', 'system:root'),
+    entity('container:empty', 'container', 'system:root'),
+    entity('component:x', 'component', 'container:c'),
+  ]);
+  const l2Scene: AtlasScene = {
+    id: 's',
+    title: '',
+    subtitle: '',
+    rootEntityId: 'system:root',
+    entities: sceneEntities,
+    relations: [],
+    regions: [],
+    projection: {
+      boundsByEntityIdAndDetail: {
+        'system:root': { context: { x: 0, y: 0, width: 400, height: 200 }, container: { x: 0, y: 0, width: 400, height: 200 } },
+        'container:c': { container: { x: 10, y: 10, width: 100, height: 80 } },
+        'container:empty': { container: { x: 200, y: 10, width: 100, height: 80 } },
+      },
+      entityIdsByDetail: {
+        context: ['system:root'],
+        container: ['system:root', 'container:c', 'container:empty'],
+        component: [],
+        code: [],
+      },
+    },
+  } as unknown as AtlasScene;
+
+  function pointerAt(worldX: number, worldY: number) {
+    return {
+      x: viewport.width / 2 + (worldX - camera.x) * camera.zoom,
+      y: viewport.height / 2 + (worldY - camera.y) * camera.zoom,
+    };
+  }
+
+  it('hits the nested container, not the system shell', () => {
+    expect(scanZoomEntityUnderPointer(l2Scene, camera, viewport, pointerAt(60, 50), 'container'))
+      .toBe('container:c');
+    expect(scanZoomEntityUnderPointer(l2Scene, camera, viewport, pointerAt(250, 50), 'container'))
+      .toBe('container:empty');
+  });
+
+  it('hands off L2→L3 with no inspector selection when the pointer is over a code-bearing container', () => {
+    expect(scanZoomCompileHandoff(l2Scene, snap, 'system:root', 'system:root', 'component')).toBeUndefined();
+    const preferred = scanZoomHandoffPreferredId(
+      l2Scene, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, pointerAt(60, 50), 'container', 'system:root',
+    );
+    expect(preferred).toBe('container:c');
+    expect(scanZoomCompileHandoff(l2Scene, snap, preferred, 'system:root', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
+  });
+
+  it('uses the pointer container even when a different container is selected', () => {
+    const preferred = scanZoomHandoffPreferredId(
+      l2Scene, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, pointerAt(60, 50), 'container', 'container:empty',
+    );
+    expect(preferred).toBe('container:c');
+  });
+
+  it('falls back to inspector selection when the pointer misses or is over an empty container', () => {
+    expect(scanZoomHandoffPreferredId(
+      l2Scene, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, pointerAt(150, 50), 'container', 'container:c',
+    )).toBe('container:c');
+    expect(scanZoomHandoffPreferredId(
+      l2Scene, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, pointerAt(250, 50), 'container', 'container:c',
+    )).toBe('container:c');
+    expect(scanZoomHandoffPreferredId(
+      l2Scene, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, undefined, 'container', 'container:c',
+    )).toBe('container:c');
+  });
+
+  it('does not invent an L3 handoff when pointer and selection are both the view root', () => {
+    const preferred = scanZoomHandoffPreferredId(
+      l2Scene, snap, 'system:root', 'component', 'system:root',
+      camera, viewport, pointerAt(150, 50), 'container', 'system:root',
+    );
+    expect(preferred).toBe('system:root');
+    expect(scanZoomCompileHandoff(l2Scene, snap, preferred, 'system:root', 'component')).toBeUndefined();
   });
 });
 

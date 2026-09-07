@@ -27,7 +27,7 @@ import {
   type SceneSnapshot,
 } from '@okie/scene-compiler';
 import { scanCompileFocusForBand, scanEntityHasChildren } from './lazyBandCompile';
-import type { AtlasScene, EntityKind as AtlasEntityKind, OmittedEdge, OmittedNode, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
+import type { AtlasScene, Camera, EntityKind as AtlasEntityKind, OmittedEdge, OmittedNode, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
 
@@ -607,4 +607,78 @@ export function scanZoomCompileHandoff(
   }
   if (detail === 'component' && !scanEntityHasChildren(snapshot, compileFocus)) return undefined;
   return { detail, compileFocus };
+}
+
+type ScanZoomPoint = { x: number; y: number };
+type ScanZoomViewport = { width: number; height: number };
+
+function scanZoomWorldPoint(
+  pointer: ScanZoomPoint,
+  camera: Camera,
+  viewport: ScanZoomViewport,
+): ScanZoomPoint {
+  const zoom = camera.zoom > 0 ? camera.zoom : 1;
+  return {
+    x: camera.x + (pointer.x - viewport.width / 2) / zoom,
+    y: camera.y + (pointer.y - viewport.height / 2) / zoom,
+  };
+}
+
+function scanZoomBoundsContain(bounds: ScanZoomPoint & ScanZoomViewport, point: ScanZoomPoint) {
+  return point.x >= bounds.x
+    && point.x <= bounds.x + bounds.width
+    && point.y >= bounds.y
+    && point.y <= bounds.y + bounds.height;
+}
+
+/**
+ * CLA-105: current-band entity under the wheel/pinch pointer. Prefers the
+ * smallest containing bounds so a nested container wins over the system shell.
+ * Undefined when the pointer misses every current-band card.
+ */
+export function scanZoomEntityUnderPointer(
+  scene: AtlasScene,
+  camera: Camera,
+  viewport: ScanZoomViewport,
+  pointer: ScanZoomPoint | undefined,
+  currentDetail: SemanticDetail,
+): string | undefined {
+  if (!pointer || !scene.projection) return undefined;
+  const visible = new Set(scene.projection.entityIdsByDetail[currentDetail] ?? []);
+  const world = scanZoomWorldPoint(pointer, camera, viewport);
+  let best: { id: string; area: number } | undefined;
+  for (const entity of scene.entities) {
+    if (!visible.has(entity.id)) continue;
+    const bounds = scene.projection.boundsByEntityIdAndDetail[entity.id]?.[currentDetail];
+    if (!bounds || !(bounds.width > 0) || !(bounds.height > 0)) continue;
+    if (!scanZoomBoundsContain(bounds, world)) continue;
+    const area = bounds.width * bounds.height;
+    if (!best || area < best.area || (area === best.area && entity.id.localeCompare(best.id) < 0)) {
+      best = { id: entity.id, area };
+    }
+  }
+  return best?.id;
+}
+
+/**
+ * CLA-105: pointer-over entity when that entity can compile-handoff; otherwise
+ * the inspector/fallback selection so the CLA-104 selected-container path stays.
+ */
+export function scanZoomHandoffPreferredId(
+  scene: AtlasScene,
+  snapshot: ArchitectureSnapshot,
+  viewRootId: string,
+  detail: SemanticDetail,
+  currentCompileFocus: string,
+  camera: Camera,
+  viewport: ScanZoomViewport,
+  pointer: ScanZoomPoint | undefined,
+  currentDetail: SemanticDetail,
+  fallbackId: string,
+): string {
+  const underPointer = scanZoomEntityUnderPointer(scene, camera, viewport, pointer, currentDetail);
+  if (underPointer && scanZoomCompileHandoff(scene, snapshot, underPointer, viewRootId, detail, currentCompileFocus)) {
+    return underPointer;
+  }
+  return fallbackId;
 }
