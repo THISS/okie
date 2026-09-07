@@ -277,7 +277,7 @@ describe('compact inspector presentation', () => {
     expect(app).not.toMatch(/enrichmentHonesty\.note/);
   });
 
-  it('grounds Ask Atlas in selected or isolated packets and keeps the disconnected explanation path', () => {
+  it('grounds Ask Atlas in selected or isolated packets and keeps an honest disconnected path', () => {
     expect(app).toContain("data-ask-connected={askConnected ? 'true' : 'false'}");
     expect(app).toContain('data-ask-state={askState}');
     expect(app).toContain('data-ask-auth="signed-out"');
@@ -289,14 +289,23 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('buildAskContext(');
     expect(app).toContain('probeAskConnection');
     expect(app).toContain("isolateActive: visibilityMode === 'isolate'");
-    expect(app).toContain('playDisconnectedAsk()');
+    expect(app).toContain('showDisconnectedAsk()');
     expect(app).toContain('ASK_NOT_CONNECTED_LIVE_MESSAGE');
     expect(app).toContain('ASK_NOT_CONNECTED_COPY');
     expect(app).toContain('ASK_CONNECTED_COPY');
+    expect(app).toContain('ASK_CONNECTED_SUBMIT_LABEL');
+    expect(app).toContain('ASK_DISCONNECTED_SUBMIT_LABEL');
     expect(app).toContain('shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)');
     expect(app).toContain('currentAskScopeKey');
     expect(app).toContain('if (!askSignedIn) return');
+    expect(app).toContain('if (!askConnected)');
     expect(app).toContain('askAtlasIdentity');
+    expect(app).not.toContain('playDisconnectedAsk');
+    expect(app).not.toContain('Preview explanation');
+    const disconnected = app.slice(app.indexOf('function showDisconnectedAsk()'), app.indexOf('async function submitQuestion('));
+    expect(disconnected).not.toContain('setStep(');
+    expect(disconnected).not.toContain('setAskOpen(false)');
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
   });
 
   it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {
@@ -534,6 +543,25 @@ describe('story launcher chrome (CLA-98)', () => {
     const compact = css.slice(css.indexOf('@media (max-width: 1060px)'));
     expect(declarations(compact, '.saved-story')).toContain('display: none');
     expect(compact).not.toMatch(/\.story-catalog-menu\s*\{[^}]*display:\s*none/);
+  });
+
+  it('anchors Ask Atlas to its button so the popover does not cover tours or minimap (CLA-100)', () => {
+    expect(app).toContain('className="ask-anchor"');
+    expect(app.indexOf('className="ask-anchor"')).toBeLessThan(app.indexOf('className="ask-button"'));
+    expect(app.indexOf('className="ask-popover"')).toBeGreaterThan(app.indexOf('className="ask-anchor"'));
+    expect(app.indexOf('className="ask-popover"')).toBeLessThan(app.indexOf('storyCatalog.length === 1'));
+    expect(declarations(css, '.ask-anchor')).toContain('position: relative');
+    expect(declarations(css, '.ask-popover')).toContain('left: 0');
+    expect(declarations(css, '.ask-popover')).toContain('right: auto');
+    expect(declarations(css, '.ask-popover')).toContain('bottom: calc(100% + 8px)');
+    expect(declarations(css, '.ask-popover')).toContain('width: min(360px, 92vw)');
+    const mobile = css.slice(css.indexOf('@media (max-width: 780px)'), css.indexOf('@media (max-width: 390px)'));
+    expect(declarations(mobile, '.ask-popover')).toContain('left: auto');
+    expect(declarations(mobile, '.ask-popover')).toContain('right: 0');
+    expect(css).not.toContain('.ask-popover { position: absolute; right: 0; bottom: 59px; left: 0;');
+    const phone = css.slice(css.indexOf('@media (max-width: 470px)'));
+    expect(phone).not.toMatch(/\.ask-popover \{ position: fixed/);
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
   });
 });
 

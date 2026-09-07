@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { INSPECTOR_EMPTY_SUMMARY } from '../inspector/inspectorPanel';
 import {
   ASK_CONNECTED_COPY,
+  ASK_CONNECTED_SUBMIT_LABEL,
+  ASK_DISCONNECTED_SUBMIT_LABEL,
   ASK_LOGIN_PATH,
   ASK_NOT_CONNECTED_COPY,
   ASK_NOT_CONNECTED_LIVE_MESSAGE,
@@ -386,9 +388,16 @@ describe('Ask sign-in and thread identity', () => {
 });
 
 describe('honest disconnected copy', () => {
-  it('keeps the not-connected explanation path copy', () => {
+  it('does not imply a live answer or a canned explanation preview', () => {
     expect(ASK_NOT_CONNECTED_COPY).toContain('Live Q&A is not connected');
-    expect(ASK_NOT_CONNECTED_LIVE_MESSAGE).toContain('Live repository Q&A is not connected yet');
+    expect(ASK_NOT_CONNECTED_COPY).toContain('Typed questions are not answered');
+    expect(ASK_NOT_CONNECTED_COPY).not.toMatch(/Submitting plays/i);
+    expect(ASK_NOT_CONNECTED_COPY).not.toMatch(/Preview explanation/i);
+    expect(ASK_NOT_CONNECTED_LIVE_MESSAGE).toContain('Live Q&A is not connected');
+    expect(ASK_NOT_CONNECTED_LIVE_MESSAGE).not.toMatch(/Playing the saved/i);
+    expect(ASK_NOT_CONNECTED_LIVE_MESSAGE).toContain('overview tour was not started');
+    expect(ASK_DISCONNECTED_SUBMIT_LABEL).toBe('Not connected');
+    expect(ASK_CONNECTED_SUBMIT_LABEL).toBe('Ask');
     expect(ASK_CONNECTED_COPY).toContain('packets and accepted summaries');
     expect(ASK_CONNECTED_COPY).toContain('selected or isolated');
     expect(ASK_SIGNIN_COPY).toContain('Sign in with GitHub');

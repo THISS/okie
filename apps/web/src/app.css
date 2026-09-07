@@ -550,7 +550,8 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
 .story-catalog-item strong { color: var(--atlas-text); font-size: 11px; font-weight: 650; }
 .story-catalog-item small { overflow: hidden; margin-top: 2px; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 
-.ask-popover { position: absolute; right: 0; bottom: 59px; left: 0; padding: 14px; border: 1px solid var(--atlas-line-strong); border-radius: 14px; background: rgba(13,18,19,.98); box-shadow: var(--atlas-shadow-panel); }
+.ask-anchor { position: relative; z-index: 13; flex: 0 0 auto; }
+.ask-popover { position: absolute; z-index: 14; left: 0; right: auto; bottom: calc(100% + 8px); width: min(360px, 92vw); padding: 14px; border: 1px solid var(--atlas-line-strong); border-radius: 14px; background: rgba(13,18,19,.98); box-shadow: var(--atlas-shadow-panel); }
 .ask-popover label { display: block; margin-bottom: 9px; font-size: 11px; font-weight: 650; }
 .ask-popover textarea { width: 100%; resize: none; padding: 10px; border: 1px solid var(--atlas-line); border-radius: 8px; outline: none; background: rgba(255,255,255,.025); color: var(--atlas-text); font-size: 11px; line-height: 1.5; }
 .ask-popover textarea:focus { border-color: rgba(217,255,112,.4); }
@@ -896,6 +897,7 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
   .story-launcher { right: 12px; bottom: 65px; left: auto; transform: none; }
   .story-catalog-menu { order: -1; }
   .ask-button { min-width: 0; width: 214px; }
+  .ask-popover { left: auto; right: 0; }
   .story-player { bottom: 59px; width: calc(100% - 24px); }
   .share-feedback { top: 68px; right: 10px; left: 10px; width: auto; }
   .canvas-hint { display: none; }
@@ -924,7 +926,6 @@ kbd { padding: 2px 6px; border: 1px solid var(--atlas-line); border-bottom-color
   .story-player { max-height: 270px; }
   .story-copy { padding: 11px 13px 9px; }
   .story-copy p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-  .ask-popover { position: fixed; right: 12px; bottom: 122px; left: 12px; }
   .details-scroll { padding: 18px 18px 28px; }
   .details-panel { grid-template-rows: 44px 44px minmax(0, 1fr); }
   .inspector-tabs { padding-block: 0; }

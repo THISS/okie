@@ -16,13 +16,15 @@ export const ASK_THREAD_PATH = '/api/ask/thread';
 export const ASK_LOGIN_PATH = '/api/auth/github';
 
 export const ASK_NOT_CONNECTED_COPY =
-  'Live Q&A is not connected in this renderer slice. Submitting plays the evidence-linked Okie explanation.';
+  'Live Q&A is not connected. Typed questions are not answered in this renderer slice. Guided tours and the inspector stay available — they are not a live answer.';
 export const ASK_CONNECTED_COPY =
   'Answers cite current packets and accepted summaries for the selected or isolated scopes.';
 export const ASK_NOT_CONNECTED_LIVE_MESSAGE =
-  'Playing the saved Okie context-to-source explanation. Live repository Q&A is not connected yet.';
+  'Live Q&A is not connected. No answer was returned and the overview tour was not started.';
 export const ASK_SIGNIN_COPY =
   'Sign in with GitHub to ask live questions. Viewing this atlas stays public — there is no login wall on the map.';
+export const ASK_CONNECTED_SUBMIT_LABEL = 'Ask';
+export const ASK_DISCONNECTED_SUBMIT_LABEL = 'Not connected';
 
 const ROOT_KINDS = new Set(['system', 'softwareSystem', 'person']);
 
