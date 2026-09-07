@@ -552,6 +552,32 @@ export function scanDeeperBandHasPeerCards(
 }
 
 /**
+ * CLA-106: sibling container-rank cards still in the compiled L3 neighborhood
+ * (same parent as `focusContainerId`, with world bounds). Empty when the
+ * scene re-rooted into a void.
+ */
+export function scanPeerContainerIds(scene: AtlasScene, focusContainerId: string): string[] {
+  const focus = scene.entities.find(entity => entity.id === focusContainerId);
+  if (!focus?.parentId) return [];
+  const visible = new Set([
+    ...(scene.projection?.entityIdsByDetail.container ?? []),
+    ...(scene.projection?.entityIdsByDetail.component ?? []),
+  ]);
+  return scene.entities
+    .filter(entity => {
+      if (entity.id === focusContainerId || entity.parentId !== focus.parentId) return false;
+      if (entity.kind !== 'container' && entity.kind !== 'store' && entity.kind !== 'queue') return false;
+      if (visible.size && !visible.has(entity.id)) return false;
+      return Boolean(
+        semanticBounds(scene, entity.id, 'component')
+        ?? semanticBounds(scene, entity.id, 'container'),
+      );
+    })
+    .map(entity => entity.id)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+/**
  * The band a scan-mode "Open inside" must recompile into when the target's deeper
  * scope was scoped OUT of the current scene, or undefined when a plain lens drill
  * suffices. Children are read from the snapshot when provided (the compiled scene

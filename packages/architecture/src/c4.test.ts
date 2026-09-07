@@ -94,6 +94,24 @@ test('materialized projections are sorted, laid out and export-ready', async () 
   assert.ok(component.edges.every(edge => edge.route.points.length >= 2));
 });
 
+test('CLA-106: container focus keeps sibling containers, not their L3 children', async () => {
+  const source = await snapshot();
+  const bundle = buildC4ProjectionBundle(source, {
+    rootEntityId: 'system:okie',
+    focusEntityId: 'container:web-app',
+  });
+  const component = selectC4BandProjection(bundle, 'component');
+  const ids = new Set(component.nodes.map(node => node.entity.logicalId));
+  assert.equal(ids.has('container:web-app'), true);
+  assert.equal(ids.has('container:architecture-model'), true, 'peer container stays in the L3 neighborhood');
+  assert.equal(ids.has('container:scene-compiler'), true);
+  assert.equal(ids.has('component:model-scoping'), false, 'CLA-107: do not pre-place sibling L3 children');
+  const focusBounds = bundle.index.boundsByEntityIdAndBand['container:web-app']?.component;
+  const peerBounds = bundle.index.boundsByEntityIdAndBand['container:architecture-model']?.component;
+  assert.ok(focusBounds && peerBounds, 'focus and peer both have component-band bounds');
+  assert.notDeepEqual(focusBounds, peerBounds, 'peer occupies distinct world space');
+});
+
 test('duplicates relations stay on the code band and do not lift to L1–L3', async () => {
   const source = await snapshot();
   const from = source.entities.find(entity => entity.kind === 'code')!;

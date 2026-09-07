@@ -14,6 +14,7 @@ import { explorerEntitiesForView } from './entityExplorer';
 import {
   scanDeeperBandHasPeerCards,
   scanDrillDeeperDetail,
+  scanPeerContainerIds,
   scanWindowedCompileDropsPeerGraph,
   scanZoomCompileHandoff,
   scanZoomEntityUnderPointer,
@@ -376,5 +377,115 @@ describe('CLA-105: pointer-centric L2→L3 handoff (no black void)', () => {
       detail: 'component',
       compileFocus: 'container:web-app',
     });
+  });
+});
+
+describe('CLA-106: L2→L3 handoff keeps peer containers (no pan into void)', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(app).not.toMatch(/SCAN_BAND_DEPTH_MIN_ENTITIES\s*=\s*[3-9]\d{3}/u);
+  });
+
+  it('Open inside / wheel L3 compile keeps sibling containers in distinct world space', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    const l2Scene = fixture.createScene(fixture.navigation.rootEntityId);
+    const l2Peers = (l2Scene.projection?.entityIdsByDetail.container ?? [])
+      .filter(id => id !== 'system:okie' && id !== 'container:web-app');
+    expect(l2Peers.length).toBeGreaterThan(1);
+
+    await fixture.ensureNeighborhood('container:web-app');
+    const l3Focus = scanCompileFocusForBand(
+      fixture.snapshot,
+      'container:web-app',
+      'component',
+      fixture.navigation.rootEntityId,
+    );
+    expect(l3Focus).toBe('container:web-app');
+    const l3 = fixture.createScene(l3Focus);
+    expect(scanDeeperBandHasPeerCards(l3, 'container:web-app', 'component')).toBe(true);
+
+    const peers = scanPeerContainerIds(l3, 'container:web-app');
+    expect(peers).toEqual(expect.arrayContaining(['container:architecture-model', 'container:scene-compiler']));
+    expect(peers.some(id => l2Peers.includes(id))).toBe(true);
+
+    const focusBounds = semanticBounds(l3, 'container:web-app', 'component')
+      ?? semanticBounds(l3, 'container:web-app', 'container');
+    expect(focusBounds).toBeDefined();
+    const peerBounds = peers.map(id => ({
+      id,
+      bounds: semanticBounds(l3, id, 'component') ?? semanticBounds(l3, id, 'container'),
+    }));
+    expect(peerBounds.every(entry => entry.bounds)).toBe(true);
+    expect(peerBounds.some(entry => (
+      entry.bounds!.x !== focusBounds!.x
+      || entry.bounds!.y !== focusBounds!.y
+      || entry.bounds!.width !== focusBounds!.width
+      || entry.bounds!.height !== focusBounds!.height
+    ))).toBe(true);
+
+    const union = peerBounds.reduce((acc, entry) => {
+      const box = entry.bounds!;
+      const x = Math.min(acc.x, box.x);
+      const y = Math.min(acc.y, box.y);
+      const right = Math.max(acc.x + acc.width, box.x + box.width);
+      const bottom = Math.max(acc.y + acc.height, box.y + box.height);
+      return { x, y, width: right - x, height: bottom - y };
+    }, { ...focusBounds! });
+    expect(union.width * union.height).toBeGreaterThan(focusBounds!.width * focusBounds!.height);
+
+    expect(l3.entities.some(entity =>
+      entity.parentId === 'container:architecture-model' && entity.detail === 'component',
+    )).toBe(false);
+
+    expect(scanZoomCompileHandoff(
+      l2Scene,
+      fixture.snapshot,
+      'container:web-app',
+      fixture.navigation.rootEntityId,
+      'component',
+    )).toEqual({ detail: 'component', compileFocus: 'container:web-app' });
+  });
+
+  it('windowed L3 compile still keeps a peer container outside the focused interior', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    await fixture.ensureNeighborhood('container:web-app');
+    const l3 = fixture.createScene('container:web-app');
+    const focusBounds = semanticBounds(l3, 'container:web-app', 'component')!;
+    const interiorCamera = {
+      x: focusBounds.x + focusBounds.width / 2,
+      y: focusBounds.y + focusBounds.height / 2,
+      zoom: 4,
+    };
+    const windowed = fixture.createScene('container:web-app', l3, {
+      worldBounds: expandRectByTileRing(cameraWorldRect(interiorCamera, viewport)),
+      keepEntityIds: ['container:web-app'],
+    });
+    expect(scanDeeperBandHasPeerCards(windowed, 'container:web-app', 'component')).toBe(true);
+    expect(scanPeerContainerIds(windowed, 'container:web-app').length).toBeGreaterThan(0);
+    expect(scanWindowedCompileDropsPeerGraph(l3, windowed, 'container:web-app', 'component')).toBe(false);
   });
 });

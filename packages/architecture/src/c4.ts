@@ -523,6 +523,33 @@ function entityRank(kind: EntityKind): number {
   }
 }
 
+/** True for L2 container-rank kinds (not their L3/L4 descendants). */
+function isContainerRankKind(kind: EntityKind): boolean {
+  return entityRank(kind) === bandRank.container;
+}
+
+/**
+ * CLA-106: same-parent container-rank peers of a focused container, still
+ * under `rootId`. Does not walk descendants (CLA-107 stays a separate slice).
+ */
+function containerRankSiblings(
+  focus: ArchitectureEntity,
+  rootId: string,
+  entityById: ReadonlyMap<string, ArchitectureEntity>,
+  snapshot: ArchitectureSnapshot,
+): ArchitectureEntity[] {
+  if (!isContainerRankKind(focus.kind) || !focus.parentId) return [];
+  const siblings: ArchitectureEntity[] = [];
+  for (const entity of snapshot.entities) {
+    if (entity.id === focus.id) continue;
+    if (entity.parentId !== focus.parentId) continue;
+    if (!isContainerRankKind(entity.kind)) continue;
+    if (!isDescendantOrSelf(entity.id, rootId, entityById)) continue;
+    siblings.push(entity);
+  }
+  return siblings;
+}
+
 function entityRef(snapshot: ArchitectureSnapshot, entity: ArchitectureEntity): LineageEntityRef {
   return {
     snapshotEntityId: `${snapshot.id}::${entity.id}`,
@@ -1169,6 +1196,11 @@ export function buildC4ProjectionBundle(
       }
     }
     for (const ancestor of ancestors(focus.id, entityById)) includedEntities.set(ancestor.id, ancestor);
+    // CLA-106: keep peer containers in the focused L3 neighborhood so pan
+    // has adjacent territory. Soft focus — siblings only, not their children.
+    for (const sibling of containerRankSiblings(focus, root.id, entityById, snapshot)) {
+      if (entityRank(sibling.kind) <= rank) includedEntities.set(sibling.id, sibling);
+    }
 
     type EdgeGroup = { from: ArchitectureEntity; to: ArchitectureEntity; relations: ArchitectureRelation[] };
     const groups = new Map<string, EdgeGroup>();
