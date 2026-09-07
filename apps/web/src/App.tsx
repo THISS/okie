@@ -55,7 +55,7 @@ import {
   type NavigationState,
   type SemanticDetail,
 } from './navigation/navigationState';
-import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDrillDeeperDetail, scanWindowedCompileDropsPeerGraph, scanZoomCompileHandoff, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
+import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDrillDeeperDetail, scanWindowedCompileDropsPeerGraph, scanZoomCompileHandoff, scanZoomHandoffPreferredId, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
 import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanNextBand, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
@@ -1331,6 +1331,7 @@ export function App() {
   navigationIdentityRef.current = navigationIdentity;
   const zoomHandoffGenerationRef = useRef(0);
   const zoomHandoffInflightRef = useRef<{ detail: SemanticDetail; compileFocus: string } | undefined>(undefined);
+  const scanZoomPointerRef = useRef<LensPoint | undefined>(undefined);
   const scanZoomAdoptRawRef = useRef<Camera | undefined>(undefined);
   const [detailsOpen, setDetailsOpen] = useState(() => initialInspectorOpen());
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>(() => scanFixture ? 'overview' : 'details');
@@ -2502,10 +2503,11 @@ export function App() {
     gestureStartZoom?: number;
   }): Camera {
     if (query.fixture === 'stress' || (sample.mobile && detailsOpen)) return sample.camera;
+    scanZoomPointerRef.current = sample.pointer;
     if (maybeScanZoomHandoff(sample.camera, next => {
       renderedCameraRef.current = next;
       updateCamera(next);
-    })) {
+    }, sample.pointer)) {
       const navigation = canonicalNavigationState({
         ...navigationRef.current,
         camera: sample.camera,
@@ -2650,7 +2652,7 @@ export function App() {
     }, navigationDefaults);
     historyControllerRef.current?.commitSettledCamera(next, base);
     prefetchCommittedBox(semanticLensSessionRef.current.settled.at(-1)?.targetId ?? selected.id);
-    if (maybeScanZoomHandoff(next, updateCamera)) return;
+    if (maybeScanZoomHandoff(next, updateCamera, scanZoomPointerRef.current)) return;
     refreshViewportNeighborhood(next);
   }
 
@@ -2998,10 +3000,10 @@ export function App() {
   }
 
   /**
-   * CLA-104: swap the scan neighborhood when continuous zoom crosses a band the
-   * current scene did not compile (L2→L3 into a focused container). Mirrors Open
-   * inside's ensureNeighborhood + compile-focus + setScene, without Fit or a
-   * history push. Hang-guard stays 2000.
+   * CLA-104/105: swap the scan neighborhood when continuous zoom crosses a band
+   * the current scene did not compile (L2→L3 into the pointer container, else
+   * inspector selection). Mirrors Open inside's ensureNeighborhood + compile-focus
+   * + setScene, without Fit or a history push. Hang-guard stays 2000.
    */
   function applyScanZoomHandoff(
     handoff: { detail: SemanticDetail; compileFocus: string },
@@ -3061,19 +3063,36 @@ export function App() {
   }
 
   /** True when a scan zoom-band swap was started (refresh waits for that swap). */
-  function maybeScanZoomHandoff(camera: Camera, applyCamera: (next: Camera) => void): boolean {
+  function maybeScanZoomHandoff(
+    camera: Camera,
+    applyCamera: (next: Camera) => void,
+    pointer?: LensPoint,
+  ): boolean {
     if (!scanFixture) return false;
-    const previousLevel = semanticDetails.indexOf(semanticLensSessionDetail(semanticLensSessionRef.current));
+    const currentDetail = semanticLensSessionDetail(semanticLensSessionRef.current);
+    const previousLevel = semanticDetails.indexOf(currentDetail);
     const zoomDetail = semanticDetails[getLevel(camera.zoom, previousLevel)] ?? 'context';
-    const preferredId = inspectorSelectionRef.current ?? selected.id;
     const viewRootId = scanFixture.navigation.rootEntityId;
+    const currentCompileFocus = sceneRef.current.rootEntityId ?? viewRootId;
+    const preferredId = scanZoomHandoffPreferredId(
+      sceneRef.current,
+      activeSnapshot,
+      viewRootId,
+      zoomDetail,
+      currentCompileFocus,
+      camera,
+      viewport,
+      pointer,
+      currentDetail,
+      inspectorSelectionRef.current ?? selected.id,
+    );
     const handoff = scanZoomCompileHandoff(
       sceneRef.current,
       activeSnapshot,
       preferredId,
       viewRootId,
       zoomDetail,
-      sceneRef.current.rootEntityId ?? viewRootId,
+      currentCompileFocus,
     );
     if (!handoff) return false;
     const inflight = zoomHandoffInflightRef.current;

@@ -16,6 +16,8 @@ import {
   scanDrillDeeperDetail,
   scanWindowedCompileDropsPeerGraph,
   scanZoomCompileHandoff,
+  scanZoomEntityUnderPointer,
+  scanZoomHandoffPreferredId,
   semanticBounds,
 } from './renderer/goldenC4Scene';
 import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
@@ -41,6 +43,7 @@ function sliceBetween(source: string, startNeedle: string, endNeedle: string, la
 const handleSemanticZoom = sliceBetween(app, 'function handleSemanticZoom(', 'function semanticZoomControl(', 'handleSemanticZoom');
 const settleCamera = sliceBetween(app, 'function settleCamera(', 'function flushNavigation(', 'settleCamera');
 const applyScanZoomHandoff = sliceBetween(app, 'function applyScanZoomHandoff(', 'function maybeScanZoomHandoff(', 'applyScanZoomHandoff');
+const maybeScanZoomHandoff = sliceBetween(app, 'function maybeScanZoomHandoff(', 'function prefetchCommittedBox(', 'maybeScanZoomHandoff');
 const refreshViewportNeighborhood = sliceBetween(app, 'function refreshViewportNeighborhood(', 'function applyScanZoomHandoff(', 'refreshViewportNeighborhood');
 
 const viewport = { width: 1_280, height: 720 };
@@ -49,10 +52,14 @@ const chromeSafeArea = { top: 80, right: 300, bottom: 72, left: 64 };
 describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph', () => {
   it('drives wheel/pinch through the Open-inside compile-focus seam, not a hang-guard raise', () => {
     expect(handleSemanticZoom).toContain('maybeScanZoomHandoff(');
+    expect(handleSemanticZoom).toContain('sample.pointer');
     expect(app).toContain('function maybeScanZoomHandoff(');
+    expect(maybeScanZoomHandoff).toContain('scanZoomHandoffPreferredId(');
+    expect(maybeScanZoomHandoff).toContain('inspectorSelectionRef.current ?? selected.id');
     expect(app).toContain('const liveCamera = renderedCameraRef.current');
     expect(app).toContain('applyScanZoomHandoff(still, liveCamera, preferredId)');
     expect(settleCamera).toContain('maybeScanZoomHandoff(');
+    expect(settleCamera).toContain('scanZoomPointerRef.current');
     expect(app).toContain('function applyScanZoomHandoff(');
     expect(app).toContain('scanZoomCompileHandoff(');
     expect(app).toContain('scanCompileFocusForBand(');
@@ -260,5 +267,114 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'component')).toBe(true);
     expect(scanWindowedCompileDropsPeerGraph(withPeers, withPeers, 'container:c', 'component')).toBe(false);
     expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'container')).toBe(false);
+  });
+});
+
+describe('CLA-105: pointer-centric L2→L3 handoff (no black void)', () => {
+  it('wheels into the container under the pointer when inspector selection is the system root', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    const l2Scene = fixture.createScene(fixture.navigation.rootEntityId);
+    const webApp = semanticBounds(l2Scene, 'container:web-app', 'container');
+    expect(webApp).toBeDefined();
+    const camera = {
+      x: webApp!.x + webApp!.width / 2,
+      y: webApp!.y + webApp!.height / 2,
+      zoom: 4,
+    };
+    const pointer = { x: viewport.width / 2, y: viewport.height / 2 };
+
+    expect(scanZoomCompileHandoff(
+      l2Scene,
+      fixture.snapshot,
+      'system:okie',
+      fixture.navigation.rootEntityId,
+      'component',
+    )).toBeUndefined();
+    expect(scanZoomEntityUnderPointer(l2Scene, camera, viewport, pointer, 'container'))
+      .toBe('container:web-app');
+
+    const preferred = scanZoomHandoffPreferredId(
+      l2Scene,
+      fixture.snapshot,
+      fixture.navigation.rootEntityId,
+      'component',
+      l2Scene.rootEntityId ?? fixture.navigation.rootEntityId,
+      camera,
+      viewport,
+      pointer,
+      'container',
+      'system:okie',
+    );
+    expect(preferred).toBe('container:web-app');
+    expect(scanZoomCompileHandoff(
+      l2Scene,
+      fixture.snapshot,
+      preferred,
+      fixture.navigation.rootEntityId,
+      'component',
+    )).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
+
+    await fixture.ensureNeighborhood('container:web-app');
+    const l3 = fixture.createScene('container:web-app');
+    expect(scanDeeperBandHasPeerCards(l3, 'container:web-app', 'component')).toBe(true);
+    expect((l3.projection?.entityIdsByDetail.component ?? []).length).toBeGreaterThan(0);
+  });
+
+  it('keeps the selected-container CLA-104 path when the pointer misses every card', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    const l2Scene = fixture.createScene(fixture.navigation.rootEntityId);
+    const miss = { x: 1_000_000, y: 1_000_000, zoom: 4 };
+    const pointer = { x: viewport.width / 2, y: viewport.height / 2 };
+    expect(scanZoomEntityUnderPointer(l2Scene, miss, viewport, pointer, 'container')).toBeUndefined();
+    const preferred = scanZoomHandoffPreferredId(
+      l2Scene,
+      fixture.snapshot,
+      fixture.navigation.rootEntityId,
+      'component',
+      l2Scene.rootEntityId ?? fixture.navigation.rootEntityId,
+      miss,
+      viewport,
+      pointer,
+      'container',
+      'container:web-app',
+    );
+    expect(preferred).toBe('container:web-app');
+    expect(scanZoomCompileHandoff(
+      l2Scene,
+      fixture.snapshot,
+      preferred,
+      fixture.navigation.rootEntityId,
+      'component',
+    )).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
   });
 });
