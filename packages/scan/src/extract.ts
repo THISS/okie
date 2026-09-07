@@ -1049,9 +1049,10 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     });
 
     if (file.endsWith(".rs")) {
+      const outlined = rustTopLevelItems(readFile(file));
       const items = input.codeSurface === "public"
-        ? rustTopLevelItems(readFile(file)).filter(item => item.exported)
-        : rustTopLevelItems(readFile(file));
+        ? outlined.filter(item => item.exported)
+        : outlined;
       items.forEach((item, index) => {
         entityDescriptors.push({
           naturalKey: `${file}#${index}`,
