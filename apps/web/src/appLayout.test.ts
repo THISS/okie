@@ -38,6 +38,27 @@ describe('shared map control layout', () => {
   });
 });
 
+describe('map heading chrome shield (CLA-108)', () => {
+  it('occludes world labels under the heading without deleting map titles', () => {
+    const heading = declarations(css, '.map-heading');
+    const canvas = declarations(css, '.atlas-canvas');
+
+    expect(heading).toMatch(/z-index:\s*8/);
+    expect(heading).toContain('isolation: isolate');
+    expect(heading).toContain('background: rgba(7, 10, 11, 0.94)');
+    expect(heading).toContain('box-shadow: 0 0 32px 20px rgba(7, 10, 11, 0.78)');
+    expect(heading).toContain('backdrop-filter: blur(16px)');
+    expect(canvas).toMatch(/z-index:\s*0/);
+    expect(app).toContain('className="map-heading"');
+    expect(app).toContain('<h1>{scene.title}</h1>');
+    expect(app).toContain('className="semantic-breadcrumb"');
+    expect(app).toContain("{ rect: rect('.map-heading'), edge: 'top' as const }");
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+    expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
+  });
+});
+
 describe('view and edit interaction modes', () => {
   it('defaults to View and gates every relationship mutation surface behind Edit', () => {
     expect(app).toContain("useState<'view' | 'edit'>('view')");
