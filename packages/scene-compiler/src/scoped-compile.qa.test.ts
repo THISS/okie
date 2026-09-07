@@ -212,3 +212,37 @@ test("CLA-109: camera window keeps L4 of the on-screen file via parent faces", (
     assert.ok(bounds!.y + bounds!.height <= codeFace!.y + codeFace!.height + 1, "L4 stays on the L3 file face");
   }
 });
+
+test("CLA-109: scan system L3 files sit on the compact L2 container tile", () => {
+  const snapshot = denseNeighborhoodSnapshot("code", 80);
+  const paged = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "code",
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+    targetAspect: 1.6,
+  });
+  const compiled = compileC4Scene(snapshot, paged, { targetAspect: 1.6 });
+  const containerVisualId = paged.index.visualNodeIdsByEntityId["container:c"]?.[0];
+  const fileVisualId = paged.index.visualNodeIdsByEntityId["component:c"]?.[0];
+  const containerLayout = compiled.projections.bandLayoutById[
+    paged.projectionById[paged.family.projectionIds.container]!.layoutId
+  ];
+  const componentLayout = compiled.projections.bandLayoutById[
+    paged.projectionById[paged.family.projectionIds.component]!.layoutId
+  ];
+  const l2 = containerVisualId ? containerLayout?.nodes[containerVisualId] : undefined;
+  const l3 = containerVisualId ? componentLayout?.nodes[containerVisualId] : undefined;
+  const fileFace = fileVisualId ? componentLayout?.nodes[fileVisualId] : undefined;
+  assert.ok(l2 && l3 && fileFace);
+  assert.equal(l3!.width, l2!.width);
+  assert.equal(l3!.height, l2!.height);
+  assert.ok(Math.abs(l3!.x - l2!.x) < 1e-6);
+  assert.ok(Math.abs(l3!.y - l2!.y) < 1e-6);
+  assert.ok(fileFace!.x >= l2!.x - 1, "L3 file stays on the L2 tile");
+  assert.ok(fileFace!.y >= l2!.y - 1, "L3 file stays on the L2 tile");
+  assert.ok(fileFace!.x + fileFace!.width <= l2!.x + l2!.width + 1, "L3 file stays on the L2 tile");
+  assert.ok(fileFace!.y + fileFace!.height <= l2!.y + l2!.height + 1, "L3 file stays on the L2 tile");
+});

@@ -683,7 +683,8 @@ function scanContextPeerAnchor(system: NodeLayout): NodeLayout {
 /**
  * CLA-95: scan L2 paints a compact container peer map, not CLA-81 reserved
  * interiors. Each package is a leaf tile so Open inside can frame siblings
- * together; L3/L4 bands keep the reserved shells.
+ * together. CLA-109 reuses those tiles on the system-scene L3/L4 bands so
+ * wheel morphs in place; drilled container compiles keep reserved shells.
  */
 function packScanContainerPeerMap(
   canonical: ReadonlyMap<string, NodeLayout>,
@@ -815,26 +816,28 @@ export function layoutContextPeersAroundSystem(
 }
 
 /**
- * Packs camera-resident L4 into the compact L3 file face. Padding is the
- * C4 intrinsic header/side metrics in world units at code focus zoom.
- * Treating those CSS-px values as world units overflows a ~64×44 L3 card.
+ * Packs resident children into an already-written parent face. Padding is
+ * C4 intrinsic header/side metrics in world units at `focusZoom`. CSS-px
+ * values as world units overflow compact L2/L3 cards (~112×56 / ~64×44).
  */
-function placeResidentCodeInParents(
+function placeResidentKidsInParents(
   nodes: Record<string, NodeLayout>,
   visualNodeIds: readonly string[],
   visualNodeById: Readonly<Record<string, VisualNode>>,
+  kidKind: VisualNode['kind'],
+  focusZoom: number,
+  headerPx: number,
 ): void {
   const byParent = new Map<string, string[]>();
   for (const id of visualNodeIds) {
     const node = visualNodeById[id];
-    if (node?.kind !== 'code' || !node.parentVisualId || !nodes[node.parentVisualId]) continue;
+    if (node?.kind !== kidKind || !node.parentVisualId || !nodes[node.parentVisualId]) continue;
     const list = byParent.get(node.parentVisualId) ?? [];
     list.push(id);
     byParent.set(node.parentVisualId, list);
   }
-  const focusZoom = C4_ZOOM_BANDS[3]!.focusZoom;
   const padX = C4_INTRINSIC_LAYOUT.sidePadding / focusZoom;
-  const padTop = C4_INTRINSIC_LAYOUT.header.component / focusZoom;
+  const padTop = headerPx / focusZoom;
   const padBottom = C4_INTRINSIC_LAYOUT.bottomPadding / focusZoom;
   const gap = 8 / focusZoom;
   for (const [parentId, kids] of [...byParent.entries()].sort(([left], [right]) => left.localeCompare(right))) {
@@ -1089,6 +1092,10 @@ function applyIntrinsicOwnerGeometry(
     const resident = new Set(projection.visualNodeIds);
     const omitted = new Set(projection.omittedNodeIds ?? []);
     const reservedShells: Record<string, NodeLayout> = {};
+    const scanMorphPlane = targetAspect !== undefined
+      && root.kind === 'softwareSystem'
+      && bundle.family.focusEntity.logicalId === root.id
+      && Boolean(bundle.projectionById[bundle.family.projectionIds.code]?.omittedNodeIds?.length);
     const bandCanonical = targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'container'
       ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect)
       : targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'context'
@@ -1097,9 +1104,17 @@ function applyIntrinsicOwnerGeometry(
     for (const [entityId, bounds] of bandCanonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
       if (resident.has(visualId)) {
-        const compact = band === 'code' && omitted.size && entities.get(entityId)?.kind === 'component'
-          ? bundle.bandLayoutById[bundle.projectionById[bundle.family.projectionIds.component]!.layoutId]?.nodes[visualId]
+        const kind = entities.get(entityId)?.kind;
+        const containerFace = scanMorphPlane
+          ? bundle.bandLayoutById[bundle.projectionById[bundle.family.projectionIds.container]!.layoutId]?.nodes[visualId]
           : undefined;
+        const componentFace = bundle.bandLayoutById[bundle.projectionById[bundle.family.projectionIds.component]!.layoutId]?.nodes[visualId];
+        const compact = scanMorphPlane && (band === 'component' || band === 'code')
+          && (kind === 'softwareSystem' || (kind !== undefined && isContainerPeerKind(kind)))
+          ? containerFace
+          : band === 'code' && omitted.size && kind === 'component'
+            ? componentFace
+            : undefined;
         layout.nodes[visualId] = { ...(compact ?? bounds) };
         continue;
       }
@@ -1138,8 +1153,25 @@ function applyIntrinsicOwnerGeometry(
     }
     if (Object.keys(reservedShells).length) layout.reservedShells = reservedShells;
     else delete layout.reservedShells;
+    if (band === 'component' && scanMorphPlane) {
+      placeResidentKidsInParents(
+        layout.nodes,
+        projection.visualNodeIds,
+        bundle.visualNodeById,
+        'component',
+        C4_ZOOM_BANDS[2]!.focusZoom,
+        C4_INTRINSIC_LAYOUT.header.container,
+      );
+    }
     if (band === 'code' && omitted.size) {
-      placeResidentCodeInParents(layout.nodes, projection.visualNodeIds, bundle.visualNodeById);
+      placeResidentKidsInParents(
+        layout.nodes,
+        projection.visualNodeIds,
+        bundle.visualNodeById,
+        'code',
+        C4_ZOOM_BANDS[3]!.focusZoom,
+        C4_INTRINSIC_LAYOUT.header.component,
+      );
     }
     const focusZoom = C4_ZOOM_BANDS.find(value => value.detail === band)!.focusZoom;
     const routed = routeC4BandEdgesDetailed(
