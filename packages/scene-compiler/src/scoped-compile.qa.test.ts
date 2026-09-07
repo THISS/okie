@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildC4ProjectionBundle,
+  computeContainmentLayout,
   selectC4BandProjection,
   type ArchitectureSnapshot,
   type C4Band,
@@ -160,4 +161,37 @@ test("CLA-109: pageCodeLandmarks keeps L3 and caps L4 without reserved-shell dum
   const reserved = compiled.projections.bandLayoutById[code.layoutId]?.reservedShells ?? {};
   assert.equal(Object.keys(reserved).length, 0, "unpacked omitted L4 are not reserved-shell primitives");
   assert.ok(compiled.scene.objects.length < 40, "protocol stays a neighborhood, not 80 symbol meshes");
+});
+
+test("CLA-109: camera window uses containment hints so the on-screen file's L4 stays", () => {
+  const snapshot = denseNeighborhoodSnapshot("code", 80);
+  const hints = computeContainmentLayout(
+    snapshot.entities.map(entity => ({
+      id: entity.id,
+      kind: entity.kind,
+      ...(entity.parentId ? { parentId: entity.parentId } : {}),
+    })),
+    { targetAspect: 1.6 },
+  );
+  const symbols = snapshot.entities.filter(entity => entity.kind === "code").sort((left, right) => left.id.localeCompare(right.id));
+  const last = symbols.at(-1)!;
+  const far = hints[last.id]!;
+  const paged = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "code",
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+    entityLayoutHints: hints,
+    residentWorldBounds: { x: far.x, y: far.y, width: Math.max(1, far.width), height: Math.max(1, far.height) },
+  });
+  const code = paged.projectionById[paged.family.projectionIds.code]!;
+  const resident = new Set(code.visualNodeIds.map(id => paged.visualNodeById[id]?.entity.logicalId));
+  assert.ok(resident.has(last.id), "L4 under the camera window stays in the compiled scene");
+  assert.ok((code.omittedNodeIds?.length ?? 0) > 0, "off-camera L4 stays enumerable");
+  const first = symbols[0]!;
+  if (hints[first.id] && (Math.abs(hints[first.id]!.x - far.x) > 200 || Math.abs(hints[first.id]!.y - far.y) > 200)) {
+    assert.equal(resident.has(first.id), false, "a far sibling is not forced resident");
+  }
 });

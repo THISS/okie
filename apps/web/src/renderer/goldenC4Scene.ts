@@ -1,5 +1,6 @@
 import {
   buildC4ProjectionBundle,
+  computeContainmentLayout,
   materializeArchitectureAuthoring,
   selectC4BandProjection,
   validateStory,
@@ -12,6 +13,7 @@ import {
   type C4Band,
   type ContainmentEntity,
   type EntityKind,
+  type NodeLayout,
   type SourceRef,
 } from '@okie/architecture';
 import {
@@ -296,6 +298,31 @@ export function resolveOmittedEdges(bundle: C4ProjectionBundle, snapshot: Archit
   });
 }
 
+function entityLayoutHintsForCodePaging(
+  snapshot: ArchitectureSnapshot,
+  previous: AtlasScene | undefined,
+  targetAspect: number | undefined,
+  childCounts: Readonly<Record<string, number>> | undefined,
+): Record<string, NodeLayout> {
+  const fromPrevious: Record<string, NodeLayout> = {};
+  for (const [id, bands] of Object.entries(previous?.projection?.boundsByEntityIdAndDetail ?? {})) {
+    const bounds = bands.code ?? bands.component ?? bands.container ?? bands.context;
+    if (bounds) fromPrevious[id] = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+  }
+  if (Object.keys(fromPrevious).length > 0) return fromPrevious;
+  return computeContainmentLayout(
+    snapshot.entities.map(entity => ({
+      id: entity.id,
+      kind: entity.kind,
+      ...(entity.parentId ? { parentId: entity.parentId } : {}),
+    })),
+    {
+      ...(targetAspect !== undefined ? { targetAspect } : {}),
+      ...(childCounts ? { childCounts } : {}),
+    },
+  );
+}
+
 /**
  * Compiles an architecture snapshot into the renderer scene + projection bundle.
  * Shared by the golden fixture and any live-loaded fixture (e.g. scanned
@@ -316,6 +343,14 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
     ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
     ...(options.pageCodeLandmarks ? { pageCodeLandmarks: true } : {}),
+    ...(options.pageCodeLandmarks ? {
+      entityLayoutHints: entityLayoutHintsForCodePaging(
+        snapshot,
+        previous,
+        options.targetAspect,
+        options.childCounts,
+      ),
+    } : {}),
     ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
     ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),

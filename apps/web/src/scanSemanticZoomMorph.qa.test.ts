@@ -220,5 +220,34 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
     expect(scene.omittedNodes?.some(node => node.detail === 'code')).toBe(true);
     const protocol = scene.protocolSnapshot as { objects: unknown[] };
     expect(protocol.objects.length).toBeLessThan(8 + 2 + SCAN_RESIDENT_NODES_PER_BAND + 8);
+
+    const farFile = scene.entities.find(entity => entity.id === 'component:f7');
+    expect(farFile).toBeDefined();
+    const farBounds = scene.projection?.boundsByEntityIdAndDetail['component:f7']?.component
+      ?? scene.projection?.boundsByEntityIdAndDetail['component:f7']?.code;
+    expect(farBounds).toBeDefined();
+    const panned = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:okie',
+      focusEntityId: 'system:okie',
+      familyId: 'f',
+      sceneId: 's',
+      title: 't',
+      subtitle: 's',
+      frozenRevision: 'c',
+      maxBand: 'code',
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
+      previous: scene,
+      residentWorldBounds: {
+        x: farBounds!.x,
+        y: farBounds!.y,
+        width: Math.max(1, farBounds!.width),
+        height: Math.max(1, farBounds!.height),
+      },
+    });
+    const pannedCode = (panned.projection?.entityIdsByDetail.code ?? [])
+      .filter(id => panned.entities.find(entity => entity.id === id)?.detail === 'code');
+    expect(pannedCode.some(id => id.startsWith('code:f7-'))).toBe(true);
   });
 });

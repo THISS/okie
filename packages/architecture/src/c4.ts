@@ -200,6 +200,12 @@ export type BuildC4ProjectionOptions = {
    * both component and code (CLA-74). Additive; omitted → byte-identical.
    */
   pageCodeLandmarks?: boolean;
+  /**
+   * World-space entity bounds for L4 paging (containment or the previous
+   * scene). When set, `pageCodeLandmarks` selects L4 in camera space instead
+   * of stage-1 leaf packing, and does not re-pack parents after the window.
+   */
+  entityLayoutHints?: Readonly<Record<string, NodeLayout>>;
 };
 
 /**
@@ -1027,6 +1033,20 @@ export function routeC4BandEdgesDetailed(
   return { edges, diagnostics };
 }
 
+function packedFromEntityHints(
+  visualNodeIds: readonly string[],
+  visualNodeById: Readonly<Record<string, VisualNode>>,
+  hints: Readonly<Record<string, NodeLayout>>,
+): Record<string, NodeLayout> {
+  const packed: Record<string, NodeLayout> = {};
+  for (const id of visualNodeIds) {
+    const entityId = visualNodeById[id]?.entity.logicalId;
+    const hint = entityId ? hints[entityId] : undefined;
+    if (hint) packed[id] = { ...hint };
+  }
+  return packed;
+}
+
 function packVisualNodes(
   nodeIds: readonly string[],
   visualNodeById: Readonly<Record<string, VisualNode>>,
@@ -1296,8 +1316,8 @@ export function buildC4ProjectionBundle(
     });
     // CLA-74: pack the full L3/L4 neighborhood first so parent bounds stay
     // stable, then keep only the camera-resident window in the compiled scene.
-    // CLA-109 `pageCodeLandmarks`: pack L3 shells only, select L4 by parent
-    // overlap (do not layout ~3k symbols), then pack the resident set.
+    // CLA-109 `pageCodeLandmarks`: select L4 in containment/previous-scene
+    // coordinates (camera space), keep L3 shells, do not re-pack parents.
     // Default (no cap, no camera rect) skips this so golden stays byte-identical.
     const pageOffscreen = (options.pageCodeLandmarks ? band === 'code' : (band === 'component' || band === 'code'))
       && (options.maxNodesPerBand !== undefined || options.residentWorldBounds !== undefined);
@@ -1305,13 +1325,18 @@ export function buildC4ProjectionBundle(
     let packedNodes: Record<string, NodeLayout> | undefined;
     let candidateEdgeIds = visualEdgeIds;
     if (pageOffscreen) {
-      const packedForSelect = options.pageCodeLandmarks
-        ? packVisualNodes(
-          visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code'),
+      const hinted = options.pageCodeLandmarks && options.entityLayoutHints
+        ? packedFromEntityHints(visualNodeIds, visualNodeById, options.entityLayoutHints)
+        : undefined;
+      const packedForSelect = hinted && Object.keys(hinted).length
+        ? hinted
+        : packVisualNodes(
+          options.pageCodeLandmarks
+            ? visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code')
+            : visualNodeIds,
           visualNodeById,
           options.targetAspect,
-        )
-        : packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect);
+        );
       const selection = selectResidentVisualNodeIds({
         band,
         visualNodeIds,
@@ -1327,8 +1352,26 @@ export function buildC4ProjectionBundle(
       const resident = new Set(selection.residentIds);
       visualNodeIds = selection.residentIds;
       packedNodes = options.pageCodeLandmarks
-        ? packVisualNodes(visualNodeIds, visualNodeById, options.targetAspect)
+        ? packedFromEntityHints(
+          visualNodeIds,
+          visualNodeById,
+          options.entityLayoutHints ?? {},
+        )
         : packedForSelect;
+      if (options.pageCodeLandmarks) {
+        const missingShells = visualNodeIds.filter(id =>
+          !packedNodes![id] && visualNodeById[id]?.kind !== 'code');
+        if (missingShells.length) {
+          const shells = packVisualNodes(
+            visualNodeIds.filter(id => visualNodeById[id]?.kind !== 'code'),
+            visualNodeById,
+            options.targetAspect,
+          );
+          for (const id of missingShells) {
+            if (shells[id]) packedNodes[id] = shells[id];
+          }
+        }
+      }
       candidateEdgeIds = visualEdgeIds.filter(id => {
         const edge = visualEdgeById[id]!;
         return resident.has(edge.fromVisualId) && resident.has(edge.toVisualId);
