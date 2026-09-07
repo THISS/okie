@@ -9,6 +9,7 @@ import {
   inspectorCoverage,
   inspectorDuplicates,
   inspectorUntestedBehaviours,
+  inspectorNotationDetailsView,
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
@@ -790,5 +791,83 @@ describe('inspector C4 notation scope (CLA-60)', () => {
     expect(inspectorPathOwners(system)).toEqual([]);
     expect(presented.sample.some(row => row.code === 'diagram.title.missing')).toBe(true);
     expect(presented.total).toBe(3);
+  });
+});
+
+describe('inspector C4 notation user Details (CLA-99)', () => {
+  it('does not list completeness advisory entity ids in default Details', () => {
+    const dump = [
+      ...Array.from({ length: 56 }, (_, index) => advisory(
+        'element.description.missing',
+        `entities.container:pkg-${index}.responsibility`,
+        `C4 element container:pkg-${index} should have a description.`,
+        { kind: 'element', id: `container:pkg-${index}` },
+      )),
+      ...Array.from({ length: 220 }, (_, index) => advisory(
+        'element.description.missing',
+        `entities.component:web-${index}.responsibility`,
+        `C4 element component:web-${index} should have a description.`,
+        { kind: 'element', id: `component:web-${index}` },
+      )),
+    ];
+    const presented = presentInspectorNotationDiagnostics(dump);
+    const user = inspectorNotationDetailsView(presented, 'user');
+
+    expect(presented.total).toBe(276);
+    expect(user.visible).toBe(false);
+    expect(user.rows).toEqual([]);
+    expect(user.hiddenCount).toBe(0);
+    expect(user.rows.some(row => /^(container|component):/.test(row.subjectId))).toBe(false);
+    expect(user.rows.some(row => row.message.includes('container:') || row.message.includes('component:'))).toBe(false);
+  });
+
+  it('still lists a real notation error without the completeness dump', () => {
+    const noise = Array.from({ length: 100 }, (_, index) => advisory(
+      'element.description.missing',
+      `entities.container:pkg-${index}.responsibility`,
+      `C4 element container:pkg-${index} should have a description.`,
+      { kind: 'element', id: `container:pkg-${index}` },
+    ));
+    const error = advisory(
+      'element.type.unsupported',
+      'entities.widget:x.kind',
+      'C4 element widget:x has an unsupported type: widget.',
+      { kind: 'element', id: 'widget:x' },
+    );
+    const presented = presentInspectorNotationDiagnostics([...noise, error]);
+    const user = inspectorNotationDetailsView(presented, 'user');
+
+    expect(user.visible).toBe(true);
+    expect(user.rows).toHaveLength(1);
+    expect(user.rows[0]?.tone).toBe('error');
+    expect(user.rows[0]?.code).toBe('element.type.unsupported');
+    expect(user.hiddenCount).toBe(0);
+    expect(user.headline).toBe('1 C4 error');
+    expect(user.rows.some(row => row.subjectId.startsWith('container:'))).toBe(false);
+  });
+
+  it('keeps the CLA-59 sample and +N more notes in diagnostics mode', () => {
+    const dump = Array.from({ length: 56 }, (_, index) => advisory(
+      'element.description.missing',
+      `entities.container:pkg-${index}.responsibility`,
+      `C4 element container:pkg-${index} should have a description.`,
+      { kind: 'element', id: `container:pkg-${index}` },
+    ));
+    const presented = presentInspectorNotationDiagnostics(dump);
+    const diagnostics = inspectorNotationDetailsView(presented, 'diagnostics');
+
+    expect(diagnostics.visible).toBe(true);
+    expect(diagnostics.rows).toHaveLength(INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(diagnostics.hiddenCount).toBe(56 - INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+    expect(diagnostics.headline).toBe('56 C4 advisories');
+    expect(diagnostics.rows[0]?.subjectId).toBe('container:pkg-0');
+  });
+
+  it('still shows C4 notation ready when the scoped pane has no diagnostics', () => {
+    const ready = inspectorNotationDetailsView(presentInspectorNotationDiagnostics([]), 'user');
+    expect(ready.visible).toBe(true);
+    expect(ready.headline).toBe('C4 notation ready');
+    expect(ready.rows).toEqual([]);
+    expect(ready.hiddenCount).toBe(0);
   });
 });

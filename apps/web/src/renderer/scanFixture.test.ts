@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadPublishedEnrichmentHonesty, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -335,6 +335,20 @@ describe('CLA-73 slim neighborhood boot', () => {
       loadStory: async () => demoStory,
     }, 'system:okie');
     expect(fixture.enrichmentHonesty).toBeUndefined();
+  });
+
+  it('CLA-99: missing enrichment-status.json is non-fatal and is not a user error', async () => {
+    const calls: string[] = [];
+    const fetchImpl: typeof fetch = async input => {
+      const url = String(input);
+      calls.push(url);
+      return new Response('not found', { status: 404 });
+    };
+    await expect(loadPublishedEnrichmentHonesty('thiss__okie', fetchImpl)).resolves.toBeUndefined();
+    expect(calls).toEqual([
+      '/scan/thiss__okie/enrichment-report.json',
+      '/scan/thiss__okie/enrichment-status.json',
+    ]);
   });
 
   it('does not raise the 2000 hang-guard', () => {

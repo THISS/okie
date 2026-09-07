@@ -8,6 +8,7 @@ export {
   inspectorDuplicates,
   inspectorUntestedBehaviours,
   formatCoverageRange,
+  inspectorNotationDetailsView,
   inspectorNotationScope,
   inspectorPathOwners,
   inspectorTabForEntity,
