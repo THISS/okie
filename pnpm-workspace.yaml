@@ -4,3 +4,5 @@ packages:
 
 allowBuilds:
   esbuild: true
+  tree-sitter: true
+  tree-sitter-rust: true

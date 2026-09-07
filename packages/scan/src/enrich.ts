@@ -367,7 +367,7 @@ interface AcceptedSystemProposal {
   persons: ArchitectureExtractionEntity[];
   relations: ArchitectureExtractionRelation[];
   /** Judgement prose on restated container anchors — the only channel that can
-   *  describe code-less containers (opaque Rust crates have no container packet). */
+   *  describe code-less containers (a crate with no outlined `.rs` still has no packet). */
   containerJudgements: Map<string, CodeJudgement>;
   /** Optional one-line summary of the software system itself. */
   systemJudgement?: CodeJudgement;
@@ -419,8 +419,8 @@ function validateSystemDoc(
     } else {
       // container / externalSystem / dataStore / queue: must be an existing base
       // anchor. Structure stays base-owned, but judgement prose on a restated
-      // CONTAINER is carried — this is how a code-less container (an opaque Rust
-      // crate) gets its "what is this for" description.
+      // CONTAINER is carried — this is how a code-less container gets its
+      // "what is this for" description.
       const base = baseById.get(entity.id);
       if (!base || base.kind !== entity.kind) {
         reasons.push(`${entity.kind} ${entity.id} must restate an existing base ${entity.kind}`);

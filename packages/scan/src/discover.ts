@@ -6,7 +6,7 @@ import { slug } from "./ids.js";
 /**
  * A container-level unit of the repository: a workspace member, the whole repo
  * (single-package mode), the synthetic "tooling" bucket for non-member scripts, or
- * an opaque Rust crate (no source parsed). Import resolution maps a workspace package
+ * a Rust crate (`.rs` outlined via tree-sitter). Import resolution maps a workspace package
  * name to a unit via `packageName`.
  */
 export interface SourceUnit {
@@ -52,7 +52,7 @@ function git(sourceRoot: string, args: readonly string[]): string[] {
 }
 
 // Always scanned. `.js` is added only for pure-JS repos (no root tsconfig).
-const ALWAYS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".jsx"] as const;
+const ALWAYS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".jsx", ".rs"] as const;
 
 // Members that are test scaffolding, not architecture.
 const FIXTURE_MEMBER_PATTERN = /(^|\/)(playground|playgrounds|examples?|example-.*|e2e|fixtures?|__fixtures__|demos?|sandbox)(\/|$)/i;
@@ -71,7 +71,10 @@ function isExcludedPath(path: string): boolean {
     || /\.spec\.[cm]?[jt]sx?$/.test(path)
     || /\.bench\.[cm]?[jt]sx?$/.test(path)
     || /(^|\/)__tests__\//.test(path)
-    || /(^|\/)__mocks__\//.test(path);
+    || /(^|\/)__mocks__\//.test(path)
+    || /_qa\.rs$/.test(path)
+    // Not `*_test.rs`: production modules can be named `hit_test.rs`.
+    || (path.endsWith(".rs") && /(^|\/)(tests|benches|examples)\//.test(path));
 }
 
 function hasExtension(path: string, includeJs: boolean): boolean {
@@ -189,6 +192,8 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
   const rustCrateDirs = allFiles
     .filter(path => /^crates\/[^/]+\/Cargo\.toml$/.test(path))
     .map(manifest => manifest.replace(/\/Cargo\.toml$/, "")).sort();
+  const rustCrateOf = (file: string): string | undefined =>
+    rustCrateDirs.find(dir => file === dir || file.startsWith(`${dir}/`));
 
   const allMembers = [...memberDirs].sort();
   const skippedMembers = options.includeAllMembers ? [] : allMembers.filter(dir => FIXTURE_MEMBER_PATTERN.test(dir));
@@ -206,7 +211,7 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
     const rootPackage = readPackageName(sourceRoot, "");
     const rootName = rootPackage ?? basename(sourceRoot);
     const rootKey = slug(rootName);
-    for (const file of sourceCandidates) unitByFile.set(file, rootKey);
+    for (const file of sourceCandidates) unitByFile.set(file, rustCrateOf(file) ?? rootKey);
     units.push({
       kind: "root",
       dir: rootKey,
@@ -218,6 +223,11 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
   } else {
     let hasTooling = false;
     for (const file of sourceCandidates) {
+      const rustCrate = rustCrateOf(file);
+      if (rustCrate) {
+        unitByFile.set(file, rustCrate);
+        continue;
+      }
       const member = memberOf(file);
       if (member && skippedMemberSet.has(member)) continue; // fixture/example member — dropped
       if (member) unitByFile.set(file, member);

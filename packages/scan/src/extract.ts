@@ -12,6 +12,7 @@ import {
 } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import { pathSlug, resolveCollisions, slug, typedId } from "./ids.js";
+import { rustTopLevelItems } from "./extract-rust.js";
 
 /** Max import sites retained as evidence on one aggregated relation. */
 const MAX_EVIDENCE_PER_RELATION = 24;
@@ -801,8 +802,8 @@ function dependencyManifestPaths(discovery: Discovery): string[] {
  * the top-N service-boundary packages by (import-site count desc, name asc).
  * At L1 the container→external edges collapse to system→external; at L2 they
  * attribute the dependency to the specific container that imports it. Rust crate
- * dependencies (Cargo.toml, e.g. wgpu) are a documented follow-up — R1 does not
- * parse `.rs`, so there is no import evidence.
+ * dependencies (Cargo.toml, e.g. wgpu) are a documented follow-up — crate outline
+ * does not rank `use` frequency for L1 externals.
  */
 function emitExternalSystems(input: ExternalEmitInput): void {
   const { discovery, readFile, externalUsagesByPackage, entityDescriptors, addRelation } = input;
@@ -900,8 +901,8 @@ function emitExternalSystems(input: ExternalEmitInput): void {
 
 /**
  * Attach observed TypeScript / JavaScript / Rust tags so inspector cards are not
- * "Technology not specified" when the language is known (CLA-102). Opaque Rust
- * crates get `Rust` from the crate unit — no `.rs` parse, no L3/L4 children.
+ * "Technology not specified" when the language is known (CLA-102). Rust
+ * crates get `Rust` from the crate unit and from `.rs` file-components.
  * Prepends languages onto CLA-97 library names already on the container.
  */
 function attachObservedLanguageTags(
@@ -944,8 +945,10 @@ function attachObservedLanguageTags(
 
 /**
  * Deterministic syntax-level extraction: system → containers (workspace members,
- * tooling, opaque Rust crates) → components (one per source file) → code (one per
- * top-level declaration). Relations come from static import/export specifiers.
+ * tooling, Rust crates) → components (one per source file) → code (one per
+ * top-level declaration). Rust `.rs` files are outlined via tree-sitter
+ * (modules, structs, enums, functions, impl methods). Relations come from
+ * static TS import/export specifiers and Cargo.toml path dependencies.
  * Output is independent of file discovery order.
  *
  * Cyclomatic complexity and clone fingerprints are observed on the same
@@ -1043,6 +1046,24 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
       parentKey: unitDir,
       sourceRefs: [{ path: file }],
     });
+
+    if (file.endsWith(".rs")) {
+      const outlined = rustTopLevelItems(readFile(file));
+      const items = input.codeSurface === "public"
+        ? outlined.filter(item => item.exported)
+        : outlined;
+      items.forEach((item, index) => {
+        entityDescriptors.push({
+          naturalKey: `${file}#${index}`,
+          desiredId: typedId("code", file, item.name),
+          kind: "code",
+          name: item.name,
+          parentKey: file,
+          sourceRefs: [{ path: file, symbol: item.name, startLine: item.startLine, endLine: item.endLine }],
+        });
+      });
+      continue;
+    }
 
     const sourceFile = parseSource(file, readFile(file));
     const declarations = input.codeSurface === "public"
@@ -1143,9 +1164,8 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     });
   }
 
-  // Rust crates are opaque at R1 (no .rs parsing), but their workspace wiring is an
-  // observed fact in Cargo.toml — `path = "…"` dependencies become container edges,
-  // so a crate is never a mystery island in the container band.
+  // Rust crate wiring is an observed fact in Cargo.toml — `path = "…"`
+  // dependencies become container edges, so a crate is never a mystery island.
   for (const unit of discovery.units) {
     if (unit.kind !== "rust") continue;
     const manifestPath = `${unit.dir}/Cargo.toml`;
@@ -1277,7 +1297,7 @@ export function cyclomaticByIdFromEntities(
   for (const entity of entities) {
     if (entity.kind !== "code") continue;
     const ref = entity.sourceRefs[0];
-    if (!ref?.path || !ref.symbol) continue;
+    if (!ref?.path || !ref.symbol || ref.path.endsWith(".rs")) continue;
     const sourceFile = sourceOf(ref.path);
     if (!sourceFile) continue;
     const declaration = topLevelDeclarations(sourceFile).find(candidate =>
@@ -1364,7 +1384,7 @@ export function clonePairsFromEntities(
   for (const entity of entities) {
     if (entity.kind !== "code" || !knownIds.has(entity.id)) continue;
     const ref = entity.sourceRefs[0];
-    if (!ref?.path || !ref.symbol) continue;
+    if (!ref?.path || !ref.symbol || ref.path.endsWith(".rs")) continue;
     const sourceFile = sourceOf(ref.path);
     if (!sourceFile) continue;
     const declaration = topLevelDeclarations(sourceFile).find(candidate =>

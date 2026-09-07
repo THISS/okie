@@ -456,7 +456,7 @@ test("languageTagForScanPath maps observed extensions; jsx is JavaScript, tsx is
 
 test("observed language tags land on system, containers, and file components (CLA-102)", () => {
   const discovery: Discovery = {
-    sourceFiles: ["pkg/app/src/a.ts", "pkg/app/src/widget.tsx", "scripts/build.mjs"],
+    sourceFiles: ["pkg/app/src/a.ts", "pkg/app/src/widget.tsx", "scripts/build.mjs", "crates/engine/src/lib.rs"],
     units: [
       { kind: "member", dir: "pkg/app", name: "@acme/app", packageName: "@acme/app", evidencePath: "pkg/app" },
       { kind: "tooling", dir: "tooling", name: "Build tooling", evidencePath: "scripts" },
@@ -466,6 +466,7 @@ test("observed language tags land on system, containers, and file components (CL
       ["pkg/app/src/a.ts", "pkg/app"],
       ["pkg/app/src/widget.tsx", "pkg/app"],
       ["scripts/build.mjs", "tooling"],
+      ["crates/engine/src/lib.rs", "crates/engine"],
     ]),
     unitByPackageName: new Map([["@acme/app", "pkg/app"]]),
     summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
@@ -476,6 +477,7 @@ test("observed language tags land on system, containers, and file components (CL
     "pkg/app/src/widget.tsx": "export const Widget = () => null;\n",
     "scripts/build.mjs": "export const build = 1;\n",
     "crates/engine/Cargo.toml": "[dependencies]\n",
+    "crates/engine/src/lib.rs": "pub fn boot() {}\n",
   };
   const extraction = extractArchitecture({
     discovery,
@@ -496,7 +498,8 @@ test("observed language tags land on system, containers, and file components (CL
   assert.deepEqual(byId.get("component:pkg-app-src-a-ts")!.technology, ["TypeScript"]);
   assert.deepEqual(byId.get("component:pkg-app-src-widget-tsx")!.technology, ["TypeScript"]);
   assert.deepEqual(byId.get("component:scripts-build-mjs")!.technology, ["JavaScript"]);
-  assert.equal(extraction.entities.some(entity => entity.parentId === "container:crates-engine"), false, "opaque crate has no L3/L4 drill");
+  assert.deepEqual(byId.get("component:crates-engine-src-lib-rs")!.technology, ["Rust"]);
+  assert.ok(extraction.entities.some(entity => entity.parentId === "container:crates-engine"), "Rust crate drills to L3 file-components");
   assert.equal(byId.get("code:pkg-app-src-a-ts:a")!.technology, undefined, "L4 stays untagged — language lives on the file card");
 });
 
