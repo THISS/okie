@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  cameraWorldRect,
+  expandRectByTileRing,
   sliceArchitectureNeighborhood,
   type ArchitectureSnapshot,
   type ArchitectureView,
@@ -9,15 +11,23 @@ import demoSnapshot from '../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../fixtures/architecture/demo-story.json';
 import { explorerEntitiesForView } from './entityExplorer';
-import { scanDrillDeeperDetail, scanZoomCompileHandoff } from './renderer/goldenC4Scene';
+import {
+  scanDeeperBandHasPeerCards,
+  scanDrillDeeperDetail,
+  scanWindowedCompileDropsPeerGraph,
+  scanZoomCompileHandoff,
+  semanticBounds,
+} from './renderer/goldenC4Scene';
 import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
 import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 import { semanticLensSessionDetail } from './semantic/semanticLens';
 import {
   frameVisibleProjection,
+  scanZoomHandoffCamera,
   semanticLevelSession,
 } from './semantic/semanticLensEngine';
 import { getLevel } from './App';
+import type { AtlasScene, SceneEntity } from './renderer/types';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 
@@ -47,11 +57,12 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     expect(app).toContain('scanZoomCompileHandoff(');
     expect(app).toContain('scanCompileFocusForBand(');
     expect(applyScanZoomHandoff).toContain('semanticLevelSession(nextScene, handoff.detail, preferredIds)');
-    expect(applyScanZoomHandoff).toContain('retargetCameraForSemanticBand(');
-    expect(applyScanZoomHandoff).toContain('liveCamera.zoom');
+    expect(applyScanZoomHandoff).toContain('scanZoomHandoffCamera(');
+    expect(applyScanZoomHandoff).toContain('scanDeeperBandHasPeerCards(');
     expect(applyScanZoomHandoff).not.toContain('frameProjectionScope(');
     expect(applyScanZoomHandoff).toContain("historyControllerRef.current?.replace(navigation)");
     expect(refreshViewportNeighborhood).toContain('semanticLensSessionDetail(semanticLensSessionRef.current)');
+    expect(refreshViewportNeighborhood).toContain('scanWindowedCompileDropsPeerGraph(');
     expect(refreshViewportNeighborhood).not.toContain('semanticLensSessionRef.current.baseDetail');
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
     expect(app).not.toMatch(/SCAN_BAND_DEPTH_MIN_ENTITIES\s*=\s*[3-9]\d{3}/u);
@@ -136,5 +147,115 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
       fixture.navigation.rootEntityId,
       'component',
     )).toBeUndefined();
+  });
+
+  it('keeps the L3 file graph when the camera is still on the reserved shell interior', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        { focusEntityId: focus || 'system:okie' },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: 'system:okie' });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    await fixture.ensureNeighborhood('container:web-app');
+    const l3 = fixture.createScene('container:web-app');
+    expect(scanDeeperBandHasPeerCards(l3, 'container:web-app', 'component')).toBe(true);
+
+    const shell = semanticBounds(l3, 'container:web-app', 'component');
+    expect(shell).toBeDefined();
+    const hollowCamera = { x: 1_000_000, y: 1_000_000, zoom: 4.96 };
+    const windowedHollow = fixture.createScene('container:web-app', l3, {
+      worldBounds: expandRectByTileRing(cameraWorldRect(hollowCamera, viewport)),
+      keepEntityIds: ['container:web-app'],
+    });
+    expect(scanWindowedCompileDropsPeerGraph(l3, windowedHollow, 'container:web-app', 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(windowedHollow, 'container:web-app', 'component')).toBe(false);
+
+    const handoffCamera = scanZoomHandoffCamera(
+      hollowCamera,
+      l3,
+      'container:web-app',
+      'component',
+      viewport,
+      chromeSafeArea,
+      undefined,
+      shell,
+    );
+    expect(handoffCamera.zoom).toBe(hollowCamera.zoom);
+    expect(Math.hypot(handoffCamera.x - hollowCamera.x, handoffCamera.y - hollowCamera.y)).toBeGreaterThan(100);
+    const windowedPeers = fixture.createScene('container:web-app', l3, {
+      worldBounds: expandRectByTileRing(cameraWorldRect(handoffCamera, viewport)),
+      keepEntityIds: ['container:web-app'],
+    });
+    expect(scanDeeperBandHasPeerCards(windowedPeers, 'container:web-app', 'component')).toBe(true);
+    expect(scanWindowedCompileDropsPeerGraph(l3, windowedPeers, 'container:web-app', 'component')).toBe(false);
+
+    const session = semanticLevelSession(windowedPeers, 'component', ['container:web-app']);
+    const selected = windowedPeers.entities.find(entity => entity.id === 'container:web-app')!;
+    const rows = explorerEntitiesForView(windowedPeers, {
+      detail: 'component',
+      selected,
+      settledTargetIds: session.settled.map(entry => entry.targetId),
+    });
+    expect(rows.some(row => row.detail === 'component')).toBe(true);
+    const fit = frameVisibleProjection(
+      windowedPeers,
+      windowedPeers.projection?.entityIdsByDetail.component ?? [],
+      'component',
+      viewport,
+      chromeSafeArea,
+    );
+    expect(fit).toBeDefined();
+    expect(fit!.zoom).toBeGreaterThan(3);
+  });
+
+  it('scanWindowedCompileDropsPeerGraph is true only when a windowed compile removes L3/L4 peers', () => {
+    const bounds = { x: 0, y: 0, width: 1, height: 1 };
+    const withPeers = {
+      id: 's',
+      title: '',
+      subtitle: '',
+      rootEntityId: 'container:c',
+      entities: [
+        { id: 'container:c', name: 'c', kind: 'container', detail: 'container', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+        { id: 'component:x', parentId: 'container:c', name: 'x', kind: 'component', detail: 'component', responsibility: '', x: 0, y: 0, width: 1, height: 1 },
+      ],
+      relations: [],
+      regions: [],
+      projection: {
+        boundsByEntityIdAndDetail: {
+          'container:c': { container: bounds, component: bounds },
+          'component:x': { component: bounds },
+        },
+        entityIdsByDetail: {
+          context: [],
+          container: ['container:c'],
+          component: ['component:x'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    const hollow = {
+      ...withPeers,
+      entities: withPeers.entities.slice(0, 1) as SceneEntity[],
+      projection: {
+        ...withPeers.projection,
+        entityIdsByDetail: {
+          context: [],
+          container: ['container:c'],
+          component: ['container:c'],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+    expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'component')).toBe(true);
+    expect(scanWindowedCompileDropsPeerGraph(withPeers, withPeers, 'container:c', 'component')).toBe(false);
+    expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'container')).toBe(false);
   });
 });

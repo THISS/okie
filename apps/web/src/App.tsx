@@ -55,7 +55,7 @@ import {
   type NavigationState,
   type SemanticDetail,
 } from './navigation/navigationState';
-import { createGoldenC4Scene, goldenAppStory, scanDrillDeeperDetail, scanZoomCompileHandoff, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
+import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDrillDeeperDetail, scanWindowedCompileDropsPeerGraph, scanZoomCompileHandoff, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
 import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanNextBand, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
@@ -157,6 +157,7 @@ import {
   frameContextArrivalCamera, frameProjectionScope, frameStoryStepCamera, frameVisibleProjection,
   levels,
   retargetCameraForSemanticBand,
+  scanZoomHandoffCamera,
   scopeFitsSafeViewport,
   semanticDetails,
   semanticInspectorFlightKind,
@@ -2963,14 +2964,16 @@ export function App() {
   /** Recompile the current C4 neighborhood for the camera tile window. Not a full-graph compile. */
   function refreshViewportNeighborhood(next: Camera) {
     if (!scanFixture) return;
+    const detail = semanticLensSessionDetail(semanticLensSessionRef.current);
     const compileFocus = scanCompileFocusForBand(
       activeSnapshot,
       inspectorSelectionRef.current ?? selected.id,
-      semanticLensSessionDetail(semanticLensSessionRef.current),
+      detail,
       scanFixture.navigation.rootEntityId,
     );
     const nextScene = composeScene(compileFocus, sceneRef.current, authoringHistoryRef.current.present, next);
     if (nextScene !== sceneRef.current) {
+      if (scanWindowedCompileDropsPeerGraph(sceneRef.current, nextScene, compileFocus, detail)) return;
       sceneRef.current = nextScene;
       setScene(nextScene);
     }
@@ -2996,6 +2999,10 @@ export function App() {
       navigationIdentityRef.current.rootEntityId,
     ];
     const nextScene = composeScene(handoff.compileFocus, liveScene, authoringHistoryRef.current.present);
+    if ((handoff.detail === 'component' || handoff.detail === 'code')
+      && !scanDeeperBandHasPeerCards(nextScene, handoff.compileFocus, handoff.detail)) {
+      return liveCamera;
+    }
     const nextSession = semanticLevelSession(nextScene, handoff.detail, preferredIds);
     const previousAnchorId = currentSession.settled.at(-1)?.targetId
       ?? (semanticBounds(liveScene, preferredId, previousDetail) ? preferredId : navigationIdentityRef.current.rootEntityId);
@@ -3009,9 +3016,16 @@ export function App() {
     semanticMorphBaselineRef.current = 0;
     setSemanticLensSession(nextSession);
     activeLevelRef.current = semanticDetails.indexOf(handoff.detail);
-    const nextCamera = previousBounds && targetBounds
-      ? retargetCameraForSemanticBand(liveCamera, previousBounds, targetBounds, liveCamera.zoom, viewport)
-      : liveCamera;
+    const nextCamera = scanZoomHandoffCamera(
+      liveCamera,
+      nextScene,
+      handoff.compileFocus,
+      handoff.detail,
+      viewport,
+      measureCurrentMapSafeArea(),
+      previousBounds,
+      targetBounds,
+    );
     sceneRef.current = nextScene;
     setScene(nextScene);
     setNavigationIdentity(current => ({ ...current, rootEntityId: handoff.compileFocus }));

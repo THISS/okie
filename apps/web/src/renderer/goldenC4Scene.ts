@@ -509,6 +509,22 @@ export function semanticBounds(scene: AtlasScene, entityId: string, detail: Sema
 }
 
 /**
+ * CLA-104: a camera-tile refresh after L2→L3 handoff can look at the reserved
+ * owner-shell interior and page every file-component out of the compiled scene.
+ * Keep the unwindowed neighborhood when the windowed compile would drop that graph.
+ */
+export function scanWindowedCompileDropsPeerGraph(
+  current: AtlasScene,
+  next: AtlasScene,
+  ownerId: string,
+  detail: SemanticDetail,
+): boolean {
+  if (detail !== 'component' && detail !== 'code') return false;
+  return scanDeeperBandHasPeerCards(current, ownerId, detail)
+    && !scanDeeperBandHasPeerCards(next, ownerId, detail);
+}
+
+/**
  * True when `ownerId` has at least one descendant card at `detail` in the
  * compiled scene. CLA-81 reserved owner shells publish bounds at the next
  * band without those peer cards — that is not a laid-out C4 map.
