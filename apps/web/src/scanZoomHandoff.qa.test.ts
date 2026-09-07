@@ -59,7 +59,10 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     expect(applyScanZoomHandoff).toContain('semanticLevelSession(nextScene, handoff.detail, preferredIds)');
     expect(applyScanZoomHandoff).toContain('scanZoomHandoffCamera(');
     expect(applyScanZoomHandoff).toContain('scanDeeperBandHasPeerCards(');
+    expect(applyScanZoomHandoff).toContain('scanZoomAdoptRawRef.current = nextCamera');
     expect(applyScanZoomHandoff).not.toContain('frameProjectionScope(');
+    expect(app).toContain('consumeScanZoomAdoptRaw');
+    expect(app).toContain('scanZoomAdoptRawRef={scanZoomAdoptRawRef}');
     expect(applyScanZoomHandoff).toContain("historyControllerRef.current?.replace(navigation)");
     expect(refreshViewportNeighborhood).toContain('semanticLensSessionDetail(semanticLensSessionRef.current)');
     expect(refreshViewportNeighborhood).toContain('scanWindowedCompileDropsPeerGraph(');

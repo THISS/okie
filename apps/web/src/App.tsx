@@ -321,6 +321,8 @@ type CanvasViewportProps = {
   onLensCancel: (reason: string, camera: Camera) => void;
   onLensPan: (camera: Camera) => void;
   onSemanticZoomBurstStart: (camera: Camera) => Camera;
+  /** CLA-104: neighborhood swap changes world space; consume as the burst raw camera. */
+  scanZoomAdoptRawRef: { current: Camera | undefined };
   onLodState: (state: RendererLodState | undefined) => void;
   visibilityMode: 'all' | 'dim' | 'isolate';
   flowActive: boolean;
@@ -347,7 +349,7 @@ type CanvasViewportProps = {
   }) => void;
 };
 
-function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenInside, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, requestedBackend, reduceMotion, animationActive, flowActive, projectionOverride, onSemanticZoom, cinematicTransition, onDiagnostics, onViewportChange, onCameraSettled, onNavigationFlush, onInteractionStart, onCameraFlightCancel, onLensCancel, onLensPan, onSemanticZoomBurstStart, onLodState, visibilityMode, authoringTool, authoringEnabled, authoringDetail, authoringEntityIds, selectedRelationId, onCreateRelationship, onGuideRelationship }: CanvasViewportProps) {
+function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenInside, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, requestedBackend, reduceMotion, animationActive, flowActive, projectionOverride, onSemanticZoom, cinematicTransition, onDiagnostics, onViewportChange, onCameraSettled, onNavigationFlush, onInteractionStart, onCameraFlightCancel, onLensCancel, onLensPan, onSemanticZoomBurstStart, onLodState, scanZoomAdoptRawRef, visibilityMode, authoringTool, authoringEnabled, authoringDetail, authoringEntityIds, selectedRelationId, onCreateRelationship, onGuideRelationship }: CanvasViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<AtlasRenderer | undefined>(undefined);
   const liveCameraRef = useRef(camera);
@@ -368,6 +370,14 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
   const semanticAssistSampleRef = useRef<{ pointer: LensPoint; mobile: boolean; gestureStartZoom?: number } | undefined>(undefined);
   const settleGlideRafRef = useRef<number | undefined>(undefined);
   const semanticZoomBurstActiveRef = useRef(false);
+  const consumeScanZoomAdoptRaw = (keepZoom?: number): Camera | undefined => {
+    const pending = scanZoomAdoptRawRef.current;
+    if (!pending) return undefined;
+    scanZoomAdoptRawRef.current = undefined;
+    const adopted = keepZoom === undefined ? pending : { x: pending.x, y: pending.y, zoom: keepZoom };
+    rawCameraRef.current = adopted;
+    return adopted;
+  };
   const sizeRef = useRef({ width: 1, height: 1 });
   const [overlaySize, setOverlaySize] = useState({ width: 1, height: 1 });
   const [hoveredPick, setHoveredPick] = useState<PickResult>();
@@ -588,8 +598,9 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
         );
         const direction = event.deltaY < 0 ? 'inward' : 'outward';
         const next = onSemanticZoomRef.current({ camera: zoomed, renderedCamera: liveCameraRef.current, pointer, direction, gestureSettled: false, mobile: false });
-        rawCameraRef.current = zoomed;
-        applyLiveCameraRef.current(next);
+        const adopted = consumeScanZoomAdoptRaw(zoomed.zoom);
+        rawCameraRef.current = adopted ?? zoomed;
+        applyLiveCameraRef.current(adopted ?? next);
         animateSemanticAssist(pointer, false);
         lastSemanticPointer = pointer;
         if (semanticZoomSettleTimer !== undefined) window.clearTimeout(semanticZoomSettleTimer);
@@ -599,6 +610,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
           // with the assist loop still running, its next frame re-applied the
           // uncontained raw camera and reverted the landing (end-of-zoom flicker).
           cancelAssistAnimation();
+          consumeScanZoomAdoptRaw();
           const settled = onSemanticZoomRef.current({
             camera: rawCameraRef.current,
             renderedCamera: liveCameraRef.current,
@@ -809,11 +821,14 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     const tick = (now: number) => {
       const sample = semanticAssistSampleRef.current;
       if (!sample || now > semanticAssistUntilRef.current) {
-        rawCameraRef.current = { ...liveCameraRef.current };
+        const adopted = consumeScanZoomAdoptRaw();
+        if (adopted) applyLiveCameraRef.current(adopted);
+        else rawCameraRef.current = { ...liveCameraRef.current };
         semanticZoomBurstActiveRef.current = false;
         semanticAssistRafRef.current = undefined;
         return;
       }
+      consumeScanZoomAdoptRaw();
       const next = onSemanticZoomRef.current({
         camera: rawCameraRef.current,
         renderedCamera: liveCameraRef.current,
@@ -1018,8 +1033,9 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
           onInteractionStartRef.current('Pinched the map', liveCameraRef.current);
         }
         const next = onSemanticZoomRef.current({ camera: zoomed, renderedCamera: liveCameraRef.current, pointer, direction, gestureSettled: false, mobile: true, gestureStartZoom: previous.startZoom });
-        rawCameraRef.current = zoomed;
-        applyLiveCameraRef.current(next);
+        const adopted = consumeScanZoomAdoptRaw(zoomed.zoom);
+        rawCameraRef.current = adopted ?? zoomed;
+        applyLiveCameraRef.current(adopted ?? next);
         animateSemanticAssist(pointer, true, previous.startZoom);
         pinchRef.current = { distance, centroid, startZoom: previous.startZoom, moved: previous.moved || Math.abs(Math.log(ratio)) > .002 };
         return;
@@ -1094,6 +1110,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
             // so the previous explicit flush (which would recall the pre-glide camera
             // through the external sync and cancel the glide) is no longer wanted.
             cancelAssistAnimation();
+            consumeScanZoomAdoptRaw();
             const next = onSemanticZoomRef.current({ camera: rawCameraRef.current, renderedCamera: liveCameraRef.current, pointer, direction: 'none', gestureSettled: true, mobile: true, gestureStartZoom: wasPinching.startZoom });
             animateSettleGlide(next);
             pinchSettleTimerRef.current = undefined;
@@ -1314,6 +1331,7 @@ export function App() {
   navigationIdentityRef.current = navigationIdentity;
   const zoomHandoffGenerationRef = useRef(0);
   const zoomHandoffInflightRef = useRef<{ detail: SemanticDetail; compileFocus: string } | undefined>(undefined);
+  const scanZoomAdoptRawRef = useRef<Camera | undefined>(undefined);
   const [detailsOpen, setDetailsOpen] = useState(() => initialInspectorOpen());
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>(() => scanFixture ? 'overview' : 'details');
   const [inspectorHistory, setInspectorHistory] = useState<InspectorHistorySubject[]>([]);
@@ -3026,6 +3044,7 @@ export function App() {
       previousBounds,
       targetBounds,
     );
+    scanZoomAdoptRawRef.current = nextCamera;
     sceneRef.current = nextScene;
     setScene(nextScene);
     setNavigationIdentity(current => ({ ...current, rootEntityId: handoff.compileFocus }));
@@ -4871,6 +4890,7 @@ export function App() {
             onPick={handlePick}
             onSemanticZoom={handleSemanticZoom}
             onSemanticZoomBurstStart={beginSemanticZoomBurst}
+            scanZoomAdoptRawRef={scanZoomAdoptRawRef}
             onViewportChange={setViewport}
             projectionOverride={relationFocus.projectionOverride}
             reduceMotion={reduceMotion}
