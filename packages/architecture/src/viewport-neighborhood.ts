@@ -136,11 +136,20 @@ function ancestorVisualIds(
   return ids;
 }
 
+/** L3/L4 cards CLA-74 pages. Coarser shells stay resident (CLA-106). */
+function isPagedBandKind(kind: EntityKind | undefined): boolean {
+  return kind === "component" || kind === "code";
+}
+
 /**
  * Compiled and resident set for one C4 band (CLA-74): focused entity +
  * siblings + one band down, then the camera tile window (viewport + one
  * 512-unit ring). L1/L2 stay unpaged (a handful). Off-screen L3/L4 beyond
  * the window are omitted for inspector `+N more`.
+ *
+ * CLA-106: container-rank (and coarser) shells that land in an L3/L4 compile
+ * stay resident so pan has adjacent territory. They do not consume the 50
+ * L3/L4 card cap.
  *
  * Packing of the full neighborhood must happen first so parent bounds stay
  * stable; this helper only chooses which packed nodes remain in the compiled
@@ -162,7 +171,8 @@ export function selectResidentVisualNodeIds(
     if (!node) continue;
     if (keepEntities.has(node.entity.logicalId)
       || node.kind === "person"
-      || node.kind === "externalSystem") {
+      || node.kind === "externalSystem"
+      || !isPagedBandKind(node.kind)) {
       for (const ancestor of ancestorVisualIds(id, byId)) always.add(ancestor);
     }
   }
@@ -184,7 +194,8 @@ export function selectResidentVisualNodeIds(
     eligible.add(id);
   }
 
-  if (input.maxNodesPerBand === undefined || eligible.size <= input.maxNodesPerBand) {
+  const pagedEligibleCount = [...eligible].filter(id => isPagedBandKind(byId[id]?.kind)).length;
+  if (input.maxNodesPerBand === undefined || pagedEligibleCount <= input.maxNodesPerBand) {
     const residentIds = ordered.filter(id => eligible.has(id));
     return {
       residentIds,
@@ -193,7 +204,7 @@ export function selectResidentVisualNodeIds(
   }
 
   const ranked = [...eligible]
-    .filter(id => !always.has(id))
+    .filter(id => !always.has(id) && isPagedBandKind(byId[id]?.kind))
     .sort((left, right) => {
       const leftBounds = input.packed[left];
       const rightBounds = input.packed[right];
@@ -202,7 +213,8 @@ export function selectResidentVisualNodeIds(
       return leftDistance - rightDistance || left.localeCompare(right);
     });
   const kept = new Set(always);
-  const remaining = Math.max(0, input.maxNodesPerBand - kept.size);
+  const alwaysPaged = [...always].filter(id => isPagedBandKind(byId[id]?.kind)).length;
+  const remaining = Math.max(0, input.maxNodesPerBand - alwaysPaged);
   for (const id of ranked.slice(0, remaining)) kept.add(id);
   const residentIds = ordered.filter(id => kept.has(id));
   return {

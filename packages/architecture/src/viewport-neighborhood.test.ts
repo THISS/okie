@@ -118,6 +118,36 @@ test('CLA-74: camera window pages a sibling neighborhood without taking the far 
   assert.ok(!left.residentIds.includes('c') || !right.residentIds.includes('a'));
 });
 
+test('CLA-106: L2 shells stay resident on an L3 compile without eating the file cap', () => {
+  const packed = {
+    system: { x: 0, y: 0, width: 4000, height: 400 },
+    focus: { x: 0, y: 0, width: 800, height: 400 },
+    peer: { x: 3000, y: 0, width: 100, height: 80 },
+    near: { x: 20, y: 40, width: 10, height: 10 },
+    far: { x: 3500, y: 40, width: 10, height: 10 },
+  };
+  const visualNodeById = {
+    system: { kind: 'softwareSystem' as const, entity: { logicalId: 'system:root' } },
+    focus: { kind: 'container' as const, entity: { logicalId: 'container:focus' }, parentVisualId: 'system' },
+    peer: { kind: 'container' as const, entity: { logicalId: 'container:peer' }, parentVisualId: 'system' },
+    near: { kind: 'component' as const, entity: { logicalId: 'component:near' }, parentVisualId: 'focus' },
+    far: { kind: 'component' as const, entity: { logicalId: 'component:far' }, parentVisualId: 'focus' },
+  };
+  const interior = selectResidentVisualNodeIds({
+    band: 'component',
+    visualNodeIds: ['system', 'focus', 'peer', 'near', 'far'],
+    packed,
+    visualNodeById,
+    focusEntityId: 'container:focus',
+    maxNodesPerBand: 1,
+    residentWorldBounds: { x: 0, y: 0, width: 200, height: 200 },
+  });
+  assert.ok(interior.residentIds.includes('peer'), 'peer container remains pan-reachable from the L3 interior');
+  assert.ok(interior.residentIds.includes('focus'));
+  assert.ok(interior.residentIds.includes('near'));
+  assert.deepEqual(interior.omittedIds, ['far']);
+});
+
 test('CLA-74: cache key follows camera tiles, not the full graph', () => {
   const left = viewportNeighborhoodCacheKey('component:file', { x: 0, y: 0, zoom: 1 }, { width: 100, height: 100 });
   const pan = viewportNeighborhoodCacheKey('component:file', { x: 2000, y: 0, zoom: 1 }, { width: 100, height: 100 });
