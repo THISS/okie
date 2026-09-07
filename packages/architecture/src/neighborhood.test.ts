@@ -258,11 +258,11 @@ test("CLA-107: default L1 slice stays CLA-73 (no auto-rewrite of +1 band)", () =
   assert.equal(opted.snapshot.entities.some(item => item.kind === "code"), false);
 });
 
-test("CLA-107: 11+ containers do not opt into L3-in-L1", () => {
+test("CLA-107: 13+ containers do not opt into L3-in-L1", () => {
   const entities: ArchitectureEntity[] = [
     entity("system:root", "softwareSystem"),
   ];
-  for (let index = 0; index < 11; index += 1) {
+  for (let index = 0; index < 13; index += 1) {
     const containerId = `container:c${index}`;
     entities.push(entity(containerId, "container", "system:root"));
     entities.push(entity(`component:c${index}-f0`, "component", containerId));

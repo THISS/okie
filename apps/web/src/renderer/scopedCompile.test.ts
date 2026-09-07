@@ -547,10 +547,10 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
     });
   });
 
-  it('CLA-107: 11+ containers stay CLA-66 lazy (maxBand container, no L3 overlay)', () => {
+  it('CLA-107: more than 12 containers stay CLA-66 lazy (maxBand container, no L3 overlay)', () => {
     const large = snapshot([
       entity('system:root', 'softwareSystem'),
-      ...Array.from({ length: 11 }, (_, index) => entity(`container:c${index}`, 'container', 'system:root')),
+      ...Array.from({ length: 13 }, (_, index) => entity(`container:c${index}`, 'container', 'system:root')),
       entity('component:x', 'component', 'container:c0'),
     ]);
     expect(scanScopeCompileOptions(large, 'system:root')).toEqual({ maxBand: 'container' });

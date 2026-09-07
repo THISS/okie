@@ -30,9 +30,9 @@ const CONTAINER_KINDS: ReadonlySet<EntityKind> = new Set(["container", "dataStor
 
 /**
  * CLA-107: small-repo L2 pre-places L3 when the published tree has this many
- * containers or fewer (THISS/okie dogfood). Large-repo L2 stays CLA-66 lazy.
+ * containers or fewer (THISS/okie dogfood is 11). Large-repo L2 stays CLA-66 lazy.
  */
-export const SMALL_REPO_L3_PREPLACE_CONTAINERS = 10;
+export const SMALL_REPO_L3_PREPLACE_CONTAINERS = 12;
 
 /**
  * Same number as the scan hang-guard (`SCAN_BAND_DEPTH_MIN_ENTITIES`). Do not

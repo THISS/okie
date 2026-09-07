@@ -98,7 +98,7 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
  * the default path at every repo size (CLA-66): system→container band;
  * container drill-in→component band + edge budget + router grid cap;
  * component→code band. CLA-107 overlays `maxBand: component` on the system
- * compile when the snapshot is a small repo (≤10 containers, under the
+ * compile when the snapshot is a small repo (≤12 containers, under the
  * hang-guard) so L2 is not a hollow shell. A second, independent relation gate
  * (> SCAN_RELATION_EDGE_MIN) adds a per-band routed-edge budget plus a router
  * grid cap wherever the options don't already carry one. SCAN_BAND_DEPTH_MIN_ENTITIES
