@@ -3052,16 +3052,19 @@ export function App() {
     void scanFixture.ensureNeighborhood(handoff.compileFocus).then(() => {
       if (token !== zoomHandoffGenerationRef.current) return;
       zoomHandoffInflightRef.current = undefined;
+      const liveCamera = renderedCameraRef.current;
+      const liveLevel = semanticDetails.indexOf(semanticLensSessionDetail(semanticLensSessionRef.current));
+      const liveDetail = semanticDetails[getLevel(liveCamera.zoom, liveLevel)] ?? 'context';
       const still = scanZoomCompileHandoff(
         sceneRef.current,
         activeSnapshot,
         preferredId,
         viewRootId,
-        zoomDetail,
+        liveDetail,
         sceneRef.current.rootEntityId ?? viewRootId,
       );
-      if (!still || still.compileFocus !== handoff.compileFocus || still.detail !== handoff.detail) return;
-      applyCamera(applyScanZoomHandoff(still, camera, preferredId));
+      if (!still) return;
+      applyCamera(applyScanZoomHandoff(still, liveCamera, preferredId));
     }).catch(() => {
       if (token === zoomHandoffGenerationRef.current) zoomHandoffInflightRef.current = undefined;
     });

@@ -582,6 +582,10 @@ export function scanZoomCompileHandoff(
   if (detail === 'context' || detail === 'container') {
     return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
   }
+  // CLA-66 system compile is maxBand: container — recompiling the view root
+  // at component/code cannot grow L3/L4 peers. Stay on the L2 scene until a
+  // code-bearing container (or file) is the compile focus.
+  if (compileFocus === viewRootId && currentCompileFocus === viewRootId) return undefined;
   if (compileFocus === currentCompileFocus && scanDeeperBandHasPeerCards(scene, compileFocus, detail)) {
     return undefined;
   }

@@ -356,6 +356,10 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
     expect(scanZoomCompileHandoff(l2Scene, snap, 'container:empty', 'system:root', 'component')).toBeUndefined();
   });
 
+  it('does not recompile the view root at L3 — system maxBand cannot grow component peers', () => {
+    expect(scanZoomCompileHandoff(l2Scene, snap, 'system:root', 'system:root', 'component')).toBeUndefined();
+  });
+
   it('does not swap again once the L3 peer graph is resident', () => {
     const l3Scene: AtlasScene = {
       ...l2Scene,

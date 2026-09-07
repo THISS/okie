@@ -39,6 +39,9 @@ const chromeSafeArea = { top: 80, right: 300, bottom: 72, left: 64 };
 describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph', () => {
   it('drives wheel/pinch through the Open-inside compile-focus seam, not a hang-guard raise', () => {
     expect(handleSemanticZoom).toContain('maybeScanZoomHandoff(');
+    expect(app).toContain('function maybeScanZoomHandoff(');
+    expect(app).toContain('const liveCamera = renderedCameraRef.current');
+    expect(app).toContain('applyScanZoomHandoff(still, liveCamera, preferredId)');
     expect(settleCamera).toContain('maybeScanZoomHandoff(');
     expect(app).toContain('function applyScanZoomHandoff(');
     expect(app).toContain('scanZoomCompileHandoff(');
