@@ -4,7 +4,7 @@ import {
   neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
   SMALL_REPO_L3_PREPLACE_CONTAINERS,
-  SMALL_REPO_L3_PREPLACE_MAX_ENTITIES,
+  SMALL_REPO_L3_PREPLACE_MAX_COMPONENTS,
   snapshotPreplacesL3InL2,
   type ArchitectureSnapshot,
   type ArchitectureView,
@@ -33,7 +33,7 @@ const neighborhood = readFileSync(new URL('../../../packages/architecture/src/ne
 describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', () => {
   it('does not raise the 2000 hang-guard or rewrite CLA-66 per-kind mapping', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
-    expect(SMALL_REPO_L3_PREPLACE_MAX_ENTITIES).toBe(2000);
+    expect(SMALL_REPO_L3_PREPLACE_MAX_COMPONENTS).toBe(2000);
     expect(SMALL_REPO_L3_PREPLACE_CONTAINERS).toBe(12);
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
     expect(fixture).toContain("maxBand: 'container'");
