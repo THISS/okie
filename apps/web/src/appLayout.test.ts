@@ -623,6 +623,40 @@ describe('production dev-mode gate', () => {
   });
 });
 
+describe('header Open source and account chrome (CLA-101)', () => {
+  it('opens the source repository and account/sign-in instead of dead header buttons', () => {
+    expect(app).toContain('data-testid="open-source-repo"');
+    expect(app).toContain('atlasSourceRepositoryUrl(askAtlasIdentity)');
+    expect(app).toContain('aria-label="Open source repository"');
+    expect(app).toContain('rel="noreferrer"');
+    expect(app).toContain('target="_blank"');
+    expect(app).toContain('className="diagram-add-menu screenshot-menu account-menu"');
+    expect(app).toContain('data-testid="account-menu"');
+    expect(app).toContain('data-testid="account-signin"');
+    expect(app).toContain("askSignInHref(askAuth?.loginPath ?? \"/api/auth/github\", askReturnPath)");
+    expect(app).toContain("askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)");
+    expect(app).toContain('Sign in with GitHub');
+    expect(app).toContain('Sign out');
+    expect(app).toContain('accountInitials(askAuth?.login)');
+    expect(app).not.toMatch(/<button aria-label="Open source repository"/);
+    expect(app).not.toMatch(/<button aria-label="Open account menu"/);
+    expect(app).not.toContain('>BC</button>');
+    expect(app).not.toContain('>BC</summary>');
+    expect(css).toContain('a.icon-button { text-decoration: none; }');
+    expect(css).toContain('.account-menu summary.avatar-button');
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('leaves Share, Mermaid import, and screenshot wired', () => {
+    expect(app).toContain('data-testid="import-mermaid"');
+    expect(app).toContain("copyCurrentView()");
+    expect(app).toContain("captureScreenshot('copy')");
+    expect(app).toContain("captureScreenshot('save')");
+    expect(app).toContain('aria-label="Capture screenshot"');
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+});
+
 describe('Mermaid import onto the atlas (CLA-35)', () => {
   it('exposes a first-class import path on the atlas, not behind dev mode', () => {
     expect(app).toContain('data-testid="import-mermaid"');

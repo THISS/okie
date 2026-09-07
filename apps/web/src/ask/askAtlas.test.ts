@@ -18,6 +18,8 @@ import {
   loadAskThread,
   probeAskConnection,
   resolveAskAtlasIdentity,
+  accountInitials,
+  atlasSourceRepositoryUrl,
   shouldCommitAskAnswer,
   submitAskQuestion,
   type AskEntity,
@@ -384,6 +386,22 @@ describe('Ask sign-in and thread identity', () => {
       testLoginPath: '/api/auth/github/test-login',
     });
     expect(askSignInHref('/api/auth/github', '/r/THISS/okie')).toBe('/api/auth/github?return=%2Fr%2FTHISS%2Fokie');
+  });
+
+  it('maps atlas identity to a real GitHub source URL (CLA-101)', () => {
+    expect(atlasSourceRepositoryUrl(resolveAskAtlasIdentity({
+      pathname: '/r/THISS/okie',
+      commitSha: 'abc123def456',
+    }))).toBe('https://github.com/THISS/okie');
+    expect(atlasSourceRepositoryUrl({ owner: 'colinhacks', repo: 'zod', commitSha: 'abc' }))
+      .toBe('https://github.com/colinhacks/zod');
+    expect(atlasSourceRepositoryUrl({ owner: 'okie', repo: 'golden', commitSha: 'golden' }))
+      .toBe('https://github.com/THISS/okie');
+    expect(atlasSourceRepositoryUrl(undefined)).toBe('https://github.com/THISS/okie');
+    expect(accountInitials('brenton')).toBe('BR');
+    expect(accountInitials('okie-test-user')).toBe('OK');
+    expect(accountInitials('x')).toBe('X');
+    expect(accountInitials()).toBe('?');
   });
 });
 
