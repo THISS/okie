@@ -10,8 +10,9 @@ import {
 
 /**
  * Vercel serverless stand-in for the Vite `/r/<owner>/<repo>` HTML injector.
- * Rewritten from `/r/:owner/:repo` in vercel.json so crawlers (and GET) see
- * Open Graph tags on the share URL instead of the generic SPA shell.
+ * Direct GET `/api/share?owner=&repo=` still injects Open Graph tags. Hosted
+ * `/r/:path*` URLs rewrite to `/index.html` (CLA-116) so a missing function
+ * cannot 404 the public atlas; Vite injects OG in dev/preview.
  */
 const FALLBACK_INDEX = `<!doctype html>
 <html lang="en">

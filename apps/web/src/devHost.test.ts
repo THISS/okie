@@ -30,7 +30,7 @@ describe('published Vite host default (CLA-17)', () => {
     };
     expect(vercel.rewrites).toEqual(expect.arrayContaining([
       { source: '/oembed', destination: '/api/oembed' },
-      { source: '/r/:owner/:repo', destination: '/api/share?owner=:owner&repo=:repo' },
+      { source: '/r/:path*', destination: '/index.html' },
       { source: '/new', destination: '/index.html' },
     ]));
   });
