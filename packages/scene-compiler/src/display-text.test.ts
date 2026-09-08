@@ -34,7 +34,8 @@ test('filename identifiers keep the stem instead of a left-stemmed tail', () => 
   assert.equal(truncateDisplayText('isolateNeighborhood.ts', 18, 'identifier'), 'isolateNeigh…od.ts');
   assert.match(truncateDisplayText('src/diagnostics.rs', 10, 'identifier'), /^diag/u);
   assert.match(truncateDisplayText('src/diagnostics.rs', 10, 'identifier'), /\.rs$/u);
-  assert.notEqual(truncateDisplayText('src/diagnostics.rs', 8, 'identifier'), '…ics.rs');
+  assert.notEqual(truncateDisplayText('src/diagnostics.rs', 6, 'identifier'), '…ics.rs');
+  assert.notEqual(truncateDisplayText('src/isolateNeighborhood.ts', 9, 'identifier'), '…rhood.ts');
   assert.notEqual(truncateDisplayText('isolateNeighborhood.ts', 10, 'identifier'), '…rhood.ts');
 });
 

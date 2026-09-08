@@ -431,7 +431,7 @@ describe('Canvas2D band-normalized typography', () => {
     const floor = c4TitleFitFloor('component', metrics.titleFontSize, C4_LABEL_MIN_TITLE_PX);
     const name = 'src/diagnostics.rs';
     const fitted = fitDisplayTextAtSize(name, 52, metrics.titleFontSize, floor, 'identifier', 'sans-semibold');
-    expect(fitted.content).not.toBe('…ics.rs');
+    expect(fitted.content).toBe('di…cs.rs');
     expect(fitted.content).not.toMatch(/^…[^/]/u);
     expect(truncateDisplayText(name, 10, 'identifier')).toBe('diag…cs.rs');
 
@@ -464,10 +464,10 @@ describe('Canvas2D band-normalized typography', () => {
     renderer.setRenderState(state);
     renderer.render(0);
 
-    const title = target.textCalls.find(call => call.content.includes('diag') || call.content.includes('…'));
-    expect(title).toBeDefined();
-    expect(title!.content).toBe(fitted.content);
-    expect(title!.content).not.toBe('…ics.rs');
-    expect(title!.content.startsWith('…') && !title!.content.includes('/')).toBe(false);
+    const title = target.textCalls[1]!;
+    expect(title.content).toBe(fitted.content);
+    expect(title.content).toBe('di…cs.rs');
+    expect(title.content).not.toMatch(/^…[^/]/u);
+    expect(title.font).toContain(`${floor}px`);
   });
 });
