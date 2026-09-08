@@ -192,7 +192,7 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     };
     expect(vercel.rewrites).toEqual(expect.arrayContaining([
       { source: '/og/:owner/:repo', destination: '/api/og?owner=:owner&repo=:repo' },
-      { source: '/r/:owner/:repo', destination: '/api/share?owner=:owner&repo=:repo' },
+      { source: '/r/:path*', destination: '/index.html' },
     ]));
     const shareFn = readFileSync(new URL('../api/share.ts', import.meta.url), 'utf8');
     const ogFn = readFileSync(new URL('../api/og.ts', import.meta.url), 'utf8');
