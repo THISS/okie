@@ -7,6 +7,7 @@ import {
   type ArchitectureSnapshot,
 } from '@okie/architecture';
 import { compileC4Scene } from './compile-c4.js';
+import { BAND_COST_HANG_GUARD_ENTITIES } from './band-cost-curve.js';
 
 // End-to-end aspect-aware packing (task #30). The targetAspect option threads
 // architecture (buildC4ProjectionBundle) → compiler (compileC4Scene) through BOTH layout
@@ -89,4 +90,49 @@ test('portrait packs a taller container than landscape from the same snapshot', 
   const landscape = containerBox(snapshot, ASPECT_PRESET_TARGET.landscape);
   const portrait = containerBox(snapshot, ASPECT_PRESET_TARGET.portrait);
   assert.ok(portrait.height > landscape.height, `portrait orientation must pack taller than landscape (${portrait.height.toFixed(1)} vs ${landscape.height.toFixed(1)})`);
+});
+
+function uniqueColumns(boxes: readonly { x: number }[]): number {
+  return new Set(boxes.map(box => Math.round(box.x * 100) / 100)).size;
+}
+
+function containerFocusCompile(snapshot: ArchitectureSnapshot, targetAspect?: number) {
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:d',
+    focusEntityId: 'container:c',
+    familyId: 'f',
+    maxBand: 'component',
+    ...(targetAspect !== undefined ? { targetAspect } : {}),
+  });
+  return compileC4Scene(snapshot, bundle, targetAspect !== undefined ? { targetAspect } : {});
+}
+
+test('CLA-118: container-focus of 79 components without targetAspect is a 3-col skyscraper', () => {
+  const snapshot = denseContainer(79);
+  const compiled = containerFocusCompile(snapshot);
+  const box = compiled.projections.index.boundsByEntityIdAndBand['container:c']!.component!;
+  const children = snapshot.entities
+    .filter(entity => entity.parentId === 'container:c' && entity.kind === 'component')
+    .map(entity => compiled.projections.index.boundsByEntityIdAndBand[entity.id]!.component!);
+  assert.equal(uniqueColumns(children), 3);
+  assert.ok(box.width / box.height < 0.6, `default container-focus pack is a skyscraper (${(box.width / box.height).toFixed(3)})`);
+});
+
+test('CLA-118: hang-guard stays 2000', () => {
+  assert.equal(BAND_COST_HANG_GUARD_ENTITIES, 2000);
+});
+
+test('CLA-118: container-focus of 79 components with landscape ~1.6 packs 6–8 columns', () => {
+  const snapshot = denseContainer(79);
+  const target = ASPECT_PRESET_TARGET.landscape;
+  const compiled = containerFocusCompile(snapshot, target);
+  const box = compiled.projections.index.boundsByEntityIdAndBand['container:c']!.component!;
+  const children = snapshot.entities
+    .filter(entity => entity.parentId === 'container:c' && entity.kind === 'component')
+    .map(entity => compiled.projections.index.boundsByEntityIdAndBand[entity.id]!.component!);
+  const columns = uniqueColumns(children);
+  assert.ok(columns >= 6 && columns <= 8, `expected 6–8 columns on a 16:9 pack, got ${columns}`);
+  const aspect = box.width / box.height;
+  assert.ok(aspect >= 1.2, `container-focus aspect ${aspect.toFixed(3)} should be landscape, not ~12:1`);
+  assert.ok(Math.abs(aspect - target) < 0.45, `packed aspect ${aspect.toFixed(3)} should be near 1.6`);
 });
