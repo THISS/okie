@@ -182,7 +182,7 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     expect(html.match(/<title>/g)).toHaveLength(1);
   });
 
-  it('wires Vite and Vercel to intercept share HTML and OG images', () => {
+  it('wires Vite to intercept share HTML and OG images; Vercel SPA-rewrites /r to index.html', () => {
     const viteConfig = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
     expect(viteConfig).toContain('okieOpenGraphPlugin');
     expect(viteConfig).toContain('handleShareHtmlRequest');
