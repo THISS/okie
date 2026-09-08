@@ -288,10 +288,11 @@ export function frameContainerPeerArrivalCamera(
   const scopeIds = projectionScopeEntityIds(scene, rootEntityId, 'container');
   const residentIds = residentVisibleProjectionEntityIds(scene, scopeIds, 'container');
   if (!residentIds.length) return undefined;
+  const clusterIds = nearbyContainerArrivalIds(scene, residentIds, viewport, safeArea);
   const { minZoom, maxZoom } = dominantBandZoomRange('container');
   return frameEntityIdsAtDetail(
     scene,
-    residentIds,
+    clusterIds,
     'container',
     viewport,
     safeArea,
@@ -299,6 +300,47 @@ export function frameContainerPeerArrivalCamera(
     maxZoom,
     true,
   );
+}
+
+/**
+ * L2 peer card faces that still fit at a title-readable zoom. CLA-119 √N
+ * shells make a fat package larger than the readable window, so Open inside
+ * cannot frame every peer (same reason CLA-92 clusters L3 files). Seed with
+ * the heaviest shell so weight stays on-screen, then fill neighbors.
+ */
+function nearbyContainerArrivalIds(
+  scene: AtlasScene,
+  residentIds: readonly string[],
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): string[] {
+  const faces = residentIds.flatMap(id => {
+    const entity = scene.entities.find(candidate => candidate.id === id);
+    const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'container') : undefined;
+    return bounds ? [{ id, face: containerCardFaceBounds(bounds) }] : [];
+  }).sort((left, right) => right.face.width * right.face.height - left.face.width * left.face.height
+    || left.face.y - right.face.y
+    || left.face.x - right.face.x
+    || left.id.localeCompare(right.id));
+  if (!faces.length) return [...residentIds];
+  const safeWidth = Math.max(80, viewport.width - safeArea.left - safeArea.right);
+  const safeHeight = Math.max(80, viewport.height - safeArea.top - safeArea.bottom);
+  const padding = 48;
+  const maxWorldWidth = (safeWidth - padding) / CONTAINER_TITLE_READABLE_MIN_ZOOM;
+  const maxWorldHeight = (safeHeight - padding) / CONTAINER_TITLE_READABLE_MIN_ZOOM;
+  const cluster = [faces[0]!];
+  let union = { ...faces[0]!.face };
+  for (const candidate of faces.slice(1)) {
+    const left = Math.min(union.x, candidate.face.x);
+    const top = Math.min(union.y, candidate.face.y);
+    const right = Math.max(union.x + union.width, candidate.face.x + candidate.face.width);
+    const bottom = Math.max(union.y + union.height, candidate.face.y + candidate.face.height);
+    if (right - left <= maxWorldWidth && bottom - top <= maxWorldHeight) {
+      cluster.push(candidate);
+      union = { x: left, y: top, width: right - left, height: bottom - top };
+    }
+  }
+  return cluster.map(item => item.id);
 }
 
 /**
