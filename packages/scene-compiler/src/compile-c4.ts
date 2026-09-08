@@ -88,9 +88,31 @@ export const NO_SUMMARY_SUPPLIED = 'No summary supplied.';
 /**
  * L1–L3 primary titles must project to at least 12 CSS px (golden-okie-hierarchy).
  * Compiler shrink-to-fit and the Canvas fallback use this as the truncation floor
- * at context zoom so scoped names stay readable before they ellipsize.
+ * for context/container/component so scoped names stay readable before they ellipsize.
+ * L4 authored size is 11.2px, so this floor cannot shrink code titles (CLA-111).
  */
 export const C4_LABEL_MIN_TITLE_PX = 12;
+
+/**
+ * L4 titles may shrink to this fraction of the authored size before identifier
+ * truncation. L1–L3 use `C4_LABEL_MIN_TITLE_PX` instead; 0.65× is the L4 path
+ * because a 12px floor sits above the 11.2px authored size.
+ */
+export const C4_LABEL_TITLE_SHRINK_RATIO = 0.65;
+
+/**
+ * Truncation floor for `fitDisplayTextAtSize`, in the same units as
+ * `authoredTitleFontSize` (world units in the compiler, CSS px on canvas).
+ * L1–L3: absolute 12 CSS-px floor converted by the caller. L4: 0.65× authored.
+ */
+export function c4TitleFitFloor(
+  band: C4Band,
+  authoredTitleFontSize: number,
+  minTitlePxInSameUnits: number,
+): number {
+  if (band === 'code') return authoredTitleFontSize * C4_LABEL_TITLE_SHRINK_RATIO;
+  return minTitlePxInSameUnits;
+}
 
 export type BandTransitionNode = {
   visualNodeId: string;
@@ -296,9 +318,7 @@ function presentation(
   const kickerFontSize = focusPresentation.kickerFontSize / focusZoom;
   const descriptionFontSize = focusPresentation.descriptionFontSize / focusZoom;
   const titleMetrics = band === 'code' ? 'mono-semibold' as const : 'sans-semibold' as const;
-  const titleFloor = band === 'context' || band === 'container'
-    ? C4_LABEL_MIN_TITLE_PX / focusZoom
-    : authoredTitleFontSize;
+  const titleFloor = c4TitleFitFloor(band, authoredTitleFontSize, C4_LABEL_MIN_TITLE_PX / focusZoom);
   const fittedTitle = fitDisplayTextAtSize(
     node.name,
     maxWidth,

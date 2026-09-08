@@ -138,8 +138,8 @@ export function fitDisplayText(
 
 /**
  * Prefers a slightly smaller type size over a truncated label. Callers pass the
- * band's authored size and a CSS-pixel floor converted to world units; L1/L2
- * titles shrink to that floor before path-aware identifier truncation.
+ * band's authored size and a truncation floor in the same units; L1–L3 titles
+ * shrink to the 12 CSS-px floor, L4 to 0.65× authored, before identifier truncation.
  */
 export function fitDisplayTextAtSize(
   content: string,

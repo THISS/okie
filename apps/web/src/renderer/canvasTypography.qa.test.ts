@@ -1,6 +1,16 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  C4_LABEL_MIN_TITLE_PX,
+  C4_LABEL_TITLE_SHRINK_RATIO,
+  c4TitleFitFloor,
+  displayTextWidth,
+  fitDisplayText,
+  fitDisplayTextAtSize,
+} from '@okie/scene-compiler';
 import { Canvas2DRenderer, canvasEntityPresentationMetrics } from './Canvas2DRenderer';
 import type { AtlasScene, RenderState, SemanticDetail } from './types';
+import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './scanFixture';
 
 type TextCall = {
   content: string;
@@ -299,5 +309,116 @@ describe('Canvas2D band-normalized typography', () => {
 
     expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(true);
     expect(target.textCalls.some(call => call.content === 'Spatial architecture atlas.')).toBe(true);
+  });
+
+  it('CLA-111: does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(C4_LABEL_TITLE_SHRINK_RATIO).toBe(0.65);
+    const renderer = readFileSync(new URL('./Canvas2DRenderer.ts', import.meta.url), 'utf8');
+    expect(renderer).toContain('c4TitleFitFloor(renderedDetail, metrics.titleFontSize, C4_LABEL_MIN_TITLE_PX)');
+    expect(renderer).not.toContain('renderedDetail === \'context\' || renderedDetail === \'container\'');
+  });
+
+  it.each([
+    { detail: 'component' as const, zoom: 5.27, metricsRole: 'sans-semibold' as const },
+    { detail: 'code' as const, zoom: 13.96, metricsRole: 'mono-semibold' as const },
+  ])('CLA-111: $detail titles shrink before ellipsis on a tight card', ({ detail, zoom, metricsRole }) => {
+    const metrics = canvasEntityPresentationMetrics(detail, false, zoom);
+    const floor = c4TitleFitFloor(detail, metrics.titleFontSize, C4_LABEL_MIN_TITLE_PX);
+    expect(floor).toBeLessThan(metrics.titleFontSize);
+    if (detail === 'component') expect(floor).toBe(C4_LABEL_MIN_TITLE_PX);
+    else expect(floor).toBeCloseTo(metrics.titleFontSize * C4_LABEL_TITLE_SHRINK_RATIO, 10);
+
+    const name = 'createNavigationHistoryController';
+    const fullWidth = displayTextWidth(name, metrics.titleFontSize, metricsRole);
+    const floorWidth = displayTextWidth(name, floor, metricsRole);
+    const textMaxWidth = (fullWidth + floorWidth) / 2;
+    const worldWidth = (textMaxWidth + metrics.horizontalInsets) / zoom;
+    expect(fitDisplayText(name, textMaxWidth, metrics.titleFontSize, 'identifier', metricsRole)).toContain('…');
+
+    const scene: AtlasScene = {
+      id: 'cla-111-title-floor',
+      title: 'CLA-111 title floor',
+      subtitle: '',
+      entities: [{
+        id: `${detail}:tight`,
+        name,
+        kind: 'component',
+        kindLabel: detail === 'code' ? 'SOURCE' : 'COMPONENT',
+        detail,
+        responsibility: 'Exercises shrink-before-truncate.',
+        source: 'apps/web/src/navigation/historyController.ts',
+        x: 0,
+        y: 0,
+        width: worldWidth,
+        height: 20,
+      }],
+      relations: [],
+      regions: [],
+    };
+    const target = fakeCanvas();
+    const renderer = new Canvas2DRenderer(target.canvas, 'canvas2d');
+    renderer.setScene(scene);
+    renderer.resize(800, 400, 1);
+    renderer.setCamera({ x: worldWidth / 2, y: 10, zoom });
+    renderer.setRenderState(state);
+    renderer.render(0);
+
+    const title = target.textCalls.find(call => call.content.includes('History') || call.content.includes('…'));
+    expect(title).toBeDefined();
+    const fitted = fitDisplayTextAtSize(name, textMaxWidth, metrics.titleFontSize, floor, 'identifier', metricsRole);
+    expect(fitted.content).toBe(name);
+    expect(fitted.fontSize).toBeLessThan(metrics.titleFontSize);
+    expect(fitted.fontSize).toBeGreaterThanOrEqual(floor);
+    expect(title!.content).toBe(name);
+    expect(title!.font).toContain(`${fitted.fontSize}px`);
+    expect(title!.font).not.toContain(`${metrics.titleFontSize}px`);
+  });
+
+  it('CLA-111: extreme-narrow L4 still truncates at the shrink floor without growing the card', () => {
+    const zoom = 13.96;
+    const metrics = canvasEntityPresentationMetrics('code', false, zoom);
+    const floor = c4TitleFitFloor('code', metrics.titleFontSize, C4_LABEL_MIN_TITLE_PX);
+    const name = 'createNavigationHistoryController';
+    const worldWidth = 8;
+    const screenWidth = worldWidth * zoom;
+    const textMaxWidth = Math.max(1, screenWidth - metrics.horizontalInsets);
+    const fitted = fitDisplayTextAtSize(name, textMaxWidth, metrics.titleFontSize, floor, 'identifier', 'mono-semibold');
+    expect(fitted.fontSize).toBe(floor);
+    expect(fitted.content.includes('…') || fitted.content.length < name.length).toBe(true);
+
+    const scene: AtlasScene = {
+      id: 'cla-111-extreme-narrow',
+      title: 'CLA-111 extreme narrow',
+      subtitle: '',
+      entities: [{
+        id: 'code:tight',
+        name,
+        kind: 'component',
+        kindLabel: 'SOURCE',
+        detail: 'code',
+        responsibility: 'Must not explode layout.',
+        source: 'apps/web/src/navigation/historyController.ts',
+        x: 0,
+        y: 0,
+        width: worldWidth,
+        height: 12,
+      }],
+      relations: [],
+      regions: [],
+    };
+    const target = fakeCanvas();
+    const renderer = new Canvas2DRenderer(target.canvas, 'canvas2d');
+    renderer.setScene(scene);
+    renderer.resize(400, 300, 1);
+    renderer.setCamera({ x: worldWidth / 2, y: 6, zoom });
+    renderer.setRenderState(state);
+    renderer.render(0);
+
+    const title = target.textCalls[1]!;
+    expect(title.font).toContain(`${floor}px`);
+    expect(title.content).toBe(fitted.content);
+    const cardWidth = target.call('roundRect').mock.calls[0]![2] as number;
+    expect(cardWidth).toBeCloseTo(screenWidth, 5);
   });
 });

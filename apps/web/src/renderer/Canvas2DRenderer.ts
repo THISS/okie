@@ -1,5 +1,5 @@
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RenderState, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation, SemanticDetail } from './types';
-import { C4_BOUNDARY_STROKE_ALPHA, C4_LABEL_MIN_TITLE_PX, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, fitDisplayText, fitDisplayTextAtSize, NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
+import { C4_BOUNDARY_STROKE_ALPHA, C4_LABEL_MIN_TITLE_PX, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, c4TitleFitFloor, fitDisplayText, fitDisplayTextAtSize, NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
 import { roundedOrthogonalRoute, routeArrowHead, routeArrowHeads, routeShaft, type RouteArrowHead, type RoutePoint } from './routeGeometry';
 
 const palette = {
@@ -569,9 +569,7 @@ export class Canvas2DRenderer implements AtlasRenderer {
     const label = (entity.kindLabel ?? entity.kind).toUpperCase();
     const displayKicker = fitDisplayText(label, textMaxWidth, metrics.kickerFontSize, 'word', 'sans-semibold');
     const titleMetrics = renderedDetail === 'code' ? 'mono-semibold' as const : 'sans-semibold' as const;
-    const titleFloor = renderedDetail === 'context' || renderedDetail === 'container'
-      ? C4_LABEL_MIN_TITLE_PX
-      : metrics.titleFontSize;
+    const titleFloor = c4TitleFitFloor(renderedDetail, metrics.titleFontSize, C4_LABEL_MIN_TITLE_PX);
     const fittedTitle = fitDisplayTextAtSize(
       entity.name,
       textMaxWidth,
