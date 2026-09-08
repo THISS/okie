@@ -1200,7 +1200,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     >
       <div className="atlas-renderer-host" ref={hostRef}/>
       {hoverHud && <CanvasHoverHud model={hoverHud}/>}
-      {authoringEnabled && <RelationshipAuthoringOverlay}
+      {authoringEnabled && <RelationshipAuthoringOverlay
         boundsByEntityId={Object.fromEntries((scene.projection?.entityIdsByDetail[authoringDetail] ?? scene.entities.map(entity => entity.id)).flatMap(entityId => {
           const bounds = authoringBoundsForDetail(scene, entityId, authoringDetail);
           return bounds ? [[entityId, bounds]] : [];
