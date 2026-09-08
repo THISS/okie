@@ -4,6 +4,7 @@ import {
   clampInspectorWidth,
   defaultInspectorWidth,
   inspectorAcceptedSummary,
+  inspectorSecondaryCopy,
   inspectorCanShowSource,
   inspectorCyclomatic,
   inspectorCoverage,
@@ -136,6 +137,25 @@ describe('inspector accepted section summaries (CLA-26)', () => {
     expect(inspectorAcceptedSummary(undefined)).toBeUndefined();
   });
 
+  it('CLA-121: inspector list captions omit No summary supplied', () => {
+    expect(inspectorSecondaryCopy({
+      responsibility: INSPECTOR_EMPTY_SUMMARY,
+      kindLabel: 'File',
+      kind: 'component',
+    })).toBe('File');
+    expect(inspectorSecondaryCopy({
+      responsibility: '',
+      kindLabel: 'File',
+      kind: 'component',
+    })).toBe('File');
+    expect(inspectorSecondaryCopy({
+      responsibility: 'React browser shell.',
+      kindLabel: 'Container',
+      kind: 'container',
+    })).toBe('React browser shell.');
+    expect(inspectorSecondaryCopy(undefined)).toBeUndefined();
+  });
+
   it('shows golden container and code summaries in Details', () => {
     const scene = createGoldenC4Scene();
     const container = scene.entities.find(entity => entity.id === 'container:web-app')!;
@@ -179,7 +199,7 @@ describe('inspector accepted section summaries (CLA-26)', () => {
     expect(code.sourceRefs?.length).toBeGreaterThan(0);
   });
 
-  it('puts the honest placeholder on GPU compiled card descriptions when responsibility is absent (CLA-58)', () => {
+  it('omits empty No summary copy on GPU compiled cards (CLA-121)', () => {
     const scene = createC4Scene({
       baseSnapshot: scanSnapshot(
         [
@@ -209,8 +229,8 @@ describe('inspector accepted section summaries (CLA-26)', () => {
 
     expect(scene.entities.find(entity => entity.id === 'external:react')?.responsibility).toBe(INSPECTOR_EMPTY_SUMMARY);
     expect(inspectorAcceptedSummary(scene.entities.find(entity => entity.id === 'external:react'))).toBeUndefined();
-    expect(descriptionOn('external:react', 'context')).toBe(INSPECTOR_EMPTY_SUMMARY);
-    expect(descriptionOn('external:dompurify', 'context')).toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(descriptionOn('external:react', 'context')).toBeUndefined();
+    expect(descriptionOn('external:dompurify', 'context')).toBeUndefined();
     expect(descriptionOn('system:app', 'context')).toBe('Hosts the atlas.');
   });
 });

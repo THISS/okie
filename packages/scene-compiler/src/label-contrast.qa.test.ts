@@ -93,9 +93,8 @@ test('CLA-53: L1/L2 dogfood labels stay readable without invented summaries', ()
       assert.equal(sample.fill.kind, 'roundedRect');
       assert.ok(contrastRatio(sample.title.color, sample.fill.fill) >= 4.5,
         `${band} ${name} title contrast must hold against the unselected card fill`);
-      assert.ok(sample.support, `${band} ${name} GPU card must include a description primitive`);
-      assert.equal(sample.support.content, NO_SUMMARY_SUPPLIED,
-        `${band} ${name} must surface the honest no-summary placeholder, not invented enrichment`);
+      assert.equal(sample.support?.content, undefined,
+        `${band} ${name} GPU card must omit empty description, not paint No summary supplied`);
     }
   }
 
@@ -104,19 +103,19 @@ test('CLA-53: L1/L2 dogfood labels stay readable without invented summaries', ()
   assert.notEqual(fontsource.responsibility, NO_SUMMARY_SUPPLIED);
 });
 
-test('CLA-58: GPU cards keep accepted summaries and do not invent enrichment on the snapshot', () => {
+test('CLA-58: GPU cards keep accepted summaries and omit empty No summary copy', () => {
   const snapshot = scanDogfoodLabels();
   const okie = compiledTitle(snapshot, 'system:okie', 'context');
   assert.equal(okie.support?.content, 'Spatial architecture atlas.');
 
   const react = compiledTitle(snapshot, 'external:react', 'context');
-  assert.equal(react.support?.content, NO_SUMMARY_SUPPLIED);
+  assert.equal(react.support, undefined);
 
   const web = compiledTitle(snapshot, 'container:web', 'container');
   assert.equal(web.support?.content, 'React shell.');
 
   const scan = compiledTitle(snapshot, 'container:scan', 'container');
-  assert.equal(scan.support?.content, NO_SUMMARY_SUPPLIED);
+  assert.equal(scan.support, undefined);
 
   const snapshotReact = snapshot.entities.find(entity => entity.id === 'external:react')!;
   assert.equal(snapshotReact.responsibility, undefined);

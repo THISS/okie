@@ -73,7 +73,7 @@ import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
 import { relationFramingPlan } from './relations/relationFraming';
 import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { buildArchitectureBrief, canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorTabForEntity, inspectorTabSequence, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow, type InspectorTab } from './inspector/inspectorSupport';
+import { buildArchitectureBrief, canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorTabSequence, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -2862,7 +2862,7 @@ export function App() {
       detail: nextSession.baseDetail,
       lensPath: semanticLensCanonicalPathIds(nextSession),
     }, navigationDefaults), historyMode);
-    setLiveMessage(`${entity.name} selected. ${entity.responsibility}`);
+    setLiveMessage(inspectorAcceptedSummary(entity) ? `${entity.name} selected. ${inspectorAcceptedSummary(entity)}` : `${entity.name} selected.`);
     // Selection never moves the camera, even when the card sits off-screen or
     // behind the inspector: only an explicit camera intent ("Show on map",
     // "Open source", search framing) may reframe. See
@@ -4834,7 +4834,7 @@ export function App() {
               <div className="search-input-row"><SearchIcon/><input autoFocus id="atlas-search" onChange={event => setSearch(event.target.value)} onKeyDown={event => { event.stopPropagation(); if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); return; } if (event.key === 'Escape') { event.preventDefault(); setSearchOpen(false); } }} onKeyPress={event => event.stopPropagation()} placeholder="Search architecture and code" value={search}/><button aria-label="Close search" onClick={() => setSearchOpen(false)}><CloseIcon/></button></div>
               <p className="popover-label">{search ? `${searchResults.length} MATCHES` : 'ON THIS MAP'}</p>
               <div className="search-results" role="listbox">
-                {searchResults.map(entity => <button aria-selected={entity.id === selectedId} key={entity.id} onClick={() => focusEntity(entity, 'push', 'frame')} role="option"><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{entity.kindLabel ?? entity.kind} · {entity.source ?? entity.responsibility}</small></span><span className="result-enter">↵</span></button>)}
+                {searchResults.map(entity => <button aria-selected={entity.id === selectedId} key={entity.id} onClick={() => focusEntity(entity, 'push', 'frame')} role="option"><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{[entity.kindLabel ?? entity.kind, entity.source ?? inspectorAcceptedSummary(entity)].filter(Boolean).join(' · ')}</small></span><span className="result-enter">↵</span></button>)}
                 {!searchResults.length && <p className="empty-state">No architecture entities match that query.</p>}
               </div>
             </div>
@@ -5052,7 +5052,7 @@ export function App() {
             <summary aria-label="Toggle entity list" id="entity-explorer"><LayersIcon size={15}/><span>Entity list</span></summary>
             <div className="entity-explorer-list" aria-label="Architecture entities" data-explorer-count={visibleExplorerEntities.length} data-testid="entity-explorer-list">
               <p>KEYBOARD EXPLORER · {visibleExplorerEntities.length.toLocaleString()} ENTITIES</p>
-              {visibleExplorerEntities.map(entity => <button aria-current={entity.id === selectedId ? 'true' : undefined} key={entity.id} onClick={() => focusEntity(entity)}><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{entity.kindLabel ?? entity.kind} · {entity.responsibility}</small></span></button>)}
+              {visibleExplorerEntities.map(entity => <button aria-current={entity.id === selectedId ? 'true' : undefined} key={entity.id} onClick={() => focusEntity(entity)}><span className={`result-icon kind-${entity.kind}`}>{(entity.kindLabel ?? entity.kind).slice(0, 2).toUpperCase()}</span><span><strong>{entity.name}</strong><small>{inspectorSecondaryCopy(entity)}</small></span></button>)}
             </div>
           </details>
 
@@ -5252,12 +5252,12 @@ export function App() {
 
               {selectedParent && <section className="detail-section parent-section">
                 <div className="section-title"><h3>Parent layer</h3><span>1</span></div>
-                <div className="inspector-link-list"><button data-inspector-entity-id={selectedParent.id} onClick={() => navigateInspectorHierarchy(selectedParent)}><span><strong>{selectedParent.name}</strong><small>{selectedParent.responsibility || selectedParent.kindLabel || selectedParent.kind}</small></span><ArrowIcon size={15}/></button></div>
+                <div className="inspector-link-list"><button data-inspector-entity-id={selectedParent.id} onClick={() => navigateInspectorHierarchy(selectedParent)}><span><strong>{selectedParent.name}</strong><small>{inspectorSecondaryCopy(selectedParent)}</small></span><ArrowIcon size={15}/></button></div>
               </section>}
 
               {(paintedChildren.length > 0 || omittedChildNodes.length > 0) && <section className="detail-section children-section">
                 <div className="section-title"><h3>Inside this layer</h3><span>{paintedChildren.length + omittedChildNodes.length}</span></div>
-                <div className="inspector-link-list">{paintedChildren.map(child => <button data-inspector-entity-id={child.id} key={child.id} onClick={() => navigateInspectorHierarchy(child)}><span><strong>{child.name}</strong><small>{child.responsibility || child.kindLabel || child.kind}</small></span><ArrowIcon size={15}/></button>)}</div>
+                <div className="inspector-link-list">{paintedChildren.map(child => <button data-inspector-entity-id={child.id} key={child.id} onClick={() => navigateInspectorHierarchy(child)}><span><strong>{child.name}</strong><small>{inspectorSecondaryCopy(child)}</small></span><ArrowIcon size={15}/></button>)}</div>
                 {omittedChildNodes.length > 0 && <button aria-expanded={omittedNodesExpanded} className="empty-inspector-section relations-omitted-more" data-inspector-omitted-node-count={omittedChildNodes.length} data-testid="inspector-omitted-nodes-more" onClick={() => setOmittedNodesExpanded(open => !open)} type="button">+{omittedChildNodes.length} more</button>}
                 {omittedChildNodes.length > 0 && omittedNodesExpanded ? <div className="relations-omitted-list" data-testid="inspector-omitted-nodes-list">{omittedChildNodes.map(node => {
                   const entity = scene.entities.find(candidate => candidate.id === node.entityId);

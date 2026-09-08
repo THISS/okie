@@ -1,5 +1,5 @@
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RenderState, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation, SemanticDetail } from './types';
-import { C4_BOUNDARY_STROKE_ALPHA, C4_LABEL_MIN_TITLE_PX, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, c4TitleFitFloor, codeCardCopy, fitDisplayText, fitDisplayTextAtSize, NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
+import { C4_BOUNDARY_STROKE_ALPHA, C4_LABEL_MIN_TITLE_PX, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, c4TitleFitFloor, cardSupportCopy, codeCardCopy, fitDisplayText, fitDisplayTextAtSize } from '@okie/scene-compiler';
 import { roundedOrthogonalRoute, routeArrowHead, routeArrowHeads, routeShaft, type RouteArrowHead, type RoutePoint } from './routeGeometry';
 
 const palette = {
@@ -589,7 +589,7 @@ export class Canvas2DRenderer implements AtlasRenderer {
 
     const rawDescription = codeCopy
       ? codeCopy.description
-      : (entity.responsibility.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
+      : cardSupportCopy(entity.responsibility);
     if (!boundary && rawDescription) {
       ctx.globalAlpha = projectionContentOpacity * labelVisibility;
       ctx.fillStyle = '#9aa8b4';

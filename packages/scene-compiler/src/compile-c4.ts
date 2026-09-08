@@ -6,6 +6,7 @@ import {
   buildC4ProjectionBundle,
   c4ExpectedChildKind,
   c4IntrinsicOwnerMetrics,
+  c4ScanComponentCardFace,
   c4ScanContainerPeerTile,
   computeContainmentLayout,
   materializeArchitectureAuthoring,
@@ -86,6 +87,17 @@ export const C4_BOUNDARY_STROKE_ALPHA = 0.88;
  * the entity list stay truthful. Not an enrichment summary.
  */
 export const NO_SUMMARY_SUPPLIED = 'No summary supplied.';
+
+/**
+ * Card support copy. Empty / placeholder `responsibility` is omitted (CLA-121)
+ * so L3 file cards do not paint “No summary supplied.” when enrichment is off.
+ * Inspector / explorer may still use {@link NO_SUMMARY_SUPPLIED}.
+ */
+export function cardSupportCopy(responsibility?: string): string | undefined {
+  const text = responsibility?.trim();
+  if (!text || text === NO_SUMMARY_SUPPLIED) return undefined;
+  return text;
+}
 
 /**
  * L1–L3 primary titles must project to at least 12 CSS px (golden-okie-hierarchy).
@@ -301,7 +313,7 @@ function presentation(
     ? undefined
     : codeCopy
       ? codeCopy.description
-      : (entity?.responsibility?.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
+      : cardSupportCopy(entity?.responsibility);
   const kindLabel: Record<VisualNode['kind'], string> = {
     person: 'PERSON',
     softwareSystem: 'SOFTWARE SYSTEM',
@@ -831,6 +843,61 @@ function packScanContainerPeerMap(
 }
 
 /**
+ * CLA-121: scan L3 paints compact file-component card faces, not CLA-81
+ * reserved L4 interiors. Nested symbols are not painted at this band, so the
+ * owner grid hugs kicker+title instead of a hollow cavern. L4 / code-band
+ * compiles keep reserved shells. Scan-morph L1 (L2 tiles) is unchanged.
+ */
+function packScanComponentPeerMap(
+  canonical: ReadonlyMap<string, NodeLayout>,
+  childrenByOwner: ReadonlyMap<string, ArchitectureEntity[]>,
+  entities: ReadonlyMap<string, ArchitectureEntity>,
+  targetAspect: number,
+): Map<string, NodeLayout> {
+  const packed = new Map(canonical);
+  const tile = c4ScanComponentCardFace(targetAspect);
+  const owners = [...childrenByOwner.keys()]
+    .map(id => entities.get(id))
+    .filter((entity): entity is ArchitectureEntity => Boolean(entity && isContainerPeerKind(entity.kind)))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  for (const owner of owners) {
+    const files = (childrenByOwner.get(owner.id) ?? []).filter(child => child.kind === 'component');
+    if (!files.length) continue;
+    const origin = packed.get(owner.id);
+    if (!origin) continue;
+    const metrics = c4IntrinsicOwnerMetrics(owner.kind, targetAspect);
+    if (!metrics) continue;
+    const items = files.map(file => ({ id: file.id, width: tile.width, height: tile.height }));
+    const measurement = measureC4Grid(items, metrics);
+    const ownerBounds: NodeLayout = {
+      x: origin.x,
+      y: origin.y,
+      width: measurement.width,
+      height: measurement.height,
+    };
+    packed.set(owner.id, ownerBounds);
+    const ordered = [...files].sort((left, right) => left.id.localeCompare(right.id));
+    const gridX = ownerBounds.x + metrics.paddingLeft;
+    const gridY = ownerBounds.y + metrics.paddingTop;
+    ordered.forEach((child, index) => {
+      const column = index % measurement.columns;
+      const row = Math.floor(index / measurement.columns);
+      const columnX = measurement.columnWidths.slice(0, column).reduce((sum, value) => sum + value, 0)
+        + metrics.gap * column;
+      const rowY = measurement.rowHeights.slice(0, row).reduce((sum, value) => sum + value, 0)
+        + metrics.gap * row;
+      packed.set(child.id, {
+        x: gridX + columnX + (measurement.columnWidths[column]! - tile.width) / 2,
+        y: gridY + rowY + (measurement.rowHeights[row]! - tile.height) / 2,
+        width: tile.width,
+        height: tile.height,
+      });
+    });
+  }
+  return packed;
+}
+
+/**
  * Context-peer flanking geometry (task #35). Persons/externalSystems sit in columns to the
  * LEFT and RIGHT of the system rectangle, deriving their x from the system's ACTUAL settled
  * bounds (never a stage-1 width guess) plus a fixed clearance — so an aspect-packed system
@@ -1207,7 +1274,10 @@ function applyIntrinsicOwnerGeometry(
       ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect, childCounts)
       : targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'context'
         ? packScanContextPeerMap(canonical, root)
-        : canonical;
+        : targetAspect !== undefined && band === 'component' && !scanMorphPlane
+          && bundle.family.focusEntity.logicalId !== root.id
+          ? packScanComponentPeerMap(canonical, childrenByOwner, entities, targetAspect)
+          : canonical;
     for (const [entityId, bounds] of bandCanonical) {
       const visualId = bundle.index.visualNodeIdsByEntityId[entityId]?.[0] ?? `visual-node:${entityId}`;
       if (resident.has(visualId)) {
@@ -1220,6 +1290,7 @@ function applyIntrinsicOwnerGeometry(
           && (kind === 'softwareSystem' || (kind !== undefined && isContainerPeerKind(kind)))
           ? containerFace
           : band === 'code' && omitted.size && kind === 'component'
+            && bundle.family.focusEntity.logicalId === root.id
             ? componentFace
             : undefined;
         layout.nodes[visualId] = { ...(compact ?? bounds) };
@@ -1235,12 +1306,16 @@ function applyIntrinsicOwnerGeometry(
       if (omitted.has(visualId) && parentVisible) {
         // CLA-120: L2 preview omissions are `+N more`, not a hollow dump of
         // reserved file/symbol cells inside the container shell.
-        const kind = bundle.visualNodeById[visualId]?.kind;
+        const kind = bundle.visualNodeById[visualId]?.kind
+          ?? entities.get(entityId)?.kind;
         if (scanMorphPlane && (kind === 'component' || kind === 'code')) continue;
+        // CLA-121: L3 cards must not paint hollow L4 reserved cells.
+        if (band !== 'code' && kind === 'code') continue;
         reservedShells[visualId] = { ...bounds };
         continue;
       }
       if (!unpublishedIds.has(entityId) || !parentVisible) continue;
+      if (band !== 'code' && entities.get(entityId)?.kind === 'code') continue;
       reservedShells[visualId] = { ...bounds };
       if (!bundle.index.entityIdByVisualNodeId[visualId]) {
         bundle.index.entityIdByVisualNodeId[visualId] = entityId;

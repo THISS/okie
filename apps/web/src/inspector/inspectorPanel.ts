@@ -101,6 +101,21 @@ export function inspectorAcceptedSummary(
   return text;
 }
 
+export type InspectorCaptionEntity = InspectorSummaryEntity & {
+  kindLabel?: string;
+  kind?: string;
+};
+
+/**
+ * CLA-121: list rows (Inside this layer, parent, explorer) omit the empty
+ * “No summary supplied.” placeholder. Kind remains as a structural caption.
+ */
+export function inspectorSecondaryCopy(
+  entity: InspectorCaptionEntity | undefined,
+): string | undefined {
+  return inspectorAcceptedSummary(entity) ?? entity?.kindLabel ?? entity?.kind;
+}
+
 export type InspectorOwnersEntity = {
   owners?: readonly string[];
 };

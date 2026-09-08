@@ -2,6 +2,7 @@ export {
   clampInspectorWidth,
   defaultInspectorWidth,
   inspectorAcceptedSummary,
+  inspectorSecondaryCopy,
   inspectorCanShowSource,
   inspectorCyclomatic,
   inspectorCoverage,
