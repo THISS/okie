@@ -198,6 +198,8 @@ export type C4SceneOptions = {
   maxGridNodes?: number;
   maxNodesPerBand?: number;
   pageCodeLandmarks?: boolean;
+  /** CLA-120: L2 landmark file-pill cap per container. Omitted for golden. */
+  maxL2PreviewPillsPerOwner?: number;
   residentWorldBounds?: { x: number; y: number; width: number; height: number };
   keepEntityIds?: readonly string[];
   /** Aspect-aware packing target (scan mode, task #30); omitted for the golden fixture
@@ -331,6 +333,9 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
     ...(options.maxNodesPerBand !== undefined ? { maxNodesPerBand: options.maxNodesPerBand } : {}),
     ...(options.pageCodeLandmarks ? { pageCodeLandmarks: true } : {}),
+    ...(options.maxL2PreviewPillsPerOwner !== undefined
+      ? { maxL2PreviewPillsPerOwner: options.maxL2PreviewPillsPerOwner }
+      : {}),
     ...(entityLayoutHints ? { entityLayoutHints } : {}),
     ...(options.residentWorldBounds ? { residentWorldBounds: options.residentWorldBounds } : {}),
     ...(options.keepEntityIds ? { keepEntityIds: options.keepEntityIds } : {}),

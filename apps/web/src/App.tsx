@@ -5258,10 +5258,10 @@ export function App() {
               {(paintedChildren.length > 0 || omittedChildNodes.length > 0) && <section className="detail-section children-section">
                 <div className="section-title"><h3>Inside this layer</h3><span>{paintedChildren.length + omittedChildNodes.length}</span></div>
                 <div className="inspector-link-list">{paintedChildren.map(child => <button data-inspector-entity-id={child.id} key={child.id} onClick={() => navigateInspectorHierarchy(child)}><span><strong>{child.name}</strong><small>{child.responsibility || child.kindLabel || child.kind}</small></span><ArrowIcon size={15}/></button>)}</div>
-                {omittedChildNodes.length > 0 && <button aria-expanded={omittedNodesExpanded} className="empty-inspector-section relations-omitted-more" data-inspector-omitted-node-count={omittedChildNodes.length} data-testid="inspector-omitted-nodes-more" onClick={() => setOmittedNodesExpanded(open => !open)} type="button">+{omittedChildNodes.length} more off-camera</button>}
+                {omittedChildNodes.length > 0 && <button aria-expanded={omittedNodesExpanded} className="empty-inspector-section relations-omitted-more" data-inspector-omitted-node-count={omittedChildNodes.length} data-testid="inspector-omitted-nodes-more" onClick={() => setOmittedNodesExpanded(open => !open)} type="button">+{omittedChildNodes.length} more</button>}
                 {omittedChildNodes.length > 0 && omittedNodesExpanded ? <div className="relations-omitted-list" data-testid="inspector-omitted-nodes-list">{omittedChildNodes.map(node => {
                   const entity = scene.entities.find(candidate => candidate.id === node.entityId);
-                  return <button data-omitted-node-id={node.entityId} disabled={!entity} key={node.entityId} onClick={() => entity && revealOmittedEntity(entity)} type="button"><span><strong>{node.name}</strong><small>off-camera at this zoom</small></span></button>;
+                  return <button data-omitted-node-id={node.entityId} disabled={!entity} key={node.entityId} onClick={() => entity && revealOmittedEntity(entity)} type="button"><span><strong>{node.name}</strong><small>not shown at this zoom</small></span></button>;
                 })}</div> : null}
               </section>}
 

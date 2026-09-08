@@ -11,7 +11,7 @@ describe('CLA-74: viewport neighborhood is camera-resident tiles', () => {
     expect(app).toContain('function refreshViewportNeighborhood(');
     expect(app).toContain('expandRectByTileRing(cameraWorldRect(windowCamera, viewport))');
     expect(app).toContain('data-testid="inspector-omitted-nodes-more"');
-    expect(app).toContain('+{omittedChildNodes.length} more off-camera');
+    expect(app).toContain('+{omittedChildNodes.length} more');
     expect(app).toContain('prefetchCommittedBox(');
   });
 

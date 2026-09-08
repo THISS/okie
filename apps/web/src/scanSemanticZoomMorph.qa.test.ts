@@ -24,6 +24,7 @@ import {
   compileScanFixture,
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_GRID_NODES,
+  SCAN_L2_RESIDENT_PREVIEW_PILLS,
   SCAN_RELATION_EDGE_BUDGET,
   SCAN_RESIDENT_NODES_PER_BAND,
   scanKeepsResidentL3Landmarks,
@@ -54,6 +55,7 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     });
     expect(scanKeepsResidentL3Landmarks(compiled.snapshot, compiled.navigation.rootEntityId)).toBe(false);
 

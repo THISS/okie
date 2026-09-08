@@ -24,6 +24,7 @@ import {
   compileScanNeighborhoodFixture,
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_GRID_NODES,
+  SCAN_L2_RESIDENT_PREVIEW_PILLS,
   SCAN_RELATION_EDGE_BUDGET,
   SCAN_RESIDENT_NODES_PER_BAND,
   scanKeepsResidentL3Landmarks,
@@ -58,6 +59,7 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     });
 
     const scene = compiled.createScene(compiled.navigation.rootEntityId);

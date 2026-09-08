@@ -422,6 +422,43 @@ function omittedVisualIds(bundle: C4ProjectionBundle): Set<string> {
   return omitted;
 }
 
+function remainderBadgePrimitives(
+  bounds: NodeLayout,
+  count: number,
+  theme: SceneTheme,
+  visualScale: number,
+): Representation['primitives'] {
+  const label = `+${count} more`;
+  const maxWidth = Math.max(1, bounds.width - 8 * visualScale);
+  const fontSize = Math.max(6 * visualScale, Math.min(14 * visualScale, bounds.height * 0.42));
+  const content = fitDisplayText(label, maxWidth, fontSize, 'word', 'sans-semibold');
+  return [
+    {
+      kind: 'roundedRect',
+      rect: bounds,
+      radius: Math.max(0, Math.min(10 * visualScale, bounds.width / 2, bounds.height / 2)),
+      fill: [theme.mutedText[0], theme.mutedText[1], theme.mutedText[2], 0.16],
+      stroke: {
+        color: [theme.mutedText[0], theme.mutedText[1], theme.mutedText[2], 0.55],
+        width: 1.15 * visualScale,
+      },
+    },
+    {
+      kind: 'text',
+      position: {
+        x: bounds.x + 4 * visualScale,
+        y: bounds.y + bounds.height * 0.62,
+      },
+      maxWidth,
+      content,
+      fontFamily: 'IBM Plex Sans SemiBold',
+      fontSize,
+      color: theme.mutedText,
+      align: 'start',
+    },
+  ];
+}
+
 function objectForNode(
   snapshot: ArchitectureSnapshot,
   bundle: C4ProjectionBundle,
@@ -438,6 +475,7 @@ function objectForNode(
     revealLod?: LodRange;
     shell: boolean;
     reservedInside: NodeLayout[];
+    remainder?: { count: number; bounds: NodeLayout };
   }> = [];
   for (const band of C4_BANDS) {
     const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
@@ -456,6 +494,7 @@ function objectForNode(
           entity.id === childEntityId && entity.parentId === node.entity.logicalId);
       })
       .map(([, shellBounds]) => shellBounds);
+    const remainder = layout.remainderBadges?.[node.id];
     const boundary = visibleChildren(projection, bundle).has(node.id) || reservedInside.length > 0;
     // Coverage reveal (opt-in): a child card reveals when its PARENT crosses the coverage
     // target; an owner's boundary shell reveals when ITS OWN box does, at the band where its
@@ -469,7 +508,15 @@ function objectForNode(
         if (parentBounds) revealLod = coverageRevealLod(parentBounds, band, targetAspect);
       }
     }
-    appearances.push({ band, bounds, boundary, shell, reservedInside, ...(revealLod ? { revealLod } : {}) });
+    appearances.push({
+      band,
+      bounds,
+      boundary,
+      shell,
+      reservedInside,
+      ...(remainder && remainder.count > 0 ? { remainder } : {}),
+      ...(revealLod ? { revealLod } : {}),
+    });
   }
   if (!appearances.length) return undefined;
   const bounds = union(appearances.map(value => value.bounds));
@@ -481,9 +528,12 @@ function objectForNode(
     pickable: !appearances.every(value => value.shell),
     representations: appearances.map(value => {
       const representation = presentation(node, entity, value.bounds, value.band, value.boundary, theme, value.revealLod, value.shell);
-      if (value.shell || !value.reservedInside.length) return representation;
+      if (value.shell || (!value.reservedInside.length && !value.remainder)) return representation;
       const visualScale = visualScaleByBand[value.band];
       const fill = theme.entityFill[node.kind];
+      const remainderPrimitives = value.remainder
+        ? remainderBadgePrimitives(value.remainder.bounds, value.remainder.count, theme, visualScale)
+        : [];
       return {
         ...representation,
         primitives: [
@@ -498,6 +548,7 @@ function objectForNode(
               width: 1.25 * visualScale,
             },
           })),
+          ...remainderPrimitives,
         ],
       };
     }),
@@ -872,7 +923,8 @@ function placeResidentKidsInParents(
   kidKind: VisualNode['kind'],
   focusZoom: number,
   headerPx: number,
-): void {
+  omittedCountByParent?: ReadonlyMap<string, number>,
+): Record<string, { count: number; bounds: NodeLayout }> {
   const byParent = new Map<string, string[]>();
   for (const id of visualNodeIds) {
     const node = visualNodeById[id];
@@ -881,13 +933,18 @@ function placeResidentKidsInParents(
     list.push(id);
     byParent.set(node.parentVisualId, list);
   }
+  const remainders: Record<string, { count: number; bounds: NodeLayout }> = {};
   const padX = C4_INTRINSIC_LAYOUT.sidePadding / focusZoom;
   const padTop = headerPx / focusZoom;
   const padBottom = C4_INTRINSIC_LAYOUT.bottomPadding / focusZoom;
   const gap = 8 / focusZoom;
-  for (const [parentId, kids] of [...byParent.entries()].sort(([left], [right]) => left.localeCompare(right))) {
-    const parent = nodes[parentId]!;
-    kids.sort((left, right) => left.localeCompare(right));
+  const parentIds = new Set([...byParent.keys(), ...(omittedCountByParent?.keys() ?? [])]);
+  for (const parentId of [...parentIds].sort()) {
+    const parent = nodes[parentId];
+    if (!parent) continue;
+    const kids = [...(byParent.get(parentId) ?? [])].sort((left, right) => left.localeCompare(right));
+    const omitted = omittedCountByParent?.get(parentId) ?? 0;
+    const slotCount = kids.length + (omitted > 0 ? 1 : 0);
     let innerX = parent.x + padX;
     let innerY = parent.y + padTop;
     let innerW = parent.width - padX * 2;
@@ -907,24 +964,29 @@ function placeResidentKidsInParents(
     innerY = Math.min(Math.max(parent.y, innerY), maxY);
     innerW = Math.max(1, Math.min(innerW, maxX - innerX));
     innerH = Math.max(1, Math.min(innerH, maxY - innerY));
-    const cols = Math.max(1, Math.ceil(Math.sqrt(kids.length)));
-    const rows = Math.ceil(kids.length / cols);
+    const cols = Math.max(1, Math.ceil(Math.sqrt(slotCount)));
+    const rows = Math.ceil(slotCount / cols);
     const cellW = innerW / cols;
     const cellH = innerH / rows;
     const inset = Math.min(gap, cellW / 4, cellH / 4);
-    kids.forEach((id, index) => {
+    const cellAt = (index: number): NodeLayout => {
       const column = index % cols;
       const row = Math.floor(index / cols);
       const x = innerX + column * cellW + inset;
       const y = innerY + row * cellH + inset;
-      nodes[id] = {
+      return {
         x,
         y,
         width: Math.max(1, Math.min(cellW - inset * 2, maxX - x)),
         height: Math.max(1, Math.min(cellH - inset * 2, maxY - y)),
       };
+    };
+    kids.forEach((id, index) => {
+      nodes[id] = cellAt(index);
     });
+    if (omitted > 0) remainders[parentId] = { count: omitted, bounds: cellAt(kids.length) };
   }
+  return remainders;
 }
 
 function applyIntrinsicOwnerGeometry(
@@ -1141,7 +1203,7 @@ function applyIntrinsicOwnerGeometry(
       && root.kind === 'softwareSystem'
       && bundle.family.focusEntity.logicalId === root.id
       && Boolean(bundle.projectionById[bundle.family.projectionIds.code]?.omittedNodeIds?.length);
-    const bandCanonical = targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'container'
+    const bandCanonical: ReadonlyMap<string, NodeLayout> = targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'container'
       ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect, childCounts)
       : targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'context'
         ? packScanContextPeerMap(canonical, root)
@@ -1171,6 +1233,10 @@ function applyIntrinsicOwnerGeometry(
         parentVisualId && (resident.has(parentVisualId) || layout.nodes[parentVisualId]),
       );
       if (omitted.has(visualId) && parentVisible) {
+        // CLA-120: L2 preview omissions are `+N more`, not a hollow dump of
+        // reserved file/symbol cells inside the container shell.
+        const kind = bundle.visualNodeById[visualId]?.kind;
+        if (scanMorphPlane && (kind === 'component' || kind === 'code')) continue;
         reservedShells[visualId] = { ...bounds };
         continue;
       }
@@ -1199,14 +1265,23 @@ function applyIntrinsicOwnerGeometry(
     if (Object.keys(reservedShells).length) layout.reservedShells = reservedShells;
     else delete layout.reservedShells;
     if (band === 'component' && scanMorphPlane) {
-      placeResidentKidsInParents(
+      const omittedByParent = new Map<string, number>();
+      for (const id of projection.omittedNodeIds ?? []) {
+        const child = bundle.visualNodeById[id];
+        if (child?.kind !== 'component' || !child.parentVisualId) continue;
+        omittedByParent.set(child.parentVisualId, (omittedByParent.get(child.parentVisualId) ?? 0) + 1);
+      }
+      const remainders = placeResidentKidsInParents(
         layout.nodes,
         projection.visualNodeIds,
         bundle.visualNodeById,
         'component',
         C4_ZOOM_BANDS[2]!.focusZoom,
         C4_INTRINSIC_LAYOUT.header.container,
+        omittedByParent,
       );
+      if (Object.keys(remainders).length) layout.remainderBadges = remainders;
+      else delete layout.remainderBadges;
     }
     if (band === 'code' && omitted.size) {
       placeResidentKidsInParents(
@@ -1263,6 +1338,12 @@ export function normalizeC4OwnerGeometry(
       }])),
       ...(layout.reservedShells ? {
         reservedShells: Object.fromEntries(Object.entries(layout.reservedShells).map(([nodeId, bounds]) => [nodeId, { ...bounds }])),
+      } : {}),
+      ...(layout.remainderBadges ? {
+        remainderBadges: Object.fromEntries(Object.entries(layout.remainderBadges).map(([nodeId, badge]) => [nodeId, {
+          count: badge.count,
+          bounds: { ...badge.bounds },
+        }])),
       } : {}),
     }])),
     index: {

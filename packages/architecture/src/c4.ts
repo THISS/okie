@@ -110,6 +110,12 @@ export type BandLayout = {
    * ids. Absent on the golden/default path.
    */
   reservedShells?: Record<string, NodeLayout>;
+  /**
+   * CLA-120: `+N more` remainder chip inside an L2 container that capped
+   * resident preview pills. Keys are parent visual node ids. Absent when
+   * every child is resident (golden / unbounded / L3 Open inside).
+   */
+  remainderBadges?: Record<string, { count: number; bounds: NodeLayout }>;
 };
 
 export type ProjectionIndex = {
@@ -200,6 +206,13 @@ export type BuildC4ProjectionOptions = {
    * both component and code (CLA-74). Additive; omitted → byte-identical.
    */
   pageCodeLandmarks?: boolean;
+  /**
+   * CLA-120: at L2 (context-rank focus), keep this many landmark component
+   * pills per container and record the rest on `omittedNodeIds` (`+N more`).
+   * Does not apply at L3 Open inside / container focus. Default: unbounded
+   * (byte-identical). Independent of CLA-119 √N footprints.
+   */
+  maxL2PreviewPillsPerOwner?: number;
   /**
    * World-space entity bounds for L4 paging (previous compiled scene). When
    * set, `pageCodeLandmarks` selects L4 in that camera space instead of
@@ -348,6 +361,69 @@ export function c4ContainmentLeafSize(kind: EntityKind, targetAspect?: number): 
  * nested shell, not a full-bleed squarified treemap of the L2 map.
  */
 export const C4_SCAN_L2_PEER_TILE_CHILD_COMFORT = 9;
+
+/**
+ * Landmark file-pill cap inside one L2 container shell (CLA-120). Fat
+ * packages like `@okie/web` keep this many resident preview pills plus a
+ * `+N more` remainder; Open inside / L2→L3 still compiles the full
+ * neighborhood. Midpoint of the 8–12 product window; independent of the
+ * hang-guard (2000) and of CLA-119 √N footprints.
+ */
+export const C4_SCAN_L2_RESIDENT_PREVIEW_PILLS = 10;
+
+export type L2PreviewVisualNode = {
+  kind: EntityKind;
+  entity: { logicalId: string };
+  parentVisualId?: string;
+};
+
+/**
+ * Per-owner L2 preview window: keep {@link C4_SCAN_L2_RESIDENT_PREVIEW_PILLS}
+ * landmark `component` pills (heavier code children first, then id), omit
+ * the rest for `+N more`. Coarser shells always stay resident. Default
+ * (no cap) is not used — callers pass the constant explicitly so golden
+ * stays byte-identical.
+ */
+export function selectL2ResidentPreviewPills(input: {
+  visualNodeIds: readonly string[];
+  visualNodeById: Readonly<Record<string, L2PreviewVisualNode>>;
+  maxPillsPerOwner: number;
+}): { residentIds: string[]; omittedIds: string[] } {
+  const ordered = [...input.visualNodeIds];
+  const byId = input.visualNodeById;
+  const cap = Math.max(0, input.maxPillsPerOwner);
+  const codeWeight = new Map<string, number>();
+  for (const node of Object.values(byId)) {
+    if (node.kind !== 'code' || !node.parentVisualId) continue;
+    codeWeight.set(node.parentVisualId, (codeWeight.get(node.parentVisualId) ?? 0) + 1);
+  }
+  const byParent = new Map<string, string[]>();
+  const always = new Set<string>();
+  for (const id of ordered) {
+    const node = byId[id];
+    if (!node || node.kind !== 'component') {
+      always.add(id);
+      continue;
+    }
+    const parent = node.parentVisualId ?? '';
+    const list = byParent.get(parent) ?? [];
+    list.push(id);
+    byParent.set(parent, list);
+  }
+  const kept = new Set(always);
+  for (const kids of byParent.values()) {
+    const ranked = [...kids].sort((left, right) => {
+      const leftWeight = codeWeight.get(left) ?? 0;
+      const rightWeight = codeWeight.get(right) ?? 0;
+      return rightWeight - leftWeight || left.localeCompare(right);
+    });
+    for (const id of ranked.slice(0, cap)) kept.add(id);
+  }
+  return {
+    residentIds: ordered.filter(id => kept.has(id)),
+    omittedIds: ordered.filter(id => !kept.has(id)),
+  };
+}
 
 /** Compact (N≤comfort) scan L2 package tile — one intrinsic leaf at container focus. */
 export function c4ScanContainerPeerTileBase(): { width: number; height: number } {
@@ -1229,6 +1305,7 @@ export function buildC4ProjectionBundle(
   const visualEdgeById: Record<string, VisualEdge> = {};
   const bandLayoutById: Record<string, BandLayout> = {};
   const authoredRelationIds = new Set(options.authoredRelationIds ?? []);
+  const l2PreviewOmittedComponentIds = new Set<string>();
 
   for (const band of C4_BANDS) {
     const rank = bandRank[band];
@@ -1420,6 +1497,55 @@ export function buildC4ProjectionBundle(
         const edge = visualEdgeById[id]!;
         return resident.has(edge.fromVisualId) && resident.has(edge.toVisualId);
       });
+    }
+    // CLA-120: L2 (context-rank focus) keeps a landmark handful of file pills
+    // per container. Open inside / container focus does not take this path.
+    if (
+      options.maxL2PreviewPillsPerOwner !== undefined
+      && band === 'component'
+      && entityRank(focus.kind) === 0
+    ) {
+      const selection = selectL2ResidentPreviewPills({
+        visualNodeIds,
+        visualNodeById,
+        maxPillsPerOwner: options.maxL2PreviewPillsPerOwner,
+      });
+      omittedNodeIds = [...new Set([...omittedNodeIds, ...selection.omittedIds])];
+      visualNodeIds = selection.residentIds;
+      for (const id of selection.omittedIds) {
+        const logicalId = visualNodeById[id]?.entity.logicalId;
+        if (logicalId) l2PreviewOmittedComponentIds.add(logicalId);
+      }
+      const resident = new Set(visualNodeIds);
+      candidateEdgeIds = candidateEdgeIds.filter(id => {
+        const edge = visualEdgeById[id]!;
+        return resident.has(edge.fromVisualId) && resident.has(edge.toVisualId);
+      });
+    }
+    if (l2PreviewOmittedComponentIds.size && band === 'code') {
+      const extra = visualNodeIds.filter(id => {
+        const node = visualNodeById[id];
+        if (node?.kind !== 'code') return false;
+        let current = node.parentVisualId;
+        const seen = new Set<string>();
+        while (current && !seen.has(current)) {
+          seen.add(current);
+          const parent = visualNodeById[current];
+          if (parent && l2PreviewOmittedComponentIds.has(parent.entity.logicalId)) return true;
+          current = parent?.parentVisualId;
+        }
+        return false;
+      });
+      if (extra.length) {
+        omittedNodeIds = [...new Set([...omittedNodeIds, ...extra])];
+        const drop = new Set(extra);
+        visualNodeIds = visualNodeIds.filter(id => !drop.has(id));
+        const resident = new Set(visualNodeIds);
+        candidateEdgeIds = candidateEdgeIds.filter(id => {
+          const edge = visualEdgeById[id]!;
+          return resident.has(edge.fromVisualId) && resident.has(edge.toVisualId);
+        });
+      }
     }
     // Edge budget (opt-in): route only the top-N edges, focus-first — an edge touching
     // the focus subtree outranks every global heavy-hitter, so a drilled scope always
