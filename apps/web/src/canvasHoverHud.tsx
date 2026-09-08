@@ -5,7 +5,6 @@ import {
   codeCardCopy,
   fitDisplayText,
   fitDisplayTextAtSize,
-  NO_SUMMARY_SUPPLIED,
 } from '@okie/scene-compiler';
 import { authoringBoundsForDetail, worldToScreen } from './editor/relationshipInteraction';
 import { inspectorAcceptedSummary } from './inspector/inspectorPanel';
@@ -103,7 +102,7 @@ export function cardNeedsHoverHud(
   const painted = paintedCardCopy(entity, detail, boundary, zoom, screenWidth);
   if (painted.fittedTitle.content !== entity.name) return true;
   if (painted.rawDescription && painted.fittedDescription && painted.fittedDescription !== painted.rawDescription) return true;
-  return !boundary && (!entity.responsibility.trim() || entity.responsibility === NO_SUMMARY_SUPPLIED);
+  return !boundary && !painted.rawDescription && !cardSupportCopy(entity.responsibility);
 }
 
 export function canvasHoverHudModel(query: CanvasHoverHudQuery): CanvasHoverHudModel | undefined {

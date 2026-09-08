@@ -179,7 +179,7 @@ describe('inspector accepted section summaries (CLA-26)', () => {
     expect(code.sourceRefs?.length).toBeGreaterThan(0);
   });
 
-  it('puts the honest placeholder on GPU compiled card descriptions when responsibility is absent (CLA-58)', () => {
+  it('omits empty No summary copy on GPU compiled cards (CLA-121)', () => {
     const scene = createC4Scene({
       baseSnapshot: scanSnapshot(
         [
@@ -209,8 +209,8 @@ describe('inspector accepted section summaries (CLA-26)', () => {
 
     expect(scene.entities.find(entity => entity.id === 'external:react')?.responsibility).toBe(INSPECTOR_EMPTY_SUMMARY);
     expect(inspectorAcceptedSummary(scene.entities.find(entity => entity.id === 'external:react'))).toBeUndefined();
-    expect(descriptionOn('external:react', 'context')).toBe(INSPECTOR_EMPTY_SUMMARY);
-    expect(descriptionOn('external:dompurify', 'context')).toBe(INSPECTOR_EMPTY_SUMMARY);
+    expect(descriptionOn('external:react', 'context')).toBeUndefined();
+    expect(descriptionOn('external:dompurify', 'context')).toBeUndefined();
     expect(descriptionOn('system:app', 'context')).toBe('Hosts the atlas.');
   });
 });

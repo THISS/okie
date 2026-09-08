@@ -193,11 +193,6 @@ function isReservedContainerShell(bounds: WorldRect): boolean {
     || bounds.height > C4_CONTAINER_CARD_FACE.height * 1.25;
 }
 
-function isReservedComponentShell(bounds: WorldRect): boolean {
-  return bounds.width > C4_COMPONENT_CARD_FACE.width * 1.25
-    || bounds.height > C4_COMPONENT_CARD_FACE.height * 1.25;
-}
-
 function isReservedCodeShell(bounds: WorldRect): boolean {
   return bounds.width > CODE_CARD_FACE.width * 1.25
     || bounds.height > CODE_CARD_FACE.height * 1.25;
@@ -808,11 +803,11 @@ export function frameProjectionScope(
     const peers = frameContainerPeerArrivalCamera(scene, rootEntityId, viewport, safeArea);
     if (peers) return peers;
   }
-  // CLA-92: Open inside a scan container must frame L3 file-component peer
-  // card faces at a readable band-focus zoom. Coverage-reveal of the reserved
-  // container shell is the same hollow minZoom landing as CLA-90 L2.
-  if (detail === 'component' && scene.targetAspect !== undefined && rootBounds
-    && isReservedComponentShell(rootBounds)) {
+  // CLA-92 / CLA-121: Open inside a scan container frames L3 file-component peer
+  // card faces at a readable band-focus zoom. Compact CLA-121 cards often sit
+  // under the reserved-shell threshold; coverage-reveal of the owner still
+  // undershoots the 12px title floor. Always use the peer arrival camera.
+  if (detail === 'component' && scene.targetAspect !== undefined && rootBounds) {
     const peers = frameComponentPeerArrivalCamera(scene, rootEntityId, viewport, safeArea);
     if (peers) return peers;
   }
