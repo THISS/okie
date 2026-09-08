@@ -196,6 +196,9 @@ describe('CLA-110: Open inside a busy file lands at code-band zoom', () => {
     const scene = scanFileScene(52, undefined);
     expect(scene.targetAspect).toBeUndefined();
     const camera = frameProjectionScope(scene, 'component:ask', 'code', viewport, safeArea)!;
+    const peers = frameCodePeerArrivalCamera(scene, 'component:ask', viewport, safeArea);
     expect(camera.zoom).toBeGreaterThanOrEqual(CODE_BAND_ENTER - 1e-9);
+    expect(camera).not.toEqual(peers);
+    expect(camera.zoom).toBeLessThan(CODE_BAND_FOCUS - 1);
   });
 });

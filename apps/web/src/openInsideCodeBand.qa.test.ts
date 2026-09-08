@@ -233,20 +233,36 @@ describe('CLA-110: Open inside L4 lands at code-band zoom (no kick-out to system
       targetAspect: ASPECT_PRESET_TARGET.landscape,
     });
     const camera = frameProjectionScope(scene, fileId, 'code', viewport, chromeSafeArea)!;
+    expect(camera.zoom).toBeGreaterThanOrEqual(CODE_BAND_ENTER - 1e-9);
     expect(getLevel(camera.zoom, 3)).toBe(3);
+
+    const zoomDetail = (['context', 'container', 'component', 'code'] as const)[getLevel(camera.zoom, 3)]!;
+    expect(zoomDetail).toBe('code');
+    expect(scanZoomCompileHandoff(scene, snapshot, fileId, viewRoot, zoomDetail, fileId)).toBeUndefined();
 
     const inward = getLevel(camera.zoom * 1.08, 3);
     const outward = getLevel(camera.zoom * 0.92, 3);
     expect(inward).toBe(3);
     expect(outward).toBe(3);
-
-    expect(scanZoomCompileHandoff(scene, snapshot, fileId, viewRoot, 'code', fileId)).toBeUndefined();
+    expect(scanZoomCompileHandoff(
+      scene,
+      snapshot,
+      fileId,
+      viewRoot,
+      (['context', 'container', 'component', 'code'] as const)[inward]!,
+      fileId,
+    )).toBeUndefined();
+    expect(scanZoomCompileHandoff(scene, snapshot, fileId, viewRoot, 'container', fileId)).toEqual({
+      detail: 'container',
+      compileFocus: viewRoot,
+    });
     expect(scanCompileFocusForBand(snapshot, fileId, 'code', viewRoot)).toBe(fileId);
     expect(scanCompileFocusForBand(snapshot, fileId, 'container', viewRoot)).toBe(viewRoot);
 
     // The pre-fix coverage-reveal landing (~z=2.87) is container band and would
     // recompile to system:okie. That zoom must not be the Open-inside camera.
     expect(getLevel(2.87, 3)).toBe(1);
-    expect(camera.zoom).toBeGreaterThan(3.35);
+    expect(scanZoomCompileHandoff(scene, snapshot, fileId, viewRoot, 'container', fileId)?.compileFocus)
+      .toBe(viewRoot);
   });
 });
