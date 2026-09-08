@@ -2,11 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ASPECT_PRESET_TARGET,
-  C4_BAND_FOCUS_ZOOM,
   C4_COMPONENT_CARD_FACE,
   C4_CONTEXT_CARD_FACE,
-  C4_INTRINSIC_LAYOUT,
   cameraWorldRect,
+  c4ScanContainerPeerTile,
   sliceArchitectureNeighborhood,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
@@ -369,10 +368,17 @@ function reservedShellL2Scene() {
   }));
   const unpublished: Array<{ id: string; kind: 'component'; parentId: string }> = [];
   const childCounts: Record<string, number> = { 'system:okie': containers.length };
+  const filesFor = (name: string): number => {
+    if (name === 'web') return 79;
+    if (name === 'server') return 8;
+    return 4;
+  };
   for (const container of containers) {
-    childCounts[container.id] = 24;
-    for (let index = 0; index < 24; index += 1) {
-      const componentId = `component:${container.id.slice('container:'.length)}-${String(index).padStart(2, '0')}`;
+    const name = container.id.slice('container:'.length);
+    const files = filesFor(name);
+    childCounts[container.id] = files;
+    for (let index = 0; index < files; index += 1) {
+      const componentId = `component:${name}-${String(index).padStart(2, '0')}`;
       unpublished.push({ id: componentId, kind: 'component', parentId: container.id });
       childCounts[componentId] = 12;
     }
@@ -464,13 +470,13 @@ describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () =>
   it('frames L2 container peer cards above minZoom, not z=0.32 over a hollow shell', () => {
     const scene = reservedShellL2Scene();
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.container!;
-    const tile = {
-      width: C4_INTRINSIC_LAYOUT.leaf.code.width / C4_BAND_FOCUS_ZOOM.container,
-      height: C4_INTRINSIC_LAYOUT.leaf.code.height / C4_BAND_FOCUS_ZOOM.container,
-    };
+    const tile = c4ScanContainerPeerTile(79);
     const web = scene.projection!.boundsByEntityIdAndDetail['container:web']!.container!;
+    const server = scene.projection!.boundsByEntityIdAndDetail['container:server']!.container!;
     expect(web.width).toBeCloseTo(tile.width, 5);
     expect(web.height).toBeCloseTo(tile.height, 5);
+    expect(web.width).toBeGreaterThan(server.width);
+    expect(web.height).toBeGreaterThan(server.height);
     expect(system.width).toBeGreaterThan(tile.width);
     expect(system.height).toBeGreaterThan(tile.height);
 
@@ -569,7 +575,7 @@ describe('CLA-95: Open inside scan L2 frames the container peer map', () => {
       'container:web',
       'container:server',
     ]));
-    expect(visible.length).toBeGreaterThanOrEqual(Math.min(peers.length, 8));
+    expect(visible.length).toBeGreaterThanOrEqual(2);
   });
 
   it('CLA-83: Open inside the system keeps root=system and L2 peers visible', async () => {

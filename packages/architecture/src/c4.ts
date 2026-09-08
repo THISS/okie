@@ -340,6 +340,40 @@ export function c4ContainmentLeafSize(kind: EntityKind, targetAspect?: number): 
   return code;
 }
 
+/**
+ * Child count that still fits Canvas2D titles on the compact L2 peer tile.
+ * `ceil(sqrt(N))` packing into the 224×112 leaf is a ~3×3 grid at N=9, matching
+ * `C4_INTRINSIC_LAYOUT.maxColumns`. CLA-119 scales the leaf by √(N / comfort)
+ * so fat packages expand while N≤comfort stays compact. Edge ∝ √N; that is a
+ * nested shell, not a full-bleed squarified treemap of the L2 map.
+ */
+export const C4_SCAN_L2_PEER_TILE_CHILD_COMFORT = 9;
+
+/** Compact (N≤comfort) scan L2 package tile — one intrinsic leaf at container focus. */
+export function c4ScanContainerPeerTileBase(): { width: number; height: number } {
+  const zoom = C4_BAND_FOCUS_ZOOM.container;
+  return {
+    width: C4_INTRINSIC_LAYOUT.leaf.code.width / zoom,
+    height: C4_INTRINSIC_LAYOUT.leaf.code.height / zoom,
+  };
+}
+
+/**
+ * CLA-119: scan L2 container peer tile. Soft √N — edge scales with
+ * √(childCount / comfort) so `@okie/web`-scale packages breathe and thin
+ * packages stay at the compact leaf. Independent per-container shells packed
+ * as a padded grid, not a treemap fill of the system.
+ */
+export function c4ScanContainerPeerTile(childCount: number): { width: number; height: number } {
+  const base = c4ScanContainerPeerTileBase();
+  const n = Number.isFinite(childCount) ? Math.max(0, childCount) : 0;
+  const scale = Math.max(1, Math.sqrt(n / C4_SCAN_L2_PEER_TILE_CHILD_COMFORT));
+  return {
+    width: base.width * scale,
+    height: base.height * scale,
+  };
+}
+
 /** World-space packed-gutter ceiling for a tight L4 duplicates loop. */
 function packedDuplicatesGutter(clearance: number): number {
   return clearance * 2 + clearance * (C4_SCAN_CODE_GAP_EXTRA_PX / C4_ROUTING_CLEARANCE_PX);

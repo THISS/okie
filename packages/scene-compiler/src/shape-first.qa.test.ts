@@ -5,6 +5,7 @@ import {
   C4_BAND_FOCUS_ZOOM,
   C4_INTRINSIC_LAYOUT,
   buildC4ProjectionBundle,
+  c4ScanContainerPeerTile,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
   type EntityKind,
@@ -162,12 +163,14 @@ test("CLA-95: scan L2 packs container peer tiles, not reserved L3/L4 shells", ()
   assert.ok(l2System);
   assert.ok(l2First);
   assert.ok(l2Last);
-  const tile = {
+  const tile = c4ScanContainerPeerTile(24);
+  assert.ok(Math.abs(l2First.width - tile.width) < 1e-6, "L2 container is a √N peer tile, not a reserved shell");
+  assert.ok(Math.abs(l2First.height - tile.height) < 1e-6);
+  const compact = {
     width: C4_INTRINSIC_LAYOUT.leaf.code.width / C4_BAND_FOCUS_ZOOM.container,
     height: C4_INTRINSIC_LAYOUT.leaf.code.height / C4_BAND_FOCUS_ZOOM.container,
   };
-  assert.ok(Math.abs(l2First.width - tile.width) < 1e-6, "L2 container is a peer tile, not a reserved shell");
-  assert.ok(Math.abs(l2First.height - tile.height) < 1e-6);
+  assert.ok(l2First.width > compact.width, "24-child shells expand past the compact 224×112 leaf");
   const l2LayoutId = compiled.projections.family.projectionIds.container;
   const l2Layout = compiled.projections.bandLayoutById[
     compiled.projections.projectionById[l2LayoutId]!.layoutId
