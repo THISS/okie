@@ -413,6 +413,27 @@ a.icon-button { text-decoration: none; }
 .atlas-canvas:active { cursor: grabbing; }
 .atlas-canvas.authoring-connect { cursor: crosshair; }
 .relationship-authoring-overlay { position: absolute; z-index: 6; inset: 0; overflow: visible; isolation: isolate; pointer-events: none; }
+.canvas-hover-hud {
+  position: absolute;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: min(360px, calc(100% - 24px));
+  padding: 8px 12px 9px;
+  isolation: isolate;
+  border-radius: 10px;
+  background: rgba(7, 10, 11, 0.94);
+  box-shadow: 0 0 28px 16px rgba(7, 10, 11, 0.72);
+  backdrop-filter: blur(16px);
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  color: var(--atlas-text);
+}
+.canvas-hover-hud.place-below { transform: translate(-50%, 0); }
+.canvas-hover-hud strong { font-family: var(--atlas-font-mono); font-size: 12px; font-weight: 600; letter-spacing: -.02em; }
+.canvas-hover-hud-path { color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 11px; line-height: 1.35; word-break: break-all; }
+.canvas-hover-hud-detail { color: var(--atlas-muted); font-family: var(--atlas-font-sans); font-size: 12px; line-height: 1.4; word-break: break-word; }
 .authoring-selected-route,
 .authoring-route-preview,
 .authoring-route-preview-halo { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }

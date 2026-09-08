@@ -131,6 +131,7 @@ import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAn
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
 import { isolateNeighborhoodIds, storyFocusPresentation, storyStepSelectedId } from './storyFocus';
 import { RelationshipAuthoringOverlay } from './editor/RelationshipAuthoringOverlay';
+import { CanvasHoverHud, canvasHoverHudModel, samePickResult } from './canvasHoverHud';
 import { commitGesture, createGestureHistory, redoGesture, undoGesture, type GestureHistory } from './editor/gestureHistory';
 import {
   automaticRelationshipRoute,
@@ -1043,10 +1044,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     }
     const pointer = pointerRef.current;
     if (!pointer || pointer.id !== event.pointerId) {
-      if (authoringEnabled) {
-        const bounds = event.currentTarget.getBoundingClientRect();
-        setHoveredPick(rendererRef.current?.pick(event.clientX - bounds.left, event.clientY - bounds.top));
-      }
+      updateHoverPick(event);
       return;
     }
     let dx = event.clientX - pointer.x;
@@ -1054,6 +1052,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     if (!pointer.moved) {
       if (Math.hypot(event.clientX - pointer.startX, event.clientY - pointer.startY) <= 3) return;
       pointer.moved = true;
+      setHoveredPick(undefined);
       rawCameraRef.current = { ...liveCameraRef.current };
       cancelAssistAnimation();
       onCameraFlightCancelRef.current();
@@ -1137,12 +1136,35 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     syncContinuousRendering();
     schedulerRef.current?.wake();
     cameraPublisherRef.current?.flush();
+    if (event.pointerType !== 'touch') updateHoverPick(event);
+  }
+
+  function updateHoverPick(event: { currentTarget: HTMLDivElement; clientX: number; clientY: number; pointerType?: string }) {
+    if (event.pointerType === 'touch' || pointerRef.current?.moved || pinchRef.current || authoringPointerRef.current) {
+      setHoveredPick(previous => previous ? undefined : previous);
+      return;
+    }
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const next = rendererRef.current?.pick(event.clientX - bounds.left, event.clientY - bounds.top);
+    setHoveredPick(previous => samePickResult(previous, next) ? previous : next);
   }
 
   function pickAt(event: { currentTarget: HTMLDivElement; clientX: number; clientY: number }) {
     const bounds = event.currentTarget.getBoundingClientRect();
     return rendererRef.current?.pick(event.clientX - bounds.left, event.clientY - bounds.top);
   }
+
+  const hoverHud = canvasHoverHudModel({
+    pick: hoveredPick,
+    scene,
+    camera: liveCameraRef.current,
+    viewport: overlaySize,
+    detail: authoringDetail,
+    suppress: (authoringEnabled && authoringTool === 'connect')
+      || Boolean(authoringPointerRef.current)
+      || Boolean(pointerRef.current?.moved)
+      || Boolean(pinchRef.current),
+  });
 
   return (
     <div
@@ -1167,14 +1189,17 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
         authoringPointerRef.current = undefined;
         updateConnectionDraft(undefined);
         updateGuideDraft(undefined);
+        setHoveredPick(undefined);
         syncContinuousRendering();
         schedulerRef.current?.wake();
         cameraPublisherRef.current?.flush();
       }}
+      onPointerLeave={() => setHoveredPick(undefined)}
       role="img"
       tabIndex={0}
     >
       <div className="atlas-renderer-host" ref={hostRef}/>
+      {hoverHud && <CanvasHoverHud model={hoverHud}/>}
       {authoringEnabled && <RelationshipAuthoringOverlay
         boundsByEntityId={Object.fromEntries((scene.projection?.entityIdsByDetail[authoringDetail] ?? scene.entities.map(entity => entity.id)).flatMap(entityId => {
           const bounds = authoringBoundsForDetail(scene, entityId, authoringDetail);
