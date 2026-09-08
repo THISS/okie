@@ -50,3 +50,17 @@ describe('CLA-113 canvas hover HUD', () => {
     expect(app).toContain('<CanvasHoverHud');
   });
 });
+
+describe('CLA-114 L4 card copy', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(BAND_COST_HANG_GUARD_ENTITIES).toBe(2000);
+  });
+
+  it('paints L4 from codeCardCopy and keeps inspector source paths', () => {
+    expect(hud).toContain('codeCardCopy(entity)');
+    expect(app).toContain('source.path');
+    expect(app).toContain('lines ${source.startLine}–${source.endLine}');
+    expect(app).toContain('className="source-card"');
+  });
+});

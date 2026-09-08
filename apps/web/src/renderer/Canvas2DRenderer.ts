@@ -1,5 +1,5 @@
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RenderState, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation, SemanticDetail } from './types';
-import { C4_BOUNDARY_STROKE_ALPHA, C4_LABEL_MIN_TITLE_PX, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, c4TitleFitFloor, fitDisplayText, fitDisplayTextAtSize, NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
+import { C4_BOUNDARY_STROKE_ALPHA, C4_LABEL_MIN_TITLE_PX, C4_PRESENTATION_AT_FOCUS, C4_ZOOM_BANDS, c4TitleFitFloor, codeCardCopy, fitDisplayText, fitDisplayTextAtSize, NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
 import { roundedOrthogonalRoute, routeArrowHead, routeArrowHeads, routeShaft, type RouteArrowHead, type RoutePoint } from './routeGeometry';
 
 const palette = {
@@ -566,7 +566,8 @@ export class Canvas2DRenderer implements AtlasRenderer {
     ctx.rect(origin.x, origin.y, width, height);
     ctx.clip();
     const textMaxWidth = Math.max(1, width - metrics.horizontalInsets);
-    const label = (entity.kindLabel ?? entity.kind).toUpperCase();
+    const codeCopy = entity.detail === 'code' ? codeCardCopy(entity) : undefined;
+    const label = codeCopy?.kicker ?? (entity.kindLabel ?? entity.kind).toUpperCase();
     const displayKicker = fitDisplayText(label, textMaxWidth, metrics.kickerFontSize, 'word', 'sans-semibold');
     const titleMetrics = renderedDetail === 'code' ? 'mono-semibold' as const : 'sans-semibold' as const;
     const titleFloor = c4TitleFitFloor(renderedDetail, metrics.titleFontSize, C4_LABEL_MIN_TITLE_PX);
@@ -586,8 +587,8 @@ export class Canvas2DRenderer implements AtlasRenderer {
     ctx.font = `600 ${fittedTitle.fontSize}px ${diagramFont(renderedDetail === 'code' ? 'mono' : 'sans')}`;
     ctx.fillText(fittedTitle.content, origin.x + metrics.leftInset, origin.y + metrics.titleBaseline);
 
-    const rawDescription = renderedDetail === 'code'
-      ? entity.source
+    const rawDescription = codeCopy
+      ? codeCopy.description
       : (entity.responsibility.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
     if (!boundary && rawDescription) {
       ctx.globalAlpha = projectionContentOpacity * labelVisibility;
@@ -597,7 +598,7 @@ export class Canvas2DRenderer implements AtlasRenderer {
         rawDescription,
         textMaxWidth,
         metrics.descriptionFontSize,
-        renderedDetail === 'code' ? 'path' : 'word',
+        codeCopy?.descriptionMode ?? 'word',
         renderedDetail === 'code' ? 'mono-regular' : 'sans-regular',
       );
       ctx.fillText(description, origin.x + metrics.leftInset, origin.y + metrics.descriptionBaseline);

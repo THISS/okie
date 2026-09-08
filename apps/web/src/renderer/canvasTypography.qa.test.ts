@@ -149,7 +149,7 @@ describe('Canvas2D band-normalized typography', () => {
     expect(childMetrics.strokeWidth).toBeCloseTo(5.731, 3);
   });
 
-  it('clips Canvas labels to their card and uses the source path for code descriptions', () => {
+  it('clips Canvas labels to their card and paints kind, lines, and signature at L4', () => {
     const scene: AtlasScene = {
       id: 'typography-fixture',
       title: 'Typography fixture',
@@ -160,8 +160,26 @@ describe('Canvas2D band-normalized typography', () => {
         kind: 'component',
         kindLabel: 'SOURCE',
         detail: 'code',
-        responsibility: 'This prose must not replace the source path at L4.',
+        responsibility: 'This prose must not replace the signature at L4.',
         source: 'packages/architecture/src/validation.ts',
+        sourceRefs: [{
+          path: 'packages/architecture/src/validation.ts',
+          symbol: 'validateSnapshotWithLongSuffix',
+          startLine: 40,
+          endLine: 88,
+          revision: 'test',
+        }],
+        sourceExcerpts: [{
+          path: 'packages/architecture/src/validation.ts',
+          symbol: 'validateSnapshotWithLongSuffix',
+          language: 'typescript',
+          startLine: 40,
+          endLine: 45,
+          highlightLine: 40,
+          frozenRevision: 'test',
+          lines: ['export function validateSnapshotWithLongSuffix(snapshot: ArchitectureSnapshot): ValidationIssue[] {'],
+          text: 'export function validateSnapshotWithLongSuffix(snapshot: ArchitectureSnapshot): ValidationIssue[] {',
+        }],
         x: 0,
         y: 0,
         width: 30,
@@ -186,8 +204,10 @@ describe('Canvas2D band-normalized typography', () => {
     expect(target.call('rect').mock.calls.at(-1)![3]).toBeCloseTo(card.height);
     expect(target.call('clip')).toHaveBeenCalled();
     expect(target.textCalls).toHaveLength(3);
+    expect(target.textCalls[0]!.content).toBe('FN · 40–88');
     expect(target.textCalls[1]!.font).toContain('11.2px');
-    expect(target.textCalls[2]!.content).toContain('validation.ts');
+    expect(target.textCalls[2]!.content).toContain('export function');
+    expect(target.textCalls[2]!.content).not.toContain('validation.ts');
     expect(target.textCalls[2]!.content).not.toContain('prose');
     for (const call of target.textCalls) {
       expect(call.x).toBeGreaterThanOrEqual(card.x);
@@ -423,6 +443,13 @@ describe('Canvas2D band-normalized typography', () => {
 
   it('CLA-112: does not raise the 2000 hang-guard', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('CLA-114: does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    const renderer = readFileSync(new URL('./Canvas2DRenderer.ts', import.meta.url), 'utf8');
+    expect(renderer).toContain('codeCardCopy(entity)');
+    expect(renderer).not.toMatch(/renderedDetail === 'code'\s*\n\s*\? entity\.source/u);
   });
 
   it('CLA-112: narrow L3 filename titles keep the stem, not a left-stemmed tail', () => {

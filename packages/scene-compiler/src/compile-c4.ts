@@ -30,6 +30,7 @@ import {
 } from '@okie/architecture';
 import { RENDERER_PROTOCOL_VERSION, type LodRange, type Rect, type Representation, type SceneObject, type ScenePath, type SceneSnapshot, type Timeline } from './protocol.js';
 import { defaultTheme, type SceneTheme } from './theme.js';
+import { codeCardCopy } from './code-card-copy.js';
 import { displayTextWidth, fitDisplayText, fitDisplayTextAtSize } from './display-text.js';
 
 export type CompiledZoomBand = {
@@ -292,11 +293,13 @@ function presentation(
   const kickerY = bounds.y + (band === 'context' ? 30 : 24) * visualScale;
   const titleY = bounds.y + (boundary ? 36 : band === 'context' ? 68 : band === 'code' ? 42 : 50) * visualScale;
   const descriptionY = bounds.y + (band === 'context' ? 112 : band === 'code' ? 68 : 76) * visualScale;
-  const sourcePath = entity?.sourceRefs[0]?.path;
+  const codeCopy = !shell && band === 'code' && node.kind === 'code'
+    ? codeCardCopy(entity ?? { name: node.name })
+    : undefined;
   const description = shell
     ? undefined
-    : band === 'code'
-      ? sourcePath
+    : codeCopy
+      ? codeCopy.description
       : (entity?.responsibility?.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
   const kindLabel: Record<VisualNode['kind'], string> = {
     person: 'PERSON',
@@ -327,11 +330,24 @@ function presentation(
     'identifier',
     titleMetrics,
   );
-  const displayKicker = fitDisplayText(kindLabel[node.kind], maxWidth, kickerFontSize, 'word', 'sans-semibold');
+  const displayKicker = fitDisplayText(
+    codeCopy?.kicker ?? kindLabel[node.kind],
+    maxWidth,
+    kickerFontSize,
+    'word',
+    'sans-semibold',
+  );
   const displayTitle = fittedTitle.content;
   const titleFontSize = fittedTitle.fontSize;
+  const descriptionMode = codeCopy?.descriptionMode ?? (band === 'code' ? 'path' : 'word');
   const displayDescription = description
-    ? fitDisplayText(description, maxWidth, descriptionFontSize, band === 'code' ? 'path' : 'word', band === 'code' ? 'mono-regular' : 'sans-regular')
+    ? fitDisplayText(
+      description,
+      maxWidth,
+      descriptionFontSize,
+      descriptionMode,
+      band === 'code' ? 'mono-regular' : 'sans-regular',
+    )
     : undefined;
   return {
     id: `${node.id}:${band}`,

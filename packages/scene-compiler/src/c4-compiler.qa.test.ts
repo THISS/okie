@@ -276,7 +276,7 @@ test('focus presets keep human C4 labels legible and suppress dense L3/L4 relati
     { band: 'context' as const, entityId: 'system:okie', kicker: 'SOFTWARE SYSTEM' },
     { band: 'container' as const, entityId: 'container:architecture-model', kicker: 'CONTAINER' },
     { band: 'component' as const, entityId: 'component:model-scoping', kicker: 'COMPONENT' },
-    { band: 'code' as const, entityId: 'code:model-scoping:select-scoped-view', kicker: 'SOURCE' },
+    { band: 'code' as const, entityId: 'code:model-scoping:select-scoped-view', kicker: 'FN · 600–605' },
   ];
 
   for (const sample of samples) {
@@ -287,8 +287,9 @@ test('focus presets keep human C4 labels legible and suppress dense L3/L4 relati
     const text = representation.primitives.filter(primitive => primitive.kind === 'text');
     const node = bundle.visualNodeById[nodeId]!;
     const [kicker, title, support] = text;
+    const entity = goldenSnapshot.entities.find(candidate => candidate.id === sample.entityId);
     const rawSupport = sample.band === 'code'
-      ? goldenSnapshot.entities.find(entity => entity.id === sample.entityId)!.sourceRefs[0]!.path
+      ? entity?.sourceExcerpts?.[0]?.lines.find(line => line.trim()) ?? ''
       : node.responsibility ?? '';
     assert.ok(rawSupport, `${sample.band} golden node must supply semantic support copy`);
     assert.ok(kicker, `${sample.band} must use the human C4 kicker ${sample.kicker}`);
@@ -296,24 +297,20 @@ test('focus presets keep human C4 labels legible and suppress dense L3/L4 relati
     assert.ok(title, `${sample.band} must render its primary title`);
     assert.ok(title.content && (title.content === node.name || title.content.endsWith('…')),
       `${sample.band} must preserve semantic title copy when it truncates`);
-    assert.ok(support, `${sample.band} must render its responsibility/path at the focus preset`);
+    assert.ok(support, `${sample.band} must render its responsibility/signature at the focus preset`);
     assert.ok(support.content, `${sample.band} support text cannot collapse to an empty marker`);
+    if (sample.band === 'code') {
+      assert.equal(kicker.content.includes('SOURCE'), false, 'L4 kicker is a kind badge, not SOURCE');
+      assert.equal(support.content.includes(entity?.sourceRefs[0]?.path ?? 'normalized.ts'), false);
+      assert.ok(support.content.startsWith('export function') || support.content.includes('…'),
+        'L4 support is the signature excerpt, truncated with a word ellipsis when needed');
+    }
     if (support.content !== rawSupport) {
       assert.ok(support.content.includes('…'), `${sample.band} truncated support must announce omission`);
-      if (sample.band === 'code') {
-        const segments = rawSupport.split('/');
-        if (support.content.startsWith(`${segments[0]}/`)) {
-          assert.ok(support.content.startsWith(`${segments[0]}/…/`), 'wide L4 path must retain its repository area');
-        } else {
-          assert.ok(support.content.startsWith('…'), 'compact L4 path must announce its omitted repository area');
-        }
-        assert.ok(support.content.endsWith(segments.at(-1)!), 'L4 path must retain its filename');
-      } else {
-        const prefix = support.content.slice(0, -1);
-        assert.ok(rawSupport.startsWith(prefix), `${sample.band} prose must retain a semantic prefix`);
-        assert.match(rawSupport.slice(prefix.length, prefix.length + 1), /\s/u,
-          `${sample.band} prose must stop at a word boundary`);
-      }
+      const prefix = support.content.slice(0, -1);
+      assert.ok(rawSupport.startsWith(prefix), `${sample.band} prose must retain a semantic prefix`);
+      assert.match(rawSupport.slice(prefix.length, prefix.length + 1), /\s/u,
+        `${sample.band} prose must stop at a word boundary`);
     }
     const minimum = sample.band === 'code'
       ? { kicker: 7, title: 11, support: 7 }
