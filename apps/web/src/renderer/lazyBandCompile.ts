@@ -154,6 +154,27 @@ export function scanPrefetchFocusIds(
   return ids;
 }
 
+/**
+ * True when `entityId` is `ownerId` or a descendant of it. Used so an opened
+ * L3 neighborhood (CLA-122) does not treat a CLA-106 peer container as in-focus.
+ */
+export function scanEntityIsInSubtree(
+  snapshot: ArchitectureSnapshot,
+  entityId: string,
+  ownerId: string,
+): boolean {
+  if (entityId === ownerId) return true;
+  const byId = entityById(snapshot);
+  let current = byId.get(entityId);
+  const seen = new Set<string>();
+  while (current && !seen.has(current.id)) {
+    if (current.id === ownerId) return true;
+    seen.add(current.id);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+  return false;
+}
+
 /** Next C4 band below `band`, or undefined at code. */
 export function scanNextBand(band: C4Band): C4Band | undefined {
   return BANDS[BANDS.indexOf(band) + 1];
