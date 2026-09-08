@@ -124,6 +124,13 @@ describe('CLA-119: proportional L2 container footprints (soft √N, not a treema
       .map(item => l3.projection?.boundsByEntityIdAndDetail[item.id]?.component)
       .filter((box): box is NonNullable<typeof box> => Boolean(box));
     expect(cards.length).toBeGreaterThan(6);
-    expect(Math.min(...cards.map(box => box.height))).toBeGreaterThan(20);
+    const owner = l3.projection?.boundsByEntityIdAndDetail['container:apps-web']?.component;
+    expect(owner).toBeDefined();
+    expect(cards.every(box =>
+      box.x >= owner!.x - 1
+      && box.y >= owner!.y - 1
+      && box.x + box.width <= owner!.x + owner!.width + 1
+      && box.y + box.height <= owner!.y + owner!.height + 1
+    )).toBe(true);
   });
 });

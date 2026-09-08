@@ -109,7 +109,7 @@ test('CLA-119: @okie/web L2 shell is larger than @okie/server; pills can fit tit
   assert.ok(web.height > compactLeaf * 2, '79-child web more than doubles the old 224×112 tile');
 });
 
-test('CLA-119: L2→L3 into @okie/web still uses the reserved owner shell', () => {
+test('CLA-119: L2→L3 into @okie/web still packs resident file cards', () => {
   const snapshot = webServerSnapshot(79, 8);
   const l2 = compileL2(snapshot);
   const l2Web = l2.projections.index.boundsByEntityIdAndBand['container:apps-web']?.container;
@@ -123,10 +123,16 @@ test('CLA-119: L2→L3 into @okie/web still uses the reserved owner shell', () =
   const l3 = compileC4Scene(snapshot, l3Bundle, { targetAspect: ASPECT_PRESET_TARGET.landscape });
   const l3Web = l3.projections.index.boundsByEntityIdAndBand['container:apps-web']?.component;
   assert.ok(l2Web && l3Web);
-  assert.ok(l3Web.height > l2Web.height * 1.5, 'Open inside still grows into the CLA-81 reserved L3 shell');
+  assert.equal(l3.projections.family.focusEntity.logicalId, 'container:apps-web');
   const cards = snapshot.entities
     .filter(item => item.parentId === 'container:apps-web' && item.kind === 'component')
     .map(item => l3.projections.index.boundsByEntityIdAndBand[item.id]?.component)
     .filter((box): box is NonNullable<typeof box> => Boolean(box));
-  assert.ok(cards.length >= 6, 'L3 still packs resident file cards');
+  assert.equal(cards.length, 79, 'L3 still packs resident file cards');
+  for (const card of cards) {
+    assert.ok(card.x >= l3Web.x - 1);
+    assert.ok(card.y >= l3Web.y - 1);
+    assert.ok(card.x + card.width <= l3Web.x + l3Web.width + 1);
+    assert.ok(card.y + card.height <= l3Web.y + l3Web.height + 1);
+  }
 });
