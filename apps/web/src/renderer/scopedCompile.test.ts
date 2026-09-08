@@ -428,7 +428,7 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
     });
   });
 
-  it('CLA-107: pre-placed L3 peers keep L2↔L3 wheel on the system scene', () => {
+  it('CLA-117: pre-placed L3 pills in the L2 shell still hand off into the container', () => {
     const preplaced: AtlasScene = {
       ...l2Scene,
       projection: {
@@ -446,17 +446,22 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
         },
       },
     } as unknown as AtlasScene;
-    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
+    expect(scanDeeperBandHasPeerCards(preplaced, 'system:root', 'component')).toBe(true);
+    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
     expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'container')).toBeUndefined();
     expect(scanZoomCompileHandoff(preplaced, snap, 'system:root', 'system:root', 'component')).toBeUndefined();
     const opened: AtlasScene = { ...preplaced, rootEntityId: 'container:c' } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(opened, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
     expect(scanZoomCompileHandoff(opened, snap, 'container:c', 'system:root', 'container')).toEqual({
       detail: 'container',
       compileFocus: 'system:root',
     });
   });
 
-  it('CLA-109: pre-placed L4 peers keep L3↔L4 wheel on the system scene', () => {
+  it('CLA-117: L2→L4 overshoot from a pill-filled L2 shell opens the container, not a file', () => {
     const codeSnap = snapshot([
       entity('system:root', 'softwareSystem'),
       entity('container:c', 'container', 'system:root'),
@@ -486,14 +491,32 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
         },
       },
     } as unknown as AtlasScene;
-    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'component')).toBeUndefined();
-    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'component:x', 'system:root', 'code')).toBeUndefined();
-    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'component:x', 'system:root', 'code')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
+    expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'code')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
     expect(scanZoomCompileHandoff(preplaced, codeSnap, 'system:root', 'system:root', 'code')).toBeUndefined();
     expect(scanZoomCompileHandoff(preplaced, codeSnap, 'container:c', 'system:root', 'container')).toBeUndefined();
+    const opened: AtlasScene = { ...preplaced, rootEntityId: 'container:c' } as unknown as AtlasScene;
+    expect(scanZoomCompileHandoff(opened, codeSnap, 'component:x', 'system:root', 'code')).toEqual({
+      detail: 'code',
+      compileFocus: 'component:x',
+    });
+    expect(scanZoomCompileHandoff(opened, codeSnap, 'container:c', 'system:root', 'code')).toEqual({
+      detail: 'code',
+      compileFocus: 'component:x',
+    });
   });
 
-  it('CLA-107: camera-paged L3 for one container still stays when sibling landmarks remain', () => {
+  it('CLA-117: camera-paged sibling pills do not block handoff into the pointer container', () => {
     const siblingSnap = snapshot([
       entity('system:root', 'softwareSystem'),
       entity('container:c', 'container', 'system:root'),
@@ -527,7 +550,10 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
     } as unknown as AtlasScene;
     expect(scanDeeperBandHasPeerCards(siblingScene, 'container:c', 'component')).toBe(false);
     expect(scanDeeperBandHasPeerCards(siblingScene, 'system:root', 'component')).toBe(true);
-    expect(scanZoomCompileHandoff(siblingScene, siblingSnap, 'container:c', 'system:root', 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(siblingScene, siblingSnap, 'container:c', 'system:root', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
   });
 });
 
@@ -628,7 +654,7 @@ describe('CLA-105: scan zoom prefers the container under the pointer', () => {
     expect(scanZoomCompileHandoff(l2Scene, snap, preferred, 'system:root', 'component')).toBeUndefined();
   });
 
-  it('CLA-107: pointer over a pre-placed container does not invent an L3 re-root', () => {
+  it('CLA-117: pointer over a pill-filled L2 container prefers that container for L3 handoff', () => {
     const preplaced: AtlasScene = {
       ...l2Scene,
       projection: {
@@ -656,8 +682,11 @@ describe('CLA-105: scan zoom prefers the container under the pointer', () => {
       preplaced, snap, 'system:root', 'component', 'system:root',
       camera, viewport, pointerAt(60, 50), 'container', 'system:root',
     );
-    expect(preferred).toBe('system:root');
-    expect(scanZoomCompileHandoff(preplaced, snap, 'container:c', 'system:root', 'component')).toBeUndefined();
+    expect(preferred).toBe('container:c');
+    expect(scanZoomCompileHandoff(preplaced, snap, preferred, 'system:root', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:c',
+    });
   });
 });
 

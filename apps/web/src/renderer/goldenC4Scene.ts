@@ -2,7 +2,6 @@ import {
   buildC4ProjectionBundle,
   materializeArchitectureAuthoring,
   selectC4BandProjection,
-  snapshotPreplacesL3InL2,
   validateStory,
   type C4ProjectionBundle,
   type ArchitectureSnapshot,
@@ -609,10 +608,10 @@ export function scanPeerContainerIds(scene: AtlasScene, focusContainerId: string
  * is per-neighborhood and may omit descendants). Returns undefined for a leaf,
  * a childless target, or a target whose deeper band is ALREADY laid out as peer
  * cards in *this* neighborhood (compile root is the target). A reserved owner
- * shell (bounds without descendant peers) is not laid out. CLA-107 pre-places
- * L3 cards in the system scene so wheel morphs in place; Open inside a
- * container still returns the deeper band (explicit drill, CLA-104/105/106).
- * Pure — never compiles.
+ * shell (bounds without descendant peers) is not laid out. CLA-107 still
+ * pre-places L3 pills in the system scene; Open inside a container returns
+ * the deeper band (explicit drill). CLA-117 wheel matches that drill for fat
+ * L2 shells — pills are not a laid-out neighborhood. Pure — never compiles.
  */
 export function scanDrillDeeperDetail(
   scene: AtlasScene,
@@ -627,25 +626,27 @@ export function scanDrillDeeperDetail(
   if (!hasChildren) return undefined;
   if (semanticBounds(scene, target.id, deeper) && scanDeeperBandHasPeerCards(scene, target.id, deeper)) {
     // Already compiled this neighborhood. Landmarks in a parent (system) scene
-    // are not the container graph — Open inside still drills (wheel morphs).
+    // are not the container graph — Open inside still drills. CLA-117 wheel
+    // follows the same rule for fat L2 shells with resident pills.
     if (!scene.rootEntityId || scene.rootEntityId === target.id) return undefined;
   }
   return deeper;
 }
 
 /**
- * CLA-104: continuous-zoom compile target for scan mode.
+ * CLA-104/117: continuous-zoom compile target for scan mode.
  *
  * L1 already includes container bounds (`maxBand: container`), so L1→L2 wheel
  * stays in the current scene (stable identities + representation crossfade).
- * CLA-107/109 small-repo L2 pre-places L3 and L4 cards in that same system
- * scene, so L2↔L3 and L3↔L4 wheel stay too — a re-root would snap into a
- * hollow box or void. Stay is keyed off the current scene root having peers
- * at the target band, not the pointer container/file: CLA-74 camera paging
- * can omit one package's children while siblings remain. Large-repo L2 (no
- * L3 peers) still hands off via {@link scanCompileFocusForBand}. Pure — never
- * compiles. Undefined when the current scene already shows that band's
- * peer graph, or the focused container has no children to open.
+ * CLA-107/109 still pre-place L3/L4 pills inside compact L2 tiles on small
+ * repos, but those pills are not a laid-out neighborhood: zooming a fat
+ * container past L2→L3 must re-root that container (same outcome as Open
+ * inside). Stay only when the current compile focus already *is* that
+ * neighborhood. From the system L2 scene, L2→L4 overshoot still opens the
+ * container at component — never a file from that L2 shell. After the re-root,
+ * a later settle/wheel at code zoom is ordinary L3→L4 (CLA-65).
+ * Pure — never compiles. Undefined when the current scene already shows that
+ * band's peer graph, or the focused container has no children to open.
  */
 export function scanZoomCompileHandoff(
   scene: AtlasScene,
@@ -659,29 +660,16 @@ export function scanZoomCompileHandoff(
   if (detail === 'context' || detail === 'container') {
     return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
   }
-  // CLA-107/109: L3/L4 landmarks already laid out in this neighborhood — stay,
-  // like L1→L2. Use the current compile root, not the pointer owner: camera
-  // paging can omit one owner's children while the system scene still has peers.
-  if (
-    (detail === 'component' || detail === 'code')
-    && scanDeeperBandHasPeerCards(scene, currentCompileFocus, detail)
-  ) {
+  // CLA-117: resident pills under the L2 system root are not a container
+  // neighborhood. Wheel into a code-bearing package re-roots that package
+  // at L3 (Open inside). L2→L4 overshoot must not jump into a file.
+  if (currentCompileFocus === viewRootId) {
+    const containerFocus = scanCompileFocusForBand(snapshot, preferredEntityId, 'component', viewRootId);
+    if (containerFocus !== viewRootId && scanEntityHasChildren(snapshot, containerFocus)) {
+      return { detail: 'component', compileFocus: containerFocus };
+    }
     return undefined;
   }
-  // CLA-109: small-repo system scenes keep L3 file shells even when this
-  // L1/L2 tile window dropped every L4 card. Stay for code so wheel does not
-  // re-root into a file. Large-repo L2 (no L3 peers) still hands off.
-  if (
-    detail === 'code'
-    && snapshotPreplacesL3InL2(snapshot)
-    && currentCompileFocus === viewRootId
-    && scanDeeperBandHasPeerCards(scene, currentCompileFocus, 'component')
-  ) {
-    return undefined;
-  }
-  // CLA-66 system compile is maxBand: container on large repos, so recompiling
-  // the view root at component/code cannot grow L3/L4 peers.
-  if (compileFocus === viewRootId && currentCompileFocus === viewRootId) return undefined;
   if (compileFocus === currentCompileFocus && scanDeeperBandHasPeerCards(scene, compileFocus, detail)) {
     return undefined;
   }

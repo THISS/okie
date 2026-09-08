@@ -160,7 +160,7 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
     expect((l2.projection?.entityIdsByDetail.code ?? []).length).toBeGreaterThan(0);
   });
 
-  it('CLA-107: pre-placed L2↔L3 wheel stays on the system scene like L1↔L2; Open inside still drills', () => {
+  it('CLA-107: pre-places L3 pills in L2; CLA-117 wheel re-roots like Open inside', () => {
     const compiled = compileScanFixture({
       snapshot: structuredClone(demoSnapshot),
       view: structuredClone(demoView),
@@ -174,9 +174,15 @@ describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', ()
 
     expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'context')).toBeUndefined();
     expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'container')).toBeUndefined();
-    expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
     expect(scanZoomCompileHandoff(l2, compiled.snapshot, viewRoot, viewRoot, 'component')).toBeUndefined();
-    expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(l2, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
     expect(scanZoomCompileHandoff(l2, compiled.snapshot, viewRoot, viewRoot, 'code')).toBeUndefined();
 
     const l1Morph = l2.projection?.semanticTransitionsByEntityId?.[viewRoot]?.container;

@@ -5,6 +5,7 @@ import {
   expandRectByTileRing,
   neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
+  type ArchitectureEntity,
   type ArchitectureSnapshot,
   type ArchitectureView,
 } from '@okie/architecture';
@@ -13,6 +14,7 @@ import demoView from '../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../fixtures/architecture/demo-story.json';
 import { explorerEntitiesForView } from './entityExplorer';
 import {
+  createC4Scene,
   scanDeeperBandHasPeerCards,
   scanDrillDeeperDetail,
   scanPeerContainerIds,
@@ -23,7 +25,7 @@ import {
   semanticBounds,
 } from './renderer/goldenC4Scene';
 import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
-import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
+import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES, SCAN_RESIDENT_NODES_PER_BAND } from './renderer/scanFixture';
 import { semanticLensSessionDetail } from './semantic/semanticLens';
 import {
   frameVisibleProjection,
@@ -494,15 +496,15 @@ describe('CLA-106: L2→L3 handoff keeps peer containers (no pan into void)', ()
   });
 });
 
-describe('CLA-107: small-repo pre-place L2↔L3 wheel morphs in place', () => {
-  it('rail/pan stay on the current scene when L3 landmarks are already compiled', () => {
+describe('CLA-107: small-repo L2 still pre-places landmarks; CLA-117 wheel re-roots fat shells', () => {
+  it('rail/pan still route through scanZoomCompileHandoff (CLA-117 re-roots L2 shells)', () => {
     const selectLevelLoaded = sliceBetween(app, 'function selectLevelLoaded(', 'function openInside(', 'selectLevelLoaded');
     expect(selectLevelLoaded).toContain('scanZoomCompileHandoff(scene, activeSnapshot, selected.id, viewRootId, detail, currentFocus)');
     expect(selectLevelLoaded).toContain('handoff?.compileFocus ?? currentFocus');
     expect(refreshViewportNeighborhood).toContain('handoff?.compileFocus ?? currentFocus');
   });
 
-  it('opt-in L1 packet keeps L2↔L3 wheel on system:okie (both directions)', async () => {
+  it('opt-in L1 packet still pre-places L3 pills; L2→L3 wheel re-roots web-app', async () => {
     const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
     const view = structuredClone(demoView) as unknown as ArchitectureView;
     const sliceOptions = neighborhoodSliceOptionsForFocus(snapshot, 'system:okie');
@@ -555,14 +557,20 @@ describe('CLA-107: small-repo pre-place L2↔L3 wheel morphs in place', () => {
       'container:web-app',
       fixture.navigation.rootEntityId,
       'component',
-    )).toBeUndefined();
+    )).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
     expect(scanZoomCompileHandoff(
       l2,
       fixture.snapshot,
       'container:web-app',
       fixture.navigation.rootEntityId,
       'code',
-    )).toBeUndefined();
+    )).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
     expect(scanZoomCompileHandoff(
       l2,
       fixture.snapshot,
@@ -583,14 +591,17 @@ describe('CLA-107: small-repo pre-place L2↔L3 wheel morphs in place', () => {
       'container',
       'system:okie',
     );
-    expect(preferred).toBe('system:okie');
+    expect(preferred).toBe('container:web-app');
     expect(scanZoomCompileHandoff(
       l2,
       fixture.snapshot,
       preferred,
       fixture.navigation.rootEntityId,
       'component',
-    )).toBeUndefined();
+    )).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
 
     const container = l2.entities.find(entity => entity.id === 'container:web-app');
     expect(container).toBeDefined();
@@ -617,5 +628,159 @@ describe('CLA-107: small-repo pre-place L2↔L3 wheel morphs in place', () => {
       detail: 'container',
       compileFocus: 'system:okie',
     });
+  });
+});
+
+describe('CLA-117: L2→L3 zoom handoff for fat containers with resident pills', () => {
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(app).not.toMatch(/SCAN_BAND_DEPTH_MIN_ENTITIES\s*=\s*[3-9]\d{3}/u);
+    expect(applyScanZoomHandoff).toContain('scanDeeperBandHasPeerCards(');
+    expect(maybeScanZoomHandoff).toContain('scanZoomCompileHandoff(');
+  });
+
+  it('wheels into @okie/web past L2→L3 even when L3 pills already sit in the L2 shell', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const host = {
+      loadNeighborhood: async (focus: string) => sliceArchitectureNeighborhood(
+        snapshot,
+        view,
+        {
+          focusEntityId: focus || 'system:okie',
+          ...neighborhoodSliceOptionsForFocus(snapshot, focus || 'system:okie'),
+        },
+      ),
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const l1 = sliceArchitectureNeighborhood(snapshot, view, {
+      focusEntityId: 'system:okie',
+      ...neighborhoodSliceOptionsForFocus(snapshot, 'system:okie'),
+    });
+    const fixture = compileScanNeighborhoodFixture(l1, demoStory, host);
+    const viewRoot = fixture.navigation.rootEntityId;
+    const l2 = fixture.createScene(viewRoot);
+    expect(l2.rootEntityId).toBe(viewRoot);
+    expect(scanDeeperBandHasPeerCards(l2, viewRoot, 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(l2, 'container:web-app', 'component')).toBe(true);
+
+    const pill = l2.entities.find(entity =>
+      entity.parentId === 'container:web-app' && entity.detail === 'component');
+    expect(pill).toBeDefined();
+    expect(l2.projection?.boundsByEntityIdAndDetail[pill!.id]?.component).toBeDefined();
+
+    expect(getLevel(3.35)).toBe(2);
+    expect(scanZoomCompileHandoff(l2, fixture.snapshot, 'container:web-app', viewRoot, 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
+    expect(scanZoomCompileHandoff(l2, fixture.snapshot, 'container:web-app', viewRoot, 'code')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
+
+    const web = l2.entities.find(entity => entity.id === 'container:web-app')!;
+    expect(scanDrillDeeperDetail(l2, web, fixture.snapshot)).toBe('component');
+
+    await fixture.ensureNeighborhood('container:web-app');
+    const l3 = fixture.createScene('container:web-app');
+    expect(l3.rootEntityId).toBe('container:web-app');
+    expect(scanDeeperBandHasPeerCards(l3, 'container:web-app', 'component')).toBe(true);
+    const card = l3.entities.find(entity => entity.id === pill!.id);
+    expect(card).toBeDefined();
+    expect(card!.detail).toBe('component');
+    expect(l3.projection?.boundsByEntityIdAndDetail[card!.id]?.component).toBeDefined();
+
+    expect(scanZoomCompileHandoff(l3, fixture.snapshot, 'container:web-app', viewRoot, 'component')).toBeUndefined();
+    expect(scanZoomCompileHandoff(l3, fixture.snapshot, 'container:web-app', viewRoot, 'container')).toEqual({
+      detail: 'container',
+      compileFocus: viewRoot,
+    });
+  });
+
+  it('hands off fat web and server packages from an L2 shell packed with resident pills', () => {
+    const entities: ArchitectureEntity[] = [
+      { id: 'system:okie', kind: 'softwareSystem', name: 'Okie', sourceRefs: [] },
+      { id: 'container:apps-web', kind: 'container', parentId: 'system:okie', name: '@okie/web', sourceRefs: [] },
+      { id: 'container:apps-server', kind: 'container', parentId: 'system:okie', name: '@okie/server', sourceRefs: [] },
+    ];
+    for (const [containerId, prefix] of [
+      ['container:apps-web', 'web'],
+      ['container:apps-server', 'server'],
+    ] as const) {
+      for (let index = 0; index < 24; index += 1) {
+        entities.push({
+          id: `component:${prefix}-${index}`,
+          kind: 'component',
+          parentId: containerId,
+          name: `${prefix}-${index}.ts`,
+          sourceRefs: [],
+        });
+      }
+    }
+    const snapshot: ArchitectureSnapshot = {
+      schemaVersion: 1,
+      id: 'snapshot:cla117',
+      repositoryId: 'repo:cla117',
+      commitSha: 'a'.repeat(40),
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      entities,
+      relations: [],
+    };
+    const l2 = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:okie',
+      focusEntityId: 'system:okie',
+      familyId: 'f',
+      sceneId: 's',
+      title: 't',
+      subtitle: 's',
+      frozenRevision: 'c',
+      maxBand: 'code',
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
+    });
+    expect(l2.rootEntityId).toBe('system:okie');
+    expect(scanDeeperBandHasPeerCards(l2, 'system:okie', 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(l2, 'container:apps-web', 'component')).toBe(true);
+    expect(scanDeeperBandHasPeerCards(l2, 'container:apps-server', 'component')).toBe(true);
+
+    const webPill = l2.entities.find(entity =>
+      entity.parentId === 'container:apps-web' && entity.detail === 'component');
+    const webPillBounds = l2.projection?.boundsByEntityIdAndDetail[webPill!.id]?.component;
+    expect(webPillBounds).toBeDefined();
+
+    expect(scanZoomCompileHandoff(l2, snapshot, 'container:apps-web', 'system:okie', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:apps-web',
+    });
+    expect(scanZoomCompileHandoff(l2, snapshot, 'container:apps-server', 'system:okie', 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:apps-server',
+    });
+    expect(scanZoomCompileHandoff(l2, snapshot, 'system:okie', 'system:okie', 'component')).toBeUndefined();
+
+    const l3Web = createC4Scene({
+      baseSnapshot: snapshot,
+      rootEntityId: 'system:okie',
+      focusEntityId: 'container:apps-web',
+      familyId: 'f',
+      sceneId: 's',
+      title: 't',
+      subtitle: 's',
+      frozenRevision: 'c',
+      maxBand: 'component',
+      maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+    });
+    expect(l3Web.rootEntityId).toBe('container:apps-web');
+    const webCard = l3Web.entities.find(entity =>
+      entity.parentId === 'container:apps-web' && entity.detail === 'component');
+    const webCardBounds = l3Web.projection?.boundsByEntityIdAndDetail[webCard!.id]?.component;
+    expect(webCardBounds).toBeDefined();
+    expect(webCardBounds!.width * webCardBounds!.height).toBeGreaterThan(webPillBounds!.width * webPillBounds!.height);
+    expect(scanZoomCompileHandoff(l3Web, snapshot, 'container:apps-web', 'system:okie', 'component')).toBeUndefined();
+    expect(scanDrillDeeperDetail(l2, l2.entities.find(entity => entity.id === 'container:apps-web')!, snapshot))
+      .toBe('component');
   });
 });
