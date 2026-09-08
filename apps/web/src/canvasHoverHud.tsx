@@ -1,6 +1,7 @@
 import {
   C4_LABEL_MIN_TITLE_PX,
   c4TitleFitFloor,
+  codeCardCopy,
   fitDisplayText,
   fitDisplayTextAtSize,
   NO_SUMMARY_SUPPLIED,
@@ -75,15 +76,16 @@ function paintedCardCopy(entity: SceneEntity, detail: SemanticDetail, boundary: 
     'identifier',
     titleMetrics,
   );
-  const rawDescription = detail === 'code'
-    ? entity.source
+  const codeCopy = entity.detail === 'code' ? codeCardCopy(entity) : undefined;
+  const rawDescription = codeCopy
+    ? codeCopy.description
     : (entity.responsibility.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
   const fittedDescription = !boundary && rawDescription
     ? fitDisplayText(
       rawDescription,
       textMaxWidth,
       metrics.descriptionFontSize,
-      detail === 'code' ? 'path' : 'word',
+      codeCopy?.descriptionMode ?? 'word',
       detail === 'code' ? 'mono-regular' : 'sans-regular',
     )
     : undefined;

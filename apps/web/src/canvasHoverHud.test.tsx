@@ -192,6 +192,40 @@ describe('canvas hover HUD (CLA-113)', () => {
     expect(model?.detail).not.toBe(NO_SUMMARY_SUPPLIED);
   });
 
+  it('CLA-114: a fully visible L4 signature card stays quiet even when a path exists', () => {
+    const zoom = 13.96;
+    const target = entity({
+      id: 'code:select',
+      name: 'selectScopedView()',
+      kindLabel: 'SOURCE',
+      detail: 'code',
+      responsibility: NO_SUMMARY_SUPPLIED,
+      source: 'packages/architecture/src/normalized.ts',
+      sourceRefs: [{
+        path: 'packages/architecture/src/normalized.ts',
+        symbol: 'selectScopedView',
+        startLine: 600,
+        endLine: 605,
+        revision: 'test',
+      }],
+      sourceExcerpts: [{
+        path: 'packages/architecture/src/normalized.ts',
+        symbol: 'selectScopedView',
+        language: 'typescript',
+        startLine: 600,
+        endLine: 605,
+        highlightLine: 600,
+        frozenRevision: 'test',
+        lines: ['export function selectScopedView() {'],
+        text: 'export function selectScopedView() {',
+      }],
+      width: 40,
+      height: 16,
+    });
+    expect(cardNeedsHoverHud(target, 'code', false, zoom, 40 * zoom)).toBe(false);
+    expect(canvasHoverHudModel(query(target, 'code', zoom))).toBeUndefined();
+  });
+
   it('does not steal connect-tool hover or pan/zoom/select', () => {
     const zoom = 5.27;
     const target = entity({

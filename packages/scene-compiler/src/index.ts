@@ -6,5 +6,6 @@ export * from "./protocol.js";
 export * from "./theme.js";
 export * from "./golden-fixture.js";
 export * from "./display-text.js";
+export * from "./code-card-copy.js";
 export * from "./dynamic-flow.js";
 export * from "./band-cost-curve.js";
