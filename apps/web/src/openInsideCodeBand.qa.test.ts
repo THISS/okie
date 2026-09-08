@@ -209,8 +209,8 @@ describe('CLA-110: Open inside L4 lands at code-band zoom (no kick-out to system
     expect(camera).toEqual(frameCodePeerArrivalCamera(scene, 'component:ask-atlas', viewport, chromeSafeArea));
     expect(camera!.zoom).toBeGreaterThanOrEqual(CODE_BAND_ENTER - 1e-9);
     expect(camera!.zoom).toBeCloseTo(CODE_BAND_FOCUS, 0);
-    expect(getLevel(camera.zoom)).toBe(3);
-    expect(getLevel(camera.zoom, 3)).toBe(3);
+    expect(getLevel(camera!.zoom)).toBe(3);
+    expect(getLevel(camera!.zoom, 3)).toBe(3);
 
     const session = semanticLevelSession(scene, 'code', ['component:ask-atlas']);
     expect(semanticLensSessionDetail(session)).toBe('code');
