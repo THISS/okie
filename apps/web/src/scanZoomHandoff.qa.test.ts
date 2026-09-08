@@ -24,7 +24,7 @@ import {
   scanZoomHandoffPreferredId,
   semanticBounds,
 } from './renderer/goldenC4Scene';
-import { scanCompileFocusForBand } from './renderer/lazyBandCompile';
+import { scanCompileFocusForBand, scanEntityIsInSubtree } from './renderer/lazyBandCompile';
 import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES, SCAN_RESIDENT_NODES_PER_BAND } from './renderer/scanFixture';
 import { semanticLensSessionDetail } from './semantic/semanticLens';
 import {
@@ -782,5 +782,276 @@ describe('CLA-117: L2→L3 zoom handoff for fat containers with resident pills',
     expect(scanZoomCompileHandoff(l3Web, snapshot, 'container:apps-web', 'system:okie', 'component')).toBeUndefined();
     expect(scanDrillDeeperDetail(l2, l2.entities.find(entity => entity.id === 'container:apps-web')!, snapshot))
       .toBe('component');
+  });
+});
+
+function fatWebServerSnapshot(): ArchitectureSnapshot {
+  const entities: ArchitectureEntity[] = [
+    { id: 'system:okie', kind: 'softwareSystem', name: 'Okie', sourceRefs: [] },
+    { id: 'container:apps-web', kind: 'container', parentId: 'system:okie', name: '@okie/web', sourceRefs: [] },
+    { id: 'container:apps-server', kind: 'container', parentId: 'system:okie', name: '@okie/server', sourceRefs: [] },
+    {
+      id: 'component:apps-web-src-ask-ask-atlas-ts',
+      kind: 'component',
+      parentId: 'container:apps-web',
+      name: 'askAtlas.ts',
+      sourceRefs: [],
+    },
+    {
+      id: 'component:apps-web-api-oembed-ts',
+      kind: 'component',
+      parentId: 'container:apps-web',
+      name: 'oembed.ts',
+      sourceRefs: [],
+    },
+    {
+      id: 'component:apps-server-src-enrichment-ts',
+      kind: 'component',
+      parentId: 'container:apps-server',
+      name: 'enrichment.ts',
+      sourceRefs: [],
+    },
+    {
+      id: 'component:apps-server-src-github-access-ts',
+      kind: 'component',
+      parentId: 'container:apps-server',
+      name: 'githubAccess.ts',
+      sourceRefs: [],
+    },
+  ];
+  for (const [containerId, prefix] of [
+    ['container:apps-web', 'web'],
+    ['container:apps-server', 'server'],
+  ] as const) {
+    for (let index = 0; index < 24; index += 1) {
+      entities.push({
+        id: `component:${prefix}-${index}`,
+        kind: 'component',
+        parentId: containerId,
+        name: `${prefix}-${index}.ts`,
+        sourceRefs: [],
+      });
+    }
+  }
+  return {
+    schemaVersion: 1,
+    id: 'snapshot:cla122',
+    repositoryId: 'repo:cla122',
+    commitSha: 'b'.repeat(40),
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    entities,
+    relations: [],
+  };
+}
+
+function l3ContainerScene(snapshot: ArchitectureSnapshot, focusEntityId: string): AtlasScene {
+  return createC4Scene({
+    baseSnapshot: snapshot,
+    rootEntityId: 'system:okie',
+    focusEntityId,
+    familyId: 'f',
+    sceneId: 's',
+    title: 't',
+    subtitle: 's',
+    frozenRevision: 'c',
+    maxBand: 'component',
+    maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+  });
+}
+
+function pointerAtWorld(
+  camera: { x: number; y: number; zoom: number },
+  worldX: number,
+  worldY: number,
+) {
+  return {
+    x: viewport.width / 2 + (worldX - camera.x) * camera.zoom,
+    y: viewport.height / 2 + (worldY - camera.y) * camera.zoom,
+  };
+}
+
+describe('CLA-122: L3→L4 wheel stays inside the opened container', () => {
+  const viewRoot = 'system:okie';
+  const webFile = 'component:apps-web-src-ask-ask-atlas-ts';
+  const serverFile = 'component:apps-server-src-enrichment-ts';
+  const camera = { x: 100, y: 80, zoom: 8.6 };
+
+  it('does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    expect(app).not.toMatch(/SCAN_BAND_DEPTH_MIN_ENTITIES\s*=\s*[3-9]\d{3}/u);
+  });
+
+  it('from server L3, pointer over a web peer shell does not re-root into a web file', () => {
+    const snapshot = fatWebServerSnapshot();
+    const l3Server: AtlasScene = {
+      id: 's',
+      title: '',
+      subtitle: '',
+      rootEntityId: 'container:apps-server',
+      entities: [
+        { id: viewRoot, name: 'Okie', kind: 'system', detail: 'context', responsibility: '', x: 0, y: 0, width: 400, height: 200 },
+        { id: 'container:apps-server', parentId: viewRoot, name: '@okie/server', kind: 'container', detail: 'container', responsibility: '', x: 0, y: 0, width: 200, height: 160 },
+        { id: 'container:apps-web', parentId: viewRoot, name: '@okie/web', kind: 'container', detail: 'container', responsibility: '', x: 240, y: 0, width: 180, height: 140 },
+        { id: serverFile, parentId: 'container:apps-server', name: 'enrichment.ts', kind: 'component', detail: 'component', responsibility: '', x: 10, y: 10, width: 80, height: 40 },
+      ],
+      relations: [],
+      regions: [],
+      projection: {
+        boundsByEntityIdAndDetail: {
+          [viewRoot]: { context: { x: 0, y: 0, width: 400, height: 200 }, container: { x: 0, y: 0, width: 400, height: 200 } },
+          'container:apps-server': {
+            container: { x: 0, y: 0, width: 200, height: 160 },
+            component: { x: 0, y: 0, width: 200, height: 160 },
+          },
+          'container:apps-web': {
+            container: { x: 240, y: 0, width: 180, height: 140 },
+            component: { x: 240, y: 0, width: 180, height: 140 },
+          },
+          [serverFile]: { component: { x: 10, y: 10, width: 80, height: 40 } },
+        },
+        entityIdsByDetail: {
+          context: [viewRoot],
+          container: [viewRoot, 'container:apps-server', 'container:apps-web'],
+          component: ['container:apps-server', 'container:apps-web', serverFile],
+          code: [],
+        },
+      },
+    } as unknown as AtlasScene;
+
+    const webPointer = pointerAtWorld(camera, 330, 70);
+    expect(scanZoomEntityUnderPointer(l3Server, camera, viewport, webPointer, 'component'))
+      .toBe('container:apps-web');
+
+    const preferred = scanZoomHandoffPreferredId(
+      l3Server, snapshot, viewRoot, 'code', 'container:apps-server',
+      camera, viewport, webPointer, 'component', 'container:apps-server',
+    );
+    expect(preferred).toBe('container:apps-server');
+    expect(scanEntityIsInSubtree(snapshot, preferred, 'container:apps-server')).toBe(true);
+
+    const handoff = scanZoomCompileHandoff(
+      l3Server, snapshot, preferred, viewRoot, 'code', 'container:apps-server',
+    );
+    expect(handoff?.detail).toBe('code');
+    expect(handoff?.compileFocus).toBeDefined();
+    expect(scanEntityIsInSubtree(snapshot, handoff!.compileFocus, 'container:apps-server')).toBe(true);
+    expect(scanEntityIsInSubtree(snapshot, handoff!.compileFocus, 'container:apps-web')).toBe(false);
+    expect(handoff!.compileFocus).not.toBe(webFile);
+
+    expect(scanZoomCompileHandoff(
+      l3Server, snapshot, webFile, viewRoot, 'code', 'container:apps-server',
+    )).toEqual({
+      detail: 'code',
+      compileFocus: scanCompileFocusForBand(snapshot, 'container:apps-server', 'code', viewRoot),
+    });
+  });
+
+  it('from server L3, pointer over a server file still opens that file', () => {
+    const snapshot = fatWebServerSnapshot();
+    const l3 = l3ContainerScene(snapshot, 'container:apps-server');
+    expect(l3.rootEntityId).toBe('container:apps-server');
+    const card = l3.entities.find(entity =>
+      entity.parentId === 'container:apps-server' && entity.detail === 'component');
+    const bounds = l3.projection?.boundsByEntityIdAndDetail[card!.id]?.component;
+    expect(bounds).toBeDefined();
+    const liveCamera = {
+      x: bounds!.x + bounds!.width / 2,
+      y: bounds!.y + bounds!.height / 2,
+      zoom: 8.6,
+    };
+    const pointer = { x: viewport.width / 2, y: viewport.height / 2 };
+    expect(scanZoomEntityUnderPointer(l3, liveCamera, viewport, pointer, 'component')).toBe(card!.id);
+
+    const preferred = scanZoomHandoffPreferredId(
+      l3, snapshot, viewRoot, 'code', 'container:apps-server',
+      liveCamera, viewport, pointer, 'component', 'container:apps-server',
+    );
+    expect(preferred).toBe(card!.id);
+    expect(scanZoomCompileHandoff(l3, snapshot, preferred, viewRoot, 'code', 'container:apps-server')).toEqual({
+      detail: 'code',
+      compileFocus: card!.id,
+    });
+  });
+
+  it('from web L3, further wheel stays inside web (file under pointer and peer-server miss)', () => {
+    const snapshot = fatWebServerSnapshot();
+    const l3 = l3ContainerScene(snapshot, 'container:apps-web');
+    expect(l3.rootEntityId).toBe('container:apps-web');
+    expect(scanPeerContainerIds(l3, 'container:apps-web')).toContain('container:apps-server');
+
+    const card = l3.entities.find(entity =>
+      entity.parentId === 'container:apps-web' && entity.detail === 'component');
+    const bounds = l3.projection?.boundsByEntityIdAndDetail[card!.id]?.component;
+    expect(bounds).toBeDefined();
+    const liveCamera = {
+      x: bounds!.x + bounds!.width / 2,
+      y: bounds!.y + bounds!.height / 2,
+      zoom: 8.6,
+    };
+    const pointer = { x: viewport.width / 2, y: viewport.height / 2 };
+    const preferredFile = scanZoomHandoffPreferredId(
+      l3, snapshot, viewRoot, 'code', 'container:apps-web',
+      liveCamera, viewport, pointer, 'component', 'container:apps-web',
+    );
+    expect(scanEntityIsInSubtree(snapshot, preferredFile, 'container:apps-web')).toBe(true);
+    const fileHandoff = scanZoomCompileHandoff(
+      l3, snapshot, preferredFile, viewRoot, 'code', 'container:apps-web',
+    );
+    expect(fileHandoff?.detail).toBe('code');
+    expect(scanEntityIsInSubtree(snapshot, fileHandoff!.compileFocus, 'container:apps-web')).toBe(true);
+
+    const serverPeer = semanticBounds(l3, 'container:apps-server', 'component')
+      ?? semanticBounds(l3, 'container:apps-server', 'container');
+    expect(serverPeer).toBeDefined();
+    const peerCamera = {
+      x: serverPeer!.x + serverPeer!.width / 2,
+      y: serverPeer!.y + serverPeer!.height / 2,
+      zoom: 8.6,
+    };
+    const preferredPeer = scanZoomHandoffPreferredId(
+      l3, snapshot, viewRoot, 'code', 'container:apps-web',
+      peerCamera, viewport, pointer, 'component', 'container:apps-web',
+    );
+    expect(scanEntityIsInSubtree(snapshot, preferredPeer, 'container:apps-web')).toBe(true);
+    const peerHandoff = scanZoomCompileHandoff(
+      l3, snapshot, preferredPeer, viewRoot, 'code', 'container:apps-web',
+    );
+    expect(peerHandoff?.compileFocus).toBeDefined();
+    expect(scanEntityIsInSubtree(snapshot, peerHandoff!.compileFocus, 'container:apps-web')).toBe(true);
+    expect(scanEntityIsInSubtree(snapshot, peerHandoff!.compileFocus, 'container:apps-server')).toBe(false);
+  });
+
+  it('compiled server L3 neighborhood keeps L3→L4 inside server when a web peer is in world space', () => {
+    const snapshot = fatWebServerSnapshot();
+    const l3 = l3ContainerScene(snapshot, 'container:apps-server');
+    expect(l3.rootEntityId).toBe('container:apps-server');
+    expect(scanPeerContainerIds(l3, 'container:apps-server')).toContain('container:apps-web');
+    expect(scanDeeperBandHasPeerCards(l3, 'container:apps-server', 'component')).toBe(true);
+
+    const webPeer = semanticBounds(l3, 'container:apps-web', 'component')
+      ?? semanticBounds(l3, 'container:apps-web', 'container');
+    expect(webPeer).toBeDefined();
+    const peerCamera = {
+      x: webPeer!.x + webPeer!.width / 2,
+      y: webPeer!.y + webPeer!.height / 2,
+      zoom: 8.6,
+    };
+    const pointer = { x: viewport.width / 2, y: viewport.height / 2 };
+    const preferred = scanZoomHandoffPreferredId(
+      l3, snapshot, viewRoot, 'code', 'container:apps-server',
+      peerCamera, viewport, pointer, 'component', 'container:apps-server',
+    );
+    expect(scanEntityIsInSubtree(snapshot, preferred, 'container:apps-server')).toBe(true);
+    const handoff = scanZoomCompileHandoff(
+      l3, snapshot, preferred, viewRoot, 'code', 'container:apps-server',
+    );
+    expect(handoff?.compileFocus).toBeDefined();
+    expect(scanEntityIsInSubtree(snapshot, handoff!.compileFocus, 'container:apps-server')).toBe(true);
+    expect(handoff!.compileFocus).not.toBe(webFile);
+    expect(explorerEntitiesForView(l3, {
+      detail: 'component',
+      selected: l3.entities.find(entity => entity.id === 'container:apps-server')!,
+      settledTargetIds: ['container:apps-server'],
+    }).length).toBeGreaterThan(0);
   });
 });

@@ -7,6 +7,7 @@ import {
   scanCompileFocusForBand,
   scanDescendantAtBand,
   scanEntityHasChildren,
+  scanEntityIsInSubtree,
   scanNextBand,
   scanPrefetchFocusIds,
 } from './lazyBandCompile';
@@ -93,6 +94,17 @@ describe('scanCompileFocusForBand — neighborhood, not the whole tree', () => {
       .not.toBe('container:web');
     expect(scanCompileFocusForBand(tree, 'container:architecture', 'code', 'system:root'))
       .not.toBe('component:web-a');
+  });
+});
+
+describe('scanEntityIsInSubtree', () => {
+  it('CLA-122: treats the owner and its descendants as inside, not sibling containers', () => {
+    expect(scanEntityIsInSubtree(tree, 'container:architecture', 'container:architecture')).toBe(true);
+    expect(scanEntityIsInSubtree(tree, 'component:arch-a', 'container:architecture')).toBe(true);
+    expect(scanEntityIsInSubtree(tree, 'code:arch-fn', 'container:architecture')).toBe(true);
+    expect(scanEntityIsInSubtree(tree, 'container:web', 'container:architecture')).toBe(false);
+    expect(scanEntityIsInSubtree(tree, 'component:web-a', 'container:architecture')).toBe(false);
+    expect(scanEntityIsInSubtree(tree, 'system:root', 'container:architecture')).toBe(false);
   });
 });
 

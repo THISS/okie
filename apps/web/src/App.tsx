@@ -3033,9 +3033,9 @@ export function App() {
   }
 
   /**
-   * CLA-104/105/117: swap the scan neighborhood when continuous zoom crosses a band
+   * CLA-104/105/117/122: swap the scan neighborhood when continuous zoom crosses a band
    * the current scene did not compile (L2→L3 into the pointer container, including
-   * fat shells with resident pills). Mirrors Open inside's ensureNeighborhood +
+   * fat shells with resident pills; L3→L4 stays inside that opened container). Mirrors Open inside's ensureNeighborhood +
    * compile-focus + setScene, without Fit or a history push. Hang-guard stays 2000.
    * CLA-107 still pre-places L3 pills; wheel re-roots rather than staying on them.
    */

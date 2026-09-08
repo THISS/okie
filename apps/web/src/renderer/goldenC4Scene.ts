@@ -27,7 +27,7 @@ import {
   NO_SUMMARY_SUPPLIED,
   type SceneSnapshot,
 } from '@okie/scene-compiler';
-import { scanCompileFocusForBand, scanEntityHasChildren } from './lazyBandCompile';
+import { scanCompileFocusForBand, scanEntityHasChildren, scanEntityIsInSubtree } from './lazyBandCompile';
 import type { AtlasScene, Camera, EntityKind as AtlasEntityKind, OmittedEdge, OmittedNode, OmittedRelation, ScopedCompileInfo, SceneEntity, SceneRelation, SemanticDetail } from './types';
 
 const bands: readonly C4Band[] = ['context', 'container', 'component', 'code'];
@@ -644,7 +644,8 @@ export function scanDrillDeeperDetail(
  * inside). Stay only when the current compile focus already *is* that
  * neighborhood. From the system L2 scene, L2→L4 overshoot still opens the
  * container at component — never a file from that L2 shell. After the re-root,
- * a later settle/wheel at code zoom is ordinary L3→L4 (CLA-65).
+ * a later settle/wheel at code zoom is ordinary L3→L4 (CLA-65) *inside that
+ * opened container* (CLA-122) — not a CLA-106 peer's file under the pointer.
  * Pure — never compiles. Undefined when the current scene already shows that
  * band's peer graph, or the focused container has no children to open.
  */
@@ -656,7 +657,7 @@ export function scanZoomCompileHandoff(
   detail: SemanticDetail,
   currentCompileFocus = scene.rootEntityId ?? viewRootId,
 ): { detail: SemanticDetail; compileFocus: string } | undefined {
-  const compileFocus = scanCompileFocusForBand(snapshot, preferredEntityId, detail, viewRootId);
+  let compileFocus = scanCompileFocusForBand(snapshot, preferredEntityId, detail, viewRootId);
   if (detail === 'context' || detail === 'container') {
     return compileFocus === currentCompileFocus ? undefined : { detail, compileFocus };
   }
@@ -669,6 +670,11 @@ export function scanZoomCompileHandoff(
       return { detail: 'component', compileFocus: containerFocus };
     }
     return undefined;
+  }
+  // CLA-122: already inside an opened container. Do not re-root L3→L4 into a
+  // sibling container's file (those shells stay in world space after CLA-106).
+  if (!scanEntityIsInSubtree(snapshot, compileFocus, currentCompileFocus)) {
+    compileFocus = scanCompileFocusForBand(snapshot, currentCompileFocus, detail, viewRootId);
   }
   if (compileFocus === currentCompileFocus && scanDeeperBandHasPeerCards(scene, compileFocus, detail)) {
     return undefined;
@@ -731,6 +737,9 @@ export function scanZoomEntityUnderPointer(
 /**
  * CLA-105: pointer-over entity when that entity can compile-handoff; otherwise
  * the inspector/fallback selection so the CLA-104 selected-container path stays.
+ * CLA-122: once a container neighborhood is open, only a card inside that
+ * neighborhood (or the container itself) may steal the pointer — a CLA-106
+ * peer shell under the wheel must not become the L4 compile target.
  */
 export function scanZoomHandoffPreferredId(
   scene: AtlasScene,
@@ -745,7 +754,11 @@ export function scanZoomHandoffPreferredId(
   fallbackId: string,
 ): string {
   const underPointer = scanZoomEntityUnderPointer(scene, camera, viewport, pointer, currentDetail);
-  if (underPointer && scanZoomCompileHandoff(scene, snapshot, underPointer, viewRootId, detail, currentCompileFocus)) {
+  const inOpenedNeighborhood = !underPointer
+    || currentCompileFocus === viewRootId
+    || scanEntityIsInSubtree(snapshot, underPointer, currentCompileFocus);
+  if (underPointer && inOpenedNeighborhood
+    && scanZoomCompileHandoff(scene, snapshot, underPointer, viewRootId, detail, currentCompileFocus)) {
     return underPointer;
   }
   return fallbackId;
