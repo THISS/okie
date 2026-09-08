@@ -73,6 +73,36 @@ function pathCandidate(root: string | undefined, tail: readonly string[]): strin
   return root ? `${root}/…/${tail.join('/')}` : `…/${tail.join('/')}`;
 }
 
+/** Last `.ext` when the suffix is 1–8 alphanumeric chars starting with a letter. */
+function fileExtension(nameChars: readonly string[]): string[] | undefined {
+  const dot = nameChars.lastIndexOf('.');
+  if (dot <= 0 || dot >= nameChars.length - 1) return undefined;
+  const suffix = nameChars.slice(dot + 1).join('');
+  if (suffix.length < 1 || suffix.length > 8) return undefined;
+  if (!/^[A-Za-z][A-Za-z0-9]*$/u.test(suffix)) return undefined;
+  return nameChars.slice(dot);
+}
+
+/**
+ * Truncates a filename or last path segment without eating only the stem's
+ * leading characters. Prefers a full stem (`diagnostics…`) and otherwise a
+ * middle cut that keeps stem start + extension (`diag…cs.rs`).
+ */
+function truncateFilenameStem(content: string, maximum: number): string {
+  const chars = characters(content);
+  if (chars.length <= maximum) return content;
+  const extension = fileExtension(chars);
+  const stem = extension ? chars.slice(0, chars.length - extension.length) : chars;
+  if (stem.length + 1 <= maximum) return `${stem.join('')}…`;
+  if (extension && 2 + extension.length <= maximum) {
+    const budget = maximum - 1 - extension.length;
+    const tail = Math.min(2, Math.max(0, budget - 1));
+    const head = budget - tail;
+    return `${stem.slice(0, head).join('')}…${stem.slice(stem.length - tail).join('')}${extension.join('')}`;
+  }
+  return `${chars.slice(0, maximum - 1).join('')}…`;
+}
+
 /**
  * Fits renderer copy without measuring fonts at runtime. The renderer's fixed
  * atlas and compiler use the same deterministic fitting algorithm. This
@@ -97,7 +127,9 @@ function truncateSlashedIdentifier(content: string, maximum: number): string | u
     const unrooted = pathCandidate(undefined, segments.slice(index));
     if (characters(unrooted).length <= maximum) return unrooted;
   }
-  return `…${characters(segments.at(-1)!).slice(-(maximum - 1)).join('')}`;
+  const last = segments.at(-1)!;
+  if (characters(last).length <= maximum) return last;
+  return truncateFilenameStem(last, maximum);
 }
 
 export function truncateDisplayText(content: string, capacity: number, mode: DisplayTextMode = 'word'): string {
@@ -114,8 +146,8 @@ export function truncateDisplayText(content: string, capacity: number, mode: Dis
     if (slashed !== undefined) return slashed;
   }
 
+  if (mode === 'identifier') return truncateFilenameStem(content, maximum);
   const prefix = characters(content).slice(0, maximum - 1).join('');
-  if (mode === 'identifier') return `${prefix}…`;
   const boundary = prefix.search(/\s+\S*$/u);
   const completeWords = (boundary >= 0 ? prefix.slice(0, boundary) : '').trimEnd();
   return completeWords ? `${completeWords}…` : '…';

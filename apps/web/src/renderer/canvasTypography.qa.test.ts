@@ -7,6 +7,7 @@ import {
   displayTextWidth,
   fitDisplayText,
   fitDisplayTextAtSize,
+  truncateDisplayText,
 } from '@okie/scene-compiler';
 import { Canvas2DRenderer, canvasEntityPresentationMetrics } from './Canvas2DRenderer';
 import type { AtlasScene, RenderState, SemanticDetail } from './types';
@@ -418,5 +419,55 @@ describe('Canvas2D band-normalized typography', () => {
     expect(title.content).toBe(fitted.content);
     const cardWidth = target.call('roundRect').mock.calls[0]![2] as number;
     expect(cardWidth).toBeCloseTo(screenWidth, 5);
+  });
+
+  it('CLA-112: does not raise the 2000 hang-guard', () => {
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('CLA-112: narrow L3 filename titles keep the stem, not a left-stemmed tail', () => {
+    const zoom = 5.27;
+    const metrics = canvasEntityPresentationMetrics('component', false, zoom);
+    const floor = c4TitleFitFloor('component', metrics.titleFontSize, C4_LABEL_MIN_TITLE_PX);
+    const name = 'src/diagnostics.rs';
+    const fitted = fitDisplayTextAtSize(name, 52, metrics.titleFontSize, floor, 'identifier', 'sans-semibold');
+    expect(fitted.content).toBe('di…cs.rs');
+    expect(fitted.content).not.toMatch(/^…[^/]/u);
+    expect(truncateDisplayText(name, 10, 'identifier')).toBe('diag…cs.rs');
+
+    const worldWidth = (52 + metrics.horizontalInsets) / zoom;
+    const scene: AtlasScene = {
+      id: 'cla-112-stem',
+      title: 'CLA-112 stem',
+      subtitle: '',
+      entities: [{
+        id: 'component:diagnostics',
+        name,
+        kind: 'component',
+        kindLabel: 'COMPONENT',
+        detail: 'component',
+        responsibility: 'Must keep the filename stem.',
+        source: 'src/diagnostics.rs',
+        x: 0,
+        y: 0,
+        width: worldWidth,
+        height: 20,
+      }],
+      relations: [],
+      regions: [],
+    };
+    const target = fakeCanvas();
+    const renderer = new Canvas2DRenderer(target.canvas, 'canvas2d');
+    renderer.setScene(scene);
+    renderer.resize(800, 400, 1);
+    renderer.setCamera({ x: worldWidth / 2, y: 10, zoom });
+    renderer.setRenderState(state);
+    renderer.render(0);
+
+    const title = target.textCalls[1]!;
+    expect(title.content).toBe(fitted.content);
+    expect(title.content).toBe('di…cs.rs');
+    expect(title.content).not.toMatch(/^…[^/]/u);
+    expect(title.font).toContain(`${floor}px`);
   });
 });

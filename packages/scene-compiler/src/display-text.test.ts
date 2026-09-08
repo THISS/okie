@@ -21,7 +21,22 @@ test('source paths retain their repository area and filename with a middle ellip
   const path = 'packages/architecture/src/normalized.ts';
   assert.equal(truncateDisplayText(path, 25, 'path'), 'packages/…/normalized.ts');
   assert.equal(truncateDisplayText(path, 20, 'path'), '…/src/normalized.ts');
-  assert.equal(truncateDisplayText(path, 8, 'path'), '…ized.ts');
+  assert.equal(truncateDisplayText(path, 13, 'path'), 'normalized.ts');
+  assert.equal(truncateDisplayText(path, 8, 'path'), 'no…ed.ts');
+});
+
+test('filename identifiers keep the stem instead of a left-stemmed tail', () => {
+  assert.equal(truncateDisplayText('src/diagnostics.rs', 16, 'identifier'), '…/diagnostics.rs');
+  assert.equal(truncateDisplayText('src/diagnostics.rs', 14, 'identifier'), 'diagnostics.rs');
+  assert.equal(truncateDisplayText('src/diagnostics.rs', 13, 'identifier'), 'diagnostics…');
+  assert.equal(truncateDisplayText('src/diagnostics.rs', 10, 'identifier'), 'diag…cs.rs');
+  assert.equal(truncateDisplayText('isolateNeighborhood.ts', 21, 'identifier'), 'isolateNeighborhood…');
+  assert.equal(truncateDisplayText('isolateNeighborhood.ts', 18, 'identifier'), 'isolateNeigh…od.ts');
+  assert.match(truncateDisplayText('src/diagnostics.rs', 10, 'identifier'), /^diag/u);
+  assert.match(truncateDisplayText('src/diagnostics.rs', 10, 'identifier'), /\.rs$/u);
+  assert.notEqual(truncateDisplayText('src/diagnostics.rs', 6, 'identifier'), '…ics.rs');
+  assert.notEqual(truncateDisplayText('src/isolateNeighborhood.ts', 9, 'identifier'), '…rhood.ts');
+  assert.notEqual(truncateDisplayText('isolateNeighborhood.ts', 10, 'identifier'), '…rhood.ts');
 });
 
 test('fixed-atlas capacity and fitting require no text measurement', () => {
