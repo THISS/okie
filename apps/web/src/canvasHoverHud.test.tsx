@@ -23,7 +23,7 @@ function entity(overrides: Partial<SceneEntity> & Pick<SceneEntity, 'id' | 'name
 function sceneFor(target: SceneEntity, extras: { children?: SceneEntity[]; visibleIds?: string[] } = {}): AtlasScene {
   const entities = [target, ...(extras.children ?? [])];
   const visibleIds = extras.visibleIds ?? entities.map(entity => entity.id);
-  const emptyIds = { context: [], container: [], component: [], code: [] } as const;
+  const emptyIds = (): Record<SemanticDetail, string[]> => ({ context: [], container: [], component: [], code: [] });
   return {
     id: 'cla-113-hover-hud',
     title: 'CLA-113 hover HUD',
@@ -37,9 +37,9 @@ function sceneFor(target: SceneEntity, extras: { children?: SceneEntity[]; visib
       semanticToVisualRelationIds: {},
       visualToSemanticRelationIds: {},
       boundsByEntityIdAndDetail: {},
-      entityIdsByDetail: { ...emptyIds, [target.detail ?? 'component']: visibleIds },
-      relationIdsByDetail: { ...emptyIds },
-      projectedRelationsByDetail: { ...emptyIds },
+      entityIdsByDetail: { ...emptyIds(), [target.detail ?? 'component']: visibleIds },
+      relationIdsByDetail: emptyIds(),
+      projectedRelationsByDetail: { context: [], container: [], component: [], code: [] },
     },
   };
 }
