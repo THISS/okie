@@ -6,6 +6,7 @@ import {
   buildC4ProjectionBundle,
   c4ExpectedChildKind,
   c4IntrinsicOwnerMetrics,
+  c4ScanContainerPeerTile,
   computeContainmentLayout,
   materializeArchitectureAuthoring,
   measureC4Grid,
@@ -671,13 +672,15 @@ function isContainerPeerKind(kind: ArchitectureEntity['kind']): boolean {
   return kind === 'container' || kind === 'dataStore' || kind === 'queue';
 }
 
-/** Scan L2 package tile — one intrinsic leaf at container focus, not the reserved L3/L4 shell. */
-function scanContainerPeerTile(): { width: number; height: number } {
-  const zoom = C4_BAND_FOCUS_ZOOM.container;
-  return {
-    width: C4_INTRINSIC_LAYOUT.leaf.code.width / zoom,
-    height: C4_INTRINSIC_LAYOUT.leaf.code.height / zoom,
-  };
+function scanContainerChildCount(
+  containerId: string,
+  childrenByOwner: ReadonlyMap<string, ArchitectureEntity[]>,
+  childCounts?: Readonly<Record<string, number>>,
+): number {
+  const resident = (childrenByOwner.get(containerId) ?? [])
+    .filter(child => child.kind === 'component').length;
+  const published = childCounts?.[containerId] ?? 0;
+  return Math.max(resident, published);
 }
 
 /**
@@ -718,9 +721,10 @@ function scanContextPeerAnchor(system: NodeLayout): NodeLayout {
 
 /**
  * CLA-95: scan L2 paints a compact container peer map, not CLA-81 reserved
- * interiors. Each package is a leaf tile so Open inside can frame siblings
- * together. CLA-109 reuses those tiles on the system-scene L3/L4 bands so
- * wheel morphs in place; drilled container compiles keep reserved shells.
+ * interiors. CLA-119 sizes each peer by √N children (soft nested shells that
+ * show weight) so fat packages like `@okie/web` breathe; not a full-bleed
+ * squarified treemap. CLA-109 reuses those tiles on the system-scene L3/L4
+ * bands so wheel morphs in place; drilled container compiles keep reserved shells.
  */
 function packScanContainerPeerMap(
   canonical: ReadonlyMap<string, NodeLayout>,
@@ -728,13 +732,17 @@ function packScanContainerPeerMap(
   childrenByOwner: ReadonlyMap<string, ArchitectureEntity[]>,
   entities: ReadonlyMap<string, ArchitectureEntity>,
   targetAspect: number,
+  childCounts?: Readonly<Record<string, number>>,
 ): Map<string, NodeLayout> {
   const origin = canonical.get(root.id);
   const metrics = c4IntrinsicOwnerMetrics(root.kind, targetAspect);
   const containers = (childrenByOwner.get(root.id) ?? []).filter(child => isContainerPeerKind(child.kind));
   if (!origin || !metrics || !containers.length) return new Map(canonical);
-  const tile = scanContainerPeerTile();
-  const items = containers.map(child => ({ id: child.id, ...tile }));
+  const tileById = new Map(containers.map(child => [
+    child.id,
+    c4ScanContainerPeerTile(scanContainerChildCount(child.id, childrenByOwner, childCounts)),
+  ]));
+  const items = containers.map(child => ({ id: child.id, ...tileById.get(child.id)! }));
   const measurement = measureC4Grid(items, metrics);
   const systemBounds: NodeLayout = {
     x: origin.x,
@@ -748,6 +756,7 @@ function packScanContainerPeerMap(
   const gridX = systemBounds.x + metrics.paddingLeft;
   const gridY = systemBounds.y + metrics.paddingTop;
   ordered.forEach((child, index) => {
+    const tile = tileById.get(child.id)!;
     const column = index % measurement.columns;
     const row = Math.floor(index / measurement.columns);
     const columnX = measurement.columnWidths.slice(0, column).reduce((sum, value) => sum + value, 0)
@@ -1133,7 +1142,7 @@ function applyIntrinsicOwnerGeometry(
       && bundle.family.focusEntity.logicalId === root.id
       && Boolean(bundle.projectionById[bundle.family.projectionIds.code]?.omittedNodeIds?.length);
     const bandCanonical = targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'container'
-      ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect)
+      ? packScanContainerPeerMap(canonical, root, childrenByOwner, entities, targetAspect, childCounts)
       : targetAspect !== undefined && root.kind === 'softwareSystem' && band === 'context'
         ? packScanContextPeerMap(canonical, root)
         : canonical;

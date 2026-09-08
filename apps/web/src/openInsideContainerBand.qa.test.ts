@@ -2,11 +2,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ASPECT_PRESET_TARGET,
-  C4_BAND_FOCUS_ZOOM,
   C4_COMPONENT_CARD_FACE,
   C4_CONTEXT_CARD_FACE,
-  C4_INTRINSIC_LAYOUT,
   cameraWorldRect,
+  c4ScanContainerPeerTile,
   sliceArchitectureNeighborhood,
   type ArchitectureEntity,
   type ArchitectureSnapshot,
@@ -464,10 +463,7 @@ describe('CLA-90: Open inside scan L2 frames peer cards at readable zoom', () =>
   it('frames L2 container peer cards above minZoom, not z=0.32 over a hollow shell', () => {
     const scene = reservedShellL2Scene();
     const system = scene.projection!.boundsByEntityIdAndDetail['system:okie']!.container!;
-    const tile = {
-      width: C4_INTRINSIC_LAYOUT.leaf.code.width / C4_BAND_FOCUS_ZOOM.container,
-      height: C4_INTRINSIC_LAYOUT.leaf.code.height / C4_BAND_FOCUS_ZOOM.container,
-    };
+    const tile = c4ScanContainerPeerTile(24);
     const web = scene.projection!.boundsByEntityIdAndDetail['container:web']!.container!;
     expect(web.width).toBeCloseTo(tile.width, 5);
     expect(web.height).toBeCloseTo(tile.height, 5);
