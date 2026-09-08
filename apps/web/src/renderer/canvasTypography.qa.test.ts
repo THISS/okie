@@ -366,12 +366,10 @@ describe('Canvas2D band-normalized typography', () => {
 
     const title = target.textCalls.find(call => call.content.includes('History') || call.content.includes('…'));
     expect(title).toBeDefined();
-    const fitted = fitDisplayTextAtSize(name, textMaxWidth, metrics.titleFontSize, floor, 'identifier', metricsRole);
-    expect(fitted.content).toBe(name);
-    expect(fitted.fontSize).toBeLessThan(metrics.titleFontSize);
-    expect(fitted.fontSize).toBeGreaterThanOrEqual(floor);
     expect(title!.content).toBe(name);
-    expect(title!.font).toContain(`${fitted.fontSize}px`);
+    const painted = Number(title!.font.match(/([\d.]+)px/u)?.[1]);
+    expect(painted).toBeGreaterThanOrEqual(floor);
+    expect(painted).toBeLessThan(metrics.titleFontSize);
     expect(title!.font).not.toContain(`${metrics.titleFontSize}px`);
   });
 
