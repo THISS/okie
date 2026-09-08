@@ -657,7 +657,27 @@ a.icon-button { text-decoration: none; }
 .story-footer button { min-height: 27px; gap: 5px; padding: 0 7px; border: 0; border-radius: 6px; background: transparent; color: var(--atlas-quiet); font-size: 11px; cursor: pointer; }
 .story-footer button:hover { background: rgba(255,255,255,.04); color: var(--atlas-text); }
 
-.canvas-hint { position: absolute; z-index: 4; bottom: 22px; left: 50%; display: flex; align-items: center; gap: 9px; color: rgba(151,165,160,.72); font-family: var(--atlas-font-mono); font-size: 11px; pointer-events: none; transform: translateX(-50%); white-space: nowrap; }
+.canvas-hint {
+  position: absolute;
+  z-index: 8;
+  bottom: 22px;
+  left: 50%;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 14px 8px;
+  border-radius: 12px;
+  background: rgba(7, 10, 11, 0.94);
+  box-shadow: 0 0 32px 20px rgba(7, 10, 11, 0.78);
+  backdrop-filter: blur(16px);
+  color: rgba(151,165,160,.72);
+  font-family: var(--atlas-font-mono);
+  font-size: 11px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
 .canvas-hint i { width: 2px; height: 2px; border-radius: 50%; background: currentColor; }
 
 .details-panel {
