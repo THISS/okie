@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ASPECT_PRESET_TARGET } from '@okie/architecture';
 import type { ArchitectureSnapshot } from '@okie/architecture';
+import { C4_ZOOM_BANDS } from '@okie/scene-compiler';
 import { createC4Scene } from '../renderer/goldenC4Scene';
 import { ATLAS_CAMERA_BOUNDS } from '../renderer/cameraBounds';
 import {
   COMPONENT_TITLE_READABLE_MIN_ZOOM,
   CONTEXT_TITLE_READABLE_MIN_ZOOM,
+  frameCodePeerArrivalCamera,
   frameComponentPeerArrivalCamera,
   frameContextArrivalCamera,
   frameProjectionScope,
@@ -46,6 +48,48 @@ const scanScene = (componentCount: number, targetAspect?: number) => createC4Sce
 const viewport = { width: 1280, height: 720 };
 const safeArea = { top: 80, right: 300, bottom: 72, left: 64 };
 const COMPONENT_BAND_FLOOR = 3.35;
+const CODE_BAND_ENTER = C4_ZOOM_BANDS[3]!.enterZoom;
+const CODE_BAND_FOCUS = C4_ZOOM_BANDS[3]!.focusZoom;
+
+function denseFileSnapshot(codeCount: number): ArchitectureSnapshot {
+  const fileId = 'component:ask';
+  const entities: ArchitectureSnapshot['entities'] = [
+    { id: 'system:d', kind: 'softwareSystem', name: 'D', sourceRefs: [] },
+    { id: 'container:c', kind: 'container', parentId: 'system:d', name: 'C', sourceRefs: [] },
+    { id: fileId, kind: 'component', parentId: 'container:c', name: 'askAtlas.ts', sourceRefs: [] },
+  ];
+  for (let index = 0; index < codeCount; index += 1) {
+    entities.push({
+      id: `code:ask:${String(index).padStart(2, '0')}`,
+      kind: 'code',
+      parentId: fileId,
+      name: `sym${index}`,
+      sourceRefs: [],
+    });
+  }
+  return {
+    schemaVersion: 1,
+    id: 'snapshot:ask',
+    repositoryId: 'repo:ask',
+    commitSha: 'c',
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    entities,
+    relations: [],
+  };
+}
+
+const scanFileScene = (codeCount: number, targetAspect?: number) => createC4Scene({
+  baseSnapshot: denseFileSnapshot(codeCount),
+  rootEntityId: 'component:ask',
+  focusEntityId: 'component:ask',
+  familyId: 'f',
+  sceneId: 'scan:ask:c4',
+  title: 'askAtlas.ts',
+  subtitle: '',
+  frozenRevision: 'c',
+  maxBand: 'code',
+  ...(targetAspect !== undefined ? { targetAspect } : {}),
+});
 
 describe('coverage-reveal drill/rail landing (scan mode)', () => {
   it('CLA-92: reserved L3 scan drill frames peer cards, not minZoom over the hollow shell', () => {
@@ -122,5 +166,39 @@ describe('coverage-reveal drill/rail landing (scan mode)', () => {
     expect(rail.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
     expect(rail.zoom).toBeGreaterThanOrEqual(CONTEXT_TITLE_READABLE_MIN_ZOOM - 1e-9);
     expect(rail.zoom).not.toBeCloseTo(ATLAS_CAMERA_BOUNDS.minZoom, 2);
+  });
+});
+
+describe('CLA-110: Open inside a busy file lands at code-band zoom', () => {
+  it('frames L4 code peer cards at ≥ enterZoom, not coverage-reveal of the reserved file shell', () => {
+    const scene = scanFileScene(52, ASPECT_PRESET_TARGET.landscape);
+    expect(scene.targetAspect).toBe(ASPECT_PRESET_TARGET.landscape);
+    const owner = scene.projection!.boundsByEntityIdAndDetail['component:ask']!.code!;
+    expect(owner.width * owner.height).toBeGreaterThan(20 * 20);
+
+    const camera = frameProjectionScope(scene, 'component:ask', 'code', viewport, safeArea)!;
+    expect(camera).toEqual(frameCodePeerArrivalCamera(scene, 'component:ask', viewport, safeArea));
+    expect(camera.zoom).toBeGreaterThanOrEqual(CODE_BAND_ENTER - 1e-9);
+    expect(camera.zoom).toBeGreaterThan(ATLAS_CAMERA_BOUNDS.minZoom);
+    expect(camera.zoom).toBeCloseTo(CODE_BAND_FOCUS, 0);
+    expect(camera.zoom).not.toBeCloseTo(2.87, 1);
+  });
+
+  it('rail framing (preferReadableRoot) matches Open-inside code-card landing', () => {
+    const scene = scanFileScene(52, ASPECT_PRESET_TARGET.landscape);
+    const drill = frameProjectionScope(scene, 'component:ask', 'code', viewport, safeArea, false, false)!;
+    const rail = frameProjectionScope(scene, 'component:ask', 'code', viewport, safeArea, false, true)!;
+    expect(rail.zoom).toBeGreaterThanOrEqual(CODE_BAND_ENTER - 1e-9);
+    expect(rail.zoom).toBeCloseTo(drill.zoom, 5);
+  });
+
+  it('demo (no targetAspect) keeps the band-floor landing — bandPolicy.qa contract preserved', () => {
+    const scene = scanFileScene(52, undefined);
+    expect(scene.targetAspect).toBeUndefined();
+    const camera = frameProjectionScope(scene, 'component:ask', 'code', viewport, safeArea)!;
+    const peers = frameCodePeerArrivalCamera(scene, 'component:ask', viewport, safeArea);
+    expect(camera.zoom).toBeGreaterThanOrEqual(CODE_BAND_ENTER - 1e-9);
+    expect(camera).not.toEqual(peers);
+    expect(camera.zoom).toBeLessThan(CODE_BAND_FOCUS - 1);
   });
 });
