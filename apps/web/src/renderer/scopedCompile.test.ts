@@ -12,6 +12,7 @@ import {
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_EDGE_BUDGET,
   SCAN_CONTAINER_GRID_NODES,
+  SCAN_NEIGHBORHOOD_TARGET_ASPECT,
   SCAN_RELATION_EDGE_BUDGET,
   SCAN_RELATION_EDGE_MIN,
   SCAN_RESIDENT_NODES_PER_BAND,
@@ -75,13 +76,16 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
         maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
         maxGridNodes: SCAN_CONTAINER_GRID_NODES,
         maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+        targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
       });
       expect(scanScopeCompileOptions(snap, 'component:x')).toEqual({
         maxBand: 'code',
         maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+        targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
       });
       expect(scanScopeCompileOptions(snap, 'code:0')).toEqual({
         maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+        targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
       });
     }
   });
@@ -198,7 +202,7 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
     const leaf = guardScanCompile(aboveGate, 'code:0', 'system:root');
     expect(leaf).toEqual({
       focusEntityId: 'code:0',
-      options: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+      options: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
     });
     expect(leaf.refusal).toBeUndefined();
   });
@@ -247,7 +251,7 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
     });
     expect(guardScanCompile(small, 'code:root', 'system:root')).toEqual({
       focusEntityId: 'code:root',
-      options: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+      options: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
     });
     expect(guardScanCompile(small, 'code:5', 'system:root').refusal).toBeUndefined();
   });
@@ -715,17 +719,20 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
     });
     expect(scanScopeCompileOptions(dense, 'component:x')).toEqual({
       maxBand: 'code',
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
     });
     expect(scanScopeCompileOptions(dense, 'code:a')).toEqual({
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
     });
   });
 
@@ -752,6 +759,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
     });
   });
 
@@ -769,6 +777,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
     });
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual({
       maxBand: 'code',
@@ -781,6 +790,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
     });
   });
 

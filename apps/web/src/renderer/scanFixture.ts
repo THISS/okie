@@ -1,4 +1,5 @@
 import {
+  ASPECT_PRESET_TARGET,
   assignNeighborhoodSnapshot,
   c4BandForKind,
   isNeighborhoodPacket,
@@ -60,6 +61,12 @@ export type ScanScopedOptions = {
   maxGridNodes?: number;
   maxNodesPerBand?: number;
   pageCodeLandmarks?: boolean;
+  /**
+   * CLA-118: container-focus / large component neighborhoods pack toward
+   * landscape ~1.6 so ~79 children become ~6–8 columns, not a 3-col skyscraper.
+   * System/L1 still takes this from {@link ScanModeOptions} (CLA-96 bootstrap).
+   */
+  targetAspect?: number;
 };
 
 /** Camera-resident compile window (CLA-74). Does not change CLA-73 fetch. */
@@ -74,9 +81,14 @@ export type ScanViewportResidency = {
  * tall-container problem (a system packing into one narrow column) shows up on
  * small scans too (e.g. Okie's own scan). `targetAspect` is landscape ~1.6 for
  * published scan / neighborhood (CLA-96) and is a deterministic compile input,
- * never the live viewport. Golden/demo omit it.
+ * never the live viewport. Golden/demo omit it. Container-focus / large
+ * component neighborhoods also apply this via {@link scanScopeCompileOptions}
+ * (CLA-118) so a missing mode option cannot fall back to the 3-column cap.
  */
 export type ScanModeOptions = { targetAspect?: number };
+
+/** Landscape ~1.6 for container-focus / large component neighborhood compiles (CLA-118). */
+export const SCAN_NEIGHBORHOOD_TARGET_ASPECT = ASPECT_PRESET_TARGET.landscape;
 
 // Per-focus-kind scoped options — the default scan compile path (CLA-66).
 // Current C4 band + one band down: system→container; container→component;
@@ -87,11 +99,11 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
   softwareSystem: { maxBand: 'container' },
   externalSystem: { maxBand: 'container' },
   boundary: { maxBand: 'container' },
-  container: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
-  dataStore: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
-  queue: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
-  component: { maxBand: 'code', maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
-  code: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND },
+  container: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
+  dataStore: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
+  queue: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
+  component: { maxBand: 'code', maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
+  code: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
 };
 
 /**
