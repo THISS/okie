@@ -72,8 +72,14 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
 
     expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'context')).toBeUndefined();
     expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'container')).toBeUndefined();
-    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'component')).toBeUndefined();
-    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'component')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
+    expect(scanZoomCompileHandoff(scene, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
     expect(scanZoomCompileHandoff(scene, compiled.snapshot, viewRoot, viewRoot, 'code')).toBeUndefined();
 
     const l1Morph = scene.projection?.semanticTransitionsByEntityId?.[viewRoot]?.container;
@@ -121,7 +127,7 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
       'container',
       'system:okie',
     );
-    expect(preferredL3).toBe('system:okie');
+    expect(preferredL3).toBe('container:web-app');
     const preferredL4 = scanZoomHandoffPreferredId(
       scene,
       compiled.snapshot,
@@ -131,17 +137,20 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
       { ...l3Camera, zoom: 10 },
       viewport,
       pointer,
-      'component',
+      'container',
       'system:okie',
     );
-    expect(preferredL4).toBe('system:okie');
+    expect(preferredL4).toBe('container:web-app');
     expect(scanZoomCompileHandoff(
       scene,
       compiled.snapshot,
       preferredL4,
       viewRoot,
       'code',
-    )).toBeUndefined();
+    )).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
 
     const web = scene.entities.find(entity => entity.id === 'container:web-app')!;
     expect(scanDrillDeeperDetail(scene, web, compiled.snapshot)).toBe('component');
@@ -265,7 +274,7 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
     expect(inFile.length).toBeGreaterThan(0);
   });
 
-  it('miss-camera system scene still stays on L3↔L4 instead of re-rooting into a file', () => {
+  it('miss-camera L2→L4 overshoot still opens the container, not a file', () => {
     const compiled = compileScanFixture({
       snapshot: structuredClone(demoSnapshot),
       view: structuredClone(demoView),
@@ -278,8 +287,12 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
     });
     expect(scanDeeperBandHasPeerCards(missed, viewRoot, 'component')).toBe(true);
     expect(scanDeeperBandHasPeerCards(missed, viewRoot, 'code')).toBe(true);
-    expect(scanZoomCompileHandoff(missed, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toBeUndefined();
+    expect(scanZoomCompileHandoff(missed, compiled.snapshot, 'container:web-app', viewRoot, 'code')).toEqual({
+      detail: 'component',
+      compileFocus: 'container:web-app',
+    });
     expect(scanZoomCompileHandoff(missed, compiled.snapshot, viewRoot, viewRoot, 'code')).toBeUndefined();
     expect(scanCompileFocusForBand(compiled.snapshot, 'container:web-app', 'code', viewRoot)).not.toBe(viewRoot);
+    expect(scanCompileFocusForBand(compiled.snapshot, 'container:web-app', 'code', viewRoot)).not.toBe('container:web-app');
   });
 });
