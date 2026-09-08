@@ -510,6 +510,10 @@ describe('CLA-104: scanZoomCompileHandoff — continuous zoom swaps the focused 
       detail: 'code',
       compileFocus: 'component:x',
     });
+    expect(scanZoomCompileHandoff(opened, codeSnap, 'container:c', 'system:root', 'code')).toEqual({
+      detail: 'code',
+      compileFocus: 'component:x',
+    });
   });
 
   it('CLA-117: camera-paged sibling pills do not block handoff into the pointer container', () => {

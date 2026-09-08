@@ -497,7 +497,7 @@ describe('CLA-106: L2→L3 handoff keeps peer containers (no pan into void)', ()
 });
 
 describe('CLA-107: small-repo L2 still pre-places landmarks; CLA-117 wheel re-roots fat shells', () => {
-  it('rail/pan stay on the current scene when L3 landmarks are already compiled', () => {
+  it('rail/pan still route through scanZoomCompileHandoff (CLA-117 re-roots L2 shells)', () => {
     const selectLevelLoaded = sliceBetween(app, 'function selectLevelLoaded(', 'function openInside(', 'selectLevelLoaded');
     expect(selectLevelLoaded).toContain('scanZoomCompileHandoff(scene, activeSnapshot, selected.id, viewRootId, detail, currentFocus)');
     expect(selectLevelLoaded).toContain('handoff?.compileFocus ?? currentFocus');

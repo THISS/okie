@@ -643,7 +643,8 @@ export function scanDrillDeeperDetail(
  * container past L2→L3 must re-root that container (same outcome as Open
  * inside). Stay only when the current compile focus already *is* that
  * neighborhood. From the system L2 scene, L2→L4 overshoot still opens the
- * container at component — never a file, never a stay on microscopic pills.
+ * container at component — never a file from that L2 shell. After the re-root,
+ * a later settle/wheel at code zoom is ordinary L3→L4 (CLA-65).
  * Pure — never compiles. Undefined when the current scene already shows that
  * band's peer graph, or the focused container has no children to open.
  */
