@@ -4,6 +4,7 @@ import {
   clampInspectorWidth,
   defaultInspectorWidth,
   inspectorAcceptedSummary,
+  inspectorSecondaryCopy,
   inspectorCanShowSource,
   inspectorCyclomatic,
   inspectorCoverage,
@@ -134,6 +135,25 @@ describe('inspector accepted section summaries (CLA-26)', () => {
     expect(inspectorAcceptedSummary({ responsibility: '   ' })).toBeUndefined();
     expect(inspectorAcceptedSummary({})).toBeUndefined();
     expect(inspectorAcceptedSummary(undefined)).toBeUndefined();
+  });
+
+  it('CLA-121: inspector list captions omit No summary supplied', () => {
+    expect(inspectorSecondaryCopy({
+      responsibility: INSPECTOR_EMPTY_SUMMARY,
+      kindLabel: 'File',
+      kind: 'component',
+    })).toBe('File');
+    expect(inspectorSecondaryCopy({
+      responsibility: '',
+      kindLabel: 'File',
+      kind: 'component',
+    })).toBe('File');
+    expect(inspectorSecondaryCopy({
+      responsibility: 'React browser shell.',
+      kindLabel: 'Container',
+      kind: 'container',
+    })).toBe('React browser shell.');
+    expect(inspectorSecondaryCopy(undefined)).toBeUndefined();
   });
 
   it('shows golden container and code summaries in Details', () => {

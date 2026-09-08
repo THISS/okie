@@ -210,7 +210,14 @@ describe('compact inspector presentation', () => {
     expect(children).toBeGreaterThan(actions);
     expect(relationships).toBeGreaterThan(children);
     expect(sources).toBeGreaterThan(relationships);
-    expect(app).toContain('selectedChildren.map(child =>');
+    expect(app).toContain('paintedChildren.map(child =>');
+    expect(app).toContain('inspectorSecondaryCopy(child)');
+    expect(app).not.toContain('child.responsibility || child.kindLabel');
+    expect(app).toContain('inspectorSecondaryCopy(selectedParent)');
+    expect(app).toContain('inspectorSecondaryCopy(entity)');
+    expect(app).not.toContain('entity.kindLabel ?? entity.kind} · {entity.responsibility}');
+    expect(app).toContain('entity.source ?? inspectorAcceptedSummary(entity)');
+    expect(app).toContain('selectedCopy ? `${entity.name} selected. ${selectedCopy}`');
     expect(app).toContain('selected.sourceRefs.map((source, index) =>');
   });
 
