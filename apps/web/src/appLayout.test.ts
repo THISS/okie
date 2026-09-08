@@ -59,6 +59,34 @@ describe('map heading chrome shield (CLA-108)', () => {
   });
 });
 
+describe('canvas hint chrome shield (CLA-115)', () => {
+  it('occludes world labels under the gesture hint without deleting the hint', () => {
+    const hint = declarations(css, '.canvas-hint');
+    const heading = declarations(css, '.map-heading');
+    const canvas = declarations(css, '.atlas-canvas');
+
+    expect(hint).toMatch(/z-index:\s*8/);
+    expect(hint).toContain('isolation: isolate');
+    expect(hint).toContain('background: rgba(7, 10, 11, 0.94)');
+    expect(hint).toContain('box-shadow: 0 0 32px 20px rgba(7, 10, 11, 0.78)');
+    expect(hint).toContain('backdrop-filter: blur(16px)');
+    expect(hint).toContain('border-radius: 12px');
+    expect(hint).toContain('padding: 6px 14px 8px');
+    expect(heading).toContain('background: rgba(7, 10, 11, 0.94)');
+    expect(heading).toContain('backdrop-filter: blur(16px)');
+    expect(canvas).toMatch(/z-index:\s*0/);
+    expect(app).toContain('className="canvas-hint"');
+    expect(app).toContain('<span>Scroll to zoom</span>');
+    expect(app).toContain('drag to pan');
+    expect(app).toContain('click to inspect');
+    expect(app).toContain('double-click to open inside');
+    expect(app).toContain("{ rect: rect('.canvas-hint'), edge: 'bottom' as const }");
+    expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+    const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+    expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
+  });
+});
+
 describe('view and edit interaction modes', () => {
   it('defaults to View and gates every relationship mutation surface behind Edit', () => {
     expect(app).toContain("useState<'view' | 'edit'>('view')");
