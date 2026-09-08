@@ -354,6 +354,15 @@ export function c4ContainmentLeafSize(kind: EntityKind, targetAspect?: number): 
 }
 
 /**
+ * Scan L3 file-component card face (CLA-121). Compact leaf at component
+ * focus — kicker + title (+ optional summary). Not the CLA-81 reserved L4
+ * interior used when nested symbols are painted.
+ */
+export function c4ScanComponentCardFace(targetAspect: number): { width: number; height: number } {
+  return c4ContainmentLeafSize('component', targetAspect);
+}
+
+/**
  * Child count that still fits Canvas2D titles on the compact L2 peer tile.
  * `ceil(sqrt(N))` packing into the 224×112 leaf is a ~3×3 grid at N=9, matching
  * `C4_INTRINSIC_LAYOUT.maxColumns`. CLA-119 scales the leaf by √(N / comfort)

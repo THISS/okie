@@ -283,10 +283,10 @@ describe('Canvas2D band-normalized typography', () => {
     expect(fontsource).toBeDefined();
     expect(fontsource).toMatch(/ibm-plex-sans$/);
     expect(fontsource?.startsWith('@fontsource/ibm-') && !fontsource.includes('plex-sans')).toBe(false);
-    expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(true);
+    expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(false);
   });
 
-  it('paints the honest placeholder when Canvas2D entities have no summary (CLA-58)', () => {
+  it('omits the empty-summary placeholder on Canvas2D cards (CLA-121)', () => {
     const scene: AtlasScene = {
       id: 'cla-58-canvas',
       title: 'CLA-58 canvas',
@@ -328,7 +328,7 @@ describe('Canvas2D band-normalized typography', () => {
     renderer.setRenderState(state);
     renderer.render(0);
 
-    expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(true);
+    expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(false);
     expect(target.textCalls.some(call => call.content === 'Spatial architecture atlas.')).toBe(true);
   });
 

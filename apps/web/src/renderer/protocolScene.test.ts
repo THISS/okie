@@ -38,7 +38,7 @@ describe('protocol scene roundedRect radius', () => {
     for (const rect of rects) expect(rect.radius).toBe(13);
   });
 
-  it('fills missing responsibility with the honest no-summary placeholder (CLA-58)', () => {
+  it('omits empty responsibility instead of painting No summary supplied (CLA-121)', () => {
     const protocol = toProtocolScene(scene([{
       id: 'external:react',
       name: 'react',
@@ -54,6 +54,7 @@ describe('protocol scene roundedRect radius', () => {
     const texts = protocol.objects[0]!.representations[1]!.primitives
       .filter(primitive => primitive.kind === 'text')
       .map(primitive => primitive.content);
-    expect(texts).toContain('No summary supplied.');
+    expect(texts).not.toContain('No summary supplied.');
+    expect(texts).toContain('react');
   });
 });

@@ -1,6 +1,7 @@
 import {
   C4_LABEL_MIN_TITLE_PX,
   c4TitleFitFloor,
+  cardSupportCopy,
   codeCardCopy,
   fitDisplayText,
   fitDisplayTextAtSize,
@@ -79,7 +80,7 @@ function paintedCardCopy(entity: SceneEntity, detail: SemanticDetail, boundary: 
   const codeCopy = entity.detail === 'code' ? codeCardCopy(entity) : undefined;
   const rawDescription = codeCopy
     ? codeCopy.description
-    : (entity.responsibility.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED);
+    : cardSupportCopy(entity.responsibility);
   const fittedDescription = !boundary && rawDescription
     ? fitDisplayText(
       rawDescription,
@@ -102,7 +103,7 @@ export function cardNeedsHoverHud(
   const painted = paintedCardCopy(entity, detail, boundary, zoom, screenWidth);
   if (painted.fittedTitle.content !== entity.name) return true;
   if (painted.rawDescription && painted.fittedDescription && painted.fittedDescription !== painted.rawDescription) return true;
-  return !boundary && painted.rawDescription === NO_SUMMARY_SUPPLIED;
+  return !boundary && (!entity.responsibility.trim() || entity.responsibility === NO_SUMMARY_SUPPLIED);
 }
 
 export function canvasHoverHudModel(query: CanvasHoverHudQuery): CanvasHoverHudModel | undefined {

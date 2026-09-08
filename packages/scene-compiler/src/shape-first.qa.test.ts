@@ -75,7 +75,7 @@ test("CLA-81: omitted L4 cards keep reserved shells without enrichment copy", ()
   }
 });
 
-test("CLA-81: childCounts reserve parent size so opening the band does not grow the owner", () => {
+test("CLA-81: childCounts reserve L4 owner size so opening code does not grow the file", () => {
   const full = fileSnapshot(8);
   const slim: ArchitectureSnapshot = {
     ...full,
@@ -87,9 +87,9 @@ test("CLA-81: childCounts reserve parent size so opening the band does not grow 
     .map(item => ({ id: item.id, kind: item.kind, ...(item.parentId ? { parentId: item.parentId } : {}) }));
   const slimBundle = buildC4ProjectionBundle(slim, {
     rootEntityId: "system:d",
-    focusEntityId: "container:c",
+    focusEntityId: "component:file",
     familyId: "f",
-    maxBand: "component",
+    maxBand: "code",
     targetAspect: ASPECT_PRESET_TARGET.landscape,
   });
   const reserved = compileC4Scene(slim, slimBundle, {
@@ -108,7 +108,8 @@ test("CLA-81: childCounts reserve parent size so opening the band does not grow 
     targetAspect: ASPECT_PRESET_TARGET.landscape,
     childCounts,
   });
-  const reservedFile = reserved.projections.index.boundsByEntityIdAndBand["component:file"]?.component;
+  const reservedFile = reserved.projections.index.boundsByEntityIdAndBand["component:file"]?.code
+    ?? reserved.projections.index.boundsByEntityIdAndBand["component:file"]?.component;
   const openedFile = opened.projections.index.boundsByEntityIdAndBand["component:file"]?.code
     ?? opened.projections.index.boundsByEntityIdAndBand["component:file"]?.component;
   assert.ok(reservedFile);

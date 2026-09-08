@@ -1,5 +1,5 @@
 import type { AtlasScene, SceneEntity } from './types';
-import { NO_SUMMARY_SUPPLIED } from '@okie/scene-compiler';
+import { cardSupportCopy } from '@okie/scene-compiler';
 
 type Rgba = readonly [number, number, number, number];
 
@@ -31,76 +31,79 @@ export function toProtocolScene(scene: AtlasScene) {
     sceneId: `scene:${scene.id}`,
     revision: 1,
     worldBounds: { x: left - 80, y: top - 80, width: right - left + 160, height: bottom - top + 160 },
-    objects: scene.entities.map(entity => ({
-      id: entity.id,
-      zIndex: 1,
-      bounds: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
-      pickable: true,
-      representations: [{
-        id: `${entity.id}:compact`,
-        lod: { minZoom: 0, maxZoom: 0.58, fadeWidth: 0.12, hysteresis: 0.04 },
-        primitives: [
-          {
-            kind: 'roundedRect' as const,
-            rect: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
-            // Protocol rule: roundedRect radius must be <= min(w, h) / 2. Clamp so
-            // tiny entities never emit protocol-invalid primitives (golden cells are
-            // large enough that this is a no-op for them).
-            radius: Math.max(0, Math.min(13, entity.width / 2, entity.height / 2)),
-            fill: fills[entity.kind],
-            stroke: { color: [0.31, 0.43, 0.4, 0.8] as Rgba, width: 1.3 },
-          },
-          {
-            kind: 'text' as const,
-            position: { x: entity.x + 16, y: entity.y + 40 },
-            maxWidth: entity.width - 32,
-            content: entity.name,
-            fontFamily: 'IBM Plex Sans SemiBold',
-            fontSize: 17,
-            color: text,
-            align: 'start' as const,
-          },
-        ],
-      }, {
-        id: `${entity.id}:detail`,
-        lod: { minZoom: 0.46, maxZoom: null, fadeWidth: 0.12, hysteresis: 0.04 },
-        primitives: [
-          {
-            kind: 'roundedRect' as const,
-            rect: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
-            // Protocol rule: roundedRect radius must be <= min(w, h) / 2. Clamp so
-            // tiny entities never emit protocol-invalid primitives (golden cells are
-            // large enough that this is a no-op for them).
-            radius: Math.max(0, Math.min(13, entity.width / 2, entity.height / 2)),
-            fill: fills[entity.kind],
-            stroke: { color: [0.31, 0.43, 0.4, 0.8] as Rgba, width: 1.3 },
-          },
-          {
-            kind: 'text' as const,
-            position: { x: entity.x + 16, y: entity.y + 40 },
-            maxWidth: entity.width - 32,
-            content: entity.name,
-            fontFamily: 'IBM Plex Sans SemiBold',
-            fontSize: 17,
-            color: text,
-            align: 'start' as const,
-          },
-          {
-            kind: 'text' as const,
-            position: { x: entity.x + 16, y: entity.y + 66 },
-            maxWidth: entity.width - 32,
-            content: entity.responsibility.trim() ? entity.responsibility : NO_SUMMARY_SUPPLIED,
-            fontFamily: 'IBM Plex Sans',
-            fontSize: 10,
-            color: muted,
-            align: 'start' as const,
-          },
-        ],
-      }],
-    })),
+    objects: scene.entities.map(entity => {
+      const support = cardSupportCopy(entity.responsibility);
+      return {
+        id: entity.id,
+        zIndex: 1,
+        bounds: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
+        pickable: true,
+        representations: [{
+          id: `${entity.id}:compact`,
+          lod: { minZoom: 0, maxZoom: 0.58, fadeWidth: 0.12, hysteresis: 0.04 },
+          primitives: [
+            {
+              kind: 'roundedRect' as const,
+              rect: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
+              // Protocol rule: roundedRect radius must be <= min(w, h) / 2. Clamp so
+              // tiny entities never emit protocol-invalid primitives (golden cells are
+              // large enough that this is a no-op for them).
+              radius: Math.max(0, Math.min(13, entity.width / 2, entity.height / 2)),
+              fill: fills[entity.kind],
+              stroke: { color: [0.31, 0.43, 0.4, 0.8] as Rgba, width: 1.3 },
+            },
+            {
+              kind: 'text' as const,
+              position: { x: entity.x + 16, y: entity.y + 40 },
+              maxWidth: entity.width - 32,
+              content: entity.name,
+              fontFamily: 'IBM Plex Sans SemiBold',
+              fontSize: 17,
+              color: text,
+              align: 'start' as const,
+            },
+          ],
+        }, {
+          id: `${entity.id}:detail`,
+          lod: { minZoom: 0.46, maxZoom: null, fadeWidth: 0.12, hysteresis: 0.04 },
+          primitives: [
+            {
+              kind: 'roundedRect' as const,
+              rect: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
+              // Protocol rule: roundedRect radius must be <= min(w, h) / 2. Clamp so
+              // tiny entities never emit protocol-invalid primitives (golden cells are
+              // large enough that this is a no-op for them).
+              radius: Math.max(0, Math.min(13, entity.width / 2, entity.height / 2)),
+              fill: fills[entity.kind],
+              stroke: { color: [0.31, 0.43, 0.4, 0.8] as Rgba, width: 1.3 },
+            },
+            {
+              kind: 'text' as const,
+              position: { x: entity.x + 16, y: entity.y + 40 },
+              maxWidth: entity.width - 32,
+              content: entity.name,
+              fontFamily: 'IBM Plex Sans SemiBold',
+              fontSize: 17,
+              color: text,
+              align: 'start' as const,
+            },
+            ...(support ? [{
+              kind: 'text' as const,
+              position: { x: entity.x + 16, y: entity.y + 66 },
+              maxWidth: entity.width - 32,
+              content: support,
+              fontFamily: 'IBM Plex Sans',
+              fontSize: 10,
+              color: muted,
+              align: 'start' as const,
+            }] : []),
+          ],
+        }],
+      };
+    }),
     paths: scene.relations.map(relation => {
-      const from = scene.entities.find(entity => entity.id === relation.from);
-      const to = scene.entities.find(entity => entity.id === relation.to);
+      const from = scene.entities.find(item => item.id === relation.from);
+      const to = scene.entities.find(item => item.id === relation.to);
       const fromCenter = from ? { x: from.x + from.width / 2, y: from.y + from.height / 2 } : { x: 0, y: 0 };
       const toCenter = to ? { x: to.x + to.width / 2, y: to.y + to.height / 2 } : { x: 0, y: 0 };
       return {
