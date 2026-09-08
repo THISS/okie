@@ -17,7 +17,7 @@ const rootVercel = JSON.parse(readFileSync(new URL('../../../vercel.json', impor
  */
 function matchVercelSource(source: string, pathname: string): boolean {
   const replacements: string[] = [];
-  const tokenized = source.replace(/:([A-Za-z0-9_]+)\*|:([A-Za-z0-9_]+)/g, (all, starName) => {
+  const tokenized = source.replace(/:([A-Za-z0-9_]+)\*|:([A-Za-z0-9_]+)/g, (_all, starName) => {
     replacements.push(starName !== undefined ? '.*' : '[^/]+');
     return `§${replacements.length - 1}§`;
   });
