@@ -1,4 +1,9 @@
-import { C4_COMPONENT_CARD_FACE, C4_CONTAINER_CARD_FACE, C4_CONTEXT_CARD_FACE } from '@okie/architecture';
+import {
+  C4_COMPONENT_CARD_FACE,
+  C4_CONTAINER_CARD_FACE,
+  C4_CONTEXT_CARD_FACE,
+  C4_INTRINSIC_LAYOUT,
+} from '@okie/architecture';
 import {
   C4_LABEL_MIN_TITLE_PX,
   C4_PRESENTATION_AT_FOCUS,
@@ -138,10 +143,30 @@ export function componentCardFaceBounds(bounds: WorldRect): WorldRect {
   };
 }
 
+/** World-space L4 leaf (224×112 CSS at code focus). Scan Open inside frames this, not a reserved file interior. */
+const CODE_CARD_FACE = {
+  width: C4_INTRINSIC_LAYOUT.leaf.code.width / C4_ZOOM_BANDS[3]!.focusZoom,
+  height: C4_INTRINSIC_LAYOUT.leaf.code.height / C4_ZOOM_BANDS[3]!.focusZoom,
+} as const;
+
+export function codeCardFaceBounds(bounds: WorldRect): WorldRect {
+  if (bounds.width <= CODE_CARD_FACE.width * 1.25
+    && bounds.height <= CODE_CARD_FACE.height * 1.25) {
+    return bounds;
+  }
+  return {
+    x: bounds.x,
+    y: bounds.y,
+    width: Math.min(bounds.width, CODE_CARD_FACE.width),
+    height: Math.min(bounds.height, CODE_CARD_FACE.height),
+  };
+}
+
 function readableCardFaceBounds(bounds: WorldRect, detail: SemanticDetail): WorldRect {
   if (detail === 'context') return contextCardFaceBounds(bounds);
   if (detail === 'container') return containerCardFaceBounds(bounds);
   if (detail === 'component') return componentCardFaceBounds(bounds);
+  if (detail === 'code') return codeCardFaceBounds(bounds);
   return bounds;
 }
 
@@ -171,6 +196,11 @@ function isReservedContainerShell(bounds: WorldRect): boolean {
 function isReservedComponentShell(bounds: WorldRect): boolean {
   return bounds.width > C4_COMPONENT_CARD_FACE.width * 1.25
     || bounds.height > C4_COMPONENT_CARD_FACE.height * 1.25;
+}
+
+function isReservedCodeShell(bounds: WorldRect): boolean {
+  return bounds.width > CODE_CARD_FACE.width * 1.25
+    || bounds.height > CODE_CARD_FACE.height * 1.25;
 }
 
 function contextArrivalFace(
@@ -339,6 +369,75 @@ export function frameComponentPeerArrivalCamera(
 }
 
 /**
+ * L4 code cards that still fit at code-band focus zoom, starting from the
+ * top-left of the packed grid. Fitting every reserved file shell would land
+ * Open inside at coverage-reveal (~container-band) zoom (CLA-110).
+ */
+function nearbyCodeArrivalIds(
+  scene: AtlasScene,
+  residentIds: readonly string[],
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): string[] {
+  const faces = residentIds.flatMap(id => {
+    const entity = scene.entities.find(candidate => candidate.id === id);
+    const bounds = entity ? projectedBoundsAtDetail(scene, entity, 'code') : undefined;
+    return bounds ? [{ id, face: codeCardFaceBounds(bounds) }] : [];
+  }).sort((left, right) => left.face.y - right.face.y
+    || left.face.x - right.face.x
+    || left.id.localeCompare(right.id));
+  if (!faces.length) return [...residentIds];
+  const safeWidth = Math.max(80, viewport.width - safeArea.left - safeArea.right);
+  const safeHeight = Math.max(80, viewport.height - safeArea.top - safeArea.bottom);
+  const padding = 48;
+  const focusZoom = C4_ZOOM_BANDS[3]!.focusZoom;
+  const maxWorldWidth = (safeWidth - padding) / focusZoom;
+  const maxWorldHeight = (safeHeight - padding) / focusZoom;
+  const cluster = [faces[0]!];
+  let union = { ...faces[0]!.face };
+  for (const candidate of faces.slice(1)) {
+    const left = Math.min(union.x, candidate.face.x);
+    const top = Math.min(union.y, candidate.face.y);
+    const right = Math.max(union.x + union.width, candidate.face.x + candidate.face.width);
+    const bottom = Math.max(union.y + union.height, candidate.face.y + candidate.face.height);
+    if (right - left <= maxWorldWidth && bottom - top <= maxWorldHeight) {
+      cluster.push(candidate);
+      union = { x: left, y: top, width: right - left, height: bottom - top };
+    }
+  }
+  return cluster.map(item => item.id);
+}
+
+/**
+ * Scan Open inside L4: frame resident code peer cards at code-band zoom
+ * (min ≥ enterZoom, prefer focusZoom), not coverage-reveal of a reserved file shell.
+ */
+export function frameCodePeerArrivalCamera(
+  scene: AtlasScene,
+  rootEntityId: string,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): Camera | undefined {
+  const scopeIds = projectionScopeEntityIds(scene, rootEntityId, 'code');
+  const residentIds = residentVisibleProjectionEntityIds(scene, scopeIds, 'code');
+  if (!residentIds.length) return undefined;
+  const clusterIds = nearbyCodeArrivalIds(scene, residentIds, viewport, safeArea);
+  const enterZoom = C4_ZOOM_BANDS[3]!.enterZoom;
+  const focusZoom = scene.projection?.zoomPolicy?.bands.find(band => band.detail === 'code')?.focusZoom
+    ?? levels[3]!.zoom;
+  return frameEntityIdsAtDetail(
+    scene,
+    clusterIds,
+    'code',
+    viewport,
+    safeArea,
+    enterZoom,
+    focusZoom,
+    true,
+  );
+}
+
+/**
  * CLA-104: after a continuous-zoom neighborhood swap, keep the user's zoom
  * and pan onto the compiled file-component peer cluster. Mapping the reserved
  * owner shell at live zoom lands in the hollow interior; Fit stays a Fit click.
@@ -355,6 +454,10 @@ export function scanZoomHandoffCamera(
 ): Camera {
   if (detail === 'component') {
     const peer = frameComponentPeerArrivalCamera(nextScene, compileFocus, viewport, safeArea);
+    if (peer) return { x: peer.x, y: peer.y, zoom: liveCamera.zoom };
+  }
+  if (detail === 'code') {
+    const peer = frameCodePeerArrivalCamera(nextScene, compileFocus, viewport, safeArea);
     if (peer) return { x: peer.x, y: peer.y, zoom: liveCamera.zoom };
   }
   if (previousBounds && targetBounds) {
@@ -669,6 +772,14 @@ export function frameProjectionScope(
   if (detail === 'component' && scene.targetAspect !== undefined && rootBounds
     && isReservedComponentShell(rootBounds)) {
     const peers = frameComponentPeerArrivalCamera(scene, rootEntityId, viewport, safeArea);
+    if (peers) return peers;
+  }
+  // CLA-110: Open inside a multi-symbol file must frame L4 code peer cards at
+  // code-band zoom. Coverage-reveal of the reserved file shell lands around
+  // container-band (~z=2.87); the next wheel tick then recompiles to system:okie.
+  if (detail === 'code' && scene.targetAspect !== undefined && rootBounds
+    && isReservedCodeShell(rootBounds)) {
+    const peers = frameCodePeerArrivalCamera(scene, rootEntityId, viewport, safeArea);
     if (peers) return peers;
   }
   // Coverage-reveal landing (scan mode only): frame the focus at COVERAGE_REVEAL.full
