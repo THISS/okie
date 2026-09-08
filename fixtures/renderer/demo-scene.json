@@ -1995,9 +1995,9 @@
                 "y": 239.97079008948387
               },
               "maxWidth": 12.822349570200574,
-              "content": "selectArchitectureSnapsho…",
+              "content": "selectArchitectureSnapshot()",
               "fontFamily": "IBM Plex Mono SemiBold",
-              "fontSize": 0.8022922636103151,
+              "fontSize": 0.5522922636103151,
               "color": [
                 0.957,
                 0.969,
@@ -3095,9 +3095,9 @@
                 "y": 239.97079008948387
               },
               "maxWidth": 12.822349570200574,
-              "content": "ScenePatch::validate_agai…",
+              "content": "ScenePatch::validate_against()",
               "fontFamily": "IBM Plex Mono SemiBold",
-              "fontSize": 0.8022922636103151,
+              "fontSize": 0.5522922636103151,
               "color": [
                 0.957,
                 0.969,
@@ -3535,9 +3535,9 @@
                 "y": 294.11139746729725
               },
               "maxWidth": 17.55355260429907,
-              "content": "packages/…/src/generate-fixtures.ts",
+              "content": "packages/scene-compiler/src/generate-fixtures.ts",
               "fontFamily": "IBM Plex Mono SemiBold",
-              "fontSize": 0.8022922636103151,
+              "fontSize": 0.5522922636103151,
               "color": [
                 0.957,
                 0.969,
@@ -3975,9 +3975,9 @@
                 "y": 286.38520204148136
               },
               "maxWidth": 12.822349570200574,
-              "content": "createNavigationHistoryCo…",
+              "content": "createNavigationHistoryController()",
               "fontFamily": "IBM Plex Mono SemiBold",
-              "fontSize": 0.8022922636103151,
+              "fontSize": 0.5522922636103151,
               "color": [
                 0.957,
                 0.969,
@@ -5185,9 +5185,9 @@
                 "y": 213.37281105243753
               },
               "maxWidth": 30.038359513825597,
-              "content": "Scoped scene and …",
+              "content": "Scoped scene and patch c…",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.2770398481973437,
               "color": [
                 0.957,
                 0.969,
@@ -5373,9 +5373,9 @@
                 "y": 213.37281105243753
               },
               "maxWidth": 30.038359513825597,
-              "content": "TypeScript protoc…",
+              "content": "TypeScript protocol mirror",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.3809297912713476,
               "color": [
                 0.957,
                 0.969,
@@ -6501,9 +6501,9 @@
                 "y": 235.18515968980574
               },
               "maxWidth": 30.038359513825597,
-              "content": "Architecture valid…",
+              "content": "Architecture validation",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.6309297912713476,
               "color": [
                 0.957,
                 0.969,
@@ -7065,9 +7065,9 @@
                 "y": 238.54772826896476
               },
               "maxWidth": 30.038359513825597,
-              "content": "Versioned rendere…",
+              "content": "Versioned renderer protocol",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.2770398481973437,
               "color": [
                 0.957,
                 0.969,
@@ -7253,9 +7253,9 @@
                 "y": 238.54772826896476
               },
               "maxWidth": 30.038359513825597,
-              "content": "Browser WASM bri…",
+              "content": "Browser WASM bridge",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.8809297912713476,
               "color": [
                 0.957,
                 0.969,
@@ -7629,9 +7629,9 @@
                 "y": 292.9092360207517
               },
               "maxWidth": 30.038359513825597,
-              "content": "Stress scene gene…",
+              "content": "Stress scene generator",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.6309297912713476,
               "color": [
                 0.957,
                 0.969,
@@ -8005,9 +8005,9 @@
                 "y": 286.18409886243364
               },
               "maxWidth": 30.038359513825597,
-              "content": "Navigation and his…",
+              "content": "Navigation and history",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.8809297912713476,
               "color": [
                 0.957,
                 0.969,
@@ -8193,9 +8193,9 @@
                 "y": 289.54666744159266
               },
               "maxWidth": 30.038359513825597,
-              "content": "Evidence presenta…",
+              "content": "Evidence presentation",
               "fontFamily": "IBM Plex Sans SemiBold",
-              "fontSize": 3.1309297912713476,
+              "fontSize": 2.8809297912713476,
               "color": [
                 0.957,
                 0.969,
