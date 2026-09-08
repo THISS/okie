@@ -34,6 +34,8 @@ describe('CLA-113 canvas hover HUD', () => {
     expect(viewport).toContain('suppress:');
     expect(viewport).toContain('<CanvasHoverHud');
     expect(viewport).toContain('onPointerLeave');
+    expect(hud).toContain('entityIdsByDetail[detail]');
+    expect(hud).toContain('paintedBoundary');
   });
 
   it('keeps connect-tool ports on hoveredPick and does not capture pointer on the HUD', () => {

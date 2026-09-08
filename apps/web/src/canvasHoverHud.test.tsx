@@ -20,25 +20,43 @@ function entity(overrides: Partial<SceneEntity> & Pick<SceneEntity, 'id' | 'name
   };
 }
 
-function sceneFor(target: SceneEntity): AtlasScene {
+function sceneFor(target: SceneEntity, extras: { children?: SceneEntity[]; visibleIds?: string[] } = {}): AtlasScene {
+  const entities = [target, ...(extras.children ?? [])];
+  const visibleIds = extras.visibleIds ?? entities.map(entity => entity.id);
+  const emptyIds = { context: [], container: [], component: [], code: [] } as const;
   return {
     id: 'cla-113-hover-hud',
     title: 'CLA-113 hover HUD',
     subtitle: '',
-    entities: [target],
+    entities,
     relations: [],
     regions: [],
+    projection: {
+      semanticToVisualEntityId: {},
+      visualToSemanticEntityId: {},
+      semanticToVisualRelationIds: {},
+      visualToSemanticRelationIds: {},
+      boundsByEntityIdAndDetail: {},
+      entityIdsByDetail: { ...emptyIds, [target.detail ?? 'component']: visibleIds },
+      relationIdsByDetail: { ...emptyIds },
+      projectedRelationsByDetail: { ...emptyIds },
+    },
   };
 }
 
-function query(target: SceneEntity, detail: SemanticDetail, zoom: number, extra: { suppress?: boolean } = {}) {
+function query(
+  target: SceneEntity,
+  detail: SemanticDetail,
+  zoom: number,
+  extra: { suppress?: boolean; children?: SceneEntity[]; visibleIds?: string[] } = {},
+) {
   return {
     pick: { kind: 'entity' as const, id: target.id },
-    scene: sceneFor(target),
+    scene: sceneFor(target, extra),
     camera: cameraAt(zoom),
     viewport,
     detail,
-    ...extra,
+    ...(extra.suppress ? { suppress: true } : {}),
   };
 }
 
@@ -83,6 +101,40 @@ describe('canvas hover HUD (CLA-113)', () => {
     expect(model?.path).toBe('apps/web');
     expect(model?.detail).toBeUndefined();
     expect(JSON.stringify(model)).not.toContain(NO_SUMMARY_SUPPLIED);
+  });
+
+  it('treats an L2/L3 parent as a filled card when children are only in a deeper band', () => {
+    const zoom = 1.99;
+    const parent = entity({
+      id: 'container:web',
+      name: '@okie/web',
+      kind: 'container',
+      kindLabel: 'CONTAINER',
+      detail: 'container',
+      responsibility: NO_SUMMARY_SUPPLIED,
+      source: 'apps/web',
+      width: 220,
+    });
+    const child = entity({
+      id: 'component:shell',
+      parentId: parent.id,
+      name: 'Application shell',
+      detail: 'component',
+      width: 40,
+    });
+    const deeperOnly = canvasHoverHudModel(query(parent, 'container', zoom, {
+      children: [child],
+      visibleIds: [parent.id],
+    }));
+    expect(deeperOnly?.name).toBe('@okie/web');
+    expect(deeperOnly?.path).toBe('apps/web');
+    expect(JSON.stringify(deeperOnly)).not.toContain(NO_SUMMARY_SUPPLIED);
+
+    const paintedShell = canvasHoverHudModel(query(parent, 'container', zoom, {
+      children: [child],
+      visibleIds: [parent.id, child.id],
+    }));
+    expect(paintedShell).toBeUndefined();
   });
 
   it('stays quiet on a fully visible card with a real summary', () => {

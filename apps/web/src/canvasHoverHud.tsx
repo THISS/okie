@@ -55,6 +55,13 @@ function hoverDetail(entity: SceneEntity) {
   return signature;
 }
 
+function paintedBoundary(scene: AtlasScene, entityId: string, detail: SemanticDetail) {
+  const visible = new Set(
+    scene.projection?.entityIdsByDetail[detail] ?? scene.entities.map(candidate => candidate.id),
+  );
+  return scene.entities.some(candidate => candidate.parentId === entityId && visible.has(candidate.id));
+}
+
 function paintedCardCopy(entity: SceneEntity, detail: SemanticDetail, boundary: boolean, zoom: number, screenWidth: number) {
   const metrics = canvasEntityPresentationMetrics(detail, boundary, zoom);
   const textMaxWidth = Math.max(1, screenWidth - metrics.horizontalInsets);
@@ -103,7 +110,7 @@ export function canvasHoverHudModel(query: CanvasHoverHudQuery): CanvasHoverHudM
   const bounds = authoringBoundsForDetail(query.scene, entity.id, query.detail)
     ?? { x: entity.x, y: entity.y, width: entity.width, height: entity.height };
   const screenWidth = bounds.width * query.camera.zoom;
-  const boundary = query.scene.entities.some(candidate => candidate.parentId === entity.id);
+  const boundary = paintedBoundary(query.scene, entity.id, query.detail);
   if (!cardNeedsHoverHud(entity, query.detail, boundary, query.camera.zoom, screenWidth)) return undefined;
   const origin = worldToScreen({ x: bounds.x, y: bounds.y }, query.camera, query.viewport);
   const screenHeight = bounds.height * query.camera.zoom;
