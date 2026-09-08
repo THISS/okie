@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadPublishedEnrichmentHonesty, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, SCAN_CONTAINER_GRID_NODES, SCAN_RELATION_EDGE_BUDGET, SCAN_RESIDENT_NODES_PER_BAND, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadPublishedEnrichmentHonesty, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, SCAN_CONTAINER_GRID_NODES, SCAN_L2_RESIDENT_PREVIEW_PILLS, SCAN_RELATION_EDGE_BUDGET, SCAN_RESIDENT_NODES_PER_BAND, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -40,6 +40,7 @@ describe('scan fixture loader', () => {
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     });
     expect((scene.projection?.entityIdsByDetail.component ?? [])
       .filter(id => scene.entities.find(entity => entity.id === id)?.detail === 'component').length).toBeGreaterThan(0);
@@ -65,6 +66,7 @@ describe('scan fixture loader', () => {
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     });
   });
 

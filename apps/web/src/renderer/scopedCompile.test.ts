@@ -12,6 +12,7 @@ import {
   SCAN_BAND_DEPTH_MIN_ENTITIES,
   SCAN_CONTAINER_EDGE_BUDGET,
   SCAN_CONTAINER_GRID_NODES,
+  SCAN_L2_RESIDENT_PREVIEW_PILLS,
   SCAN_NEIGHBORHOOD_TARGET_ASPECT,
   SCAN_RELATION_EDGE_BUDGET,
   SCAN_RELATION_EDGE_MIN,
@@ -67,6 +68,7 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     } as const;
     expect(scanScopeCompileOptions(big, 'system:root')).toEqual(overlay);
     expect(scanScopeCompileOptions(small, 'system:root')).toEqual(overlay);
@@ -187,6 +189,7 @@ describe('guardScanCompile — anti-hang choke point above the size gate', () =>
         maxGridNodes: SCAN_CONTAINER_GRID_NODES,
         maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
         pageCodeLandmarks: true,
+        maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
       },
     });
     expect(system.refusal).toBeUndefined();
@@ -713,6 +716,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     });
     expect(scanScopeCompileOptions(dense, 'container:c')).toEqual({
       maxBand: 'component',
@@ -744,6 +748,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     });
   });
 
@@ -785,6 +790,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
       pageCodeLandmarks: true,
+      maxL2PreviewPillsPerOwner: SCAN_L2_RESIDENT_PREVIEW_PILLS,
     });
     expect(scanScopeCompileOptions(big, 'code:a')).toEqual({
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,

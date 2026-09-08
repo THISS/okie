@@ -417,7 +417,7 @@ describe('compact inspector presentation', () => {
 
   it('enumerates off-camera L3/L4 cards as inspector +N more (CLA-74)', () => {
     expect(app).toContain('data-testid="inspector-omitted-nodes-more"');
-    expect(app).toContain('+{omittedChildNodes.length} more off-camera');
+    expect(app).toContain('+{omittedChildNodes.length} more');
     expect(app).toContain('data-testid="inspector-omitted-nodes-list"');
     expect(app).toContain('setOmittedNodesExpanded(false)');
   });

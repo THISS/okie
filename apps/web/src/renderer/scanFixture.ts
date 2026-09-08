@@ -2,6 +2,7 @@ import {
   ASPECT_PRESET_TARGET,
   assignNeighborhoodSnapshot,
   c4BandForKind,
+  C4_SCAN_L2_RESIDENT_PREVIEW_PILLS,
   isNeighborhoodPacket,
   mergeChildCounts,
   neighborhoodSliceOptionsForFocus,
@@ -44,6 +45,8 @@ export const SCAN_CONTAINER_EDGE_BUDGET = 24;     // routed edges per band at a 
 export const SCAN_CONTAINER_GRID_NODES = 1500;    // router grid-node cap at a container drill-in
 /** Compiled L3/L4 window (CLA-74 / CLA-67 healthy 50). Not the 2000 hang-guard. */
 export const SCAN_RESIDENT_NODES_PER_BAND = VIEWPORT_RESIDENT_NODES_PER_BAND;
+/** L2 landmark file-pill cap per container (CLA-120). Not the 50 L3/L4 window. */
+export const SCAN_L2_RESIDENT_PREVIEW_PILLS = C4_SCAN_L2_RESIDENT_PREVIEW_PILLS;
 
 // Relation-pressure gate: the symbol-level `uses` graph makes edge ROUTING the
 // dominant cost even when the entity count sits far under the hang-guard
@@ -61,6 +64,11 @@ export type ScanScopedOptions = {
   maxGridNodes?: number;
   maxNodesPerBand?: number;
   pageCodeLandmarks?: boolean;
+  /**
+   * CLA-120: L2 landmark file-pill cap per container. Unset at L3 Open inside
+   * so the full neighborhood still compiles.
+   */
+  maxL2PreviewPillsPerOwner?: number;
   /**
    * CLA-118: container-focus / large component neighborhoods pack toward
    * landscape ~1.6 so ~79 children become ~6–8 columns, not a 3-col skyscraper.
@@ -126,8 +134,9 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
   const options: ScanScopedOptions = scoped ? { ...scoped } : {};
   // CLA-107/109: small-repo L2 compiles through code (component + symbol
   // landmarks in global coordinates) so L2↔L3↔L4 morph like L1↔L2. 13+
-  // containers stay CLA-66 `maxBand: container`. L3 file shells stay resident;
-  // only L4 cards use the CLA-74 window (`pageCodeLandmarks`) so THISS/okie
+  // containers stay CLA-66 `maxBand: container`. CLA-120 caps resident L3
+  // preview pills per container (~10 + `+N more`); Open inside still uses
+  // the CLA-74 window. Only L4 cards use `pageCodeLandmarks` so THISS/okie
   // (~3k symbols) cannot freeze the system scene. Renderer culling still skips
   // drawing.
   if (
@@ -139,6 +148,7 @@ export function scanScopeCompileOptions(snapshot: ArchitectureSnapshot, focusEnt
     options.maxGridNodes ??= SCAN_CONTAINER_GRID_NODES;
     options.maxNodesPerBand ??= SCAN_RESIDENT_NODES_PER_BAND;
     options.pageCodeLandmarks = true;
+    options.maxL2PreviewPillsPerOwner = SCAN_L2_RESIDENT_PREVIEW_PILLS;
   }
   if (aboveRelationGate) {
     options.maxEdgesPerBand ??= SCAN_RELATION_EDGE_BUDGET;
