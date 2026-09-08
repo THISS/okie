@@ -217,7 +217,7 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('inspectorSecondaryCopy(entity)');
     expect(app).not.toContain('entity.kindLabel ?? entity.kind} · {entity.responsibility}');
     expect(app).toContain('entity.source ?? inspectorAcceptedSummary(entity)');
-    expect(app).toContain('selectedCopy ? `${entity.name} selected. ${selectedCopy}`');
+    expect(app).toContain('inspectorAcceptedSummary(entity) ? `${entity.name} selected. ${inspectorAcceptedSummary(entity)}`');
     expect(app).toContain('selected.sourceRefs.map((source, index) =>');
   });
 

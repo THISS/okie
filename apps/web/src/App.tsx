@@ -2862,8 +2862,7 @@ export function App() {
       detail: nextSession.baseDetail,
       lensPath: semanticLensCanonicalPathIds(nextSession),
     }, navigationDefaults), historyMode);
-    const selectedCopy = inspectorAcceptedSummary(entity);
-    setLiveMessage(selectedCopy ? `${entity.name} selected. ${selectedCopy}` : `${entity.name} selected.`);
+    setLiveMessage(inspectorAcceptedSummary(entity) ? `${entity.name} selected. ${inspectorAcceptedSummary(entity)}` : `${entity.name} selected.`);
     // Selection never moves the camera, even when the card sits off-screen or
     // behind the inspector: only an explicit camera intent ("Show on map",
     // "Open source", search framing) may reframe. See
