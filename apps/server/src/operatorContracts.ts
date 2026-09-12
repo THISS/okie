@@ -64,6 +64,22 @@ export interface OperatorScopeAttempt {
   usage?: OperatorUsage;
   stale?: boolean;
   error?: string;
+  taskId?: string;
+  parentTaskId?: string;
+  inputHash?: string;
+  validation?: { accepted: boolean; validator: string; evidenceHash?: string; reason?: string };
+}
+
+/** Immutable accepted explanation content. A subsequent retry always creates another record. */
+export interface OperatorAcceptedExplanation {
+  explanationVersionId: string;
+  draftRevisionId: string;
+  scopeId: string;
+  attemptId: string;
+  inputHash: string;
+  content: unknown;
+  validation: NonNullable<OperatorScopeAttempt["validation"]>;
+  createdAt: number;
 }
 
 export interface OperatorEvent {
