@@ -45,6 +45,11 @@ export interface ArchitectureExtractionSourceRef {
   endLine?: number;
 }
 
+export interface ArchitectureExtractionExposure {
+  kind: "moduleExport" | "publicApi" | "entryPoint";
+  evidence: ArchitectureExtractionEvidence;
+}
+
 export interface ArchitectureExtractionEvidence {
   source: ArchitectureExtractionSourceRef;
   reason?: string;
@@ -58,6 +63,7 @@ export interface ArchitectureExtractionEntity {
   responsibility?: string;
   technology?: string[];
   tags?: string[];
+  exposure?: ArchitectureExtractionExposure[];
   /**
    * Named untested behaviours grounded in observed lcov ranges on this
    * code entity (or a file-component whose child code carries those ranges).
@@ -324,6 +330,17 @@ function validateSourceAnchor(value: unknown, path: string, issues: ValidationIs
   }
 }
 
+function validateExtractionEvidence(value: unknown, path: string, issues: ValidationIssue[]): void {
+  const evidence = record(value);
+  if (!evidence) {
+    issues.push({ path, message: "must be an evidence object" });
+    return;
+  }
+  unknownKeys(evidence, ["source", "reason"], path, issues);
+  validateSourceAnchor(evidence.source, `${path}.source`, issues);
+  validateOptionalText(evidence.reason, `${path}.reason`, ARCHITECTURE_EXTRACTION_LIMITS.maxResponsibilityCharacters, issues);
+}
+
 function validateSourceAnchorList(value: unknown, path: string, issues: ValidationIssue[]): void {
   if (!Array.isArray(value)) {
     issues.push({ path, message: "must be an array" });
@@ -356,7 +373,7 @@ export function validateArchitectureExtraction(value: unknown): ValidationIssue[
       return;
     }
     entityRecords.push({ row: entity, index });
-    unknownKeys(entity, ["id", "kind", "parentId", "name", "responsibility", "technology", "tags", "untestedBehaviours", "sourceRefs", "confidence"], path, issues);
+    unknownKeys(entity, ["id", "kind", "parentId", "name", "responsibility", "technology", "tags", "exposure", "untestedBehaviours", "sourceRefs", "confidence"], path, issues);
     const kind = typeof entity.kind === "string" && extractionEntityKinds.has(entity.kind as ArchitectureExtractionEntityKind)
       ? entity.kind as ArchitectureExtractionEntityKind
       : undefined;
@@ -368,6 +385,19 @@ export function validateArchitectureExtraction(value: unknown): ValidationIssue[
     validateOptionalText(entity.responsibility, `${path}.responsibility`, ARCHITECTURE_EXTRACTION_LIMITS.maxResponsibilityCharacters, issues);
     validateStringList(entity.technology, `${path}.technology`, ARCHITECTURE_EXTRACTION_LIMITS.maxTechnologyCharacters, issues);
     validateStringList(entity.tags, `${path}.tags`, ARCHITECTURE_EXTRACTION_LIMITS.maxTagCharacters, issues);
+    if (entity.exposure !== undefined) {
+      if (!Array.isArray(entity.exposure)) issues.push({ path: `${path}.exposure`, message: "must be an array" });
+      else entity.exposure.forEach((value, exposureIndex) => {
+        const exposure = record(value);
+        const exposurePath = `${path}.exposure[${exposureIndex}]`;
+        if (!exposure) { issues.push({ path: exposurePath, message: "must be an exposure object" }); return; }
+        unknownKeys(exposure, ["kind", "evidence"], exposurePath, issues);
+        if (exposure.kind !== "moduleExport" && exposure.kind !== "publicApi" && exposure.kind !== "entryPoint") {
+          issues.push({ path: `${exposurePath}.kind`, message: "unsupported exposure kind" });
+        }
+        validateExtractionEvidence(exposure.evidence, `${exposurePath}.evidence`, issues);
+      });
+    }
     validateUntestedBehaviours(entity.untestedBehaviours, kind, `${path}.untestedBehaviours`, issues);
     validateSourceAnchorList(entity.sourceRefs, `${path}.sourceRefs`, issues);
     validateConfidence(entity.confidence, `${path}.confidence`, issues);
@@ -460,7 +490,11 @@ export function validateArchitectureExtraction(value: unknown): ValidationIssue[
     const to = typeof relation.to === "string" ? relation.to : undefined;
     if (from && !entityById.has(from)) issues.push({ path: `${path}.from`, message: `unknown entity: ${from}` });
     if (to && !entityById.has(to)) issues.push({ path: `${path}.to`, message: `unknown entity: ${to}` });
-    if (from && to && from === to) issues.push({ path, message: "relation endpoints must be different entities" });
+    // A direct recursive invocation is meaningful L4 evidence. Other self-relations
+    // remain invalid because they cannot be rendered as a directional architecture edge.
+    if (from && to && from === to && relation.kind !== "calls") {
+      issues.push({ path, message: "relation endpoints must be different entities unless the relation is a call" });
+    }
     if (relation.kind === "contains" && from && to) {
       const fromParent = entityById.get(from)?.parentId;
       const toParent = entityById.get(to)?.parentId;
@@ -575,6 +609,10 @@ export function adaptArchitectureExtraction(
       ...(entity.responsibility !== undefined ? { responsibility: entity.responsibility } : {}),
       ...(entity.technology !== undefined ? { technology: sortedUnique(entity.technology) } : {}),
       ...(entity.tags !== undefined ? { tags: sortedUnique(entity.tags) } : {}),
+      ...(entity.exposure?.length ? { exposure: entity.exposure.map(exposure => ({
+        kind: exposure.kind,
+        evidence: { source: pinSource(exposure.evidence.source, metadata.commitSha), ...(exposure.evidence.reason ? { reason: exposure.evidence.reason } : {}) },
+      })) } : {}),
       ...(entity.untestedBehaviours?.length ? {
         untestedBehaviours: entity.untestedBehaviours.map(item => ({
           startLine: item.startLine,

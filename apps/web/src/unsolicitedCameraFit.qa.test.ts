@@ -66,7 +66,7 @@ describe('CLA-11: camera does not re-fit without a user gesture', () => {
     expect(pointerUp).not.toContain('frameEntities(');
     expect(pointerUp).not.toContain('updateCamera(');
     expect(pointerUp).not.toContain('navigateCamera(');
-    expect(handlePick).toContain("focusEntity(entity, 'replace', 'preserve', 'details')");
+    expect(handlePick).toContain("focusEntity(entity, 'replace', 'preserve', 'auto')");
     expect(focusEntity).toContain("const nextCamera = cameraIntent === 'frame'");
     expect(focusEntity).toContain("const explicitCameraIntent = cameraIntent === 'frame' || inspectorIntent === 'source';");
     expect(focusEntity).toContain("if (explicitCameraIntent) reframeEntityAfterInspectorChange(entity, nextInspectorTab === 'source');");

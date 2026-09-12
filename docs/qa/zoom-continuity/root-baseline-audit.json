@@ -1,0 +1,721 @@
+[
+  {
+    "focusEntityId": "container:apps-web",
+    "options": {
+      "maxBand": "component",
+      "maxEdgesPerBand": 24,
+      "maxGridNodes": 1500,
+      "maxNodesPerBand": 50,
+      "targetAspect": 1.6
+    },
+    "bounds": [
+      {
+        "id": "system:okie",
+        "before": {
+          "context": {
+            "x": 820,
+            "y": 120,
+            "width": 516,
+            "height": 314
+          },
+          "container": {
+            "x": 820,
+            "y": 120,
+            "width": 1444,
+            "height": 986
+          },
+          "component": {
+            "x": 820,
+            "y": 120,
+            "width": 4172,
+            "height": 2642
+          },
+          "code": null
+        },
+        "after": {
+          "context": {
+            "x": -462.3453575462554,
+            "y": -540.361419298337,
+            "width": 480,
+            "height": 250
+          },
+          "container": {
+            "x": -462.3453575462554,
+            "y": -540.361419298337,
+            "width": 660.1485434030242,
+            "height": 437.65566831483585
+          },
+          "component": {
+            "x": -462.3453575462554,
+            "y": -540.361419298337,
+            "width": 3080.690715092511,
+            "height": 1634.722838596674
+          }
+        }
+      },
+      {
+        "id": "container:apps-web",
+        "before": {
+          "context": {
+            "x": 868,
+            "y": 206,
+            "width": 420,
+            "height": 180
+          },
+          "container": {
+            "x": 1332,
+            "y": 206,
+            "width": 420,
+            "height": 180
+          },
+          "component": {
+            "x": 1332,
+            "y": 206,
+            "width": 3148,
+            "height": 1836
+          },
+          "code": null
+        },
+        "after": {
+          "context": {
+            "x": 98.68860912053594,
+            "y": -504.1805147757239,
+            "width": 1371.1335722014105,
+            "height": 899.3388537594536
+          },
+          "container": {
+            "x": -294.1711531911466,
+            "y": -504.1805147757239,
+            "width": 333.49339187247773,
+            "height": 166.74669593623886
+          },
+          "component": {
+            "x": 98.68860912053594,
+            "y": -504.1805147757239,
+            "width": 708.9184060721062,
+            "height": 469.82922201138524
+          }
+        }
+      },
+      {
+        "id": "component:apps-web-src-hosted-atlas-ts",
+        "before": {
+          "context": null,
+          "container": null,
+          "component": {
+            "x": 2756,
+            "y": 680,
+            "width": 300,
+            "height": 150
+          },
+          "code": null
+        },
+        "after": {
+          "component": {
+            "x": 630.7569203159818,
+            "y": -399.43668175864605,
+            "width": 85.00948766603416,
+            "height": 42.50474383301708
+          }
+        }
+      }
+    ],
+    "contextNodes": [
+      {
+        "id": "visual-node:container:apps-web",
+        "kind": "container",
+        "bounds": {
+          "x": 868,
+          "y": 206,
+          "width": 420,
+          "height": 180
+        }
+      },
+      {
+        "id": "visual-node:external:anthropic-ai-sdk",
+        "kind": "externalSystem",
+        "bounds": {
+          "x": 80,
+          "y": 180,
+          "width": 480,
+          "height": 190
+        }
+      },
+      {
+        "id": "visual-node:system:okie",
+        "kind": "softwareSystem",
+        "bounds": {
+          "x": 820,
+          "y": 120,
+          "width": 516,
+          "height": 314
+        }
+      }
+    ]
+  },
+  {
+    "focusEntityId": "component:apps-web-src-hosted-atlas-ts",
+    "options": {
+      "maxBand": "code",
+      "maxNodesPerBand": 50,
+      "targetAspect": 1.6,
+      "maxEdgesPerBand": 64,
+      "maxGridNodes": 1500
+    },
+    "bounds": [
+      {
+        "id": "system:okie",
+        "before": {
+          "context": {
+            "x": 820,
+            "y": 120,
+            "width": 516,
+            "height": 418
+          },
+          "container": {
+            "x": 820,
+            "y": 120,
+            "width": 516,
+            "height": 418
+          },
+          "component": {
+            "x": 820,
+            "y": 120,
+            "width": 1180,
+            "height": 806
+          },
+          "code": {
+            "x": 820,
+            "y": 120,
+            "width": 2320,
+            "height": 1550
+          }
+        },
+        "after": {
+          "context": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 480,
+            "height": 250
+          },
+          "container": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 660.1485434030242,
+            "height": 437.65566831483585
+          },
+          "component": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 3080.690715092511,
+            "height": 1634.722838596674
+          },
+          "code": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 3080.690715092511,
+            "height": 1634.722838596674
+          }
+        }
+      },
+      {
+        "id": "container:apps-web",
+        "before": {
+          "context": {
+            "x": 868,
+            "y": 206,
+            "width": 420,
+            "height": 284
+          },
+          "container": {
+            "x": 868,
+            "y": 206,
+            "width": 420,
+            "height": 284
+          },
+          "component": {
+            "x": 868,
+            "y": 206,
+            "width": 1084,
+            "height": 672
+          },
+          "code": {
+            "x": 868,
+            "y": 206,
+            "width": 2224,
+            "height": 1416
+          }
+        },
+        "after": {
+          "context": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 1371.1335722014105,
+            "height": 899.3388537594536
+          },
+          "container": {
+            "x": -294.1711531911466,
+            "y": -452.1805147757239,
+            "width": 333.49339187247773,
+            "height": 166.74669593623886
+          },
+          "component": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 708.9184060721062,
+            "height": 469.82922201138524
+          },
+          "code": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 1371.1335722014105,
+            "height": 899.3388537594536
+          }
+        }
+      },
+      {
+        "id": "component:apps-web-src-hosted-atlas-ts",
+        "before": {
+          "context": {
+            "x": 916,
+            "y": 292,
+            "width": 300,
+            "height": 150
+          },
+          "container": {
+            "x": 916,
+            "y": 292,
+            "width": 300,
+            "height": 150
+          },
+          "component": {
+            "x": 1260,
+            "y": 292,
+            "width": 300,
+            "height": 150
+          },
+          "code": {
+            "x": 1326,
+            "y": 292,
+            "width": 994,
+            "height": 552
+          }
+        },
+        "after": {
+          "context": {
+            "x": 677.3786043902955,
+            "y": -239.32296025562582,
+            "width": 57.879656160458445,
+            "height": 39.25501432664756
+          },
+          "container": {
+            "x": 916,
+            "y": 292,
+            "width": 300,
+            "height": 150
+          },
+          "component": {
+            "x": 630.7569203159818,
+            "y": -347.43668175864605,
+            "width": 85.00948766603416,
+            "height": 42.50474383301708
+          },
+          "code": {
+            "x": 677.3786043902955,
+            "y": -239.32296025562582,
+            "width": 57.879656160458445,
+            "height": 39.25501432664756
+          }
+        }
+      }
+    ],
+    "contextNodes": [
+      {
+        "id": "visual-node:component:apps-web-src-hosted-atlas-ts",
+        "kind": "component",
+        "bounds": {
+          "x": 916,
+          "y": 292,
+          "width": 300,
+          "height": 150
+        }
+      },
+      {
+        "id": "visual-node:container:apps-web",
+        "kind": "container",
+        "bounds": {
+          "x": 868,
+          "y": 206,
+          "width": 420,
+          "height": 284
+        }
+      },
+      {
+        "id": "visual-node:external:anthropic-ai-sdk",
+        "kind": "externalSystem",
+        "bounds": {
+          "x": 80,
+          "y": 180,
+          "width": 480,
+          "height": 190
+        }
+      },
+      {
+        "id": "visual-node:system:okie",
+        "kind": "softwareSystem",
+        "bounds": {
+          "x": 820,
+          "y": 120,
+          "width": 516,
+          "height": 418
+        }
+      }
+    ]
+  },
+  {
+    "focusEntityId": "component:apps-web-src-renderer-fixture-bundle-ts",
+    "options": {
+      "maxBand": "code",
+      "maxNodesPerBand": 50,
+      "targetAspect": 1.6,
+      "maxEdgesPerBand": 64,
+      "maxGridNodes": 1500
+    },
+    "bounds": [
+      {
+        "id": "system:okie",
+        "before": {
+          "context": {
+            "x": 820,
+            "y": 120,
+            "width": 516,
+            "height": 418
+          },
+          "container": {
+            "x": 820,
+            "y": 120,
+            "width": 516,
+            "height": 418
+          },
+          "component": {
+            "x": 820,
+            "y": 120,
+            "width": 836,
+            "height": 612
+          },
+          "code": {
+            "x": 820,
+            "y": 120,
+            "width": 1282,
+            "height": 1108
+          }
+        },
+        "after": {
+          "context": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 480,
+            "height": 250
+          },
+          "container": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 660.1485434030242,
+            "height": 437.65566831483585
+          },
+          "component": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 3080.690715092511,
+            "height": 1634.722838596674
+          },
+          "code": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 3080.690715092511,
+            "height": 1634.722838596674
+          }
+        }
+      },
+      {
+        "id": "container:apps-web",
+        "before": {
+          "context": {
+            "x": 868,
+            "y": 206,
+            "width": 420,
+            "height": 284
+          },
+          "container": {
+            "x": 868,
+            "y": 206,
+            "width": 420,
+            "height": 284
+          },
+          "component": {
+            "x": 868,
+            "y": 206,
+            "width": 740,
+            "height": 478
+          },
+          "code": {
+            "x": 868,
+            "y": 206,
+            "width": 1186,
+            "height": 974
+          }
+        },
+        "after": {
+          "context": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 1371.1335722014105,
+            "height": 899.3388537594536
+          },
+          "container": {
+            "x": -294.1711531911466,
+            "y": -452.1805147757239,
+            "width": 333.49339187247773,
+            "height": 166.74669593623886
+          },
+          "component": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 708.9184060721062,
+            "height": 469.82922201138524
+          },
+          "code": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 1371.1335722014105,
+            "height": 899.3388537594536
+          }
+        }
+      },
+      {
+        "id": "component:apps-web-src-hosted-atlas-ts",
+        "before": {
+          "context": null,
+          "container": null,
+          "component": null,
+          "code": null
+        }
+      }
+    ],
+    "contextNodes": [
+      {
+        "id": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts",
+        "kind": "component",
+        "bounds": {
+          "x": 916,
+          "y": 292,
+          "width": 300,
+          "height": 150
+        }
+      },
+      {
+        "id": "visual-node:container:apps-web",
+        "kind": "container",
+        "bounds": {
+          "x": 868,
+          "y": 206,
+          "width": 420,
+          "height": 284
+        }
+      },
+      {
+        "id": "visual-node:external:anthropic-ai-sdk",
+        "kind": "externalSystem",
+        "bounds": {
+          "x": 80,
+          "y": 180,
+          "width": 480,
+          "height": 190
+        }
+      },
+      {
+        "id": "visual-node:system:okie",
+        "kind": "softwareSystem",
+        "bounds": {
+          "x": 820,
+          "y": 120,
+          "width": 516,
+          "height": 418
+        }
+      }
+    ]
+  },
+  {
+    "focusEntityId": "component:apps-web-src-inspector-scan-one-pager-ts",
+    "options": {
+      "maxBand": "code",
+      "maxNodesPerBand": 50,
+      "targetAspect": 1.6,
+      "maxEdgesPerBand": 64,
+      "maxGridNodes": 1500
+    },
+    "bounds": [
+      {
+        "id": "system:okie",
+        "before": {
+          "context": {
+            "x": 820,
+            "y": 120,
+            "width": 516,
+            "height": 418
+          },
+          "container": {
+            "x": 820,
+            "y": 120,
+            "width": 516,
+            "height": 418
+          },
+          "component": {
+            "x": 820,
+            "y": 120,
+            "width": 836,
+            "height": 612
+          },
+          "code": {
+            "x": 820,
+            "y": 120,
+            "width": 1910,
+            "height": 1724
+          }
+        },
+        "after": {
+          "context": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 480,
+            "height": 250
+          },
+          "container": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 660.1485434030242,
+            "height": 437.65566831483585
+          },
+          "component": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 3080.690715092511,
+            "height": 1634.722838596674
+          },
+          "code": {
+            "x": -462.3453575462554,
+            "y": -488.36141929833695,
+            "width": 3080.690715092511,
+            "height": 1634.722838596674
+          }
+        }
+      },
+      {
+        "id": "container:apps-web",
+        "before": {
+          "context": {
+            "x": 868,
+            "y": 206,
+            "width": 420,
+            "height": 284
+          },
+          "container": {
+            "x": 868,
+            "y": 206,
+            "width": 420,
+            "height": 284
+          },
+          "component": {
+            "x": 868,
+            "y": 206,
+            "width": 740,
+            "height": 478
+          },
+          "code": {
+            "x": 868,
+            "y": 206,
+            "width": 1814,
+            "height": 1590
+          }
+        },
+        "after": {
+          "context": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 1371.1335722014105,
+            "height": 899.3388537594536
+          },
+          "container": {
+            "x": -294.1711531911466,
+            "y": -452.1805147757239,
+            "width": 333.49339187247773,
+            "height": 166.74669593623886
+          },
+          "component": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 708.9184060721062,
+            "height": 469.82922201138524
+          },
+          "code": {
+            "x": 98.68860912053594,
+            "y": -452.1805147757239,
+            "width": 1371.1335722014105,
+            "height": 899.3388537594536
+          }
+        }
+      },
+      {
+        "id": "component:apps-web-src-hosted-atlas-ts",
+        "before": {
+          "context": null,
+          "container": null,
+          "component": null,
+          "code": null
+        }
+      }
+    ],
+    "contextNodes": [
+      {
+        "id": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts",
+        "kind": "component",
+        "bounds": {
+          "x": 916,
+          "y": 292,
+          "width": 300,
+          "height": 150
+        }
+      },
+      {
+        "id": "visual-node:container:apps-web",
+        "kind": "container",
+        "bounds": {
+          "x": 868,
+          "y": 206,
+          "width": 420,
+          "height": 284
+        }
+      },
+      {
+        "id": "visual-node:external:anthropic-ai-sdk",
+        "kind": "externalSystem",
+        "bounds": {
+          "x": 80,
+          "y": 180,
+          "width": 480,
+          "height": 190
+        }
+      },
+      {
+        "id": "visual-node:system:okie",
+        "kind": "softwareSystem",
+        "bounds": {
+          "x": 820,
+          "y": 120,
+          "width": 516,
+          "height": 418
+        }
+      }
+    ]
+  }
+]

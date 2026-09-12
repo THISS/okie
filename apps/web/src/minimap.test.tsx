@@ -112,10 +112,19 @@ describe('projectedViewportRect (live-update seam)', () => {
     expect(panned.x).toBeGreaterThan(zoomed.x);
   });
 
-  it('floors the rect to a visible minimum when the camera is extremely zoomed in', () => {
+  it('keeps the camera centered when the viewport indicator reaches its minimum size', () => {
     const tiny = projectedViewportRect({ x: 200, y: 100, zoom: 100000 }, viewport, project);
     expect(tiny.width).toBe(2);
     expect(tiny.height).toBe(2);
+    expect(tiny.x + tiny.width / 2).toBeCloseTo(80);
+    expect(tiny.y + tiny.height / 2).toBeCloseTo(40);
+
+    const broadScope = minimapProjector({ x: 0, y: 0, width: 10000, height: 10000 }, 160, 160);
+    const camera = { x: 7000, y: 3000, zoom: 32 };
+    const clamped = projectedViewportRect(camera, viewport, broadScope);
+    const center = broadScope({ ...camera, width: 0, height: 0 });
+    expect(clamped.x + clamped.width / 2).toBeCloseTo(center.x);
+    expect(clamped.y + clamped.height / 2).toBeCloseTo(center.y);
   });
 });
 
@@ -225,6 +234,16 @@ describe('liveCameraBridge', () => {
     unsubscribe();
     publishLiveCamera({ x: 7, y: 8, zoom: 9 });
     expect(seen).toEqual([{ x: 1, y: 2, zoom: 3 }, { x: 4, y: 5, zoom: 6 }]);
+  });
+
+  it('delivers the rendered projection snapshot with the camera', () => {
+    const frame = { scene: { entities: [] } as unknown as AtlasScene, reduceMotion: false };
+    const camera = { x: 12, y: 34, zoom: 2 };
+    const listener = vi.fn();
+    const unsubscribe = subscribeLiveCamera(listener);
+    publishLiveCamera(camera, frame);
+    unsubscribe();
+    expect(listener).toHaveBeenCalledWith(camera, frame);
   });
 
   it('fans out each published frame to every active subscriber', () => {

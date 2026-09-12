@@ -105,7 +105,7 @@ describe('CLA-55 restore full view and CLA-11 isolate camera', () => {
     expect(app).toContain('isolateNeighborhoodIds(scene.entities, visibilityFocusIds');
     expect(app).toContain('liftCodeStoryFocus: currentStory !== undefined && storyPhase !== \'idle\' && !storySelectionOverride');
     expect(app).toContain("const focusedIds = visibilityMode === 'isolate' ? isolatedEntityIdSet : storyFocus.focusedIds");
-    expect(app).toContain('canvasRelationRowsInIsolate(related, selected.id, isolatedEntityIdSet)');
+    expect(app).toContain("activeProjectionEntityIds.filter(id => visibilityMode !== 'isolate' || isolatedEntityIdSet.has(id))");
     expect(app).not.toContain('row.semanticIds.some(id => isolatedRelationIdSet.has(id))');
   });
 

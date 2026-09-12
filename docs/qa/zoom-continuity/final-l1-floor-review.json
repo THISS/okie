@@ -1,0 +1,56 @@
+{
+  "scope": "Bounded label-floor recording review",
+  "visualPass": false,
+  "coverageChanged": false,
+  "sourceState": "source-state-label-floor.json",
+  "hashes": {
+    "/tmp/okie-goal-final-l1-floor-roundtrip.mov": "62d8faa5e0a9704c7a324ea832a72317db9db24f9af7b14c12c8e31cccc1498e",
+    "/tmp/okie-goal-final-l1-floor-roundtrip.json": "e87d1e2c1e43eeeeb219a5f6ec5521ce3be1e0e4a193f258d5af2d21fab621b2",
+    "docs/qa/zoom-continuity/source-state-label-floor.json": "eae8d5469146d6c963275b80f2fc23115a9affc918307b28112563b448018f79"
+  },
+  "inputs": 44,
+  "frames": 409,
+  "droppedSamples": 0,
+  "truncated": false,
+  "directions": [
+    {
+      "direction": "in",
+      "frames": 176,
+      "start": {
+        "x": -388.22870250460227,
+        "y": -452.94137566403265,
+        "zoom": 0.8336453448652353
+      },
+      "end": {
+        "x": -312.0148637866407,
+        "y": -461.6239648850663,
+        "zoom": 1.7972807035250755
+      },
+      "firstProjection": "semantic-path:context:system:okie:settled",
+      "lastProjection": "semantic-path:context:system:okie:settled",
+      "oppositeZoomFrames": 0
+    },
+    {
+      "direction": "out",
+      "frames": 233,
+      "start": {
+        "x": -314.4714826906327,
+        "y": -461.34409690866215,
+        "zoom": 1.7327206471195646
+      },
+      "end": {
+        "x": -393.5250000000001,
+        "y": -452.3380000000001,
+        "zoom": 0.8037000000000003
+      },
+      "firstProjection": "semantic-path:context:system:okie:settled",
+      "lastProjection": "semantic-path:context:base:settled",
+      "oppositeZoomFrames": 0
+    }
+  ],
+  "observations": [
+    "Compact title/type separated at 10s and outward 19\u201319.5s; expanded face separated at 19.75\u201320.75s. No new title/description collision observed; boundary description is absent in inspected frames.",
+    "Recording starts with containers already visible, first inward frame is settled system:okie projection. Endpoint has base L1 face at original camera. Inward L1 morph was not exercised equivalently to prior run.",
+    "Sampled minimap remains populated and changes to base at endpoint; exact alignment unverified."
+  ]
+}

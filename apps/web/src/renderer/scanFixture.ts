@@ -110,7 +110,11 @@ const SCAN_SCOPED_OPTIONS_BY_KIND: Partial<Record<EntityKind, ScanScopedOptions>
   container: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
   dataStore: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
   queue: { maxBand: 'component', maxEdgesPerBand: SCAN_CONTAINER_EDGE_BUDGET, maxGridNodes: SCAN_CONTAINER_GRID_NODES, maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
-  component: { maxBand: 'code', maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
+  // Component focus is the actual L4 paging entry point. It needs the same
+  // code-only landmarks as the root overlay so a cold file URL and a live
+  // file drill select symbols in the aligned code grid rather than the L3
+  // component face.
+  component: { maxBand: 'code', maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, pageCodeLandmarks: true, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
   code: { maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND, targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT },
 };
 
@@ -910,4 +914,19 @@ export async function loadScanNeighborhoodFixture(
     honestyFromHost(host),
   ]);
   return withEnrichmentHonesty(compileScanNeighborhoodFixture(packet, story, host, options, catalog), honesty);
+}
+
+/** Restore against the same canonical packet used by a fresh atlas entry. */
+export async function loadScanNeighborhoodFixtureFromSearch(
+  host: ScanNeighborhoodHost,
+  search: string,
+  options: ScanModeOptions = {},
+): Promise<ScanFixture> {
+  const fixture = await loadScanNeighborhoodFixture(host, undefined, options);
+  const params = new URLSearchParams(search);
+  const focuses = [...params.getAll('lens'), params.get('root'), params.get('sel')];
+  for (const focus of new Set(focuses.map(id => id?.trim()).filter((id): id is string => Boolean(id)))) {
+    await fixture.ensureNeighborhood(focus);
+  }
+  return fixture;
 }

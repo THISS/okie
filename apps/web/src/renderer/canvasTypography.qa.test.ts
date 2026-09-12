@@ -9,7 +9,7 @@ import {
   fitDisplayTextAtSize,
   truncateDisplayText,
 } from '@okie/scene-compiler';
-import { Canvas2DRenderer, canvasEntityPresentationMetrics } from './Canvas2DRenderer';
+import { Canvas2DRenderer, canvasEntityPresentationMetrics, projectionRepresentationDetail } from './Canvas2DRenderer';
 import type { AtlasScene, RenderState, SemanticDetail } from './types';
 import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './scanFixture';
 
@@ -62,6 +62,13 @@ const state: RenderState = {
 };
 
 describe('Canvas2D band-normalized typography', () => {
+  it('keeps one-sided projection typography in its authored band after the midpoint', () => {
+    expect(projectionRepresentationDetail('node:container', undefined, .51, 'component')).toBe('container');
+    expect(projectionRepresentationDetail(undefined, 'node:component', .49, 'container')).toBe('component');
+    expect(projectionRepresentationDetail('node:container', 'node:component', .49, 'context')).toBe('container');
+    expect(projectionRepresentationDetail('node:container', 'node:component', .51, 'context')).toBe('component');
+  });
+
   it.each([
     { detail: 'context' as const, zoom: 0.75, title: 20, kicker: 13.5, description: 15.5 },
     { detail: 'container' as const, zoom: 1.99, title: 15.5, kicker: 10, description: 11 },
@@ -284,6 +291,21 @@ describe('Canvas2D band-normalized typography', () => {
     expect(fontsource).toMatch(/ibm-plex-sans$/);
     expect(fontsource?.startsWith('@fontsource/ibm-') && !fontsource.includes('plex-sans')).toBe(false);
     expect(target.textCalls.some(call => call.content === 'No summary supplied.')).toBe(false);
+  });
+
+  it('separates L1 and L2 boundary type kickers from titles during a semantic morph', () => {
+    for (const detail of ['context', 'container'] as const) {
+      for (const zoom of [.8, 1, 1.8]) {
+        const metrics = canvasEntityPresentationMetrics(detail, true, zoom);
+        // The title can hold the 12px readability floor while the baseline
+        // scales with geometry, so protect against the larger glyph ascent.
+        expect(metrics.titleBaseline - metrics.kickerBaseline)
+          .toBeGreaterThanOrEqual(metrics.titleFontSize + metrics.kickerFontSize * .25 + 2 - 1e-6);
+      }
+    }
+    // Outward L2→L1 keeps the container source representation below halfway;
+    // this is the state that previously overprinted the L1 system label.
+    expect(projectionRepresentationDetail('system:container', 'system:context', .25, 'context')).toBe('container');
   });
 
   it('omits the empty-summary placeholder on Canvas2D cards (CLA-121)', () => {

@@ -295,11 +295,11 @@ export function validateC4NotationCompleteness({
     if (!relation) continue;
     const relationSubject = { kind: "relationship", id: relation.id } as const;
     const glossaryTerms = [relationshipTerm(relation.kind)];
-    if (!isNonBlank(relation.from) || !isNonBlank(relation.to) || relation.from === relation.to) {
+    if (!isNonBlank(relation.from) || !isNonBlank(relation.to) || (relation.from === relation.to && relation.kind !== "calls")) {
       diagnostics.push(diagnostic(
         "relationship.direction.invalid",
         `relations.${relation.id}.direction`,
-        `C4 relationship ${relation.id} should have distinct directional endpoints.`,
+        `C4 relationship ${relation.id} should have nonblank directional endpoints; only calls may be recursive.`,
         relationSubject,
         glossaryTerms,
       ));

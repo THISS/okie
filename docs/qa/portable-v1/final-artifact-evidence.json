@@ -1,0 +1,51 @@
+{
+  "commit": "722ea2862304eae579a7b354bc7cfa0697f4e997",
+  "tree": "345ec3970478a1b5f3cfc0aad722ac452d4879e2",
+  "entities": 3121,
+  "relations": 8115,
+  "fullSourceFiles": 172,
+  "callers": 4,
+  "callSites": [
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 51
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 117
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 133
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 155
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 168
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 320
+    },
+    {
+      "path": "crates/atlas-protocol/src/timeline.rs",
+      "line": 153
+    }
+  ],
+  "bundleSha256": "a62329e9e97b2fdebbecc4a6619fc81cd2d292332bafe4ad48596fc757ca1d95",
+  "cliTarballSha256": "5f2304541536230801c035d07595ee06e95b4395b50b2da576ecec22fa4181c1",
+  "gates": {
+    "typescriptTests": 1625,
+    "rustTests": 81,
+    "rustIgnored": 1,
+    "check": true,
+    "build": true,
+    "portableBuild": true,
+    "navigationFollowupWebTests": 1022
+  },
+  "browserAcceptance": "passed: automated static/navigation QA plus user-reported manual import acceptance",
+  "reviewedViewer": "dist/portable-atlas-reviewed"
+}

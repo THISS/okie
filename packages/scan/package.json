@@ -12,7 +12,10 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "enrichment-prompt.md"],
+  "files": [
+    "dist",
+    "enrichment-prompt.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
@@ -20,8 +23,10 @@
     "scan": "pnpm build && node dist/cli.js"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "2.15.0",
     "@okie/architecture": "workspace:*",
     "@okie/scene-compiler": "workspace:*",
+    "@scip-code/scip": "0.10.0",
     "tree-sitter": "^0.22.4",
     "tree-sitter-rust": "^0.24.0",
     "typescript": "^5.8.3"

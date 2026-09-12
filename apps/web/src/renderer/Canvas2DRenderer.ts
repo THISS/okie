@@ -49,21 +49,56 @@ export function canvasEntityPresentationMetrics(detail: SemanticDetail, boundary
   const focusZoom = focusZoomByDetail[detail];
   const presentation = C4_PRESENTATION_AT_FOCUS[detail];
   const fontScale = zoom / focusZoom;
+  const kickerFontSize = presentation.kickerFontSize * fontScale;
+  const titleFontSize = Math.max(detail === 'context' || detail === 'container' ? C4_LABEL_MIN_TITLE_PX : 0,
+    presentation.titleFontSize
+    * (boundary && (detail === 'context' || detail === 'container') ? 0.78 : 1) * fontScale);
+  const kickerBaseline = (detail === 'context' ? 30 : 24) * screenScale;
+  const authoredTitleBaseline = (detail === 'context' ? 68 : boundary ? 50 : detail === 'code' ? 42 : 50) * screenScale;
+  // Geometry shrinks with zoom while L1/L2 title text holds a CSS-pixel
+  // readability floor. A fixed world baseline can therefore collide with the
+  // kicker on the compact/outgoing half of a semantic morph.
+  const titleBaseline = Math.max(
+    authoredTitleBaseline,
+    kickerBaseline + titleFontSize + kickerFontSize * .25 + 2,
+  );
   return {
     screenScale,
     leftInset: (boundary ? 22 : 18) * screenScale,
-    kickerBaseline: (detail === 'context' ? 30 : 24) * screenScale,
-    titleBaseline: (boundary ? 36 : detail === 'context' ? 68 : detail === 'code' ? 42 : 50) * screenScale,
+    kickerBaseline,
+    // A context owner is both a boundary and a readable L1 card. Keep its
+    // title below the type kicker; the generic boundary baseline (36) placed
+    // “Okie” on top of “SOFTWARE SYSTEM” during an L1↔L2 projection morph.
+    titleBaseline,
     descriptionBaseline: (detail === 'context' ? 112 : detail === 'code' ? 68 : 76) * screenScale,
     horizontalInsets: 36 * screenScale,
-    kickerFontSize: presentation.kickerFontSize * fontScale,
-    titleFontSize: Math.max(detail === 'context' || detail === 'container' ? C4_LABEL_MIN_TITLE_PX : 0,
-      presentation.titleFontSize
-      * (boundary && (detail === 'context' || detail === 'container') ? 0.78 : 1) * fontScale),
+    kickerFontSize,
+    titleFontSize,
     descriptionFontSize: presentation.descriptionFontSize * fontScale,
     radius: (boundary ? 20 : detail === 'code' ? 7 : 14) * screenScale,
     strokeWidth: (boundary ? 1.5 : 2) * screenScale,
   };
+}
+
+/**
+ * Select the authored representation that is actually present. A scoped scan
+ * scene can retain an outgoing shell without an incoming counterpart; falling
+ * back to the session detail at the half-way point made that shell's type jump
+ * bands while its geometry was still fading out.
+ */
+export function projectionRepresentationDetail(
+  sourceRepresentationId: string | undefined,
+  targetRepresentationId: string | undefined,
+  progress: number,
+  activeDetail: SemanticDetail,
+): SemanticDetail {
+  const detailFromRepresentation = (id: string | undefined): SemanticDetail | undefined => {
+    const suffix = id?.split(':').at(-1);
+    return suffix === 'context' || suffix === 'container' || suffix === 'component' || suffix === 'code' ? suffix : undefined;
+  };
+  const source = detailFromRepresentation(sourceRepresentationId);
+  const target = detailFromRepresentation(targetRepresentationId);
+  return (progress >= .5 ? target ?? source : source ?? target) ?? activeDetail;
 }
 
 export function pointAlongPolyline(points: readonly RoutePoint[], phase: number): RoutePoint | undefined {
@@ -535,10 +570,12 @@ export class Canvas2DRenderer implements AtlasRenderer {
     const dimmed = this.state.visibilityMode === 'dim' && focusFiltered && !focused && !selected;
     const detail = this.activeDetail();
     const objectOverride = this.projectionObject(entity.id);
-    const projectionDetail = this.projectionProgress() >= .5
-      ? this.detailFromRepresentation(objectOverride?.targetRepresentationId)
-      : this.detailFromRepresentation(objectOverride?.sourceRepresentationId);
-    const renderedDetail = projectionDetail ?? detail;
+    const renderedDetail = projectionRepresentationDetail(
+      objectOverride?.sourceRepresentationId,
+      objectOverride?.targetRepresentationId,
+      this.projectionProgress(),
+      detail,
+    );
     const metrics = canvasEntityPresentationMetrics(renderedDetail, boundary, this.camera.zoom);
 
     const projectionOpacity = this.projectionObjectOpacity(entity.id);

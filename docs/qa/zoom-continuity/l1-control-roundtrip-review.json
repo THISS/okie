@@ -1,0 +1,56 @@
+{
+  "scope": "Normal-control L1 roundtrip label regression",
+  "labelRegression": "resolved in inspected path",
+  "globalVisualPass": false,
+  "inputs": 80,
+  "frames": 819,
+  "droppedSamples": 0,
+  "truncated": false,
+  "directions": [
+    {
+      "direction": "in",
+      "frames": 346,
+      "startCamera": {
+        "x": -540.8861702194752,
+        "y": -427.23245101207704,
+        "zoom": 0.46676671045085966
+      },
+      "endCamera": {
+        "x": -347.9673131695028,
+        "y": -449.2105486506815,
+        "zoom": 1.944047875556939
+      },
+      "projections": {
+        "semantic-path:context:base:settled": 207,
+        "semantic-path:context:base:semantic-lens:system:okie:context:container": 50,
+        "semantic-path:context:system:okie:settled": 89
+      },
+      "contraryZoomSteps": 0
+    },
+    {
+      "direction": "out",
+      "frames": 473,
+      "startCamera": {
+        "x": -350.2384680147994,
+        "y": -448.9518094910908,
+        "zoom": 1.8742158007703982
+      },
+      "endCamera": {
+        "x": -550.3453575462552,
+        "y": -426.1548220761148,
+        "zoom": 0.4500000000000004
+      },
+      "projections": {
+        "semantic-path:context:system:okie:settled": 100,
+        "semantic-path:context:base:semantic-lens:system:okie:context:container": 67,
+        "semantic-path:context:base:settled": 306
+      },
+      "contraryZoomSteps": 0
+    }
+  ],
+  "hashes": {
+    "/tmp/okie-goal-l1-control-roundtrip.mov": "de2d7d93649e307c4aba3de5c835c4f90a976195b6a78f0b030ac2782a36ed79",
+    "/tmp/okie-goal-l1-control-roundtrip.json": "72b757f0e21ac8e594c593cf2073cc2b6e5b5e41634875e1fb80411214a3acab",
+    "docs/qa/zoom-continuity/source-state-label-floor.json": "eae8d5469146d6c963275b80f2fc23115a9affc918307b28112563b448018f79"
+  }
+}

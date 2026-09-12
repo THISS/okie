@@ -1,9 +1,9 @@
-import { sliceArchitectureNeighborhood, type ArchitectureSnapshot, type ArchitectureView } from '@okie/architecture';
+import { c4CodeChildSlots, sliceArchitectureNeighborhood, type ArchitectureSnapshot, type ArchitectureView } from '@okie/architecture';
 import { describe, expect, it } from 'vitest';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
-import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadPublishedEnrichmentHonesty, loadScanFixture, loadScanNeighborhoodFixture, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, SCAN_CONTAINER_GRID_NODES, SCAN_L2_RESIDENT_PREVIEW_PILLS, SCAN_RELATION_EDGE_BUDGET, SCAN_RESIDENT_NODES_PER_BAND, type ScanTrioLoader } from './scanFixture';
+import { compileScanFixture, compileScanNeighborhoodFixture, fetchScanNeighborhoodHost, fetchScanTrioLoader, loadPublishedEnrichmentHonesty, loadScanFixture, loadScanNeighborhoodFixture, loadScanNeighborhoodFixtureFromSearch, resolveScanDocLoader, ScanFixtureError, bootFocusFromSearch, SCAN_CONTAINER_GRID_NODES, SCAN_L2_RESIDENT_PREVIEW_PILLS, SCAN_RELATION_EDGE_BUDGET, SCAN_RESIDENT_NODES_PER_BAND, type ScanTrioLoader } from './scanFixture';
 
 function validTrio() {
   return {
@@ -14,6 +14,36 @@ function validTrio() {
 }
 
 describe('scan fixture loader', () => {
+  it('uses code landmarks for a component-focused cold residency window', () => {
+    const trio = validTrio();
+    const snapshot = trio.snapshot as unknown as ArchitectureSnapshot;
+    const owner = snapshot.entities.find(entity => entity.kind === 'component')!;
+    const extra = Array.from({ length: 96 }, (_, index) => ({
+      id: `code:paging-${String(index).padStart(3, '0')}`,
+      kind: 'code' as const,
+      parentId: owner.id,
+      name: `paging${index}`,
+      sourceRefs: [],
+    }));
+    snapshot.entities.push(...extra);
+    const fixture = compileScanFixture({ ...trio, snapshot }, { targetAspect: 1.6 });
+    const landmark = fixture.createScene(owner.id);
+    const codeOwner = landmark.projection!.boundsByEntityIdAndDetail[owner.id]!.code!;
+    const lateId = extra[90]!.id;
+    const slots = c4CodeChildSlots(codeOwner, snapshot.entities
+      .filter(entity => entity.parentId === owner.id && entity.kind === 'code')
+      .map(entity => entity.id));
+    const late = slots[lateId]!;
+    const scene = fixture.createScene(owner.id, undefined, {
+      worldBounds: { x: late.x - 0.01, y: late.y - 0.01, width: late.width + 0.02, height: late.height + 0.02 },
+      keepEntityIds: [extra[0]!.id],
+    });
+    expect(fixture.scopeCompileOptions(owner.id).pageCodeLandmarks).toBe(true);
+    expect(scene.projection!.entityIdsByDetail.code).toEqual(expect.arrayContaining([lateId, extra[0]!.id]));
+    expect(scene.projection!.entityIdsByDetail.code.filter(id => id.startsWith('code:paging-')).length)
+      .toBeLessThanOrEqual(SCAN_RESIDENT_NODES_PER_BAND);
+  });
+
   it('compiles a valid trio into a live scene + story via the demo compile path', () => {
     const fixture = compileScanFixture(validTrio());
     expect(fixture.story.steps.length).toBeGreaterThan(0);
@@ -277,6 +307,41 @@ describe('CLA-73 slim neighborhood boot', () => {
     expect(l1.snapshot.entities.some(entity => entity.id === 'code:web-shell:app')).toBe(true);
   });
 
+  it.each([true, false])('restores deep URLs from canonical root geometry (complete root: %s)', async completeRoot => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const requested: string[] = [];
+    const host = {
+      loadNeighborhood: async (focus: string) => {
+        requested.push(focus);
+        return sliceArchitectureNeighborhood(snapshot, view, {
+          focusEntityId: focus || view.rootEntityId,
+          ...(!focus && completeRoot ? { maxBand: 'code' as const } : {}),
+        });
+      },
+      loadExcerpts: async () => undefined,
+      loadStory: async () => demoStory,
+    };
+    const live = await loadScanNeighborhoodFixture(host, undefined, { targetAspect: 1.6 });
+    for (const focus of ['system:okie', 'container:web-app', 'component:web-shell', 'code:web-shell:app']) {
+      await live.ensureNeighborhood(focus);
+    }
+    requested.length = 0;
+    const restored = await loadScanNeighborhoodFixtureFromSearch(host,
+      '?root=container:web-app&lens=system:okie&lens=container:web-app&lens=component:web-shell&sel=code:web-shell:app&cx=446.959&cy=-241.815&z=3.71572',
+      { targetAspect: 1.6 });
+    expect(requested[0]).toBe('');
+    if (completeRoot) expect(requested).toEqual(['']);
+    expect(restored.snapshot.entities).toEqual(live.snapshot.entities);
+    for (const focus of ['system:okie', 'container:web-app', 'component:web-shell']) {
+      const expected = live.createScene(focus);
+      const actual = restored.createScene(focus);
+      expect(actual.entities).toEqual(expected.entities);
+      expect(actual.protocolSnapshot).toEqual(expected.protocolSnapshot);
+      expect(actual.scanGuardRefusal).toEqual(expected.scanGuardRefusal);
+    }
+  });
+
   it('CLA-94: rail step-out re-fetches the view-root neighborhood after a nested merge', async () => {
     const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
     const view = structuredClone(demoView) as unknown as ArchitectureView;
@@ -372,4 +437,3 @@ describe('CLA-73 slim neighborhood boot', () => {
     expect(fixture.boot).toBe('full');
   });
 });
-

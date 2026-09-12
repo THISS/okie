@@ -28,9 +28,9 @@ describe('CLA-78: Code rail after Open inside a container', () => {
   it('fetches the L4 neighborhood before the level rail compiles', () => {
     expect(app).toContain('function selectLevel(');
     expect(app).toContain('function selectLevelLoaded(');
-    expect(app).toContain('void scanFixture.ensureNeighborhood(initialFocus)');
-    expect(app).toContain('return scanFixture.ensureNeighborhood(compileFocus)');
-    expect(app).toContain('.then(() => selectLevelLoaded(index))');
+    expect(app).toContain('void fixture.ensureNeighborhood(initialFocus)');
+    expect(app).toContain('return fixture.ensureNeighborhood(compileFocus)');
+    expect(app).toContain('if (fixture === scanFixture) selectLevelLoaded(index)');
   });
 
   it('does not raise the 2000 hang-guard', () => {

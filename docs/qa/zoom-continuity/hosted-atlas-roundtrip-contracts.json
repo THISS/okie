@@ -1,0 +1,1901 @@
+{
+  "originalSession": {
+    "baseDetail": "context",
+    "settled": [
+      {
+        "targetId": "system:okie",
+        "currentDetail": "context",
+        "nextDetail": "container"
+      },
+      {
+        "targetId": "container:apps-web",
+        "currentDetail": "container",
+        "nextDetail": "component"
+      }
+    ],
+    "active": {
+      "phase": "idle",
+      "progress": 0,
+      "assistBlend": 0
+    }
+  },
+  "bridgeSourceSession": {
+    "baseDetail": "context",
+    "settled": [
+      {
+        "targetId": "system:okie",
+        "currentDetail": "context",
+        "nextDetail": "container"
+      },
+      {
+        "targetId": "container:apps-web",
+        "currentDetail": "container",
+        "nextDetail": "component"
+      }
+    ],
+    "active": {
+      "phase": "idle",
+      "progress": 0,
+      "assistBlend": 0
+    }
+  },
+  "contractDifferences": [],
+  "contracts": [
+    {
+      "id": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Acrates-atlas-wasm:dependsOn",
+      "source": {
+        "objectId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Acrates-atlas-wasm:dependsOn",
+        "sourceRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Acrates-atlas-wasm:dependsOn:container",
+        "targetRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Acrates-atlas-wasm:dependsOn:container",
+        "sourceOpacity": 0.1,
+        "targetOpacity": 0.1,
+        "sourceContentOpacity": 0.1,
+        "targetContentOpacity": 0.1,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 0,
+        "targetPickPriority": 0
+      },
+      "target": {
+        "objectId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Acrates-atlas-wasm:dependsOn",
+        "sourceRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Acrates-atlas-wasm:dependsOn:container",
+        "targetRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Acrates-atlas-wasm:dependsOn:container",
+        "sourceOpacity": 0.1,
+        "targetOpacity": 0.1,
+        "sourceContentOpacity": 0.1,
+        "targetContentOpacity": 0.1,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 0,
+        "targetPickPriority": 0
+      }
+    },
+    {
+      "id": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-architecture:dependsOn",
+      "source": {
+        "objectId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-architecture:dependsOn",
+        "sourceRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-architecture:dependsOn:container",
+        "targetRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-architecture:dependsOn:container",
+        "sourceOpacity": 0.1,
+        "targetOpacity": 0.1,
+        "sourceContentOpacity": 0.1,
+        "targetContentOpacity": 0.1,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 0,
+        "targetPickPriority": 0
+      },
+      "target": {
+        "objectId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-architecture:dependsOn",
+        "sourceRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-architecture:dependsOn:container",
+        "targetRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-architecture:dependsOn:container",
+        "sourceOpacity": 0.1,
+        "targetOpacity": 0.1,
+        "sourceContentOpacity": 0.1,
+        "targetContentOpacity": 0.1,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 0,
+        "targetPickPriority": 0
+      }
+    },
+    {
+      "id": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-scene-compiler:dependsOn",
+      "source": {
+        "objectId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-scene-compiler:dependsOn",
+        "sourceRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-scene-compiler:dependsOn:container",
+        "targetRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-scene-compiler:dependsOn:container",
+        "sourceOpacity": 0.1,
+        "targetOpacity": 0.1,
+        "sourceContentOpacity": 0.1,
+        "targetContentOpacity": 0.1,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 0,
+        "targetPickPriority": 0
+      },
+      "target": {
+        "objectId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-scene-compiler:dependsOn",
+        "sourceRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-scene-compiler:dependsOn:container",
+        "targetRepresentationId": "relation-label:visual-edge:container:visual-node%3Acontainer%3Aapps-web>visual-node%3Acontainer%3Apackages-scene-compiler:dependsOn:container",
+        "sourceOpacity": 0.1,
+        "targetOpacity": 0.1,
+        "sourceContentOpacity": 0.1,
+        "targetContentOpacity": 0.1,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 0,
+        "targetPickPriority": 0
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-api-share-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-api-share-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-api-share-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-api-share-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-api-share-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-api-share-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-api-share-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-app-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-app-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-app-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-app-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-app-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-app-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-app-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-ask-ask-atlas-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-ask-ask-atlas-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-ask-ask-atlas-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-ask-ask-atlas-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-ask-ask-atlas-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-ask-ask-atlas-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-ask-ask-atlas-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-atlas-card-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-atlas-card-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-atlas-card-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-atlas-card-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-atlas-card-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-atlas-card-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-atlas-card-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-camera-flight-controller-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-camera-flight-controller-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-camera-flight-controller-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-camera-flight-controller-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-camera-flight-controller-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-camera-flight-controller-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-camera-flight-controller-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-diagram-import-mermaid-dialog-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-diagram-import-mermaid-dialog-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-dialog-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-dialog-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-diagram-import-mermaid-dialog-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-dialog-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-dialog-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-diagram-import-mermaid-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-diagram-import-mermaid-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-diagram-import-mermaid-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-import-mermaid-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-diagram-mermaid-diagram-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-diagram-mermaid-diagram-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-mermaid-diagram-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-mermaid-diagram-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-diagram-mermaid-diagram-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-mermaid-diagram-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-mermaid-diagram-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-diagram-semantic-diagram-surface-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-diagram-semantic-diagram-surface-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-semantic-diagram-surface-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-semantic-diagram-surface-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-diagram-semantic-diagram-surface-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-semantic-diagram-surface-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-semantic-diagram-surface-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-diagram-source-viewer-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-diagram-source-viewer-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-source-viewer-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-source-viewer-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-diagram-source-viewer-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-diagram-source-viewer-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-diagram-source-viewer-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-embed-chrome-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-embed-chrome-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-embed-chrome-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-embed-chrome-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-embed-chrome-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-embed-chrome-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-embed-chrome-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-entity-explorer-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-entity-explorer-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-entity-explorer-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-entity-explorer-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-entity-explorer-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-entity-explorer-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-entity-explorer-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-hosted-atlas-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-hosted-atlas-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-hosted-atlas-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-hosted-atlas-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-hosted-atlas-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-hosted-atlas-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-hosted-atlas-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-icons-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-icons-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-icons-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-icons-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-icons-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-icons-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-icons-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-inspector-architecture-brief-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-inspector-architecture-brief-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-architecture-brief-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-architecture-brief-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-inspector-architecture-brief-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-architecture-brief-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-architecture-brief-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-inspector-inspector-support-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-inspector-inspector-support-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-inspector-support-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-inspector-support-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-inspector-inspector-support-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-inspector-support-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-inspector-support-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-inspector-published-enrichment-honesty-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-inspector-published-enrichment-honesty-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-published-enrichment-honesty-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-published-enrichment-honesty-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-inspector-published-enrichment-honesty-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-published-enrichment-honesty-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-published-enrichment-honesty-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-inspector-scan-one-pager-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-isolate-neighborhood-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-isolate-neighborhood-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-isolate-neighborhood-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-isolate-neighborhood-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-isolate-neighborhood-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-isolate-neighborhood-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-isolate-neighborhood-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-live-camera-bridge-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-live-camera-bridge-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-live-camera-bridge-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-live-camera-bridge-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-live-camera-bridge-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-live-camera-bridge-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-live-camera-bridge-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-main-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-main-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-main-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-main-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-main-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-main-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-main-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-minimap-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-minimap-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-minimap-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-minimap-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-minimap-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-minimap-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-minimap-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-oembed-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-oembed-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-oembed-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-oembed-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-oembed-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-oembed-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-oembed-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-open-graph-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-open-graph-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-open-graph-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-open-graph-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-open-graph-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-open-graph-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-open-graph-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-provenance-presentation-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-provenance-presentation-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-provenance-presentation-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-provenance-presentation-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-provenance-presentation-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-provenance-presentation-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-provenance-presentation-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-relations-projection-relations-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-relations-projection-relations-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-projection-relations-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-projection-relations-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-relations-projection-relations-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-projection-relations-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-projection-relations-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-relations-relation-focus-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-relations-relation-focus-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-relation-focus-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-relation-focus-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-relations-relation-focus-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-relation-focus-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-relation-focus-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-relations-relation-framing-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-relations-relation-framing-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-relation-framing-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-relation-framing-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-relations-relation-framing-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-relation-framing-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-relation-framing-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-relations-relationship-flow-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-relations-relationship-flow-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-relationship-flow-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-relationship-flow-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-relations-relationship-flow-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-relations-relationship-flow-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-relations-relationship-flow-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-camera-bounds-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-camera-bounds-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-camera-bounds-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-camera-bounds-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-camera-bounds-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-camera-bounds-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-camera-bounds-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-camera-controller-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-camera-controller-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-camera-controller-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-camera-controller-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-camera-controller-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-camera-controller-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-camera-controller-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-canvas2-d-renderer-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-canvas2-d-renderer-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-canvas2-d-renderer-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-canvas2-d-renderer-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-canvas2-d-renderer-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-canvas2-d-renderer-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-canvas2-d-renderer-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-create-renderer-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-create-renderer-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-create-renderer-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-create-renderer-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-create-renderer-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-create-renderer-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-create-renderer-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-demand-frame-scheduler-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-demand-frame-scheduler-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-demand-frame-scheduler-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-demand-frame-scheduler-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-demand-frame-scheduler-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-demand-frame-scheduler-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-demand-frame-scheduler-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-fixture-bundle-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-protocol-scene-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-protocol-scene-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-protocol-scene-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-protocol-scene-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-protocol-scene-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-protocol-scene-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-protocol-scene-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-query-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-query-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-query-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-query-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-query-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-query-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-query-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-route-geometry-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-route-geometry-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-route-geometry-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-route-geometry-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-route-geometry-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-route-geometry-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-route-geometry-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-route-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-route-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-route-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-route-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-route-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-route-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-route-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-scan-fixture-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-scan-fixture-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-scan-fixture-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-scan-fixture-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-scan-fixture-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-scan-fixture-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-scan-fixture-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-wasm-renderer-adapter-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-wasm-renderer-adapter-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-wasm-renderer-adapter-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-wasm-renderer-adapter-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-wasm-renderer-adapter-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-wasm-renderer-adapter-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-wasm-renderer-adapter-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-renderer-wheel-input-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-renderer-wheel-input-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-wheel-input-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-wheel-input-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-renderer-wheel-input-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-renderer-wheel-input-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-renderer-wheel-input-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-scan-job-enrichment-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-scan-job-enrichment-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-scan-job-enrichment-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-scan-job-enrichment-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-scan-job-enrichment-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-scan-job-enrichment-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-scan-job-enrichment-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-scan-landing-tsx",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-scan-landing-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-scan-landing-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-scan-landing-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-scan-landing-tsx",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-scan-landing-tsx:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-scan-landing-tsx:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-search-suggestions-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-search-suggestions-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-search-suggestions-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-search-suggestions-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-search-suggestions-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-search-suggestions-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-search-suggestions-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-story-focus-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-story-focus-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-story-focus-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-story-focus-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-story-focus-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-story-focus-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-story-focus-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-story-framing-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-story-framing-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-story-framing-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-story-framing-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-story-framing-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-story-framing-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-story-framing-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-story-playback-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-story-playback-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-story-playback-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-story-playback-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-story-playback-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-story-playback-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-story-playback-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-src-webmcp-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-src-webmcp-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-webmcp-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-webmcp-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-src-webmcp-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-src-webmcp-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-src-webmcp-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:component:apps-web-vite-config-ts",
+      "source": {
+        "objectId": "visual-node:component:apps-web-vite-config-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-vite-config-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-vite-config-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:component:apps-web-vite-config-ts",
+        "sourceRepresentationId": "visual-node:component:apps-web-vite-config-ts:component",
+        "targetRepresentationId": "visual-node:component:apps-web-vite-config-ts:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:container:apps-server",
+      "source": {
+        "objectId": "visual-node:container:apps-server",
+        "sourceRepresentationId": "visual-node:container:apps-server:component",
+        "targetRepresentationId": "visual-node:container:apps-server:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:apps-server",
+        "sourceRepresentationId": "visual-node:container:apps-server:component",
+        "targetRepresentationId": "visual-node:container:apps-server:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:apps-web",
+      "source": {
+        "objectId": "visual-node:container:apps-web",
+        "sourceRepresentationId": "visual-node:container:apps-web:component",
+        "targetRepresentationId": "visual-node:container:apps-web:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      },
+      "target": {
+        "objectId": "visual-node:container:apps-web",
+        "sourceRepresentationId": "visual-node:container:apps-web:component",
+        "targetRepresentationId": "visual-node:container:apps-web:component",
+        "sourceOpacity": 1,
+        "targetOpacity": 1,
+        "sourceContentOpacity": 1,
+        "targetContentOpacity": 1,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 1200,
+        "targetPickPriority": 1200
+      }
+    },
+    {
+      "id": "visual-node:container:crates-atlas-engine",
+      "source": {
+        "objectId": "visual-node:container:crates-atlas-engine",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-engine:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-engine:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:crates-atlas-engine",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-engine:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-engine:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:crates-atlas-gpu",
+      "source": {
+        "objectId": "visual-node:container:crates-atlas-gpu",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-gpu:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-gpu:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:crates-atlas-gpu",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-gpu:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-gpu:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:crates-atlas-protocol",
+      "source": {
+        "objectId": "visual-node:container:crates-atlas-protocol",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-protocol:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-protocol:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:crates-atlas-protocol",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-protocol:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-protocol:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:crates-atlas-wasm",
+      "source": {
+        "objectId": "visual-node:container:crates-atlas-wasm",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-wasm:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-wasm:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:crates-atlas-wasm",
+        "sourceRepresentationId": "visual-node:container:crates-atlas-wasm:component",
+        "targetRepresentationId": "visual-node:container:crates-atlas-wasm:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:packages-architecture",
+      "source": {
+        "objectId": "visual-node:container:packages-architecture",
+        "sourceRepresentationId": "visual-node:container:packages-architecture:component",
+        "targetRepresentationId": "visual-node:container:packages-architecture:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:packages-architecture",
+        "sourceRepresentationId": "visual-node:container:packages-architecture:component",
+        "targetRepresentationId": "visual-node:container:packages-architecture:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:packages-scan",
+      "source": {
+        "objectId": "visual-node:container:packages-scan",
+        "sourceRepresentationId": "visual-node:container:packages-scan:component",
+        "targetRepresentationId": "visual-node:container:packages-scan:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:packages-scan",
+        "sourceRepresentationId": "visual-node:container:packages-scan:component",
+        "targetRepresentationId": "visual-node:container:packages-scan:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:packages-scene-compiler",
+      "source": {
+        "objectId": "visual-node:container:packages-scene-compiler",
+        "sourceRepresentationId": "visual-node:container:packages-scene-compiler:component",
+        "targetRepresentationId": "visual-node:container:packages-scene-compiler:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:packages-scene-compiler",
+        "sourceRepresentationId": "visual-node:container:packages-scene-compiler:component",
+        "targetRepresentationId": "visual-node:container:packages-scene-compiler:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:container:tooling",
+      "source": {
+        "objectId": "visual-node:container:tooling",
+        "sourceRepresentationId": "visual-node:container:tooling:component",
+        "targetRepresentationId": "visual-node:container:tooling:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      },
+      "target": {
+        "objectId": "visual-node:container:tooling",
+        "sourceRepresentationId": "visual-node:container:tooling:component",
+        "targetRepresentationId": "visual-node:container:tooling:component",
+        "sourceOpacity": 0.24,
+        "targetOpacity": 0.24,
+        "sourceContentOpacity": 0.24,
+        "targetContentOpacity": 0.24,
+        "sourcePickable": true,
+        "targetPickable": true,
+        "sourcePickPriority": 601,
+        "targetPickPriority": 601
+      }
+    },
+    {
+      "id": "visual-node:external:anthropic-ai-sdk",
+      "source": {
+        "objectId": "visual-node:external:anthropic-ai-sdk",
+        "sourceRepresentationId": "visual-node:external:anthropic-ai-sdk:component",
+        "targetRepresentationId": "visual-node:external:anthropic-ai-sdk:component",
+        "sourceOpacity": 0.13,
+        "targetOpacity": 0.13,
+        "sourceContentOpacity": 0,
+        "targetContentOpacity": 0,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 500,
+        "targetPickPriority": 500
+      },
+      "target": {
+        "objectId": "visual-node:external:anthropic-ai-sdk",
+        "sourceRepresentationId": "visual-node:external:anthropic-ai-sdk:component",
+        "targetRepresentationId": "visual-node:external:anthropic-ai-sdk:component",
+        "sourceOpacity": 0.13,
+        "targetOpacity": 0.13,
+        "sourceContentOpacity": 0,
+        "targetContentOpacity": 0,
+        "sourcePickable": false,
+        "targetPickable": false,
+        "sourcePickPriority": 500,
+        "targetPickPriority": 500
+      }
+    }
+  ]
+}

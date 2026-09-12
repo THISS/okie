@@ -583,7 +583,7 @@
                 "y": 186.0888252148997
               },
               "maxWidth": 476.7765042979943,
-              "content": "README.md",
+              "content": "Explores an unfamiliar codebase from system context to source evidence.",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -657,7 +657,7 @@
                 "y": 213.18412502195378
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 34–39",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -693,7 +693,7 @@
                 "y": 217.123953102183
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/…/src/compile-normalized.ts",
+              "content": "export function compileNormalizedScene(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -767,7 +767,7 @@
                 "y": 213.18412502195378
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 59–64",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -803,7 +803,7 @@
                 "y": 217.123953102183
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/…/src/compile-normalized.ts",
+              "content": "export function diffSceneSnapshots(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -877,7 +877,7 @@
                 "y": 213.18412502195378
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "INTERFACE · 72–77",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -913,7 +913,7 @@
                 "y": 217.123953102183
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/scene-compiler/src/protocol.ts",
+              "content": "export interface SceneSnapshot {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -987,7 +987,7 @@
                 "y": 213.18412502195378
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "INTERFACE · 119–124",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1023,7 +1023,7 @@
                 "y": 217.123953102183
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/scene-compiler/src/protocol.ts",
+              "content": "export interface Timeline {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1097,7 +1097,7 @@
                 "y": 234.77557328534851
               },
               "maxWidth": 17.55355260429907,
-              "content": "SOURCE",
+              "content": "FN · 169–174",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1133,7 +1133,7 @@
                 "y": 238.71540136557775
               },
               "maxWidth": 17.55355260429907,
-              "content": "packages/scene-compiler/src/compile-scene.ts",
+              "content": "export function compileScene(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1207,7 +1207,7 @@
                 "y": 234.77557328534851
               },
               "maxWidth": 17.55355260429907,
-              "content": "SOURCE",
+              "content": "FN · 80–85",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1243,7 +1243,7 @@
                 "y": 238.71540136557775
               },
               "maxWidth": 17.55355260429907,
-              "content": "packages/scene-compiler/src/compile-story.ts",
+              "content": "export function compileStory(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1317,7 +1317,7 @@
                 "y": 209.82155644279476
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 219–224",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1353,7 +1353,7 @@
                 "y": 213.761384523024
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/normalized.ts",
+              "content": "export function normalizeArchitecture({…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1427,7 +1427,7 @@
                 "y": 209.82155644279476
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "TYPE · 148–153",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1463,7 +1463,7 @@
                 "y": 213.761384523024
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/normalized.ts",
+              "content": "export type NormalizedArchitecture = {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1537,7 +1537,7 @@
                 "y": 205.23702922216438
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "INTERFACE · 102–107",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1573,7 +1573,7 @@
                 "y": 209.1768573023936
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/model.ts",
+              "content": "export interface ArchitectureEntity {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1647,7 +1647,7 @@
                 "y": 205.23702922216438
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "INTERFACE · 164–169",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1683,7 +1683,7 @@
                 "y": 209.1768573023936
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/model.ts",
+              "content": "export interface ArchitectureSnapshot {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1757,7 +1757,7 @@
                 "y": 214.40608366342514
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "INTERFACE · 233–238",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1793,7 +1793,7 @@
                 "y": 218.34591174365437
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/model.ts",
+              "content": "export interface ArchitectureStory {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1867,7 +1867,7 @@
                 "y": 238.359042238481
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 600–605",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -1903,7 +1903,7 @@
                 "y": 242.29887031871024
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/normalized.ts",
+              "content": "export function selectScopedView(state:…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -1977,7 +1977,7 @@
                 "y": 238.359042238481
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 471–476",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2013,7 +2013,7 @@
                 "y": 242.29887031871024
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/normalized.ts",
+              "content": "export function…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2087,7 +2087,7 @@
                 "y": 233.77451501785063
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 168–173",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2123,7 +2123,7 @@
                 "y": 237.71434309807987
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/validation.ts",
+              "content": "export function…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2197,7 +2197,7 @@
                 "y": 233.77451501785063
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 617–622",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2233,7 +2233,7 @@
                 "y": 237.71434309807987
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/validation.ts",
+              "content": "export function validateStory(snapshot:…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2307,7 +2307,7 @@
                 "y": 242.9435694591114
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 345–350",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2343,7 +2343,7 @@
                 "y": 246.88339753934062
               },
               "maxWidth": 12.822349570200574,
-              "content": "packages/architecture/src/validation.ts",
+              "content": "export function validateView(snapshot:…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2417,7 +2417,7 @@
                 "y": 208.5995978013234
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 22–27",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2453,7 +2453,7 @@
                 "y": 212.53942588155263
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-engine/src/hit_test.rs",
+              "content": "pub fn hit_test(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2527,7 +2527,7 @@
                 "y": 208.5995978013234
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "STRUCT · 91–96",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2563,7 +2563,7 @@
                 "y": 212.53942588155263
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-engine/src/lod.rs",
+              "content": "pub struct LodController {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2637,7 +2637,7 @@
                 "y": 217.76865224258415
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "STRUCT · 747–752",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2673,7 +2673,7 @@
                 "y": 221.7084803228134
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/…/src/protocol_runtime.rs",
+              "content": "pub struct ProtocolEngine {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2747,7 +2747,7 @@
                 "y": 208.5995978013234
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 150–155",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2783,7 +2783,7 @@
                 "y": 212.53942588155263
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-gpu/src/mesh.rs",
+              "content": "pub fn build_mesh(snapshot:…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2857,7 +2857,7 @@
                 "y": 208.5995978013234
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "STRUCT · 157–162",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -2893,7 +2893,7 @@
                 "y": 212.53942588155263
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-gpu/src/glyph.rs",
+              "content": "pub struct GlyphAtlas {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -2967,7 +2967,7 @@
                 "y": 217.76865224258415
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "STRUCT · 230–235",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3003,7 +3003,7 @@
                 "y": 221.7084803228134
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-gpu/src/surface.rs",
+              "content": "pub struct GpuRenderer {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3077,7 +3077,7 @@
                 "y": 238.359042238481
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 44–49",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3113,7 +3113,7 @@
                 "y": 242.29887031871024
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-protocol/src/patch.rs",
+              "content": "pub fn validate_against(&self, scene:…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3187,7 +3187,7 @@
                 "y": 238.359042238481
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 237–242",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3223,7 +3223,7 @@
                 "y": 242.29887031871024
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-protocol/src/scene.rs",
+              "content": "pub fn validate(&self) -> Result<(),…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3297,7 +3297,7 @@
                 "y": 238.359042238481
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "STRUCT · 13–18",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3333,7 +3333,7 @@
                 "y": 242.29887031871024
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-wasm/src/browser.rs",
+              "content": "pub struct WasmAtlasRenderer {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3407,7 +3407,7 @@
                 "y": 238.359042238481
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 46–51",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3443,7 +3443,7 @@
                 "y": 242.29887031871024
               },
               "maxWidth": 12.822349570200574,
-              "content": "crates/atlas-wasm/src/browser.rs",
+              "content": "pub async fn create_atlas_renderer(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3517,7 +3517,7 @@
                 "y": 292.4996496162944
               },
               "maxWidth": 17.55355260429907,
-              "content": "SOURCE",
+              "content": "SOURCE · 1–6",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3553,7 +3553,7 @@
                 "y": 296.4394776965236
               },
               "maxWidth": 17.55355260429907,
-              "content": "packages/scene-compiler/src/generate-fixtures.ts",
+              "content": "import { readFile, writeFile } from 'node:fs/promises';",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3627,7 +3627,7 @@
                 "y": 292.4996496162944
               },
               "maxWidth": 17.55355260429907,
-              "content": "SOURCE",
+              "content": "FN · 1–6",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3663,7 +3663,7 @@
                 "y": 296.4394776965236
               },
               "maxWidth": 17.55355260429907,
-              "content": "scripts/generate-stress.mjs",
+              "content": "#!/usr/bin/env node",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3737,7 +3737,7 @@
                 "y": 314.3119982536626
               },
               "maxWidth": 17.55355260429907,
-              "content": "SOURCE",
+              "content": "CONST · 1–6",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3773,7 +3773,7 @@
                 "y": 318.2518263338918
               },
               "maxWidth": 17.55355260429907,
-              "content": "scripts/build-wasm.mjs",
+              "content": "#!/usr/bin/env node",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3847,7 +3847,7 @@
                 "y": 284.7734541904785
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 151–156",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3883,7 +3883,7 @@
                 "y": 288.71328227070774
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/…/src/navigation/navigationState.ts",
+              "content": "export function canonicalNavigationUrl(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -3957,7 +3957,7 @@
                 "y": 284.7734541904785
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 58–63",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -3993,7 +3993,7 @@
                 "y": 288.71328227070774
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/…/navigation/historyController.ts",
+              "content": "export function…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4067,7 +4067,7 @@
                 "y": 293.94250863173926
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "TYPE · 15–20",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4103,7 +4103,7 @@
                 "y": 297.8823367119685
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/…/src/navigation/navigationState.ts",
+              "content": "export type NavigationState = {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4177,7 +4177,7 @@
                 "y": 289.1370810371354
               },
               "maxWidth": 17.55355260429907,
-              "content": "SOURCE",
+              "content": "FN · 40–45",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4213,7 +4213,7 @@
                 "y": 293.0769091173646
               },
               "maxWidth": 17.55355260429907,
-              "content": "apps/web/src/provenance/presentation.ts",
+              "content": "export function presentClaimProvenance(value:…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4287,7 +4287,7 @@
                 "y": 284.7734541904785
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "CLASS · 144–149",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4323,7 +4323,7 @@
                 "y": 288.71328227070774
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/…/src/renderer/Canvas2DRenderer.ts",
+              "content": "export class Canvas2DRenderer…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4397,7 +4397,7 @@
                 "y": 284.7734541904785
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 27–32",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4433,7 +4433,7 @@
                 "y": 288.71328227070774
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/web/src/renderer/createRenderer.ts",
+              "content": "export async function…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4507,7 +4507,7 @@
                 "y": 293.94250863173926
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "CLASS · 32–37",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4543,7 +4543,7 @@
                 "y": 297.8823367119685
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/…/renderer/WasmRendererAdapter.ts",
+              "content": "export class WasmRendererAdapter…",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4617,7 +4617,7 @@
                 "y": 317.8954672067951
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 1328–1333",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4653,7 +4653,7 @@
                 "y": 321.83529528702434
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/web/src/App.tsx",
+              "content": "export function App() {",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4727,7 +4727,7 @@
                 "y": 317.8954672067951
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "SOURCE · 5311–5316",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4763,7 +4763,7 @@
                 "y": 321.83529528702434
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/web/src/App.tsx",
+              "content": "<CanvasViewport",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4837,7 +4837,7 @@
                 "y": 313.3109399861647
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 141–146",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4873,7 +4873,7 @@
                 "y": 317.25076806639396
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/web/src/storyPlayback.ts",
+              "content": "export function createStoryFlight(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -4947,7 +4947,7 @@
                 "y": 313.3109399861647
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 8–13",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -4983,7 +4983,7 @@
                 "y": 317.25076806639396
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/web/src/storyFocus.ts",
+              "content": "export function storyFocusPresentation(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -5057,7 +5057,7 @@
                 "y": 322.4799944274255
               },
               "maxWidth": 12.822349570200574,
-              "content": "SOURCE",
+              "content": "FN · 119–124",
               "fontFamily": "IBM Plex Sans SemiBold",
               "fontSize": 0.5157593123209169,
               "color": [
@@ -5093,7 +5093,7 @@
                 "y": 326.4198225076547
               },
               "maxWidth": 12.822349570200574,
-              "content": "apps/web/src/storyFraming.ts",
+              "content": "export function frameEntities(",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -10580,7 +10580,7 @@
                 "y": 186.0888252148997
               },
               "maxWidth": 476.7765042979943,
-              "content": "crates/atlas-wasm/src/browser.rs",
+              "content": "Provides the canvas, WebAssembly runtime, and WebGPU or WebGL2 surface used to render the atlas.",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [
@@ -10977,7 +10977,7 @@
                 "y": 446.0888252148997
               },
               "maxWidth": 476.7765042979943,
-              "content": "packages/architecture/src/model.ts",
+              "content": "Supplies source references used to support architecture claims.",
               "fontFamily": "IBM Plex Mono",
               "fontSize": 0.5300859598853868,
               "color": [

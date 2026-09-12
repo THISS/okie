@@ -1,0 +1,15 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {it} from 'vitest';
+import {createScanDetailMorph, retainScanDetailMorphSource} from './src/semantic/scanContainerMorph';
+import {semanticLensSessionProjectionOverride} from './src/semantic/semanticLens';
+import {semanticLevelSession} from './src/semantic/semanticLensEngine';
+import {compileScanFixture} from './src/renderer/scanFixture';
+it('compares actual hostedAtlas scoped metadata',()=>{
+ const snapshot=JSON.parse(readFileSync('/tmp/zoom-coverage-snapshot.json','utf8')),view=JSON.parse(readFileSync('/tmp/zoom-coverage-view.json','utf8')),story=JSON.parse(readFileSync('../../fixtures/scan/thiss__okie/story.json','utf8'));
+ const fixture=compileScanFixture({snapshot,view,story},{targetAspect:1.6}); const source=fixture.createScene('container:apps-web');const target=fixture.createScene('component:apps-web-src-hosted-atlas-ts',source);
+ const rows=source.entities.filter(e=>source.projection!.entityIdsByDetail.component.includes(e.id)).map(e=>{const t=target.entities.find(t=>t.id===e.id);return {id:e.id,source:{parentId:e.parentId,detail:e.detail},target:t?{parentId:t.parentId,detail:t.detail}:null};});
+ const missingFile='component:apps-web-api-oembed-ts'; const mt=fixture.createScene(missingFile,source); const stitched=retainScanDetailMorphSource(source,mt,'component'); console.log('MISSING_DETAIL',JSON.stringify({sourceMember:source.projection!.entityIdsByDetail.component.includes(missingFile),targetMember:mt.projection!.entityIdsByDetail.component.includes(missingFile),session:semanticLevelSession(stitched,'code',[missingFile])}));
+ const morph=createScanDetailMorph(source,target,'component:apps-web-src-hosted-atlas-ts','component','code',7.72)!; const originalSession=semanticLevelSession(source,'component',['container:apps-web']); const oldProjection=semanticLensSessionProjectionOverride(source,originalSession)!; const newProjection=semanticLensSessionProjectionOverride(morph.scene,morph.sourceSession)!; const contracts=oldProjection.objects.filter(o=>(o.targetOpacity??0)>0).map(o=>({id:o.objectId,source:o,target:newProjection.objects.find(n=>n.objectId===o.objectId)})); const contractDifferences=contracts.filter(r=>JSON.stringify(r.source)!==JSON.stringify(r.target));writeFileSync('../../docs/qa/zoom-continuity/hosted-atlas-roundtrip-contracts.json',JSON.stringify({originalSession,bridgeSourceSession:morph.sourceSession,contractDifferences,contracts},null,2)+'\n');console.log('CONTRACT_DIFF',JSON.stringify({count:contractDifferences.length,sessionEqual:JSON.stringify(originalSession)===JSON.stringify(morph.sourceSession),differences:contractDifferences.slice(0,2)}));
+ const changed=rows.filter(r=>r.target&&JSON.stringify(r.source)!==JSON.stringify(r.target));
+ const result={sourceCount:source.entities.length,targetCount:target.entities.length,sourceComponents:rows.length,missing:rows.filter(r=>!r.target).length,changed,rows};writeFileSync('../../docs/qa/zoom-continuity/hosted-atlas-metadata.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify({...result,rows:undefined}));
+},60000);

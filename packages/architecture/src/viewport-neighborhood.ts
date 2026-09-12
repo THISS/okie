@@ -135,6 +135,11 @@ function pagingBounds(
   // L2 tiles, so using those for the camera test pages the on-screen crate
   // to zero L4 and wheel cannot enter the code band.
   if (node && pagedKinds?.includes(node.kind)) {
+    // Exact code slots are supplied for scan L4 paging. Prefer one when it is
+    // available so a late symbol can be selected by its real in-file position;
+    // retain the ancestor-face fallback for legacy/unhinted projections.
+    const own = packed[id];
+    if (own) return own;
     let currentId: string | undefined = node.parentVisualId;
     const seen = new Set<string>();
     while (currentId && !seen.has(currentId)) {

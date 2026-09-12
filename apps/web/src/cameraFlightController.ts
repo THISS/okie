@@ -38,13 +38,14 @@ export type CameraFlightController = {
   isActive(): boolean;
 };
 
-/** React state can lag an imperative animation frame; never replace the live source mid-flight. */
+/** Only a new camera publication can replace live input; unrelated React renders cannot. */
 export function reconcileRenderedCamera(
   liveCamera: Camera,
   reactCamera: Camera,
   flightActive: boolean,
+  previousReactCamera?: Camera,
 ) {
-  return flightActive ? liveCamera : reactCamera;
+  return flightActive || reactCamera === previousReactCamera ? liveCamera : reactCamera;
 }
 
 export function easeCameraFlight(progress: number) {

@@ -1,0 +1,44 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { it, expect } from 'vitest';
+import { compileScanFixture } from './src/renderer/scanFixture';
+import { createScanDetailMorph } from './src/semantic/scanContainerMorph';
+import { semanticBounds } from './src/renderer/goldenC4Scene';
+import { semanticLensSessionProjectionOverride } from './src/semantic/semanticLens';
+
+it('inventories every served container and file morph contract without awarding visual passes', () => {
+ const snapshot = JSON.parse(readFileSync('/tmp/zoom-coverage-snapshot.json','utf8'));
+ const view = JSON.parse(readFileSync('/tmp/zoom-coverage-view.json','utf8'));
+ const story = JSON.parse(readFileSync('../../fixtures/scan/thiss__okie/story.json','utf8'));
+ expect(snapshot.id).toBe('snapshot:okie:722ea2862304');
+ const fixture = compileScanFixture({snapshot,view,story},{targetAspect:1.6});
+ const root = fixture.createScene(view.rootEntityId);
+ const rows:any[]=[];
+ const audit=(entity:any, source:any, sourceDetail:'container'|'component', targetDetail:'component'|'code')=>{
+  const children=snapshot.entities.filter((e:any)=>e.parentId===entity.id);
+  try {
+   const target=fixture.createScene(entity.id,source);
+   const morph=createScanDetailMorph(source,target,entity.id,sourceDetail,targetDetail,sourceDetail==='container'?2:7.72);
+   const row:any={id:entity.id,kind:entity.kind,childCount:children.length,leaf:children.length===0,sourceBounds:semanticBounds(source,entity.id,sourceDetail)??null,targetBounds:semanticBounds(target,entity.id,targetDetail)??null,sourceProjectionMember:source.projection?.entityIdsByDetail[sourceDetail].includes(entity.id)??false,targetProjectionMember:target.projection?.entityIdsByDetail[targetDetail].includes(entity.id)??false,morphExists:!!morph,guard:target.scanGuardRefusal??null,targetBandEntityCount:target.projection?.entityIdsByDetail[targetDetail].length??0,visualStatus:'untested'};
+   if(morph){
+    const projection=semanticLensSessionProjectionOverride(morph.scene,morph.sourceSession);
+    const original=semanticLensSessionProjectionOverride(source,morph.sourceSession);
+    const visible=(p:any)=>p?.objects.filter((o:any)=>(o.targetOpacity??0)>.001).map((o:any)=>o.objectId).sort()??[];
+    const expected=visible(original),actual=visible(projection);
+    row.sourceVisibleObjects=expected.length;row.roundtripVisibleObjects=actual.length;
+    row.missingSourceObjectIds=expected.filter((id:string)=>!actual.includes(id));
+    row.childRepresentations=children.filter((e:any)=>target.projection?.boundsByEntityIdAndDetail[e.id]?.[targetDetail]).map((e:any)=>e.id);
+   }
+   row.contractStatus=children.length===0?'leaf':!morph?'missing-morph':row.missingSourceObjectIds.length?'source-visibility-loss':'contract-present';
+   rows.push(row);return target;
+  }catch(error){rows.push({id:entity.id,kind:entity.kind,childCount:children.length,error:String(error),contractStatus:'compile-error',visualStatus:'untested'});return undefined;}
+ };
+ for(const container of snapshot.entities.filter((e:any)=>e.kind==='container')){
+  const source=audit(container,root,'container','component');
+  if(!source)continue;
+  for(const file of snapshot.entities.filter((e:any)=>e.kind==='component'&&e.parentId===container.id))audit(file,source,'component','code');
+ }
+ const counts=rows.reduce((acc:any,row:any)=>(acc[row.contractStatus]=(acc[row.contractStatus]??0)+1,acc),{});
+ writeFileSync('../../docs/qa/zoom-continuity/branch-contracts.json',JSON.stringify({snapshotId:snapshot.id,createdAt:new Date().toISOString(),scope:'Machine compile/morph inventory only; no browser or visual passes. compileScanFixture canonical full input, targetAspect 1.6.',counts,rows},null,2)+'\n');
+ console.log(JSON.stringify({rows:rows.length,counts,issues:rows.filter(r=>!['leaf','contract-present'].includes(r.contractStatus)).map(r=>({id:r.id,status:r.contractStatus,error:r.error,missing:r.missingSourceObjectIds?.length}))}));
+ expect(rows.filter(r=>r.kind==='container')).toHaveLength(10);expect(rows.filter(r=>r.kind==='component')).toHaveLength(167);
+},120000);

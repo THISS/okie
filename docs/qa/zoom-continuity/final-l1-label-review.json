@@ -1,0 +1,47 @@
+{
+  "scope": "Final L1 label recording review; no global or full-matrix pass",
+  "video": "/tmp/okie-goal-l1-label-fixed-roundtrip.mov",
+  "sourceState": "docs/qa/zoom-continuity/source-state-label.json",
+  "sha256": {
+    "/tmp/okie-goal-l1-label-fixed-roundtrip.mov": "dba89dc254c061b7996ec7799d2a763ff77e5d94728a13a1978a1227eb3870f8",
+    "/tmp/okie-goal-l1-label-fixed-roundtrip.json": "84b60c831bc773a1382f8618538c089971e5ece770527cadaf70a43d85f74a1c",
+    "docs/qa/zoom-continuity/source-state-label.json": "28f32f549b9e8a3f278091da85d381e51cc69500ac486bbd4847d444910ee868"
+  },
+  "trace": {
+    "inputs": 44,
+    "frames": 388,
+    "truncated": false,
+    "droppedSamples": 0,
+    "directions": [
+      {
+        "direction": "in",
+        "frames": 167,
+        "startZoom": 0.8336453448652353,
+        "endZoom": 1.7972807035250755,
+        "oppositeZoomFrames": []
+      },
+      {
+        "direction": "out",
+        "frames": 221,
+        "startZoom": 1.7327206471195646,
+        "endZoom": 0.8037000000000003,
+        "oppositeZoomFrames": []
+      }
+    ]
+  },
+  "visual": {
+    "labelStatus": "FAIL",
+    "verifiedOverlapVideoSeconds": [
+      10,
+      17.5,
+      17.625
+    ],
+    "evidence": [
+      "/tmp/okie-l1-final-inward-10.png",
+      "/tmp/okie-l1-final-overlap-17.5.png"
+    ],
+    "observation": "White Okie title intersects purple SOFTWARE SYSTEM in compact context boundary in both directions. Expanded face at 9.5 seconds has clear title/type separation.",
+    "minimap": "Sampled overview shows populated rectangles changing with scene and returning; no blank-map event observed. Pixel-exact alignment and interaction not established.",
+    "motion": "No opposite camera zoom samples within either direction; sampled images do not establish absence of all geometric jitter."
+  }
+}

@@ -6,7 +6,7 @@ import type { ScanFixture } from './scanFixture';
 // keeping the story-playback machinery unchanged. Undefined for golden/stress.
 let activeScanFixture: ScanFixture | undefined;
 
-export function setActiveScanFixture(fixture: ScanFixture): void {
+export function setActiveScanFixture(fixture: ScanFixture | undefined): void {
   activeScanFixture = fixture;
 }
 

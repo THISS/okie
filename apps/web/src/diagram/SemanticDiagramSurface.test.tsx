@@ -93,3 +93,21 @@ describe('semantic diagram surface', () => {
     expect(markup).toContain('aria-pressed="true"');
   });
 });
+
+it('labels dependency relations without invented sequence and offers Mermaid in the same tab', () => {
+  const scene = createGoldenC4Scene();
+  const relation = scene.relations.find(candidate => candidate.from !== candidate.to)!;
+  const markup = renderToStaticMarkup(<SemanticDiagramSurface scene={scene} surface={{ id: 'dependencies', kind: 'dependency', title: 'Dependencies', closable: true, entityIds: [relation.from, relation.to], session: { inspector: { open: false, tab: 'details' } } }} onSessionChange={() => undefined}/>);
+  expect(markup).toContain('View Mermaid');
+  expect(markup).toContain('<ul>');
+  expect(markup).not.toContain('<ol>');
+  expect(markup).not.toContain('ordered interactions');
+});
+
+it('keeps an invalid optional named flow in a local alert without inventing fallback interactions', () => {
+  const scene = createGoldenC4Scene();
+  const markup = renderToStaticMarkup(<SemanticDiagramSurface scene={scene} flowError="Captured flow unavailable; return to Main." surface={{ id: 'invalid-flow', kind: 'flow', title: 'Invalid flow', closable: true, entityIds: scene.entities.slice(0, 2).map(entity => entity.id), session: { inspector: { open: false, tab: 'details' } } }} onSessionChange={() => undefined}/>);
+  expect(markup).toContain('role="alert"');
+  expect(markup).toContain('Captured flow unavailable; return to Main.');
+  expect(markup).not.toContain('data-semantic-relation-id');
+});

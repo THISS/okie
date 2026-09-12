@@ -10,7 +10,8 @@ describe('CLA-73: slim boot fetches the neighborhood, not the whole snapshot', (
   it('boots /r and fixture=scan through neighborhood.json, not snapshot.json', () => {
     expect(main).toContain('tryBootNeighborhoodFixture(');
     expect(main).toContain('fetchScanNeighborhoodHost(');
-    expect(main).toContain('bootFocusFromSearch(window.location.search)');
+    expect(main).toContain('loadScanNeighborhoodFixtureFromSearch(');
+    expect(main).toContain('window.location.search,');
     expect(fixture).toContain("scanObjectPath(slug, 'neighborhood.json'");
     expect(fixture).toContain("scanObjectPath(slug, 'enrichment-report.json'");
     expect(fixture).toContain("scanObjectPath(slug, 'enrichment-status.json'");

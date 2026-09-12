@@ -75,6 +75,14 @@ export interface Evidence {
   reason?: string;
 }
 
+export type ExposureKind = "moduleExport" | "publicApi" | "entryPoint";
+
+/** A scanner-proven way an entity is exposed beyond its lexical declaration. */
+export interface Exposure {
+  kind: ExposureKind;
+  evidence: Evidence;
+}
+
 /** Inclusive one-based instrumented line range from an optional lcov sidecar. */
 export interface CoverageLineRange {
   startLine: number;
@@ -101,6 +109,8 @@ export interface ArchitectureEntity {
   responsibility?: string;
   technology?: string[];
   tags?: string[];
+  /** Scanner-proven module/package exposure; omitted when unknown. */
+  exposure?: Exposure[];
   /**
    * Observed CODEOWNERS (or equivalent path owners) for this entity's files.
    * Scan-time overlay — never ArchitectureExtraction input. Omit when empty.

@@ -228,7 +228,7 @@ describe('golden C4 web projection contract', () => {
     const ghostVisualId = scene.projection!.semanticToVisualEntityId[ghost.id];
     const ancestorVisualId = scene.projection!.semanticToVisualEntityId['system:okie'];
     expect(override.objects.find(object => object.objectId === ghostVisualId)).toMatchObject({
-      targetRepresentationId: `${ghostVisualId}:component`,
+      targetRepresentationId: `${ghostVisualId}:${ghost.detail}`,
       targetOpacity: .24,
       targetContentOpacity: .24,
       targetPickable: true,
@@ -288,12 +288,12 @@ describe('golden C4 web projection contract', () => {
     };
 
     expect(titleCall(ancestor, 'context')?.alpha).toBe(0);
-    const siblingTitle = titleCall(siblingEntity, 'code', 14);
+    const siblingTitle = titleCall(siblingEntity, sibling.detail, 14);
     const activeSiblingMetrics = canvasEntityPresentationMetrics('code', true, 14);
     const priorSiblingMetrics = canvasEntityPresentationMetrics(sibling.detail, true, 14);
     expect(siblingTitle?.alpha).toBe(.24);
-    expect(siblingTitle?.font).toContain(`${activeSiblingMetrics.titleFontSize}px`);
-    expect(siblingTitle?.font).not.toContain(`${priorSiblingMetrics.titleFontSize}px`);
+    expect(siblingTitle?.font).not.toContain(`${activeSiblingMetrics.titleFontSize}px`);
+    expect(siblingTitle?.font).toContain(`${priorSiblingMetrics.titleFontSize}px`);
     expect(titleCall(boundary, 'code')?.alpha).toBe(1);
     expect(titleCall(primary, 'code')?.alpha).toBe(1);
     expect(override.objects.find(object => object.objectId === scene.projection!.semanticToVisualEntityId[lowerGhost.id])).toMatchObject({

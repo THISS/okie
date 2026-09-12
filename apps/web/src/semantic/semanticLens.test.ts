@@ -15,6 +15,7 @@ import {
   reduceSemanticLens,
   reduceSemanticLensSession,
   semanticBaseProjectionOverride,
+  semanticBackgroundVisibility,
   semanticLensBranchEntityIds,
   semanticLensCoverageProgress,
   semanticLensCanonicalPathIds,
@@ -31,9 +32,11 @@ import {
   stabilizeSemanticLensSessionForPan,
   settledSemanticLensId,
   transferSemanticLensFocus,
+  validateRestoredSemanticLensPath,
   type SemanticLensTarget,
 } from './semanticLens';
 import { createGoldenC4Scene, semanticBounds } from '../renderer/goldenC4Scene';
+import type { AtlasScene } from '../renderer/types';
 
 const target = (major: number, minor: number, id = 'system:okie'): SemanticLensTarget => ({
   id,
@@ -45,6 +48,94 @@ const target = (major: number, minor: number, id = 'system:okie'): SemanticLensT
 });
 
 describe('semantic projection ownership', () => {
+  it('fades background context continuously before the focus touches it', () => {
+    const background = { x: 100, y: 0, width: 100, height: 100 };
+    const focus = { x: 0, y: 0, width: 80, height: 100 };
+    expect(semanticBackgroundVisibility(background, focus)).toBe(1);
+    expect(semanticBackgroundVisibility(background, { ...focus, width: 96 })).toBeCloseTo(.5);
+    expect(semanticBackgroundVisibility(background, { ...focus, width: 100 })).toBe(0);
+    expect(semanticBackgroundVisibility(background, { ...focus, width: 200 })).toBe(0);
+    const widths = [80, 92, 94, 96, 98, 100, 104];
+    const inward = widths.map(width => semanticBackgroundVisibility(background, { ...focus, width }));
+    expect(inward).toEqual([...inward].sort((a, b) => b - a));
+    expect([...widths].reverse().map(width => semanticBackgroundVisibility(background, { ...focus, width })))
+      .toEqual([...inward].reverse());
+  });
+
+  it('restores only URL lens entries coherent with the authored camera runway', () => {
+    const scene = createGoldenC4Scene();
+    const l1Path = ['system:okie'];
+    const l1Transition = scene.projection!.semanticTransitionsByEntityId!['system:okie']!.container!;
+
+    // The captured cold URL was a context path at z=.8037 with a stale L2
+    // settled lens. Structural validity alone accepts it; restore must not.
+    expect(validateRestoredSemanticLensPath(scene, 'context', l1Path, .8037)).toEqual({
+      entries: [],
+      truncated: true,
+    });
+    // Retain the hysteresis runway so a saved outward endpoint just below the
+    // authored entry does not flicker to the wrong base representation.
+    expect(validateRestoredSemanticLensPath(
+      scene,
+      'context',
+      l1Path,
+      l1Transition.minZoom - l1Transition.hysteresis + 1e-10,
+    ).entries).toHaveLength(1);
+
+    const coldL4Path = ['system:okie', 'container:architecture-model', 'component:model-normalized'];
+    const l4Transition = scene.projection!.semanticTransitionsByEntityId!['component:model-normalized']!.code!;
+    const coldL4Scene: AtlasScene = {
+      ...scene,
+      projection: {
+        ...scene.projection!,
+        semanticTransitionsByEntityId: {
+          ...scene.projection!.semanticTransitionsByEntityId!,
+          'component:model-normalized': {
+            ...scene.projection!.semanticTransitionsByEntityId!['component:model-normalized'],
+            // A cold scan bridge may have a longer complete runway than the
+            // native representation's ordinary LOD transition.
+            code: { ...l4Transition, fullZoom: 12.54 },
+          },
+        },
+      },
+    };
+    expect(10).toBeGreaterThan(l4Transition.minZoom);
+    expect(10).toBeLessThan(coldL4Scene.projection!.semanticTransitionsByEntityId!['component:model-normalized']!.code!.fullZoom);
+    // A saved L4 endpoint need only meet its entry/leave runway, never fullZoom.
+    expect(validateRestoredSemanticLensPath(coldL4Scene, 'context', coldL4Path, 10).entries)
+      .toEqual([
+        { targetId: 'system:okie', currentDetail: 'context', nextDetail: 'container' },
+        { targetId: 'container:architecture-model', currentDetail: 'container', nextDetail: 'component' },
+        { targetId: 'component:model-normalized', currentDetail: 'component', nextDetail: 'code' },
+      ]);
+
+    const rootVisualId = scene.projection!.semanticToVisualEntityId['system:okie'];
+    const protocol = scene.protocolSnapshot as { objects: Array<{ id: string; representations: Array<{ id: string; lod?: { minZoom: number; hysteresis: number } }> }> };
+    const lodFallbackScene: AtlasScene = {
+      ...scene,
+      projection: {
+        ...scene.projection!,
+        semanticTransitionsByEntityId: {
+          ...scene.projection!.semanticTransitionsByEntityId!,
+          'system:okie': { ...scene.projection!.semanticTransitionsByEntityId!['system:okie'], container: undefined },
+        },
+      },
+      protocolSnapshot: {
+        ...protocol,
+        objects: protocol.objects.map(object => object.id !== rootVisualId ? object : {
+          ...object,
+          representations: object.representations.map(representation => representation.id !== `${rootVisualId}:container`
+            ? representation
+            : { ...representation, lod: { minZoom: .84, hysteresis: .05 } }),
+        }),
+      },
+    };
+    // Imported/sparse scenes retain their protocol LOD policy ahead of the
+    // generic C4 fallback. This is the actual target-measurement precedence.
+    expect(validateRestoredSemanticLensPath(lodFallbackScene, 'context', l1Path, .80).entries).toHaveLength(1);
+    expect(validateRestoredSemanticLensPath(lodFallbackScene, 'context', l1Path, .789).entries).toHaveLength(0);
+  });
+
   it('contains an owner with the exact minimal translation on every safe edge', () => {
     const viewport = { width: 1_000, height: 800 };
     const safeArea = { left: 100, right: 150, top: 50, bottom: 100 };
@@ -547,6 +638,42 @@ describe('semantic projection ownership', () => {
     expect(semanticLensCanonicalPathIds(popped)).toEqual([l1.id]);
   });
 
+  it('keeps background siblings in their prior layout throughout deeper owner zoom', () => {
+    const scene = createGoldenC4Scene();
+    const entries = [
+      { targetId: 'system:okie', currentDetail: 'context' as const, nextDetail: 'container' as const },
+      { targetId: 'container:architecture-model', currentDetail: 'container' as const, nextDetail: 'component' as const },
+      { targetId: 'component:model-normalized', currentDetail: 'component' as const, nextDetail: 'code' as const },
+    ];
+    let checkedBackground = 0;
+    for (let depth = 1; depth < entries.length; depth += 1) {
+      const entry = entries[depth]!;
+      const sourceSession = { baseDetail: 'context' as const, settled: entries.slice(0, depth), active: idleSemanticLens() };
+      const targetSession = { ...sourceSession, settled: entries.slice(0, depth + 1) };
+      const source = semanticLensSessionProjectionOverride(scene, sourceSession)!;
+      for (const ghost of semanticLensSessionGhostEntities(scene, targetSession)) {
+        const visualId = scene.projection!.semanticToVisualEntityId[ghost.id]!;
+        const before = source.objects.find(object => object.objectId === visualId)!;
+        if (!before.targetRepresentationId || !before.targetOpacity) continue;
+        checkedBackground += 1;
+        for (const progress of [0, .25, .5, .75, 1, .75, .5, .25, 0]) {
+          const frame = semanticLensSessionProjectionOverride(scene, {
+            ...sourceSession,
+            active: { ...entry, phase: 'revealing', progress, assistBlend: 0 },
+          })!;
+          const object = frame.objects.find(object => object.objectId === visualId)!;
+          expect(object.sourceRepresentationId, ghost.id).toBe(before.targetRepresentationId);
+          expect(object.targetRepresentationId, ghost.id).toBe(before.targetRepresentationId);
+          expect(frame.morph?.objectIds).not.toContain(visualId);
+          if (progress === 0) expect(object.sourceOpacity, `entry opacity: ${ghost.id}`).toBe(before.targetOpacity);
+        }
+        const after = semanticLensSessionProjectionOverride(scene, targetSession)!.objects.find(object => object.objectId === visualId)!;
+        expect(after.targetRepresentationId, ghost.id).toBe(before.targetRepresentationId);
+      }
+    }
+    expect(checkedBackground).toBeGreaterThan(0);
+  });
+
   it('retains deterministic prior-depth sibling context around the full-opacity primary branch', () => {
     const scene = createGoldenC4Scene();
     const containers = scene.entities.filter(entity => entity.detail === 'container');
@@ -594,7 +721,7 @@ describe('semantic projection ownership', () => {
         const silhouette = silhouetteById.get(entity.id);
         const expectedDetail = expectedEntitySet.has(entity.id)
           ? entry.nextDetail
-          : ancestor?.currentDetail ?? (ghost ? entry.nextDetail : silhouette?.detail);
+          : ancestor?.currentDetail ?? (ghost ? ghost.detail : silhouette?.detail);
         expect(owner?.targetRepresentationId, `${entry.nextDetail} ownership for ${entity.id}`)
           .toBe(expectedDetail ? `${visualId}:${expectedDetail}` : undefined);
         expect(owner?.targetOpacity).toBe(expectedEntitySet.has(entity.id)
@@ -667,6 +794,36 @@ describe('semantic projection ownership', () => {
 
     const reordered = { ...scene, entities: [...scene.entities].reverse() };
     expect(findSemanticGhostFocusTarget(reordered, session, camera, viewport, safeArea)?.id).toBe(ghost.id);
+  });
+
+  it('preserves hidden background visibility at both focus-transfer endpoints', () => {
+    const scene = createGoldenC4Scene();
+    const session = {
+      baseDetail: 'context' as const,
+      settled: [
+        { targetId: 'system:okie', currentDetail: 'context' as const, nextDetail: 'container' as const },
+        { targetId: 'container:architecture-model', currentDetail: 'container' as const, nextDetail: 'component' as const },
+      ],
+      active: idleSemanticLens(),
+    };
+    const ghost = semanticLensSessionGhostEntities(scene, session).find(candidate => candidate.depth === 1
+      && scene.entities.some(entity => entity.parentId === candidate.id && entity.detail === 'component'))!;
+    const focusBounds = scene.projection!.boundsByEntityIdAndDetail['container:architecture-model']!.component!;
+    const old = scene.projection!.boundsByEntityIdAndDetail[ghost.id]!.container!;
+    scene.projection!.boundsByEntityIdAndDetail[ghost.id]!.container = { ...old, x: focusBounds.x + 1, y: focusBounds.y + 1 };
+    const before = semanticLensSessionProjectionOverride(scene, session)!;
+    const transferred = transferSemanticLensFocus(scene, session, ghost);
+    const start = semanticLensSessionProjectionOverride(scene, transferred)!;
+    const end = semanticLensSessionProjectionOverride(scene, { ...transferred, focusTransfer: { ...transferred.focusTransfer!, progress: 1 } })!;
+    const settled = semanticLensSessionProjectionOverride(scene, advanceSemanticLensFocusTransfer(transferred, 1))!;
+    const ghostVisual = scene.projection!.semanticToVisualEntityId[ghost.id];
+    expect(before.objects.find(object => object.objectId === ghostVisual)!.targetOpacity).toBe(0);
+    for (const object of start.objects) {
+      expect(object.sourceOpacity, object.objectId).toBe(before.objects.find(candidate => candidate.objectId === object.objectId)!.targetOpacity);
+    }
+    for (const object of end.objects) {
+      expect(object.targetOpacity, object.objectId).toBe(settled.objects.find(candidate => candidate.objectId === object.objectId)!.targetOpacity);
+    }
   });
 
   it('crossfades the old primary into ghost context over the focus-transfer override', () => {

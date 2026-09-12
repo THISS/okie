@@ -627,8 +627,8 @@
           "path": "apps/web/src/App.tsx",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "App",
-          "startLine": 1226,
-          "endLine": 1231
+          "startLine": 1328,
+          "endLine": 1333
         }
       ],
       "sourceExcerpts": [
@@ -636,9 +636,9 @@
           "path": "apps/web/src/App.tsx",
           "symbol": "App",
           "language": "tsx",
-          "startLine": 1226,
-          "endLine": 1231,
-          "highlightLine": 1226,
+          "startLine": 1328,
+          "endLine": 1333,
+          "highlightLine": 1328,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function App() {",
@@ -669,8 +669,8 @@
           "path": "apps/web/src/App.tsx",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "CanvasViewport",
-          "startLine": 4924,
-          "endLine": 4929
+          "startLine": 5311,
+          "endLine": 5316
         }
       ],
       "sourceExcerpts": [
@@ -678,19 +678,19 @@
           "path": "apps/web/src/App.tsx",
           "symbol": "CanvasViewport",
           "language": "tsx",
-          "startLine": 4924,
-          "endLine": 4929,
-          "highlightLine": 4924,
+          "startLine": 5311,
+          "endLine": 5316,
+          "highlightLine": 5311,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "          <CanvasViewport",
-            "            activeRelationIds={activeRelationIds}",
-            "            animationActive={animationActive}",
-            "            authoringDetail={activeDetail}",
-            "            authoringEnabled={editingEnabled}",
-            "            authoringEntityIds={authoringEntityIds}"
+            "            cameraPublicationGuard={cameraPublicationGuardRef.current}",
+            "            inspectorFlightCameraRef={inspectorFlightCameraRef}",
+            "            semanticRenderPacketRef={semanticRenderPacketRef}",
+            "            semanticLensSession={semanticLensSession}",
+            "            activeRelationIds={activeRelationIds}"
           ],
-          "text": "          <CanvasViewport\n            activeRelationIds={activeRelationIds}\n            animationActive={animationActive}\n            authoringDetail={activeDetail}\n            authoringEnabled={editingEnabled}\n            authoringEntityIds={authoringEntityIds}"
+          "text": "          <CanvasViewport\n            cameraPublicationGuard={cameraPublicationGuardRef.current}\n            inspectorFlightCameraRef={inspectorFlightCameraRef}\n            semanticRenderPacketRef={semanticRenderPacketRef}\n            semanticLensSession={semanticLensSession}\n            activeRelationIds={activeRelationIds}"
         }
       ],
       "parentId": "component:web-shell",
@@ -916,8 +916,8 @@
           "path": "apps/web/src/renderer/Canvas2DRenderer.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "Canvas2DRenderer",
-          "startLine": 109,
-          "endLine": 114
+          "startLine": 144,
+          "endLine": 149
         }
       ],
       "sourceExcerpts": [
@@ -925,9 +925,9 @@
           "path": "apps/web/src/renderer/Canvas2DRenderer.ts",
           "symbol": "Canvas2DRenderer",
           "language": "typescript",
-          "startLine": 109,
-          "endLine": 114,
-          "highlightLine": 109,
+          "startLine": 144,
+          "endLine": 149,
+          "highlightLine": 144,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export class Canvas2DRenderer implements AtlasRenderer {",
@@ -1121,8 +1121,8 @@
           "path": "packages/architecture/src/model.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "ArchitectureSnapshot",
-          "startLine": 154,
-          "endLine": 159
+          "startLine": 164,
+          "endLine": 169
         }
       ],
       "sourceExcerpts": [
@@ -1130,9 +1130,9 @@
           "path": "packages/architecture/src/model.ts",
           "symbol": "ArchitectureSnapshot",
           "language": "typescript",
-          "startLine": 154,
-          "endLine": 159,
-          "highlightLine": 154,
+          "startLine": 164,
+          "endLine": 169,
+          "highlightLine": 164,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export interface ArchitectureSnapshot {",
@@ -1162,8 +1162,8 @@
           "path": "packages/architecture/src/model.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "ArchitectureEntity",
-          "startLine": 94,
-          "endLine": 99
+          "startLine": 102,
+          "endLine": 107
         }
       ],
       "sourceExcerpts": [
@@ -1171,9 +1171,9 @@
           "path": "packages/architecture/src/model.ts",
           "symbol": "ArchitectureEntity",
           "language": "typescript",
-          "startLine": 94,
-          "endLine": 99,
-          "highlightLine": 94,
+          "startLine": 102,
+          "endLine": 107,
+          "highlightLine": 102,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export interface ArchitectureEntity {",
@@ -1203,8 +1203,8 @@
           "path": "packages/architecture/src/model.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "ArchitectureStory",
-          "startLine": 223,
-          "endLine": 228
+          "startLine": 233,
+          "endLine": 238
         }
       ],
       "sourceExcerpts": [
@@ -1212,9 +1212,9 @@
           "path": "packages/architecture/src/model.ts",
           "symbol": "ArchitectureStory",
           "language": "typescript",
-          "startLine": 223,
-          "endLine": 228,
-          "highlightLine": 223,
+          "startLine": 233,
+          "endLine": 238,
+          "highlightLine": 233,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export interface ArchitectureStory {",

@@ -295,7 +295,9 @@ test("Okie externalSystems render in the L1 context band as system-context nodes
   const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const { snapshot } = scanRepository(repoRoot, { systemName: "Okie", repositorySlug: "okie" });
   const system = snapshot.entities.find(entity => entity.kind === "softwareSystem")!;
-  const bundle = buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId: "view-family:okie:context-test" });
+  // This assertion concerns L1 only; do not lay out thousands of unrelated code
+  // nodes from the current checkout while checking external-system visibility.
+  const bundle = buildC4ProjectionBundle(snapshot, { rootEntityId: system.id, focusEntityId: system.id, familyId: "view-family:okie:context-test", maxBand: "context" });
   const context = Object.values(bundle.projectionById).find(projection => projection.band === "context")!;
 
   const contextExternals = context.visualNodeIds

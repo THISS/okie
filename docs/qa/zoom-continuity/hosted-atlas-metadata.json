@@ -1,0 +1,687 @@
+{
+  "sourceCount": 3121,
+  "targetCount": 3121,
+  "sourceComponents": 62,
+  "missing": 0,
+  "changed": [],
+  "rows": [
+    {
+      "id": "component:apps-web-api-share-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-app-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-ask-ask-atlas-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-atlas-card-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-camera-flight-controller-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-diagram-import-mermaid-dialog-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-diagram-import-mermaid-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-diagram-mermaid-diagram-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-diagram-semantic-diagram-surface-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-diagram-source-viewer-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-embed-chrome-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-entity-explorer-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-hosted-atlas-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-icons-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-inspector-architecture-brief-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-inspector-inspector-support-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-inspector-published-enrichment-honesty-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-inspector-scan-one-pager-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-isolate-neighborhood-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-live-camera-bridge-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-main-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-minimap-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-oembed-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-open-graph-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-provenance-presentation-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-relations-projection-relations-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-relations-relation-focus-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-relations-relation-framing-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-relations-relationship-flow-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-camera-bounds-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-camera-controller-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-canvas2-d-renderer-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-create-renderer-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-demand-frame-scheduler-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-fixture-bundle-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-protocol-scene-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-query-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-route-geometry-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-route-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-scan-fixture-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-wasm-renderer-adapter-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-renderer-wheel-input-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-scan-job-enrichment-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-scan-landing-tsx",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-search-suggestions-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-story-focus-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-story-framing-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-story-playback-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-src-webmcp-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "component:apps-web-vite-config-ts",
+      "source": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      },
+      "target": {
+        "parentId": "container:apps-web",
+        "detail": "component"
+      }
+    },
+    {
+      "id": "container:apps-server",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:apps-web",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:crates-atlas-engine",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:crates-atlas-gpu",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:crates-atlas-protocol",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:crates-atlas-wasm",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:packages-architecture",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:packages-scan",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:packages-scene-compiler",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "container:tooling",
+      "source": {
+        "parentId": "system:okie",
+        "detail": "container"
+      },
+      "target": {
+        "parentId": "system:okie",
+        "detail": "container"
+      }
+    },
+    {
+      "id": "external:anthropic-ai-sdk",
+      "source": {
+        "detail": "context"
+      },
+      "target": {
+        "detail": "context"
+      }
+    },
+    {
+      "id": "system:okie",
+      "source": {
+        "detail": "context"
+      },
+      "target": {
+        "detail": "context"
+      }
+    }
+  ]
+}

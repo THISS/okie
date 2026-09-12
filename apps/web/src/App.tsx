@@ -1,3 +1,6 @@
+import { DiagramActionHelp } from './diagram/DiagramActionHelp';
+import { architectureStoryFromAppPlan, optionalDiagramResult } from './diagram/namedFlow';
+import { parseAppRoute } from './renderer/route';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   applyArchitectureAuthoringCommand,
@@ -8,7 +11,6 @@ import {
   relationRouteOverrideId,
   validateC4NotationCompleteness,
   viewportNeighborhoodCacheKey,
-  type ArchitectureStory,
   type ArchitectureAuthoringCommand,
   type ArchitectureAuthoringDocument,
   type RelationRouteOverride,
@@ -27,6 +29,7 @@ import {
 import { captureSceneBlob, downloadBlob, screenshotFilename } from './renderer/sceneScreenshot';
 import { Minimap } from './minimap';
 import { publishLiveCamera } from './liveCameraBridge';
+import { createZoomMotionTrace } from './zoomMotionTrace';
 import { copyViewLink } from './diagram/copyViewLink';
 import {
   MAIN_DIAGRAM_SURFACE_ID,
@@ -41,7 +44,10 @@ import {
   type DiagramSurfaceSession,
   type DerivedDiagramSurface,
 } from './diagram/diagramWorkspace';
-import { ArchitectureBriefView } from './inspector/ArchitectureBrief';
+import { ArchitectureBriefView } from './inspector/ArchitectureBriefView';
+import { ContextualOverviewView } from './inspector/ContextualOverviewView';
+import { buildContextualOverview } from './inspector/contextualOverview';
+import { canonicalRelationshipGroupsForEntity } from './relations/canonicalRelationshipInventory';
 import { SemanticDiagramSurface } from './diagram/SemanticDiagramSurface';
 import { ImportMermaidDialog } from './diagram/ImportMermaidDialog';
 import { compileImportedMermaidScene } from './diagram/compileImportedMermaid';
@@ -55,25 +61,28 @@ import {
   type NavigationState,
   type SemanticDetail,
 } from './navigation/navigationState';
-import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDrillDeeperDetail, scanWindowedCompileDropsPeerGraph, scanZoomCompileHandoff, scanZoomHandoffPreferredId, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
+import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDrillDeeperDetail, scanWindowedCompileDropsPeerGraph, scanZoomCompileHandoff, scanZoomEntityUnderPointer, scanZoomHandoffPreferredId, semanticBounds, type AppStoryPlan, type AppStoryPlanStep } from './renderer/goldenC4Scene';
 import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanNextBand, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture, scanKeepsResidentL3Landmarks } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
-import { createCameraPublisher, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher } from './renderer/cameraController';
+import { createCameraPublisher, createCameraPublicationEchoGuard, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher, type CameraPublicationEchoGuard } from './renderer/cameraController';
+import { semanticRenderFrame, type SemanticRenderPacket } from './renderer/semanticRenderPacket';
 import {
   ATLAS_CAMERA_BOUNDS,
   clampAtlasCameraZoom,
   semanticLevelAtZoom,
 } from './renderer/cameraBounds';
 import { createDemandFrameScheduler, type DemandFrameScheduler } from './renderer/demandFrameScheduler';
+import { createInspectorFlightFrameSink, type InspectorFlightFrameSink } from './renderer/inspectorFlightFrameSink';
 import { EMBED_FRAME_IDLE_KICK_MS, initialInspectorOpen, isEmbedChrome, isEmbedQueryFlag, isFramedBrowsingContext, isUsableAtlasViewport, listenForWebGlContextLoss } from './renderer/gpuLoss';
 import { listenForWheel } from './renderer/wheelInput';
 import { presentBackend } from './renderer/backendPresentation';
 import { presentClaimProvenance } from './provenance/presentation';
 import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relations/relationFocus';
-import { relationFramingPlan } from './relations/relationFraming';
-import { SourceViewer, type LocalWorkspaceContext } from './diagram/SourceViewer';
-import { buildArchitectureBrief, canvasRelationRowsInIsolate, canvasRelationsForEntity, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorTabSequence, inspectorWidthRange, inspectorWidthStorageKey, paintedOmittedRelationRows, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type CanvasRelationRow, type InspectorTab } from './inspector/inspectorSupport';
+import { canonicalRelationForInspection, resolveRelationshipReveal } from './relations/relationshipReveal';
+import { SourceViewer, portableRepositoryRevisionUrl, type LocalWorkspaceContext } from './diagram/SourceViewer';
+import { getActivePortableAtlas } from './portable/runtime';
+import { buildArchitectureBrief, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
@@ -93,14 +102,16 @@ import {
   semanticLensSessionDetail,
   semanticLensSessionPresentationState,
   semanticLensSessionProjectionOverride,
+  applySemanticBackgroundVisibility,
   semanticLensSessionVisibleEntityIds,
   semanticLensSessionVisibleRelationIds,
   stabilizeSemanticLensSessionForPan,
-  validateSemanticLensPath,
+  validateRestoredSemanticLensPath,
   type LensPoint,
   type SemanticLensSession,
   type SemanticLensState,
 } from './semantic/semanticLens';
+import { createScanContainerMorph, createScanDetailMorph, createScanReverseMorph, retainScanDetailMorphSource, sampleScanContainerMorph, scanContainerMorphCamera, scanContainerMorphOwnsSession, shouldStartScanContainerReverseMorph, type ScanDetailMorph } from './semantic/scanContainerMorph';
 import { explorerEntitiesForView } from './entityExplorer';
 import { defaultSearchSuggestions, searchArchitectureEntities } from './searchSuggestions';
 import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldOpenSearch, shouldToggleDevMode } from './shortcuts';
@@ -169,6 +180,7 @@ import {
   semanticLevelSession,
   semanticOpenNextLayer,
   semanticPanFocusPlan,
+  semanticSessionFrameCamera,
   semanticSourceSession,
   type SemanticInspectorFlightKind,
 } from './semantic/semanticLensEngine';
@@ -192,11 +204,20 @@ import { atlasEnrichmentStatus, atlasIdentityFromLocation, atlasTourPlaying, bin
 // A scanned snapshot (fixture=scan) is fetched, validated and compiled before App
 // is imported (see main.tsx); when present it drives the app through the same
 // slots as the golden fixture. Undefined for the golden/stress fixtures.
-const scanFixture = getActiveScanFixture();
-const activeSnapshot = scanFixture?.snapshot ?? goldenSnapshot;
-const activeView = scanFixture?.view ?? goldenView;
-const defaultStory = scanFixture?.story ?? goldenAppStory;
-const storyCatalog = scanFixture?.stories?.length ? scanFixture.stories : [defaultStory];
+let scanFixture = getActiveScanFixture();
+let activeSnapshot = scanFixture?.snapshot ?? goldenSnapshot;
+let activeView = scanFixture?.view ?? goldenView;
+let defaultStory = scanFixture?.story ?? goldenAppStory;
+let storyCatalog = scanFixture?.stories?.length ? scanFixture.stories : [defaultStory];
+
+/** Bootstrap calls this only while App is unmounted, before mounting a replacement atlas. */
+export function refreshAppScanFixture() {
+  scanFixture = getActiveScanFixture();
+  activeSnapshot = scanFixture?.snapshot ?? goldenSnapshot;
+  activeView = scanFixture?.view ?? goldenView;
+  defaultStory = scanFixture?.story ?? goldenAppStory;
+  storyCatalog = scanFixture?.stories?.length ? scanFixture.stories : [defaultStory];
+}
 
 // Recompiles the active fixture for a new focus/root (drill-in, restore). Scanned
 // snapshots are read-only in R1, so the dev-mode authoring overlay stays golden-only.
@@ -218,6 +239,7 @@ function diagramTabDomId(surfaceId: string) {
 }
 
 const preservedNavigationParams = ['backend', 'embed', 'fixture', 'seed'] as const;
+const zoomMotionTrace = createZoomMotionTrace({ maxSamples: 10_000 });
 const configuredRepositoryRoot = import.meta.env.VITE_OKIE_REPOSITORY_ROOT?.trim() || undefined;
 
 function useReducedMotion() {
@@ -300,6 +322,11 @@ type PendingInspectorCameraFlight = {
 };
 
 type CanvasViewportProps = {
+  cameraPublicationGuard: CameraPublicationEchoGuard;
+  /** Inspector flights write directly to the canvas; React commits their settled endpoint. */
+  inspectorFlightCameraRef: { current: InspectorFlightFrameSink | undefined };
+  semanticRenderPacketRef: { current: SemanticRenderPacket | undefined };
+  semanticLensSession: SemanticLensSession;
   scene: AtlasScene;
   camera: Camera;
   setCamera: (updater: (camera: Camera) => Camera) => void;
@@ -313,6 +340,7 @@ type CanvasViewportProps = {
   requestedBackend: string;
   reduceMotion: boolean;
   animationActive: boolean;
+  inspectorFlightActive: boolean;
   onDiagnostics: (diagnostics: RendererDiagnostics) => void;
   onViewportChange: (viewport: ViewportSize) => void;
   onCameraSettled: (camera: Camera) => void;
@@ -350,12 +378,12 @@ type CanvasViewportProps = {
   }) => void;
 };
 
-function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenInside, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, requestedBackend, reduceMotion, animationActive, flowActive, projectionOverride, onSemanticZoom, cinematicTransition, onDiagnostics, onViewportChange, onCameraSettled, onNavigationFlush, onInteractionStart, onCameraFlightCancel, onLensCancel, onLensPan, onSemanticZoomBurstStart, onLodState, scanZoomAdoptRawRef, visibilityMode, authoringTool, authoringEnabled, authoringDetail, authoringEntityIds, selectedRelationId, onCreateRelationship, onGuideRelationship }: CanvasViewportProps) {
+function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, semanticRenderPacketRef, semanticLensSession, scene, camera, setCamera, selectedId, onPick, onOpenInside, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, requestedBackend, reduceMotion, animationActive, inspectorFlightActive, flowActive, projectionOverride, onSemanticZoom, cinematicTransition, onDiagnostics, onViewportChange, onCameraSettled, onNavigationFlush, onInteractionStart, onCameraFlightCancel, onLensCancel, onLensPan, onSemanticZoomBurstStart, onLodState, scanZoomAdoptRawRef, visibilityMode, authoringTool, authoringEnabled, authoringDetail, authoringEntityIds, selectedRelationId, onCreateRelationship, onGuideRelationship }: CanvasViewportProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<AtlasRenderer | undefined>(undefined);
   const liveCameraRef = useRef(camera);
   const rawCameraRef = useRef(camera);
-  const stateRef = useRef({ scene, selectedId, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, reduceMotion, animationActive, flowActive, projectionOverride, cinematicTransition, visibilityMode });
+  const stateRef = useRef({ scene, semanticLensSession, selectedId, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, reduceMotion, animationActive, inspectorFlightActive, flowActive, projectionOverride, cinematicTransition, visibilityMode });
   const pointerRef = useRef<{ id: number; startX: number; startY: number; x: number; y: number; moved: boolean } | undefined>(undefined);
   const authoringPointerRef = useRef<
     | { kind: 'connection'; id: number; from: string; sourcePort: ConnectionPort }
@@ -437,7 +465,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
   const onSemanticZoomBurstStartRef = useRef(onSemanticZoomBurstStart);
   const onLodStateRef = useRef(onLodState);
   const onSemanticZoomRef = useRef(onSemanticZoom);
-  stateRef.current = { scene, selectedId, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, reduceMotion, animationActive, flowActive, projectionOverride, cinematicTransition, visibilityMode };
+  stateRef.current = { scene, semanticLensSession, selectedId, focusedIds, relationFocusIds, activeRelationIds, flowRelationIds, reduceMotion, animationActive, inspectorFlightActive, flowActive, projectionOverride, cinematicTransition, visibilityMode };
   setCameraRef.current = setCamera;
   onCameraSettledRef.current = onCameraSettled;
   onNavigationFlushRef.current = onNavigationFlush;
@@ -478,6 +506,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
     let lastResize = { width: 0, height: 0, physicalWidth: 0, physicalHeight: 0 };
     let lastDiagnostics = '';
     const publisher = createCameraPublisher(next => {
+      cameraPublicationGuard.markPublished(next);
       setCameraRef.current(() => next);
       onCameraSettledRef.current(next);
     });
@@ -497,9 +526,18 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
         flowActive: current.flowActive,
         pointerInteraction: currentPointerInteraction(),
       });
+      const resolvedFrame = semanticRenderFrame(semanticRenderPacketRef.current, liveCameraRef.current, {
+        revision: 0,
+        camera: liveCameraRef.current,
+        scene: current.scene,
+        semanticSession: current.semanticLensSession,
+        projectionOverride: current.projectionOverride,
+      });
+      if (resolvedFrame.acknowledged) semanticRenderPacketRef.current = undefined;
+      const frame = resolvedFrame.frame;
       try {
-        renderer.setScene(current.scene);
-        renderer.setCamera(liveCameraRef.current);
+        renderer.setScene(frame.scene);
+        renderer.setCamera(frame.camera);
         renderer.setRenderState({
           selectedId: current.selectedId,
           focusedIds: current.focusedIds,
@@ -509,11 +547,32 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
           reduceMotion: current.reduceMotion,
           animate: animation.animateFlow,
           visibilityMode: current.visibilityMode,
-          ...(current.projectionOverride ? { projectionOverride: current.projectionOverride } : {}),
+          ...(frame.projectionOverride ? { projectionOverride: frame.projectionOverride } : {}),
           ...(current.cinematicTransition ? { cinematicTransition: current.cinematicTransition } : {}),
         });
         renderer.render(time);
-        publishLiveCamera(liveCameraRef.current);
+        publishLiveCamera(frame.camera, {
+          scene: frame.scene,
+          projectionOverride: frame.projectionOverride,
+          reduceMotion: current.reduceMotion,
+        });
+        if (zoomMotionTrace.isRecording()) zoomMotionTrace.recordFrame({
+          timeMs: time,
+          camera: frame.camera,
+          projectionProgress: frame.projectionOverride?.progress,
+          projectionId: frame.projectionOverride?.id,
+          semanticRevision: frame.revision,
+          sceneId: frame.scene.id,
+          sceneRootId: frame.scene.rootEntityId,
+          residentCountsByDetail: {
+            context: frame.scene.projection?.entityIdsByDetail.context.length ?? 0,
+            container: frame.scene.projection?.entityIdsByDetail.container.length ?? 0,
+            component: frame.scene.projection?.entityIdsByDetail.component.length ?? 0,
+            code: frame.scene.projection?.entityIdsByDetail.code.length ?? 0,
+          },
+          renderer: renderer.kind,
+          viewport: sizeRef.current,
+        });
         const lodState = renderer.lodState();
         onLodStateRef.current(lodState);
         if (lodState?.transitioning && !current.reduceMotion) schedulerRef.current?.wake();
@@ -553,6 +612,9 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
 
     const publishDiagnostics = (force = false) => {
       if (!renderer) return;
+      // This timer feeds React-only diagnostics. Avoid interrupting an imperative
+      // camera flight; installation and recovery pass force=true and stay immediate.
+      if (!force && stateRef.current.inspectorFlightActive) return;
       try {
         const next = renderer.diagnostics();
         const snapshot = JSON.stringify(next);
@@ -590,6 +652,20 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
         onInteractionStartRef.current('Zoomed the map', liveCameraRef.current);
         const bounds = session.canvas.getBoundingClientRect();
         const pointer = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+        if (zoomMotionTrace.isRecording()) zoomMotionTrace.recordInput({
+          timeMs: event.timeStamp,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          deltaMode: event.deltaMode,
+          pointerX: pointer.x,
+          pointerY: pointer.y,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          viewport: sizeRef.current,
+          devicePixelRatio: window.devicePixelRatio,
+        });
         const zoomed = zoomCameraAt(
           rawCameraRef.current,
           pointer.x,
@@ -677,7 +753,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       }
     };
 
-    const applyLiveCamera = (next: Camera) => {
+    const applyCamera = (next: Camera, publish: boolean) => {
       const zoomChanged = Math.abs(next.zoom - liveCameraRef.current.zoom) > Number.EPSILON;
       liveCameraRef.current = { ...next };
       try {
@@ -687,10 +763,35 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       }
       if (zoomChanged && !stateRef.current.reduceMotion) scheduler.animateUntil(performance.now() + 220);
       else scheduler.wake();
-      publisher.schedule(liveCameraRef.current);
+      if (publish) publisher.schedule(liveCameraRef.current);
     };
+    const applyLiveCamera = (next: Camera) => applyCamera(next, true);
     applyLiveCameraRef.current = applyLiveCamera;
+    const inspectorFlightSink = createInspectorFlightFrameSink({
+      readLiveCamera: () => liveCameraRef.current,
+      cancelPublishedCamera: () => publisher.cancel(),
+      cancelSemanticZoomSettle: () => {
+        if (semanticZoomSettleTimer !== undefined) window.clearTimeout(semanticZoomSettleTimer);
+        semanticZoomSettleTimer = undefined;
+        lastSemanticPointer = undefined;
+      },
+      cancelSemanticAssist: cancelAssistAnimation,
+      cancelSettleGlide,
+      cancelGestureSettles: () => {
+        if (pinchSettleTimerRef.current !== undefined) window.clearTimeout(pinchSettleTimerRef.current);
+        if (panSettleTimerRef.current !== undefined) window.clearTimeout(panSettleTimerRef.current);
+        pinchSettleTimerRef.current = undefined;
+        panSettleTimerRef.current = undefined;
+      },
+      clearPendingRawAdoption: () => { consumeScanZoomAdoptRaw(); },
+      rebaseRawCamera: camera => { rawCameraRef.current = { ...camera }; },
+      applyFrame: next => applyCamera(next, false),
+    });
+    inspectorFlightCameraRef.current = inspectorFlightSink;
     syncExternalCameraRef.current = next => {
+      // Publishing a settled snapshot is a notification, not a new camera command.
+      // React may echo it after a more recent wheel frame has already rendered.
+      if (cameraPublicationGuard.consumePublished(next)) return;
       publisher.cancel();
       cancelSettleGlide();
       const zoomChanged = Math.abs(next.zoom - liveCameraRef.current.zoom) > Number.EPSILON;
@@ -746,6 +847,7 @@ function CanvasViewport({ scene, camera, setCamera, selectedId, onPick, onOpenIn
       rendererRef.current = undefined;
       if (schedulerRef.current === scheduler) schedulerRef.current = undefined;
       if (cameraPublisherRef.current === publisher) cameraPublisherRef.current = undefined;
+      if (inspectorFlightCameraRef.current === inspectorFlightSink) inspectorFlightCameraRef.current = undefined;
       host.replaceChildren();
     };
   }, [requestedBackend, onDiagnostics, onViewportChange]);
@@ -1329,21 +1431,31 @@ export function App() {
   const lodReplayRef = useRef<RendererLodState | undefined>(undefined);
   const [camera, updateCamera] = useState<Camera>(initialNavigation.camera);
   const renderedCameraRef = useRef(camera);
+  const cameraPublicationGuardRef = useRef(createCameraPublicationEchoGuard());
+  const previousReactCameraRef = useRef(camera);
   const pendingInspectorCameraFlightRef = useRef<PendingInspectorCameraFlight | undefined>(undefined);
   const inspectorCameraFlightControllerRef = useRef<CameraFlightController | undefined>(undefined);
+  const inspectorFlightCameraRef = useRef<InspectorFlightFrameSink | undefined>(undefined);
   const [inspectorFlightActive, setInspectorFlightActive] = useState(false);
   inspectorCameraFlightControllerRef.current ??= createCameraFlightController(
     () => renderedCameraRef.current,
     next => {
       renderedCameraRef.current = next;
-      updateCamera(next);
+      // The canvas and minimap consume this frame through the live-camera bridge.
+      // Publishing React state here made every animation frame re-render the shell.
+      const sink = inspectorFlightCameraRef.current;
+      if (sink) sink.render(next);
+      else updateCamera(next);
     },
   );
   renderedCameraRef.current = reconcileRenderedCamera(
     renderedCameraRef.current,
     camera,
-    inspectorCameraFlightControllerRef.current.isActive(),
+    inspectorCameraFlightControllerRef.current.isActive() || cameraPublicationGuardRef.current.isPublished(camera),
+    previousReactCameraRef.current,
   );
+  previousReactCameraRef.current = camera;
+  const [explicitInspectorSelection, setExplicitInspectorSelection] = useState(initialNavigation.selectedId !== initialNavigation.rootEntityId);
   const [selectedId, setSelectedId] = useState(initialNavigation.selectedId);
   const [navigationIdentity, setNavigationIdentity] = useState(() => ({
     repositoryId: initialNavigation.repositoryId,
@@ -1361,8 +1473,8 @@ export function App() {
   const [detailsOpen, setDetailsOpen] = useState(() => initialInspectorOpen());
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>(() => scanFixture ? 'overview' : 'details');
   const [inspectorHistory, setInspectorHistory] = useState<InspectorHistorySubject[]>([]);
-  const [omittedRemainderExpanded, setOmittedRemainderExpanded] = useState(false);
-  const [omittedNodesExpanded, setOmittedNodesExpanded] = useState(false);
+  const [expandedRelationshipGroups, setExpandedRelationshipGroups] = useState<ReadonlySet<string>>(() => new Set());
+  const [expandedDetailLists, setExpandedDetailLists] = useState<ReadonlySet<string>>(() => new Set());
   const [detailsWidth, setDetailsWidth] = useState(() => {
     let stored = Number.NaN;
     try {
@@ -1375,6 +1487,8 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [zoomTraceRecording, setZoomTraceRecording] = useState(false);
+  const [lastZoomTrace, setLastZoomTrace] = useState<string>();
   // Diagnostics/dev mode: hidden by default, toggled with Shift+Alt+D, persisted across
   // reloads. When off, the shell hides the renderer pill/diagnostics, the Edit/View mode
   // toggle (authoring stays view-only), and the Create-diagram menu.
@@ -1455,21 +1569,36 @@ export function App() {
     const lensScene = query.fixture === 'stress'
       ? goldenScene
       : activeCreateScene(initialNavigation.rootEntityId, goldenScene);
-    const settled = validateSemanticLensPath(lensScene, baseDetail, initialNavigation.lensPath ?? []).entries;
+    const settled = validateRestoredSemanticLensPath(
+      lensScene,
+      baseDetail,
+      initialNavigation.lensPath ?? [],
+      initialNavigation.camera.zoom,
+    ).entries;
     return { baseDetail, settled, active: idleSemanticLens() };
   });
   const semanticLensSessionRef = useRef(semanticLensSession);
-  semanticLensSessionRef.current = semanticLensSession;
+  // An inspector flight owns this ref between its initial and terminal React
+  // commits. Diagnostics or other incidental renders must not restore its
+  // initial session over the frame-local semantic packet.
+  if (!inspectorCameraFlightControllerRef.current?.isActive()) semanticLensSessionRef.current = semanticLensSession;
   const semanticFocusTransferRafRef = useRef<number | undefined>(undefined);
   const semanticMorphStateRef = useRef<SemanticLensState | undefined>(undefined);
   const semanticMorphBaselineRef = useRef(0);
+  const scanContainerMorphRef = useRef<ScanDetailMorph | undefined>(undefined);
+  const scanViewportInteractionRef = useRef<'zoom' | 'pan' | undefined>(undefined);
+  const semanticRenderPacketRef = useRef<SemanticRenderPacket | undefined>(undefined);
+  const semanticRenderRevisionRef = useRef(0);
+  const semanticRenderTopologyRef = useRef<{ key: string; scene: AtlasScene; projection: ProjectionOverride | undefined } | undefined>(undefined);
   const semanticLens = semanticLensSessionPresentationState(semanticLensSession);
 
   const selected = useMemo(() => scene.entities.find(entity => entity.id === selectedId) ?? scene.entities[0], [scene.entities, selectedId]);
-  const pickedRelation = useMemo(() => pickedRelationId ? scene.relations.find(relation => relation.id === pickedRelationId) : undefined, [pickedRelationId, scene.relations]);
+  const pickedRelation = useMemo(() => pickedRelationId ? scene.relations.find(relation => relation.id === pickedRelationId) ?? canonicalRelationForInspection(activeSnapshot, pickedRelationId) : undefined, [activeSnapshot, pickedRelationId, scene.relations]);
   const pickedRelationPresentation = useMemo(() => pickedRelation ? selectedRelationPresentation(scene, pickedRelation, pickedRelation.from) : undefined, [pickedRelation, scene]);
+  const pickedCanonicalRelation = activeSnapshot.relations.find(relation => relation.id === pickedRelationId);
   const selectedExcerpt = selected.sourceExcerpts?.[0];
   const sourceAvailable = inspectorCanShowSource(selected, { pickedRelation: Boolean(pickedRelation) });
+  const selectedExposure = activeSnapshot.entities.find(entity => entity.id === selected.id)?.exposure ?? [];
   const selectedSummary = inspectorAcceptedSummary(selected);
   const selectedOwners = inspectorPathOwners(selected);
   const selectedCyclomatic = inspectorCyclomatic(selected);
@@ -1492,14 +1621,21 @@ export function App() {
     () => scene.entities.filter(entity => entity.parentId === selected.id),
     [scene.entities, selected.id],
   );
+  const inspectorChildren = useMemo(() => [...new Map([...selectedChildren, ...activeSnapshot.entities.filter(entity => entity.parentId === selected.id)].map(entity => [entity.id, { id: entity.id, name: entity.name }])).values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)), [selectedChildren, selected.id]);
+  async function openInspectorChild(id: string) {
+    const resident = scene.entities.find(entity => entity.id === id);
+    if (resident) { navigateInspectorHierarchy(resident); return; }
+    await scanFixture?.ensureNeighborhood(id);
+    const compiled = composeScene(id, scene, authoringHistoryRef.current.present);
+    const entity = compiled.entities.find(candidate => candidate.id === id);
+    if (!entity) { setLiveMessage('This child is captured but its map is unavailable.'); return; }
+    setScene(compiled);
+    focusEntity(entity, 'replace', 'preserve', 'auto', 'panel');
+  }
   const omittedChildNodes = useMemo(
     () => (scene.omittedNodes ?? []).filter(node => node.parentId === selected.id),
     [scene.omittedNodes, selected.id],
   );
-  const paintedChildren = useMemo(() => {
-    const omitted = new Set(omittedChildNodes.map(node => node.entityId));
-    return selectedChildren.filter(child => !omitted.has(child.id));
-  }, [omittedChildNodes, selectedChildren]);
   const selectedParent = useMemo(
     () => selected.parentId ? scene.entities.find(entity => entity.id === selected.parentId) : undefined,
     [scene.entities, selected.parentId],
@@ -1513,10 +1649,9 @@ export function App() {
   useEffect(() => {
     if (inspectorSelectionRef.current === selected.id) return;
     inspectorSelectionRef.current = selected.id;
-    setInspectorTab(inspectorTabForEntity(inspectorCanShowSource(selected)));
   }, [selected.detail, selected.id, selected.sourceExcerpts, selected.sourceRefs]);
   useEffect(() => {
-    if (!scanFixture || inspectorTab !== 'source' || selected.detail !== 'code') return;
+    if (getActivePortableAtlas() || !scanFixture || inspectorTab !== 'source' || selected.detail !== 'code') return;
     if (selected.sourceExcerpts?.length) return;
     let cancelled = false;
     void scanFixture.ensureExcerpts(selected.id).then(excerpts => {
@@ -1571,6 +1706,10 @@ export function App() {
     childCounts: scanFixture?.childCounts,
   }), [activeSnapshot.entities, activeSnapshot.relations,
     scanFixture?.childCounts]);
+  const contextualOverview = useMemo(
+    () => buildContextualOverview(activeSnapshot, explicitInspectorSelection ? selected.id : semanticLensCanonicalPathIds(semanticLensSession).at(-1) ?? navigationIdentity.rootEntityId),
+    [activeSnapshot.entities, activeSnapshot.relations, selected.id, explicitInspectorSelection, semanticLensSession, navigationIdentity.rootEntityId],
+  );
   const activeDetail = semanticDetails[activeLevel];
   const activeDerivedScopeId = activeDiagramSurface.kind === 'main'
     ? undefined
@@ -1591,7 +1730,7 @@ export function App() {
       : activeDiagramDetail === 'container' || activeDerivedScope.id !== navigationIdentity.rootEntityId
         ? navigationIdentity.rootEntityId
         : activeDerivedScope.id
-    : semanticLensSession.settled.at(-1)?.targetId ?? navigationIdentity.rootEntityId;
+    : semanticLensCanonicalPathIds(semanticLensSession).at(-1) ?? navigationIdentity.rootEntityId;
   const notationDiagnostics = useMemo(() => query.fixture === 'stress' ? [] : validateC4NotationCompleteness({
     snapshot: activeSnapshot,
     view: activeView,
@@ -1614,34 +1753,19 @@ export function App() {
     () => inspectorNotationDetailsView(notationPresentation, devMode ? 'diagnostics' : 'user'),
     [devMode, notationPresentation],
   );
-  const activeDynamicFlowArtifact = useMemo(() => {
-    if (query.fixture === 'stress' || activeDiagramSurface.kind === 'main' || activeDiagramSurface.kind === 'code') return undefined;
+  const activeDynamicFlowResult = useMemo(() => {
+    if (query.fixture === 'stress' || activeDiagramSurface.kind === 'main' || activeDiagramSurface.kind === 'code' || activeDiagramSurface.kind === 'dependency' || activeDiagramSurface.kind === 'source') return undefined;
     const scopeEntityId = activeDiagramSurface.entityIds[0];
     const scopeEntity = activeSnapshot.entities.find(entity => entity.id === scopeEntityId);
     if (!scopeEntity) return undefined;
-    const traceRelationIds = activeSnapshot.relations
-      .filter(relation => relation.from === scopeEntityId || relation.to === scopeEntityId)
-      .map(relation => relation.id);
-    const dynamicStory: ArchitectureStory = {
-      schemaVersion: 1,
-      id: `story:dynamic:${scopeEntityId}`,
-      snapshotId: activeSnapshot.id,
-      viewId: activeView.id,
-      title: `${scopeEntity.name} dynamic flow`,
-      steps: [{
-        id: `step:dynamic:${scopeEntityId}`,
-        title: `Follow ${scopeEntity.name}`,
-        focusEntityIds: [scopeEntityId],
-        traceRelationIds,
-        reveal: activeDiagramDetail,
-        narration: `Evidence-backed interactions around ${scopeEntity.name}.`,
-        sourceRefs: scopeEntity.sourceRefs,
-      }],
-    };
+    const namedStory = storyCatalog.find(story => story.id === activeDiagramSurface.storyId);
+    if (!namedStory) return undefined;
+    const dynamicStory = architectureStoryFromAppPlan(namedStory);
     // Derived flow/Mermaid projections build the bundle directly (not via the
     // scan createScene seam), so scope them through the same per-focus options
     // (per-kind maxBand at every size) so this bypass path can never compile
     // the full graph either.
+    return optionalDiagramResult(() => {
     const scoped = scanFixture?.scopeCompileOptions(scopeEntityId) ?? {};
     const projections = buildC4ProjectionBundle(activeSnapshot, {
       rootEntityId: activeView.rootEntityId,
@@ -1650,7 +1774,9 @@ export function App() {
       ...scoped,
     });
     return compileC4DynamicFlowArtifact(activeSnapshot, activeView, dynamicStory, projections);
-  }, [activeDiagramDetail, activeDerivedScopeId, activeDiagramSurface.kind, query.fixture]);
+    });
+  }, [activeDiagramDetail, activeDerivedScopeId, activeDiagramSurface.kind, activeDiagramSurface.kind !== 'main' ? activeDiagramSurface.storyId : undefined, query.fixture]);
+  const activeDynamicFlowArtifact = activeDynamicFlowResult?.artifact;
   const activeMermaidSource = activeDiagramSurface.kind === 'mermaid' && activeDynamicFlowArtifact
     ? serializeDynamicFlowMermaid(activeDynamicFlowArtifact)
     : undefined;
@@ -1658,13 +1784,13 @@ export function App() {
   const projectionTopology = useMemo(() => semanticLensSessionProjectionOverride(scene, {
     ...semanticLensSession,
     active: { ...semanticLensSession.active, progress: 0 },
-  }), [lensTopologyKey, scene]);
-  const projectionOverride = useMemo(() => projectionTopology ? {
+  }, true), [lensTopologyKey, scene]);
+  const projectionOverride = useMemo(() => projectionTopology ? applySemanticBackgroundVisibility(scene, semanticLensSession, {
     ...projectionTopology,
     progress: semanticLensSession.active.phase === 'idle'
       ? semanticLensSession.focusTransfer?.progress ?? 1
       : semanticLensSession.active.progress,
-  } : undefined, [projectionTopology, semanticLensSession.active.phase, semanticLensSession.active.progress, semanticLensSession.focusTransfer?.progress]);
+  }) : undefined, [projectionTopology, scene, semanticLensSession]);
   const activeProjectionEntityIds = useMemo(
     () => semanticLensSessionVisibleEntityIds(scene, semanticLensSession),
     [scene, semanticLensSession],
@@ -1712,6 +1838,34 @@ export function App() {
     ),
     [currentStory, pickedRelationId, projectionOverride, scene, storyPhase, storySelectionOverride],
   );
+  function publishSemanticRenderPacket(camera: Camera, packetScene = sceneRef.current, session = semanticLensSessionRef.current) {
+    const key = `${session.baseDetail}|${session.settled.map(entry => `${entry.targetId}:${entry.currentDetail}:${entry.nextDetail}`).join('>')}|${session.active.targetId ?? ''}:${session.active.currentDetail ?? ''}:${session.active.nextDetail ?? ''}|${session.focusTransfer?.sourceEntries.map(entry => entry.targetId).join('>') ?? ''}>${session.focusTransfer?.targetId ?? ''}:${session.focusTransfer?.depth ?? ''}`;
+    const cached = semanticRenderTopologyRef.current;
+    const topology = cached?.scene === packetScene && cached.key === key
+      ? cached.projection
+      : semanticLensSessionProjectionOverride(packetScene, { ...session, active: { ...session.active, progress: 0 } }, true);
+    if (!cached || cached.scene !== packetScene || cached.key !== key) {
+      semanticRenderTopologyRef.current = { key, scene: packetScene, projection: topology };
+    }
+    const semanticProjection = topology ? applySemanticBackgroundVisibility(packetScene, session, {
+      ...topology,
+      progress: session.active.phase === 'idle'
+        ? session.focusTransfer?.progress ?? 1
+        : session.active.progress,
+    }) : undefined;
+    const relationProjection = selectedRelationFocusPresentation(
+      packetScene,
+      currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pickedRelationId : undefined,
+      semanticProjection,
+    ).projectionOverride;
+    semanticRenderPacketRef.current = {
+      revision: ++semanticRenderRevisionRef.current,
+      camera: { ...camera },
+      scene: packetScene,
+      semanticSession: session,
+      ...(relationProjection ? { projectionOverride: relationProjection } : {}),
+    };
+  }
   const rendererSelectedId = storyFocus.selectedId;
   const visibilityFocusIds = useMemo(
     () => new Set([...storyFocus.requiredIds, ...relationFocus.endpointIds]),
@@ -1727,19 +1881,20 @@ export function App() {
     () => new Set([...storyFocus.relationIds, ...relationFocus.relationIds]),
     [relationFocus.relationIds, storyFocus.relationIds],
   );
-  // The inspector follows the canvas: one row per drawn edge on the selected card
-  // (including descendant relations this band projected onto it), plus the two
-  // honest remainders — internals the canvas dropped, and edges it never routed.
-  const canvasRelations = useMemo(
-    () => canvasRelationsForEntity(scene, activeProjectionRelationIds, selected.id, activeDetail),
-    [activeDetail, activeProjectionRelationIds, scene, selected.id],
+  // The inspector inventories canonical relationships for the selected entity,
+  // including evidence that is outside the current projected map neighborhood.
+  const canonicalRelationshipGroups = useMemo(
+    () => canonicalRelationshipGroupsForEntity(activeSnapshot, scene, new Set(activeProjectionRelationIds), selected.id, new Set(activeProjectionEntityIds.filter(id => visibilityMode !== 'isolate' || isolatedEntityIdSet.has(id)))),
+    [activeProjectionEntityIds, activeProjectionRelationIds, activeSnapshot, isolatedEntityIdSet, scene, selected.id, visibilityMode],
   );
-  const related = canvasRelations.rows;
-  const omittedEnumeration = paintedOmittedRelationRows(canvasRelations.omittedRows, omittedRemainderExpanded);
+  const namedDiagramStories = storyCatalog.filter(story => story.id !== defaultStory.id && story.steps.length > 1 && story.steps.some(step => step.focusEntityIds.includes(selected.id)) && story.steps.every(step => step.sourceRefs.length > 0 && step.traceRelationIds.length > 0));
+  const hasDependencyDiagram = scene.relations.some(relation => (relation.from === selected.id || relation.to === selected.id) && scene.entities.some(entity => entity.id === relation.from) && scene.entities.some(entity => entity.id === relation.to));
+  const hasCodeStructureDiagram = selected.detail === 'component'
+    && selectedChildren.some(child => child.detail === 'code');
   useEffect(() => {
-    setOmittedRemainderExpanded(false);
-    setOmittedNodesExpanded(false);
-  }, [activeDetail, selected.id]);
+    setExpandedRelationshipGroups(new Set());
+    setExpandedDetailLists(new Set());
+  }, [selected.id]);
   const breadcrumbState = useMemo(() => {
     const byId = new Map(scene.entities.map(entity => [entity.id, entity]));
     const chain: SceneEntity[] = [];
@@ -1794,6 +1949,8 @@ export function App() {
     search: window.location.search,
     commitSha: activeSnapshot.commitSha,
   });
+  const portableAtlas = getActivePortableAtlas();
+  const sourceRepositoryUrl = portableAtlas ? portableRepositoryRevisionUrl(portableAtlas.repository) : atlasSourceRepositoryUrl(askAtlasIdentity);
   const askReturnPath = `${window.location.pathname}${window.location.search}`;
   const askSignedIn = askAuth?.authenticated === true;
   const isolatedRelationIds = useMemo(
@@ -1807,14 +1964,6 @@ export function App() {
       ? explorerEntities.filter(entity => isolatedEntityIdSet.has(entity.id))
       : explorerEntities,
     [explorerEntities, isolatedEntityIdSet, storyTraveling, visibilityMode],
-  );
-  const visibleRelated = useMemo(
-    () => visibilityMode === 'isolate' && !storyTraveling
-      // Isolate matches the canvas: keep a row when both visual ends are isolated,
-      // not when canonical from/to happen to be in the isolate set (CLA-5).
-      ? canvasRelationRowsInIsolate(related, selected.id, isolatedEntityIdSet)
-      : related,
-    [isolatedEntityIdSet, related, selected.id, storyTraveling, visibilityMode],
   );
   const sceneObjectSummary = useMemo(
     () => summarizeIds(scene.entities.map(entity => entity.id)),
@@ -1971,10 +2120,13 @@ export function App() {
     else controller.replace(canonical);
   }
 
-  function installSemanticSession(session: SemanticLensSession) {
-    semanticLensSessionRef.current = session;    semanticMorphStateRef.current = undefined;
+  function installSemanticSession(session: SemanticLensSession, commitToReact = true) {
+    semanticRenderPacketRef.current = undefined;
+    scanContainerMorphRef.current = undefined;
+    semanticLensSessionRef.current = session;
+    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
-    setSemanticLensSession(session);
+    if (commitToReact) setSemanticLensSession(session);
   }
 
   function collapseInspectorFlightSession(session: SemanticLensSession) {
@@ -2003,6 +2155,12 @@ export function App() {
       ? previous.semanticProgress < .5 ? previous.sourceSession : previous.targetSession
       : semanticLensSessionRef.current);
     inspectorCameraFlightControllerRef.current?.cancel();
+    if (semanticControlTimerRef.current !== undefined) window.clearTimeout(semanticControlTimerRef.current);
+    semanticControlTimerRef.current = undefined;
+    if (semanticFocusTransferRafRef.current !== undefined) window.cancelAnimationFrame(semanticFocusTransferRafRef.current);
+    semanticFocusTransferRafRef.current = undefined;
+    const sourceCamera = inspectorFlightCameraRef.current?.begin();
+    if (sourceCamera) renderedCameraRef.current = sourceCamera;
     installSemanticSession(sourceSession);
     const pending: PendingInspectorCameraFlight = {
       sourceSession,
@@ -2025,15 +2183,17 @@ export function App() {
     const rawTarget = morphKind && sourceBounds && targetBounds && !reduceMotion
       ? semanticInspectorRawCameraTarget(input.targetCamera, sourceBounds, targetBounds, morphKind)
       : input.targetCamera;
-    const installProgress = (easedCameraProgress: number) => {
+    const installProgress = (easedCameraProgress: number, commitToReact = true) => {
       const semanticProgress = semanticInspectorFlightProgress(easedCameraProgress, pending.kind);
       pending.semanticProgress = semanticProgress;
-      installSemanticSession(semanticInspectorFlightSession(
+      const session = semanticInspectorFlightSession(
         pending.sourceSession,
         pending.targetSession,
         pending.targetId,
         semanticProgress,
-      ));
+      );
+      installSemanticSession(session, commitToReact);
+      return session;
     };
     installProgress(0);
     setInspectorFlightActive(true);
@@ -2053,7 +2213,8 @@ export function App() {
       } } : {}),
       onUpdate: sample => {
         if (pendingInspectorCameraFlightRef.current !== pending) return;
-        installProgress(sample.easedProgress);
+        const session = installProgress(sample.easedProgress, false);
+        publishSemanticRenderPacket(sample.camera, sceneRef.current, session);
       },
       onComplete: () => {
         if (pendingInspectorCameraFlightRef.current !== pending) return;
@@ -2125,7 +2286,12 @@ export function App() {
         const restoredScene = query.fixture === 'stress'
           ? goldenScene
           : composeScene(next.rootEntityId, goldenScene, authoringHistoryRef.current.present);
-        const validatedLensPath = validateSemanticLensPath(restoredScene, restoredBaseDetail, next.lensPath ?? []);
+        const validatedLensPath = validateRestoredSemanticLensPath(
+          restoredScene,
+          restoredBaseDetail,
+          next.lensPath ?? [],
+          next.camera.zoom,
+        );
         const restoredSettled = validatedLensPath.entries;
         installSemanticSession({ baseDetail: restoredBaseDetail, settled: restoredSettled, active: idleSemanticLens() });
         if (validatedLensPath.truncated) {
@@ -2135,7 +2301,7 @@ export function App() {
           }, navigationDefaults);
           navigationRef.current = corrected;
           window.queueMicrotask(() => controller.replace(corrected));
-          setLiveMessage('Invalid or unrelated semantic lens path was truncated to the deepest valid branch.');
+          setLiveMessage('Invalid, unrelated, or camera-incoherent semantic lens path was truncated to the deepest valid branch.');
         }
         if (!(isFramedBrowsingContext() && !isUsableAtlasViewport(viewport))) {
           initialMapFitAppliedRef.current = true;
@@ -2488,6 +2654,7 @@ export function App() {
   }
 
   function stabilizeSemanticLensForPan(reachedCamera: Camera) {
+    scanViewportInteractionRef.current = 'pan';
     const current = semanticLensSessionRef.current;
     const plan = semanticPanFocusPlan(
       scene,
@@ -2513,9 +2680,49 @@ export function App() {
     animateSemanticFocusTransfer(nextSession.focusTransfer.targetId);
   }
 
-  function beginSemanticZoomBurst(reachedCamera: Camera): Camera {    semanticMorphStateRef.current = undefined;
+  function beginSemanticZoomBurst(reachedCamera: Camera): Camera {
+    scanViewportInteractionRef.current = 'zoom';
+    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
+    const containerMorph = scanContainerMorphRef.current;
+    if (containerMorph) containerMorph.baselineProgress = containerMorph.progress;
     return reachedCamera;
+  }
+
+  /** Restore adjacent endpoints for a deep scene reached by rail, search, or a link. */
+  function startScanContainerReverseMorph(camera: Camera, direction: 'inward' | 'outward' | 'none', arrivalZoom?: number) {
+    if (!scanFixture || reduceMotion) return false;
+    const target = sceneRef.current;
+    const viewRootId = scanFixture.navigation.rootEntityId;
+    const focusId = target.rootEntityId ?? viewRootId;
+    const session = semanticLensSessionRef.current;
+    const existing = scanContainerMorphRef.current;
+    // The bridge owns both its source and target sessions. Do not rebuild it
+    // while an outward gesture is still above the component boundary.
+    if (existing && existing.scene === target && scanContainerMorphOwnsSession(existing, session)) return false;
+    if (!shouldStartScanContainerReverseMorph({
+      direction,
+      currentDetail: semanticLensSessionDetail(session),
+      currentRootId: focusId,
+      viewRootId,
+      activeTargetId: session.settled.at(-1)?.targetId,
+    })) return false;
+    const detail = semanticLensSessionDetail(session);
+    if (detail !== 'component' && detail !== 'code') return false;
+    const sourceFocusId = detail === 'code'
+      ? activeSnapshot.entities.find(entity => entity.id === focusId)?.parentId
+      : viewRootId;
+    if (!sourceFocusId) return false;
+    const source = composeScene(sourceFocusId, undefined, authoringHistoryRef.current.present);
+    const bridge = createScanReverseMorph(source, target, focusId, detail, arrivalZoom);
+    if (!bridge) return false;
+    const frame = sampleScanContainerMorph(bridge, camera.zoom);
+    scanContainerMorphRef.current = bridge;
+    sceneRef.current = bridge.scene;
+    setScene(bridge.scene);
+    semanticLensSessionRef.current = frame.session;
+    setSemanticLensSession(frame.session);
+    return true;
   }
 
   function handleSemanticZoom(sample: {
@@ -2527,8 +2734,91 @@ export function App() {
     renderedCamera?: Camera;
     gestureStartZoom?: number;
   }): Camera {
-    if (query.fixture === 'stress' || (sample.mobile && detailsOpen)) return sample.camera;
+    if (query.fixture === 'stress' || (sample.mobile && detailsOpen)) {
+      semanticRenderPacketRef.current = undefined;
+      return sample.camera;
+    }
     scanZoomPointerRef.current = sample.pointer;
+    renderedCameraRef.current = sample.camera;
+    const dormantBridge = scanContainerMorphRef.current;
+    const dormantTarget = dormantBridge?.progress === 0
+      ? scanZoomEntityUnderPointer(dormantBridge.scene, sample.camera, viewport, sample.pointer, dormantBridge.sourceDetail)
+      : undefined;
+    const sourceDetailIndex = dormantBridge ? semanticDetails.indexOf(dormantBridge.sourceDetail) : -1;
+    const hasLeftSourceBand = dormantBridge && sourceDetailIndex > 0
+      && getLevel(sample.camera.zoom, sourceDetailIndex) < sourceDetailIndex;
+    // Preserve the dormant bridge throughout L2, including multiple wheel
+    // events after the zero crossing. It is safe to release only after the
+    // camera has actually crossed to L1; a different L2 card retargets now.
+    if (dormantBridge?.progress === 0 && ((sample.direction === 'outward' && hasLeftSourceBand)
+      || (sample.direction === 'inward' && dormantTarget && dormantTarget !== dormantBridge.focusId))) {
+      scanContainerMorphRef.current = undefined;
+      sceneRef.current = dormantBridge.sourceScene;
+      setScene(dormantBridge.sourceScene);
+      semanticLensSessionRef.current = dormantBridge.sourceSession;
+      setSemanticLensSession(dormantBridge.sourceSession);
+      const rootEntityId = dormantBridge.sourceScene.rootEntityId ?? scanFixture?.navigation.rootEntityId;
+      if (rootEntityId) setNavigationIdentity(current => ({ ...current, rootEntityId }));
+      scanZoomAdoptRawRef.current = sample.camera;
+    }
+    startScanContainerReverseMorph(sample.camera, sample.direction, sample.renderedCamera?.zoom ?? sample.gestureStartZoom);
+    const containerMorph = scanContainerMorphRef.current;
+    if (containerMorph && containerMorph.scene === sceneRef.current
+      && scanContainerMorphOwnsSession(containerMorph, semanticLensSessionRef.current)) {
+      const frame = sampleScanContainerMorph(containerMorph, sample.camera.zoom);
+      // A completed expansion can continue into L4. Until then the same retained
+      // L2/L3 representations own both zoom directions, including wheel settle.
+      if (frame.progress < 1 || containerMorph.progress < 1 || sample.direction !== 'inward') {
+        const next = scanContainerMorphCamera(containerMorph, frame.progress, sample.camera,
+          sample.direction === 'none' ? sample.renderedCamera : undefined);
+        const previousProgress = containerMorph.progress;
+        containerMorph.progress = frame.progress;
+        renderedCameraRef.current = next;
+        semanticLensSessionRef.current = frame.session;
+        setSemanticLensSession(frame.session);
+        if (frame.progress === 0 && sample.direction === 'outward') {
+          // Keep the stitched scene and its original zoom interval dormant.
+          // Replacing it with the raw L2 source here forced the next inward
+          // wheel to fetch/recreate a bridge at the current zoom, changing the
+          // camera offset and briefly exposing a void. Its navigation identity
+          // is still the source endpoint while the retained geometry is idle.
+          const rootEntityId = containerMorph.sourceScene.rootEntityId ?? scanFixture!.navigation.rootEntityId;
+          const crossedZero = previousProgress > 0;
+          const dormant = { ...containerMorph.scene, rootEntityId };
+          containerMorph.scene = dormant;
+          sceneRef.current = dormant;
+          setScene(dormant);
+          setNavigationIdentity(current => ({ ...current, rootEntityId }));
+          semanticLensSessionRef.current = containerMorph.sourceSession;
+          setSemanticLensSession(containerMorph.sourceSession);
+          if (crossedZero) {
+            // Subsequent wheel samples use this rendered source endpoint as
+            // raw input, so its structural compensation has been consumed.
+            containerMorph.baselineProgress = 0;
+            scanZoomAdoptRawRef.current = next;
+          }
+        } else if (frame.progress > 0 && sceneRef.current.rootEntityId !== containerMorph.focusId) {
+          // Resume the same bridge rather than treating the dormant L2
+          // endpoint as a new L2→L3 handoff.
+          const resumed = { ...containerMorph.scene, rootEntityId: containerMorph.focusId };
+          containerMorph.scene = resumed;
+          sceneRef.current = resumed;
+          setScene(resumed);
+          setNavigationIdentity(current => ({ ...current, rootEntityId: containerMorph.focusId }));
+        }
+        const navigation = canonicalNavigationState({
+          ...navigationRef.current,
+          rootEntityId: sceneRef.current.rootEntityId,
+          camera: next,
+          detail: semanticLensSessionRef.current.baseDetail,
+          lensPath: semanticLensCanonicalPathIds(semanticLensSessionRef.current),
+        }, navigationDefaults);
+        navigationRef.current = navigation;
+        historyControllerRef.current?.replace(navigation);
+        publishSemanticRenderPacket(next);
+        return next;
+      }
+    } else if (containerMorph) scanContainerMorphRef.current = undefined;
     if (maybeScanZoomHandoff(sample.camera, next => {
       renderedCameraRef.current = next;
       updateCamera(next);
@@ -2541,6 +2831,7 @@ export function App() {
       }, navigationDefaults);
       navigationRef.current = navigation;
       historyControllerRef.current?.replace(navigation);
+      publishSemanticRenderPacket(sample.camera);
       return sample.camera;
     }
     const current = semanticLensSessionRef.current;
@@ -2642,6 +2933,8 @@ export function App() {
     }, navigationDefaults);
     navigationRef.current = navigation;
     historyControllerRef.current?.replace(navigation);
+    renderedCameraRef.current = renderedCamera;
+    publishSemanticRenderPacket(renderedCamera, liveScene, nextSession);
     return renderedCamera;
   }
 
@@ -2678,6 +2971,11 @@ export function App() {
     historyControllerRef.current?.commitSettledCamera(next, base);
     prefetchCommittedBox(semanticLensSessionRef.current.settled.at(-1)?.targetId ?? selected.id);
     if (maybeScanZoomHandoff(next, updateCamera, scanZoomPointerRef.current)) return;
+    // L3 wheel motion must keep the complete component peer layout available
+    // for a later L3→L4 bridge. Pan is still allowed to refresh its resident
+    // window; the interaction marker is set at the actual pan callback.
+    if (scanViewportInteractionRef.current === 'zoom'
+      && semanticLensSessionDetail(semanticLensSessionRef.current) === 'component') return;
     refreshViewportNeighborhood(next);
   }
 
@@ -2691,6 +2989,8 @@ export function App() {
   }
 
   function navigateCamera(next: Camera, mode: 'push' | 'replace' = 'push', interruptionReason = 'Adjusted the map view') {
+    semanticRenderPacketRef.current = undefined;
+    scanContainerMorphRef.current = undefined;
     const liveCamera = abortInspectorCameraFlight();
     interruptStory(interruptionReason, liveCamera);
     updateCamera(next);
@@ -2711,11 +3011,19 @@ export function App() {
     return detailsTabRef;
   }
 
+  function detailListVisible<T>(key: string, items: T[]): T[] {
+    return expandedDetailLists.has(key) ? items : items.slice(0, 5);
+  }
+
+  function toggleDetailList(key: string) {
+    setExpandedDetailLists(current => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
   function selectInspectorTab(tab: InspectorTab, focus = true) {
-    if (tab === 'source' && !sourceAvailable) {
-      setLiveMessage('No portable source excerpt is available for this entity.');
-      return;
-    }
     setInspectorTab(tab);
     setSafeAreaEpoch(epoch => epoch + 1);
     if (focus) window.setTimeout(() => inspectorTabButtonRef(tab).current?.focus({ preventScroll: true }), 0);
@@ -2724,7 +3032,7 @@ export function App() {
   function navigateInspectorTabs(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
-    const tabs = inspectorTabSequence(sourceAvailable);
+    const tabs: InspectorTab[] = ['overview', 'source', 'details'];
     const current = Math.max(0, tabs.indexOf(inspectorTab));
     const next = event.key === 'Home'
       ? tabs[0]
@@ -2825,6 +3133,7 @@ export function App() {
     inspectorNavigation: 'external' | 'panel' | 'history' | 'preserve' = 'external',
   ) {
     const liveCamera = abortInspectorCameraFlight();
+    setExplicitInspectorSelection(true);
     updateInspectorHistoryForNavigation(inspectorNavigation);
     if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
     interruptStory(`Selected ${entity.name}`);
@@ -2833,13 +3142,14 @@ export function App() {
     setSelectedId(entity.id);
     setPickedRelationId(undefined);
     setDetailsOpen(true);
-    const nextInspectorTab = inspectorTabFor(entity, inspectorIntent);
+    const nextInspectorTab = inspectorIntent === 'auto' ? inspectorTab : inspectorTabFor(entity, inspectorIntent);
     const currentSession = semanticLensSessionRef.current;
     const nextSession = nextInspectorTab === 'source'
       ? semanticSourceSession(scene, currentSession, entity.id)
       : currentSession;
     if (nextSession !== currentSession) {
-      semanticLensSessionRef.current = nextSession;      semanticMorphStateRef.current = undefined;
+      semanticLensSessionRef.current = nextSession;
+      semanticMorphStateRef.current = undefined;
       semanticMorphBaselineRef.current = 0;
       setSemanticLensSession(nextSession);
       activeLevelRef.current = semanticDetails.indexOf('code');
@@ -2852,9 +3162,19 @@ export function App() {
     setSearchOpen(false);
     setSearch('');
     const nextCamera = cameraIntent === 'frame'
-      ? frameEntities(scene, [entity.id], viewport) ?? liveCamera
+      ? semanticSessionFrameCamera(scene, entity.id, currentSession, viewport, measureCurrentMapSafeArea())
+        ?? frameEntities(scene, [entity.id], viewport)
+        ?? liveCamera
       : liveCamera;
-    if (nextCamera !== liveCamera) updateCamera(nextCamera);
+    if (nextCamera !== liveCamera) {
+      // The explicit frame keeps its current semantic band. Any old ordinary
+      // wheel morph has consumed a different raw camera, so restart that
+      // bookkeeping on the next gesture; an owned retained bridge remains
+      // intact and rebases itself in beginSemanticZoomBurst.
+      semanticMorphStateRef.current = undefined;
+      semanticMorphBaselineRef.current = 0;
+      updateCamera(nextCamera);
+    }
     commitNavigation(canonicalNavigationState({
       ...navigationRef.current,
       selectedId: entity.id,
@@ -2890,9 +3210,10 @@ export function App() {
     interruptStory(`Opened ${entity.name} at ${plan.detail} detail`, renderedCameraRef.current);
     setStorySelectionOverride(storyStep >= 0);
     inspectorSelectionRef.current = entity.id;
+    setExplicitInspectorSelection(true);
     setSelectedId(entity.id);
     setPickedRelationId(undefined);
-    setInspectorTab(inspectorTabFor(entity));
+    setInspectorTab(current => current);
     setDetailsOpen(true);
     setSafeAreaEpoch(epoch => epoch + 1);
     startInspectorCameraFlight({
@@ -3011,6 +3332,14 @@ export function App() {
   /** Recompile the current C4 neighborhood for the camera tile window. Not a full-graph compile. */
   function refreshViewportNeighborhood(next: Camera) {
     if (!scanFixture) return;
+    const containerMorph = scanContainerMorphRef.current;
+    // The terminal L3 frame remains an endpoint of the reversible L2↔L3
+    // bridge. A camera-tile refresh here can compile only the owner shell and
+    // a small local window, replacing the bridge's complete peer layout while
+    // leaving its old session and bounds behind. Keep that owned endpoint
+    // resident until a later L4 handoff or explicit navigation relinquishes it.
+    if (containerMorph && containerMorph.scene === sceneRef.current
+      && scanContainerMorphOwnsSession(containerMorph, semanticLensSessionRef.current)) return;
     const detail = semanticLensSessionDetail(semanticLensSessionRef.current);
     const viewRootId = scanFixture.navigation.rootEntityId;
     const currentFocus = sceneRef.current.rootEntityId ?? viewRootId;
@@ -3024,9 +3353,13 @@ export function App() {
       currentFocus,
     );
     const compileFocus = handoff?.compileFocus ?? currentFocus;
-    const nextScene = composeScene(compileFocus, sceneRef.current, authoringHistoryRef.current.present, next);
+    let nextScene = composeScene(compileFocus, sceneRef.current, authoringHistoryRef.current.present, next);
+    if (containerMorph && compileFocus === containerMorph.focusId) {
+      nextScene = retainScanDetailMorphSource(containerMorph.sourceScene, nextScene, containerMorph.sourceDetail);
+    }
     if (nextScene !== sceneRef.current) {
       if (scanWindowedCompileDropsPeerGraph(sceneRef.current, nextScene, compileFocus, detail)) return;
+      if (containerMorph && compileFocus === containerMorph.focusId) containerMorph.scene = nextScene;
       sceneRef.current = nextScene;
       setScene(nextScene);
     }
@@ -3055,6 +3388,33 @@ export function App() {
     const nextScene = composeScene(handoff.compileFocus, liveScene, authoringHistoryRef.current.present);
     if ((handoff.detail === 'component' || handoff.detail === 'code')
       && !scanDeeperBandHasPeerCards(nextScene, handoff.compileFocus, handoff.detail)) {
+      return liveCamera;
+    }
+    const containerMorph = !reduceMotion && handoff.detail === 'component'
+      && liveScene.rootEntityId === scanFixture?.navigation.rootEntityId
+      ? createScanContainerMorph(liveScene, nextScene, handoff.compileFocus, liveCamera.zoom)
+      : !reduceMotion && handoff.detail === 'code'
+        ? createScanDetailMorph(liveScene, nextScene, handoff.compileFocus, 'component', 'code', liveCamera.zoom, currentSession)
+        : undefined;
+    scanContainerMorphRef.current = containerMorph;
+    if (containerMorph) {
+      const initial = sampleScanContainerMorph(containerMorph, liveCamera.zoom);
+      semanticLensSessionRef.current = initial.session;
+      semanticMorphStateRef.current = undefined;
+      semanticMorphBaselineRef.current = 0;
+      setSemanticLensSession(initial.session);
+      scanZoomAdoptRawRef.current = liveCamera;
+      sceneRef.current = containerMorph.scene;
+      setScene(containerMorph.scene);
+      setNavigationIdentity(current => ({ ...current, rootEntityId: handoff.compileFocus }));
+      commitNavigation({
+        ...navigationRef.current,
+        rootEntityId: handoff.compileFocus,
+        camera: liveCamera,
+        detail: initial.session.baseDetail,
+        lensPath: semanticLensCanonicalPathIds(initial.session),
+      }, 'replace');
+      publishSemanticRenderPacket(liveCamera, containerMorph.scene, initial.session);
       return liveCamera;
     }
     const nextSession = semanticLevelSession(nextScene, handoff.detail, preferredIds);
@@ -3093,6 +3453,7 @@ export function App() {
     }, navigationDefaults);
     navigationRef.current = navigation;
     historyControllerRef.current?.replace(navigation);
+    publishSemanticRenderPacket(nextCamera, nextScene, nextSession);
     return nextCamera;
   }
 
@@ -3103,9 +3464,13 @@ export function App() {
     pointer?: LensPoint,
   ): boolean {
     if (!scanFixture) return false;
+    const containerMorph = scanContainerMorphRef.current;
+    if (containerMorph && containerMorph.scene === sceneRef.current && containerMorph.progress < 1) return false;
     const currentDetail = semanticLensSessionDetail(semanticLensSessionRef.current);
     const previousLevel = semanticDetails.indexOf(currentDetail);
-    const zoomDetail = semanticDetails[getLevel(camera.zoom, previousLevel)] ?? 'context';
+    const active = semanticLensSessionRef.current.active;
+    const enteringContainer = active.phase !== 'idle' && active.currentDetail === 'container' && active.nextDetail === 'component';
+    const zoomDetail = enteringContainer ? 'component' : semanticDetails[getLevel(camera.zoom, previousLevel)] ?? 'context';
     const viewRootId = scanFixture.navigation.rootEntityId;
     const currentCompileFocus = sceneRef.current.rootEntityId ?? viewRootId;
     const preferredId = scanZoomHandoffPreferredId(
@@ -3118,7 +3483,7 @@ export function App() {
       viewport,
       pointer,
       currentDetail,
-      inspectorSelectionRef.current ?? selected.id,
+      enteringContainer ? active.targetId! : inspectorSelectionRef.current ?? selected.id,
     );
     const handoff = scanZoomCompileHandoff(
       sceneRef.current,
@@ -3140,7 +3505,10 @@ export function App() {
       zoomHandoffInflightRef.current = undefined;
       const liveCamera = renderedCameraRef.current;
       const liveLevel = semanticDetails.indexOf(semanticLensSessionDetail(semanticLensSessionRef.current));
-      const liveDetail = semanticDetails[getLevel(liveCamera.zoom, liveLevel)] ?? 'context';
+      const liveActive = semanticLensSessionRef.current.active;
+      const liveDetail = liveActive.phase !== 'idle' && liveActive.currentDetail === 'container'
+        && liveActive.nextDetail === 'component' && liveActive.targetId === preferredId
+        ? 'component' : semanticDetails[getLevel(liveCamera.zoom, liveLevel)] ?? 'context';
       const still = scanZoomCompileHandoff(
         sceneRef.current,
         activeSnapshot,
@@ -3159,10 +3527,11 @@ export function App() {
 
   /** Compile the next-band neighborhood without swapping the visible scene or moving the camera (CLA-11). */
   function prefetchCommittedBox(entityId: string | undefined) {
-    if (!scanFixture || !entityId) return;
-    void scanFixture.ensureNeighborhood(entityId).then(() => {
+    const fixture = scanFixture;
+    if (!fixture || !entityId) return;
+    void fixture.ensureNeighborhood(entityId).then(() => {
       for (const focusId of scanPrefetchFocusIds(activeSnapshot, [entityId])) {
-        void scanFixture.ensureNeighborhood(focusId).then(() => {
+        void fixture.ensureNeighborhood(focusId).then(() => {
           composeScene(focusId, scene, authoringHistoryRef.current.present);
         });
       }
@@ -3352,7 +3721,7 @@ export function App() {
    * it a pure camera move). Falls back to the plain owner reframe when either endpoint has
    * no resolvable bounds.
    */
-  function frameSelectedRelationFlow(relation: SceneRelation, fallbackOwner: SceneEntity) {
+  function frameSelectedRelationFlow(relation: SceneRelation, _fallbackOwner: SceneEntity) {
     const generation = inspectorReframeGenerationRef.current + 1;
     inspectorReframeGenerationRef.current = generation;
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
@@ -3361,17 +3730,26 @@ export function App() {
       if (!canvas) return;
       const canvasRect = canvas.getBoundingClientRect();
       const nextViewport = { width: Math.max(1, canvasRect.width), height: Math.max(1, canvasRect.height) };
-      const session = semanticLensSessionRef.current;
-      const detail = semanticLensSessionDetail(session);
-      const plan = relationFramingPlan(scene, relation, detail, nextViewport, measureCurrentMapSafeArea());
-      if (!plan) {
-        reframeEntityAfterInspectorChange(fallbackOwner);
+      const plan = resolveRelationshipReveal({
+        snapshot: activeSnapshot,
+        scene,
+        relationId: relation.id,
+        session: semanticLensSessionRef.current,
+        viewport: nextViewport,
+        safeArea: measureCurrentMapSafeArea(),
+        compileScope: focusId => composeScene(focusId, scene, authoringHistoryRef.current.present),
+      });
+      if (plan.status === 'unavailable') {
+        setLiveMessage(plan.reason);
         return;
       }
+      setVisibilityMode('all');
+      if (plan.scene !== scene) setScene(plan.scene.entities.some(entity => entity.id === selected.id) ? plan.scene : { ...plan.scene, entities: [...plan.scene.entities, selected] });
+      if (plan.representation === 'aggregate') setLiveMessage('Showing the aggregate map representation that contains this relationship.');
       startInspectorCameraFlight({
-        targetId: fallbackOwner.id,
-        targetSession: session,
-        targetCamera: plan.camera,
+        targetId: selected.id,
+        targetSession: plan.session,
+        targetCamera: plan.framing.camera,
         navigation: navigationRef.current,
         historyMode: 'replace',
       });
@@ -3399,25 +3777,16 @@ export function App() {
     setLiveMessage(`${relationName} relationship selected${endpoints}.`);
   }
 
-  /**
-   * Inspects one drawn edge from the selected card. A collapsed edge resolves to
-   * the same representative relation a canvas pick on that edge returns, so the
-   * list and the map open the identical subject. Selects without framing; Show on map pans.
-   */
-  function inspectCanvasRelation(row: CanvasRelationRow) {
-    const relation = scene.relations.find(candidate => candidate.id === row.relationId);
-    if (!relation) {
-      setLiveMessage(`${row.label} is no longer available as a canonical relationship.`);
-      return;
-    }
-    inspectRelation(relation, 'panel', 'preserve');
-  }
-
   function restoreInspectorHistoryNavigation(subject: InspectorHistorySubject) {
     inspectorReframeGenerationRef.current += 1;
     const plan = inspectorHistoryRestorePlan(navigationRef.current, subject);
     const restoredBaseDetail = plan.state.detail ?? semanticLensSessionRef.current.baseDetail;
-    const restoredLens = validateSemanticLensPath(scene, restoredBaseDetail, plan.state.lensPath ?? []);
+    const restoredLens = validateRestoredSemanticLensPath(
+      scene,
+      restoredBaseDetail,
+      plan.state.lensPath ?? [],
+      plan.state.camera.zoom,
+    );
     const restoredSession: SemanticLensSession = {
       baseDetail: restoredBaseDetail,
       settled: restoredLens.entries,
@@ -3487,7 +3856,7 @@ export function App() {
   function handlePick(result: PickResult) {
     if (result.kind === 'entity') {
       const entity = scene.entities.find(candidate => candidate.id === result.id);
-      if (entity) focusEntity(entity, 'replace', 'preserve', 'details');
+      if (entity) focusEntity(entity, 'replace', 'preserve', 'auto');
       else setLiveMessage(`The renderer returned unknown entity ${result.id}.`);
       return;
     }
@@ -3521,24 +3890,25 @@ export function App() {
   }
 
   function selectLevel(index: number) {
-    if (scanFixture) {
+    const fixture = scanFixture;
+    if (fixture) {
       const detail = semanticDetails[index];
       const preferredId = selected.id;
       const initialFocus = scanCompileFocusForBand(
         activeSnapshot,
         preferredId,
         detail,
-        scanFixture.navigation.rootEntityId,
+        fixture.navigation.rootEntityId,
       );
-      void scanFixture.ensureNeighborhood(initialFocus).then(() => {
+      void fixture.ensureNeighborhood(initialFocus).then(() => {
         const compileFocus = scanCompileFocusForBand(
           activeSnapshot,
           preferredId,
           detail,
-          scanFixture.navigation.rootEntityId,
+          fixture.navigation.rootEntityId,
         );
-        return scanFixture.ensureNeighborhood(compileFocus);
-      }).then(() => selectLevelLoaded(index));
+        return fixture.ensureNeighborhood(compileFocus);
+      }).then(() => { if (fixture === scanFixture) selectLevelLoaded(index); });
       return;
     }
     selectLevelLoaded(index);
@@ -3573,7 +3943,8 @@ export function App() {
     const targetBounds = semanticBounds(levelScene, targetAnchorId, detail)
       ?? semanticBounds(levelScene, compileFocus, detail)
       ?? selected;
-    semanticLensSessionRef.current = nextSession;    semanticMorphStateRef.current = undefined;
+    semanticLensSessionRef.current = nextSession;
+    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
     setSemanticLensSession(nextSession);
     activeLevelRef.current = index;
@@ -3718,7 +4089,8 @@ export function App() {
     }
     interruptStory(`Opened ${target.name}`);
     setSelectedId(target.id);
-    semanticLensSessionRef.current = plan.session;    semanticMorphStateRef.current = undefined;
+    semanticLensSessionRef.current = plan.session;
+    semanticMorphStateRef.current = undefined;
     semanticMorphBaselineRef.current = 0;
     setSemanticLensSession(plan.session);
     if (plan.session.focusTransfer) animateSemanticFocusTransfer(plan.session.focusTransfer.targetId);
@@ -4031,6 +4403,7 @@ export function App() {
     },
     startOverviewTour: () => setStep(0, true, 'push', defaultStory),
     openAsk: question => {
+      if (getActivePortableAtlas()) return;
       // Ask lives in the story launcher; a playing tour hides that chrome.
       storyOriginAvailableRef.current = false;
       if (storyStep >= 0) closeStory();
@@ -4319,7 +4692,7 @@ export function App() {
         event.preventDefault();
         setDevMode(value => !value);
       }
-      if (shouldOpenAskAtlas(event, storyStep >= 0)) {
+      if (!getActivePortableAtlas() && shouldOpenAskAtlas(event, storyStep >= 0)) {
         event.preventDefault();
         if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
         setAskOpen(true);
@@ -4351,6 +4724,7 @@ export function App() {
   }, [askOpen, camera, detailsOpen, editingEnabled, mainDiagramActive, navigationIdentity.rootEntityId, pickedRelationId, searchOpen, semanticLensSession, storyStep, viewport]);
 
   useEffect(() => {
+    if (getActivePortableAtlas()) return;
     const controller = new AbortController();
     void fetchAskAuth({ signal: controller.signal }).then(auth => {
       if (!controller.signal.aborted) setAskAuth(auth);
@@ -4359,7 +4733,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!askOpen) {
+    if (!askOpen || getActivePortableAtlas()) {
       askAbortRef.current?.abort();
       askAbortRef.current = undefined;
       setAskPending(false);
@@ -4623,7 +4997,7 @@ export function App() {
 
   function restoreDiagramSurface(surface: DiagramSurface) {
     const liveCamera = abortInspectorCameraFlight();
-    setInspectorHistory([]);
+    if (surface.kind !== 'source' && activeDiagramSurface.kind !== 'source') setInspectorHistory([]);
     setSearchOpen(false);
     setAskOpen(false);
     setDiagnosticsOpen(false);
@@ -4633,7 +5007,7 @@ export function App() {
       setDetailsOpen(false);
       setInspectorTab('details');
       setSafeAreaEpoch(epoch => epoch + 1);
-      setLiveMessage(`${surface.title} ${surface.kind} diagram opened.`);
+      setLiveMessage(surface.kind === 'source' ? `${surface.title} source opened.` : `${surface.title} ${surface.kind} diagram opened.`);
       return;
     }
     const session = surface.session;
@@ -4659,10 +5033,7 @@ export function App() {
   }
 
   function selectedDiagramEntityIds() {
-    const connected = scene.relations
-      .filter(relation => relation.from === selected.id || relation.to === selected.id)
-      .flatMap(relation => [relation.from, relation.to]);
-    return [...new Set([selected.id, ...connected, ...selectedChildren.map(child => child.id)])].slice(0, 12);
+    return [selected.id, ...selectedChildren.filter(child => child.detail === 'code').map(child => child.id)];
   }
 
   function applyImportedMermaid(source: string) {
@@ -4742,16 +5113,32 @@ export function App() {
     setLiveMessage(`Imported ${kinds} onto the atlas with ${result.atlas.frameEntityIds.length} nodes.`);
   }
 
-  function openDerivedDiagram(kind: DerivedDiagramKind = 'flow') {
+  function openSourceTab() {
+    const id = `source:${selected.id}:${selectedExcerpt?.path ?? ''}:${selectedExcerpt?.frozenRevision ?? ''}`;
+    const next = openDerivedDiagramSurface(diagramWorkspace, {
+      id, kind: 'source', title: selectedExcerpt?.path.split('/').at(-1) ?? `${selected.name} source`,
+      closable: true, entityIds: [selected.id], excerpt: selectedExcerpt,
+      session: { selectedId: selected.id, inspector: { open: false, tab: 'source', subjectId: selected.id } },
+    }, currentDiagramSurfaceSession());
+    setDiagramWorkspace(next);
+    restoreDiagramSurface(next.surfaces[next.activeSurfaceId]!);
+  }
+
+  function openDerivedDiagram(kind: DerivedDiagramKind = 'code', namedStory?: AppStoryPlan) {
+    if (kind === 'code' && !hasCodeStructureDiagram) {
+      setLiveMessage('No captured code structure is available for this selection.');
+      return;
+    }
     abortInspectorCameraFlight();
-    const id = `diagram:${kind}:${selected.id}`;
-    const label = kind === 'flow' ? 'flow' : kind === 'mermaid' ? 'Mermaid' : 'code diagram';
+    const id = `diagram:${kind}:${selected.id}:${namedStory?.id ?? ''}`;
+    const label = kind === 'flow' ? 'flow' : kind === 'dependency' ? 'dependencies' : kind === 'mermaid' ? 'Mermaid' : 'code structure';
     const surface: DerivedDiagramSurface = {
       id,
       kind,
-      title: `${selected.name} ${label}`,
+      title: namedStory?.title ?? `${selected.name} ${label}`,
+      ...(namedStory ? { storyId: namedStory.id } : {}),
       closable: true,
-      entityIds: selectedDiagramEntityIds(),
+      entityIds: namedStory ? [...new Set([selected.id, ...namedStory.steps.flatMap(step => step.focusEntityIds)])] : kind === 'dependency' ? [...new Set([selected.id, ...scene.relations.filter(relation => relation.from === selected.id || relation.to === selected.id).flatMap(relation => [relation.from, relation.to])])].filter(id => scene.entities.some(entity => entity.id === id)) : selectedDiagramEntityIds(),
       session: {
         selectedElementId: selected.id,
         inspector: { open: false, tab: 'details', subjectId: selected.id },
@@ -4871,8 +5258,8 @@ export function App() {
           >
             {shareFeedback?.tone === 'success' ? <CheckIcon/> : <ShareIcon/>}
           </button>
-          <a aria-label="Open source repository" className="icon-button" data-testid="open-source-repo" href={atlasSourceRepositoryUrl(askAtlasIdentity)} rel="noreferrer" target="_blank" title="Open source repository"><CodeIcon/></a>
-          <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>
+          {sourceRepositoryUrl && <a aria-label="Open source repository" className="icon-button" data-testid="open-source-repo" href={sourceRepositoryUrl} rel="noreferrer" target="_blank" title="Open source repository"><CodeIcon/></a>}
+          {!portableAtlas && <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>}
         </div>
       </header>
 
@@ -4902,8 +5289,8 @@ export function App() {
       <nav aria-label="Diagram views" className="diagram-view-bar">
         <div aria-label="Open diagrams" className="diagram-tabs" onKeyDown={navigateDiagramTabs} role="tablist">
           {diagramSurfaces.map(surface => <div className={`diagram-tab-shell ${surface.id === diagramWorkspace.activeSurfaceId ? 'active' : ''}`} key={surface.id}>
-            <button aria-controls="diagram-workspace-panel" aria-label={surface.kind === 'main' ? 'Main diagram, pinned' : `${surface.title} ${surface.kind} diagram`} aria-selected={surface.id === diagramWorkspace.activeSurfaceId} className="diagram-tab" id={diagramTabDomId(surface.id)} onClick={() => activateDiagramView(surface.id)} role="tab" tabIndex={surface.id === diagramWorkspace.activeSurfaceId ? 0 : -1} type="button">{surface.kind !== 'main' && <span aria-hidden="true" className={`diagram-kind-mark kind-${surface.kind}`}>{surface.kind === 'flow' ? 'F' : surface.kind === 'mermaid' ? 'MR' : 'C'}</span>}<span>{surface.title}</span></button>
-            {surface.closable && <button aria-label={`Close ${surface.title} diagram`} className="diagram-tab-close" onClick={() => closeDiagramView(surface.id)} type="button"><CloseIcon size={12}/></button>}
+            <button aria-controls="diagram-workspace-panel" aria-label={surface.kind === 'main' ? 'Main diagram, pinned' : surface.kind === 'source' ? `${surface.title} source` : `${surface.title} ${surface.kind} diagram`} aria-selected={surface.id === diagramWorkspace.activeSurfaceId} className="diagram-tab" id={diagramTabDomId(surface.id)} onClick={() => activateDiagramView(surface.id)} role="tab" tabIndex={surface.id === diagramWorkspace.activeSurfaceId ? 0 : -1} type="button">{surface.kind !== 'main' && <span aria-hidden="true" className={`diagram-kind-mark kind-${surface.kind}`}>{surface.kind === 'flow' ? 'F' : surface.kind === 'mermaid' ? 'MR' : surface.kind === 'source' ? 'S' : 'C'}</span>}<span>{surface.title}</span></button>
+            {surface.closable && <button aria-label={`Close ${surface.title} ${surface.kind === 'source' ? 'source' : 'diagram'}`} className="diagram-tab-close" onClick={() => closeDiagramView(surface.id)} type="button"><CloseIcon size={12}/></button>}
           </div>)}
         </div>
 
@@ -4914,7 +5301,7 @@ export function App() {
 
         {devMode && <details className="diagram-add-menu" ref={diagramAddMenuRef}>
           <summary aria-label="Create diagram" title="Create diagram"><span aria-hidden="true">+</span><em>Diagram</em></summary>
-          <div><button onClick={() => openDerivedDiagram('flow')} type="button"><ActivityIcon size={14}/><span><strong>Dynamic flow</strong><small>Interactions around {selected.name}</small></span></button><button onClick={() => openDerivedDiagram('mermaid')} type="button"><LayersIcon size={14}/><span><strong>Mermaid</strong><small>Semantic structure preview</small></span></button><button onClick={() => openDerivedDiagram('code')} type="button"><CodeIcon size={14}/><span><strong>Code diagram</strong><small>Source-oriented structure</small></span></button></div>
+          <div>{hasCodeStructureDiagram ? <button onClick={() => openDerivedDiagram('code')} type="button"><CodeIcon size={14}/><span><strong>Code structure</strong><small>Captured code-level children</small></span></button> : <p className="detail-muted">No evidence-backed named diagram is available.</p>}</div>
         </details>}
       </nav>
 
@@ -4922,8 +5309,13 @@ export function App() {
         {activeDiagramSurface.kind === 'main' ? <>
         <section className="map-stage" aria-label="Architecture workspace">
           <CanvasViewport
+            cameraPublicationGuard={cameraPublicationGuardRef.current}
+            inspectorFlightCameraRef={inspectorFlightCameraRef}
+            semanticRenderPacketRef={semanticRenderPacketRef}
+            semanticLensSession={semanticLensSession}
             activeRelationIds={activeRelationIds}
             animationActive={animationActive}
+            inspectorFlightActive={inspectorFlightActive}
             authoringDetail={activeDetail}
             authoringEnabled={editingEnabled}
             authoringEntityIds={authoringEntityIds}
@@ -5009,12 +5401,35 @@ export function App() {
             // canvas drag: the sibling now under the safe centre takes lens ownership,
             // so the node the user panned to reveals its interior.
             if (phase === 'settle') stabilizeSemanticLensForPan(next);
-          }} scene={scene} viewport={viewport}/>
+          }} scene={scene} viewport={viewport} projectionOverride={relationFocus.projectionOverride} reduceMotion={reduceMotion} activeDetail={activeDetail}/>
 
           {devMode && <button aria-expanded={diagnosticsOpen} aria-label={`Renderer backend: ${backendPresentation.title}`} className={`render-status backend-${backendPresentation.tone}`} data-active-backend={diagnostics.activeBackend} data-testid="renderer-status" onClick={() => setDiagnosticsOpen(open => !open)}>
             <span className="status-light"/><span><b>{backendPresentation.title}</b><small>{backendPresentation.detail} · {Math.round(diagnostics.lastFrameMs * 10) / 10}ms · {Math.round(camera.zoom * 100)}%</small></span><InfoIcon size={14}/>
           </button>}
           {devMode && diagnosticsOpen && <aside className="diagnostics-card" data-testid="diagnostics-panel">
+            <button type="button" onClick={() => {
+              if (!zoomTraceRecording) {
+                zoomMotionTrace.start({
+                  timeOrigin: performance.timeOrigin,
+                  startedAtMs: performance.now(),
+                  snapshotId: navigationIdentity.snapshotId,
+                  sceneId: scene.id,
+                  backend: diagnostics.activeBackend,
+                });
+                setZoomTraceRecording(true);
+                setLiveMessage('Zoom trace recording started. Wheel inputs and rendered frames are captured locally.');
+              } else {
+                const trace = zoomMotionTrace.stop();
+                setZoomTraceRecording(false);
+                if (trace) {
+                  const json = JSON.stringify(trace);
+                  setLastZoomTrace(json);
+                  downloadBlob(new Blob([json], { type: 'application/json' }), `okie-zoom-trace-${Date.now()}.json`);
+                  setLiveMessage(`Zoom trace saved: ${trace.samples.length} samples${trace.truncated ? ', capture limit reached' : ''}.`);
+                }
+              }
+            }}>{zoomTraceRecording ? 'Save zoom trace' : 'Start zoom trace'}</button>
+            {lastZoomTrace && <details><summary>Last zoom trace JSON</summary><textarea aria-label="Last zoom trace JSON" readOnly value={lastZoomTrace}/></details>}
             <div className="diagnostics-title"><ActivityIcon/><strong>Renderer diagnostics</strong><button aria-label="Close diagnostics" onClick={() => setDiagnosticsOpen(false)}><CloseIcon size={15}/></button></div>
             <dl>
               <div><dt>Source</dt><dd>local › okie · frozen worktree fixture</dd></div>
@@ -5074,8 +5489,8 @@ export function App() {
           ) : (
             <div className="story-launcher" data-story-catalog-count={storyCatalog.length}>
               <div className="ask-anchor">
-              <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>
-              {askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!askConnected || !question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? ASK_CONNECTED_SUBMIT_LABEL : ASK_DISCONNECTED_SUBMIT_LABEL}{askPending || !askConnected ? null : <ArrowIcon size={15}/>}</button></form>)}
+              {!portableAtlas && <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>}
+              {!portableAtlas && askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!askConnected || !question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? ASK_CONNECTED_SUBMIT_LABEL : ASK_DISCONNECTED_SUBMIT_LABEL}{askPending || !askConnected ? null : <ArrowIcon size={15}/>}</button></form>)}
               </div>
               {storyCatalog.length === 1 ? storyCatalog.map(plan => (
                 <button
@@ -5125,22 +5540,29 @@ export function App() {
           </header>
           <div aria-label="Inspector view" className="inspector-tabs" data-inspector-tab={inspectorTab} onKeyDown={navigateInspectorTabs} role="tablist">
             <button aria-controls="overview-panel" aria-selected={inspectorTab === 'overview'} id="overview-tab" onClick={() => selectInspectorTab('overview')} ref={overviewTabRef} role="tab" tabIndex={inspectorTab === 'overview' ? 0 : -1} type="button">Overview</button>
-            <button aria-controls="source-panel" aria-selected={inspectorTab === 'source'} disabled={!sourceAvailable} id="source-tab" onClick={() => selectInspectorTab('source')} ref={sourceTabRef} role="tab" tabIndex={inspectorTab === 'source' ? 0 : -1} type="button">Source</button>
+            <button aria-controls="source-panel" aria-selected={inspectorTab === 'source'} id="source-tab" onClick={() => selectInspectorTab('source')} ref={sourceTabRef} role="tab" tabIndex={inspectorTab === 'source' ? 0 : -1} type="button">Source</button>
             <button aria-controls="details-panel" aria-selected={inspectorTab === 'details'} id="details-tab" onClick={() => selectInspectorTab('details')} ref={detailsTabRef} role="tab" tabIndex={inspectorTab === 'details' ? 0 : -1} type="button">Details</button>
           </div>
           {inspectorTab === 'overview' ? <div aria-labelledby="overview-tab" className="details-scroll overview-panel" data-testid="inspector-overview" id="overview-panel" role="tabpanel">
-            <ArchitectureBriefView
+            <ContextualOverviewView key={contextualOverview?.entity.id} overview={contextualOverview} onOpenEntity={id => {
+              const entity = scene.entities.find(candidate => candidate.id === id);
+              if (entity) navigateInspectorHierarchy(entity);
+              else setLiveMessage('This overview item is known from the snapshot but is not available in the current map neighborhood.');
+            }} />
+            {contextualOverview?.entity.id === scene.rootEntityId ? <ArchitectureBriefView
               brief={architectureBrief}
               containerAvailable={id => Boolean(scene.entities.find(candidate => candidate.id === id))}
               honestyChip={scanFixture?.enrichmentHonesty?.chip}
               onOpenContainer={id => {
                 const found = scene.entities.find(candidate => candidate.id === id);
-                if (found) focusEntity(found, 'replace', 'preserve', 'details', 'panel');
+                if (found) focusEntity(found, 'replace', 'preserve', 'auto', 'panel');
               }}
-            />
-          </div> : inspectorTab === 'source' && sourceAvailable ? <div aria-labelledby="source-tab" className="source-panel" id="source-panel" role="tabpanel">
-            <SourceViewer excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/>
+            /> : null}
+          </div> : inspectorTab === 'source' ? <div aria-labelledby="source-tab" className="source-panel" id="source-panel" role="tabpanel">
+            {sourceAvailable && <button className="primary-detail-action" onClick={openSourceTab} type="button">Open source in a tab</button>}
+            {sourceAvailable ? <SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo } : undefined} excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/> : <section className="detail-section" data-testid="source-unavailable"><div className="section-title"><h3>Source unavailable</h3></div><p className="detail-muted">No source evidence was captured for {selected.name}. Select another tab to inspect the available architecture evidence.</p></section>}
           </div> : <div aria-labelledby="details-tab" className="details-scroll" id="details-panel" role="tabpanel">
+            {pickedCanonicalRelation && <section className="detail-section" data-testid="canonical-relation-evidence"><div className="section-title"><h3>{pickedCanonicalRelation.label ?? pickedCanonicalRelation.kind}</h3><span>{pickedCanonicalRelation.evidence.length}</span></div><p>{activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.from)?.name ?? pickedCanonicalRelation.from} → {activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.to)?.name ?? pickedCanonicalRelation.to}</p>{detailListVisible('relation-evidence', pickedCanonicalRelation.evidence).map((item, index) => <p key={index}>{item.reason}<br/>{item.source.path} · line {item.source.startLine} · {item.source.commitSha}</p>)}{pickedCanonicalRelation.evidence.length > 5 && <button aria-expanded={expandedDetailLists.has('relation-evidence')} onClick={() => toggleDetailList('relation-evidence')}>{expandedDetailLists.has('relation-evidence') ? 'Show fewer' : `Show all ${pickedCanonicalRelation.evidence.length}`}</button>}{!pickedRelationPresentation && <p>The endpoints are outside this map neighborhood. Captured evidence remains available above.</p>}</section>}
             {pickedRelationPresentation ? <article aria-labelledby="inspector-relation-title" className="inspector-presentation inspector-relation-presentation" data-inspector-presentation="relation" data-inspector-relation-id={pickedRelationPresentation.id}>
               <header className="entity-hero relation-hero">
                 <div className="entity-kicker"><span>{levels[activeLevel]?.short ?? 'L1'} · Relationship</span><small className="provenance-badge">Selected edge</small></div>
@@ -5191,7 +5613,7 @@ export function App() {
                 </div>
                 <div aria-label="Entity actions" className="detail-actions" role="group">
                   {selected.detail === 'code'
-                    ? <button className="primary-detail-action" disabled={!sourceAvailable} onClick={() => focusEntity(selected, 'replace', 'preserve', 'source', 'preserve')}><CodeIcon size={15}/> Open source</button>
+                    ? <button className="primary-detail-action" disabled={!sourceAvailable} onClick={openSourceTab}><CodeIcon size={15}/> Open source</button>
                     : <button className="primary-detail-action" disabled={!selectedHasChildren} onClick={() => openInside(selected.id, 'preserve')}>Open inside <ArrowIcon size={15}/></button>}
                   <button className="secondary-detail-action" onClick={() => focusEntity(selected, 'replace', 'frame', 'details', 'preserve')}><FitIcon size={15}/> Show on map</button>
                 </div>
@@ -5204,7 +5626,7 @@ export function App() {
 
               {selectedOwners.length > 0 ? <section className="detail-section ownership-section" data-inspector-section="ownership">
                 <div className="section-title"><h3>Owned by</h3><span>{selectedOwners.length}</span></div>
-                <div aria-label="CODEOWNERS" className="entity-metadata" data-testid="inspector-owners">{selectedOwners.map(owner => <span data-inspector-owner={owner} key={owner}>{owner}</span>)}</div>
+                <div aria-label="CODEOWNERS" className="entity-metadata" data-testid="inspector-owners">{detailListVisible('owners', selectedOwners).map(owner => <span data-inspector-owner={owner} key={owner}>{owner}</span>)}</div>{selectedOwners.length > 5 && <button aria-expanded={expandedDetailLists.has('owners')} className="empty-inspector-section relations-omitted-more" onClick={() => toggleDetailList('owners')} type="button">{expandedDetailLists.has('owners') ? 'Show fewer' : `Show all ${selectedOwners.length}`}</button>}
               </section> : null}
 
               {selectedCyclomatic ? <section className="detail-section cyclomatic-section" data-inspector-section="cyclomatic">
@@ -5217,26 +5639,28 @@ export function App() {
 
               {selectedDuplicates.length > 0 ? <section className="detail-section duplicates-section" data-inspector-section="duplicates">
                 <div className="section-title"><h3>Duplicates</h3><span>{selectedDuplicates.length}</span></div>
-                <div aria-label="Clone duplicates" className="inspector-link-list" data-testid="inspector-duplicates">{selectedDuplicates.map(counterpart => {
+                <div aria-label="Clone duplicates" className="inspector-link-list" data-testid="inspector-duplicates">{detailListVisible('duplicates', selectedDuplicates).map(counterpart => {
                   const entity = scene.entities.find(candidate => candidate.id === counterpart.id);
                   return <button data-inspector-duplicate-id={counterpart.id} disabled={!entity} key={counterpart.id} onClick={() => entity && focusEntity(entity, 'replace', 'preserve', 'auto', 'panel')} type="button"><span><strong>{counterpart.name}</strong><small>duplicates</small></span><ArrowIcon size={15}/></button>;
-                })}</div>
+                })}</div>{selectedDuplicates.length > 5 && <button aria-expanded={expandedDetailLists.has('duplicates')} className="empty-inspector-section relations-omitted-more" onClick={() => toggleDetailList('duplicates')} type="button">{expandedDetailLists.has('duplicates') ? 'Show fewer' : `Show all ${selectedDuplicates.length}`}</button>}
               </section> : null}
 
               {selectedCoverage ? <section className="detail-section coverage-section" data-inspector-section="coverage">
                 <div className="section-title"><h3>Coverage</h3>{selectedCoverage.fileHitPercent !== undefined ? <span>{selectedCoverage.fileHitPercent}%</span> : null}</div>
                 <div aria-label="lcov coverage" className="entity-metadata" data-inspector-coverage-hit-percent={selectedCoverage.fileHitPercent ?? ''} data-testid="inspector-coverage">
                   {selectedCoverage.fileHitPercent !== undefined ? <span>this file {selectedCoverage.fileHitPercent}%</span> : null}
-                  {selectedCoverage.untestedRanges.map(range => <span data-inspector-coverage-range={`${range.startLine}-${range.endLine}`} key={`${range.startLine}-${range.endLine}`}>{formatCoverageRange(range)}</span>)}
-                </div>
-                {selectedUntestedBehaviours.length > 0 ? <div aria-label="untested behaviours" className="entity-metadata" data-testid="inspector-untested-behaviours">{selectedUntestedBehaviours.map(item => <span data-inspector-untested-behaviour={`${item.startLine}-${item.endLine}`} key={`${item.startLine}-${item.endLine}-${item.behaviour}`}>{formatCoverageRange(item)} {item.behaviour}</span>)}</div> : null}
+                  {detailListVisible('coverage-ranges', selectedCoverage.untestedRanges).map(range => <span data-inspector-coverage-range={`${range.startLine}-${range.endLine}`} key={`${range.startLine}-${range.endLine}`}>{formatCoverageRange(range)}</span>)}
+                </div>{selectedCoverage.untestedRanges.length > 5 && <button aria-expanded={expandedDetailLists.has('coverage-ranges')} className="empty-inspector-section relations-omitted-more" onClick={() => toggleDetailList('coverage-ranges')} type="button">{expandedDetailLists.has('coverage-ranges') ? 'Show fewer' : `Show all ${selectedCoverage.untestedRanges.length}`}</button>}
+                {selectedUntestedBehaviours.length > 0 ? <div aria-label="untested behaviours" className="entity-metadata" data-testid="inspector-untested-behaviours">{detailListVisible('untested', selectedUntestedBehaviours).map(item => <span data-inspector-untested-behaviour={`${item.startLine}-${item.endLine}`} key={`${item.startLine}-${item.endLine}-${item.behaviour}`}>{formatCoverageRange(item)} {item.behaviour}</span>)}</div> : null}
               </section> : selectedUntestedBehaviours.length > 0 ? <section className="detail-section coverage-section" data-inspector-section="untested-behaviours">
                 <div className="section-title"><h3>Untested behaviours</h3><span>{selectedUntestedBehaviours.length}</span></div>
-                <div aria-label="untested behaviours" className="entity-metadata" data-testid="inspector-untested-behaviours">{selectedUntestedBehaviours.map(item => <span data-inspector-untested-behaviour={`${item.startLine}-${item.endLine}`} key={`${item.startLine}-${item.endLine}-${item.behaviour}`}>{formatCoverageRange(item)} {item.behaviour}</span>)}</div>
+                <div aria-label="untested behaviours" className="entity-metadata" data-testid="inspector-untested-behaviours">{detailListVisible('untested', selectedUntestedBehaviours).map(item => <span data-inspector-untested-behaviour={`${item.startLine}-${item.endLine}`} key={`${item.startLine}-${item.endLine}-${item.behaviour}`}>{formatCoverageRange(item)} {item.behaviour}</span>)}</div>
               </section> : null}
 
+              {selectedUntestedBehaviours.length > 5 && <button aria-expanded={expandedDetailLists.has('untested')} onClick={() => toggleDetailList('untested')} type="button">{expandedDetailLists.has('untested') ? 'Show fewer' : `Show all ${selectedUntestedBehaviours.length} untested behaviours`}</button>}
+              {selectedExposure.length > 0 && <section className="detail-section"><div className="section-title"><h3>Exposure</h3><span>{selectedExposure.length}</span></div>{detailListVisible('exposure', selectedExposure).map((item, index) => <details key={`${item.kind}:${index}`}><summary>{item.kind === 'moduleExport' ? 'Exported symbol' : item.kind === 'publicApi' ? 'Public API' : 'Entry point'}</summary><p>{item.evidence.reason}</p><p>{item.evidence.source.path} · line {item.evidence.source.startLine} · {item.evidence.source.commitSha}</p></details>)}{selectedExposure.length > 5 && <button aria-expanded={expandedDetailLists.has('exposure')} onClick={() => toggleDetailList('exposure')}>{expandedDetailLists.has('exposure') ? 'Show fewer' : `Show all ${selectedExposure.length}`}</button>}</section>}
               <section className="detail-section diagrams-section">
-                <div className="section-title"><h3>Diagrams</h3><span>{selected.detail === 'component' || selected.detail === 'code' ? 3 : 2}</span></div>
+                <div className="section-title"><h3>Diagrams</h3><span>{Number(hasCodeStructureDiagram) + Number(hasDependencyDiagram) + namedDiagramStories.length}</span></div>
                 {notationDetails.visible ? <div className={`notation-readiness ${notationDetails.ready ? 'ready' : 'advisory'}`} data-inspector-notation="" data-inspector-notation-errors={notationDetails.errorCount} data-inspector-notation-hidden={notationDetails.hiddenCount} data-inspector-notation-mode={devMode ? 'diagnostics' : 'user'} data-inspector-notation-total={notationDetails.total} data-testid="inspector-notation">
                   <span>{notationDetails.headline}</span>
                   <small>Title, scope, descriptions, technology, and relationship labels</small>
@@ -5244,9 +5668,10 @@ export function App() {
                   {notationDetails.hiddenCount > 0 ? <small className="notation-readiness-more" data-inspector-notation-more="">{`+${notationDetails.hiddenCount} more completeness notes`}</small> : null}
                 </div> : null}
                 <div className="inspector-link-list">
-                  <button data-diagram-action="open-flow" onClick={() => openDerivedDiagram('flow')}><span><strong>Open dynamic flow</strong><small>Evidence-backed ordered interactions around this scope</small></span><ArrowIcon size={15}/></button>
-                  <button data-diagram-action="open-mermaid" onClick={() => openDerivedDiagram('mermaid')}><span><strong>Open Mermaid view</strong><small>Deterministic semantic export for this flow</small></span><ArrowIcon size={15}/></button>
-                  {(selected.detail === 'component' || selected.detail === 'code') && <button data-diagram-action="open-code" onClick={() => openDerivedDiagram('code')}><span><strong>Open code diagram</strong><small>Curated source structure for this component</small></span><ArrowIcon size={15}/></button>}
+                  {hasDependencyDiagram && <div className="diagram-action-row"><button data-diagram-action="open-dependency" onClick={() => openDerivedDiagram('dependency')}><span><strong>Open dependencies</strong><small>Captured incoming and outgoing relationships</small></span></button><DiagramActionHelp label="About dependencies">Opens an unordered relationship graph in its own tab. Switch to Mermaid to view the same connections.</DiagramActionHelp></div>}
+                  {detailListVisible('named-diagrams', namedDiagramStories).map(story => <div className="diagram-action-row" key={story.id}><button data-diagram-action="open-flow" onClick={() => openDerivedDiagram('flow', story)}><span><strong>{story.title}</strong><small>Captured named flow</small></span></button><DiagramActionHelp label={`About ${story.title}`}>Shows the evidence-backed steps of this published story in a separate diagram tab.</DiagramActionHelp></div>)}
+                  {namedDiagramStories.length > 5 && <button aria-expanded={expandedDetailLists.has('named-diagrams')} onClick={() => toggleDetailList('named-diagrams')}>{expandedDetailLists.has('named-diagrams') ? 'Show fewer' : `Show all ${namedDiagramStories.length} named diagrams`}</button>}
+                  {hasCodeStructureDiagram ? <div className="diagram-action-row"><button data-diagram-action="open-code" onClick={() => openDerivedDiagram('code')} type="button"><span><strong>Open code structure</strong><small>Source-backed child structure for this component</small></span><ArrowIcon size={15}/></button><DiagramActionHelp label="What does Open code structure show?">Opens a separate tab for this component's captured code-level children. It does not infer call ordering.</DiagramActionHelp></div> : null}
                 </div>
               </section>
 
@@ -5255,31 +5680,29 @@ export function App() {
                 <div className="inspector-link-list"><button data-inspector-entity-id={selectedParent.id} onClick={() => navigateInspectorHierarchy(selectedParent)}><span><strong>{selectedParent.name}</strong><small>{inspectorSecondaryCopy(selectedParent)}</small></span><ArrowIcon size={15}/></button></div>
               </section>}
 
-              {(paintedChildren.length > 0 || omittedChildNodes.length > 0) && <section className="detail-section children-section">
-                <div className="section-title"><h3>Inside this layer</h3><span>{paintedChildren.length + omittedChildNodes.length}</span></div>
-                <div className="inspector-link-list">{paintedChildren.map(child => <button data-inspector-entity-id={child.id} key={child.id} onClick={() => navigateInspectorHierarchy(child)}><span><strong>{child.name}</strong><small>{inspectorSecondaryCopy(child)}</small></span><ArrowIcon size={15}/></button>)}</div>
-                {omittedChildNodes.length > 0 && <button aria-expanded={omittedNodesExpanded} className="empty-inspector-section relations-omitted-more" data-inspector-omitted-node-count={omittedChildNodes.length} data-testid="inspector-omitted-nodes-more" onClick={() => setOmittedNodesExpanded(open => !open)} type="button">+{omittedChildNodes.length} more</button>}
-                {omittedChildNodes.length > 0 && omittedNodesExpanded ? <div className="relations-omitted-list" data-testid="inspector-omitted-nodes-list">{omittedChildNodes.map(node => {
-                  const entity = scene.entities.find(candidate => candidate.id === node.entityId);
-                  return <button data-omitted-node-id={node.entityId} disabled={!entity} key={node.entityId} onClick={() => entity && revealOmittedEntity(entity)} type="button"><span><strong>{node.name}</strong><small>not shown at this zoom</small></span></button>;
-                })}</div> : null}
+              {inspectorChildren.length > 0 && <section className="detail-section children-section">
+                <div className="section-title"><h3>Inside this layer</h3><span>{inspectorChildren.length}</span></div>
+                <div className="inspector-link-list">{detailListVisible('children', inspectorChildren).map(child => <button data-inspector-entity-id={child.id} key={child.id} onClick={() => { const entity = scene.entities.find(candidate => candidate.id === child.id); if (entity && omittedChildNodes.some(node => node.entityId === child.id)) revealOmittedEntity(entity); else void openInspectorChild(child.id); }}><span><strong>{child.name}</strong><small>{activeProjectionEntityIds.includes(child.id) ? 'Shown on map' : 'Known, not shown at this zoom'}</small></span><ArrowIcon size={15}/></button>)}</div>
+                {inspectorChildren.length > 5 && <button aria-expanded={expandedDetailLists.has('children')} onClick={() => toggleDetailList('children')} type="button">{expandedDetailLists.has('children') ? 'Show fewer' : `Show all ${inspectorChildren.length}`}</button>}
               </section>}
 
               <section className="detail-section relationships-section">
-                <div className="section-title"><h3>Relationships</h3><span>{visibleRelated.length}</span></div>
-                <div className="relations-list">{visibleRelated.length > 0 ? visibleRelated.map(row => {
-                  const outbound = row.direction === 'outbound';
-                  const collapsed = row.count > 1 ? ` · ${row.count} relationships` : '';
-                  return <button aria-label={`${outbound ? 'Outbound' : 'Inbound'} ${row.label} ${outbound ? 'to' : 'from'} ${row.counterpart.name}${row.count > 1 ? `, ${row.count} collapsed relationships` : ''}`} data-inspector-presentation="relation-summary" data-inspector-relation-count={row.count} data-inspector-relation-edge-id={row.id} data-inspector-relation-id={row.relationId} key={row.id} onClick={() => inspectCanvasRelation(row)}><span aria-hidden="true" className="relation-direction">{outbound ? '→' : '←'}</span><span><strong>{row.counterpart.name}</strong><small>{row.label}{collapsed}{row.protocol ? ` · ${row.protocol}` : ''}</small></span><ChevronIcon size={15}/></button>;
-                }) : <div className="empty-inspector-section">No relationship is drawn on this card at this level.</div>}
-                {canvasRelations.omittedEdgeCount > 0 && <button aria-expanded={omittedRemainderExpanded} className="empty-inspector-section relations-omitted-more" data-inspector-omitted-edge-count={canvasRelations.omittedEdgeCount} data-inspector-omitted-relation-count={canvasRelations.omittedRelationCount} data-testid="relationships-omitted-more" onClick={() => setOmittedRemainderExpanded(open => !open)} type="button">+{canvasRelations.omittedRelationCount} more not routed at this zoom</button>}
-                {canvasRelations.omittedEdgeCount > 0 && omittedRemainderExpanded ? <div className="relations-omitted-list" data-testid="relationships-omitted-list">{omittedEnumeration.map(row => <div data-omitted-relation-id={row.relationId} key={row.id}><span><strong>{row.fromName} → {row.toName}</strong><small>{row.label}{row.evidencePaths.length ? ` · ${row.evidencePaths.length} evidence file${row.evidencePaths.length === 1 ? '' : 's'}` : ''}</small></span></div>)}</div> : null}
-                {canvasRelations.hiddenInternalCount > 0 && <p className="empty-inspector-section" data-inspector-hidden-internal-count={canvasRelations.hiddenInternalCount} data-testid="relationships-hidden-internal">Hiding {canvasRelations.hiddenInternalCount} relationship{canvasRelations.hiddenInternalCount === 1 ? '' : 's'} between parts of {selected.name} — both ends land on this card. Open inside to see them.</p>}</div>
+                <div className="section-title"><h3>Relationships</h3><span>{canonicalRelationshipGroups.reduce((total, group) => total + group.rows.length, 0)}</span></div>
+                <div className="relations-list">{canonicalRelationshipGroups.length ? canonicalRelationshipGroups.map(group => {
+                  const expanded = expandedRelationshipGroups.has(group.id);
+                  const rows = expanded ? group.rows : group.rows.slice(0, 5);
+                  return <div className="relation-group" data-inspector-relation-group={group.id} key={group.id}><div className="section-heading"><span>{group.label}</span><small>{group.rows.length}</small></div>{rows.map(row => {
+                    const relation = scene.relations.find(candidate => candidate.id === row.relationId) ?? canonicalRelationForInspection(activeSnapshot, row.relationId);
+                    const direction = row.direction === 'inbound' ? '←' : row.direction === 'recursive' ? '↺' : '→';
+                    const mapCopy = row.mapStatus === 'shown' ? 'Shown on map' : row.mapStatus === 'aggregated' ? 'Shown on map as an aggregate' : row.mapStatus === 'hidden' ? 'Known, not shown at this zoom' : 'Known, unavailable in this map neighborhood';
+                    return <div className="canonical-relation-row" data-inspector-relation-id={row.relationId} key={row.relationId}><button aria-label={`${group.label} ${row.label} ${row.counterpartName}. ${mapCopy}`} data-inspector-presentation="canonical-relation" onClick={() => { if (relation) inspectRelation(relation, 'panel', 'preserve'); else setLiveMessage(`${row.label} is captured in the architecture snapshot, but its evidence is outside this map neighborhood.`); }} type="button"><span aria-hidden="true" className="relation-direction">{direction}</span><span><strong>{row.counterpartName}</strong><small>{row.label} · {mapCopy}</small></span><ChevronIcon size={15}/></button><button aria-label={`Show ${row.label} on map`} className="secondary-detail-action" onClick={() => { if (relation) frameSelectedRelationFlow(relation, selected); else setLiveMessage(`${row.label} is known, but cannot be drawn in the current map neighborhood.`); }} type="button">Show on map</button></div>;
+                  })}{group.rows.length > 5 && <button aria-expanded={expanded} className="empty-inspector-section relations-omitted-more" onClick={() => setExpandedRelationshipGroups(current => { const next = new Set(current); if (next.has(group.id)) next.delete(group.id); else next.add(group.id); return next; })} type="button">{expanded ? 'Show fewer' : `Show all ${group.rows.length}`}</button>}</div>;
+                }) : <div className="empty-inspector-section">No relationships captured.</div>}</div>
               </section>
 
               <section className="detail-section evidence-section">
                 <div className="section-title"><h3>Source evidence</h3><span>{selected.sourceRefs?.length ?? 0}</span></div>
-                <div className="source-list">{selected.sourceRefs?.length ? selected.sourceRefs.map((source, index) => {
+                <div className="source-list">{selected.sourceRefs?.length ? detailListVisible('source', selected.sourceRefs).map((source, index) => {
                   const opensSource = sourceAvailable && selectedExcerpt?.path === source.path;
                   const lineLabel = source.startLine === undefined
                     ? ''
@@ -5291,12 +5714,13 @@ export function App() {
                     ? <button className="source-card" key={`${source.path}:${source.symbol ?? ''}:${source.startLine ?? ''}:${index}`} onClick={() => focusEntity(selected, 'replace', 'preserve', 'source', 'preserve')} title="Open frozen source excerpt">{sourceContent}</button>
                     : <div className="source-card static" key={`${source.path}:${source.symbol ?? ''}:${source.startLine ?? ''}:${index}`}>{sourceContent}</div>;
                 }) : <div className="empty-inspector-section">No repository source linked.</div>}</div>
+                {(selected.sourceRefs?.length ?? 0) > 5 && <button aria-expanded={expandedDetailLists.has('source')} onClick={() => toggleDetailList('source')} type="button">{expandedDetailLists.has('source') ? 'Show fewer' : `Show all ${selected.sourceRefs!.length}`}</button>}
                 <p><InfoIcon size={13}/> Evidence-linked summaries retain their frozen fixture source references.</p>
               </section>
             </article>}
           </div>}
         </aside>
-        </> : <section className="map-stage derived-map-stage"><SemanticDiagramSurface flowArtifact={activeDynamicFlowArtifact} mermaidSource={activeMermaidSource} notationAdvisoryCount={notationDiagnostics.length} onSessionChange={updateActiveDiagramSession} scene={scene} surface={activeDiagramSurface}/></section>}
+        </> : activeDiagramSurface.kind === 'source' ? <section aria-label="Source workspace" id="derived-diagram-content" tabIndex={-1} className="map-stage derived-map-stage" style={{ overflow: 'auto', padding: 24 }}><SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo } : undefined} excerpt={activeDiagramSurface.excerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/></section> : <section className="map-stage derived-map-stage"><SemanticDiagramSurface flowError={activeDynamicFlowResult?.error} flowArtifact={activeDynamicFlowArtifact} mermaidSource={activeMermaidSource} notationAdvisoryCount={notationDiagnostics.length} onSessionChange={updateActiveDiagramSession} scene={scene} surface={activeDiagramSurface}/></section>}
       </main>
       <ImportMermaidDialog
         error={importMermaidError}

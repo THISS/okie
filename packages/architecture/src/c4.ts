@@ -132,6 +132,8 @@ export type ProjectionIndex = {
  */
 export type C4ProjectionBundle = {
   schemaVersion: 1;
+  /** Internal compile policy: L4 residents use canonical full-sibling slots. */
+  pageCodeLandmarks?: boolean;
   family: ViewFamily;
   projectionById: Record<string, BandProjection>;
   visualNodeById: Record<string, VisualNode>;
@@ -327,6 +329,61 @@ export function c4IntrinsicOwnerMetrics(kind: EntityKind, targetAspect?: number)
     maxColumns: contract.maxColumns,
     ...(targetAspect !== undefined ? { targetAspect } : {}),
   };
+}
+
+/**
+ * Stable L4 grid slots for a component's complete direct-code order. Paging
+ * uses these lightweight bounds to choose residents; the scene compiler uses
+ * the same calculation when it materializes only those residents. Keeping the
+ * full order here prevents a pinned or late symbol from re-packing its file.
+ */
+export function c4CodeChildSlots(
+  parent: NodeLayout,
+  childIds: readonly string[],
+): Record<string, NodeLayout> {
+  const ordered = [...childIds].sort((left, right) => left.localeCompare(right));
+  if (!ordered.length) return {};
+  const focusZoom = C4_BAND_FOCUS_ZOOM.code;
+  const padX = C4_INTRINSIC_LAYOUT.sidePadding / focusZoom;
+  const padTop = C4_INTRINSIC_LAYOUT.header.component / focusZoom;
+  const padBottom = C4_INTRINSIC_LAYOUT.bottomPadding / focusZoom;
+  const gap = C4_ROUTING_CLEARANCE_PX / focusZoom;
+  let innerX = parent.x + padX;
+  let innerY = parent.y + padTop;
+  let innerW = parent.width - padX * 2;
+  let innerH = parent.height - padTop - padBottom;
+  if (innerW < 4) {
+    innerX = parent.x + Math.min(padX, parent.width * 0.04);
+    innerW = Math.max(1, parent.width - (innerX - parent.x) * 2);
+  }
+  if (innerH < 4) {
+    innerY = parent.y + Math.min(padTop, parent.height * 0.12);
+    const bottom = Math.min(padBottom, parent.height * 0.04);
+    innerH = Math.max(1, parent.y + parent.height - bottom - innerY);
+  }
+  const maxX = parent.x + parent.width;
+  const maxY = parent.y + parent.height;
+  innerX = Math.min(Math.max(parent.x, innerX), maxX);
+  innerY = Math.min(Math.max(parent.y, innerY), maxY);
+  innerW = Math.max(1, Math.min(innerW, maxX - innerX));
+  innerH = Math.max(1, Math.min(innerH, maxY - innerY));
+  const columns = Math.max(1, Math.ceil(Math.sqrt(ordered.length)));
+  const rows = Math.ceil(ordered.length / columns);
+  const cellW = innerW / columns;
+  const cellH = innerH / rows;
+  const inset = Math.min(gap, cellW / 4, cellH / 4);
+  const slots: Record<string, NodeLayout> = {};
+  ordered.forEach((id, index) => {
+    const x = innerX + (index % columns) * cellW + inset;
+    const y = innerY + Math.floor(index / columns) * cellH + inset;
+    slots[id] = {
+      x,
+      y,
+      width: Math.max(1, Math.min(cellW - inset * 2, maxX - x)),
+      height: Math.max(1, Math.min(cellH - inset * 2, maxY - y)),
+    };
+  });
+  return slots;
 }
 
 /** World-space floor for one unpublished / childless occupant of `kind`. */
@@ -1342,7 +1399,11 @@ export function buildC4ProjectionBundle(
         includedEntities.set(entity.id, entity);
       }
     }
-    for (const ancestor of ancestors(focus.id, entityById)) includedEntities.set(ancestor.id, ancestor);
+    for (const ancestor of ancestors(focus.id, entityById)) {
+      // Focusing a file must not insert that file into its L1/L2 projections:
+      // doing so changes the context layout and shifts every deeper anchor.
+      if (entityRank(ancestor.kind) <= rank) includedEntities.set(ancestor.id, ancestor);
+    }
     // CLA-106: keep peer containers in the focused L3 neighborhood so pan
     // has adjacent territory. Soft focus — siblings only, not their children.
     for (const sibling of containerRankSiblings(focus, root.id, entityById, snapshot)) {
@@ -1652,6 +1713,7 @@ export function buildC4ProjectionBundle(
 
   return {
     schemaVersion: 1,
+    ...(options.pageCodeLandmarks ? { pageCodeLandmarks: true } : {}),
     family,
     projectionById,
     visualNodeById,

@@ -171,7 +171,7 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
     });
   });
 
-  it('pages L4 only on the small-repo system overlay so L3 stays resident', () => {
+  it('pages code landmarks in system and file scopes while keeping L3 resident', () => {
     const compiled = compileScanFixture({
       snapshot: structuredClone(demoSnapshot),
       view: structuredClone(demoView),
@@ -182,7 +182,7 @@ describe('CLA-109: L2↔L3 and L3↔L4 morph like L1↔L2 (both directions)', ()
       .toBe(SCAN_RESIDENT_NODES_PER_BAND);
     const fileId = compiled.snapshot.entities.find(entity => entity.kind === 'component')?.id;
     expect(fileId).toBeDefined();
-    expect(compiled.scopeCompileOptions(fileId!).pageCodeLandmarks).toBeUndefined();
+    expect(compiled.scopeCompileOptions(fileId!).pageCodeLandmarks).toBe(true);
 
     const entities: ArchitectureEntity[] = [
       { id: 'system:okie', kind: 'softwareSystem', name: 'Okie', sourceRefs: [] },

@@ -145,6 +145,12 @@ test('CLA-121: empty responsibility does not paint No summary supplied', () => {
 test('CLA-121: L4 opened file still uses the reserved interior', () => {
   const snapshot = fatFileSnapshot(24);
   const l3 = compileL3(snapshot);
+  const l2Container = l3.projections.index.boundsByEntityIdAndBand['container:apps-web']!.container!;
+  const l3Container = l3.projections.index.boundsByEntityIdAndBand['container:apps-web']!.component!;
+  assert.equal(l3Container.x + l3Container.width / 2, l2Container.x + l2Container.width / 2,
+    'a scoped L3 neighborhood retains its containing L2 package center');
+  assert.equal(l3Container.y + l3Container.height / 2, l2Container.y + l2Container.height / 2,
+    'a scoped L3 neighborhood retains its containing L2 package center');
   const l4Bundle = buildC4ProjectionBundle(snapshot, {
     rootEntityId: 'system:okie',
     focusEntityId: 'component:file',
@@ -159,6 +165,80 @@ test('CLA-121: L4 opened file still uses the reserved interior', () => {
   assert.ok(compact && opened);
   assert.ok(opened.height > compact.height * 1.4, 'L4 owner is the reserved interior, not the L3 face');
   assert.ok(opened.width > compact.width * 1.05);
+  assert.equal(opened.x + opened.width / 2, compact.x + compact.width / 2,
+    'L4 keeps the L3 file horizontal center');
+  assert.equal(opened.y + opened.height / 2, compact.y + compact.height / 2,
+    'L4 keeps the L3 file vertical center');
+});
+
+test('CLA-121: scan L2 keeps the L1 system center while its shell expands', () => {
+  const snapshot = fatFileSnapshot(8);
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:okie',
+    focusEntityId: 'system:okie',
+    familyId: 'f',
+    maxBand: 'code',
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  const compiled = compileC4Scene(snapshot, bundle, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+  const context = compiled.projections.index.boundsByEntityIdAndBand['system:okie']!.context!;
+  const container = compiled.projections.index.boundsByEntityIdAndBand['system:okie']!.container!;
+  assert.equal(container.x + container.width / 2, context.x + context.width / 2);
+  assert.equal(container.y + container.height / 2, context.y + context.height / 2);
+});
+
+test('CLA-121: paged L4 keeps its owner centered on the L3 card and its resident code contained', () => {
+  const base = fatFileSnapshot(80);
+  const snapshot: ArchitectureSnapshot = {
+    ...base,
+    relations: [{
+      id: 'relation:code-neighbors',
+      from: 'code:n000',
+      to: 'code:n001',
+      kind: 'calls',
+      evidence: [],
+    }],
+  };
+  const l3 = compileL3(snapshot);
+  const l4Bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:okie',
+    focusEntityId: 'component:file',
+    familyId: 'f',
+    maxBand: 'code',
+    maxNodesPerBand: 20,
+    pageCodeLandmarks: true,
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  const l4 = compileC4Scene(snapshot, l4Bundle, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+  const visualId = l4.projections.index.visualNodeIdsByEntityId['component:file']![0]!;
+  const component = l3.projections.index.boundsByEntityIdAndBand['component:file']!.component!;
+  const codeProjection = l4.projections.projectionById[l4.projections.family.projectionIds.code]!;
+  const codeLayout = l4.projections.bandLayoutById[codeProjection.layoutId]!;
+  const codeFace = codeLayout.nodes[visualId]!;
+  assert.equal(codeFace.x + codeFace.width / 2, component.x + component.width / 2);
+  assert.equal(codeFace.y + codeFace.height / 2, component.y + component.height / 2);
+  const children = codeProjection.visualNodeIds.filter(id =>
+    l4.projections.visualNodeById[id]?.kind === 'code'
+    && l4.projections.visualNodeById[id]?.parentVisualId === visualId);
+  assert.ok(children.length > 0 && children.length <= 20, 'code paging remains bounded');
+  for (const childId of children) {
+    const bounds = codeLayout.nodes[childId]!;
+    assert.ok(bounds.x >= codeFace.x - 1 && bounds.y >= codeFace.y - 1);
+    assert.ok(bounds.x + bounds.width <= codeFace.x + codeFace.width + 1);
+    assert.ok(bounds.y + bounds.height <= codeFace.y + codeFace.height + 1);
+  }
+  const from = l4.projections.index.visualNodeIdsByEntityId['code:n000']![0]!;
+  const to = l4.projections.index.visualNodeIdsByEntityId['code:n001']![0]!;
+  const path = l4.scene.paths.find(candidate => candidate.fromObjectId === from && candidate.toObjectId === to);
+  assert.ok(path, 'the resident code relation is routed');
+  for (const point of path.points) {
+    assert.ok(point.x >= codeFace.x - 1 && point.x <= codeFace.x + codeFace.width + 1,
+      'code route shares the translated owner x-space');
+    assert.ok(point.y >= codeFace.y - 1 && point.y <= codeFace.y + codeFace.height + 1,
+      'code route shares the translated owner y-space');
+  }
 });
 
 test('CLA-121: CLA-112 truncation stays off on an ample L3 card face', () => {

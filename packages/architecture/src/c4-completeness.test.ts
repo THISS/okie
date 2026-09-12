@@ -93,7 +93,7 @@ test("reports advisory C4 omissions deterministically without changing structura
       id: "relation:api-loop",
       from: "container:api",
       to: "container:api",
-      kind: "calls",
+      kind: "uses",
       label: " ",
       technology: " ",
       evidence: [],
@@ -136,7 +136,7 @@ test("reports advisory C4 omissions deterministically without changing structura
   );
   assert.deepEqual(
     diagnostics.find(value => value.code === "relationship.technology.missing")?.glossaryTerms,
-    [{ category: "relationship-kind", key: "calls", label: "Calls" }],
+    [{ category: "relationship-kind", key: "uses", label: "Uses" }],
   );
 
   assert.deepEqual(validateSnapshot(snapshot), []);
@@ -279,4 +279,20 @@ test("reports an unsupported runtime element type and exports stable C4 terminol
   assert.equal(C4_ELEMENT_TYPE_LABELS.softwareSystem, "Software system");
   assert.equal(C4_RELATION_KIND_LABELS.dependsOn, "Depends on");
   assert.equal(C4_RELATION_KIND_LABELS.duplicates, "Duplicates");
+});
+
+
+test("recursive call evidence does not create a global direction advisory, while invalid self edges still do", () => {
+  const recursive = {
+    ...completeSnapshot.relations[0]!, id: "relation:recursive", from: "code:recur", to: "code:recur",
+    evidence: [{ source: { path: "src/recur.ts", commitSha: completeSnapshot.commitSha, startLine: 7, endLine: 7 }, reason: "Direct recursive invocation" }],
+  };
+  const view = { ...completeView, entityIds: [...completeView.entityIds, "code:recur"], relationIds: [recursive.id] };
+  const directionIssues = (relation: typeof recursive) => validateC4NotationCompleteness({
+    snapshot: { ...completeSnapshot, entities: [...completeSnapshot.entities, { id: "code:recur", kind: "code", name: "recur", responsibility: "Traverses nested nodes.", sourceRefs: [recursive.evidence[0]!.source] }], relations: [relation] }, view, diagramType: "container",
+  }).filter(issue => issue.code === "relationship.direction.invalid");
+  assert.deepEqual(directionIssues(recursive), []);
+  assert.equal(directionIssues({ ...recursive, kind: "uses" }).length, 1);
+  assert.equal(directionIssues({ ...recursive, from: "", to: "" }).length, 1);
+  assert.equal(directionIssues({ ...recursive, to: " " }).length, 1);
 });

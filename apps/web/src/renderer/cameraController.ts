@@ -14,6 +14,35 @@ export type CameraPublisher = {
   cancel(): void;
 };
 
+/**
+ * Tracks camera objects emitted by the debounced publisher until React feeds
+ * that exact object back through CanvasViewport's external-camera effect.
+ * Object identity is deliberate: a real navigation may have identical x/y/zoom
+ * values, but cannot be mistaken for this publisher's own state update.
+ */
+export type CameraPublicationEchoGuard = {
+  markPublished(camera: Camera): void;
+  isPublished(camera: Camera): boolean;
+  consumePublished(camera: Camera): boolean;
+  discardPublished(): void;
+};
+
+export function createCameraPublicationEchoGuard(): CameraPublicationEchoGuard {
+  let published = new WeakSet<Camera>();
+  return {
+    markPublished(camera) {
+      published.add(camera);
+    },
+    isPublished(camera) { return published.has(camera); },
+    consumePublished(camera) {
+      return published.delete(camera);
+    },
+    discardPublished() {
+      published = new WeakSet<Camera>();
+    },
+  };
+}
+
 export function panCamera(camera: Camera, deltaX: number, deltaY: number): Camera {
   return {
     ...camera,

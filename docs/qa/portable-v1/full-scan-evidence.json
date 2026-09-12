@@ -1,0 +1,67 @@
+{
+  "commit": "91baeee0e460c33504104aa0f394b8cf1d985108",
+  "tree": "fe990b69ffa90d785051e47cbffaafb4d6c3d806",
+  "entityCount": 3177,
+  "sourceCount": 177,
+  "target": "code:crates-atlas-protocol-src-geometry-rs:is-valid-color",
+  "callRelationshipCount": 4,
+  "callSites": [
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 51
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 117
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 133
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 155
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 168
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 320
+    },
+    {
+      "path": "crates/atlas-protocol/src/timeline.rs",
+      "line": 153
+    }
+  ],
+  "coverage": [
+    {
+      "language": "typescript",
+      "coverage": "semantic",
+      "limitationCount": 1397,
+      "limitations": [
+        "<inferred>: TS2307: Cannot find module 'undici-types' or its corresponding type declarations.",
+        "Inferred compiler configuration for 5 source file(s) outside configured projects."
+      ]
+    },
+    {
+      "language": "javascript",
+      "coverage": "semantic",
+      "limitationCount": 1397,
+      "limitations": [
+        "<inferred>: TS2307: Cannot find module 'undici-types' or its corresponding type declarations.",
+        "Inferred compiler configuration for 5 source file(s) outside configured projects."
+      ]
+    },
+    {
+      "language": "rust",
+      "coverage": "semantic",
+      "limitationCount": 2,
+      "limitations": [
+        "Not indexed by rust-analyzer SCIP: crates/atlas-wasm/src/browser.rs",
+        "rust-analyzer reported duplicate SCIP symbols; ambiguous definitions are retained only where a local definition occurrence exists."
+      ]
+    }
+  ]
+}

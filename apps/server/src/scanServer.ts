@@ -1,3 +1,4 @@
+import { createSourceService, isSourceScanPath, SourceRequestError } from "./scanSource.js";
 import { createReadStream } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { HOSTED_SCAN_AUTH_ERROR, resolveScanGithubAccess, scanQuotaKey } from "./githubAccess.js";
@@ -35,6 +36,7 @@ export interface ScanHttpOptions {
   enrich: EnrichMode;
   bind: string;
   threads?: AskThreadStore;
+  sourceFetch?: typeof fetch;
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown, pretty = true): void {
@@ -83,6 +85,7 @@ function askAuthDenied(): Record<string, unknown> {
 
 export function createScanHttpHandler(options: ScanHttpOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   const { queue, allowSubmit, auth, scanRoot, llm, enrich, bind } = options;
+  const sourceService = createSourceService(options.sourceFetch);
   const threads = options.threads ?? createAskThreadStore();
 
   function publicJob(job: ScanJob): Record<string, unknown> {
@@ -210,6 +213,15 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
 
     if (request.method === "GET" && pathname === "/api/scans") {
       sendJson(response, 200, { jobs: queue.list().slice(0, 50).map(publicJob) });
+      return;
+    }
+
+    if (request.method === "GET" && isSourceScanPath(pathname)) {
+      try {
+        const source = await sourceService(scanRoot, pathname, url.searchParams);
+        sendJson(response, 200, source, false);
+      }
+      catch (error) { sendJson(response, error instanceof SourceRequestError ? error.status : 502, { error: error instanceof SourceRequestError ? error.message : 'Historical source unavailable.' }); }
       return;
     }
 

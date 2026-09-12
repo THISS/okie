@@ -4,7 +4,8 @@ import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 
 const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
-const briefView = readFileSync(new URL('./inspector/ArchitectureBrief.tsx', import.meta.url), 'utf8');
+const diagramView = readFileSync(new URL('./diagram/SemanticDiagramSurface.tsx', import.meta.url), 'utf8');
+const briefView = readFileSync(new URL('./inspector/ArchitectureBriefView.tsx', import.meta.url), 'utf8');
 
 function declarations(source: string, selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -173,7 +174,7 @@ describe('multi-diagram workspace shell', () => {
     expect(app).toContain('className="mobile-diagram-switcher"');
     expect(app).toContain('aria-label="Active diagram view"');
     expect(app).toContain('data-diagram-action="open-flow"');
-    expect(app).toContain("openDerivedDiagram('flow')");
+    expect(app).toContain("openDerivedDiagram('flow', story)");
 
     const mobile = css.slice(css.indexOf('@media (max-width: 780px)'));
     expect(declarations(mobile, '.diagram-tabs')).toContain('display: none');
@@ -185,7 +186,7 @@ describe('multi-diagram workspace shell', () => {
     expect(app).toContain('serializeDynamicFlowMermaid');
     expect(app).toContain('validateC4NotationCompleteness');
     expect(app).toContain('flowArtifact={activeDynamicFlowArtifact}');
-    expect(app).toContain('data-diagram-action="open-mermaid"');
+    expect(diagramView).toContain('data-diagram-action="open-mermaid"');
     expect(css).toContain('.notation-readiness');
     expect(css).toContain('.notation-readiness-list');
     expect(css).toContain('.semantic-diagram-readiness');
@@ -210,21 +211,23 @@ describe('compact inspector presentation', () => {
     expect(children).toBeGreaterThan(actions);
     expect(relationships).toBeGreaterThan(children);
     expect(sources).toBeGreaterThan(relationships);
-    expect(app).toContain('paintedChildren.map(child =>');
-    expect(app).toContain('inspectorSecondaryCopy(child)');
+    expect(app).toContain("detailListVisible('children', inspectorChildren)");
+    expect(app).toContain('Known, not shown at this zoom');
     expect(app).not.toContain('child.responsibility || child.kindLabel');
     expect(app).toContain('inspectorSecondaryCopy(selectedParent)');
     expect(app).toContain('inspectorSecondaryCopy(entity)');
     expect(app).not.toContain('entity.kindLabel ?? entity.kind} · {entity.responsibility}');
     expect(app).toContain('entity.source ?? inspectorAcceptedSummary(entity)');
     expect(app).toContain('inspectorAcceptedSummary(entity) ? `${entity.name} selected. ${inspectorAcceptedSummary(entity)}`');
-    expect(app).toContain('selected.sourceRefs.map((source, index) =>');
+    expect(app).toContain("detailListVisible('source', selected.sourceRefs).map((source, index) =>");
   });
 
   it('enables the Source tab from inspectorCanShowSource rather than a hardcoded disable', () => {
     expect(app).toContain('inspectorCanShowSource(selected, { pickedRelation: Boolean(pickedRelation) })');
     expect(app).toContain('inspectorTabForEntity(inspectorCanShowSource(entity), intent)');
-    expect(app).toContain('disabled={!sourceAvailable} id="source-tab"');
+    expect(app).toContain('id="source-tab"');
+    expect(app).not.toContain('disabled={!sourceAvailable} id="source-tab"');
+    expect(app).toContain('data-testid="source-unavailable"');
     expect(app).not.toContain("selected.detail === 'code' && Boolean(selectedExcerpt)");
     expect(app).not.toContain("entity.detail === 'code' && Boolean(entity.sourceExcerpts?.length)");
   });
@@ -239,7 +242,7 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('buildArchitectureBrief({');
     expect(app).toContain('<ArchitectureBriefView');
     expect(app).toContain("scanFixture ? 'overview' : 'details'");
-    expect(app).toContain('inspectorTabSequence(sourceAvailable)');
+    expect(app).toContain("const tabs: InspectorTab[] = ['overview', 'source', 'details']");
     expect(app).toContain('id="source-tab"');
     expect(app).toContain('id="details-tab"');
     expect(app).toContain('Architecture brief');
@@ -364,13 +367,11 @@ describe('compact inspector presentation', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
   });
 
-  it('publishes stable relation-summary hooks and presents the destination before relation metadata', () => {
-    expect(app).toContain('data-inspector-presentation="relation-summary"');
-    expect(app).toContain('data-inspector-relation-id={row.relationId}');
-    expect(app).toContain('data-inspector-relation-edge-id={row.id}');
-    expect(app).toContain('<strong>{row.counterpart.name}</strong><small>{row.label}');
-    expect(app).toContain('onClick={() => inspectCanvasRelation(row)}');
-    expect(app).toContain("inspectRelation(relation, 'panel', 'preserve');");
+  it('publishes canonical relation rows with destination, map status and separate reveal', () => {
+    expect(app).toContain('data-inspector-presentation="canonical-relation"');
+    expect(app).toContain('<strong>{row.counterpartName}</strong>');
+    expect(app).toContain("inspectRelation(relation, 'panel', 'preserve')");
+    expect(app).toContain('frameSelectedRelationFlow(relation, selected)');
   });
 
   it('swaps selected edges into a dedicated relationship inspector with endpoint and editing actions', () => {
@@ -384,49 +385,31 @@ describe('compact inspector presentation', () => {
     expect(evidence).toBeGreaterThan(endpoints);
     expect(editing).toBeGreaterThan(evidence);
     expect(app).toContain('selectedRelationPresentation(scene, pickedRelation, pickedRelation.from)');
-    expect(app).toContain('canvasRelationsForEntity(scene, activeProjectionRelationIds, selected.id, activeDetail)');
+    expect(app).toContain('canonicalRelationshipGroupsForEntity(activeSnapshot, scene, new Set(activeProjectionRelationIds)');
   });
 
-  it('filters Isolate Relationships by visual endpoints, not canonical from/to', () => {
-    expect(app).toContain('canvasRelationRowsInIsolate(related, selected.id, isolatedEntityIdSet)');
-    expect(app).not.toContain('row.semanticIds.some(id => isolatedRelationIdSet.has(id))');
-    expect(app).toContain('canvasRelationsForEntity(scene, activeProjectionRelationIds, selected.id, activeDetail)');
+  it('retains canonical inventory while membership follows actual projected entities and isolate', () => {
+    expect(app).toContain('canonicalRelationshipGroupsForEntity(activeSnapshot, scene');
+    expect(app).toContain("activeProjectionEntityIds.filter(id => visibilityMode !== 'isolate' || isolatedEntityIdSet.has(id))");
   });
 
-  it('follows the canvas in Relationships and keeps both remainders honest', () => {
-    const relationships = app.indexOf('<h3>Relationships</h3>');
-    const omitted = app.indexOf('data-testid="relationships-omitted-more"', relationships);
-    const hidden = app.indexOf('data-testid="relationships-hidden-internal"', relationships);
-
-    expect(omitted).toBeGreaterThan(relationships);
-    expect(hidden).toBeGreaterThan(relationships);
-    // "+N more" only when omittedEdges actually contributed; "Hiding N" is internals.
-    expect(app).toContain('canvasRelations.omittedEdgeCount > 0 &&');
-    expect(app).toContain('+{canvasRelations.omittedRelationCount} more not routed at this zoom');
-    expect(app).toContain('canvasRelations.hiddenInternalCount > 0 &&');
-    expect(app).toContain('const collapsed = row.count > 1 ? ` · ${row.count} relationships` : \'\';');
-    expect(app).not.toContain('data-testid="omitted-relations"');
-    expect(app).not.toContain('Not drawn at this zoom');
-    expect(app).not.toContain('aggregated out of the routed view');
+  it('distinguishes shown aggregate hidden and unavailable relationships', () => {
+    for (const status of ['shown', 'aggregated', 'hidden']) expect(app).toContain(`row.mapStatus === '${status}'`);
+    expect(app).toContain('Known, unavailable in this map neighborhood');
+    expect(app).toContain('No relationships captured.');
   });
 
-  it('keeps +N more compact until the remainder is opened, then enumerates omitted relations', () => {
-    expect(app).toContain('const [omittedRemainderExpanded, setOmittedRemainderExpanded] = useState(false)');
-    expect(app).toContain('paintedOmittedRelationRows(canvasRelations.omittedRows, omittedRemainderExpanded)');
-    expect(app).toContain('aria-expanded={omittedRemainderExpanded}');
-    expect(app).toContain('setOmittedRemainderExpanded(open => !open)');
-    expect(app).toContain('canvasRelations.omittedEdgeCount > 0 && omittedRemainderExpanded ? <div className="relations-omitted-list" data-testid="relationships-omitted-list">');
-    expect(app).toContain('data-omitted-relation-id={row.relationId}');
-    expect(app).toContain('{row.fromName} → {row.toName}');
-    expect(app).toContain("setOmittedRemainderExpanded(false)");
-    expect(app).not.toContain('scene.omittedRelations.map');
+  it('expands each canonical group in place with total count and five initial rows', () => {
+    expect(app).toContain('expanded ? group.rows : group.rows.slice(0, 5)');
+    expect(app).toContain('aria-expanded={expanded}');
+    expect(app).toContain('`Show all ${group.rows.length}`');
+    expect(app).toContain("'Show fewer'");
   });
 
-  it('enumerates off-camera L3/L4 cards as inspector +N more (CLA-74)', () => {
-    expect(app).toContain('data-testid="inspector-omitted-nodes-more"');
-    expect(app).toContain('+{omittedChildNodes.length} more');
-    expect(app).toContain('data-testid="inspector-omitted-nodes-list"');
-    expect(app).toContain('setOmittedNodesExpanded(false)');
+  it('unifies off-camera children with visible children in one bounded stable list', () => {
+    expect(app).toContain("detailListVisible('children', inspectorChildren)");
+    expect(app).toContain('omittedChildNodes.some(node => node.entityId === child.id)) revealOmittedEntity(entity)');
+    expect(app).toContain('`Show all ${inspectorChildren.length}`');
   });
 
   it('never moves the camera on selection, only on an explicit camera intent', () => {
@@ -440,26 +423,14 @@ describe('compact inspector presentation', () => {
     expect(implementation.match(/reframeEntityAfterInspectorChange\(/g)).toHaveLength(1);
   });
 
-  it('selects a Relationships row without framing; Show on map frames the flow', () => {
-    const inspectStart = app.indexOf('function inspectRelation(');
-    const inspectCanvasStart = app.indexOf('function inspectCanvasRelation');
-    const inspectEnd = app.indexOf('function restoreInspectorHistoryNavigation', inspectStart);
-    const handlePickStart = app.indexOf('function handlePick(');
-    const handlePickEnd = app.indexOf('function closeDetails(', handlePickStart);
-    const inspectImplementation = app.slice(inspectStart, inspectCanvasStart);
-    const inspectCanvasImplementation = app.slice(inspectCanvasStart, inspectEnd);
-    const handlePickImplementation = app.slice(handlePickStart, handlePickEnd);
-
-    expect(inspectImplementation).toContain("cameraIntent: 'preserve' | 'frame' = 'frame'");
-    expect(inspectImplementation).toContain("if (cameraIntent === 'frame') frameSelectedRelationFlow(relation, owner); else inspectorReframeGenerationRef.current += 1;");
-    expect(inspectImplementation.match(/frameSelectedRelationFlow\(/g)).toHaveLength(1);
-    expect(inspectCanvasImplementation).toContain("inspectRelation(relation, 'panel', 'preserve')");
-    expect(inspectCanvasImplementation).not.toContain("cameraIntent === 'frame'");
-    expect(app).toContain('onClick={() => inspectCanvasRelation(row)}');
-    expect(app).toContain('onClick={() => pickedRelation && frameSelectedRelationFlow(pickedRelation, selected)}');
-    expect(app.match(/<FitIcon size=\{15\}\/> Show on map/g)).toHaveLength(2);
-    expect(handlePickImplementation).toContain('inspectRelation(relation);');
-    expect(handlePickImplementation).not.toContain('inspectRelation(relation,');
+  it('selects relationship evidence without framing and reveal uses the supported route plan', () => {
+    const implementation = app.slice(app.indexOf('function inspectRelation('), app.indexOf('function restoreInspectorHistoryNavigation'));
+    expect(implementation).toContain("if (cameraIntent === 'frame') frameSelectedRelationFlow(relation, owner)");
+    expect(app).toContain("inspectRelation(relation, 'panel', 'preserve')");
+    expect(app).toContain('resolveRelationshipReveal({');
+    expect(app).toContain('targetCamera: plan.framing.camera');
+    expect(app).toContain('canonicalRelationForInspection(activeSnapshot, row.relationId)');
+    expect(app).toContain('data-testid="canonical-relation-evidence"');
   });
 
   it('uses a panel-local Back stack only for inspector-originated subject traversal', () => {
@@ -473,7 +444,7 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('inspectorHistory.length > 0 && <button aria-label="Back to previous inspector selection"');
     expect(app).toContain("focusEntity(pickedRelationPresentation.source, 'replace', 'frame', 'details', 'panel')");
     expect(app).toContain('onClick={() => navigateInspectorHierarchy(selectedParent)}');
-    expect(app).toContain('onClick={() => navigateInspectorHierarchy(child)}');
+    expect(app).toContain('void openInspectorChild(child.id)');
     expect(app).toContain('semanticInspectorHierarchyPlan(');
     expect(app).toContain('detail: plan.session.baseDetail');
     expect(app).toContain('lensPath: semanticLensCanonicalPathIds(plan.session)');
@@ -559,7 +530,7 @@ describe('canvas minimap', () => {
   it('publishes the per-frame rendered camera so the minimap can track gestures in real time', () => {
     // React `camera` state is throttled/settled, so the render loop broadcasts the live camera
     // to the minimap via the per-frame bridge (imperative, no 60fps React re-render).
-    expect(app).toContain('publishLiveCamera(liveCameraRef.current)');
+    expect(app).toContain('publishLiveCamera(frame.camera, {');
     expect(app).toContain("import { publishLiveCamera } from './liveCameraBridge'");
   });
 });
@@ -739,4 +710,44 @@ describe('selected relationship focus wiring', () => {
     expect(app).toContain('guideDraft ? { points: guideDraft.points, safe: guideDraft.applied }');
     expect(app).not.toContain('projectedRelationsByDetail[authoringDetail]\n            .find(relation => relation.id === selectedRelationId');
   });
+});
+
+
+describe('inspector hierarchy QA regressions', () => {
+  it('marks a successful hierarchy selection explicit before changing the selected entity', () => {
+    const start = app.indexOf('function navigateInspectorHierarchy(');
+    const end = app.indexOf('startInspectorCameraFlight({', start);
+    const hierarchy = app.slice(start, end);
+    expect(hierarchy.indexOf('setExplicitInspectorSelection(true)')).toBeGreaterThan(hierarchy.indexOf('if (!plan)'));
+    expect(hierarchy.indexOf('setExplicitInspectorSelection(true)')).toBeLessThan(hierarchy.indexOf('setSelectedId(entity.id)'));
+    expect(app).toContain('explicitInspectorSelection ? selected.id : semanticLensCanonicalPathIds(semanticLensSession)');
+  });
+  it('builds dependency participants from the same scene facts used to offer the action', () => {
+    expect(app).toContain('const hasDependencyDiagram = scene.relations.some');
+    expect(app).toContain("kind === 'dependency' ? [...new Set([selected.id, ...scene.relations.filter");
+  });
+});
+
+it('keeps relation reveal labels on one line and separates overview list counts', () => {
+  const reveal = declarations(css, '.canonical-relation-row > button.secondary-detail-action');
+  expect(reveal).toContain('display: inline-flex');
+  expect(reveal).toContain('grid-template-columns: none');
+  expect(reveal).toContain('white-space: nowrap');
+  expect(declarations(css, '.relation-group > .section-heading')).toContain('justify-content: space-between');
+});
+
+it('code structure includes every direct code child without dependency slots or arbitrary truncation', () => {
+  const start = app.indexOf('function selectedDiagramEntityIds()');
+  const implementation = app.slice(start, app.indexOf('function applyImportedMermaid', start));
+  expect(implementation).toContain("selectedChildren.filter(child => child.detail === 'code').map(child => child.id)");
+  expect(implementation).not.toContain('scene.relations');
+  expect(implementation).not.toContain('.slice(');
+});
+
+it('resets overview list expansion by subject and bounds evidence and named diagram lists', () => {
+  expect(app).toContain('<ContextualOverviewView key={contextualOverview?.entity.id}');
+  expect(app).toContain("detailListVisible('exposure', selectedExposure)");
+  expect(app).toContain("detailListVisible('named-diagrams', namedDiagramStories)");
+  expect(app).toContain('`Show all ${selectedExposure.length}`');
+  expect(app).toContain('`Show all ${namedDiagramStories.length} named diagrams`');
 });

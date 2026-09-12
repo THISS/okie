@@ -1,0 +1,183 @@
+{
+  "goal": "contextual-inspector-symbol-source",
+  "status": "complete",
+  "cases": [
+    {
+      "id": "overview-selection",
+      "requirement": "Select system/package/file/symbol; Overview explains entity in immediate parent scope.",
+      "status": "passed",
+      "evidence": [
+        "Browser: /r/THISS/okie system -> @okie/web -> App.tsx -> App; independent explicit-selection review and contextual tests.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "overview-scope",
+      "requirement": "With no explicit selection, Overview follows current navigation scope.",
+      "status": "passed",
+      "evidence": [
+        "Contextual fallback reviewed; fresh root and fixture scan browser routes show current scope.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "tab-continuity",
+      "requirement": "Changing selection preserves active tab; absent Source is explained without stale content.",
+      "status": "passed",
+      "evidence": [
+        "Browser Source selection and Details relationship reveal retain active tab; unavailable Source explains missing evidence.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "sidebar-limits",
+      "requirement": "Every sidebar item list handles 0,5,6+ with total counts, in-place Show all/Show fewer and stable order under camera movement.",
+      "status": "passed-with-limits",
+      "evidence": [
+        "0/5/6 contextual tests, reviewed all-list caps; browser10/79/22 children and49/214 dependencies, expand/reset/pan tested. Not exhaustive live testing of each metadata category.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "canonical-inventory",
+      "requirement": "All captured incoming/outgoing relations listed independently of canvas level, isolate and budgets, including off-neighborhood endpoints.",
+      "status": "passed",
+      "evidence": [
+        "Canonical inventory tests and off-scene review; browser isolate retains Calls/Uses rows and opens hidden evidence.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "relationship-kinds",
+      "requirement": "Calls/Called by only proven calls; Uses/Used by broader references; recursion/deduplication correct.",
+      "status": "passed",
+      "evidence": [
+        "Extraction/enrichment and inventory tests cover calls vs uses and recursion; architecture validator regression accepts evidenced recursive calls only.",
+        "docs/qa/inspector-team/browser-acceptance.md",
+        "Syntheticfixture: publicApi Calls1, internalHelper Calledby8 capped5 expandable8, recurse Recursive1; falseC4recursionerror fixed and browser-retested browser-recursion-fixed.png"
+      ]
+    },
+    {
+      "id": "map-membership",
+      "requirement": "Shown/aggregated/hidden statuses accurately reflect rendered representation.",
+      "status": "passed",
+      "evidence": [
+        "Individual/aggregated/hidden helper tests; browser isolate and aggregate/individual reveal.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "relationship-reveal",
+      "requirement": "Smoothly frame both endpoints and actual edge, preserve original entity/tab/list state; keep minimap aligned.",
+      "status": "passed",
+      "evidence": [
+        "Final foreground WebGPU actual-frame traces: individual 52 moving intervals, median8.3ms/max17.7ms; aggregate47, median8.3ms/max17.0ms. Original selection/Details retained, both endpoints and actual edge visible, minimap aligned.",
+        "docs/qa/inspector-team/relationship-reveal-trace_final.json",
+        "docs/qa/inspector-team/relationship-reveal-aggregate-trace_final.json",
+        "docs/qa/inspector-team/browser-final-reveal.png"
+      ]
+    },
+    {
+      "id": "diagram-actions",
+      "requirement": "Hide unavailable actions; meaningful named diagrams in separate in-app tabs; main map state preserved; Mermaid viewing option.",
+      "status": "passed",
+      "evidence": [
+        "Browser dependency/Mermaid/Main,23-participant App.tsx code diagram, actual captured4-step flow; all discovered crashes fixed and retested.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "tooltips",
+      "requirement": "Information explanations work on hover, keyboard focus and tap.",
+      "status": "passed",
+      "evidence": [
+        "Main4173 verified focus-before-click, tap, Escape retaining inspector/focus, and pointer hover with no focus or tap-open state.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "source-exact",
+      "requirement": "Excerpt/load-more/full-file use same scanned commit, bounded caches and ranges; no branch fallback.",
+      "status": "passed",
+      "evidence": [
+        "Browser4173 and4175 load1201\u20131212 ->1171\u20131242 at exact722ea2862304eae579a7b354bc7cfa0697f4e997; full-file URL pinned. Server validation and bounded-cache tests.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "source-races",
+      "requirement": "Rapid selections cannot display previous symbol source; missing historical source stays truthful.",
+      "status": "passed-with-timing-limits",
+      "evidence": [
+        "Controlled delayed-request tests cover stale responses, cancellation and A\u2192B\u2192A; browser normal-transport A\u2192B\u2192A returns correct excerpt and enabled Load more. Adversarial network timing was not induced in the browser.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "calls-resolution",
+      "requirement": "Tests cover direct calls vs callback references, alias/shadowing/default/namespace/re-export cycles, recursive calls, resolvable vs ambiguous properties/methods.",
+      "status": "passed",
+      "evidence": [
+        "Independent40/40 extraction/source regressions plus full scan suite, lexical shadowing, alias/default/namespace/re-exports/cycles/recursion/ambiguous dispatch.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "exposure",
+      "requirement": "Exported symbol vs reachable public package API vs recognized entrypoint labels have evidence; absence of callers never implies public API.",
+      "status": "passed",
+      "evidence": [
+        "Reviewed and tested module export/package manifest reachability/bin-file evidence; fixed exports precedence, star barrels and standalone packages. Existing published scans lack new metadata.",
+        "docs/qa/inspector-team/browser-acceptance.md",
+        "Isolated synthetic scanner fixture4176: publicApi export+publicAPI, internalHelper exportonly, neverCalled noentrypoint, CLIfile packagebin entrypoint; expanded evidence in browser-exposure-public.png and browser-exposure-cli.png"
+      ]
+    },
+    {
+      "id": "determinism",
+      "requirement": "Repeat scans stable; explicit per-language extraction/unresolved coverage.",
+      "status": "passed",
+      "evidence": [
+        "Final main full suite passed stable extraction/scan determinism; language limits documented.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "regression-browser",
+      "requirement": "Real app story pause, selected inspector, / and /new and scan fixture; preserve zoom/minimap/Mermaid behavior.",
+      "status": "passed-with-limits",
+      "evidence": [
+        "/, /new, /r/THISS/okie, ?fixture=scan, guided step4 paused and inspector, pan/minimap exercised. WebGPU initialization repaired and verified; final individual/aggregate relationship motion traces pass.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    },
+    {
+      "id": "repo-gates",
+      "requirement": "Typecheck, TypeScript tests, Rust workspace tests, build pass on final integrated source.",
+      "status": "passed",
+      "evidence": [
+        "Final main check, all TS suites (1583 passed/1 skipped), cargo workspace (81 passed/1 ignored), build and diff --check passed. Obsolete Git caused one initial scan test failure; scan/server rerun passed with /opt/homebrew/bin first in PATH.",
+        "docs/qa/inspector-team/final-integration.md"
+      ]
+    },
+    {
+      "id": "independent-review",
+      "requirement": "Astra medium/high reviews final changes; substantive issues fixed and rechecked.",
+      "status": "passed",
+      "evidence": [
+        "Astra high cleared six backend findings, three UI findings and named-flow crash fix; source mapping focused7/7 pass.",
+        "docs/qa/inspector-team/browser-acceptance.md",
+        "Final tooltip Escape propagation corrected and cleared by Astra high code inspection.",
+        "Astra high cleared final imperative flight camera/semantic ownership and delayed gesture cancellation; fake-timer regression verifies stale callbacks cannot overwrite a flight frame."
+      ]
+    },
+    {
+      "id": "browser-qa",
+      "requirement": "Astra low exercises integrated running app and records findings/evidence.",
+      "status": "passed",
+      "evidence": [
+        "Astra low completed functional acceptance, final WebGPU motion traces (median 8.3ms, maxima 17.7/17.0ms), and final published Okie \u2192 @okie/web \u2192 App.tsx hierarchy smoke.",
+        "docs/qa/inspector-team/browser-acceptance.md"
+      ]
+    }
+  ]
+}

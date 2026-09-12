@@ -1,0 +1,7 @@
+# Inline Mermaid expansion — September 12
+
+Every ready shared Mermaid preview is clickable and keyboard-operable. It opens the existing sanitized SVG in a native modal occupying nearly the full viewport, with zoom controls (1×–4×), Fit, Close, and Escape. Overflow can be scrolled. Native modal focus containment is retained; closing restores the original preview and opener focus. No second SVG with duplicate marker IDs is created.
+
+Browser QA on localhost:4173/r/THISS/okie in Chrome, 1671×977: opened the context/container diagram and visually confirmed readable node labels; zoomed to 150% and verified scroll overflow; Escape restored both inline SVGs and focus to the context diagram button while keeping the inspector open. Opened Key flows using Enter, zoomed, used Fit (100%), and closed with the button; opener focus and both inline SVGs restored. Initial Escape propagation closed the inspector too; this was corrected and retested. Final expanded screenshot: [expanded.png](./expanded.png).
+
+Validation: web typecheck and 974 web tests pass. Repository check passes. Full TypeScript run passed architecture, compiler and web; scan had one environment failure because the default Git does not support `git init -b`. Its exact failing test passes with installed Homebrew Git 2.45.2. Server tests separately pass 154/154. Rust workspace tests and production build pass. Logs are `/tmp/okie-mermaid-{check,all-tests,scan-rerun,server,rust,build}.log`. This change does not complete the separate atlas zoom-continuity goal.

@@ -7,7 +7,13 @@ import { regenerateScanManifest } from "./manifest.js";
 import { readFrozenEnrichmentPrompt, writeEnrichmentPackets, writePromptEmission } from "./prompt.js";
 import { readCodeOwners } from "./codeowners.js";
 import { coverageByCodeIdFromSnapshot } from "./lcov.js";
-import { scanGithubRepository, scanRepository, stableJson, type ScanArtifacts, type ScanOptions } from "./scan.js";
+import { acquireCommittedTree } from "./pin.js";
+import { scanAcquiredRepository, scanGithubRepository, stableJson, type ScanArtifacts, type ScanOptions } from "./scan.js";
+import { serializePortableAtlas } from '@okie/architecture';
+import { portableAtlasFromScan } from './portable.js';
+import { runPackageViewer } from './package-viewer.js';
+import { enrichPortableAtlas } from './portable-enrich.js';
+import { parsePortableAtlas } from '@okie/architecture';
 
 interface CliArgs {
   source: string;
@@ -21,6 +27,7 @@ interface CliArgs {
   enrichFromDir?: string;
   maxTarballBytes?: number;
   lcovPath?: string;
+  repositoryUrl?: string;
 }
 
 function printUsage(): void {
@@ -30,13 +37,19 @@ function printUsage(): void {
     "Usage: okie-scan [--source <path | gh:owner/repo[@ref]>] [--out <dir>]",
     "                 [--system-name <name>] [--repo <slug>] [--max-tarball-mb <n>]",
     "                 [--emit-packets <dir>] [--emit-prompt <dir>] [--enrich-from <dir>]",
-    "                 [--include-members] [--public-api] [--lcov <path>]",
+    "                 [--revision <rev>] [--include-members] [--public-api] [--lcov <path>]",
     "",
     "  --source <src>      local git working tree, or gh:owner/repo[@ref] (default: cwd)",
     "  --out <dir>         output directory (default: <source>/fixtures/scan for a local",
     "                      scan; fixtures/scan/<owner>__<repo> for a gh: source)",
     "  --system-name       display name for the software system (default: derived)",
     "  --repo <slug>       repository slug for snapshot/repo IDs (default: derived)",
+    "  --revision <rev>    local Git revision to scan (default: HEAD)",
+    "  --full / --quick    semantic analyzers (default) or syntax-only scan; limits are recorded",
+    "  --include-source   include full referenced files in atlas.okie.json (snippets are always retained)",
+    "  --repository-url <https-url>  explicit public repository URL to embed for a local scan",
+    "  export --bundle <file> --viewer <built-dir> --out <empty-dir>  package a static atlas",
+    "  enrich --bundle <atlas.okie.json> --docs <enrichment-dir> --out <atlas.okie.json>",
     "  --max-tarball-mb    cap on a gh: tarball download (default: 150)",
     "  --emit-packets <d>  (local only) write bounded, redacted enrichment packets to <d>",
     "  --emit-prompt <d>   (local only) write packets plus concatenated prompts to <d>",
@@ -59,7 +72,8 @@ function parseArgs(argv: readonly string[]): CliArgs {
   let enrichFromDir: string | undefined;
   let maxTarballBytes: number | undefined;
   let lcovPath: string | undefined;
-  const options: ScanOptions = {};
+  let repositoryUrl: string | undefined;
+  const options: ScanOptions = { analysisMode: 'full' };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]!;
     const next = (): string => {
@@ -73,6 +87,11 @@ function parseArgs(argv: readonly string[]): CliArgs {
       case "--out": out = next(); break;
       case "--system-name": options.systemName = next(); break;
       case "--repo": options.repositorySlug = next(); break;
+      case "--revision": options.revision = next(); break;
+      case "--quick": options.analysisMode = 'quick'; break;
+      case "--full": options.analysisMode = 'full'; break;
+      case "--include-source": options.includeSource = true; break;
+      case "--repository-url": repositoryUrl = validatedRepositoryUrl(next()); break;
       case "--max-tarball-mb": {
         const mb = Number.parseFloat(next());
         if (!Number.isFinite(mb) || mb <= 0) throw new Error("--max-tarball-mb must be a positive number");
@@ -105,6 +124,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       ...(emitPromptDir ? { emitPromptDir: resolve(emitPromptDir) } : {}),
       ...(maxTarballBytes ? { maxTarballBytes } : {}),
       ...(lcovPath ? { lcovPath } : {}),
+      ...(repositoryUrl ? { repositoryUrl } : {}),
     };
   }
 
@@ -118,7 +138,15 @@ function parseArgs(argv: readonly string[]): CliArgs {
     ...(enrichFromDir ? { enrichFromDir: resolve(enrichFromDir) } : {}),
     ...(maxTarballBytes ? { maxTarballBytes } : {}),
     ...(lcovPath ? { lcovPath } : {}),
+    ...(repositoryUrl ? { repositoryUrl } : {}),
   };
+}
+
+function validatedRepositoryUrl(value: string): string {
+  let url: URL;
+  try { url = new URL(value); } catch { throw new Error("--repository-url must be an HTTPS URL without credentials"); }
+  if (url.protocol !== "https:" || url.username || url.password) throw new Error("--repository-url must be an HTTPS URL without credentials");
+  return url.toString();
 }
 
 /** Reads packet-named enrichment docs, grouping remainder `*.2.json` onto the same container. */
@@ -143,8 +171,9 @@ function readEnrichmentDocs(dir: string): Map<string, unknown> {
 }
 
 /** Writes the six-artifact trio, story catalog, and optional enrichment report. */
-function writeArtifacts(out: string, artifacts: ScanArtifacts): void {
+function writeArtifacts(out: string, artifacts: ScanArtifacts, repositoryUrl?: string): void {
   mkdirSync(out, { recursive: true });
+  writeFileSync(`${out}/atlas.okie.json`, serializePortableAtlas(portableAtlasFromScan(artifacts, repositoryUrl)));
   writeFileSync(`${out}/extraction.json`, stableJson(artifacts.extraction));
   writeFileSync(`${out}/snapshot.json`, stableJson(artifacts.snapshot));
   writeFileSync(`${out}/view.json`, stableJson(artifacts.view));
@@ -227,7 +256,7 @@ async function runGithubScan(args: CliArgs): Promise<void> {
     ...(args.lcovPath ? { lcovText: readExplicitLcov(undefined, args.lcovPath) } : {}),
   };
   const { artifacts, commitSha } = await scanGithubRepository(github, scanOptions);
-  writeArtifacts(args.out, artifacts);
+  writeArtifacts(args.out, artifacts, `https://github.com/${github.owner}/${github.repo}`);
   const manifestCount = args.scanRoot ? refreshManifest(args.scanRoot) : 0;
   process.stdout.write(
     summaryLines(artifacts) +
@@ -243,36 +272,63 @@ function runLocalScan(args: CliArgs): void {
   if (args.enrichFromDir) scanOptions.enrichmentDocs = readEnrichmentDocs(args.enrichFromDir);
   if (args.lcovPath) scanOptions.lcovText = readExplicitLcov(args.source, args.lcovPath);
 
-  const artifacts = scanRepository(args.source, scanOptions);
-  writeArtifacts(args.out, artifacts);
+  const acquired = acquireCommittedTree(args.source, scanOptions.revision);
+  try {
+    const artifacts = scanAcquiredRepository(acquired, scanOptions);
+    writeArtifacts(args.out, artifacts, args.repositoryUrl);
 
-  if (args.emitPromptDir || args.emitPacketsDir) {
-    const readFile = (repoRelativePath: string): string => readFileSync(`${args.source}/${repoRelativePath}`, "utf8");
-    const coverageByCodeId = coverageByCodeIdFromSnapshot(artifacts.snapshot.entities);
-    const emitted = buildEnrichmentPackets(artifacts.baseExtraction, readFile, { coverageByCodeId });
-    if (args.emitPromptDir) {
-      writePromptEmission(
-        args.emitPromptDir,
-        emitted,
-        artifacts.pin,
-        {
-          v2: readFrozenEnrichmentPrompt(),
-          v3: readFrozenEnrichmentPrompt(ENRICHMENT_PROMPT_VERSION_V3),
-        },
-        readCodeOwners(readFile)?.rules ?? [],
-      );
+    if (args.emitPromptDir || args.emitPacketsDir) {
+      const readFile = (repoRelativePath: string): string => readFileSync(`${acquired.root}/${repoRelativePath}`, "utf8");
+      const coverageByCodeId = coverageByCodeIdFromSnapshot(artifacts.snapshot.entities);
+      const emitted = buildEnrichmentPackets(artifacts.baseExtraction, readFile, { coverageByCodeId });
+      if (args.emitPromptDir) {
+        writePromptEmission(
+          args.emitPromptDir,
+          emitted,
+          artifacts.pin,
+          {
+            v2: readFrozenEnrichmentPrompt(),
+            v3: readFrozenEnrichmentPrompt(ENRICHMENT_PROMPT_VERSION_V3),
+          },
+          readCodeOwners(readFile)?.rules ?? [],
+        );
+      }
+      if (args.emitPacketsDir && args.emitPacketsDir !== args.emitPromptDir) {
+        writeEnrichmentPackets(args.emitPacketsDir, emitted);
+      }
     }
-    if (args.emitPacketsDir && args.emitPacketsDir !== args.emitPromptDir) {
-      writeEnrichmentPackets(args.emitPacketsDir, emitted);
-    }
+
+    const packetNote = args.emitPacketsDir ? `  wrote enrichment packets to ${args.emitPacketsDir}\n` : "";
+    const promptNote = args.emitPromptDir ? `  wrote enrichment prompts to ${args.emitPromptDir}\n` : "";
+    process.stdout.write(summaryLines(artifacts) + packetNote + promptNote + `  wrote snapshot/view/story/stories/scene/timeline to ${args.out}\n`);
+  } finally {
+    acquired.cleanup();
   }
+}
 
-  const packetNote = args.emitPacketsDir ? `  wrote enrichment packets to ${args.emitPacketsDir}\n` : "";
-  const promptNote = args.emitPromptDir ? `  wrote enrichment prompts to ${args.emitPromptDir}\n` : "";
-  process.stdout.write(summaryLines(artifacts) + packetNote + promptNote + `  wrote snapshot/view/story/stories/scene/timeline to ${args.out}\n`);
+function runPortableEnrichment(args: readonly string[]): void {
+  const values = new Map<string, string>();
+  for (let index = 0; index < args.length; index += 2) {
+    const key = args[index];
+    const value = args[index + 1];
+    if (!key || !["--bundle", "--docs", "--out"].includes(key) || !value || value.startsWith("--")) {
+      throw new Error("Usage: okie-scan enrich --bundle <atlas.okie.json> --docs <enrichment-dir> --out <atlas.okie.json>");
+    }
+    values.set(key, value);
+  }
+  const bundlePath = values.get("--bundle");
+  const docs = values.get("--docs");
+  const out = values.get("--out");
+  if (!bundlePath || !docs || !out) throw new Error("Enrich requires --bundle, --docs and --out.");
+  const result = enrichPortableAtlas(parsePortableAtlas(readFileSync(bundlePath, "utf8")), readEnrichmentDocs(docs));
+  writeFileSync(resolve(out), serializePortableAtlas(result.bundle));
+  writeFileSync(`${resolve(out)}.enrichment-report.json`, stableJson(result.report));
+  process.stdout.write(`Enriched portable atlas written to ${resolve(out)}; report written to ${resolve(out)}.enrichment-report.json.\n`);
 }
 
 async function main(): Promise<void> {
+  if (process.argv[2] === 'export') { runPackageViewer(process.argv.slice(3)); return; }
+  if (process.argv[2] === 'enrich') { runPortableEnrichment(process.argv.slice(3)); return; }
   const args = parseArgs(process.argv.slice(2));
   if (args.github) await runGithubScan(args);
   else runLocalScan(args);

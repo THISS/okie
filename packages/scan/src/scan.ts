@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { basename } from "node:path";
 import {
   adaptArchitectureExtraction,
   ASPECT_PRESET_TARGET,
@@ -20,7 +19,7 @@ import { attachCoverage, coverageByCodeIdFromEntities, parseLcov, readLcov, type
 import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
 import { buildUserFlowStories, publishedStoryCatalog, type PublishedStoryCatalog } from "./flow-story.js";
-import { discoverExtractedTree, discoverRepository, type Discovery, type DiscoverySummary } from "./discover.js";
+import { discoverExtractedTree, type Discovery, type DiscoverySummary } from "./discover.js";
 import {
   attachCyclomaticComplexity,
   attachDuplicateRelations,
@@ -31,7 +30,7 @@ import {
 } from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
 import { buildEnrichmentPackets, type EmittedPackets } from "./packet.js";
-import { pinRepository, type RepositoryPin } from "./pin.js";
+import { acquireCommittedTree, type AcquiredCommittedTree, type RepositoryPin } from "./pin.js";
 import {
   acquireGithubTree,
   createDefaultGithubClient,
@@ -40,8 +39,14 @@ import {
   type GithubSourceRef,
 } from "./github.js";
 import { slug, typedId } from "./ids.js";
+import type { PortableAtlas } from '@okie/architecture';
+import type { LanguageAnalysis } from './language-analysis.js';
+import { analyzeTypeScript } from './analyze-typescript.js';
+import { analyzeRust } from './analyze-rust.js';
 
 export interface ScanOptions {
+  analysisMode?: 'full' | 'quick';
+  includeSource?: boolean;
   systemName?: string;
   repositorySlug?: string;
   /** Scan fixture/example/playground/e2e workspace members too (default: skip them). */
@@ -55,6 +60,8 @@ export interface ScanOptions {
    * Missing / empty → omit coverage (do not invent 0%).
    */
   lcovText?: string;
+  /** Local Git revision to scan (HEAD by default). */
+  revision?: string;
 }
 
 export interface GithubScanOptions extends ScanOptions {
@@ -75,6 +82,8 @@ export interface GithubScanOptions extends ScanOptions {
 }
 
 export interface ScanArtifacts {
+  analysis: PortableAtlas['analysis'];
+  sources?: PortableAtlas['sources'];
   pin: RepositoryPin;
   /** The deterministic (pre-enrichment) extraction — the source for enrichment packets. */
   baseExtraction: ArchitectureExtraction;
@@ -144,7 +153,25 @@ function storyStepsVisibleInScene(
   });
 }
 
+/** Full portable source is limited to known regular files, never container anchors. */
+function portableSourcePaths(snapshot: ArchitectureSnapshot, discovery: Discovery): string[] {
+  const knownFiles = new Set(discovery.sourceFiles);
+  const isManifest = (path: string): boolean => path === "README.md" || path === "package.json" || path === "Cargo.toml"
+    || path === "pnpm-workspace.yaml" || path.endsWith("/package.json") || path.endsWith("/Cargo.toml");
+  const references = [
+    ...snapshot.entities.flatMap(entity => [
+      ...entity.sourceRefs,
+      ...(entity.exposure ?? []).map(exposure => exposure.evidence.source),
+    ]),
+    ...snapshot.relations.flatMap(relation => relation.evidence.map(evidence => evidence.source)),
+  ];
+  return [...new Set(references.map(ref => ref.path).filter(path => knownFiles.has(path) || isManifest(path)))].sort();
+}
+
 export interface BuildScanArtifactsParams {
+  languageAnalysis?: LanguageAnalysis;
+  analysisMode?: 'full' | 'quick';
+  includeSource?: boolean;
   discovery: Discovery;
   pin: RepositoryPin;
   readFile: (repoRelativePath: string) => string;
@@ -184,6 +211,7 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
       readFile,
       systemName,
       systemSlug,
+      ...(params.languageAnalysis ? { languageAnalysis: params.languageAnalysis } : {}),
       ...(params.codeSurface ? { codeSurface: params.codeSurface } : {}),
     });
   const baseExtraction = collected.extraction;
@@ -285,28 +313,54 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     scene: compiled.scene,
     timeline,
     discoverySummary: discovery.summary,
+    analysis: {
+      mode: params.analysisMode ?? 'quick',
+      adapters: params.languageAnalysis?.coverage.map(({ indexedFiles: _files, ...coverage }) => coverage) ??
+        [...new Set(discovery.sourceFiles.map(path => path.endsWith('.rs') ? 'rust' : 'typescript/javascript'))].map(language => ({ language, tool: language === 'rust' ? 'tree-sitter-rust' : 'typescript', version: 'syntax-v1', coverage: 'syntax' as const, limitations: ['Quick scan: project-wide semantic resolution was not requested.'] })),
+    },
+    ...(params.includeSource ? { sources: portableSourcePaths(snapshot, discovery).map(path => ({ path, text: readFile(path) })) } : {}),
     ...(enrichmentReport ? { enrichmentReport } : {}),
   };
 }
 
-/** Scans a local git working tree at HEAD into the full artifact set. */
-export function scanRepository(sourceRoot: string, options: ScanOptions = {}): ScanArtifacts {
+/** Runs the local scan pipeline against an already-acquired committed tree. */
+function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode']): LanguageAnalysis | undefined {
+  if (mode !== 'full') return undefined;
+  const analyses = [analyzeTypeScript(root, discovery.sourceFiles), analyzeRust(root, discovery.sourceFiles)];
+  return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), coverage: analyses.flatMap(item => item.coverage) };
+}
+
+export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "root" | "pin" | "sourceName">, options: ScanOptions = {}): ScanArtifacts {
+  const sourceRoot = acquired.root;
   const packageName = rootPackageName(sourceRoot);
-  const fallbackName = basename(sourceRoot);
+  const fallbackName = acquired.sourceName;
   const repositorySlug = options.repositorySlug ?? slug(packageName ?? fallbackName);
   const systemName = options.systemName ?? packageName ?? (fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1));
-  const pin = pinRepository(sourceRoot);
-  const discovery = discoverRepository(sourceRoot, options.includeAllMembers ? { includeAllMembers: true } : {});
+  const discovery = discoverExtractedTree(sourceRoot, options.includeAllMembers ? { includeAllMembers: true } : {});
+  const languageAnalysis = analyzeLanguages(sourceRoot, discovery, options.analysisMode);
   return buildScanArtifacts({
     discovery,
-    pin,
+    pin: acquired.pin,
     readFile: (repoRelativePath: string) => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8"),
     repositorySlug,
     systemName,
+    ...(languageAnalysis ? { languageAnalysis } : {}),
+    ...(options.analysisMode ? { analysisMode: options.analysisMode } : {}),
+    ...(options.includeSource ? { includeSource: true } : {}),
     ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
     ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
     ...(options.lcovText ? { lcovText: options.lcovText } : {}),
   });
+}
+
+/** Scans an immutable local Git revision into the full artifact set (HEAD by default). */
+export function scanRepository(sourceRoot: string, options: ScanOptions = {}): ScanArtifacts {
+  const acquired = acquireCommittedTree(sourceRoot, options.revision);
+  try {
+    return scanAcquiredRepository(acquired, options);
+  } finally {
+    acquired.cleanup();
+  }
 }
 
 export interface GithubScanResult {
@@ -335,6 +389,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     const systemName = options.systemName ?? packageName ?? source.repo;
     const pin: RepositoryPin = { commitSha: commit.sha, treeHash: commit.treeSha, generatedAt: commit.generatedAt };
     const discovery = discoverExtractedTree(acquired.root, options.includeAllMembers ? { includeAllMembers: true } : {});
+    const languageAnalysis = analyzeLanguages(acquired.root, discovery, options.analysisMode);
     if (discovery.sourceFiles.length === 0) {
       throw new Error(
         `No scannable source files in ${source.owner}/${source.repo} at ${commit.sha.slice(0, 12)}. ` +
@@ -354,6 +409,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
         readFile,
         systemName,
         systemSlug: slug(systemName),
+        ...(languageAnalysis ? { languageAnalysis } : {}),
         ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
       });
       baseExtraction = collected.extraction;
@@ -371,6 +427,9 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       readFile,
       repositorySlug,
       systemName,
+      ...(languageAnalysis ? { languageAnalysis } : {}),
+      ...(options.analysisMode ? { analysisMode: options.analysisMode } : {}),
+      ...(options.includeSource ? { includeSource: true } : {}),
       ...(enrichmentDocs ? { enrichmentDocs } : {}),
       ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
       ...(baseExtraction ? { baseExtraction } : {}),

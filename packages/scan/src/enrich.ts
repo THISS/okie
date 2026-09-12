@@ -756,7 +756,7 @@ export function mergeEnrichment(
   for (const relation of base.relations) {
     const from = remap(relation.from);
     const to = remap(relation.to);
-    if (from === to) {
+    if (from === to && relation.kind !== "calls") {
       // Both endpoints regrouped into the same logical component — record the drop, don't hide it.
       const container = logicalToContainer.get(from);
       if (container) selfEdgesByContainer.set(container, (selfEdgesByContainer.get(container) ?? 0) + 1);
@@ -770,7 +770,7 @@ export function mergeEnrichment(
   // Person-touching relations flow through the same collapse/dedup/id pipeline. Their endpoints
   // (persons, containers, the system, externals) are never remapped, so they pass through as-is.
   for (const relation of acceptedSystem?.relations ?? []) {
-    const key = `${relation.from} ${relation.to} ${relation.kind}`;
+    const key = `${relation.from}::${relation.to}::${relation.kind}`;
     const entry = collapsed.get(key) ?? { from: relation.from, to: relation.to, kind: relation.kind, evidence: [] };
     entry.evidence.push(...relation.evidence);
     collapsed.set(key, entry);

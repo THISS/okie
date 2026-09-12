@@ -1,0 +1,520 @@
+{
+  "snapshotId": "snapshot:okie:722ea2862304",
+  "targetAspect": 1.6,
+  "checkedRepresentations": 385,
+  "protocolMismatches": [],
+  "peerChecks": [
+    {
+      "label": "web",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-hosted-atlas-ts:cold",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-hosted-atlas-ts:live",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-hosted-atlas-ts:paged",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-renderer-fixture-bundle-ts:cold",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-renderer-fixture-bundle-ts:live",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-renderer-fixture-bundle-ts:paged",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-inspector-scan-one-pager-ts:cold",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-inspector-scan-one-pager-ts:live",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    },
+    {
+      "label": "component:apps-web-src-inspector-scan-one-pager-ts:paged",
+      "id": "external:anthropic-ai-sdk",
+      "bounds": {
+        "context": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "container": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "component": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        },
+        "code": {
+          "x": -1080.3453575462554,
+          "y": -542.361419298337,
+          "width": 480,
+          "height": 190
+        }
+      },
+      "matches": true
+    }
+  ],
+  "rows": [
+    {
+      "id": "component:apps-web-src-hosted-atlas-ts",
+      "coldLiveCodeDifferences": [],
+      "coldLiveCodeMembershipEqual": true,
+      "expectedInWindow": [
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-owner",
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-repo",
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-slug",
+        "code:apps-web-src-hosted-atlas-ts:hosted-atlas-boot-plan",
+        "code:apps-web-src-hosted-atlas-ts:hosted-atlas-boot-step",
+        "code:apps-web-src-hosted-atlas-ts:is-dogfood-atlas",
+        "code:apps-web-src-hosted-atlas-ts:is-public-atlas-view-path"
+      ],
+      "missingInWindow": [],
+      "sharedChanges": [],
+      "source": {
+        "x": -57.88962079702708,
+        "y": -676.8057789536372,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": -15.384876964009997,
+        "y": -655.5534070371286
+      },
+      "cold": {
+        "x": -57.88962079702708,
+        "y": -676.8057789536372,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": -57.88962079702708,
+        "y": -676.8057789536372,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": -57.88962079702708,
+        "y": -676.8057789536372,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": -44.32470504423918,
+        "y": -675.1809142004524,
+        "width": 57.879656160458445,
+        "height": 39.25501432664756
+      },
+      "pagedCode": {
+        "x": -44.32470504423918,
+        "y": -675.1809142004524,
+        "width": 57.879656160458445,
+        "height": 39.25501432664756
+      },
+      "window": {
+        "x": -35.38487696400996,
+        "y": -675.5534070371286,
+        "width": 40,
+        "height": 40
+      },
+      "coldComponentIds": 10,
+      "pagedComponentIds": 10,
+      "coldCodeIds": 26,
+      "pagedCodeIds": 17
+    },
+    {
+      "id": "component:apps-web-src-renderer-fixture-bundle-ts",
+      "coldLiveCodeDifferences": [],
+      "coldLiveCodeMembershipEqual": true,
+      "expectedInWindow": [
+        "code:apps-web-src-renderer-fixture-bundle-ts:active-scan-fixture",
+        "code:apps-web-src-renderer-fixture-bundle-ts:get-active-scan-fixture",
+        "code:apps-web-src-renderer-fixture-bundle-ts:set-active-scan-fixture"
+      ],
+      "missingInWindow": [],
+      "sharedChanges": [],
+      "source": {
+        "x": -322.0262431879188,
+        "y": -494.6425910978497,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": -279.5214993549017,
+        "y": -473.39021918134114
+      },
+      "cold": {
+        "x": -322.0262431879188,
+        "y": -494.6425910978497,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": -322.0262431879188,
+        "y": -494.6425910978497,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": -322.0262431879188,
+        "y": -494.6425910978497,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": -298.71920709129154,
+        "y": -487.28706731887695,
+        "width": 38.39541547277936,
+        "height": 27.793696275071632
+      },
+      "pagedCode": {
+        "x": -298.71920709129154,
+        "y": -487.28706731887695,
+        "width": 38.39541547277936,
+        "height": 27.793696275071632
+      },
+      "window": {
+        "x": -299.52149935490183,
+        "y": -493.39021918134114,
+        "width": 40,
+        "height": 40
+      },
+      "coldComponentIds": 7,
+      "pagedComponentIds": 7,
+      "coldCodeIds": 14,
+      "pagedCodeIds": 10
+    },
+    {
+      "id": "component:apps-web-src-inspector-scan-one-pager-ts",
+      "coldLiveCodeDifferences": [],
+      "coldLiveCodeMembershipEqual": true,
+      "expectedInWindow": [
+        "code:apps-web-src-inspector-scan-one-pager-ts:build-scan-one-pager-input",
+        "code:apps-web-src-inspector-scan-one-pager-ts:by-id",
+        "code:apps-web-src-inspector-scan-one-pager-ts:compare-id",
+        "code:apps-web-src-inspector-scan-one-pager-ts:graph-relation-kinds",
+        "code:apps-web-src-inspector-scan-one-pager-ts:is-container-kind",
+        "code:apps-web-src-inspector-scan-one-pager-ts:mermaid-title-for-band",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-leak",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-leaks-secrets-or-host-paths",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-max-nodes",
+        "code:apps-web-src-inspector-scan-one-pager-ts:select-graph-entities",
+        "code:apps-web-src-inspector-scan-one-pager-ts:serialize-one-pager-mermaid",
+        "code:apps-web-src-inspector-scan-one-pager-ts:structural-system-summary"
+      ],
+      "missingInWindow": [],
+      "sharedChanges": [],
+      "source": {
+        "x": -57.88962079702708,
+        "y": -631.2649819896903,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": -15.384876964009997,
+        "y": -610.0126100731818
+      },
+      "cold": {
+        "x": -57.88962079702708,
+        "y": -631.2649819896903,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": -57.88962079702708,
+        "y": -631.2649819896903,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": -57.88962079702708,
+        "y": -631.2649819896903,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": -63.8089457319183,
+        "y": -635.3707762622936,
+        "width": 96.84813753581663,
+        "height": 50.71633237822349
+      },
+      "pagedCode": {
+        "x": -63.8089457319183,
+        "y": -635.3707762622936,
+        "width": 96.84813753581663,
+        "height": 50.71633237822349
+      },
+      "window": {
+        "x": -35.38487696400998,
+        "y": -630.0126100731818,
+        "width": 40,
+        "height": 40
+      },
+      "coldComponentIds": 7,
+      "pagedComponentIds": 7,
+      "coldCodeIds": 33,
+      "pagedCodeIds": 19
+    }
+  ],
+  "moduleHashes": {
+    "packages/architecture/dist/c4.js": "e0d0d648fcf353eb1c92f929894aad0729bc94c15554110bebb8cac408769fb2",
+    "packages/scene-compiler/dist/compile-c4.js": "bf518a1bced74bd9e858dbec3a52c00947cf3812a1baacaed07bb40c353e8620",
+    "apps/web/src/renderer/goldenC4Scene.ts": "24abbb69a63f2d3b75db23834c4d93a5f902148f2ff6f2caaa30dc5fbe994218",
+    "apps/web/src/renderer/scanFixture.ts": "ca9d92a3020a9a9d52b17d2d604ff7782b6194e78a983595ef284ebce82f0b93"
+  },
+  "visualStatus": "untested"
+}

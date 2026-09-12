@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { compensateSemanticMorphCamera } from '../semantic/semanticLens';
-import { createCameraPublisher, focusCameraPreservingAnchor, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAroundWorldAnchor, zoomCameraAt } from './cameraController';
+import { createCameraPublicationEchoGuard, createCameraPublisher, focusCameraPreservingAnchor, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAroundWorldAnchor, zoomCameraAt } from './cameraController';
 
 describe('camera controls', () => {
   it('keeps the cursor over the same world point while zooming', () => {
@@ -77,6 +77,50 @@ describe('spatial continuity', () => {
 });
 
 describe('camera persistence publisher', () => {
+  it('recognizes only its exact published object as a React echo', () => {
+    const guard = createCameraPublicationEchoGuard();
+    const published = { x: 12, y: 34, zoom: 1.25 };
+    const sameCoordinatesFromNavigation = { ...published };
+
+    guard.markPublished(published);
+    expect(guard.consumePublished(sameCoordinatesFromNavigation)).toBe(false);
+    expect(guard.consumePublished(published)).toBe(true);
+    expect(guard.consumePublished(published)).toBe(false);
+  });
+
+  it('does not let an invalidated publisher update mask external navigation', () => {
+    const guard = createCameraPublicationEchoGuard();
+    const published = { x: 12, y: 34, zoom: 1.25 };
+
+    guard.markPublished(published);
+    guard.discardPublished();
+    expect(guard.consumePublished(published)).toBe(false);
+  });
+
+  it('ignores a stale published echo while retaining newer publication identity and external commands', () => {
+    const guard = createCameraPublicationEchoGuard();
+    const stalePublishedA = { x: -220, y: -361, zoom: 1.4968528 };
+    const newerLiveB = { x: -224, y: -361, zoom: 1.5526246 };
+    const externalNavigation = { x: 80, y: 40, zoom: 2.05 };
+
+    // A root render may ask before Canvas consumes the echo; both publisher
+    // identities must remain available until their matching React updates land.
+    guard.markPublished(stalePublishedA);
+    guard.markPublished(newerLiveB);
+    expect(guard.isPublished(stalePublishedA)).toBe(true);
+    expect(guard.isPublished(newerLiveB)).toBe(true);
+
+    // Canvas has already rendered B when React echoes the old A publication.
+    // Consuming A means the caller keeps B instead of syncing back to A.
+    expect(guard.consumePublished(stalePublishedA)).toBe(true);
+    expect(guard.isPublished(newerLiveB)).toBe(true);
+
+    // A separate object is a real navigation command, even during a gesture.
+    expect(guard.consumePublished(externalNavigation)).toBe(false);
+    guard.discardPublished();
+    expect(guard.consumePublished(newerLiveB)).toBe(false);
+  });
+
   it('publishes only the exact latest live camera after input settles', () => {
     vi.useFakeTimers();
     const publish = vi.fn();

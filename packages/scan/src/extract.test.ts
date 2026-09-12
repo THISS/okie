@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateArchitectureExtraction } from "@okie/architecture";
+import { adaptArchitectureExtraction, validateArchitectureExtraction } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import {
   cargoPathDependencies,
@@ -292,7 +292,7 @@ const readSymbolFile = (path: string): string => {
   return text;
 };
 
-test("symbol pass derives same-file and named-import code→code 'uses' relations with reference evidence", () => {
+test("symbol pass separates direct calls from generic uses with reference evidence", () => {
   const extraction = extractArchitecture({
     discovery: symbolDiscovery(),
     readFile: readSymbolFile,
@@ -300,18 +300,18 @@ test("symbol pass derives same-file and named-import code→code 'uses' relation
     systemSlug: "acme",
   });
   assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  const calls = extraction.relations.filter(relation => relation.kind === "calls");
   const uses = extraction.relations.filter(relation => relation.kind === "uses");
-  const pairs = uses.map(relation => [relation.from, relation.to]);
-  // Same-file: alpha → helper. Cross-file: beta and shorthand → alpha (through the alias).
-  assert.deepEqual(pairs.sort(), [
+  assert.deepEqual(calls.map(relation => [relation.from, relation.to]).sort(), [
     ["code:pkg-a-src-a-ts:alpha", "code:pkg-a-src-a-ts:helper"],
     ["code:pkg-a-src-b-ts:beta", "code:pkg-a-src-a-ts:alpha"],
-    ["code:pkg-a-src-b-ts:shorthand", "code:pkg-a-src-a-ts:alpha"],
   ].sort());
+  const pairs = uses.map(relation => [relation.from, relation.to]);
+  assert.deepEqual(pairs, [["code:pkg-a-src-b-ts:shorthand", "code:pkg-a-src-a-ts:alpha"]]);
   // `input.alpha` (property access) and the parameter binding never count as references.
   assert.ok(!pairs.some(([from]) => from === "code:pkg-a-src-b-ts:delta"));
   // beta references al twice on one line → evidence dedups to the reference site.
-  const beta = uses.find(relation => relation.from === "code:pkg-a-src-b-ts:beta")!;
+  const beta = calls.find(relation => relation.from === "code:pkg-a-src-b-ts:beta")!;
   assert.equal(beta.evidence[0]!.source.path, "pkg/a/src/b.ts");
   assert.equal(beta.evidence[0]!.source.startLine, 2);
 });
@@ -324,13 +324,64 @@ test("public surface drops relations whose endpoint folded away, keeping the pub
     systemSlug: "acme",
     codeSurface: "public",
   });
-  const uses = extraction.relations.filter(relation => relation.kind === "uses");
-  const pairs = uses.map(relation => [relation.from, relation.to]);
+  const pairs = extraction.relations
+    .filter(relation => relation.kind === "uses" || relation.kind === "calls")
+    .map(relation => [relation.from, relation.to]);
   // helper is private → alpha→helper disappears; the public cross-file edges stay.
   assert.deepEqual(pairs.sort(), [
     ["code:pkg-a-src-b-ts:beta", "code:pkg-a-src-a-ts:alpha"],
     ["code:pkg-a-src-b-ts:shorthand", "code:pkg-a-src-a-ts:alpha"],
   ].sort());
+});
+
+test("symbol pass resolves default, namespace and re-export aliases while respecting shadowing and recursion", () => {
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "pkg/a/src/a.ts": [
+      "export function named() { return 1; }",
+      "export default function defaulted() { return named(); }",
+      "export { named as apiAlias };",
+    ].join("\n"),
+    "pkg/a/src/barrel.ts": [
+      "export { default as renamedDefault, named as throughAlias } from './a.js';",
+      "export * from './a.js';",
+      "export { loop } from './cycle.js';",
+    ].join("\n"),
+    "pkg/a/src/cycle.ts": "export { loop } from './barrel.js';\n",
+    "pkg/a/src/b.ts": [
+      "import def, { apiAlias } from './a.js';",
+      "import * as barrel from './barrel.js';",
+      "export function caller() {",
+      "  const apiAlias = () => 0;",
+      "  return def() + barrel.throughAlias() + barrel.renamedDefault + apiAlias();",
+      "}",
+      "export function recurse(n: number) { return n ? recurse(n - 1) : 0; }",
+      "export function typed(value: apiAlias) { return value; }",
+    ].join("\n"),
+  };
+  const discovery: Discovery = {
+    sourceFiles: ["pkg/a/src/a.ts", "pkg/a/src/barrel.ts", "pkg/a/src/cycle.ts", "pkg/a/src/b.ts"],
+    units: [{ kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" }],
+    unitByFile: new Map([["pkg/a/src/a.ts", "pkg/a"], ["pkg/a/src/barrel.ts", "pkg/a"], ["pkg/a/src/cycle.ts", "pkg/a"], ["pkg/a/src/b.ts", "pkg/a"]]),
+    unitByPackageName: new Map([["@acme/a", "pkg/a"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  const extraction = extractArchitecture({
+    discovery,
+    readFile: path => files[path]!,
+    systemName: "Acme",
+    systemSlug: "acme",
+  });
+  assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  const calls = extraction.relations.filter(relation => relation.kind === "calls").map(relation => [relation.from, relation.to]);
+  assert.ok(calls.some(pair => pair[0] === "code:pkg-a-src-b-ts:caller" && pair[1] === "code:pkg-a-src-a-ts:defaulted"));
+  assert.ok(calls.some(pair => pair[0] === "code:pkg-a-src-b-ts:caller" && pair[1] === "code:pkg-a-src-a-ts:named"));
+  assert.ok(calls.some(pair => pair[0] === "code:pkg-a-src-b-ts:recurse" && pair[1] === "code:pkg-a-src-b-ts:recurse"));
+  assert.equal(calls.some(pair => pair[0] === "code:pkg-a-src-b-ts:caller" && pair[1] === "code:pkg-a-src-a-ts:named"), true);
+  const callerToNamed = extraction.relations.find(relation => relation.kind === "calls"
+    && relation.from === "code:pkg-a-src-b-ts:caller" && relation.to === "code:pkg-a-src-a-ts:named")!;
+  assert.equal(callerToNamed.evidence.length, 1, "shadowed apiAlias must not add a second call");
+  assert.equal(extraction.relations.some(relation => relation.from === "code:pkg-a-src-b-ts:typed"), false);
 });
 
 test("symbol relations are independent of source-file order", () => {
@@ -343,6 +394,67 @@ test("symbol relations are independent of source-file order", () => {
     systemSlug: "acme",
   });
   assert.equal(JSON.stringify(forward), JSON.stringify(reversed));
+});
+
+test("symbol resolution keeps outer calls through block consts, but respects function-scoped vars and nested star ambiguity", () => {
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "pkg/a/src/root.ts": "export function target() {}\n",
+    "pkg/a/src/a.ts": "export function foo() {}\n",
+    "pkg/a/src/b.ts": "export function foo() {}\n",
+    "pkg/a/src/c.ts": "export function foo() {}\n",
+    "pkg/a/src/ambig.ts": "export * from './b.js';\nexport * from './c.js';\n",
+    "pkg/a/src/barrel.ts": "export * from './ambig.js';\nexport * from './a.js';\n",
+    "pkg/a/src/use.ts": [
+      "import { target } from './root.js';",
+      "import { foo } from './barrel.js';",
+      "export function outer() {",
+      "  if (true) { const target = () => 1; target(); }",
+      "  return target();",
+      "}",
+      "export function varShadowed() {",
+      "  if (true) { var target = () => 1; }",
+      "  return target();",
+      "}",
+      "export function unresolved() { return foo(); }",
+    ].join("\n"),
+  };
+  const paths = Object.keys(files).filter(path => path.endsWith(".ts"));
+  const discovery: Discovery = {
+    sourceFiles: paths,
+    units: [{ kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" }],
+    unitByFile: new Map(paths.map(path => [path, "pkg/a"])),
+    unitByPackageName: new Map([["@acme/a", "pkg/a"]]),
+    summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] },
+  };
+  const extraction = extractArchitecture({ discovery, readFile: path => files[path]!, systemName: "Acme", systemSlug: "acme" });
+  const calls = extraction.relations.filter(relation => relation.kind === "calls");
+  assert.ok(calls.some(relation => relation.from === "code:pkg-a-src-use-ts:outer" && relation.to === "code:pkg-a-src-root-ts:target"));
+  assert.equal(calls.some(relation => relation.from === "code:pkg-a-src-use-ts:varShadowed"), false);
+  assert.equal(extraction.relations.some(relation => relation.from === "code:pkg-a-src-use-ts:unresolved"), false);
+});
+
+test("manifest exposure distinguishes module exports, public API re-exports, and bin entrypoints", () => {
+  const files: Record<string, string> = {
+    "README.md": "# Acme",
+    "pkg/a/package.json": JSON.stringify({ exports: "./src/index.ts", main: "./missing.js", types: "./src/index.ts", bin: "./src/cli.ts" }),
+    "pkg/a/src/internal.ts": "export function helper() {}\nexport function api() {}\n",
+    "pkg/a/src/index.ts": "export { api as publicApi } from './internal.js';\n",
+    "pkg/a/src/cli.ts": "export function run() {}\n",
+  };
+  const paths = ["pkg/a/src/internal.ts", "pkg/a/src/index.ts", "pkg/a/src/cli.ts"];
+  const discovery: Discovery = { sourceFiles: paths, units: [{ kind: "member", dir: "pkg/a", name: "@acme/a", packageName: "@acme/a", evidencePath: "pkg/a" }], unitByFile: new Map(paths.map(path => [path, "pkg/a"])), unitByPackageName: new Map([["@acme/a", "pkg/a"]]), summary: { singlePackage: false, includedJs: false, skippedJsFiles: 0, skippedMembers: [] } };
+  const extraction = extractArchitecture({ discovery, readFile: path => files[path]!, systemName: "Acme", systemSlug: "acme" });
+  assert.deepEqual(validateArchitectureExtraction(extraction), []);
+  const byId = new Map(extraction.entities.map(entity => [entity.id, entity]));
+  assert.deepEqual(byId.get("code:pkg-a-src-internal-ts:helper")!.exposure?.map(value => value.kind), ["moduleExport"]);
+  assert.deepEqual(byId.get("code:pkg-a-src-internal-ts:api")!.exposure?.map(value => value.kind).sort(), ["moduleExport", "publicApi"]);
+  assert.deepEqual(byId.get("code:pkg-a-src-cli-ts:run")!.exposure?.map(value => value.kind).sort(), ["moduleExport"]);
+  const snapshot = adaptArchitectureExtraction(extraction, { snapshotId: "snapshot:acme", repositoryId: "repo:acme", commitSha: "abc123", generatedAt: "2026-01-01T00:00:00.000Z" });
+  const publicEvidence = snapshot.entities.find(entity => entity.id === "code:pkg-a-src-internal-ts:api")!.exposure!.find(value => value.kind === "publicApi")!.evidence;
+  assert.equal(publicEvidence.source.path, "pkg/a/package.json");
+  assert.equal(publicEvidence.source.commitSha, "abc123");
+  assert.equal(publicEvidence.reason, "package entrypoint export");
 });
 
 test("component names are container-relative while ids and evidence keep the full path", () => {
@@ -755,4 +867,34 @@ test("duplicates overlay writes edges onto existing snapshot ids only", () => {
     { from: "code:pkg-a-src-index-ts:alpha", to: "code:pkg-b-src-main-ts:beta" },
   ]);
   assert.deepEqual(again.relations, overlaid.relations);
+});
+
+function exposureFixture(manifest: object, sources: Record<string, string>, root = false) {
+  const dir = root ? "synthetic-root" : "pkg/a";
+  const paths = Object.keys(sources);
+  const discovery: Discovery = { sourceFiles: paths, units: [{ kind: root ? "root" : "member", dir, name: "a", packageName: "a", evidencePath: root ? "package.json" : dir }], unitByFile: new Map(paths.map(path => [path, dir])), unitByPackageName: new Map([["a", dir]]), summary: { singlePackage: root, includedJs: false, skippedJsFiles: 0, skippedMembers: [] } };
+  return extractArchitecture({ discovery, readFile: path => path === (root ? "package.json" : "pkg/a/package.json") ? JSON.stringify(manifest) : sources[path]!, systemName: "Acme", systemSlug: "acme" });
+}
+test("export-star-only package entrypoints expose reachable public declarations", () => {
+  const result = exposureFixture({ exports: "./src/index.ts" }, { "pkg/a/src/index.ts": "export * from './api.js'", "pkg/a/src/api.ts": "export function api() {}" });
+  assert.ok(result.entities.find(e => e.name === "api")?.exposure?.some(e => e.kind === "publicApi"));
+});
+test("package exports supersedes private main and types targets", () => {
+  const result = exposureFixture({ exports: "./src/index.ts", main: "./src/private.ts", types: "./src/private.ts" }, { "pkg/a/src/index.ts": "export function api() {}", "pkg/a/src/private.ts": "export function privateHelper() {}" });
+  assert.equal(result.entities.find(e => e.name === "privateHelper")?.exposure?.some(e => e.kind === "publicApi"), false);
+});
+test("bin identifies only the executable file, not uncalled exported functions", () => {
+  const result = exposureFixture({ bin: "./src/cli.ts" }, { "pkg/a/src/cli.ts": "export function neverCalled() {}\nconsole.log('cli')" });
+  assert.equal(result.entities.find(e => e.name === "neverCalled")?.exposure?.some(e => e.kind === "entryPoint"), false);
+  assert.ok(result.entities.find(e => e.kind === "component")?.exposure?.some(e => e.kind === "entryPoint"));
+});
+test("single package synthetic root resolves actual root manifest exports and bin", () => {
+  const result = exposureFixture({ exports: "./src/index.ts", bin: "./src/cli.ts" }, { "src/index.ts": "export function api() {}", "src/cli.ts": "console.log('cli')" }, true);
+  assert.ok(result.entities.find(e => e.name === "api")?.exposure?.some(e => e.kind === "publicApi"));
+  assert.ok(result.entities.find(e => e.sourceRefs[0]?.path === "src/cli.ts")?.exposure?.some(e => e.kind === "entryPoint"));
+});
+test("switch lexical declarations shadow outer calls across every case", () => {
+  const result = exposureFixture({}, { "pkg/a/src/index.ts": "function target() {}\nfunction run(n: number) { switch(n) { case 0: target(); break; case 1: let target = () => {}; target(); } }\nfunction outside() { target(); }" });
+  assert.equal(result.relations.some(r => r.from.endsWith(":run") && r.to.endsWith(":target")), false);
+  assert.ok(result.relations.some(r => r.from.endsWith(":outside") && r.to.endsWith(":target") && r.kind === "calls"));
 });

@@ -11,6 +11,7 @@ import {
   type ArchitectureSnapshot,
 } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
+import type { AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
 import { pathSlug, resolveCollisions, slug, typedId } from "./ids.js";
 import { rustTopLevelItems } from "./extract-rust.js";
 
@@ -148,28 +149,39 @@ export function topLevelDeclarations(sourceFile: ts.SourceFile): TopLevelDeclara
   return declarations;
 }
 
-/** Local name → the module specifier + exported name it binds (named relative imports only). */
+/** Local import name → the module export it binds. */
 export interface NamedImportBinding {
   specifier: string;
   exportedName: string;
+  namespace?: boolean;
 }
 
 /**
- * Named import bindings (`import { a, b as c } from './x'`) — the only import form
- * whose SYMBOL identity is syntactically knowable. Default and namespace imports
- * stay at file granularity (the existing component→component relation covers them).
+ * Import bindings with a syntactically known export identity. Namespace members are
+ * resolved only for direct property access (`ns.symbol`), never computed access.
  */
 export function namedImportBindings(sourceFile: ts.SourceFile): Map<string, NamedImportBinding> {
   const bindings = new Map<string, NamedImportBinding>();
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    const named = statement.importClause?.namedBindings;
-    if (!named || !ts.isNamedImports(named)) continue;
-    for (const element of named.elements) {
-      bindings.set(element.name.text, {
+    const clause = statement.importClause;
+    if (!clause) continue;
+    if (clause.name) {
+      bindings.set(clause.name.text, { specifier: statement.moduleSpecifier.text, exportedName: "default" });
+    }
+    if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) {
+      bindings.set(clause.namedBindings.name.text, {
         specifier: statement.moduleSpecifier.text,
-        exportedName: (element.propertyName ?? element.name).text,
+        exportedName: "*",
+        namespace: true,
       });
+    } else if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+      for (const element of clause.namedBindings.elements) {
+        bindings.set(element.name.text, {
+          specifier: statement.moduleSpecifier.text,
+          exportedName: (element.propertyName ?? element.name).text,
+        });
+      }
     }
   }
   return bindings;
@@ -200,24 +212,100 @@ function isDeclarationName(node: ts.Identifier): boolean {
 export interface SymbolReference {
   name: string;
   line: number;
+  kind: "uses" | "calls";
+  member?: string;
+}
+
+function hasBindingName(node: ts.Node, name: string): boolean {
+  if (ts.isIdentifier(node)) return node.text === name;
+  if (ts.isObjectBindingPattern(node) || ts.isArrayBindingPattern(node)) {
+    return node.elements.some(element => ts.isBindingElement(element) && hasBindingName(element.name, name));
+  }
+  return false;
+}
+
+function functionHasVarBinding(scope: ts.SignatureDeclaration, name: string): boolean {
+  const visit = (current: ts.Node): boolean => {
+    if (current !== scope && ts.isFunctionLike(current)) return false;
+    if (ts.isVariableDeclaration(current) && ts.isVariableDeclarationList(current.parent)
+      && (current.parent.flags & ts.NodeFlags.BlockScoped) === 0 && hasBindingName(current.name, name)) return true;
+    return ts.forEachChild(current, visit) === true;
+  };
+  return visit(scope);
+}
+
+/** True when a nested lexical binding hides a top-level/import candidate. */
+function isLexicallyShadowed(node: ts.Identifier, boundary: ts.Node): boolean {
+  const name = node.text;
+  for (let current: ts.Node | undefined = node.parent; current; current = current.parent) {
+    if (ts.isFunctionLike(current) && (current.parameters.some(parameter => hasBindingName(parameter.name, name))
+      || functionHasVarBinding(current, name))) return true;
+    if ((ts.isFunctionExpression(current) || ts.isClassExpression(current)) && current.name?.text === name) return true;
+    if ((ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current))
+      && current.initializer && ts.isVariableDeclarationList(current.initializer)
+      && current.initializer.declarations.some(declaration => hasBindingName(declaration.name, name))) return true;
+    if (ts.isCatchClause(current) && current.variableDeclaration && hasBindingName(current.variableDeclaration.name, name)) return true;
+    if (ts.isBlock(current) || ts.isCaseBlock(current)) {
+      const statements = ts.isCaseBlock(current) ? current.clauses.flatMap(clause => [...clause.statements]) : current.statements;
+      for (const statement of statements) {
+        if (ts.isVariableStatement(statement)
+          && statement.declarationList.declarations.some(declaration => hasBindingName(declaration.name, name))) return true;
+        if ((ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement))
+          && statement.name?.text === name) return true;
+      }
+    }
+    if (current === boundary) break;
+  }
+  return false;
+}
+
+function isTypeOnlyReference(node: ts.Identifier, boundary: ts.Node): boolean {
+  for (let current: ts.Node | undefined = node.parent; current; current = current.parent) {
+    if (ts.isTypeNode(current) || ts.isTypeQueryNode(current)) return true;
+    if (current === boundary) break;
+  }
+  return false;
+}
+
+function isDirectCallExpression(node: ts.Expression): boolean {
+  const parent = node.parent;
+  return ts.isCallExpression(parent) && parent.expression === node;
 }
 
 /**
  * Identifier references inside one top-level declaration whose names are in
- * `candidates` — the syntax-level "uses" signal. Deliberately name-based (no type
- * checker, per R1): a local shadowing a candidate name over-reports, a property
- * access under-reports; both are acceptable for an evidence-anchored usage graph.
+ * `candidates`. Calls are emitted only when the matched expression is directly in
+ * call position; all other proven references remain generic `uses` evidence.
  */
 export function symbolReferencesIn(
   sourceFile: ts.SourceFile,
   declaration: TopLevelDeclaration,
   candidates: ReadonlySet<string>,
+  namespaceCandidates: ReadonlySet<string> = new Set(),
 ): SymbolReference[] {
   const references: SymbolReference[] = [];
   const lineOf = (position: number): number => sourceFile.getLineAndCharacterOfPosition(position).line + 1;
   const visit = (node: ts.Node): void => {
-    if (ts.isIdentifier(node) && candidates.has(node.text) && !isDeclarationName(node)) {
-      references.push({ name: node.text, line: lineOf(node.getStart(sourceFile)) });
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)
+      && namespaceCandidates.has(node.expression.text) && !isLexicallyShadowed(node.expression, declaration.node)) {
+      references.push({
+        name: node.expression.text,
+        member: node.name.text,
+        line: lineOf(node.getStart(sourceFile)),
+        kind: isDirectCallExpression(node) ? "calls" : "uses",
+      });
+      ts.forEachChild(node, child => {
+        if (child !== node.expression && child !== node.name) visit(child);
+      });
+      return;
+    }
+    if (ts.isIdentifier(node) && candidates.has(node.text) && !isDeclarationName(node)
+      && !isLexicallyShadowed(node, declaration.node) && !isTypeOnlyReference(node, declaration.node)) {
+      references.push({
+        name: node.text,
+        line: lineOf(node.getStart(sourceFile)),
+        kind: isDirectCallExpression(node) ? "calls" : "uses",
+      });
     }
     ts.forEachChild(node, visit);
   };
@@ -719,6 +807,7 @@ interface EntityDescriptor {
    * Inspector/detail — not L1 cards.
    */
   technology?: string[];
+  exposure?: Array<{ kind: "moduleExport" | "publicApi" | "entryPoint"; evidence: ArchitectureExtractionEvidence }>;
   /** Observed McCabe for function-like code entities — snapshot overlay, not extraction. */
   cyclomaticComplexity?: number;
   /** Token+AST clone fingerprint for function-like code entities — snapshot overlay. */
@@ -730,7 +819,7 @@ interface RelationDescriptor {
   desiredId: string;
   fromKey: string;
   toKey: string;
-  kind?: "uses";
+  kind?: "uses" | "calls";
   evidence: ArchitectureExtractionEvidence[];
 }
 
@@ -747,6 +836,8 @@ function symbolRelationGroup(path: string, name: string): string {
 }
 
 export interface ExtractInput {
+  /** Semantic facts resolved against the same committed source tree. */
+  languageAnalysis?: LanguageAnalysis;
   discovery: Discovery;
   readFile: (repoRelativePath: string) => string;
   systemName?: string;
@@ -765,7 +856,7 @@ function finalizeEvidence(evidence: readonly ArchitectureExtractionEvidence[]): 
   const byKey = new Map<string, ArchitectureExtractionEvidence>();
   for (const item of evidence) {
     const source = item.source;
-    const key = `${source.path} ${source.startLine ?? ""} ${source.endLine ?? ""}`;
+    const key = `${source.path}::${source.startLine ?? ""}::${source.endLine ?? ""}`;
     if (!byKey.has(key)) byKey.set(key, item);
   }
   return [...byKey.values()]
@@ -1007,7 +1098,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     desiredId: string,
     naturalKey: string,
     evidence: ArchitectureExtractionEvidence,
-    kind?: "uses",
+    kind?: "uses" | "calls",
   ): void => {
     let descriptor = relationDescriptors.get(naturalKey);
     if (!descriptor) {
@@ -1028,7 +1119,50 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     /** Declaration name → its entity naturalKey (first declaration wins on overloads). */
     keyByName: Map<string, string>;
     imports: Map<string, NamedImportBinding>;
+    exports: Map<string, ExportBinding>;
+    exportStars: string[];
   }
+
+  interface ExportBinding {
+    localName?: string;
+    specifier?: string;
+    exportedName?: string;
+  }
+  const moduleExportBindings = (sourceFile: ts.SourceFile): { bindings: Map<string, ExportBinding>; stars: string[] } => {
+    const bindings = new Map<string, ExportBinding>();
+    const stars: string[] = [];
+    for (const statement of sourceFile.statements) {
+      const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) ?? [] : [];
+      const exported = modifiers.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword);
+      const isDefault = modifiers.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword);
+      if (exported && (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) && statement.name) {
+        bindings.set(isDefault ? "default" : statement.name.text, { localName: statement.name.text });
+      } else if (exported && ts.isVariableStatement(statement)) {
+        for (const declaration of statement.declarationList.declarations) {
+          if (ts.isIdentifier(declaration.name)) bindings.set(declaration.name.text, { localName: declaration.name.text });
+        }
+      } else if (exported && (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isEnumDeclaration(statement))) {
+        bindings.set(statement.name.text, { localName: statement.name.text });
+      } else if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
+        bindings.set("default", { localName: statement.expression.text });
+      } else if (ts.isExportDeclaration(statement) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
+        if (!statement.exportClause) stars.push(statement.moduleSpecifier.text);
+        else if (ts.isNamedExports(statement.exportClause)) {
+          for (const element of statement.exportClause.elements) {
+            bindings.set(element.name.text, {
+              specifier: statement.moduleSpecifier.text,
+              exportedName: (element.propertyName ?? element.name).text,
+            });
+          }
+        }
+      } else if (ts.isExportDeclaration(statement) && !statement.moduleSpecifier && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+        for (const element of statement.exportClause.elements) {
+          bindings.set(element.name.text, { localName: (element.propertyName ?? element.name).text });
+        }
+      }
+    }
+    return { bindings, stars };
+  };
   const fileScans: FileScan[] = [];
 
   const unitDirs = discovery.units.map(unit => unit.dir);
@@ -1080,13 +1214,18 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
         kind: "code",
         name: declaration.name,
         parentKey: file,
+        ...(declaration.exported ? { exposure: [{
+          kind: "moduleExport",
+          evidence: { source: { path: file, symbol: declaration.name, startLine: declaration.startLine, endLine: declaration.endLine }, reason: "declared module export" },
+        }] } : {}),
         sourceRefs: [{ path: file, symbol: declaration.name, startLine: declaration.startLine, endLine: declaration.endLine }],
         ...(cyclomaticComplexity !== undefined ? { cyclomaticComplexity } : {}),
         ...(cloneFingerprint !== undefined ? { cloneFingerprint } : {}),
       });
       if (!keyByName.has(declaration.name)) keyByName.set(declaration.name, naturalKey);
     });
-    fileScans.push({ file, sourceFile, kept: declarations, keyByName, imports: namedImportBindings(sourceFile) });
+    const moduleExports = moduleExportBindings(sourceFile);
+    fileScans.push({ file, sourceFile, kept: declarations, keyByName, imports: namedImportBindings(sourceFile), exports: moduleExports.bindings, exportStars: moduleExports.stars });
 
     for (const dependency of [...moduleImports(sourceFile), ...dynamicImports(sourceFile)]) {
       const evidence: ArchitectureExtractionEvidence = {
@@ -1131,37 +1270,162 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
   // namespace imports, cross-package imports, and property accesses stay at the
   // file/container granularity the import relations above already carry.
   const scanByFile = new Map(fileScans.map(scan => [scan.file, scan]));
+  type ResolvedExport = { key: string; file: string; name: string } | "ambiguous" | undefined;
+  const resolveExport = (scan: FileScan, exportedName: string, seen = new Set<string>()): ResolvedExport => {
+    const visitKey = `${scan.file}:${exportedName}`;
+    if (seen.has(visitKey)) return undefined;
+    seen.add(visitKey);
+    const binding = scan.exports.get(exportedName);
+    if (binding?.localName) {
+      const key = scan.keyByName.get(binding.localName);
+      if (key) return { key, file: scan.file, name: binding.localName };
+      const imported = scan.imports.get(binding.localName);
+      if (imported?.specifier.startsWith(".") && !imported.namespace) {
+        const targetFile = resolveRelativeImport(scan.file, imported.specifier, fileSet);
+        const targetScan = targetFile ? scanByFile.get(targetFile) : undefined;
+        return targetScan ? resolveExport(targetScan, imported.exportedName, seen) : undefined;
+      }
+      return undefined;
+    }
+    const resolveFrom = (specifier: string, name: string): ResolvedExport => {
+      if (!specifier.startsWith(".")) return undefined;
+      const targetFile = resolveRelativeImport(scan.file, specifier, fileSet);
+      const targetScan = targetFile ? scanByFile.get(targetFile) : undefined;
+      return targetScan ? resolveExport(targetScan, name, seen) : undefined;
+    };
+    if (binding?.specifier && binding.exportedName) return resolveFrom(binding.specifier, binding.exportedName);
+    if (exportedName === "default") return undefined;
+    const resolved = scan.exportStars
+      .map(specifier => resolveFrom(specifier, exportedName))
+    if (resolved.includes("ambiguous")) return "ambiguous";
+    const targets = resolved.filter((target): target is { key: string; file: string; name: string } => Boolean(target));
+    const unique = new Map(targets.map(target => [target.key, target]));
+    return unique.size === 1 ? unique.values().next().value : unique.size > 1 ? "ambiguous" : undefined;
+  };
+  const exportNames = (scan: FileScan, seen = new Set<string>()): Set<string> => {
+    if (seen.has(scan.file)) return new Set();
+    seen.add(scan.file);
+    const names = new Set(scan.exports.keys());
+    for (const specifier of scan.exportStars) {
+      if (!specifier.startsWith(".")) continue;
+      const file = resolveRelativeImport(scan.file, specifier, fileSet);
+      const target = file ? scanByFile.get(file) : undefined;
+      if (target) for (const name of exportNames(target, seen)) if (name !== "default") names.add(name);
+    }
+    return names;
+  };
+  const descriptorByKey = new Map(entityDescriptors.map(descriptor => [descriptor.naturalKey, descriptor]));
+  const stringsIn = (value: unknown): string[] => {
+    if (typeof value === "string") return [value];
+    if (Array.isArray(value)) return value.flatMap(stringsIn);
+    if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).flatMap(stringsIn);
+    return [];
+  };
+  for (const unit of discovery.units.filter(unit => unit.kind === "member" || unit.kind === "root")) {
+    const manifestPath = unit.kind === "root" ? "package.json" : `${unit.dir}/package.json`;
+    let manifest: Record<string, unknown>;
+    try { manifest = JSON.parse(readFile(manifestPath)) as Record<string, unknown>; } catch { continue; }
+    const publicPaths = Object.hasOwn(manifest, "exports") ? stringsIn(manifest.exports) : [...stringsIn(manifest.main), ...stringsIn(manifest.types)];
+    const bins = stringsIn(manifest.bin);
+    for (const [kind, paths] of [["publicApi", publicPaths], ["entryPoint", bins]] as const) {
+      for (const path of paths) {
+        const file = resolveRelativeImport(manifestPath, path, fileSet);
+        const scan = file ? scanByFile.get(file) : undefined;
+        if (!scan) continue;
+        const evidence: ArchitectureExtractionEvidence = { source: { path: manifestPath }, reason: kind === "publicApi" ? "package entrypoint export" : "package bin entrypoint" };
+        if (kind === "entryPoint") {
+          const descriptor = descriptorByKey.get(scan.file);
+          if (descriptor) descriptor.exposure = [...(descriptor.exposure ?? []), { kind, evidence }];
+          continue;
+        }
+        for (const exportedName of exportNames(scan)) {
+          const resolved = resolveExport(scan, exportedName);
+          if (!resolved || resolved === "ambiguous") continue;
+          const descriptor = descriptorByKey.get(resolved.key);
+          if (descriptor) descriptor.exposure = [...(descriptor.exposure ?? []), { kind, evidence }];
+        }
+      }
+    }
+  }
+  const semanticFiles = new Set(input.languageAnalysis?.coverage.flatMap(item => item.indexedFiles) ?? []);
   for (const scan of fileScans) {
+    if (semanticFiles.has(scan.file)) continue;
     if (scan.kept.length === 0) continue;
     const candidates = new Set([...scan.keyByName.keys(), ...scan.imports.keys()]);
     if (candidates.size === 0) continue;
     scan.kept.forEach((declaration, index) => {
       const fromKey = `${scan.file}#${index}`;
-      for (const reference of symbolReferencesIn(scan.sourceFile, declaration, candidates)) {
-        let toKey: string | undefined;
-        let target: { file: string; name: string } | undefined;
+      const namespaces = new Set([...scan.imports.entries()]
+        .filter(([, binding]) => binding.namespace)
+        .map(([name]) => name));
+      for (const reference of symbolReferencesIn(scan.sourceFile, declaration, candidates, namespaces)) {
+        let target: { key: string; file: string; name: string } | undefined;
         const binding = scan.imports.get(reference.name);
         if (binding) {
           if (!binding.specifier.startsWith(".")) continue;
           const targetFile = resolveRelativeImport(scan.file, binding.specifier, fileSet);
-          if (!targetFile || targetFile === scan.file) continue;
-          toKey = scanByFile.get(targetFile)?.keyByName.get(binding.exportedName);
-          target = { file: targetFile, name: binding.exportedName };
+          const targetScan = targetFile ? scanByFile.get(targetFile) : undefined;
+          if (!targetScan) continue;
+          const resolved = binding.namespace
+            ? (reference.member ? resolveExport(targetScan, reference.member) : undefined)
+            : resolveExport(targetScan, binding.exportedName);
+          target = resolved === "ambiguous" ? undefined : resolved;
         } else {
-          toKey = scan.keyByName.get(reference.name);
-          target = { file: scan.file, name: reference.name };
+          const key = scan.keyByName.get(reference.name);
+          target = key ? { key, file: scan.file, name: reference.name } : undefined;
         }
-        if (!toKey || toKey === fromKey) continue;
+        if (!target || (target.key === fromKey && reference.kind !== "calls")) continue;
         addRelation(
           fromKey,
-          toKey,
+          target.key,
           typedId("relation", symbolRelationGroup(scan.file, declaration.name), symbolRelationGroup(target.file, target.name)),
-          `sym:${fromKey}->${toKey}`,
+          `sym:${reference.kind}:${fromKey}->${target.key}`,
           { source: { path: scan.file, startLine: reference.line, endLine: reference.line } },
-          "uses",
+          reference.kind,
         );
       }
     });
+  }
+
+  if (input.languageAnalysis) {
+    // Resolve both endpoints through source spans. Semantic names are not unique
+    // (overloads, aliases, methods), and public-only filtering can hide a target.
+    const ownerOf = (location: AnalysisLocation, definition = false): EntityDescriptor | undefined => {
+      const scan = scanByFile.get(location.path);
+      if (scan && location.startOffset !== undefined) {
+        const index = scan.kept.findIndex(declaration => (definition
+          ? declaration.node.getStart(scan.sourceFile) === location.startOffset!
+          : declaration.node.getStart(scan.sourceFile) <= location.startOffset!)
+          && declaration.node.getEnd() >= (location.endOffset ?? location.startOffset!));
+        return index >= 0 ? descriptorByKey.get(`${location.path}#${index}`) : undefined;
+      }
+      return entityDescriptors.filter(descriptor => descriptor.kind === "code" && descriptor.sourceRefs.some(ref =>
+        ref.path === location.path && ref.startLine !== undefined && ref.endLine !== undefined
+        && ref.startLine <= location.startLine && ref.endLine >= location.endLine))
+        .sort((a, b) => (a.sourceRefs[0]!.endLine! - a.sourceRefs[0]!.startLine!)
+          - (b.sourceRefs[0]!.endLine! - b.sourceRefs[0]!.startLine!))[0];
+    };
+    const definitions = new Map(input.languageAnalysis.definitions.map(definition => [definition.symbol, definition]));
+    for (const reference of input.languageAnalysis.references) {
+      const definition = definitions.get(reference.symbol);
+      if (!definition) continue;
+      const from = ownerOf(reference);
+      const to = ownerOf(definition, true);
+      if (reference.path !== definition.path && fileSet.has(reference.path) && fileSet.has(definition.path)) {
+        addRelation(reference.path, definition.path, typedId("relation", reference.path, definition.path),
+          `comp:${reference.path}->${definition.path}`, { source: { path: reference.path, startLine: reference.startLine, endLine: reference.endLine } });
+      }
+      if (!from || !to || (from.naturalKey === to.naturalKey && reference.kind !== "calls")) continue;
+      addRelation(from.naturalKey, to.naturalKey,
+        typedId("relation", symbolRelationGroup(reference.path, from.name), symbolRelationGroup(definition.path, to.name)),
+        `sym:${reference.kind}:${from.naturalKey}->${to.naturalKey}`,
+        { source: { path: reference.path, startLine: reference.startLine, endLine: reference.endLine } }, reference.kind);
+    }
+    for (const module of input.languageAnalysis.modules) {
+      if (module.path === module.targetPath || !fileSet.has(module.path) || !fileSet.has(module.targetPath)) continue;
+      addRelation(module.path, module.targetPath, typedId("relation", module.path, module.targetPath),
+        `comp:${module.path}->${module.targetPath}`, { source: { path: module.path, startLine: module.startLine, endLine: module.endLine } });
+    }
   }
 
   // Rust crate wiring is an observed fact in Cargo.toml — `path = "…"`
@@ -1199,6 +1463,10 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     ...(descriptor.parentKey !== undefined ? { parentId: idByKey.get(descriptor.parentKey)! } : {}),
     name: descriptor.name,
     ...(descriptor.technology?.length ? { technology: [...descriptor.technology] } : {}),
+    ...(descriptor.exposure?.length ? { exposure: descriptor.exposure.filter((entry, index, entries) =>
+      entries.findIndex(candidate => candidate.kind === entry.kind
+        && candidate.evidence.source.path === entry.evidence.source.path
+        && candidate.evidence.reason === entry.evidence.reason) === index) } : {}),
     sourceRefs: descriptor.sourceRefs,
   }));
   const cyclomaticById = new Map<string, number>();

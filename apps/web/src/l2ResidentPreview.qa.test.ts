@@ -59,8 +59,8 @@ describe('CLA-120: cap L2 resident preview pills +N more', () => {
     expect(C4_SCAN_L2_RESIDENT_PREVIEW_PILLS).toBe(10);
     expect(fixtureSource).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
     expect(fixtureSource).toContain('maxL2PreviewPillsPerOwner');
-    expect(appSource).toContain('+{omittedChildNodes.length} more');
-    expect(appSource).toContain('data-testid="inspector-omitted-nodes-more"');
+    expect(appSource).toContain('`Show all ${inspectorChildren.length}`');
+    expect(appSource).toContain("aria-expanded={expandedDetailLists.has('children')}");
   });
 
   it('scan L2 options cap preview pills; Open inside does not inherit the cap', () => {

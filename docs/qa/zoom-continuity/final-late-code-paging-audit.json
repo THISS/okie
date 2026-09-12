@@ -1,0 +1,82 @@
+{
+  "snapshotId": "snapshot:okie:722ea2862304",
+  "targetAspect": 1.6,
+  "hashes": {
+    "../../packages/architecture/dist/c4.js": "66ebcd838e67bc70a0581dd8a0f2567ed050201d326dc8fbe27c268a3c9f997d",
+    "../../packages/scene-compiler/dist/compile-c4.js": "e79886726d1997e8fae7bb481a2ef49d0e2c097f9034412c570bd312bcbd08fb",
+    "./src/renderer/scanFixture.ts": "ca9d92a3020a9a9d52b17d2d604ff7782b6194e78a983595ef284ebce82f0b93"
+  },
+  "rows": [
+    {
+      "id": "component:apps-web-src-webmcp-ts",
+      "lateId": "code:apps-web-src-webmcp-ts:webmcp-host-headers",
+      "lateBounds": {
+        "x": -14.987246796313002,
+        "y": -278.61466340281123,
+        "width": 16.42788920725883,
+        "height": 11.044542849700443
+      },
+      "lateSelected": true,
+      "expectedInWindow": [],
+      "missingInWindow": [],
+      "sharedChanges": [],
+      "source": {
+        "x": -145.93516159399098,
+        "y": -358.02020020600906,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": -103.43041776097391,
+        "y": -336.7678282895005
+      },
+      "cold": {
+        "x": -145.93516159399098,
+        "y": -358.02020020600906,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": -145.93516159399098,
+        "y": -358.02020020600906,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": -145.93516159399098,
+        "y": -358.02020020600906,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": -210.30720859191945,
+        "y": -407.9712666849159,
+        "width": 213.75358166189108,
+        "height": 142.40687679083095
+      },
+      "pagedCode": {
+        "x": -210.30720859191945,
+        "y": -407.9712666849159,
+        "width": 213.75358166189108,
+        "height": 142.40687679083095
+      },
+      "window": {
+        "x": -7.7733021926835875,
+        "y": -274.09239197796103,
+        "width": 2,
+        "height": 2
+      },
+      "coldComponentIds": 11,
+      "pagedComponentIds": 11,
+      "coldCodeIds": 63,
+      "pagedCodeIds": 15
+    }
+  ],
+  "moduleHashes": {
+    "packages/architecture/dist/c4.js": "66ebcd838e67bc70a0581dd8a0f2567ed050201d326dc8fbe27c268a3c9f997d",
+    "packages/scene-compiler/dist/compile-c4.js": "e79886726d1997e8fae7bb481a2ef49d0e2c097f9034412c570bd312bcbd08fb",
+    "apps/web/src/renderer/goldenC4Scene.ts": "24abbb69a63f2d3b75db23834c4d93a5f902148f2ff6f2caaa30dc5fbe994218",
+    "apps/web/src/renderer/scanFixture.ts": "ca9d92a3020a9a9d52b17d2d604ff7782b6194e78a983595ef284ebce82f0b93"
+  },
+  "visualStatus": "untested"
+}

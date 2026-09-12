@@ -1,4 +1,4 @@
-import type { Camera } from './renderer/types';
+import type { AtlasScene, Camera, ProjectionOverride } from './renderer/types';
 
 /**
  * Per-frame camera bridge.
@@ -13,13 +13,18 @@ import type { Camera } from './renderer/types';
  * camera to imperative subscribers WITHOUT waking React 60×/sec. There is exactly one
  * CanvasViewport, so a module-scoped bridge is sufficient; subscribers update the DOM directly.
  */
-type LiveCameraListener = (camera: Camera) => void;
+export type LiveCameraFrame = {
+  scene: AtlasScene;
+  projectionOverride?: ProjectionOverride;
+  reduceMotion: boolean;
+};
+type LiveCameraListener = (camera: Camera, frame?: LiveCameraFrame) => void;
 
 const listeners = new Set<LiveCameraListener>();
 
 /** Broadcast the per-frame rendered camera to every imperative subscriber. Called from the render loop. */
-export function publishLiveCamera(camera: Camera): void {
-  for (const listener of listeners) listener(camera);
+export function publishLiveCamera(camera: Camera, frame?: LiveCameraFrame): void {
+  for (const listener of listeners) listener(camera, frame);
 }
 
 /** Subscribe to per-frame camera updates; returns an unsubscribe function. */

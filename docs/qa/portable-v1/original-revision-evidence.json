@@ -1,0 +1,38 @@
+{
+  "commit": "722ea2862304eae579a7b354bc7cfa0697f4e997",
+  "entityCount": 3121,
+  "sourceCount": 172,
+  "target": "code:crates-atlas-protocol-src-geometry-rs:is-valid-color",
+  "uniqueCallers": 4,
+  "callSites": [
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 51
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 117
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 133
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 155
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 168
+    },
+    {
+      "path": "crates/atlas-protocol/src/scene.rs",
+      "line": 320
+    },
+    {
+      "path": "crates/atlas-protocol/src/timeline.rs",
+      "line": 153
+    }
+  ],
+  "artifact": "/tmp/okie-portable-original-revision/atlas.okie.json"
+}

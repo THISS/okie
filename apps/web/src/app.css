@@ -333,6 +333,21 @@ a.icon-button { text-decoration: none; }
 .semantic-mermaid-canvas { position: relative; min-height: 320px; display: grid; place-items: center; overflow: auto; border: 1px solid var(--atlas-line); border-radius: 9px; background: radial-gradient(circle at 50% 48%, rgba(121,223,212,.035), transparent 58%), #080b0c; }
 .semantic-mermaid-svg { width: 100%; min-width: 0; display: grid; place-items: center; padding: 20px; }
 .semantic-mermaid-svg:empty { display: none; }
+.semantic-mermaid-expand { position: absolute; inset: 0; width: 100%; border: 0; border-radius: inherit; background: transparent; color: var(--atlas-text); cursor: zoom-in; }
+.semantic-mermaid-expand span { position: absolute; right: 10px; bottom: 10px; padding: 6px 9px; border: 1px solid var(--atlas-line); border-radius: 6px; background: #101617; font-size: 11px; }
+.semantic-mermaid-expand:hover span { border-color: var(--atlas-cyan); }
+.semantic-mermaid-expand:focus-visible { outline: 2px solid var(--atlas-cyan); outline-offset: -3px; }
+.semantic-mermaid-viewer { width: calc(100vw - 32px); height: calc(100dvh - 32px); max-width: none; max-height: none; padding: 16px; border: 1px solid var(--atlas-line); border-radius: 12px; background: #080b0c; color: var(--atlas-text); overflow: hidden; }
+.semantic-mermaid-viewer[open] { display: flex; flex-direction: column; gap: 12px; }
+.semantic-mermaid-viewer::backdrop { background: rgba(0, 0, 0, .8); }
+.semantic-mermaid-viewer > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.semantic-mermaid-diagram .semantic-mermaid-viewer > header > h2 { margin: 0; padding: 0; border: 0; font-size: 16px; letter-spacing: normal; text-transform: none; }
+.semantic-mermaid-viewer-controls { display: flex; gap: 8px; }
+.semantic-mermaid-viewer-controls button { min-width: 40px; min-height: 36px; padding: 6px 12px; border: 1px solid var(--atlas-line); border-radius: 6px; background: #162022; color: var(--atlas-text); cursor: pointer; }
+.semantic-mermaid-viewer-controls button:disabled { opacity: .4; cursor: default; }
+.semantic-mermaid-viewer-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.semantic-mermaid-viewer-svg { display: grid; place-items: center; }
+.semantic-mermaid-viewer-svg > svg { display: block; width: 100% !important; height: 100% !important; max-width: none !important; max-height: none !important; }
 .semantic-mermaid-svg > svg { display: block; width: 100% !important; max-width: 100%; height: auto !important; max-height: min(62vh, 680px); }
 .semantic-mermaid-status { display: flex; align-items: center; gap: 8px; color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 11px; }
 .semantic-mermaid-status > span { width: 7px; height: 7px; border-radius: 50%; background: var(--atlas-cyan); box-shadow: 0 0 9px rgba(121,223,212,.48); }
@@ -405,7 +420,7 @@ a.icon-button { text-decoration: none; }
 .notation-readiness-list li { color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 10px; font-weight: 400; line-height: 1.4; text-transform: none; overflow-wrap: anywhere; }
 .notation-readiness-more { display: block; margin-top: 4px; }
 
-.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; isolation: isolate; }
+.map-stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; isolation: isolate; container-type: inline-size; }
 .map-stage::after { position: absolute; z-index: 2; right: 0; bottom: 0; left: 0; height: 120px; background: linear-gradient(transparent, rgba(7,10,11,.36)); content: ''; pointer-events: none; }
 .atlas-canvas { position: absolute; z-index: 0; inset: 0; display: block; width: 100%; height: 100%; overflow: hidden; cursor: grab; touch-action: none; }
 .atlas-renderer-host { position: absolute; z-index: 0; inset: 0; }
@@ -997,6 +1012,10 @@ a.icon-button { text-decoration: none; }
   .minimap { display: none; }
 }
 
+@container (max-width: 800px) {
+  .minimap { bottom: 128px; }
+}
+
 @media (max-width: 470px) {
   .search-trigger span { font-size: 0; }
   .search-trigger span::after { font-size: 11px; content: 'Search atlas…'; }
@@ -1059,3 +1078,25 @@ a.icon-button { text-decoration: none; }
     transition-duration: .01ms !important;
   }
 }
+
+.diagram-action-row { display: flex; gap: .5rem; align-items: start; }
+.diagram-action-row > button { flex: 1; }
+.diagram-action-help { position: relative; }
+.diagram-action-help > button { cursor: help; padding: .4rem; }
+.diagram-action-help .diagram-help-content { display: none; position: absolute; right: 0; width: 230px; padding: .75rem; background: #182622; color: #eef5f1; border: 1px solid #51675d; border-radius: 8px; z-index: 5; }
+.diagram-action-help:hover .diagram-help-content, .diagram-action-help:focus-within .diagram-help-content, .diagram-action-help[data-open="true"] .diagram-help-content { display: block; }
+
+.contextual-overview .section-heading,
+.relation-group > .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; }
+.contextual-overview .detail-count,
+.relation-group > .section-heading > small { flex: 0 0 auto; min-width: 20px; margin: 0; text-align: center; }
+.canonical-relation-row > button.secondary-detail-action { display: inline-flex; grid-template-columns: none; width: auto; max-width: calc(100% - 20px); margin: 0 10px 8px; padding: 6px 10px; white-space: nowrap; border: 1px solid var(--atlas-line); border-radius: 6px; font-size: 11px; }
+.relations-list .relation-group > button.relations-omitted-more { display: block; grid-template-columns: none; white-space: normal; }
+
+.contextual-overview .inspector-link-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 10px; border: 1px solid var(--atlas-line); border-radius: 9px; background: rgba(255,255,255,.018); color: inherit; text-align: left; cursor: pointer; }
+.contextual-overview .inspector-link-row > small { color: var(--atlas-muted); flex: 0 0 auto; }
+.contextual-overview .inspector-link-row:hover { border-color: var(--atlas-line-strong); }
+
+.diagram-action-help > button { border: 0; background: transparent; color: var(--atlas-muted); display: inline-flex; align-items: center; justify-content: center; }
+
+.diagram-action-help[data-dismissed="true"] .diagram-help-content { display: none; }

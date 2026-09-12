@@ -1,0 +1,151 @@
+{
+  "head": "91baeee0e460c33504104aa0f394b8cf1d985108",
+  "capturedAt": "2026-09-09T15:01:45.906783+00:00",
+  "sourceStateSha256": "eeb011edbef12de17b970996042dfd72e72572c75f051387d0e22a38920b2a66",
+  "files": [
+    {
+      "path": "apps/web/src/App.tsx",
+      "sha256": "50d785d43a9f3c220e5c60ecd051b2c262a5200e9a935a663b2288c57ed7b86a"
+    },
+    {
+      "path": "apps/web/src/app.css",
+      "sha256": "eb67be19467d92fd8598b14c5c0112c08e3f33617e0eb3e9d87be6a62b9e5008"
+    },
+    {
+      "path": "apps/web/src/appLayout.test.ts",
+      "sha256": "6335da9f1690f7b4d6d83263a988a77e672384354a43d71ec0e97e196eda707e"
+    },
+    {
+      "path": "apps/web/src/cameraFlightController.test.ts",
+      "sha256": "9db25cd5e4d6f06013ce0b8e55b5976f40b438f936911fc60bf575f1c8a2d830"
+    },
+    {
+      "path": "apps/web/src/cameraFlightController.ts",
+      "sha256": "1afe6e41d98e703eb9ff1f051951c3a4f1affe87f91d5635e870c51af82a3d26"
+    },
+    {
+      "path": "apps/web/src/inspector/ArchitectureBrief.tsx",
+      "sha256": "d18e9d277a0a758bdec6134c03151aa4af01307cf7dbf9fd34a4321e508f6460"
+    },
+    {
+      "path": "apps/web/src/inspector/ArchitectureBriefView.tsx",
+      "sha256": "0f2427b5c24636de275e512bb1ad590d9039bec47301909bd0c030e80520852a"
+    },
+    {
+      "path": "apps/web/src/inspector/architectureBrief.test.tsx",
+      "sha256": "1cc1263e5de4af20eff512c226f2cd1fb3a5c310f1f5185c09ec72fa89e3ae33"
+    },
+    {
+      "path": "apps/web/src/liveCameraBridge.ts",
+      "sha256": "ac6ae319421dff0716c8d896637b6b7627e279f9598fe09c439911491929728a"
+    },
+    {
+      "path": "apps/web/src/main.tsx",
+      "sha256": "bae83c3535c4265fc031aca11afd03ec7d0762e7454f43e84299d735375ae719"
+    },
+    {
+      "path": "apps/web/src/minimap.test.tsx",
+      "sha256": "7ee2d40c830452168cea1a15f913410952fdd575d5797d78aa8544fb1d7e76aa"
+    },
+    {
+      "path": "apps/web/src/minimap.tsx",
+      "sha256": "d868acda7af81664ff7756a2e9a03346e12e47383836160aadc5ac29d35b18b1"
+    },
+    {
+      "path": "apps/web/src/minimapGeometry.test.ts",
+      "sha256": "ad91039a8dfc2a337c8786da8e10bf2cac941a5d7b2d701523e625379847f88b"
+    },
+    {
+      "path": "apps/web/src/minimapGeometry.ts",
+      "sha256": "5a95b9e00e75d8a8ef1ad9f32fc2e89db584849b36a5f3b7b62507c0641b87f1"
+    },
+    {
+      "path": "apps/web/src/renderer/Canvas2DRenderer.ts",
+      "sha256": "a35960b384a17d7026f40cbd4003bb6a1c251d854eafd21bbd5d28f649b82bb5"
+    },
+    {
+      "path": "apps/web/src/renderer/cameraController.test.ts",
+      "sha256": "ea8e4453ef0b120c67db155d76c73b6ffa1270d030d24d9907d7c5b67a11fad4"
+    },
+    {
+      "path": "apps/web/src/renderer/cameraController.ts",
+      "sha256": "21cfe3f06e6f03a8b416ad3545688434e0d00efa6832e23463122e7597f12e71"
+    },
+    {
+      "path": "apps/web/src/renderer/canvasTypography.qa.test.ts",
+      "sha256": "d6cbb5eed87d7fc2e6c7b3d4d114cb6867345bd3664727f0f170e379d0b5d630"
+    },
+    {
+      "path": "apps/web/src/renderer/scanFixture.test.ts",
+      "sha256": "ed81e645dd17809eba5a2f8c4abbd22f1ba8f0634482ee75ea56ebcd3ffdda6f"
+    },
+    {
+      "path": "apps/web/src/renderer/scanFixture.ts",
+      "sha256": "aba4794c899243d21015b590a4fe668b3638d14a77bd579b8bdf732950b562c8"
+    },
+    {
+      "path": "apps/web/src/renderer/semanticRenderPacket.test.ts",
+      "sha256": "c1bfd3742d09b466cd8194c15bfc508455fd83b32f0a474292c7213f32fbdfa5"
+    },
+    {
+      "path": "apps/web/src/renderer/semanticRenderPacket.ts",
+      "sha256": "905ee047400bcd579e2773e878c8f7445fdbc0ecd4f0ddd7d677ef9418425ef3"
+    },
+    {
+      "path": "apps/web/src/scanZoomHandoff.qa.test.ts",
+      "sha256": "9dfba57691bddd92eab21ba85d50784cacf22a8dc2f5173753955b7f558d3714"
+    },
+    {
+      "path": "apps/web/src/semantic/scanContainerMorph.test.ts",
+      "sha256": "b736520b2018a34b6f2ccaf05e826a10c1ca0b7fca88170b59bdfd7e58914b29"
+    },
+    {
+      "path": "apps/web/src/semantic/scanContainerMorph.ts",
+      "sha256": "672ab2f3b754bfac3a89eae4a270abc8a5c08ef85b4682f1e84cba701a25ed57"
+    },
+    {
+      "path": "apps/web/src/semantic/semanticLens.ts",
+      "sha256": "d1309d38b73e87bb32e37cae544f27a36dc6841f5d8491be8b71295c2ce521ed"
+    },
+    {
+      "path": "apps/web/src/semantic/semanticLensEngine.ts",
+      "sha256": "3e1060252dd63d18700f01ceb202608c519541b606b1b778068209671f4b7dce"
+    },
+    {
+      "path": "apps/web/src/semantic/semanticSessionFrame.test.ts",
+      "sha256": "ad663d8886e701ac23024c8a1339449cfa4f4ab25bcf3ee4e4f70d6e065bfc43"
+    },
+    {
+      "path": "apps/web/src/slimBoot.qa.test.ts",
+      "sha256": "938225cf269a19c43825622846c4df949d5adde415a0349a223c28ed9177dd70"
+    },
+    {
+      "path": "apps/web/src/zoomMotionTrace.test.ts",
+      "sha256": "430c64b9b71e61423552a96cc0c0bc47c7e818b2a82a67d549eb5949be4b6e32"
+    },
+    {
+      "path": "apps/web/src/zoomMotionTrace.ts",
+      "sha256": "8fb1fd112e8e6100d958028a0f98376563aa70f703e30fb913bd62d3ff10123c"
+    },
+    {
+      "path": "fixtures/architecture/demo-snapshot.json",
+      "sha256": "cde30c9b85916b0bb38b2ae232f8d22b55408fd0a607b4f2845544d059f69fc0"
+    },
+    {
+      "path": "fixtures/renderer/demo-scene.json",
+      "sha256": "535defdb1cd69a198c72e848c9a61a5e0b3b62781e12b9f4089a4a2bb0070409"
+    },
+    {
+      "path": "packages/scan/src/externals.test.ts",
+      "sha256": "ffbe969fce6f7abe1ac98a0ca120f6c37169c23341b67bc6fc641ae5595f2ce3"
+    },
+    {
+      "path": "packages/scene-compiler/src/golden-c4-fixture.qa.test.ts",
+      "sha256": "3ca8ca71552fcfb241e7f7c601e6e4675f0ae776b70df547a74f28283dc461dd"
+    },
+    {
+      "path": "packages/scene-compiler/src/golden-source-excerpts.ts",
+      "sha256": "84976ac020d2f56e94ad41778d010e2d149cd9e22ece42c31497bf8618e014bc"
+    }
+  ]
+}

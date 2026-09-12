@@ -9,3 +9,4 @@ export * from "./normalized.js";
 export * from "./neighborhood.js";
 export * from "./orthogonal-router.js";
 export * from "./validation.js";
+export * from "./portable.js";

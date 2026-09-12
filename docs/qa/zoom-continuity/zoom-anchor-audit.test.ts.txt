@@ -1,0 +1,13 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {it} from 'vitest';
+import {compileScanFixture} from './src/renderer/scanFixture';
+import {semanticBounds} from './src/renderer/goldenC4Scene';
+it('compares actual cold and paged component anchors',()=>{
+const snapshot=JSON.parse(readFileSync('/tmp/zoom-coverage-snapshot.json','utf8')),view=JSON.parse(readFileSync('/tmp/zoom-coverage-view.json','utf8')),story=JSON.parse(readFileSync('../../fixtures/scan/thiss__okie/story.json','utf8'));
+const fixture=compileScanFixture({snapshot,view,story},{targetAspect:1.6}); const web=fixture.createScene('container:apps-web');
+const rows=['component:apps-web-src-hosted-atlas-ts','component:apps-web-src-renderer-fixture-bundle-ts','component:apps-web-src-inspector-scan-one-pager-ts'].map(id=>{
+const source=semanticBounds(web,id,'component'); const cold=fixture.createScene(id);const live=fixture.createScene(id,web); const center=(r:any)=>r?{x:r.x+r.width/2,y:r.y+r.height/2}:null;const c=center(source)!;
+const window={x:c.x-100,y:c.y-100,width:200,height:200};const paged=fixture.createScene(id,undefined,{worldBounds:window,keepEntityIds:[id]});
+return {id,source,sourceCenter:c,cold:semanticBounds(cold,id,'component'),live:semanticBounds(live,id,'component'),paged:semanticBounds(paged,id,'component'),coldCode:semanticBounds(cold,id,'code'),pagedCode:semanticBounds(paged,id,'code'),window,coldComponentIds:cold.projection?.entityIdsByDetail.component.length,pagedComponentIds:paged.projection?.entityIdsByDetail.component.length,coldCodeIds:cold.projection?.entityIdsByDetail.code.length,pagedCodeIds:paged.projection?.entityIdsByDetail.code.length};});
+writeFileSync('../../docs/qa/zoom-continuity/component-anchor-audit.json',JSON.stringify({snapshotId:snapshot.id,targetAspect:1.6,rows},null,2)+'\n');console.log(JSON.stringify(rows));
+},60000);

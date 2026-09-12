@@ -15,6 +15,7 @@ import demoStory from '../../../fixtures/architecture/demo-story.json';
 import { explorerEntitiesForView } from './entityExplorer';
 import {
   createC4Scene,
+  createGoldenC4Scene,
   scanDeeperBandHasPeerCards,
   scanDrillDeeperDetail,
   scanPeerContainerIds,
@@ -28,6 +29,7 @@ import { scanCompileFocusForBand, scanEntityIsInSubtree } from './renderer/lazyB
 import { compileScanNeighborhoodFixture, SCAN_BAND_DEPTH_MIN_ENTITIES, SCAN_RESIDENT_NODES_PER_BAND } from './renderer/scanFixture';
 import { semanticLensSessionDetail } from './semantic/semanticLens';
 import {
+  frameCodePeerArrivalCamera,
   frameVisibleProjection,
   scanZoomHandoffCamera,
   semanticLevelSession,
@@ -79,10 +81,18 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     expect(refreshViewportNeighborhood).toContain('scanZoomCompileHandoff(');
     expect(refreshViewportNeighborhood).toContain('handoff?.compileFocus ?? currentFocus');
     expect(refreshViewportNeighborhood).toContain('scanWindowedCompileDropsPeerGraph(');
+    expect(refreshViewportNeighborhood).toContain('scanContainerMorphOwnsSession(containerMorph, semanticLensSessionRef.current)');
     expect(refreshViewportNeighborhood).not.toContain('semanticLensSessionRef.current.baseDetail');
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
     expect(app).not.toMatch(/SCAN_BAND_DEPTH_MIN_ENTITIES\s*=\s*[3-9]\d{3}/u);
     expect(app).not.toContain('SCAN_BAND_DEPTH_MIN_ENTITIES = 4000');
+    expect(handleSemanticZoom).toContain('const dormant = { ...containerMorph.scene, rootEntityId }');
+    expect(handleSemanticZoom).toContain('const resumed = { ...containerMorph.scene, rootEntityId: containerMorph.focusId }');
+    expect(handleSemanticZoom).toContain('scanZoomEntityUnderPointer(dormantBridge.scene, sample.camera, viewport, sample.pointer, dormantBridge.sourceDetail)');
+    expect(handleSemanticZoom).toContain('const hasLeftSourceBand = dormantBridge && sourceDetailIndex > 0');
+    expect(handleSemanticZoom).toContain("sample.direction === 'outward' && hasLeftSourceBand");
+    expect(handleSemanticZoom).toContain('containerMorph.baselineProgress = 0;');
+    expect(handleSemanticZoom).not.toContain('scanContainerMorphRef.current = undefined;\n          sceneRef.current = containerMorph.sourceScene');
   });
 
   it('L1→L2 zoom stays on the system compile; L2→L3 into web-app compiles that file graph', async () => {
@@ -221,6 +231,50 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
       settledTargetIds: session.settled.map(entry => entry.targetId),
     });
     expect(rows.some(row => row.detail === 'component')).toBe(true);
+
+    // A continuous band handoff preserves the semantic anchor under the
+    // pointer; peer framing is only for handoffs with no outgoing bound.
+    const previousBounds = { x: 1_000, y: 600, width: 240, height: 120 };
+    const anchoredCamera = { x: 1_130, y: 600, zoom: 4.96 };
+    const continuous = scanZoomHandoffCamera(
+      anchoredCamera,
+      l3,
+      'container:web-app',
+      'component',
+      viewport,
+      chromeSafeArea,
+      previousBounds,
+      shell,
+    );
+    const previousCenter = { x: previousBounds.x + previousBounds.width / 2, y: previousBounds.y + previousBounds.height / 2 };
+    const targetCenter = { x: shell!.x + shell!.width / 2, y: shell!.y + shell!.height / 2 };
+    expect((previousCenter.x - anchoredCamera.x) * anchoredCamera.zoom)
+      .toBeCloseTo((targetCenter.x - continuous.x) * continuous.zoom, 8);
+    expect((previousCenter.y - anchoredCamera.y) * anchoredCamera.zoom)
+      .toBeCloseTo((targetCenter.y - continuous.y) * continuous.zoom, 8);
+    const offscreen = scanZoomHandoffCamera(
+      { x: previousCenter.x - 1_000, y: previousCenter.y - 1_000, zoom: 4.96 },
+      l3,
+      'container:web-app',
+      'component',
+      viewport,
+      chromeSafeArea,
+      previousBounds,
+      shell,
+    );
+    expect((previousCenter.x - (previousCenter.x - 1_000)) * 4.96)
+      .toBeCloseTo((targetCenter.x - offscreen.x) * offscreen.zoom, 8);
+    // L4 never maps the selected L3-card centre into its nested layout. When
+    // a scoped scene has no resident code peers, it leaves the camera alone;
+    // when peers exist, scanZoomHandoffCamera delegates to their peer framer.
+    const codePeer = frameCodePeerArrivalCamera(l3, 'container:web-app', viewport, chromeSafeArea);
+    const codeArrival = scanZoomHandoffCamera(
+      anchoredCamera, l3, 'container:web-app', 'code', viewport, chromeSafeArea,
+      previousBounds, shell,
+    );
+    expect(codeArrival).toEqual(codePeer
+      ? codePeer
+      : anchoredCamera);
     const fit = frameVisibleProjection(
       windowedPeers,
       windowedPeers.projection?.entityIdsByDetail.component ?? [],
@@ -274,6 +328,25 @@ describe('CLA-104: continuous zoom L2→L3 hands off the focused container graph
     expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'component')).toBe(true);
     expect(scanWindowedCompileDropsPeerGraph(withPeers, withPeers, 'container:c', 'component')).toBe(false);
     expect(scanWindowedCompileDropsPeerGraph(withPeers, hollow, 'container:c', 'container')).toBe(true);
+  });
+});
+
+describe('CLA-124: L4 arrival frames selected-file symbols before contextual ghosts', () => {
+  it('places an owned code card inside the safe viewport', () => {
+    const scene = createGoldenC4Scene();
+    const fileId = 'component:model-normalized';
+    const camera = frameCodePeerArrivalCamera(scene, fileId, viewport, chromeSafeArea);
+    expect(camera).toBeDefined();
+    const ownedCode = scene.entities.filter(entity => entity.detail === 'code' && entity.parentId === fileId);
+    expect(ownedCode.length).toBeGreaterThan(0);
+    const visible = ownedCode.some(entity => {
+      const bounds = scene.projection!.boundsByEntityIdAndDetail[entity.id]?.code!;
+      const centerX = (bounds.x + bounds.width / 2 - camera!.x) * camera!.zoom + viewport.width / 2;
+      const centerY = (bounds.y + bounds.height / 2 - camera!.y) * camera!.zoom + viewport.height / 2;
+      return centerX >= chromeSafeArea.left && centerX <= viewport.width - chromeSafeArea.right
+        && centerY >= chromeSafeArea.top && centerY <= viewport.height - chromeSafeArea.bottom;
+    });
+    expect(visible).toBe(true);
   });
 });
 

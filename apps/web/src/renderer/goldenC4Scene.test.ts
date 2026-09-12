@@ -199,4 +199,87 @@ describe('scan-mode semantic transition reveal runway', () => {
       }
     }
   });
+
+  it('pages a cold late code symbol by its canonical full-sibling slot without repacking a pinned peer', () => {
+    const ownerId = 'component:large-file';
+    const codeIds = Array.from({ length: 96 }, (_, index) => `code:n${String(index).padStart(3, '0')}`);
+    const snapshot = {
+      schemaVersion: 1 as const,
+      id: 'snapshot:large-code-file',
+      repositoryId: 'repo:large-code-file',
+      commitSha: 'c',
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      entities: [
+        { id: 'system:root', kind: 'softwareSystem' as const, name: 'Root', sourceRefs: [] },
+        { id: 'container:app', kind: 'container' as const, parentId: 'system:root', name: 'App', sourceRefs: [] },
+        { id: ownerId, kind: 'component' as const, parentId: 'container:app', name: 'large.ts', sourceRefs: [] },
+        ...codeIds.map(id => ({ id, kind: 'code' as const, parentId: ownerId, name: id, sourceRefs: [] })),
+      ],
+      relations: [],
+    };
+    const options = {
+      baseSnapshot: snapshot,
+      rootEntityId: 'container:app',
+      focusEntityId: ownerId,
+      familyId: 'view-family:large-code-file',
+      sceneId: 'large-code-file',
+      title: 'large code file',
+      subtitle: 'test',
+      frozenRevision: 'test',
+      targetAspect: scanAspect,
+    };
+    const unwindowed = createC4Scene({ ...options, pageCodeLandmarks: true, maxNodesPerBand: 200 });
+    const lateId = 'code:n090';
+    const earlyId = 'code:n000';
+    const lateBounds = semanticBounds(unwindowed, lateId, 'code')!;
+    const cold = createC4Scene({
+      ...options,
+      pageCodeLandmarks: true,
+      maxNodesPerBand: 20,
+      residentWorldBounds: {
+        x: lateBounds.x - 0.01,
+        y: lateBounds.y - 0.01,
+        width: lateBounds.width + 0.02,
+        height: lateBounds.height + 0.02,
+      },
+    });
+    const coldIds = cold.projection!.entityIdsByDetail.code;
+    expect(coldIds).toContain(lateId);
+    expect(coldIds).not.toContain(earlyId);
+    expect(coldIds.filter(id => id.startsWith('code:')).length).toBeLessThanOrEqual(20);
+
+    const pinned = createC4Scene({
+      ...options,
+      pageCodeLandmarks: true,
+      maxNodesPerBand: 20,
+      residentWorldBounds: {
+        x: lateBounds.x - 0.01,
+        y: lateBounds.y - 0.01,
+        width: lateBounds.width + 0.02,
+        height: lateBounds.height + 0.02,
+      },
+      keepEntityIds: [earlyId],
+    });
+    expect(pinned.projection!.entityIdsByDetail.code).toEqual(expect.arrayContaining([lateId, earlyId]));
+    expect(semanticBounds(pinned, ownerId, 'code')).toEqual(semanticBounds(cold, ownerId, 'code'));
+    expect(semanticBounds(pinned, lateId, 'code')).toEqual(semanticBounds(cold, lateId, 'code'));
+    expect(semanticBounds(pinned, earlyId, 'code')).toBeDefined();
+
+    for (const previous of [unwindowed, cold]) {
+      const live = createC4Scene({
+        ...options,
+        previous,
+        pageCodeLandmarks: true,
+        maxNodesPerBand: 20,
+        residentWorldBounds: {
+          x: lateBounds.x - 0.01,
+          y: lateBounds.y - 0.01,
+          width: lateBounds.width + 0.02,
+          height: lateBounds.height + 0.02,
+        },
+      });
+      expect(live.projection!.entityIdsByDetail.code).toContain(lateId);
+      expect(semanticBounds(live, lateId, 'code')).toEqual(semanticBounds(cold, lateId, 'code'));
+    }
+  });
 });

@@ -1,0 +1,228 @@
+{
+  "snapshotId": "snapshot:okie:722ea2862304",
+  "targetAspect": 1.6,
+  "rows": [
+    {
+      "id": "component:apps-web-src-hosted-atlas-ts",
+      "expectedInWindow": [
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-owner",
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-repo",
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-slug",
+        "code:apps-web-src-hosted-atlas-ts:hosted-atlas-boot-plan",
+        "code:apps-web-src-hosted-atlas-ts:hosted-atlas-boot-step",
+        "code:apps-web-src-hosted-atlas-ts:is-dogfood-atlas",
+        "code:apps-web-src-hosted-atlas-ts:is-public-atlas-view-path"
+      ],
+      "missingInWindow": [
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-repo",
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-slug",
+        "code:apps-web-src-hosted-atlas-ts:hosted-atlas-boot-plan",
+        "code:apps-web-src-hosted-atlas-ts:hosted-atlas-boot-step",
+        "code:apps-web-src-hosted-atlas-ts:is-dogfood-atlas",
+        "code:apps-web-src-hosted-atlas-ts:is-public-atlas-view-path"
+      ],
+      "sharedChanges": [
+        "code:apps-web-src-hosted-atlas-ts:dogfood-atlas-owner"
+      ],
+      "source": {
+        "x": 612.7569203159818,
+        "y": -431.43668175864605,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": 655.2616641489989,
+        "y": -410.1843098421375
+      },
+      "cold": {
+        "x": 612.7569203159818,
+        "y": -431.43668175864605,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": 612.7569203159818,
+        "y": -431.43668175864605,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": 612.7569203159818,
+        "y": -431.43668175864605,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": 626.3218360687697,
+        "y": -429.8118170054613,
+        "width": 57.879656160458445,
+        "height": 39.25501432664756
+      },
+      "pagedCode": {
+        "x": 626.3218360687697,
+        "y": -429.8118170054613,
+        "width": 57.879656160458445,
+        "height": 39.25501432664756
+      },
+      "window": {
+        "x": 635.2616641489989,
+        "y": -430.1843098421375,
+        "width": 40,
+        "height": 40
+      },
+      "coldComponentIds": 10,
+      "pagedComponentIds": 4,
+      "coldCodeIds": 26,
+      "pagedCodeIds": 5
+    },
+    {
+      "id": "component:apps-web-src-renderer-fixture-bundle-ts",
+      "expectedInWindow": [
+        "code:apps-web-src-renderer-fixture-bundle-ts:active-scan-fixture",
+        "code:apps-web-src-renderer-fixture-bundle-ts:get-active-scan-fixture",
+        "code:apps-web-src-renderer-fixture-bundle-ts:set-active-scan-fixture"
+      ],
+      "missingInWindow": [
+        "code:apps-web-src-renderer-fixture-bundle-ts:get-active-scan-fixture",
+        "code:apps-web-src-renderer-fixture-bundle-ts:set-active-scan-fixture"
+      ],
+      "sharedChanges": [
+        "code:apps-web-src-renderer-fixture-bundle-ts:active-scan-fixture"
+      ],
+      "source": {
+        "x": 348.6202979250901,
+        "y": -249.2734939028586,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": 391.12504175810716,
+        "y": -228.02112198635007
+      },
+      "cold": {
+        "x": 348.6202979250901,
+        "y": -249.2734939028586,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": 348.6202979250901,
+        "y": -249.2734939028586,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": 348.6202979250901,
+        "y": -249.2734939028586,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": 371.92733402171746,
+        "y": -241.91797012388588,
+        "width": 38.39541547277936,
+        "height": 27.793696275071632
+      },
+      "pagedCode": {
+        "x": 371.92733402171746,
+        "y": -241.91797012388588,
+        "width": 38.39541547277936,
+        "height": 27.793696275071632
+      },
+      "window": {
+        "x": 371.12504175810716,
+        "y": -248.02112198635007,
+        "width": 40,
+        "height": 40
+      },
+      "coldComponentIds": 7,
+      "pagedComponentIds": 4,
+      "coldCodeIds": 14,
+      "pagedCodeIds": 5
+    },
+    {
+      "id": "component:apps-web-src-inspector-scan-one-pager-ts",
+      "expectedInWindow": [
+        "code:apps-web-src-inspector-scan-one-pager-ts:build-scan-one-pager-input",
+        "code:apps-web-src-inspector-scan-one-pager-ts:by-id",
+        "code:apps-web-src-inspector-scan-one-pager-ts:compare-id",
+        "code:apps-web-src-inspector-scan-one-pager-ts:graph-relation-kinds",
+        "code:apps-web-src-inspector-scan-one-pager-ts:is-container-kind",
+        "code:apps-web-src-inspector-scan-one-pager-ts:mermaid-title-for-band",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-leak",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-leaks-secrets-or-host-paths",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-max-nodes",
+        "code:apps-web-src-inspector-scan-one-pager-ts:select-graph-entities",
+        "code:apps-web-src-inspector-scan-one-pager-ts:serialize-one-pager-mermaid",
+        "code:apps-web-src-inspector-scan-one-pager-ts:structural-system-summary"
+      ],
+      "missingInWindow": [
+        "code:apps-web-src-inspector-scan-one-pager-ts:build-scan-one-pager-input",
+        "code:apps-web-src-inspector-scan-one-pager-ts:by-id",
+        "code:apps-web-src-inspector-scan-one-pager-ts:compare-id",
+        "code:apps-web-src-inspector-scan-one-pager-ts:graph-relation-kinds",
+        "code:apps-web-src-inspector-scan-one-pager-ts:is-container-kind",
+        "code:apps-web-src-inspector-scan-one-pager-ts:mermaid-title-for-band",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-leak",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-leaks-secrets-or-host-paths",
+        "code:apps-web-src-inspector-scan-one-pager-ts:one-pager-max-nodes",
+        "code:apps-web-src-inspector-scan-one-pager-ts:select-graph-entities",
+        "code:apps-web-src-inspector-scan-one-pager-ts:serialize-one-pager-mermaid",
+        "code:apps-web-src-inspector-scan-one-pager-ts:structural-system-summary"
+      ],
+      "sharedChanges": [
+        "code:apps-web-src-inspector-scan-one-pager-ts:build-scan-one-pager"
+      ],
+      "source": {
+        "x": 612.7569203159818,
+        "y": -385.8958847946992,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": 655.2616641489989,
+        "y": -364.6435128781907
+      },
+      "cold": {
+        "x": 612.7569203159818,
+        "y": -385.8958847946992,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": 612.7569203159818,
+        "y": -385.8958847946992,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": 612.7569203159818,
+        "y": -385.8958847946992,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": 606.8375953810905,
+        "y": -390.00167906730246,
+        "width": 96.84813753581663,
+        "height": 50.71633237822349
+      },
+      "pagedCode": {
+        "x": 606.8375953810905,
+        "y": -390.00167906730246,
+        "width": 96.84813753581663,
+        "height": 50.71633237822349
+      },
+      "window": {
+        "x": 635.2616641489989,
+        "y": -384.64351287819073,
+        "width": 40,
+        "height": 40
+      },
+      "coldComponentIds": 7,
+      "pagedComponentIds": 4,
+      "coldCodeIds": 33,
+      "pagedCodeIds": 5
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 import type { InspectorTab } from '../inspector/inspectorPanel';
-import type { Camera } from '../renderer/types';
+import type { Camera, SceneSourceExcerpt } from '../renderer/types';
 
 export const MAIN_DIAGRAM_SURFACE_ID = 'diagram:main';
 
-export type DerivedDiagramKind = 'flow' | 'mermaid' | 'code';
-export type DiagramSurfaceKind = 'main' | DerivedDiagramKind;
+export type DerivedDiagramKind = 'flow' | 'mermaid' | 'code' | 'dependency';
+export type DiagramSurfaceKind = 'main' | 'source' | DerivedDiagramKind;
 
 export type DiagramInspectorSession = {
   open: boolean;
@@ -34,10 +34,22 @@ export type DerivedDiagramSurface = {
   title: string;
   closable: true;
   entityIds: string[];
+  storyId?: string;
   session: DiagramSurfaceSession;
 };
 
-export type DiagramSurface = MainDiagramSurface | DerivedDiagramSurface;
+export type SourceDiagramSurface = {
+  id: string;
+  kind: 'source';
+  title: string;
+  closable: true;
+  entityIds: string[];
+  storyId?: never;
+  excerpt?: SceneSourceExcerpt;
+  session: DiagramSurfaceSession;
+};
+
+export type DiagramSurface = MainDiagramSurface | DerivedDiagramSurface | SourceDiagramSurface;
 
 export type DiagramWorkspaceState = {
   activeSurfaceId: string;
@@ -93,7 +105,7 @@ export function activateDiagramSurface(
 
 export function openDerivedDiagramSurface(
   state: DiagramWorkspaceState,
-  surface: DerivedDiagramSurface,
+  surface: DerivedDiagramSurface | SourceDiagramSurface,
   currentSession: DiagramSurfaceSession,
 ): DiagramWorkspaceState {
   if (surface.id === MAIN_DIAGRAM_SURFACE_ID) return state;

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ArrowIcon, CloseIcon, FileIcon } from '../icons';
 import { MermaidDiagram, MermaidSourceDisclosure } from './MermaidDiagram';
 import type { DerivedDiagramSurface, DiagramSurfaceSession } from './diagramWorkspace';
@@ -63,12 +64,14 @@ type SemanticDiagramSurfaceProps = {
   scene: AtlasScene;
   surface: DerivedDiagramSurface;
   flowArtifact?: DynamicFlowArtifact;
+  flowError?: string;
   mermaidSource?: string;
   notationAdvisoryCount?: number;
   onSessionChange: (session: DiagramSurfaceSession) => void;
 };
 
 function surfaceLabel(kind: DerivedDiagramSurface['kind']) {
+  if (kind === 'dependency') return 'Dependencies';
   if (kind === 'flow') return 'Dynamic flow';
   if (kind === 'mermaid') return 'Mermaid';
   return 'Code diagram';
@@ -78,12 +81,18 @@ export function SemanticDiagramSurface({
   scene,
   surface,
   flowArtifact,
+  flowError,
   mermaidSource,
   notationAdvisoryCount = 0,
   onSessionChange,
 }: SemanticDiagramSurfaceProps) {
-  const preview = semanticDiagramPreview(scene, surface, flowArtifact);
+  const [mermaidView, setMermaidView] = useState(surface.kind === 'mermaid');
+  const preview = flowError ? { participants: [], interactions: [] } : semanticDiagramPreview(scene, surface, flowArtifact);
   const byId = new Map(preview.participants.map(entity => [entity.id, entity]));
+  const quote = (text: string) => text.replace(/["<>]/g, '');
+  const nodeIds = new Map(preview.participants.map((entity, index) => [entity.id, `n${index}`]));
+  const graphSource = mermaidSource ?? ['flowchart LR', ...preview.participants.map(entity => `  ${nodeIds.get(entity.id)}["${quote(entity.name)}"]`), ...preview.interactions.filter(item => nodeIds.has(item.sourceId) && nodeIds.has(item.targetId)).map(item => `  ${nodeIds.get(item.sourceId)} -->|"${quote(item.label)}"| ${nodeIds.get(item.targetId)}`)].join('\n');
+  const InteractionList = flowArtifact ? 'ol' : 'ul';
   const selectedId = surface.session.selectedElementId ?? preview.participants[0]?.id;
   const selected = selectedId ? byId.get(selectedId) : undefined;
   const select = (entity: SceneEntity) => onSessionChange({
@@ -99,6 +108,7 @@ export function SemanticDiagramSurface({
     data-notation-advisories={notationAdvisoryCount}
     id="derived-diagram-content"
   >
+    {flowError && <p role="alert" className="detail-muted" data-testid="named-flow-unavailable">{flowError}</p>}
     <header className="semantic-diagram-header">
       <div><span>{surfaceLabel(surface.kind)}</span><h1>{surface.title}</h1><p>{flowArtifact ? 'Evidence-backed ordered interactions compiled from the selected semantic scope.' : 'Structured from the active semantic neighbourhood without replacing the Main architecture scene.'}</p></div>
       <div className="semantic-diagram-summary"><strong>{preview.participants.length}</strong><span>participants</span><strong>{preview.interactions.length}</strong><span>interactions</span></div>
@@ -109,10 +119,10 @@ export function SemanticDiagramSurface({
       <small>{flowArtifact ? `${flowArtifact.steps.length} ordered ${flowArtifact.steps.length === 1 ? 'step' : 'steps'} · semantic and evidence links retained` : 'Derived from the active architecture view'}</small>
     </div>
 
+    <button aria-pressed={mermaidView} data-diagram-action="open-mermaid" onClick={() => setMermaidView(value => !value)}>{mermaidView ? 'View structured diagram' : 'View Mermaid'}</button>
     <div className={`semantic-diagram-layout ${surface.session.inspector.open && selected ? 'has-inspector' : ''}`}>
       <div className="semantic-diagram-preview">
-        {surface.kind === 'mermaid' && mermaidSource && <MermaidDiagram source={mermaidSource} title={`${surface.title} diagram`}/>}
-        {surface.kind === 'mermaid' && !mermaidSource && <section className="semantic-mermaid-diagram semantic-mermaid-unavailable" role="alert"><strong>Diagram preview unavailable</strong><span>No Mermaid artifact was produced for this semantic scope. The structured outline remains available.</span></section>}
+        {mermaidView && <MermaidDiagram source={graphSource} title={`${surface.title} diagram`}/>}
 
         <section aria-labelledby={`${surface.id}-participants`} className="semantic-participants">
           <h2 id={`${surface.id}-participants`}>Participants</h2>
@@ -121,10 +131,10 @@ export function SemanticDiagramSurface({
 
         <section aria-labelledby={`${surface.id}-interactions`} className="semantic-interactions">
           <h2 id={`${surface.id}-interactions`}>Interactions</h2>
-          {preview.interactions.length ? <ol>{preview.interactions.map(interaction => <li data-semantic-relation-id={interaction.semanticRelationId ?? interaction.id} key={interaction.id}><span>{String(interaction.sequence).padStart(2, '0')}</span><div><strong>{interaction.label}</strong><small>{byId.get(interaction.sourceId)?.name ?? interaction.sourceId} <ArrowIcon size={12}/> {byId.get(interaction.targetId)?.name ?? interaction.targetId}{interaction.technology ? ` · ${interaction.technology}` : ''}{interaction.evidenceCount !== undefined ? ` · ${interaction.evidenceCount} evidence` : ''}</small></div></li>)}</ol> : <p>No explicit interactions connect the selected participants.</p>}
+          {preview.interactions.length ? <InteractionList>{preview.interactions.map(interaction => <li data-semantic-relation-id={interaction.semanticRelationId ?? interaction.id} key={interaction.id}><span>{flowArtifact ? String(interaction.sequence).padStart(2, '0') : '→'}</span><div><strong>{interaction.label}</strong><small>{byId.get(interaction.sourceId)?.name ?? interaction.sourceId} <ArrowIcon size={12}/> {byId.get(interaction.targetId)?.name ?? interaction.targetId}{interaction.technology ? ` · ${interaction.technology}` : ''}{interaction.evidenceCount !== undefined ? ` · ${interaction.evidenceCount} evidence` : ''}</small></div></li>)}</InteractionList> : <p>No explicit interactions connect the selected participants.</p>}
         </section>
 
-        {surface.kind === 'mermaid' && mermaidSource && <MermaidSourceDisclosure source={mermaidSource}/>}
+        {mermaidView && <MermaidSourceDisclosure source={graphSource}/>}
       </div>
 
       {surface.session.inspector.open && selected && <aside aria-label={`Diagram element details for ${selected.name}`} className="semantic-diagram-inspector">

@@ -1,5 +1,6 @@
 import {
   buildC4ProjectionBundle,
+  c4CodeChildSlots,
   materializeArchitectureAuthoring,
   selectC4BandProjection,
   validateStory,
@@ -301,13 +302,41 @@ export function resolveOmittedEdges(bundle: C4ProjectionBundle, snapshot: Archit
 
 function entityLayoutHintsForCodePaging(
   previous: AtlasScene | undefined,
+  snapshot: ArchitectureSnapshot,
 ): Record<string, NodeLayout> | undefined {
   const fromPrevious: Record<string, NodeLayout> = {};
   for (const [id, bands] of Object.entries(previous?.projection?.boundsByEntityIdAndDetail ?? {})) {
     const bounds = bands.component ?? bands.container ?? bands.context ?? bands.code;
     if (bounds) fromPrevious[id] = { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
   }
-  return Object.keys(fromPrevious).length > 0 ? fromPrevious : undefined;
+  if (!Object.keys(fromPrevious).length) return undefined;
+  // A code window needs every sibling's canonical grid slot to choose a late
+  // symbol. These are bounds only: no omitted code objects, routes, or meshes
+  // are compiled. The compiler consumes the same slot helper on materialize.
+  for (const owner of snapshot.entities) {
+    if (owner.kind !== 'component') continue;
+    const codeOwner = previous?.projection?.boundsByEntityIdAndDetail[owner.id]?.code;
+    if (!codeOwner) continue;
+    const childIds = snapshot.entities
+      .filter(entity => entity.parentId === owner.id && entity.kind === 'code')
+      .map(entity => entity.id);
+    Object.assign(fromPrevious, c4CodeChildSlots(codeOwner, childIds));
+  }
+  return fromPrevious;
+}
+
+function childCountsForCodePaging(
+  snapshot: ArchitectureSnapshot,
+  published: Readonly<Record<string, number>> | undefined,
+): Readonly<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  for (const entity of snapshot.entities) {
+    if (!entity.parentId) continue;
+    counts[entity.parentId] = (counts[entity.parentId] ?? 0) + 1;
+  }
+  // Published scan counts can include children deliberately omitted from the
+  // local snapshot, so they remain authoritative when present.
+  return { ...counts, ...published };
 }
 
 /**
@@ -321,9 +350,23 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
   const snapshot = authoring
     ? materializeArchitectureAuthoring(baseSnapshot, authoring)
     : baseSnapshot;
-  const entityLayoutHints = options.pageCodeLandmarks
-    ? entityLayoutHintsForCodePaging(previous)
+  let entityLayoutHints = options.pageCodeLandmarks
+    ? entityLayoutHintsForCodePaging(previous, snapshot)
     : undefined;
+  // A cold L4 URL has no previous component face to place its code window.
+  // Build one bounded, unwindowed landmark scene first; its aligned L3 face is
+  // then the coordinate space for the real camera-window selection. The
+  // preflight retains the ordinary code cap, so it never materializes the full
+  // repository's source meshes.
+  if (options.pageCodeLandmarks && options.residentWorldBounds && !entityLayoutHints) {
+    const landmark = createC4Scene({
+      ...options,
+      previous: undefined,
+      residentWorldBounds: undefined,
+      keepEntityIds: undefined,
+    });
+    entityLayoutHints = entityLayoutHintsForCodePaging(landmark, snapshot);
+  }
   const buildOptions = {
     rootEntityId: options.rootEntityId,
     focusEntityId: options.focusEntityId,
@@ -355,7 +398,11 @@ export function createC4Scene(options: C4SceneOptions): AtlasScene {
     revision,
     ...(options.maxGridNodes !== undefined ? { maxGridNodes: options.maxGridNodes } : {}),
     ...(options.targetAspect !== undefined ? { targetAspect: options.targetAspect } : {}),
-    ...(options.childCounts ? { childCounts: options.childCounts } : {}),
+    ...((options.pageCodeLandmarks || options.childCounts)
+      ? { childCounts: options.pageCodeLandmarks
+        ? childCountsForCodePaging(snapshot, options.childCounts)
+        : options.childCounts }
+      : {}),
     ...(options.unpublishedChildren?.length ? { unpublishedChildren: options.unpublishedChildren } : {}),
   };
   const compiled = authoring

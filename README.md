@@ -4,6 +4,8 @@ Okie is a spatial explanation system for software: an evidence-backed architectu
 
 This repository currently contains the first renderer vertical slice: a versioned semantic model, scene compiler, Rust/WASM renderer workspace, deterministic demo data, and browser shell.
 
+For committed local scanning, optional agent enrichment, and a viewer that runs on static hosting, see [Portable atlas workflow](docs/portable-atlas.md).
+
 ## Prerequisites
 
 - Node.js 22+

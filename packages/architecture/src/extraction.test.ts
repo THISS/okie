@@ -242,7 +242,7 @@ test("validation enforces typed IDs, C4 hierarchy, paths, endpoints, evidence, a
       id: "edge:not-a-relation-id",
       from: "component:top-level",
       to: "component:top-level",
-      kind: "calls",
+      kind: "uses",
       evidence: [],
     },
     {
@@ -266,6 +266,22 @@ test("validation enforces typed IDs, C4 hierarchy, paths, endpoints, evidence, a
   assert.match(text, /must contain at least one evidence item/);
   assert.match(text, /unknown entity: component:missing/);
   assert.throws(() => adaptArchitectureExtraction(invalid, metadata), ArchitectureExtractionError);
+});
+
+test("recursive calls retain evidence while non-call self relationships are rejected", () => {
+  const value = structuredClone(extraction);
+  const symbol = "code:selectors:select-scoped-view";
+  value.relations = [{
+    id: "relation:selectors:recursive-call", from: symbol, to: symbol, kind: "calls",
+    evidence: [{ source: { path: "packages/architecture/src/normalized.ts", startLine: 11, endLine: 11 } }],
+  }];
+  assert.deepEqual(validateArchitectureExtraction(value), []);
+  const snapshot = adaptArchitectureExtraction(value, metadata);
+  assert.equal(snapshot.relations[0]?.from, symbol);
+  assert.equal(snapshot.relations[0]?.to, symbol);
+  assert.equal(snapshot.relations[0]?.evidence[0]?.source.startLine, 11);
+  value.relations[0]!.kind = "uses";
+  assert.ok(validateArchitectureExtraction(value).some(issue => issue.message.includes("endpoints must be different")));
 });
 
 test("validation rejects hierarchy cycles and redundant contains relations", () => {

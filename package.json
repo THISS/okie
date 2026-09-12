@@ -18,10 +18,13 @@
     "generate:wasm:debug": "node scripts/build-wasm.mjs --debug",
     "generate:wasm:release": "node scripts/build-wasm.mjs --release",
     "prepare:generated": "pnpm generate:stress && pnpm generate:wasm",
-    "prepare:generated:release": "pnpm generate:stress && pnpm generate:wasm:release"
+    "prepare:generated:release": "pnpm generate:stress && pnpm generate:wasm:release",
+    "package:cli": "node scripts/package-scan.mjs",
+    "build:portable": "pnpm build && node scripts/build-portable-viewer.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "esbuild": "0.25.12",
     "typescript": "^5.8.3"
   }
 }

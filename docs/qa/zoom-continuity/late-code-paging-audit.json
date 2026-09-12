@@ -1,0 +1,75 @@
+{
+  "snapshotId": "snapshot:okie:722ea2862304",
+  "targetAspect": 1.6,
+  "hashes": {
+    "../../packages/architecture/dist/c4.js": "66ebcd838e67bc70a0581dd8a0f2567ed050201d326dc8fbe27c268a3c9f997d",
+    "../../packages/scene-compiler/dist/compile-c4.js": "b3ae59921bc028920aafc33b77a3b9e2bac6a60628c206d1f8e91c960230fb97",
+    "./src/renderer/scanFixture.ts": "aba4794c899243d21015b590a4fe668b3638d14a77bd579b8bdf732950b562c8"
+  },
+  "rows": [
+    {
+      "id": "component:apps-web-src-webmcp-ts",
+      "lateId": "code:apps-web-src-webmcp-ts:webmcp-host-headers",
+      "lateBounds": {
+        "x": 655.6592943166959,
+        "y": -33.24556620782022,
+        "width": 16.42788920725883,
+        "height": 11.044542849700443
+      },
+      "lateSelected": false,
+      "expectedInWindow": [],
+      "missingInWindow": [],
+      "sharedChanges": [],
+      "source": {
+        "x": 524.7113795190179,
+        "y": -112.651103011018,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "sourceCenter": {
+        "x": 567.216123352035,
+        "y": -91.39873109450946
+      },
+      "cold": {
+        "x": 524.7113795190179,
+        "y": -112.651103011018,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "live": {
+        "x": 524.7113795190179,
+        "y": -112.651103011018,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "paged": {
+        "x": 524.7113795190179,
+        "y": -112.651103011018,
+        "width": 85.00948766603416,
+        "height": 42.50474383301708
+      },
+      "coldCode": {
+        "x": 460.33933252108943,
+        "y": -162.6021694899249,
+        "width": 213.75358166189108,
+        "height": 142.40687679083095
+      },
+      "pagedCode": {
+        "x": 460.33933252108943,
+        "y": -162.6021694899249,
+        "width": 213.75358166189108,
+        "height": 142.40687679083095
+      },
+      "window": {
+        "x": 662.8732389203253,
+        "y": -28.723294782969997,
+        "width": 2,
+        "height": 2
+      },
+      "coldComponentIds": 11,
+      "pagedComponentIds": 4,
+      "coldCodeIds": 54,
+      "pagedCodeIds": 6
+    }
+  ]
+}

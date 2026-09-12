@@ -201,6 +201,23 @@ test("scan snapshot attaches portable excerpts to code entities and never to con
     .every(entity => (entity.sourceExcerpts?.length ?? 0) === 1));
 });
 
+test("include-source bundles known files and never attempts a container directory anchor", () => {
+  const artifacts = buildScanArtifacts({
+    discovery: discovery(),
+    pin,
+    readFile: read,
+    repositorySlug: "acme",
+    systemName: "Acme",
+    includeSource: true,
+  });
+  assert.deepEqual(artifacts.sources?.map(source => source.path), [
+    "README.md",
+    "pkg/a/src/index.ts",
+    "pkg/a/src/long.ts",
+    "pkg/a/src/wide.ts",
+  ]);
+});
+
 test("extraction documents stay excerpt-free after the host attaches snapshot excerpts", () => {
   const extraction = extractArchitecture({
     discovery: discovery(),

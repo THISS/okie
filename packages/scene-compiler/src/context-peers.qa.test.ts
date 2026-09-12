@@ -168,6 +168,27 @@ test('context peers hold one identical position across every band (persistent sh
   }
 });
 
+test('context peers stay fixed while a scoped file expands through L4', () => {
+  const snapshot = scanLike(8);
+  const target = ASPECT_PRESET_TARGET.landscape;
+  const component = snapshot.entities.find(entity => entity.kind === 'component');
+  // Add a small file under the existing package so this exercises the deep
+  // component/code translation rather than only the system-root compile.
+  snapshot.entities.push(
+    { id: 'component:file', kind: 'component', parentId: 'container:c00', name: 'file', sourceRefs: [] },
+    { id: 'code:file:a', kind: 'code', parentId: 'component:file', name: 'a', sourceRefs: [] },
+  );
+  assert.equal(component, undefined, 'the base fixture has no component before adding the scoped file');
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:s', focusEntityId: 'component:file', familyId: 'f', targetAspect: target,
+  });
+  const bounds = compileC4Scene(snapshot, bundle, { targetAspect: target })
+    .projections.index.boundsByEntityIdAndBand;
+  for (const id of peersOf(snapshot)) {
+    assert.deepEqual(bounds[id]!.code, bounds[id]!.context, `${id} must remain at its context shell in L4`);
+  }
+});
+
 test('scan-like peer compile is deterministic under reversed entity order', () => {
   const snapshot = scanLike(12);
   const target = ASPECT_PRESET_TARGET.landscape;

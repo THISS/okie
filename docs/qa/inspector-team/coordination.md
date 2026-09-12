@@ -1,0 +1,60 @@
+# Inspector team coordination
+
+Goal active, September 12, 2026. Coordinator: 01a08393-bc07-79f3-bead-7eb383e49f07.
+
+Builders use GPT-5.3-Codex-Spark, high reasoning. Independent code review uses GPT-6 Astra medium/high, browser QA low.
+
+- Inspector/UI: 01a0949a-2293-7901-8af5-0845f54c96cc, worktree `/Users/brenton/.codex/worktrees/9259/okie`. Owns App/inspector, relation reveal and diagram presentation, excludes SourceViewer and backend/schema.
+- Extraction/source: 01a0949a-7b57-7291-8034-29bf6c4a8267, worktree `/Users/brenton/.codex/worktrees/e963/okie`, active. Owns extraction/schema/server and SourceViewer/source fetch, excludes App and shared CSS.
+
+Both receive baseline `/tmp/okie-inspector-team/baseline.tar.gz` with manifest `/tmp/okie-inspector-team/baseline.json` (457 files). Deliverable comparison is against baseline, not git HEAD; source checkout has earlier uncommitted fixes. Do not overwrite source checkout from entire builder trees. Integrate only task-specific changes after review. Regenerated shared artifacts require reconciliation.
+
+Review risks: aggregate edge membership differs from directly drawn endpoint visibility; canonical inventory independent of camera/isolate; preserve selection/tab/expanded lists on reveal; deterministic ordering and call/uses deduplication; source retrieval immutable and protected against stale responses; only meaningful ordered flows.
+
+Acceptance: package/file/symbol overview scope and tab continuity; zero/five/more-than-five lists; captured hidden/incoming/outgoing/recursive relationships; pan/zoom/isolate inventory stability; reveal both endpoints/edge without changing selected entity; named diagram tabs and accessible tooltips; exact commit excerpt/context/full file and unavailable revision; evidence-backed exported/public/entrypoint fixtures. Actual browser QA must include guided story with paused-state wait, nonblank inspector, related routes. Repo gates: check, TypeScript tests, Rust tests and production build. No completion claimed until integration, review and browser QA are done.
+
+Interface guidance sent: retain existing calls/uses kinds; minimal evidence-backed exposure metadata; exact immutable revision source retrieval using existing server repository resolution, bounded context, validated paths, revision-aware caching and stale-response protection. Await exact typed metadata before UI integration.
+
+Continuation checkpoint: extraction builder stopped after an environment/plugin message with no code changes; coordinator explicitly resumed its original assignment. Authoritative task status then confirmed active. Acceptance checklist is in acceptance.json; all cases unverified until integrated evidence exists.
+
+Spark limit checkpoint: inspector task failed with explicit GPT-5.3-Codex-Spark usage-limit error, retry indicated 10:52 PM. Extraction task still authoritatively active at next snapshot. Baseline-hash check found no modifications to baseline files in either worktree at that moment; no implementation integrated. No automatic model substitution authorized. Goal remains active; first occurrence of this limit, not a completed or blocked goal.
+
+Limit audit, second consecutive goal turn: rechecked inspector terminal usage-limit status at 2026-09-12 07:57:38 UTC; extraction had the same terminal limit in the preceding checkpoint. Both worktrees match baseline with no additional source files. Nothing is ready to integrate or review. Model-switch question remains unanswered; do not substitute a builder model.
+
+User authorized Terra or Astra low builders after Spark limit. Both existing tasks resumed on gpt-5.6-terra, medium reasoning, preserving original scope/worktrees. Astra remains medium/high review and low browser QA. Goal API still reports blocked; its available update tool cannot resume goals, so do not claim API status active without evidence. Actual builder work is resumed.
+
+First Terra review checkpoint: inspector delivered App + canonicalRelationshipInventory/contextualOverview/ContextualOverviewView; Astra high rejected acceptance for tab switching, disabled off-neighborhood relations, reveal replacing selection/ignoring route, wrong aggregate/isolate membership, fake flow order, missing accepted responsibility/scope fallback, incomplete five-item handling, missing accessible tooltips. Findings returned to builder.
+
+Extraction first slice reviewed by Astra medium: local export undefined-module crash reproduced; false object-method targets; ambiguous/default star export errors; loop/function-expression/var shadowing false references; imported-local reexport aliases missed; recursive calls discarded by enrichment; evidence-key collision risk. Tests did not cover these meaningfully. Findings returned to builder; source/exposure scope still incomplete. Nothing integrated or accepted.
+
+Dependency helper /tmp/okie-inspector-team/reuse-deps.py supplied to both builders to link existing installed dependencies into isolated worktrees with local @okie package links, avoiding failed DNS/offline package fetches. Builders must run builds/tests explicitly and report actual results.
+
+Dependency recovery verified: coordinator ran installed TypeScript directly in isolated worktrees. Inspector architecture+scene-compiler dependency build passed (log inspector-deps-compile.log). Extraction tsc -b packages/scan failed on actual TS2552 undefined validateEvidence in architecture/src/extraction.ts:387 (extraction-compile.log); sent to builder. Registry/DNS is no longer the validation blocker. Direct installed Vitest command supplied to UI builder. All logs under /tmp/okie-inspector-team. No integration or acceptance yet.
+
+Coordinator independently reran compiled scan extract/enrich tests: 45/45 pass (/tmp/okie-inspector-team/extraction-verified-tests.log). Astra medium re-review requested for prior correctness blockers and regression coverage; green suite alone is not acceptance. Dependency helper was corrected so .vite/.vite-temp/.cache remain local writable directories in both worktrees, not shared-checkout links; rerun created no additional dependency links. UI builder notified to rerun checks.
+
+Extraction second review: prior local-export crash/object-method false call/direct star/default exclusion/loop+named-function shadow/local alias/recursive enrich/evidence keys resolved by focused reviewer checks. Still P1 lexical-var scope bug (wrong flags node plus skipped arrow/nested function cases) and nested ambiguous-star propagation bug. No new regression tests for reviewed failures; existing same-line shadow assertion and unused cycle remain insufficient. Findings and mandatory tests returned to Terra. Do not accept based on 45-test pass.
+
+Resolver checkpoint: coordinator independently confirms46extract/enrich tests pass after two focused bug fixes; broader regression coverage still required in final review. Terra extraction task reduced to a bounded next assignment for full publicApi/entryPoint derivation; source work reassigned to /root/immutable_source_builder (Astra low), sharing e963 worktree with disjoint server/SourceViewer/source modules ownership.
+
+UI second review: some tab/source/summary/expansion continuity fixes verified by code review. Still incomplete map membership/reveal/off-neighborhood evidence, missing scopefallback/fullcaps, diagrams removed wholesale instead of useful actions, fake orderedflow reachable in dev menu, no actual accessible info controls. Terra UI directed to finish realdiagram/list/overview functionality and tests; map helper ownership to be separated. Nothing integrated.
+
+Bounded ownership refinement: /root/relationship_reveal_builder (Astra low) now owns canonicalRelationshipInventory.ts/tests, relationFraming.ts/tests and new pure reveal helpers in9259. Terra UI keeps App wiring and all inspector/diagram/list/overview work. Source builder in e963 proposes optional SourceViewer sourceContext {scanBasePath,owner,repo}; validated publishedscan source.json endpoint bound to exact commit/path/range and exact GitHub full-file link; App wiring assigned to TerraUI. Terra extraction added manifest-backed publicApi and bin entryPoint but dedicated evidence/pinning tests are mandatory and newly assigned; no completion yet. Reviewer remaining findings forwarded with exact files/requirements.
+
+Source helper ready (Astra low): scanServer.ts plus new scanSource.ts/test; SourceViewer.tsx plus new sourceFetch.ts/test. Builder reports server/web typecheck,3newserver+4existingHTTP+8client/viewertests pass. Exact snapshot source authorization, bounded historical fetch/cache, stale guards, pinned external full-file link; independent Astrahigh review running.
+
+Map helper ready (Astra low): canonical inventory/reveal/framing helpers16tests pass, helper typecheck clean; App unused import remains peer wiring. Ready plan includes route bounds, valid zoom and semantic detail, scoped individual then aggregate fallback; unavailable explicit. UI peer notified; no main integration yet.
+
+User resumed Sep12 after app restart. Backend/source11files staged into9259combinedworktree with baselinehash conflict guard; no maincode touched. Fresh Astrahighreview reproduced legacyrepo:okie source404, bin-exportfalseentrypoint, exports/mainprecedencefalseAPI, switchscopefalsecall, starbarrelmissingAPI, singlepackagerootmanifestskipped. Astra-low backend_review_fixes owns these in9259; finish_inspector_ui owns remainingApp/UIintegration. ExistingTerra tasks idle.
+
+Live baseline health200. Root scan snapshot112c25f764e4..., repo:okie; explicit fixtures/scan/thiss__okie uses722ea2862304... (userroute). Zod fixture available with repo:colinhacks-zod912f0f51... for publicsourcecontextverification. Dedicated staged Vite config prepared /tmp/okie-inspector-team/vite.config.mts, ports4175/4182, not started yet.
+
+### Integrated acceptance pass (September 12)
+
+Initial combined source integrated from9259 using baseline SHA256 conflict guards; pre-integration originals backed up under /tmp/okie-inspector-team/pre-integration. Existing zoom/minimap/Mermaid modifications preserved. Scan server4180 refreshed from main; isolated QA4175/4182 retained for fixes. Backend high review cleared all six reproduced findings; targeted40/40 and extra star/legacy revision probes passed. Source network in that review was mocked, not live.
+
+Low-Astra browser acceptance found hierarchy links selecting a child but showing its parent Overview; high review reproduced the same missing explicit-selection flag. UI builder corrected it, and browser subsequently verified @okie/web→src/App.tsx→App contextual identity and parent. Browser also verified canonical rows survive isolate, aggregate reveal retains symbol/Details, named dependency tab and Mermaid render, Main preserves camera/selection, and guided story step4 reaches paused with nonblank inspector. Code-structure participant bug and cross-entity expansion reset are being corrected before final acceptance.
+
+Validation so far: staging UI987 tests pass; backend339 tests had337 pass/1 live-worktree determinism failure/1 skip, isolated stable determinism retry2/2 pass; Rust81 pass/1 ignored. Final integrated gates and browser source results remain pending. Original source scanner improvements are TypeScript/JavaScript binding analysis; arbitrary dynamic dispatch and framework registration are not claimed. Public-API labels require resolvable package manifest entry paths; CLI entry labels apply to executable files. Existing published scans are not automatically rewritten with new extraction metadata.
+
+Final main integration/gates and review passed; see final-integration.md and acceptance.json. Final tooltip component replaced closed native disclosure and consumes Escape locally; its final browser focus check could not run because Mac locked and automatic approval review denied opening the QA tab. Goal not marked complete. User4173 core inspector/diagram/source smoke passed before final tooltip change. Main is authoritative; it includes final Escape propagation and architecture recursion-contract tests not copied back into staging9259.

@@ -297,6 +297,31 @@ export function MermaidDiagram({ source, title, compact = false }: MermaidDiagra
   const requestRef = useRef(0);
   const [retry, setRetry] = useState(0);
   const [state, setState] = useState<RenderState>('loading');
+  const [expanded, setExpanded] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const expandedHostRef = useRef<HTMLDivElement>(null);
+  const expandButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const dialog = dialogRef.current;
+    const host = hostRef.current;
+    const expandedHost = expandedHostRef.current;
+    const svg = host?.firstElementChild;
+    if (!dialog || !host || !expandedHost || !svg) return;
+    const renderRequest = requestRef.current;
+    // Move the already-sanitized SVG instead of rendering a duplicate with the
+    // same marker IDs. Closing restores the exact inline preview immediately.
+    expandedHost.replaceChildren(svg);
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      if (requestRef.current === renderRequest) host.replaceChildren(svg);
+      else svg.remove();
+      expandButtonRef.current?.focus();
+    };
+  }, [expanded]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -304,6 +329,7 @@ export function MermaidDiagram({ source, title, compact = false }: MermaidDiagra
     const request = ++requestRef.current;
     let cancelled = false;
     host.replaceChildren();
+    setExpanded(false);
     setState('loading');
 
     void (async () => {
@@ -340,9 +366,24 @@ export function MermaidDiagram({ source, title, compact = false }: MermaidDiagra
     </header>
     <div className={`semantic-mermaid-canvas is-${state}`}>
       <div aria-hidden="true" className="semantic-mermaid-svg" data-render-state={state} ref={hostRef}/>
+      {state === 'ready' && <button className="semantic-mermaid-expand" ref={expandButtonRef} type="button" aria-label={`Expand diagram: ${title}`} onClick={() => { setZoom(1); setExpanded(true); }}><span>Expand diagram ↗</span></button>}
       {state === 'loading' && <div className="semantic-mermaid-status" role="status"><span/>Rendering diagram…</div>}
       {state === 'error' && <div className="semantic-mermaid-error" role="alert"><strong>Diagram preview unavailable</strong><span>{compact ? 'The system and container names in this architecture brief are still available.' : 'The structured participants and interactions below are still available.'}</span><button onClick={() => setRetry(value => value + 1)} type="button">Retry render</button></div>}
     </div>
+    <dialog className="semantic-mermaid-viewer" ref={dialogRef} aria-label={title} onKeyDown={event => event.stopPropagation()} onClose={() => setExpanded(false)} onClick={event => { if (event.target === event.currentTarget) setExpanded(false); }}>
+      <header>
+        <h2>{title}</h2>
+        <div className="semantic-mermaid-viewer-controls">
+          <button type="button" aria-label="Zoom out diagram" disabled={zoom <= 1} onClick={() => setZoom(value => Math.max(1, value - .5))}>−</button>
+          <button type="button" onClick={() => setZoom(1)}>Fit</button>
+          <button type="button" aria-label="Zoom in diagram" disabled={zoom >= 4} onClick={() => setZoom(value => Math.min(4, value + .5))}>+</button>
+          <button type="button" aria-label="Close expanded diagram" onClick={() => setExpanded(false)}>Close</button>
+        </div>
+      </header>
+      <div className="semantic-mermaid-viewer-scroll">
+        <div className="semantic-mermaid-viewer-svg" role="img" aria-label={title} ref={expandedHostRef} style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}/>
+      </div>
+    </dialog>
     {compact ? null : <p className="semantic-mermaid-outline-note">The structured outline below is the accessible and interactive representation of this diagram.</p>}
   </section>;
 }

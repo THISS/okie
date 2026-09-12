@@ -456,7 +456,23 @@ export function frameCodePeerArrivalCamera(
   safeArea: SafeArea,
 ): Camera | undefined {
   const scopeIds = projectionScopeEntityIds(scene, rootEntityId, 'code');
-  const residentIds = residentVisibleProjectionEntityIds(scene, scopeIds, 'code');
+  const byId = new Map(scene.entities.map(entity => [entity.id, entity]));
+  const isOwnedCode = (entityId: string) => {
+    let current = byId.get(entityId);
+    const seen = new Set<string>();
+    while (current && !seen.has(current.id)) {
+      if (current.id === rootEntityId) return true;
+      seen.add(current.id);
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    return false;
+  };
+  // `projectionScopeEntityIds` deliberately adds related context for routes
+  // and ghost silhouettes. Those cards are dim in the semantic lens, so an
+  // L4 arrival must frame the selected file's actual symbols first.
+  const ownedScopeIds = scopeIds.filter(isOwnedCode);
+  const residentIds = residentVisibleProjectionEntityIds(scene,
+    ownedScopeIds.length ? ownedScopeIds : scopeIds, 'code');
   if (!residentIds.length) return undefined;
   const clusterIds = nearbyCodeArrivalIds(scene, residentIds, viewport, safeArea);
   const enterZoom = C4_ZOOM_BANDS[3]!.enterZoom;
@@ -489,16 +505,31 @@ export function scanZoomHandoffCamera(
   previousBounds?: WorldRect,
   targetBounds?: WorldRect,
 ): Camera {
+  // A continuous gesture already has an on-screen semantic anchor. Keep that
+  // anchor when both bands expose it; peer framing is reserved for callers
+  // without a source bound (for example, a freshly opened deep route).
+  if (detail === 'component' && previousBounds && targetBounds) {
+    const previousCenter = { x: previousBounds.x + previousBounds.width / 2, y: previousBounds.y + previousBounds.height / 2 };
+    const targetCenter = { x: targetBounds.x + targetBounds.width / 2, y: targetBounds.y + targetBounds.height / 2 };
+    // Unlike explicit navigation, a wheel may be pointed at a file near the
+    // edge of an owner whose center is off-screen. Preserve that relative point
+    // instead of treating the owner as a fit target.
+    return {
+      x: liveCamera.x + targetCenter.x - previousCenter.x,
+      y: liveCamera.y + targetCenter.y - previousCenter.y,
+      zoom: liveCamera.zoom,
+    };
+  }
   if (detail === 'component') {
     const peer = frameComponentPeerArrivalCamera(nextScene, compileFocus, viewport, safeArea);
     if (peer) return { x: peer.x, y: peer.y, zoom: liveCamera.zoom };
   }
   if (detail === 'code') {
     const peer = frameCodePeerArrivalCamera(nextScene, compileFocus, viewport, safeArea);
-    if (peer) return { x: peer.x, y: peer.y, zoom: liveCamera.zoom };
-  }
-  if (previousBounds && targetBounds) {
-    return retargetCameraForSemanticBand(liveCamera, previousBounds, targetBounds, liveCamera.zoom, viewport);
+    // L4 peer framing computes its centre and zoom as one safe-area-aware
+    // camera. Keeping a raw overshoot zoom changes that centre's screen-space
+    // offset and can push every resident code card beyond the viewport.
+    if (peer) return peer;
   }
   return liveCamera;
 }
@@ -582,6 +613,11 @@ export function semanticPanFocusPlan(
   safeArea: SafeArea,
   stationaryMs: number,
 ): { session: SemanticLensSession; selectedId: string } {
+  // A drag changes camera position, not zoom progress. Rounding a partial
+  // reveal to either endpoint replaces the visible layout when the drag ends.
+  if (session.active.phase === 'revealing' || session.active.phase === 'reversing') {
+    return { session, selectedId };
+  }
   const stabilized = stabilizeSemanticLensSessionForPan(session);
   return {
     session: settleSemanticLensPanFocus(scene, stabilized, camera, viewport, safeArea, stationaryMs),
@@ -1133,6 +1169,24 @@ export function semanticInspectorHierarchyPlan(
     : semanticEntityFrameCamera(scene, target.id, detail, viewport, safeArea);
   if (!camera) return undefined;
   return { session, camera, targetId: target.id, detail, historyMode: 'replace' };
+}
+
+/**
+ * Frames an explicit selection in the semantic band that is already presented.
+ * A camera-only action must not put a settled deep lens path back in L1 range.
+ */
+export function semanticSessionFrameCamera(
+  scene: AtlasScene,
+  entityId: string,
+  session: SemanticLensSession,
+  viewport: ViewportSize,
+  safeArea: SafeArea,
+): Camera | undefined {
+  const detail = semanticLensSessionDetail(session);
+  if (!semanticBounds(scene, entityId, detail)) return undefined;
+  return frameSemanticEntities(scene, [entityId], detail, viewport, safeArea, {
+    allowFocusRunway: detail === 'code',
+  });
 }
 
 /**

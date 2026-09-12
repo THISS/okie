@@ -560,6 +560,43 @@ export function validateSemanticLensPath(
   return { entries, truncated: entries.length !== targetIds.length };
 }
 
+/**
+ * Validates a persisted settled path against both its branch and the camera that
+ * accompanies it. A URL may be written while an earlier lens still owns the
+ * projection; restoring that path below its entry runway would otherwise show a
+ * deeper settled band at an L1 camera.
+ *
+ * Keep the authored hysteresis runway. In the small ambiguity band immediately
+ * below `minZoom`, a saved settled endpoint remains coherent with an outward
+ * gesture that has not crossed its leave threshold yet. `fullZoom` is not a
+ * restore requirement: cold deep views intentionally restore below it.
+ */
+export function validateRestoredSemanticLensPath(
+  scene: AtlasScene,
+  baseDetail: SemanticDetail,
+  targetIds: readonly string[],
+  zoom: number,
+): { entries: SemanticLensPathEntry[]; truncated: boolean } {
+  const structural = validateSemanticLensPath(scene, baseDetail, targetIds);
+  if (!Number.isFinite(zoom)) return structural;
+  const entries: SemanticLensPathEntry[] = [];
+  for (const entry of structural.entries) {
+    const authored = scene.projection?.semanticTransitionsByEntityId?.[entry.targetId]?.[entry.nextDetail];
+    const protocol = scene.protocolSnapshot as ProtocolProjectionScene | undefined;
+    const visualId = scene.projection?.semanticToVisualEntityId[entry.targetId];
+    const representation = protocol?.objects.find(object => object.id === visualId)
+      ?.representations.find(candidate => candidate.id === `${visualId}:${entry.nextDetail}`);
+    const band = C4_ZOOM_BANDS.find(candidate => candidate.detail === entry.nextDetail);
+    // Match target measurement: authored transitions first, then the protocol
+    // representation LOD, then the shared C4 band policy for sparse imports.
+    const minZoom = authored?.minZoom ?? representation?.lod?.minZoom ?? band?.enterZoom;
+    const hysteresis = authored?.hysteresis ?? representation?.lod?.hysteresis ?? band?.hysteresis ?? 0;
+    if (minZoom !== undefined && zoom + hysteresis + 1e-9 < minZoom) break;
+    entries.push(entry);
+  }
+  return { entries, truncated: structural.truncated || entries.length !== structural.entries.length };
+}
+
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
@@ -1322,6 +1359,8 @@ export function semanticLensProjectionOverride(scene: AtlasScene, state: Semanti
 }
 
 type SemanticObjectContract = {
+  /** Obsolete ancestor geometry must not cross an expanding branch, even mid-blend. */
+  suppressDuringTransition?: boolean;
   representationId?: string;
   opacity: number;
   contentOpacity: number;
@@ -1352,6 +1391,8 @@ function semanticContractsForEntries(
   const ghosts = new Map(ownership.ghosts.map(ghost => [ghost.id, ghost]));
   const silhouettes = new Map(ownership.silhouettes.map(silhouette => [silhouette.id, silhouette]));
   const ancestorDetails = new Map(entries.slice(0, -1).map(entry => [entry.targetId, entry.currentDetail]));
+  const focusId = entries.at(-1)?.targetId;
+  const focusBounds = focusId ? scene.projection?.boundsByEntityIdAndDetail[focusId]?.[ownership.detail] : undefined;
   const objectContracts = new Map<string, SemanticObjectContract>();
   for (const object of protocol.objects) {
     const entityId = scene.projection?.visualToSemanticEntityId[object.id];
@@ -1368,9 +1409,19 @@ function semanticContractsForEntries(
     }
     const ancestorDetail = ancestorDetails.get(entityId);
     if (ownership.ancestors.has(entityId) && ancestorDetail) {
+      const bounds = scene.projection?.boundsByEntityIdAndDetail[entityId]?.[ancestorDetail];
+      // Independently laid-out deeper scopes can outgrow a retained ancestor.
+      // Omit its obsolete shell instead of drawing a selected border through the
+      // incoming branch. Selection and inspector identity remain unchanged.
+      const enclosesFocus = !bounds || !focusBounds || (
+        bounds.x <= focusBounds.x + .001 && bounds.y <= focusBounds.y + .001
+        && bounds.x + bounds.width >= focusBounds.x + focusBounds.width - .001
+        && bounds.y + bounds.height >= focusBounds.y + focusBounds.height - .001
+      );
       objectContracts.set(object.id, {
-        representationId: representation(object.id, ancestorDetail),
-        opacity: .32,
+        ...(enclosesFocus ? { representationId: representation(object.id, ancestorDetail) } : {}),
+        opacity: enclosesFocus ? .32 : 0,
+        suppressDuringTransition: !enclosesFocus,
         contentOpacity: 0,
         pickable: false,
         pickPriority: 0,
@@ -1380,8 +1431,10 @@ function semanticContractsForEntries(
     const ghost = ghosts.get(entityId);
     if (ghost) {
       objectContracts.set(object.id, {
-        representationId: representation(object.id, ownership.detail)
-          ?? representation(object.id, ghost.detail),
+        // Background context keeps its own band geometry. Selecting the deeper
+        // band's representation here makes unrelated siblings rearrange during
+        // the focused owner's morph and detaches them from retained old routes.
+        representationId: representation(object.id, ghost.detail),
         opacity: ghost.opacity,
         contentOpacity: ghost.opacity === .24 ? ghost.opacity : 0,
         pickable: ghost.opacity === .24,
@@ -1446,8 +1499,19 @@ function semanticContractsForEntries(
   return { objects: objectContracts, paths: pathContracts };
 }
 
+/** Fade context before the expanding focus reaches it; never relocate it. */
+export function semanticBackgroundVisibility(background: LensBounds, focus: LensBounds): number {
+  const separation = Math.max(
+    background.x - (focus.x + focus.width), focus.x - (background.x + background.width),
+    background.y - (focus.y + focus.height), focus.y - (background.y + background.height),
+  );
+  const fadeDistance = Math.max(1, Math.min(background.width, background.height) * .08);
+  const amount = clamp01(separation / fadeDistance);
+  return amount * amount * (3 - 2 * amount);
+}
+
 /** Composes all settled branch expansions and at most one active transition into one native override. */
-export function semanticLensSessionProjectionOverride(scene: AtlasScene, session: SemanticLensSession): ProjectionOverride | undefined {
+export function semanticLensSessionProjectionOverride(scene: AtlasScene, session: SemanticLensSession, deferBackgroundVisibility = false): ProjectionOverride | undefined {
   const protocol = scene.protocolSnapshot as ProtocolProjectionScene | undefined;
   if (!protocol?.objects || !protocol.paths || !scene.projection) return undefined;
   const activeEntry = session.active.phase !== 'idle'
@@ -1463,16 +1527,31 @@ export function semanticLensSessionProjectionOverride(scene: AtlasScene, session
   const source = semanticContractsForEntries(scene, protocol, session.baseDetail, sourceEntries);
   const target = semanticContractsForEntries(scene, protocol, session.baseDetail, targetEntries);
   const active = activeEntry ? semanticLensProjectionOverride(scene, session.active) : undefined;
+  // A source-band edge that leaves the owner being expanded has no stable
+  // geometry once that owner becomes its independently laid-out child graph.
+  // Keeping it for the normal source→target fade draws the old route straight
+  // through the incoming grid. Suppress only paths with no target-band
+  // continuation: internal paths remain available to the incoming branch.
+  const targetPathIds = new Set(activeEntry
+    ? scene.projection.projectedRelationsByDetail[activeEntry.nextDetail].map(relation => relation.id)
+    : []);
+  const obsoleteBoundarySourcePathIds = new Set(activeEntry
+    ? scene.projection.projectedRelationsByDetail[activeEntry.currentDetail]
+      .filter(relation => (relation.from === activeEntry.targetId || relation.to === activeEntry.targetId)
+        && !targetPathIds.has(relation.id))
+      .map(relation => relation.id)
+    : []);
   const progress = active ? session.active.progress : session.focusTransfer?.progress ?? 1;
   const transferKey = session.focusTransfer
     ? `transfer:${session.focusTransfer.sourceEntries.at(-1)?.targetId ?? 'base'}>${session.focusTransfer.targetId}:${session.focusTransfer.depth}`
     : undefined;
-  return {
+  const projection: ProjectionOverride = {
     id: `semantic-path:${session.baseDetail}:${session.settled.map(entry => entry.targetId).join('>') || 'base'}:${active?.id ?? transferKey ?? 'settled'}`,
     progress,
     objects: protocol.objects.map(object => {
-      const from = source.objects.get(object.id) ?? { opacity: 0, contentOpacity: 0, pickable: false, pickPriority: 0 };
       const to = target.objects.get(object.id) ?? { opacity: 0, contentOpacity: 0, pickable: false, pickPriority: 0 };
+      const from = to.suppressDuringTransition ? to
+        : source.objects.get(object.id) ?? { opacity: 0, contentOpacity: 0, pickable: false, pickPriority: 0 };
       return {
         objectId: object.id,
         ...(from.representationId ? { sourceRepresentationId: from.representationId } : {}),
@@ -1488,12 +1567,93 @@ export function semanticLensSessionProjectionOverride(scene: AtlasScene, session
       };
     }),
     paths: protocol.paths.map(path => {
+      const suppressSourcePath = obsoleteBoundarySourcePathIds.has(path.id);
       return {
         pathId: path.id,
-        sourceOpacity: source.paths.get(path.id)?.opacity ?? 0,
-        targetOpacity: target.paths.get(path.id)?.opacity ?? 0,
+        sourceOpacity: suppressSourcePath ? 0 : source.paths.get(path.id)?.opacity ?? 0,
+        targetOpacity: suppressSourcePath ? 0 : target.paths.get(path.id)?.opacity ?? 0,
       };
     }),
     ...(active?.morph ? { morph: active.morph } : {}),
+  };
+  return deferBackgroundVisibility ? projection : applySemanticBackgroundVisibility(scene, session, projection);
+}
+
+/** Apply progress-dependent visibility after reusing the immutable topology. */
+export function applySemanticBackgroundVisibility(scene: AtlasScene, session: SemanticLensSession, projection: ProjectionOverride): ProjectionOverride {
+  if (!scene.projection) return projection;
+  const activeEntry = session.active.phase !== 'idle' && session.active.targetId && session.active.currentDetail && session.active.nextDetail
+    ? { targetId: session.active.targetId, currentDetail: session.active.currentDetail, nextDetail: session.active.nextDetail }
+    : undefined;
+  const sourceEntries = session.focusTransfer?.sourceEntries ?? session.settled;
+  const targetEntries = activeEntry ? [...session.settled, activeEntry] : session.settled;
+  const progress = projection.progress;
+  const focusEntry = targetEntries.at(-1);
+  const focusSource = focusEntry ? scene.projection.boundsByEntityIdAndDetail[focusEntry.targetId]?.[focusEntry.currentDetail] : undefined;
+  const focusTarget = focusEntry ? scene.projection.boundsByEntityIdAndDetail[focusEntry.targetId]?.[focusEntry.nextDetail] : undefined;
+  const focusBounds = focusSource && focusTarget && activeEntry
+    ? interpolateSemanticOwnerBounds(focusSource, focusTarget, progress)
+    : focusTarget;
+  const backgroundVisibilityFor = (entries: readonly SemanticLensPathEntry[], focus: LensBounds | undefined) => {
+    const visibility = new Map<string, number>();
+    if (!focus) return visibility;
+    for (const ghost of ghostEntitiesForEntries(scene, entries)) {
+      const bounds = scene.projection!.boundsByEntityIdAndDetail[ghost.id]?.[ghost.detail];
+      const visualId = scene.projection!.semanticToVisualEntityId[ghost.id];
+      if (bounds && visualId) {
+        // Older context also remains behind already-expanded ancestors. Using
+        // only the smallest new focus would reveal it at the next zoom's p=0.
+        const envelopes = entries.slice(ghost.depth).map((entry, index, relevant) =>
+          index === relevant.length - 1 ? focus
+            : scene.projection!.boundsByEntityIdAndDetail[entry.targetId]?.[entry.nextDetail]);
+        visibility.set(visualId, Math.min(...envelopes.map(envelope =>
+          envelope ? semanticBackgroundVisibility(bounds, envelope) : 1)));
+      }
+    }
+    for (const silhouette of silhouetteEntitiesForEntries(scene, entries)) {
+      const parentVisual = scene.projection!.semanticToVisualEntityId[silhouette.parentGhostId];
+      const visualId = scene.projection!.semanticToVisualEntityId[silhouette.id];
+      if (visualId) visibility.set(visualId, visibility.get(parentVisual) ?? 1);
+    }
+    for (const relations of Object.values(scene.projection!.projectedRelationsByDetail)) {
+      for (const relation of relations) {
+        const from = scene.projection!.semanticToVisualEntityId[relation.from];
+        const to = scene.projection!.semanticToVisualEntityId[relation.to];
+        const amount = Math.min(visibility.get(from) ?? 1, visibility.get(to) ?? 1);
+        visibility.set(relation.id, amount);
+        visibility.set(`relation-label:${relation.id}`, amount);
+      }
+    }
+    return visibility;
+  };
+  // Wheel morphs share one current focus envelope. Explicit focus transfers
+  // blend the two endpoint contracts, including visibility, to avoid flashes
+  // when the transfer starts or settles. Minimap geometry uses the same packet.
+  const targetVisibility = backgroundVisibilityFor(targetEntries, focusBounds);
+  const sourceFocusEntry = sourceEntries.at(-1);
+  const sourceFocusBounds = sourceFocusEntry
+    ? scene.projection.boundsByEntityIdAndDetail[sourceFocusEntry.targetId]?.[sourceFocusEntry.nextDetail]
+    : undefined;
+  const sourceVisibility = session.focusTransfer
+    ? backgroundVisibilityFor(sourceEntries, sourceFocusBounds)
+    : targetVisibility;
+  return {
+    ...projection,
+    objects: projection.objects.map(object => {
+      const from = sourceVisibility.get(object.objectId) ?? 1;
+      const to = targetVisibility.get(object.objectId) ?? 1;
+      return { ...object,
+        sourceOpacity: (object.sourceOpacity ?? (object.sourceRepresentationId ? 1 : 0)) * from,
+        targetOpacity: (object.targetOpacity ?? (object.targetRepresentationId ? 1 : 0)) * to,
+        sourceContentOpacity: (object.sourceContentOpacity ?? object.sourceOpacity ?? 1) * from,
+        targetContentOpacity: (object.targetContentOpacity ?? object.targetOpacity ?? 1) * to,
+        sourcePickable: object.sourcePickable !== false && from > .001,
+        targetPickable: object.targetPickable !== false && to > .001,
+      };
+    }),
+    paths: projection.paths.map(path => ({ ...path,
+      sourceOpacity: path.sourceOpacity * (sourceVisibility.get(path.pathId) ?? 1),
+      targetOpacity: path.targetOpacity * (targetVisibility.get(path.pathId) ?? 1),
+    })),
   };
 }

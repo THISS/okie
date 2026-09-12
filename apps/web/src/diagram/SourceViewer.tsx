@@ -1,5 +1,9 @@
+import { createSourceRequestController, sourceContextIsLoading } from './sourceRequest';
+import { fetchSourceRange, immutableFileUrl, type SourceContext, type SourceRange } from './sourceFetch';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SceneSourceExcerpt } from '../renderer/types';
+import type { PortableAtlas } from '@okie/architecture';
+import { getActivePortableAtlas } from '../portable/runtime';
 
 export type SourceLanguage = SceneSourceExcerpt['language'];
 export type SourceToken = { kind: 'plain' | 'comment' | 'string' | 'number' | 'keyword' | 'punctuation'; text: string };
@@ -100,20 +104,101 @@ async function writeClipboard(value: string) {
   await navigator.clipboard.writeText(value);
 }
 
+/** Only recognized hosting URLs can produce a trustworthy commit-pinned file URL. */
+export function portableRepositoryRevisionUrl(repository: PortableAtlas['repository']): string | undefined {
+  if (!repository.url || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/iu.test(repository.commitSha)) return undefined;
+  let url: URL;
+  try { url = new URL(repository.url); } catch { return undefined; }
+  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || url.username || url.password || url.port) return undefined;
+  const match = /^\/([a-z0-9-]+)\/([a-z0-9_.-]+)\/?$/iu.exec(url.pathname);
+  if (!match) return undefined;
+  return `https://github.com/${match[1]}/${match[2]!.replace(/\.git$/u, '')}/tree/${repository.commitSha}`;
+}
+
+export function portableSourceUrls(repository: PortableAtlas['repository'], excerpt: SceneSourceExcerpt): { file: string; raw: string } | undefined {
+  if (repository.commitSha !== excerpt.frozenRevision || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/iu.test(repository.commitSha)
+    || !validRelativeSourcePath(excerpt.path) || !repository.url) return undefined;
+  let url: URL;
+  try { url = new URL(repository.url); } catch { return undefined; }
+  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || url.username || url.password || url.port) return undefined;
+  const match = /^\/([a-z0-9-]+)\/([a-z0-9_.-]+)\/?$/iu.exec(url.pathname);
+  if (!match) return undefined;
+  const repo = match[2]!.replace(/\.git$/u, '');
+  const target = `${match[1]}/${repo}/${repository.commitSha}/${excerpt.path.split('/').map(encodeURIComponent).join('/')}`;
+  return { file: `https://github.com/${match[1]}/${repo}/blob/${repository.commitSha}/${excerpt.path.split('/').map(encodeURIComponent).join('/')}#L${excerpt.highlightLine}`, raw: `https://raw.githubusercontent.com/${target}` };
+}
+
+export function bundledSourceRange(bundle: PortableAtlas, excerpt: SceneSourceExcerpt, start = 1, end = Number.MAX_SAFE_INTEGER): SourceRange | undefined {
+  if (bundle.repository.commitSha !== excerpt.frozenRevision) return undefined;
+  const file = bundle.sources?.find(source => source.path === excerpt.path);
+  if (!file) return undefined;
+  const lines = file.text.split(/\r?\n/u);
+  const first = Math.max(1, Math.min(start, lines.length));
+  const last = Math.max(first, Math.min(end, lines.length));
+  return { repository: bundle.repository.url ?? '', commit: bundle.repository.commitSha, path: file.path,
+    startLine: first, endLine: last, totalLines: lines.length, lines: lines.slice(first - 1, last), digest: '' };
+}
+
 export function SourceViewer({
   excerpt,
   localWorkspace,
+  sourceContext,
+  portableAtlas = getActivePortableAtlas(),
   onFeedback,
 }: {
   excerpt?: SceneSourceExcerpt;
   localWorkspace?: LocalWorkspaceContext;
+  sourceContext?: SourceContext;
+  portableAtlas?: PortableAtlas;
   onFeedback: (message: string) => void;
 }) {
+  const identity = JSON.stringify([sourceContext, portableAtlas?.repository, excerpt]);
+  const requestRef = useRef(createSourceRequestController());
+  requestRef.current.select(identity);
+  const [loaded, setLoaded] = useState<{ identity: string; range: SourceRange }>();
+  const [loadState, setLoadState] = useState<{ identity: string; loading?: boolean; error?: string }>();
+  const contextLoading = sourceContextIsLoading(requestRef.current, identity, loadState);
+  const range = loaded?.identity === identity ? loaded.range : undefined;
+  const display = excerpt && range ? { ...excerpt, ...range } : excerpt;
+  const portableUrls = portableAtlas && excerpt ? portableSourceUrls(portableAtlas.repository, excerpt) : undefined;
+  const bundled = portableAtlas && excerpt ? bundledSourceRange(portableAtlas, excerpt) : undefined;
+  const fullUrl = portableAtlas ? portableUrls?.file : sourceContext && excerpt && validRelativeSourcePath(excerpt.path) ? immutableFileUrl(sourceContext, excerpt.frozenRevision, excerpt.path) : undefined;
+  useEffect(() => () => { requestRef.current.cancel(); }, [identity]);
+  const loadMore = async () => {
+    if (!excerpt || !display) return;
+    if (portableAtlas) {
+      const local = bundledSourceRange(portableAtlas, excerpt, Math.max(1, display.startLine - 30), display.endLine + 30);
+      if (local) setLoaded({ identity, range: local });
+      return;
+    }
+    if (!sourceContext) return;
+    setLoadState({ identity, loading: true });
+    const start = Math.max(1, display.startLine - 30);
+    const end = Math.min(start + 499, display.endLine + 30);
+    await requestRef.current.run(identity,
+      signal => fetchSourceRange(sourceContext, excerpt.frozenRevision, excerpt.path, start, end, signal),
+      result => { setLoaded({ identity, range: result }); setLoadState({ identity }); },
+      error => setLoadState({ identity, error: error instanceof Error ? error.message : 'Historical source unavailable.' }),
+    );
+  };
+  const fetchPortableFile = async () => {
+    if (!portableUrls || !excerpt || !portableAtlas) return;
+    setLoadState({ identity, loading: true });
+    await requestRef.current.run(identity, async signal => {
+      const response = await fetch(portableUrls.raw, { signal, credentials: 'omit', referrerPolicy: 'no-referrer' });
+      if (!response.ok) throw new Error('Full file unavailable from GitHub at this commit.');
+      if (Number(response.headers.get('content-length')) > 5 * 1024 * 1024) throw new Error('Full file exceeds the 5 MiB viewer limit.');
+      const text = await response.text();
+      if (text.length > 5 * 1024 * 1024) throw new Error('Full file exceeds the 5 MiB viewer limit.');
+      return bundledSourceRange({ ...portableAtlas, sources: [{ path: excerpt.path, text }] }, excerpt)!;
+    }, result => { setLoaded({ identity, range: result }); setLoadState({ identity }); },
+    error => setLoadState({ identity, error: error instanceof Error ? error.message : 'Historical source unavailable.' }));
+  };
   const highlightedLineRef = useRef<HTMLDivElement | null>(null);
   const [feedback, setFeedback] = useState<string>();
   const absolutePath = excerpt ? absoluteSourcePath(localWorkspace?.repositoryRoot, excerpt.path) : undefined;
   const language = excerpt ? sourceLanguage(excerpt) : 'typescript';
-  const lineTokens = useMemo(() => tokenizeSourceLines(excerpt?.lines ?? [], language), [excerpt, language]);
+  const lineTokens = useMemo(() => tokenizeSourceLines(display?.lines ?? [], language), [display, language]);
 
   useEffect(() => {
     highlightedLineRef.current?.scrollIntoView({ block: 'center', inline: 'nearest' });
@@ -158,13 +243,13 @@ export function SourceViewer({
 
   return <section aria-label={`Read-only source for ${excerpt.symbol ?? excerpt.path}`} className="source-viewer">
     <header className="source-meta">
-      <div><strong>{excerpt.path}</strong><span>{excerpt.symbol ?? 'File excerpt'} · lines {excerpt.startLine}–{excerpt.endLine}</span></div>
+      <div><strong>{excerpt.path}</strong><span>{excerpt.symbol ?? 'File excerpt'} · lines {display?.startLine}–{display?.endLine}</span></div>
       <span className="source-language">{language}</span>
     </header>
     <div aria-label={`${excerpt.path}, read only`} className="source-code" role="region" tabIndex={0}>
       <div className="source-lines">
         {lineTokens.map((tokens, index) => {
-          const line = excerpt.startLine + index;
+          const line = (display?.startLine ?? excerpt.startLine) + index;
           const highlighted = line === excerpt.highlightLine;
           return <div {...(highlighted ? { 'aria-current': 'line' as never } : {})} className={`source-line ${highlighted ? 'highlighted' : ''}`} key={line} ref={highlighted ? highlightedLineRef : undefined}>
             <span aria-hidden="true" className="source-line-number">{line}</span>
@@ -173,7 +258,21 @@ export function SourceViewer({
         })}
       </div>
     </div>
+    {loadState?.identity === identity && loadState.error && <p role="status">{loadState.error} Showing saved source.</p>}
     <div aria-label="Source actions" className="source-actions">
+      {portableAtlas ? <>
+        {bundled ? <>
+          <button disabled={!!range && range.startLine === 1 && range.endLine === range.totalLines} onClick={() => { void loadMore(); }} type="button">Load more context</button>
+          <button disabled={!!range && range.startLine === 1 && range.endLine === range.totalLines} onClick={() => setLoaded({ identity, range: bundled })} type="button">View full bundled file</button>
+        </> : <>
+          <span>Full source is not bundled. The saved excerpt remains available.</span>
+          {portableUrls && <button disabled={contextLoading} onClick={() => { void fetchPortableFile(); }} type="button">{contextLoading ? 'Loading full file…' : 'Fetch full file from GitHub'}</button>}
+        </>}
+        {fullUrl && <a href={fullUrl} target="_blank" rel="noopener noreferrer">View full file at this commit</a>}
+      </> : fullUrl && <>
+        <button disabled={contextLoading || !!range && (range.endLine - range.startLine + 1 >= 500 || range.startLine === 1 && range.endLine === range.totalLines)} onClick={() => { void loadMore(); }} type="button">{contextLoading ? 'Loading context…' : 'Load more context'}</button>
+        <a href={fullUrl} target="_blank" rel="noopener noreferrer">View full file at this commit</a>
+      </>}
       <button disabled={!excerpt.symbol} onClick={() => { void copy('Symbol', excerpt.symbol); }} type="button">Copy symbol</button>
       <button onClick={() => { void copy('Relative path', excerpt.path); }} type="button">Copy relative</button>
       {absolutePath && <button onClick={() => { void copy('Absolute path', absolutePath); }} type="button">Copy absolute</button>}

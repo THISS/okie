@@ -1,9 +1,16 @@
+import type { PortableAtlas } from '@okie/architecture';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { absoluteSourcePath, editorSourceUri, SourceViewer, tokenizeSourceLine, tokenizeSourceLines, validRelativeSourcePath } from './SourceViewer';
+import { bundledSourceRange, portableSourceUrls, portableRepositoryRevisionUrl, absoluteSourcePath, editorSourceUri, SourceViewer, tokenizeSourceLine, tokenizeSourceLines, validRelativeSourcePath } from './SourceViewer';
 
 describe('source viewer helpers', () => {
+  it('opens the imported repository at its scanned commit, never an unrelated default branch', () => {
+    const repository = { commitSha: 'a'.repeat(40), treeHash: 'b'.repeat(40), url: 'https://github.com/example/project.git' };
+    expect(portableRepositoryRevisionUrl(repository)).toBe(`https://github.com/example/project/tree/${repository.commitSha}`);
+    expect(portableRepositoryRevisionUrl({ ...repository, url: undefined })).toBeUndefined();
+    expect(portableRepositoryRevisionUrl({ ...repository, url: 'https://unknown-host.example/project' })).toBeUndefined();
+  });
   it('degrades gracefully when a code entity has source refs but no frozen excerpt', () => {
     // Refs-only entities still open Source (CLA-9); the viewer must present a
     // clean unavailable state rather than throw when selectedExcerpt is missing.
@@ -89,5 +96,38 @@ describe('source viewer helpers', () => {
     expect(editorSourceUri('vscode', '/work/okie/a#b?.ts', -4))
       .toBe('vscode://file//work/okie/a%23b%3F.ts:1:1');
     expect(() => editorSourceUri('javascript' as never, '/work/okie/App.tsx', 1)).toThrow('Unsupported editor');
+  });
+});
+
+
+describe('portable source viewing', () => {
+  const commit = 'a'.repeat(40);
+  const excerpt = { path: 'src/api.ts', language: 'typescript' as const, startLine: 2, endLine: 2, highlightLine: 2, frozenRevision: commit, lines: ['export const api = 1;'], text: 'export const api = 1;' };
+  const bundle = { repository: { commitSha: commit, treeHash: 'b'.repeat(40), url: 'https://github.com/example/project.git' }, sources: [{ path: excerpt.path, text: '// context\nexport const api = 1;\n// end' }] } as PortableAtlas;
+
+  it('reads full bundled source with exact revision and range bounds', () => {
+    expect(bundledSourceRange(bundle, excerpt)).toMatchObject({ startLine: 1, endLine: 3, totalLines: 3, lines: ['// context', 'export const api = 1;', '// end'] });
+    expect(bundledSourceRange(bundle, excerpt, 2, 2)?.lines).toEqual(excerpt.lines);
+    expect(bundledSourceRange(bundle, { ...excerpt, frozenRevision: 'c'.repeat(40) })).toBeUndefined();
+    expect(bundledSourceRange(bundle, { ...excerpt, path: 'missing.ts' })).toBeUndefined();
+  });
+
+  it('creates only recognized commit-pinned external URLs', () => {
+    expect(portableSourceUrls(bundle.repository, excerpt)).toEqual({ file: `https://github.com/example/project/blob/${commit}/src/api.ts#L2`, raw: `https://raw.githubusercontent.com/example/project/${commit}/src/api.ts` });
+    expect(portableSourceUrls({ ...bundle.repository, url: 'https://other.example/repo' }, excerpt)).toBeUndefined();
+    expect(portableSourceUrls(bundle.repository, { ...excerpt, path: '../secret' })).toBeUndefined();
+    expect(portableSourceUrls(bundle.repository, { ...excerpt, frozenRevision: 'main' })).toBeUndefined();
+  });
+
+  it('offers local full source instead of backend loading and keeps excerpts when full files are absent', () => {
+    const render = (portableAtlas: PortableAtlas) => renderToStaticMarkup(createElement(SourceViewer, { excerpt, portableAtlas, sourceContext: { owner: 'example', repo: 'project', scanBasePath: '/scan' }, onFeedback: () => undefined }));
+    const local = render(bundle);
+    expect(local).toContain('View full bundled file');
+    expect(local).not.toContain('Fetch full file from GitHub');
+    const absent = render({ ...bundle, sources: [] });
+    expect(absent).toContain('Full source is not bundled');
+    expect(absent).toContain('Fetch full file from GitHub');
+    expect(absent).toContain('export');
+    expect(absent).not.toContain('Load more context');
   });
 });

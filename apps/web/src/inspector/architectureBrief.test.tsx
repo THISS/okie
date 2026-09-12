@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { assertSafeMermaidSource } from '../diagram/MermaidDiagram';
 import { inspectorAcceptedSummary, INSPECTOR_EMPTY_SUMMARY } from './inspectorPanel';
-import { ArchitectureBriefView } from './ArchitectureBrief';
+import { ArchitectureBriefView } from './ArchitectureBriefView';
 import {
   architectureBriefIncludesEntityPath,
   architectureBriefLeaksSecretsOrHostPaths,
@@ -293,8 +293,8 @@ describe('architecture brief view (CLA-87)', () => {
     expect(markup).toContain('Architecture brief');
     expect(markup).toContain('Spatial architecture atlas.');
     expect(markup).toContain('<h2>System</h2>');
-    expect(markup).toContain('<h2>Containers</h2>');
-    expect(markup).toContain('<h2>Key flows</h2>');
+    expect(markup).toContain(`<h2>Containers (${brief.containers.length})</h2>`);
+    expect(markup).toContain(`<h2>Key flows (${brief.flows.length})</h2>`);
     expect(markup).not.toContain('data-testid="one-pager-containers"');
     expect(markup).not.toContain('L1–L2 · One-pager');
     expect(markup).not.toContain('scanRoot');

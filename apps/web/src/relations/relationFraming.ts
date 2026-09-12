@@ -115,7 +115,11 @@ export function relationFramingPlan(
   if (!sourceBounds || !targetBounds) return undefined;
 
   const containment = relationContainment(scene, relation);
-  const bounds = unionBounds(sourceBounds, targetBounds);
+  let bounds = unionBounds(sourceBounds, targetBounds);
+  for (const point of relation.routePoints ?? []) {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return undefined;
+    bounds = unionBounds(bounds, { ...point, width: 0, height: 0 });
+  }
 
   const level = Math.max(0, semanticDetails.indexOf(detail));
   const interval = semanticDominantZoomIntervals()[level]!;
@@ -139,7 +143,10 @@ export function relationFramingPlan(
         : entity
   ));
   const endpointIds = relation.from === relation.to ? [relation.from] : [relation.from, relation.to];
-  const camera = frameEntities({ ...scene, entities }, endpointIds, viewport, safeArea, {
+  // A synthetic fit-only rectangle includes bends and self-loop excursions as well as endpoints.
+  const routeBoundsId = '__relationship-route-fit__';
+  entities.push({ ...entities.find(entity => entity.id === relation.from)!, id: routeBoundsId, ...bounds });
+  const camera = frameEntities({ ...scene, entities }, [...endpointIds, routeBoundsId], viewport, safeArea, {
     screenPadding: RELATION_FRAMING_SCREEN_PADDING,
     minZoom,
     maxZoom,

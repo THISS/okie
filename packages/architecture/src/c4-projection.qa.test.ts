@@ -67,6 +67,31 @@ function stableHash(value: unknown): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
+test('focusing a finer entity preserves coarse C4 membership and its context anchor', () => {
+  const withoutRelations = { ...snapshot, relations: [] };
+  const contextLayouts = ['system:okie', 'container:web', 'component:shell', 'code:app'].map(focusEntityId => {
+    const bundle = buildC4ProjectionBundle(withoutRelations, { rootEntityId: 'system:okie', focusEntityId });
+    const context = projection(bundle, 'context');
+    const layout = bundle.bandLayoutById[context.layoutId]!;
+    const entries = context.visualNodeIds.map(id => ({
+      id: bundle.index.entityIdByVisualNodeId[id],
+      kind: bundle.visualNodeById[id]!.kind,
+      bounds: layout.nodes[id],
+    })).sort((a, b) => a.id!.localeCompare(b.id!));
+    assert.deepEqual(entries.map(entry => entry.id), ['actor:developer', 'external:repository', 'system:okie']);
+    assert.ok(entries.every(entry => ['person', 'externalSystem', 'softwareSystem'].includes(entry.kind)));
+    for (const band of C4_BANDS) {
+      const current = projection(bundle, band);
+      for (const id of current.visualNodeIds) {
+        const parent = bundle.visualNodeById[id]!.parentVisualId;
+        if (parent) assert.ok(current.visualNodeIds.includes(parent), `${band} retains native-band ancestry`);
+      }
+    }
+    return entries;
+  });
+  for (const layout of contextLayouts.slice(1)) assert.deepEqual(layout, contextLayouts[0]);
+});
+
 test('intrinsic C4 grid reserves readable code cards, component header, padding, and gaps', () => {
   const metrics = {
     gap: C4_INTRINSIC_LAYOUT.gap,

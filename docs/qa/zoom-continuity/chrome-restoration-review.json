@@ -1,0 +1,62 @@
+{
+  "sourceState": "docs/qa/zoom-continuity/source-state-restored-lens.json",
+  "sourceSha256": "51f781abe673deaf5f3750322d7d7e12e7ec63bbc03978157e20eb82653e0cd9",
+  "pin": "357222e2",
+  "browser": "Chrome dedicated tab794341092",
+  "canvasViewport": {
+    "width": 1256,
+    "height": 871
+  },
+  "L1": {
+    "initialCamera": {
+      "x": -393.525,
+      "y": -452.338,
+      "zoom": 0.8037
+    },
+    "canonicalLens": [],
+    "visual": "Two context cards Okie and @anthropic-ai/sdk; L1 active",
+    "traceSamples": 19,
+    "inputs": 2,
+    "frames": 17,
+    "droppedSamples": 0,
+    "truncated": false,
+    "firstRecordedProjection": "semantic-path:context:base:settled",
+    "allRecordedProjections": "semantic-path:context:base:settled",
+    "firstRecordedCamera": {
+      "x": -387.4221912317588,
+      "y": -452.4130345340358,
+      "zoom": 0.8373650068465013
+    },
+    "endpointCamera": {
+      "x": -393.525,
+      "y": -452.338,
+      "zoom": 0.8036999999999999
+    },
+    "note": "Trace begins after first wheel, not literal boot frame; pre-input visual and diagnostics show 2 visible entities."
+  },
+  "L4": {
+    "focus": "component:apps-web-src-hosted-atlas-ts",
+    "zoom": 10,
+    "retainedLens": [
+      "system:okie",
+      "container:apps-web",
+      "component:apps-web-src-hosted-atlas-ts"
+    ],
+    "visualCodeCards": [
+      "DOGFOOD_ATLAS_OWNER",
+      "DOGFOOD_ATLAS_REPO",
+      "DOGFOOD_ATLAS_SLUG",
+      "hostedAtlasBootPlan",
+      "HostedAtlasBootStep",
+      "isDogfoodAtlas",
+      "isPublicAtlasViewPath"
+    ],
+    "truncationAnnouncement": false
+  },
+  "limits": [
+    "Functional restoration only; no native video",
+    "Different viewport from original IAB",
+    "No full smoothness or global matrix pass",
+    "Screenshots and full trace inspected in CUA tool outputs; compact transcription stored here"
+  ]
+}

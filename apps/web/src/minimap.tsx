@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
-import type { AtlasScene, Camera, SemanticDetail } from './renderer/types';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import type { AtlasScene, Camera, ProjectionOverride, SemanticDetail } from './renderer/types';
 import type { ViewportSize } from './storyFraming';
-import { subscribeLiveCamera } from './liveCameraBridge';
+import { subscribeLiveCamera, type LiveCameraFrame } from './liveCameraBridge';
+import { C4_ZOOM_BANDS } from '@okie/scene-compiler';
+import { minimapEntityRects, minimapWorldRect, type MinimapRect } from './minimapGeometry';
+export { minimapEntityRects } from './minimapGeometry';
+export type { MinimapRect, MinimapEntityRect } from './minimapGeometry';
 
 export type MinimapPoint = { x: number; y: number };
-export type MinimapRect = { x: number; y: number; width: number; height: number };
-export type MinimapEntityRect = { detail: SemanticDetail; rect: MinimapRect };
 export type MinimapProjector = (rect: MinimapRect) => MinimapRect;
 export type MinimapInverseProjector = (point: MinimapPoint) => MinimapPoint;
 /** `start` arms the drag (cancels flights/story), `move` streams the live camera, `settle` commits it. */
@@ -20,16 +22,6 @@ export function worldViewportRect(camera: Camera, viewport: ViewportSize): Minim
   const width = viewport.width / camera.zoom;
   const height = viewport.height / camera.zoom;
   return { x: camera.x - width / 2, y: camera.y - height / 2, width, height };
-}
-
-/** L1 (context) + L2 (container) entity rects for the overview, in world coordinates. */
-export function minimapEntityRects(scene: AtlasScene): MinimapEntityRect[] {
-  return scene.entities
-    .filter(entity => entity.detail === 'context' || entity.detail === 'container')
-    .map(entity => ({
-      detail: entity.detail as SemanticDetail,
-      rect: { x: entity.x, y: entity.y, width: entity.width, height: entity.height },
-    }));
 }
 
 /** Axis-aligned union of `rects`; undefined for an empty list. */
@@ -78,7 +70,14 @@ export function minimapInverseProjector(world: MinimapRect, insetWidth: number, 
  */
 export function projectedViewportRect(camera: Camera, viewport: ViewportSize, project: MinimapProjector): MinimapRect {
   const projected = project(worldViewportRect(camera, viewport));
-  return { x: projected.x, y: projected.y, width: Math.max(2, projected.width), height: Math.max(2, projected.height) };
+  const width = Math.max(2, projected.width);
+  const height = Math.max(2, projected.height);
+  return {
+    x: projected.x + (projected.width - width) / 2,
+    y: projected.y + (projected.height - height) / 2,
+    width,
+    height,
+  };
 }
 
 /**
@@ -131,6 +130,7 @@ export function minimapPanCamera(
 }
 
 type MinimapViewState = {
+  world: MinimapRect;
   project: MinimapProjector;
   inverse: MinimapInverseProjector;
   viewport: ViewportSize;
@@ -140,7 +140,7 @@ type MinimapViewState = {
 };
 
 /**
- * Overview inset: world bounds, simplified L1/L2 entity rectangles, and a viewport rectangle
+ * Overview inset: smoothly fitted scope bounds, the current semantic projection, and a viewport rectangle
  * tracking the camera. Interactive when `onPan` is supplied — drag the viewport box to pan the main
  * camera (zoom unchanged), or click elsewhere on the inset to centre there. The camera write is
  * owned by the caller: this component only translates pointer geometry into a target camera and a
@@ -151,34 +151,100 @@ type MinimapViewState = {
  * `liveCameraBridge` and updates its SVG attributes imperatively — no App/minimap re-render 60×/sec.
  * The React-rendered rect (from the `camera` prop) covers the settled state and the initial paint.
  */
-export function Minimap({ scene, camera, viewport, insetWidth = 168, onPan }: {
+export function Minimap({ scene, camera, viewport, projectionOverride, activeDetail = 'context', reduceMotion = false, insetWidth = 168, onPan }: {
   scene: AtlasScene;
+  projectionOverride?: ProjectionOverride;
+  activeDetail?: SemanticDetail;
+  reduceMotion?: boolean;
   camera: Camera;
   viewport: ViewportSize;
   insetWidth?: number;
   onPan?: (camera: Camera, phase: MinimapPanPhase) => void;
 }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const entityElementsRef = useRef(new Map<string, SVGRectElement>());
+  const paintedEntityIdsRef = useRef(new Set<string>());
+  const liveCameraRef = useRef(camera);
+  const lastCameraPropRef = useRef(camera);
+  const liveDetailRef = useRef(activeDetail);
+  const paintedFrameRef = useRef<{ frame: LiveCameraFrame; detail: SemanticDetail } | null>(null);
+  // React can refresh the SVG from settled props; the next rendered frame reasserts live geometry.
+  paintedFrameRef.current = null;
+  if (lastCameraPropRef.current !== camera) {
+    liveCameraRef.current = camera;
+    lastCameraPropRef.current = camera;
+  }
   const viewportRectRef = useRef<SVGRectElement | null>(null);
   const viewStateRef = useRef<MinimapViewState | null>(null);
-  const dragRef = useRef<{ pointerId: number; offset: MinimapPoint } | null>(null);
+  const dragRef = useRef<{ pointerId: number; offset: MinimapPoint; world: MinimapRect } | null>(null);
   const [dragging, setDragging] = useState(false);
 
-  const entityRects = minimapEntityRects(scene);
-  const world = unionRect(entityRects.map(entry => entry.rect));
+  const entityRects = minimapEntityRects(scene, projectionOverride, activeDetail, reduceMotion);
+  const entityRectsById = new Map(entityRects.map(entry => [entry.id, entry]));
+  paintedEntityIdsRef.current = new Set(entityRects.map(entry => entry.id!));
+  const scopeWorld = useMemo(() => minimapWorldRect(scene, projectionOverride, activeDetail, reduceMotion), [scene, projectionOverride, activeDetail, reduceMotion]);
+  const world = dragRef.current?.world ?? scopeWorld;
+  const residentIds = useMemo(() => {
+    if (!scene.projection) return minimapEntityRects(scene).map(entry => entry.id!);
+    const ids = new Set(projectionOverride
+      ? scene.projection.entityIdsByDetail[activeDetail]
+      : Object.values(scene.projection.entityIdsByDetail).flat());
+    for (const object of projectionOverride?.objects ?? []) ids.add(scene.projection.visualToSemanticEntityId[object.objectId] ?? object.objectId);
+    return [...ids];
+  }, [scene, projectionOverride, activeDetail]);
   const ready = !!world && world.width > 0 && world.height > 0;
-  const insetHeight = ready ? Math.round(insetWidth * Math.min(1.3, Math.max(0.42, world!.height / world!.width))) : 0;
+  const insetHeight = Math.round(insetWidth * .65);
   const project = ready ? minimapProjector(world!, insetWidth, insetHeight) : null;
   // Keep the latest projection/camera available to the (once-subscribed) live-camera listener and
   // the pointer handlers without re-subscribing/rebinding on every render.
   viewStateRef.current = ready && project
-    ? { project, inverse: minimapInverseProjector(world!, insetWidth, insetHeight), viewport, camera, insetWidth, insetHeight }
+    ? { world: world!, project, inverse: minimapInverseProjector(world!, insetWidth, insetHeight), viewport, camera: liveCameraRef.current, insetWidth, insetHeight }
     : null;
 
-  useEffect(() => subscribeLiveCamera(liveCamera => {
+  useEffect(() => subscribeLiveCamera((liveCamera, frame) => {
     const state = viewStateRef.current;
     const element = viewportRectRef.current;
     if (!state || !element) return;
+    liveCameraRef.current = liveCamera;
+    state.camera = liveCamera;
+    if (frame) {
+      const order: SemanticDetail[] = ['context', 'container', 'component', 'code'];
+      let detailIndex = order.indexOf(liveDetailRef.current);
+      const band = (index: number) => frame.scene.projection?.zoomPolicy?.bands?.find(candidate => candidate.detail === order[index])
+        ?? C4_ZOOM_BANDS.find(candidate => candidate.detail === order[index])!;
+      while (detailIndex < 3 && liveCamera.zoom >= band(detailIndex + 1).enterZoom + band(detailIndex + 1).hysteresis) detailIndex++;
+      while (detailIndex > 0 && liveCamera.zoom < band(detailIndex).enterZoom - band(detailIndex).hysteresis) detailIndex--;
+      liveDetailRef.current = order[detailIndex]!;
+      const previous = paintedFrameRef.current;
+      if (!previous || previous.frame.scene !== frame.scene || previous.frame.projectionOverride !== frame.projectionOverride
+        || previous.frame.reduceMotion !== frame.reduceMotion || previous.detail !== liveDetailRef.current) {
+        const liveWorld = dragRef.current?.world ?? minimapWorldRect(frame.scene, frame.projectionOverride, liveDetailRef.current, frame.reduceMotion);
+        if (liveWorld && liveWorld.width > 0 && liveWorld.height > 0) {
+          state.world = liveWorld;
+          state.project = minimapProjector(liveWorld, state.insetWidth, state.insetHeight);
+          state.inverse = minimapInverseProjector(liveWorld, state.insetWidth, state.insetHeight);
+        }
+        const geometry = minimapEntityRects(frame.scene, frame.projectionOverride, liveDetailRef.current, frame.reduceMotion);
+        const visibleIds = new Set(geometry.map(entry => entry.id!));
+        for (const id of paintedEntityIdsRef.current) {
+          if (!visibleIds.has(id)) entityElementsRef.current.get(id)?.setAttribute('visibility', 'hidden');
+        }
+        paintedEntityIdsRef.current = visibleIds;
+        for (const entry of geometry) {
+          const element = entry.id && entityElementsRef.current.get(entry.id);
+          if (!element) continue;
+          const projected = state.project(entry.rect);
+          element.setAttribute('visibility', 'visible');
+          element.setAttribute('class', `minimap-entity detail-${entry.detail}`);
+          element.setAttribute('opacity', String(entry.opacity ?? 1));
+          element.setAttribute('x', String(projected.x));
+          element.setAttribute('y', String(projected.y));
+          element.setAttribute('width', String(Math.max(1, projected.width)));
+          element.setAttribute('height', String(Math.max(1, projected.height)));
+        }
+        paintedFrameRef.current = { frame, detail: liveDetailRef.current };
+      }
+    }
     const rect = projectedViewportRect(liveCamera, state.viewport, state.project);
     element.setAttribute('x', String(rect.x));
     element.setAttribute('y', String(rect.y));
@@ -201,7 +267,7 @@ export function Minimap({ scene, camera, viewport, insetWidth = 168, onPan }: {
     event.preventDefault();
     svgRef.current?.setPointerCapture(event.pointerId);
     const { inside, offset } = minimapGrabOffset(point, state.camera, state.viewport, state.project);
-    dragRef.current = { pointerId: event.pointerId, offset };
+    dragRef.current = { pointerId: event.pointerId, offset, world: state.world };
     setDragging(true);
     // Grabbing the box holds position (interrupt only); a miss recentres on the pointer.
     const next = inside ? state.camera : minimapPanCamera(state.inverse, point, offset, state.camera.zoom);
@@ -231,7 +297,7 @@ export function Minimap({ scene, camera, viewport, insetWidth = 168, onPan }: {
   }
 
   if (!ready || !project) return null;
-  const view = projectedViewportRect(camera, viewport, project);
+  const view = projectedViewportRect(liveCameraRef.current, viewport, project);
   const interactive = !!onPan;
 
   return (
@@ -251,9 +317,10 @@ export function Minimap({ scene, camera, viewport, insetWidth = 168, onPan }: {
         width={insetWidth}
       >
         <rect className="minimap-world" height={insetHeight} width={insetWidth} x={0} y={0}/>
-        {entityRects.map((entry, index) => {
-          const projected = project(entry.rect);
-          return <rect className={`minimap-entity detail-${entry.detail}`} height={Math.max(1, projected.height)} key={index} rx={1.5} width={Math.max(1, projected.width)} x={projected.x} y={projected.y}/>;
+        {residentIds.map(id => {
+          const entry = entityRectsById.get(id);
+          const projected = entry ? project(entry.rect) : { x: 0, y: 0, width: 0, height: 0 };
+          return <rect className={`minimap-entity detail-${entry?.detail ?? 'context'}`} data-entity-id={id} height={Math.max(1, projected.height)} key={id} opacity={entry?.opacity ?? 1} ref={element => { if (element) entityElementsRef.current.set(id, element); else entityElementsRef.current.delete(id); }} rx={1.5} visibility={entry ? 'visible' : 'hidden'} width={Math.max(1, projected.width)} x={projected.x} y={projected.y}/>;
         })}
         <rect className="minimap-viewport" height={view.height} ref={viewportRectRef} width={view.width} x={view.x} y={view.y}/>
       </svg>

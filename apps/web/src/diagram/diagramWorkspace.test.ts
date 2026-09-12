@@ -71,3 +71,15 @@ describe('diagram workspace', () => {
     expect(selected.surfaces[MAIN_DIAGRAM_SURFACE_ID]?.session.selectedId).toBe('system:main');
   });
 });
+
+
+it('opens source beside diagrams while retaining and restoring the main map session', () => {
+  const main = session('code:api');
+  const initial = createDiagramWorkspace(main);
+  const source = openDerivedDiagramSurface(initial, { id: 'source:api', kind: 'source', title: 'api.ts', closable: true, entityIds: ['code:api'], session: { inspector: { open: false, tab: 'source' } } }, main);
+  expect(source.surfaces[MAIN_DIAGRAM_SURFACE_ID]?.session).toEqual(main);
+  expect(source.surfaces['source:api']?.kind).toBe('source');
+  const closed = closeDiagramSurface(source, 'source:api', source.surfaces['source:api']!.session);
+  expect(closed.activeSurfaceId).toBe(MAIN_DIAGRAM_SURFACE_ID);
+  expect(closed.surfaces[MAIN_DIAGRAM_SURFACE_ID]?.session).toEqual(main);
+});

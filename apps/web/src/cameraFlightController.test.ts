@@ -95,6 +95,18 @@ describe('generic camera flight controller', () => {
     expect(reconcileRenderedCamera(live, laggingReactState, false)).toBe(laggingReactState);
   });
 
+  it('keeps wheel progress through semantic renders until a new camera is published', () => {
+    const published = { x: 10, y: 20, zoom: 1 };
+    const wheelFrame = { x: 45, y: 36, zoom: 2.4 };
+    // Updating lens progress renders App before the debounced camera publisher.
+    // An asynchronous neighborhood arrival must read the reached wheel frame.
+    const afterLensRender = reconcileRenderedCamera(wheelFrame, published, false, published);
+    expect(afterLensRender).toBe(wheelFrame);
+    expect(reconcileRenderedCamera(afterLensRender, published, false, published)).toBe(wheelFrame);
+    const navigationCamera = { x: 120, y: 60, zoom: 3.5 };
+    expect(reconcileRenderedCamera(afterLensRender, navigationCamera, false, published)).toBe(navigationCamera);
+  });
+
   it('retargets from the live frame even when React still holds the superseded destination', () => {
     const harness = frameHarness(2_000);
     let liveCamera: Camera = { x: 0, y: 0, zoom: 16 };

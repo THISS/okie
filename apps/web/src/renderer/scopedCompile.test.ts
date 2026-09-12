@@ -83,6 +83,7 @@ describe('scanScopeCompileOptions — per-kind mapping is the default path at ev
       expect(scanScopeCompileOptions(snap, 'component:x')).toEqual({
         maxBand: 'code',
         maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+        pageCodeLandmarks: true,
         targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
       });
       expect(scanScopeCompileOptions(snap, 'code:0')).toEqual({
@@ -730,6 +731,7 @@ describe('scanScopeCompileOptions — relation-pressure gate (symbol `uses` grap
       maxEdgesPerBand: SCAN_RELATION_EDGE_BUDGET,
       maxGridNodes: SCAN_CONTAINER_GRID_NODES,
       maxNodesPerBand: SCAN_RESIDENT_NODES_PER_BAND,
+      pageCodeLandmarks: true,
       targetAspect: SCAN_NEIGHBORHOOD_TARGET_ASPECT,
     });
     expect(scanScopeCompileOptions(dense, 'code:a')).toEqual({
