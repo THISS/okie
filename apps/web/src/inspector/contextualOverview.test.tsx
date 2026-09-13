@@ -28,3 +28,25 @@ describe('contextual overview contract', () => {
     else { expect(markup).toContain('No relationships captured.'); expect(markup).not.toContain('Direct dependencies'); }
   });
 });
+
+it('presents authored multi-file membership with declarations and preserves file fallback honesty', () => {
+  const snapshot = { ...goldenSnapshot, relations: [], entities: [
+    { id: 'container:app', kind: 'container' as const, name: 'App', sourceRefs: [] },
+    { id: 'component:core', kind: 'component' as const, parentId: 'container:app', name: 'Core', responsibility: 'Owns navigation.', tags: ['okie:component-mapping'], sourceRefs: [{ path: 'src/a.ts', commitSha: 'sha' }, { path: 'src/b.ts', commitSha: 'sha' }] },
+    { id: 'code:a', kind: 'code' as const, parentId: 'component:core', name: 'navigate', sourceRefs: [{ path: 'src/a.ts', commitSha: 'sha', startLine: 4 }] },
+    { id: 'code:b', kind: 'code' as const, parentId: 'component:core', name: 'restore', sourceRefs: [{ path: 'src/b.ts', commitSha: 'sha', startLine: 8 }] },
+    { id: 'component:file', kind: 'component' as const, parentId: 'container:app', name: 'src/c.ts', sourceRefs: [{ path: 'src/c.ts', commitSha: 'sha' }] },
+  ] };
+  const overview = buildContextualOverview(snapshot, 'component:core')!;
+  expect(overview.componentBasis).toBe('authored');
+  expect(overview.implementationFiles?.map(file => [file.path, file.code.map(code => code.id)])).toEqual([
+    ['src/a.ts', ['code:a']], ['src/b.ts', ['code:b']],
+  ]);
+  const markup = renderToStaticMarkup(<ContextualOverviewView overview={overview} onOpenEntity={() => undefined}/>);
+  expect(markup).toContain('Owns navigation.');
+  expect(markup).toContain('Authored component');
+  expect(markup).toContain('Implementing files');
+  expect(markup).toContain('navigate');
+  expect(buildContextualOverview(snapshot, 'component:file')?.componentBasis).toBe('file');
+  expect(buildContextualOverview(snapshot, 'container:app')?.implementationFiles).toBeUndefined();
+});

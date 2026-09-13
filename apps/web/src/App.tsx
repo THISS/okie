@@ -45,7 +45,7 @@ import {
   type DerivedDiagramSurface,
 } from './diagram/diagramWorkspace';
 import { ArchitectureBriefView } from './inspector/ArchitectureBriefView';
-import { ContextualOverviewView } from './inspector/ContextualOverviewView';
+import { ComponentImplementation, ContextualOverviewView } from './inspector/ContextualOverviewView';
 import { buildContextualOverview } from './inspector/contextualOverview';
 import { canonicalRelationshipGroupsForEntity } from './relations/canonicalRelationshipInventory';
 import { SemanticDiagramSurface } from './diagram/SemanticDiagramSurface';
@@ -86,6 +86,7 @@ import { OperatorExplanationContext } from './operator/OperatorExplanationContex
 import { getDraftPreviewContext } from './operator/previewContext';
 import { buildArchitectureBrief, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
+import { createInspectorNeighborhoodRequest, inspectorNavigationIdentity } from './inspector/inspectorNeighborhoodRequest';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
 import type { AtlasRenderer, AtlasScene, Camera, PickResult, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation } from './renderer/types';
@@ -1625,15 +1626,36 @@ export function App() {
     [scene.entities, selected.id],
   );
   const inspectorChildren = useMemo(() => [...new Map([...selectedChildren, ...activeSnapshot.entities.filter(entity => entity.parentId === selected.id)].map(entity => [entity.id, { id: entity.id, name: entity.name }])).values()].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id)), [selectedChildren, selected.id]);
+  const inspectorNeighborhoodRequest = useRef(createInspectorNeighborhoodRequest());
+  const inspectorNeighborhoodFixture = useRef(scanFixture);
+  inspectorNeighborhoodFixture.current = scanFixture;
+  useEffect(() => () => inspectorNeighborhoodRequest.current.cancel(), [scanFixture]);
   async function openInspectorChild(id: string) {
+    inspectorNeighborhoodRequest.current.cancel();
     const resident = scene.entities.find(entity => entity.id === id);
-    if (resident) { navigateInspectorHierarchy(resident); return; }
-    await scanFixture?.ensureNeighborhood(id);
-    const compiled = composeScene(id, scene, authoringHistoryRef.current.present);
-    const entity = compiled.entities.find(candidate => candidate.id === id);
-    if (!entity) { setLiveMessage('This child is captured but its map is unavailable.'); return; }
-    setScene(compiled);
-    focusEntity(entity, 'replace', 'preserve', 'auto', 'panel');
+    const residentPlan = resident && semanticInspectorHierarchyPlan(scene, id, viewport, measureCurrentMapSafeArea(), semanticLensSessionRef.current, renderedCameraRef.current);
+    if (resident && residentPlan) { navigateInspectorHierarchy(resident); return; }
+    const initialNavigation = inspectorNavigationIdentity(navigationRef.current);
+    const initialSelection = inspectorSelectionRef.current;
+    await inspectorNeighborhoodRequest.current.run(
+      () => scanFixture?.ensureNeighborhood(id) ?? Promise.resolve(),
+      () => inspectorNeighborhoodFixture.current === scanFixture
+        && inspectorNavigationIdentity(navigationRef.current) === initialNavigation && inspectorSelectionRef.current === initialSelection,
+      () => {
+        const target = activeSnapshot.entities.find(entity => entity.id === id);
+        const focusId = target?.kind === 'code' ? target.parentId ?? id : id;
+        // Snapshot membership is broader than the current drawable window. A
+        // declaration may exist in scene.entities but have no L4 representation.
+        // Compile its owner and explicitly retain it before planning the drill.
+        const compiled = scanFixture
+          ? activeCreateScene(focusId, sceneRef.current, undefined, { keepEntityIds: [id] })
+          : composeScene(focusId, sceneRef.current, authoringHistoryRef.current.present);
+        const entity = compiled.entities.find(candidate => candidate.id === id);
+        if (!entity) { setLiveMessage('This child is captured but its map is unavailable.'); return; }
+        setScene(compiled);
+        navigateInspectorHierarchy(entity, compiled);
+      },
+    );
   }
   const omittedChildNodes = useMemo(
     () => (scene.omittedNodes ?? []).filter(node => node.parentId === selected.id),
@@ -3195,9 +3217,9 @@ export function App() {
     prefetchCommittedBox(entity.id);
   }
 
-  function navigateInspectorHierarchy(entity: SceneEntity) {
+  function navigateInspectorHierarchy(entity: SceneEntity, hierarchyScene = scene) {
     const plan = semanticInspectorHierarchyPlan(
-      scene,
+      hierarchyScene,
       entity.id,
       viewport,
       measureCurrentMapSafeArea(),
@@ -3873,6 +3895,7 @@ export function App() {
   }
 
   function closeDetails() {
+    inspectorNeighborhoodRequest.current.cancel();
     // Move focus before the next render applies aria-hidden. This avoids hiding
     // the currently focused close/action control from assistive technology.
     detailsOpenerRef.current?.focus({ preventScroll: true });
@@ -5547,11 +5570,7 @@ export function App() {
             <button aria-controls="details-panel" aria-selected={inspectorTab === 'details'} id="details-tab" onClick={() => selectInspectorTab('details')} ref={detailsTabRef} role="tab" tabIndex={inspectorTab === 'details' ? 0 : -1} type="button">Details</button>
           </div>
           {inspectorTab === 'overview' ? <div aria-labelledby="overview-tab" className="details-scroll overview-panel" data-testid="inspector-overview" id="overview-panel" role="tabpanel">
-            <ContextualOverviewView key={contextualOverview?.entity.id} overview={contextualOverview} onOpenEntity={id => {
-              const entity = scene.entities.find(candidate => candidate.id === id);
-              if (entity) navigateInspectorHierarchy(entity);
-              else setLiveMessage('This overview item is known from the snapshot but is not available in the current map neighborhood.');
-            }} />
+            <ContextualOverviewView key={contextualOverview?.entity.id} overview={contextualOverview} onOpenEntity={id => { void openInspectorChild(id).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.')); }} />
             {draftPreviewContext && <OperatorExplanationContext scope={draftPreviewContext.explanationsByEntityId.get(selected.id)} entityNames={new Map(activeSnapshot.entities.map(entity => [entity.id, entity.name]))}/>}
             {contextualOverview?.entity.id === scene.rootEntityId ? <ArchitectureBriefView
               brief={architectureBrief}
@@ -5564,7 +5583,7 @@ export function App() {
             /> : null}
           </div> : inspectorTab === 'source' ? <div aria-labelledby="source-tab" className="source-panel" id="source-panel" role="tabpanel">
             {sourceAvailable && <button className="primary-detail-action" onClick={openSourceTab} type="button">Open source in a tab</button>}
-            {sourceAvailable ? <SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo, ...(scanFixture.publication ? { publicationVersion: scanFixture.publication.versionId } : {}) } : undefined} excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/> : <section className="detail-section" data-testid="source-unavailable"><div className="section-title"><h3>Source unavailable</h3></div><p className="detail-muted">No source evidence was captured for {selected.name}. Select another tab to inspect the available architecture evidence.</p></section>}
+            {contextualOverview?.implementationFiles ? <ComponentImplementation key={selected.id} files={contextualOverview.implementationFiles} onOpenEntity={id => { void openInspectorChild(id).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.')); }}/> : sourceAvailable ? <SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo, ...(scanFixture.publication ? { publicationVersion: scanFixture.publication.versionId } : {}) } : undefined} excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/> : <section className="detail-section" data-testid="source-unavailable"><div className="section-title"><h3>Source unavailable</h3></div><p className="detail-muted">No source evidence was captured for {selected.name}. Select another tab to inspect the available architecture evidence.</p></section>}
           </div> : <div aria-labelledby="details-tab" className="details-scroll" id="details-panel" role="tabpanel">
             {pickedCanonicalRelation && <section className="detail-section" data-testid="canonical-relation-evidence"><div className="section-title"><h3>{pickedCanonicalRelation.label ?? pickedCanonicalRelation.kind}</h3><span>{pickedCanonicalRelation.evidence.length}</span></div><p>{activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.from)?.name ?? pickedCanonicalRelation.from} → {activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.to)?.name ?? pickedCanonicalRelation.to}</p>{detailListVisible('relation-evidence', pickedCanonicalRelation.evidence).map((item, index) => <p key={index}>{item.reason}<br/>{item.source.path} · line {item.source.startLine} · {item.source.commitSha}</p>)}{pickedCanonicalRelation.evidence.length > 5 && <button aria-expanded={expandedDetailLists.has('relation-evidence')} onClick={() => toggleDetailList('relation-evidence')}>{expandedDetailLists.has('relation-evidence') ? 'Show fewer' : `Show all ${pickedCanonicalRelation.evidence.length}`}</button>}{!pickedRelationPresentation && <p>The endpoints are outside this map neighborhood. Captured evidence remains available above.</p>}</section>}
             {pickedRelationPresentation ? <article aria-labelledby="inspector-relation-title" className="inspector-presentation inspector-relation-presentation" data-inspector-presentation="relation" data-inspector-relation-id={pickedRelationPresentation.id}>

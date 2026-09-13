@@ -11,6 +11,7 @@ okie-scan --source <path> --emit-packets <dir>
 okie-scan --source <path> --emit-prompt <dir>
 okie-scan --source <path> --enrich-from <dir>
 okie-scan --source <path> --lcov <path>
+okie-scan --source <path> --component-map <path>
 ```
 
 Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Outputs
@@ -50,6 +51,10 @@ Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Out
 | `container` | each workspace member with source, a synthetic **tooling** container for non-member scripts, and each Rust crate |
 | `component` | **one per source file** |
 | `code` | **one per top-level named declaration** (exported or not), anchored `path`+`symbol`+line range |
+
+### Explicit component membership
+
+`--component-map <path>` optionally layers an authored architectural interpretation over the observed file graph. It accepts a version-1 JSON document with `containers[]`, each containing a `containerId` and explicit components (`id`, `name`, `paths`). Paths may be partial: unmapped files retain their file-components. A file has one owner, code symbols and their source anchors stay unchanged, and invalid input rejects atomically to the unchanged file graph. The emitted `component-map-report.json` records acceptance and external-path/SHA-256 provenance; a local CLI map is external to the pinned Git revision. Rejected maps emit the unchanged scan and rejection report, print the reasons, and exit with status 1. No partially mapped artifact is emitted.
 
 ### System context (L1) — external dependencies
 

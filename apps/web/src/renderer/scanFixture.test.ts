@@ -1,5 +1,6 @@
 import { c4CodeChildSlots, sliceArchitectureNeighborhood, type ArchitectureSnapshot, type ArchitectureView } from '@okie/architecture';
 import { describe, expect, it } from 'vitest';
+import { semanticInspectorHierarchyPlan } from '../semantic/semanticLensEngine';
 import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
 import demoView from '../../../../fixtures/architecture/demo-view.json';
 import demoStory from '../../../../fixtures/architecture/demo-story.json';
@@ -14,6 +15,29 @@ function validTrio() {
 }
 
 describe('scan fixture loader', () => {
+  it('loads a listed declaration outside the component preview before planning its code drill', () => {
+    const trio = validTrio();
+    const snapshot = trio.snapshot as unknown as ArchitectureSnapshot;
+    const owner = snapshot.entities.find(entity => entity.kind === 'component')!;
+    const extra = Array.from({ length: 153 }, (_, index) => ({
+      id: `code:mapped-${String(index).padStart(3, '0')}`, kind: 'code' as const,
+      parentId: owner.id, name: `declaration${index}`, sourceRefs: [],
+    }));
+    snapshot.entities.push(...extra);
+    const fixture = compileScanFixture({ ...trio, snapshot }, { targetAspect: 1.6 });
+    const shallow = fixture.createScene(owner.parentId!);
+    const targetId = extra[152]!.id;
+    const viewport = { width: 1280, height: 720 };
+    const safeArea = { top: 80, right: 300, bottom: 72, left: 64 };
+    expect(semanticInspectorHierarchyPlan(shallow, targetId, viewport, safeArea)).toBeUndefined();
+    const focused = fixture.createScene(owner.id, shallow, { keepEntityIds: [targetId] });
+    const plan = semanticInspectorHierarchyPlan(focused, targetId, viewport, safeArea);
+    expect(plan?.detail).toBe('code');
+    expect(plan?.targetId).toBe(targetId);
+    expect(focused.projection!.entityIdsByDetail.code.filter(id => id.startsWith('code:mapped-')).length)
+      .toBeLessThanOrEqual(SCAN_RESIDENT_NODES_PER_BAND);
+  });
+
   it('uses code landmarks for a component-focused cold residency window', () => {
     const trio = validTrio();
     const snapshot = trio.snapshot as unknown as ArchitectureSnapshot;
