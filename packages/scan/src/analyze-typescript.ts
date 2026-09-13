@@ -67,6 +67,13 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
       sourceForOutput.set(output.replace(/\.d\.ts$/, ".js"), source);
     }
   }
+  const outputDirectories = new Set<string>();
+  for (const output of sourceForOutput.keys()) {
+    for (let directory = dirname(output); inside(directory); directory = dirname(directory)) {
+      outputDirectories.add(directory);
+      if (directory === root) break;
+    }
+  }
   const virtualPath = (path: string): string => {
     const normalized = path.split(sep).join("/");
     const marker = normalized.lastIndexOf("/node_modules/");
@@ -102,7 +109,7 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
     host.readFile = path => originalReadFile(virtualPath(path));
     host.fileExists = path => originalFileExists(virtualPath(path));
     host.directoryExists = path => originalDirectoryExists?.(virtualPath(path))
-      || [...sourceForOutput.keys()].some(output => output.startsWith(`${virtualPath(path)}${sep}`))
+      || outputDirectories.has(virtualPath(path))
       || /(?:^|\/)node_modules(?:\/@[^/]+)?$/.test(path.split(sep).join("/"));
     host.realpath = path => virtualPath(path);
     host.getDirectories = path => ts.sys.getDirectories(virtualPath(path));
