@@ -17,7 +17,39 @@ import { createGithubAuthService } from "./githubOAuth.js";
 import { createScanJobQueue, createSubmitLimiter } from "./jobs.js";
 import { healthzBody } from "./localDefaults.js";
 import { createScanHttpHandler } from "./scanServer.js";
-import { resetPublishedTrioCache } from "./scanNeighborhood.js";
+import { resetPublishedTrioCache, serveNeighborhoodPacket } from "./scanNeighborhood.js";
+import { OperatorStore } from "./operatorStore.js";
+import { OperatorPublicationService } from "./operatorPublication.js";
+
+test("bootstrap advertises one publication and old neighborhoods remain pinned after republishing", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-publication-packet-"));
+  try {
+    const store = new OperatorStore(root);
+    const publications = new OperatorPublicationService(store);
+    const repositoryId = "repo:test";
+    const run = store.createRun({ idempotencyKey: "packet", source: { repositoryId, owner: "test", repo: "repo", slug: "test__repo" } }).run;
+    const original = publishedTrio();
+    const publish = (name: string, expectedCurrentVersionId?: string) => {
+      const artifact = store.writeArtifactRevision({ repositoryId, files: {
+        "snapshot.json": JSON.stringify({ ...original.snapshot, entities: original.snapshot.entities.map(entity => ({ ...entity, name })) }),
+        "view.json": JSON.stringify(original.view),
+      } });
+      const draft = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
+      const result = publications.publishDraft({ repositoryId, draftRevisionId: draft.draftRevisionId, ...(expectedCurrentVersionId ? { expectedCurrentVersionId } : {}) });
+      assert.ok(result.ok);
+      return result.publication;
+    };
+    const first = publish("Original");
+    const request = { pathname: "/scan/test__repo/neighborhood.json", searchParams: new URLSearchParams(), repositoryId, publications, store };
+    const bootstrap = serveNeighborhoodPacket(root, request)!;
+    assert.deepEqual(bootstrap.publication, { versionId: first.versionId, artifactRevisionId: first.artifactRevisionId });
+    const second = publish("Replacement", first.versionId);
+    const pinned = serveNeighborhoodPacket(root, { ...request, searchParams: new URLSearchParams({ version: first.versionId }) });
+    assert.deepEqual(pinned, bootstrap);
+    assert.equal(serveNeighborhoodPacket(root, request)?.publication?.versionId, second.versionId);
+    assert.equal(serveNeighborhoodPacket(root, { ...request, searchParams: new URLSearchParams({ version: "missing" }) }), undefined);
+  } finally { resetPublishedTrioCache(); rmSync(root, { recursive: true, force: true }); }
+});
 
 function entity(id: string, kind: EntityKind, parentId?: string, excerpt = false): ArchitectureEntity {
   const lines = excerpt ? ["export const x = 1;", "export const y = 2;"] : undefined;

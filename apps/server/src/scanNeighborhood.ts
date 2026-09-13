@@ -21,6 +21,7 @@ type CachedPublishedTrio = {
   viewMtimeMs: number;
   snapshot: ArchitectureSnapshot;
   view: ArchitectureView;
+  publication?: { versionId: string; artifactRevisionId: string };
 };
 
 const publishedCache = new Map<string, CachedPublishedTrio>();
@@ -71,8 +72,19 @@ function viewPathFor(slugPath: string): string {
 }
 
 function loadPublishedTrio(scanRoot: string, slugPath: string, request?: ScanNeighborhoodRequest): CachedPublishedTrio | undefined {
+  let versionId = request?.searchParams.get("version") ?? undefined;
+  let publication: CachedPublishedTrio["publication"];
+  if (request?.repositoryId && request.publications) {
+    versionId ??= request.publications.currentPublication(request.repositoryId)?.versionId;
+    if (versionId) {
+      const artifact = request.publications.artifactForVersion(request.repositoryId, versionId);
+      if (!artifact) return undefined;
+      publication = { versionId, artifactRevisionId: artifact.artifactRevisionId };
+    }
+  }
+  if (versionId && !publication) return undefined;
   const resolver = (pathname: string) => request?.repositoryId && request.publications && request.store
-    ? resolvePublicationScanFile({ scanRoot, pathname, repositoryId: request.repositoryId, ...(request.searchParams.get("version") ? { versionId: request.searchParams.get("version")! } : {}), publications: request.publications, store: request.store })
+    ? resolvePublicationScanFile({ scanRoot, pathname, repositoryId: request.repositoryId, ...(versionId ? { versionId } : {}), publications: request.publications, store: request.store })
     : resolvePublishedScanFile(scanRoot, pathname);
   const snapshotFile = resolver(snapshotPathFor(slugPath));
   const viewFile = resolver(viewPathFor(slugPath));
@@ -81,30 +93,31 @@ function loadPublishedTrio(scanRoot: string, slugPath: string, request?: ScanNei
   const viewMtimeMs = statSync(viewFile).mtimeMs;
   const cached = publishedCache.get(snapshotFile);
   if (cached && cached.snapshotMtimeMs === snapshotMtimeMs && cached.viewMtimeMs === viewMtimeMs) {
-    return cached;
+    return { ...cached, ...(publication ? { publication } : {}) };
   }
   const snapshot = JSON.parse(readFileSync(snapshotFile, "utf8")) as ArchitectureSnapshot;
   const view = JSON.parse(readFileSync(viewFile, "utf8")) as ArchitectureView;
   const entry = { snapshotMtimeMs, viewMtimeMs, snapshot, view };
   publishedCache.set(snapshotFile, entry);
-  return entry;
+  return { ...entry, ...(publication ? { publication } : {}) };
 }
 
 export function serveNeighborhoodPacket(
   scanRoot: string,
   request: ScanNeighborhoodRequest,
-): ArchitectureNeighborhoodPacket | undefined {
+): (ArchitectureNeighborhoodPacket & { publication?: CachedPublishedTrio["publication"] }) | undefined {
   const parsed = scanPrefix(request.pathname);
   if (!parsed || parsed.basename !== "neighborhood.json") return undefined;
   const trio = loadPublishedTrio(scanRoot, parsed.slugPath, request);
   if (!trio) return undefined;
   const focusEntityId = sanitizeFocusId(request.searchParams.get("focus"));
   const includeExcerpts = request.searchParams.get("excerpts") === "1";
-  return sliceArchitectureNeighborhood(trio.snapshot, trio.view, {
+  const packet = sliceArchitectureNeighborhood(trio.snapshot, trio.view, {
     ...(focusEntityId ? { focusEntityId } : {}),
     ...(includeExcerpts ? { includeExcerpts: true } : {}),
     ...neighborhoodSliceOptionsForFocus(trio.snapshot, focusEntityId),
   });
+  return { ...packet, ...(trio.publication ? { publication: trio.publication } : {}) };
 }
 
 export function serveExcerptPacket(

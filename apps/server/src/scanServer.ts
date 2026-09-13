@@ -73,11 +73,10 @@ function serveScanObject(scanRoot: string, pathname: string, response: ServerRes
     return;
   }
   if (pathname.endsWith("/operator-explanations.json") && operator && repositoryId) {
-    const publication = versionId ? operator.publications.currentPublication(repositoryId) : operator.publications.currentPublication(repositoryId);
+    const publication = operator.publications.currentPublication(repositoryId);
     const artifact = versionId ? operator.publications.artifactForVersion(repositoryId, versionId) : publication && operator.publications.artifactForVersion(repositoryId, publication.versionId);
     if (!artifact) { sendJson(response, 404, { error: "not found" }); return; }
-    const attempts = operator.store.snapshot().attempts.filter(value => operator.store.snapshot().drafts.find(draft => draft.draftRevisionId === value.draftRevisionId)?.artifactRevisionId === artifact.artifactRevisionId);
-    sendJson(response, 200, { versionId: versionId ?? publication?.versionId, explanations: readArtifactScopes(operator.store, artifact.artifactRevisionId, attempts) }, false);
+    sendJson(response, 200, { versionId: versionId ?? publication?.versionId, explanations: readArtifactScopes(operator.store, artifact.artifactRevisionId) }, false);
     return;
   }
   response.writeHead(200, {
@@ -98,7 +97,12 @@ function askAuthDenied(): Record<string, unknown> {
 
 export function createScanHttpHandler(options: ScanHttpOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   const { queue, allowSubmit, auth, scanRoot, llm, enrich, bind } = options;
-  const sourceService = createSourceService(options.sourceFetch);
+  const sourceService = createSourceService(options.sourceFetch, options.operator ? input => {
+    const operator = options.operator!;
+    const slug = input.pathname.split("/")[2];
+    const repositoryId = operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId;
+    return repositoryId ? resolvePublicationScanFile({ ...input, repositoryId, publications: operator.publications, store: operator.store }) : undefined;
+  } : undefined);
   const threads = options.threads ?? createAskThreadStore();
 
   function publicJob(job: ScanJob): Record<string, unknown> {
