@@ -1,4 +1,4 @@
-export type SourceContext = { scanBasePath: string; owner: string; repo: string };
+export type SourceContext = { scanBasePath: string; owner: string; repo: string; publicationVersion?: string };
 export type SourceRange = { repository: string; commit: string; path: string; startLine: number; endLine: number; totalLines: number; lines: string[]; digest: string };
 export function immutableFileUrl(context: SourceContext, commit: string, path: string): string | undefined {
   if (!/^[a-f0-9]{40}$/u.test(commit) || !/^[a-zA-Z0-9-]+$/u.test(context.owner) || !/^[a-zA-Z0-9_.-]+$/u.test(context.repo)) return undefined;
@@ -7,7 +7,7 @@ export function immutableFileUrl(context: SourceContext, commit: string, path: s
 export function createSourceFetcher(fetchImpl: typeof fetch = fetch) {
   const cache = new Map<string, SourceRange>();
   return async (context: SourceContext, commit: string, path: string, start: number, end: number, signal?: AbortSignal): Promise<SourceRange> => {
-    const params = new URLSearchParams({ owner: context.owner, repo: context.repo, commit, path, start: String(start), end: String(end) });
+    const params = new URLSearchParams({ owner: context.owner, repo: context.repo, commit, path, start: String(start), end: String(end), ...(context.publicationVersion ? { version: context.publicationVersion } : {}) });
     const url = `${context.scanBasePath.replace(/\/$/u, '')}/source.json?${params}`;
     if (cache.has(url)) return cache.get(url)!;
     const response = await fetchImpl(url, { ...(signal ? { signal } : {}) });
