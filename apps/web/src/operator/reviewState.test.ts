@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acceptsReviewResponse, OperatorReviewLoader, publicationAcknowledgementAfterConflict, selectedDraftForRun } from './reviewState';
+import { acceptsReviewResponse, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, selectedDraftForRun } from './reviewState';
 
 describe('operator review flow state', () => {
   it('keeps a selected draft pinned while polling discovers a newer run revision', () => {
@@ -13,6 +13,9 @@ describe('operator review flow state', () => {
   });
   it('requires a fresh coverage acknowledgement after a publish conflict refresh', () => {
     expect(publicationAcknowledgementAfterConflict()).toBe(false);
+  });
+  it('clears draft-local state when switching runs', () => {
+    expect(resetReviewForRun()).toEqual({ draftRevisionId: undefined, acknowledged: false });
   });
   it('loads a newly available draft on a later active-run poll and keeps an explicit older revision', async () => {
     let polls = 0;

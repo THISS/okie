@@ -11,6 +11,7 @@ export function acceptsReviewResponse(expectedEpoch: number, currentEpoch: numbe
 }
 
 export function publicationAcknowledgementAfterConflict(): boolean { return false; }
+export function resetReviewForRun(): { draftRevisionId: undefined; acknowledged: false } { return { draftRevisionId: undefined, acknowledged: false }; }
 
 /** Small async boundary shared by polling and manual refresh; tests exercise the
  * run→new-draft transition and late-response rejection without a browser DOM. */
