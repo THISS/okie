@@ -10,7 +10,9 @@ import {
   neighborhoodSliceOptionsForFocus,
   sliceArchitectureNeighborhood,
 } from "@okie/architecture";
-import { resolvePublishedScanFile } from "./scanObjects.js";
+import { resolvePublishedScanFile, resolvePublicationScanFile } from "./scanObjects.js";
+import type { OperatorPublicationService } from "./operatorPublication.js";
+import type { OperatorStore } from "./operatorStore.js";
 
 const MAX_FOCUS_ID_LENGTH = 512;
 
@@ -26,6 +28,9 @@ const publishedCache = new Map<string, CachedPublishedTrio>();
 export type ScanNeighborhoodRequest = {
   pathname: string;
   searchParams: URLSearchParams;
+  repositoryId?: string;
+  publications?: OperatorPublicationService;
+  store?: OperatorStore;
 };
 
 function scanPrefix(pathname: string): { slugPath: string; basename: string } | undefined {
@@ -65,9 +70,12 @@ function viewPathFor(slugPath: string): string {
   return slugPath ? `/scan/${slugPath}/view.json` : "/scan/view.json";
 }
 
-function loadPublishedTrio(scanRoot: string, slugPath: string): CachedPublishedTrio | undefined {
-  const snapshotFile = resolvePublishedScanFile(scanRoot, snapshotPathFor(slugPath));
-  const viewFile = resolvePublishedScanFile(scanRoot, viewPathFor(slugPath));
+function loadPublishedTrio(scanRoot: string, slugPath: string, request?: ScanNeighborhoodRequest): CachedPublishedTrio | undefined {
+  const resolver = (pathname: string) => request?.repositoryId && request.publications && request.store
+    ? resolvePublicationScanFile({ scanRoot, pathname, repositoryId: request.repositoryId, ...(request.searchParams.get("version") ? { versionId: request.searchParams.get("version")! } : {}), publications: request.publications, store: request.store })
+    : resolvePublishedScanFile(scanRoot, pathname);
+  const snapshotFile = resolver(snapshotPathFor(slugPath));
+  const viewFile = resolver(viewPathFor(slugPath));
   if (!snapshotFile || !viewFile) return undefined;
   const snapshotMtimeMs = statSync(snapshotFile).mtimeMs;
   const viewMtimeMs = statSync(viewFile).mtimeMs;
@@ -88,7 +96,7 @@ export function serveNeighborhoodPacket(
 ): ArchitectureNeighborhoodPacket | undefined {
   const parsed = scanPrefix(request.pathname);
   if (!parsed || parsed.basename !== "neighborhood.json") return undefined;
-  const trio = loadPublishedTrio(scanRoot, parsed.slugPath);
+  const trio = loadPublishedTrio(scanRoot, parsed.slugPath, request);
   if (!trio) return undefined;
   const focusEntityId = sanitizeFocusId(request.searchParams.get("focus"));
   const includeExcerpts = request.searchParams.get("excerpts") === "1";
@@ -105,7 +113,7 @@ export function serveExcerptPacket(
 ): ArchitectureExcerptPacket | undefined {
   const parsed = scanPrefix(request.pathname);
   if (!parsed || parsed.basename !== "excerpt.json") return undefined;
-  const trio = loadPublishedTrio(scanRoot, parsed.slugPath);
+  const trio = loadPublishedTrio(scanRoot, parsed.slugPath, request);
   if (!trio) return undefined;
   const entityId = sanitizeFocusId(request.searchParams.get("entity"));
   if (!entityId) return undefined;

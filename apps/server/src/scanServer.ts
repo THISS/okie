@@ -244,7 +244,8 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && isNeighborhoodScanPath(pathname)) {
-      const packet = serveNeighborhoodPacket(scanRoot, { pathname, searchParams: url.searchParams });
+      const slug = pathname.split("/")[2]; const repositoryId = slug && options.operator ? options.operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId : undefined;
+      const packet = serveNeighborhoodPacket(scanRoot, { pathname, searchParams: url.searchParams, ...(repositoryId ? { repositoryId, publications: options.operator!.publications, store: options.operator!.store } : {}) });
       if (!packet) {
         sendJson(response, 404, { error: "not found" });
         return;
@@ -254,7 +255,8 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && isExcerptScanPath(pathname)) {
-      const packet = serveExcerptPacket(scanRoot, { pathname, searchParams: url.searchParams });
+      const slug = pathname.split("/")[2]; const repositoryId = slug && options.operator ? options.operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId : undefined;
+      const packet = serveExcerptPacket(scanRoot, { pathname, searchParams: url.searchParams, ...(repositoryId ? { repositoryId, publications: options.operator!.publications, store: options.operator!.store } : {}) });
       if (!packet) {
         sendJson(response, 404, { error: "not found" });
         return;
