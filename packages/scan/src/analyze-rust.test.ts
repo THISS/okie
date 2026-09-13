@@ -60,12 +60,28 @@ test("ambiguous SCIP definitions do not select an arbitrary graph target", { tim
     "Cargo.toml": '[package]\nname = "ambiguous"\nversion = "0.1.0"\nedition = "2021"\n',
     "src/lib.rs": 'pub fn collide() {}\n',
     "examples/same.rs": 'pub fn collide() {}\nfn main() { collide(); }\n',
+    "examples/third.rs": 'pub fn collide() {}\n',
   });
   try {
-    const analysis = analyzeRust(repo.root, ["src/lib.rs", "examples/same.rs"]);
+    const analysis = analyzeRust(repo.root, ["src/lib.rs", "examples/same.rs", "examples/third.rs"]);
     assert.ok(analysis.coverage[0]?.limitations.some(item => item.includes("Ambiguous SCIP definition symbols omitted")), JSON.stringify(analysis));
     assert.ok(!analysis.definitions.some(item => item.name === "collide"), JSON.stringify(analysis));
     assert.ok(!analysis.references.some(item => item.path === "examples/same.rs" && item.kind === "calls"), JSON.stringify(analysis));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("whitespace around a wasm cfg gate still indexes its browser module", { timeout: 120_000 }, () => {
+  const repo = fixture({
+    "Cargo.toml": '[package]\nname = "spaced-wasm"\nversion = "0.1.0"\nedition = "2021"\n',
+    "src/lib.rs": '#[cfg(target_arch=  "wasm32")]\npub mod browser;\n',
+    "src/browser.rs": 'pub fn browser_entry() {}\n',
+  });
+  try {
+    const analysis = analyzeRust(repo.root, ["src/lib.rs", "src/browser.rs"]);
+    assert.ok(analysis.coverage[0]?.indexedFiles.includes("src/browser.rs"), JSON.stringify(analysis));
+    assert.ok(analysis.coverage[0]?.limitations.some(item => item.includes("inferred from source cfg")), JSON.stringify(analysis));
   } finally {
     repo.cleanup();
   }

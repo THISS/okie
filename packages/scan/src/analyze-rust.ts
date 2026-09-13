@@ -42,6 +42,10 @@ function sameDefinition(left: AnalysisDefinition, right: AnalysisDefinition): bo
     && left.endOffset === right.endOffset;
 }
 
+function hasWasmTargetGate(text: string): boolean {
+  return /target_arch\s*=\s*"wasm32"/.test(text);
+}
+
 function occurrenceRange(occurrence: Occurrence): OccurrenceRange | undefined {
   if (occurrence.typedRange.case === "singleLineRange") {
     const value = occurrence.typedRange.value;
@@ -192,7 +196,7 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     // repository's wasm-pack build. rust-analyzer otherwise omits it on a host scan.
     const needsWasmTarget = [...allowed].some(path => {
       const absolute = join(root, path);
-      return existsSync(absolute) && readFileSync(absolute, "utf8").includes('target_arch = "wasm32"');
+      return existsSync(absolute) && hasWasmTargetGate(readFileSync(absolute, "utf8"));
     });
     if (needsWasmTarget) {
       const wasmConfigPath = join(temporary, "wasm32.json");
@@ -203,7 +207,7 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
         limitations.add(`wasm32-unknown-unknown SCIP indexing failed: ${wasmRun.error?.message ?? (wasmRun.stderr.trim() || "rust-analyzer exited unsuccessfully.")}`);
       } else {
         indexes.push(decodeScipIndex(readFileSync(wasmIndexPath)));
-        limitations.add("Rust target coverage includes the repository-declared wasm32-unknown-unknown build; other targets are not inferred.");
+        limitations.add("Rust target coverage includes wasm32-unknown-unknown inferred from source cfg(target_arch = \"wasm32\"); other targets are not inferred.");
       }
       limitations.add("Rust feature coverage follows Cargo's default feature selection; optional features are not inferred.");
     }
@@ -241,6 +245,7 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
             symbol: occurrence.symbol,
             name: names.get(occurrence.symbol) || file.text.slice(name.startIndex, name.endIndex),
           };
+          if (ambiguousSymbols.has(occurrence.symbol)) continue;
           const existing = definitions.get(occurrence.symbol);
           if (!existing) definitions.set(occurrence.symbol, definition);
           else if (!sameDefinition(existing, definition)) {
