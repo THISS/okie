@@ -82,6 +82,8 @@ import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } 
 import { canonicalRelationForInspection, resolveRelationshipReveal } from './relations/relationshipReveal';
 import { SourceViewer, portableRepositoryRevisionUrl, type LocalWorkspaceContext } from './diagram/SourceViewer';
 import { getActivePortableAtlas } from './portable/runtime';
+import { OperatorExplanationContext } from './operator/OperatorExplanationContext';
+import { getDraftPreviewContext } from './operator/previewContext';
 import { buildArchitectureBrief, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
@@ -1327,6 +1329,7 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
 
 export function App() {
   const query = useMemo(() => readDemoQuery(window.location.search), []);
+  const draftPreviewContext = getDraftPreviewContext();
   const initialCameraExplicit = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.has('cx') || params.has('cy') || params.has('z');
@@ -5623,6 +5626,8 @@ export function App() {
                 <div><span><InfoIcon size={13}/> {selectedProvenance.heading}</span><strong>{selectedProvenance.evidenceLabel}</strong></div>
                 <p>{selectedProvenance.description}</p>
               </div>
+
+              {draftPreviewContext && <OperatorExplanationContext scope={draftPreviewContext.explanationsByEntityId.get(selected.id)} entityNames={new Map(activeSnapshot.entities.map(entity => [entity.id, entity.name]))}/>}
 
               {selectedOwners.length > 0 ? <section className="detail-section ownership-section" data-inspector-section="ownership">
                 <div className="section-title"><h3>Owned by</h3><span>{selectedOwners.length}</span></div>

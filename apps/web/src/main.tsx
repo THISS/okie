@@ -22,6 +22,7 @@ import { createIndexedDbPortableStore, createPortablePersistence, portableStorag
 import { registerWebMcpFoundation } from './webmcp';
 import { readPortableFile, rememberPortableSession, forgetPortableSession } from './portable/session';
 import { OperatorWorkspace } from './operator/OperatorWorkspace';
+import { clearDraftPreviewContext, setDraftPreviewContext } from './operator/previewContext';
 import {
   availableScanRepoSlugs,
   fetchScanNeighborhoodHost,
@@ -117,6 +118,7 @@ function preparePortableAtlas(bundle: PortableAtlas): { fixture?: ScanFixture; e
 }
 
 let portableMountSequence = 0;
+let operatorReviewSelection: { runId?: string; draftRevisionId?: string } = {};
 
 async function mountPortableAtlas(bundle: PortableAtlas, fixture: ScanFixture, notice?: string, resetNavigation = true): Promise<void> {
   const { App, refreshAppScanFixture } = await import('./App');
@@ -151,7 +153,7 @@ async function mountPortableAtlas(bundle: PortableAtlas, fixture: ScanFixture, n
 
 /** Operator previews deliberately use the same compiled atlas and App as a portable
  * bundle, but never place a draft in the user's portable IndexedDB session. */
-async function mountOperatorDraftPreview(draftRevisionId: string): Promise<void> {
+async function mountOperatorDraftPreview(draftRevisionId: string, scopes: import('./operator/api').OperatorScope[]): Promise<void> {
   const { operatorApi } = await import('./operator/api');
   const raw = await operatorApi.bundle(draftRevisionId);
   const bundle = parsePortableAtlas(JSON.stringify(raw));
@@ -160,14 +162,16 @@ async function mountOperatorDraftPreview(draftRevisionId: string): Promise<void>
   const { App, refreshAppScanFixture } = await import('./App');
   flushSync(() => root.render(null));
   setActivePortableAtlas(bundle);
+  setDraftPreviewContext(draftRevisionId, scopes);
   setActiveScanFixture(prepared.fixture);
   refreshAppScanFixture();
-  root.render(<StrictMode><div className="operator-preview-shell"><header><span>Operator draft preview · pinned revision {draftRevisionId}</span><button onClick={() => { setActivePortableAtlas(undefined); setActiveScanFixture(undefined); refreshAppScanFixture(); void mountOperatorWorkspace(); }}>Return to review</button></header><div><App /></div></div></StrictMode>);
+  root.render(<StrictMode><div className="operator-preview-shell"><header><span>Operator draft preview · pinned revision {draftRevisionId}</span><button onClick={() => { setActivePortableAtlas(undefined); clearDraftPreviewContext(); setActiveScanFixture(undefined); refreshAppScanFixture(); void mountOperatorWorkspace(); }}>Return to review</button></header><div><App /></div></div></StrictMode>);
 }
 
 async function mountOperatorWorkspace(): Promise<void> {
   flushSync(() => root.render(null));
-  root.render(<StrictMode><OperatorWorkspace onPreview={mountOperatorDraftPreview}/></StrictMode>);
+  clearDraftPreviewContext();
+  root.render(<StrictMode><OperatorWorkspace initialDraftRevisionId={operatorReviewSelection.draftRevisionId} initialRunId={operatorReviewSelection.runId} onPreview={async (runId, draftRevisionId, scopes) => { operatorReviewSelection = { runId, draftRevisionId }; await mountOperatorDraftPreview(draftRevisionId, scopes); }}/></StrictMode>);
 }
 
 async function openPortableFile(file: File): Promise<{ ok: true } | { ok: false; message: string }> {
