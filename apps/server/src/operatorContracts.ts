@@ -97,6 +97,8 @@ export interface OperatorArtifactRevision {
   createdAt: number;
   /** File names only. Bytes are immutable in the artifact directory. */
   files: readonly string[];
+  /** Total immutable artifact bytes, excluding filesystem metadata. */
+  sizeBytes?: number;
 }
 
 export interface OperatorPublication {

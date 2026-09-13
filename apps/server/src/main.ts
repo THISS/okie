@@ -90,7 +90,12 @@ const server = createScanHttpServer({
     publicOrigin: process.env.OKIE_PUBLIC_ORIGIN ?? "http://localhost:4173",
     store: operatorStore,
     publications: operatorPublication,
-    enqueue: input => { void operatorRunner.enqueue(input); },
+    enqueue: input => {
+      operatorStore.updateRun(input.runId, { state: "queued" });
+      void Promise.resolve().then(() => operatorRunner.enqueue(input)).catch(() => {
+        operatorStore.updateRun(input.runId, { state: "failed", error: "Operator job failed; review the recorded attempts." });
+      });
+    },
   },
 });
 

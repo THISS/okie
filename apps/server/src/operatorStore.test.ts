@@ -17,8 +17,10 @@ test("CLA-132: idempotency, immutable artifact bytes, and restart interruption r
     assert.equal(store.createRun({ idempotencyKey: "request-1", source }).run.runId, first.run.runId);
     const artifact = store.writeArtifactRevision({ repositoryId: source.repositoryId, files: { "snapshot.json": "one" } });
     assert.equal(store.readArtifactFile(artifact.artifactRevisionId, "snapshot.json")?.toString(), "one");
+    assert.equal(artifact.sizeBytes, 3);
     assert.throws(() => store.writeArtifactRevision({ repositoryId: source.repositoryId, files: { "../outside": "no" } }));
     store.updateRun(first.run.runId, { state: "running" });
+    assert.deepEqual(store.snapshot().events.at(-1)?.detail, { previous: "queued", state: "running" });
     const restarted = new OperatorStore(root, () => 999);
     assert.equal(restarted.snapshot().runs[0]?.state, "interrupted");
     assert.equal(existsSync(join(root, "outside")), false);

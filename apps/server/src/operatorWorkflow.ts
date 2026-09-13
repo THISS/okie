@@ -33,7 +33,8 @@ export class OperatorWorkflow {
     const attempts = state.attempts.filter(value => value.draftRevisionId === draftRevisionId);
     const scopes = readArtifactScopes(this.options.store, draft.artifactRevisionId, attempts);
     const current = this.options.publications.currentPublication(draft.repositoryId);
-    return { draft, source: run.source, scopes, usage: usage(attempts),
+    const artifact = state.artifacts.find(value => value.artifactRevisionId === draft.artifactRevisionId);
+    return { draft, source: run.source, scopes, usage: usage(attempts), artifact,
       ...(current ? { currentPublicationVersionId: current.versionId } : {}) };
   }
   bundle(draftRevisionId: string): Buffer | undefined { const detail = this.draftDetail(draftRevisionId); return detail ? this.options.store.readArtifactFile(detail.draft.artifactRevisionId, "atlas.okie.json") : undefined; }
