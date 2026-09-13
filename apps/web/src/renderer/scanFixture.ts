@@ -860,30 +860,39 @@ export function bootFocusFromSearch(search: string): string | undefined {
  */
 export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch = fetch): ScanNeighborhoodHost {
   let publication: { versionId: string; artifactRevisionId: string } | undefined;
+  const pinnedQuery = (query?: string): string | undefined => {
+    if (!publication) return query;
+    const params = new URLSearchParams(query);
+    params.set('version', publication.versionId);
+    return params.toString();
+  };
   return {
     async loadNeighborhood(focusEntityId: string) {
       const focus = focusEntityId.trim();
       const query = focus ? new URLSearchParams({ focus }).toString() : undefined;
-      const raw = await fetchScanJson(scanObjectPath(slug, 'neighborhood.json', query), fetchImpl, 'neighborhood');
+      const raw = await fetchScanJson(scanObjectPath(slug, 'neighborhood.json', pinnedQuery(query)), fetchImpl, 'neighborhood');
       if (!isNeighborhoodPacket(raw)) {
         throw new ScanFixtureError([{ path: 'neighborhood', message: 'Scan neighborhood packet is structurally invalid.' }]);
       }
       const candidate = (raw as { publication?: unknown }).publication;
-      if (isRecord(candidate) && typeof candidate.versionId === 'string' && typeof candidate.artifactRevisionId === 'string') publication = { versionId: candidate.versionId, artifactRevisionId: candidate.artifactRevisionId };
+      if (isRecord(candidate) && typeof candidate.versionId === 'string' && typeof candidate.artifactRevisionId === 'string') {
+        if (publication && publication.versionId !== candidate.versionId) throw new ScanFixtureError([{ path: 'neighborhood', message: 'Published neighborhood changed version during this atlas session.' }]);
+        publication = { versionId: candidate.versionId, artifactRevisionId: candidate.artifactRevisionId };
+      }
       return raw;
     },
     async loadExcerpts(entityId: string) {
       const query = new URLSearchParams({ entity: entityId });
-      const raw = await fetchScanJson(scanObjectPath(slug, 'excerpt.json', query.toString()), fetchImpl, 'excerpt');
+      const raw = await fetchScanJson(scanObjectPath(slug, 'excerpt.json', pinnedQuery(query.toString())), fetchImpl, 'excerpt');
       if (!isRecord(raw) || raw.kind !== 'excerpt' || !Array.isArray(raw.sourceExcerpts)) {
         throw new ScanFixtureError([{ path: 'excerpt', message: 'Scan excerpt packet is structurally invalid.' }]);
       }
       return raw.sourceExcerpts as SourceExcerpt[];
     },
-    loadStory: () => fetchScanJson(scanObjectPath(slug, 'story.json'), fetchImpl, 'story'),
-    loadStories: () => fetchOptionalScanJson(scanObjectPath(slug, 'stories.json'), fetchImpl),
-    loadEnrichmentReport: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-report.json'), fetchImpl),
-    loadEnrichmentStatus: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-status.json'), fetchImpl),
+    loadStory: () => fetchScanJson(scanObjectPath(slug, 'story.json', pinnedQuery()), fetchImpl, 'story'),
+    loadStories: () => fetchOptionalScanJson(scanObjectPath(slug, 'stories.json', pinnedQuery()), fetchImpl),
+    loadEnrichmentReport: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-report.json', pinnedQuery()), fetchImpl),
+    loadEnrichmentStatus: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-status.json', pinnedQuery()), fetchImpl),
     publication: () => publication,
   };
 }
@@ -915,8 +924,11 @@ export async function loadScanNeighborhoodFixture(
   focusEntityId: string | undefined,
   options: ScanModeOptions = {},
 ): Promise<ScanFixture> {
-  const [packet, story, catalog, honesty] = await Promise.all([
-    host.loadNeighborhood(focusEntityId ?? ''),
+  // Bootstrap packet establishes the immutable publication before any auxiliary
+  // resource fetch. This prevents story/catalog requests independently resolving
+  // a newer current pointer mid-load.
+  const packet = await host.loadNeighborhood(focusEntityId ?? '');
+  const [story, catalog, honesty] = await Promise.all([
     host.loadStory(),
     host.loadStories?.() ?? Promise.resolve(undefined),
     honestyFromHost(host),
