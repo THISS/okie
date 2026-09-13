@@ -30,6 +30,9 @@ const PUBLISHED_BASENAMES = new Set([
 export function publishedScanCandidates(relativePosix: string): string[] {
   const relative = relativePosix.replace(/\\/g, "/").replace(/^\/+/, "");
   if (relative === "" || relative.includes("..")) return [];
+  const parts = relative.split("/");
+  const name = parts.at(-1);
+  if (!name || !PUBLISHED_BASENAMES.has(name) || parts.length > 2) return [];
   const candidates = [relative];
   const prefix = `${DOGFOOD_SCAN_SLUG}/`;
   if (relative.startsWith(prefix)) {
@@ -62,13 +65,16 @@ export function resolvePublicationScanFile(input: { scanRoot: string; pathname: 
   if (repositoryId && publications && store && pathname.startsWith("/scan/")) {
     const relative = normalize(decodeURIComponent(pathname.slice(6))).replace(/\\/g, "/");
     const file = relative.split("/").at(-1);
-    if (file && PUBLISHED_BASENAMES.has(file) || file === "operator-explanations.json") {
+    if (file && (PUBLISHED_BASENAMES.has(file) || file === "operator-explanations.json") && relative.split("/").length <= 2) {
       const artifact = versionId ? publications.artifactForVersion(repositoryId, versionId) : publications.currentPublication(repositoryId) && publications.artifactForVersion(repositoryId, publications.currentPublication(repositoryId)!.versionId);
       if (artifact?.files.includes(file!)) {
         const path = resolve(store.root, "artifacts", artifact.artifactRevisionId, file!);
         if (path.startsWith(resolve(store.root, "artifacts") + sep) && existsSync(path)) return path;
       }
     }
+    // A known repository request must never fall back to mutable legacy bytes when
+    // a version was requested or publication metadata exists.
+    if (versionId || publications.currentPublication(repositoryId)) return undefined;
   }
   return resolvePublishedScanFile(scanRoot, pathname);
 }
