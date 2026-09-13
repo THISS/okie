@@ -16,13 +16,16 @@ test('committed analysis reads installed types without substituting dirty reposi
       put(base, 'tsconfig.json', '{"compilerOptions":{"module":"NodeNext","moduleResolution":"NodeNext"},"include":["main.ts"]}');
     }
     put(root, 'main.ts', 'import { value } from "example"; export const captured: number = value;');
-    put(installed, 'main.ts', 'export const dirty = "must not enter graph";');
+    put(root, 'src/dirty.ts', 'export const value: number = 1;');
+    put(installed, 'src/dirty.ts', 'export const value: string = "must not enter graph";');
     put(installed, 'node_modules/example/package.json', '{"name":"example","version":"1.0.0","types":"index.d.ts"}');
-    put(installed, 'node_modules/example/index.d.ts', 'export declare const value: number;');
+    put(installed, 'node_modules/example/index.d.ts', 'export { value } from "../../src/dirty";');
     const before = analyzeTypeScript(root, ['main.ts']);
     assert.ok(before.coverage[0]!.limitations.some(value => value.includes('TS2307')));
     const after = analyzeTypeScript(root, ['main.ts'], installed);
     assert.ok(!after.coverage[0]!.limitations.some(value => value.includes('TS2307')));
+    assert.ok(!after.coverage[0]!.limitations.some(value => value.includes('TS2322')));
+    assert.ok(!after.coverage[0]!.limitations.some(value => value.includes('TS2318') || value.includes('Cannot find global type')));
     assert.ok(after.definitions.some(value => value.name === 'captured'));
     assert.ok(!after.definitions.some(value => value.name === 'dirty'));
     assert.ok(after.definitions.every(value => value.path === 'main.ts'));
@@ -33,7 +36,7 @@ test('committed analysis reads installed types without substituting dirty reposi
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-test('dependency context rejects workspace and external symlink source escapes', () => {
+test('dependency context rejects workspace, external symlink, and physical relative source escapes', () => {
   const directory = mkdtempSync(join(tmpdir(), 'okie-dependency-links-'));
   const root = join(directory, 'committed'); const installed = join(directory, 'working');
   try {
@@ -44,8 +47,10 @@ test('dependency context rejects workspace and external symlink source escapes',
     const reader = dependencyContext(root, installed);
     for (const name of ['workspace', 'external']) {
       const path = join(root, 'node_modules', name);
-      assert.equal(reader.path(path), path);
+      assert.match(reader.path(path), /\.okie-unavailable-dependency$/);
     }
     assert.equal(reader.path(join(root, 'src/index.ts')), join(root, 'src/index.ts'));
+    assert.equal(reader.path(join(installed, 'src/index.ts')), join(root, 'src/index.ts'));
+    assert.match(reader.path(join(directory, 'external-source.ts')), /\.okie-unavailable-dependency$/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });

@@ -36,8 +36,6 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
   const allowed = new Set((discoveredFiles ?? paths.map(relativePath)).filter(path => /\.[cm]?[jt]sx?$/.test(path)).map(path => resolve(root, path)));
   const result: LanguageAnalysis = { schemaVersion: 1, definitions: [], references: [], modules: [], coverage: [] };
   const limitations = new Set<string>();
-  const dependencies = dependencyContext(root, installationRoot);
-  if (dependencies.limitation) limitations.add(dependencies.limitation);
   const indexed = new Set<string>();
   const definitions = new Map<string, AnalysisDefinition>();
   const references = new Map<string, LanguageAnalysis["references"][number]>();
@@ -93,6 +91,8 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
     limitations.add(`Inferred compiler configuration for ${uncovered.length} source file(s) outside configured projects.`);
     projects.set("<inferred>", { fileNames: uncovered, options: { allowJs: true, checkJs: true, target: ts.ScriptTarget.Latest, module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext, noEmit: true }, errors: [] });
   }
+  const dependencies = dependencyContext(root, installationRoot, [...projects.values()].map(project => dirname(ts.getDefaultLibFilePath(project.options))));
+  if (dependencies.limitation) limitations.add(dependencies.limitation);
   const location = (node: ts.Node): AnalysisLocation => {
     const source = node.getSourceFile();
     const start = node.getStart(source);
