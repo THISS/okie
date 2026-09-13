@@ -651,27 +651,27 @@ export const GOLDEN_SOURCE_EXCERPTS = {
     "path": "apps/web/src/App.tsx",
     "symbol": "App",
     "language": "tsx",
-    "startLine": 1328,
-    "endLine": 1333,
-    "highlightLine": 1328,
+    "startLine": 1330,
+    "endLine": 1335,
+    "highlightLine": 1330,
     "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
     "lines": [
       "export function App() {",
       "  const query = useMemo(() => readDemoQuery(window.location.search), []);",
+      "  const draftPreviewContext = getDraftPreviewContext();",
       "  const initialCameraExplicit = useMemo(() => {",
       "    const params = new URLSearchParams(window.location.search);",
-      "    return params.has('cx') || params.has('cy') || params.has('z');",
-      "  }, []);"
+      "    return params.has('cx') || params.has('cy') || params.has('z');"
     ],
-    "text": "export function App() {\n  const query = useMemo(() => readDemoQuery(window.location.search), []);\n  const initialCameraExplicit = useMemo(() => {\n    const params = new URLSearchParams(window.location.search);\n    return params.has('cx') || params.has('cy') || params.has('z');\n  }, []);"
+    "text": "export function App() {\n  const query = useMemo(() => readDemoQuery(window.location.search), []);\n  const draftPreviewContext = getDraftPreviewContext();\n  const initialCameraExplicit = useMemo(() => {\n    const params = new URLSearchParams(window.location.search);\n    return params.has('cx') || params.has('cy') || params.has('z');"
   },
   "code:web-shell:canvas-viewport": {
     "path": "apps/web/src/App.tsx",
     "symbol": "CanvasViewport",
     "language": "tsx",
-    "startLine": 5311,
-    "endLine": 5316,
-    "highlightLine": 5311,
+    "startLine": 5314,
+    "endLine": 5319,
+    "highlightLine": 5314,
     "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
     "lines": [
       "          <CanvasViewport",
