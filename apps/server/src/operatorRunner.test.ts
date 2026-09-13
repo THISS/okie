@@ -79,8 +79,19 @@ test("runner retries only the selected scope into a new immutable draft", async 
     assert.equal(nextDraft.coverage.stale, 2);
     for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => !attempt.stale));
 
-    await createOperatorRunner({ store, publication: new OperatorPublicationService(store) }).enqueue({ kind: "retry", runId: run.runId, draftRevisionId: nextDraft.draftRevisionId, scopeIds: ["target"], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
-    assert.equal(store.listAttempts(nextDraft.draftRevisionId, "target").at(-1)?.error, "no enrichment gateway configured");
+    const refreshed: string[] = [];
+    const refresher = createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { modelId: "fake/model", async chatCompletions(body) {
+      const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } };
+      refreshed.push(message.scope.scopeId);
+      return { json: { choices: [{ message: { content: message.scope.scopeId === "system" ? "{}" : JSON.stringify({ summary: `refreshed ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence }) } }] } };
+    } } });
+    await refresher.enqueue({ kind: "refresh", runId: run.runId, draftRevisionId: nextDraft.draftRevisionId, scopeIds: ["system", "component"], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
+    assert.deepEqual(refreshed, ["component", "system"]);
+    const refreshedDraft = store.snapshot().drafts.find(value => value.draftRevisionId === store.snapshot().runs.find(value => value.runId === run.runId)?.draftRevisionId)!;
+    const refreshedSidecar = JSON.parse(store.readArtifactFile(refreshedDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; stale?: boolean }>; explanations: Array<{ scopeId: string; content: { summary: string } }> };
+    assert.deepEqual(refreshedSidecar.scopes.filter(scope => scope.stale).map(scope => scope.scopeId), ["system"]);
+    assert.equal(refreshedDraft.coverage.stale, 1);
+    assert.equal(refreshedSidecar.explanations.find(value => value.scopeId === "component")?.content.summary, "refreshed component");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
