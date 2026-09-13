@@ -25,7 +25,7 @@ Worktree dependency directories link to existing installed dependencies for read
 
 ## Pending integration gates
 
-Shared foundation contracts, server execution integration, hierarchical scheduler, operator UI, durable usage instrumentation, full repository gates, Astra low browser acceptance, and Astra medium final review remain unfinished.
+Implementation, repository gates and Astra low browser acceptance are complete at the checkpoint below. Astra medium independent review is underway; any findings require fixes and relevant rechecks before goal completion.
 
 ## Integrated increments
 
@@ -45,3 +45,11 @@ Coordinator integration fixed full explanation DTOs, untouched scope names, run-
 The first repository `pnpm check` and `cargo test --workspace` passed. The web suite passed 115 files / 1035 tests, but the complete `pnpm test` later failed two scanner tests: the PATH selected an old Git that lacks `init -b`, and the extraction determinism check overlapped active integration edits. Full tests must rerun with `/opt/homebrew/bin` first in PATH and a stable checkout before acceptance. Golden excerpts were regenerated for App inspector context and the evidence-row hash deliberately updated from `43720d17` to `76ace2ea`. Final gates will cover remaining changes.
 
 Remaining acceptance: budget binding and cancellation; failed retry preserving accepted content and stale metadata in the new artifact; explicit ancestor refresh; publication validation regression; production config binding; controlled full-flow browser QA and final Astra medium review. No browser pass, deployment, public publication, push, or main merge is claimed. A separate loopback QA harness is being prepared at `.okie-review/operator-qa` with fake auth/gateway and a real local scan; it does not call a paid provider.
+
+## Final acceptance checkpoint (before independent review)
+
+- Full stable-checkout `pnpm test` completed exit 0: architecture 125, scene compiler 122, scan 198 (one skip), server 188, web 1,036 passing tests. The earlier Git/PATH and active-edit failures were superseded by this clean run.
+- `pnpm check`, `cargo test --workspace`, and production `pnpm build` completed exit 0. The final Overview placement change additionally passed its focused render tests, golden fixture acceptance and another production build; fixture regeneration produced no additional drift.
+- Astra low real browser acceptance passed on the separate 4174/4181 fixture. See `browser-qa.md`: real 3,574-entity local scan, operator/anonymous access, pinned previews, budget-limited failure, successful App/protocol retry preserving siblings, bottom-up stale refresh, two partial publications, old public page pinning, stories, map/minimap, expanded diagrams, excerpts and full source tab. Full source and model replies were local test doubles; no real publication or paid scan was performed. Recording was unavailable; screenshots are retained.
+- QA found accepted explanations in Details instead of Overview. Commit `4857bb6` corrected placement; Astra rechecked App/protocol Overview and diagrams, Details metadata, and an unenriched fallback node successfully.
+- Astra medium independent review dispatched after these checks; findings and follow-ups remain the final gate. Source checkout frozen during review. No main merge, push, or deployment authorized or performed.
