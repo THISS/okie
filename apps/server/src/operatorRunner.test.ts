@@ -77,7 +77,7 @@ test("runner retries only the selected scope into a new immutable draft", async 
     assert.notEqual(next.explanations.find(value => value.scopeId === "target")?.explanationVersionId, "target-original");
     assert.deepEqual(next.scopes.filter(scope => scope.stale).map(scope => scope.scopeId), ["system", "component"]);
     assert.equal(nextDraft.coverage.stale, 2);
-    for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => attempt.stale));
+    for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => !attempt.stale));
 
     const refreshed: string[] = []; const childStates = new Map<string, Array<{ scopeId: string; state: string }>>();
     const refresher = createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { modelId: "fake/model", async chatCompletions(body) {
@@ -121,9 +121,11 @@ test("runner rejects pinned and concurrent retries once a newer draft exists", a
     const explanations = JSON.parse(store.readArtifactFile(next.artifactRevisionId, "operator-explanations.json")!.toString()) as { explanations: Array<{ scopeId: string; content: { summary: string } }> };
     assert.equal(store.snapshot().drafts.length, 2);
     assert.equal(explanations.explanations.filter(value => value.content.summary.startsWith("new ")).length, 1);
+    assert.equal(store.snapshot().events.filter(event => event.type === "draft.conflict" && event.detail?.reason === "retry_compare_and_swap").length, 1);
 
     await job("a");
     assert.equal(store.snapshot().drafts.length, 2);
+    assert.equal(store.snapshot().events.filter(event => event.type === "draft.conflict" && event.detail?.reason === "stale_retry_base").length, 1);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
