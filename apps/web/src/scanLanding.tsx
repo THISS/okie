@@ -9,11 +9,9 @@ import {
 } from './webmcp';
 
 /**
- * The paste-a-repo landing (embed-hosting v2 self-serve): a GitHub URL goes in,
- * a scan job fires on the worker, and the moment the DETERMINISTIC atlas is
- * published the user is sent to /r/<owner>/<repo> — enrichment (AI descriptions)
- * keeps running server-side and republishes in place. Rendered pre-App at /new,
- * so it stays a tiny standalone surface with no atlas machinery loaded.
+ * Public scan landing: published maps remain public, while hosted scan creation
+ * and publication belong to the operator review workspace. Rendered before App
+ * at /new so it stays a small standalone surface.
  */
 
 type PublicJob = {
