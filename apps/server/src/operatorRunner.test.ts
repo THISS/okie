@@ -71,10 +71,45 @@ test("runner retries only the selected scope into a new immutable draft", async 
     assert.notEqual(active.draftRevisionId, draft.draftRevisionId);
     const nextDraft = store.snapshot().drafts.find(value => value.draftRevisionId === active.draftRevisionId)!;
     assert.notEqual(nextDraft.artifactRevisionId, artifact.artifactRevisionId);
-    const next = JSON.parse(store.readArtifactFile(nextDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { explanations: Array<{ scopeId: string; explanationVersionId: string; content: { summary: string } }> };
+    const next = JSON.parse(store.readArtifactFile(nextDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; stale?: boolean }>; explanations: Array<{ scopeId: string; explanationVersionId: string; content: { summary: string } }> };
     assert.deepEqual(next.explanations.find(value => value.scopeId === "sibling"), { scopeId: "sibling", explanationVersionId: "sibling-original", content: { summary: "old sibling", evidence: [{ entityId: "sibling", path: "sibling.ts" }] } });
     assert.equal(next.explanations.find(value => value.scopeId === "target")?.content.summary, "new target");
     assert.notEqual(next.explanations.find(value => value.scopeId === "target")?.explanationVersionId, "target-original");
-    for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => attempt.stale));
+    assert.deepEqual(next.scopes.filter(scope => scope.stale).map(scope => scope.scopeId), ["system", "component"]);
+    assert.equal(nextDraft.coverage.stale, 2);
+    for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => !attempt.stale));
+
+    await createOperatorRunner({ store, publication: new OperatorPublicationService(store) }).enqueue({ kind: "retry", runId: run.runId, draftRevisionId: nextDraft.draftRevisionId, scopeIds: ["target"], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
+    assert.equal(store.listAttempts(nextDraft.draftRevisionId, "target").at(-1)?.error, "no enrichment gateway configured");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("runner reserves its durable budget before gateway calls", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-budget-")); const old = process.env.OKIE_LLM_MAX_SCOPES;
+  try {
+    process.env.OKIE_LLM_MAX_SCOPES = "1";
+    const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "budget", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" }); let calls = 0;
+    await createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions() { calls += 1; return { json: { choices: [{ message: { content: "{}" } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } }; } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
+    assert.equal(calls, 1);
+    assert.equal(store.snapshot().events.filter(event => event.type === "budget.reserved").length, 1);
+    assert.equal(store.snapshot().events.filter(event => event.type === "budget.settled").length, 1);
+  } finally { if (old === undefined) delete process.env.OKIE_LLM_MAX_SCOPES; else process.env.OKIE_LLM_MAX_SCOPES = old; rmSync(root, { recursive: true, force: true }); }
+});
+
+test("runner leaves cancelled scans and late gateway replies cancelled", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-cancel-"));
+  try {
+    const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "cancel-scan", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" });
+    const cancelledDuringScan = createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => { store.updateRun(run.runId, { state: "cancelled" }); return { commitSha: "abc", artifacts }; } });
+    await cancelledDuringScan.enqueue({ kind: "run", runId: run.runId, githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
+    assert.equal(store.snapshot().runs.find(value => value.runId === run.runId)?.state, "cancelled"); assert.equal(store.snapshot().drafts.length, 0);
+
+    const late = store.createRun({ idempotencyKey: "cancel-gateway", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const cancelledDuringGateway = createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions() { store.updateRun(late.runId, { state: "cancelled" }); return { json: { choices: [{ message: { content: "{}" } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } }; } } });
+    await cancelledDuringGateway.enqueue({ kind: "run", runId: late.runId, githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
+    assert.equal(store.snapshot().runs.find(value => value.runId === late.runId)?.state, "cancelled");
+    assert.equal(store.snapshot().explanations.filter(value => value.draftRevisionId === store.snapshot().drafts.at(-1)?.draftRevisionId).length, 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

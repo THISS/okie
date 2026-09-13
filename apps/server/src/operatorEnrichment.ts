@@ -195,6 +195,7 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
       try {
         const reply = await withPermit("coordinator", () => options.gateway!.chatCompletions(coordinatorBody(modelId, scope, delegated)));
         if (reply.usage) { tokens += usageTotal(reply.usage); dollars += usageCost(reply.usage); await options.onUsage?.(reply.usage); attempt.usage = reply.usage; }
+        if (await options.cancelled?.()) { stopped = "cancelled"; const patch = { state: "cancelled" as const, updatedAt: now(), ...(attempt.usage ? { usage: attempt.usage } : {}) }; await options.store.updateAttempt(id, patch); Object.assign(attempt, patch); return; }
         delegated = validateDelegation(completionText(reply), scope.scopeId, delegated);
         const patch = { state: "accepted" as const, updatedAt: now(), ...(reply.usage ? { usage: reply.usage } : {}) }; await options.store.updateAttempt(id, patch); Object.assign(attempt, patch);
       } catch (error) {
@@ -213,6 +214,7 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
     try {
       const reply = await withPermit("owner", () => options.gateway!.chatCompletions(bodyFor(modelId, scope, childInputs)));
       if (reply.usage) { tokens += usageTotal(reply.usage); dollars += usageCost(reply.usage); await options.onUsage?.(reply.usage); attempt.usage = reply.usage; }
+      if (await options.cancelled?.()) { stopped = "cancelled"; const patch = { state: "cancelled" as const, updatedAt: now(), ...(attempt.usage ? { usage: attempt.usage } : {}) }; await options.store.updateAttempt(id, patch); Object.assign(attempt, patch); return; }
       const explanation = validateOperatorExplanation(completionText(reply), scope.allowedEvidence);
       await options.store.putAcceptedExplanation(scope.scopeId, explanation, id, hash);
       const patch = { state: "accepted" as const, updatedAt: now(), ...(reply.usage ? { usage: reply.usage } : {}) }; await options.store.updateAttempt(id, patch); Object.assign(attempt, patch);
