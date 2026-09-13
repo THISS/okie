@@ -122,6 +122,27 @@ test('CLA-120: fat @okie/web L2 keeps ~10 landmark pills plus +N more; server st
   assert.equal(badge, true, 'canvas paints a +N more remainder chip');
 });
 
+test('CLA-120: an L4 window does not hollow a component card that remains resident at L3', () => {
+  const snapshot = webServerSnapshot(1, 0);
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:okie',
+    focusEntityId: 'system:okie',
+    familyId: 'f',
+    maxBand: 'code',
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  const visualId = bundle.index.visualNodeIdsByEntityId['component:web-00']![0]!;
+  const code = bundle.projectionById[bundle.family.projectionIds.code]!;
+  code.omittedNodeIds = [...(code.omittedNodeIds ?? []), visualId];
+
+  const compiled = compileC4Scene(snapshot, bundle, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+  const object = compiled.scene.objects.find(candidate => candidate.id === visualId);
+  const component = object?.representations.find(candidate => candidate.id === `${visualId}:component`);
+  assert.ok(component, 'the L3 card remains an entity object instead of a blank reserved shell');
+  assert.ok(component.primitives.some(primitive => primitive.kind === 'text' && primitive.content === 'Web0'));
+  assert.equal(object?.representations.some(candidate => candidate.id === `${visualId}:code`), false, 'the omitted L4 representation stays absent');
+});
+
 test('CLA-120: Open inside / L2→L3 still packs the full @okie/web neighborhood', () => {
   const snapshot = webServerSnapshot(79, 8);
   const l3Bundle = buildC4ProjectionBundle(snapshot, {

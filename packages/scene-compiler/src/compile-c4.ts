@@ -478,7 +478,6 @@ function objectForNode(
   node: VisualNode,
   theme: SceneTheme,
   targetAspect?: number,
-  shellIds?: ReadonlySet<string>,
 ): SceneObject | undefined {
   const entity = snapshot.entities.find(candidate => candidate.id === node.entity.logicalId);
   const appearances: Array<{
@@ -495,8 +494,11 @@ function objectForNode(
     const layout = bundle.bandLayoutById[projection.layoutId]!;
     const bounds = layout.nodes[node.id] ?? layout.reservedShells?.[node.id];
     if (!bounds) continue;
-    const shell = shellIds?.has(node.id) === true
-      || (projection.omittedNodeIds?.includes(node.id) === true);
+    // Residency belongs to a representation, not to the visual node as a
+    // whole. A root scan can keep a file card at L3 while its L4 symbols are
+    // windowed. Treating that code-band omission as a global shell erased the
+    // file card's L3 text but left its parent-drawn reserved rectangle behind.
+    const shell = projection.omittedNodeIds?.includes(node.id) === true;
     const reservedInside = Object.entries(layout.reservedShells ?? {})
       .filter(([visualId, shellBounds]) => {
         if (!contains(bounds, shellBounds)) return false;
@@ -532,16 +534,21 @@ function objectForNode(
     });
   }
   if (!appearances.length) return undefined;
+  // Fully omitted nodes are painted once by their parent's reserved interior.
+  // Keep a node that is resident in any band, however, so its readable card
+  // face survives another band's bounded window.
+  const residentAppearances = appearances.filter(value => !value.shell);
+  if (!residentAppearances.length) return undefined;
   const bounds = union(appearances.map(value => value.bounds));
   return {
     id: node.id,
     ...(node.parentVisualId && bundle.visualNodeById[node.parentVisualId] ? { parentId: node.parentVisualId } : {}),
     zIndex: node.kind === 'softwareSystem' ? -4 : node.kind === 'container' || node.kind === 'dataStore' || node.kind === 'queue' ? -3 : node.kind === 'component' ? -2 : 1,
     bounds,
-    pickable: !appearances.every(value => value.shell),
-    representations: appearances.map(value => {
+    pickable: true,
+    representations: residentAppearances.map(value => {
       const representation = presentation(node, entity, value.bounds, value.band, value.boundary, theme, value.revealLod, value.shell);
-      if (value.shell || (!value.reservedInside.length && !value.remainder)) return representation;
+      if (!value.reservedInside.length && !value.remainder) return representation;
       const visualScale = visualScaleByBand[value.band];
       const fill = theme.entityFill[node.kind];
       const remainderPrimitives = value.remainder
@@ -1654,16 +1661,9 @@ export function compileC4Scene(
     options.unpublishedChildren ?? [],
   );
   const theme = options.theme ?? defaultTheme;
-  const shellIds = omittedVisualIds(bundle);
-  const reservedIds = new Set(C4_BANDS.flatMap(band => {
-    const projection = bundle.projectionById[bundle.family.projectionIds[band]]!;
-    return Object.keys(bundle.bandLayoutById[projection.layoutId]?.reservedShells ?? {});
-  }));
   const entityObjects = Object.values(bundle.visualNodeById)
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map(node => (shellIds.has(node.id) || reservedIds.has(node.id))
-      ? undefined
-      : objectForNode(snapshot, bundle, node, theme, options.targetAspect, shellIds))
+    .map(node => objectForNode(snapshot, bundle, node, theme, options.targetAspect))
     .filter((object): object is SceneObject => object !== undefined);
   const paths: ScenePath[] = [];
   const labelObjects: SceneObject[] = [];
