@@ -1,13 +1,18 @@
 import type { OperatorScope } from './api';
 
-export type DraftPreviewContext = { draftRevisionId: string; explanationsByEntityId: ReadonlyMap<string, OperatorScope> };
-let activePreviewContext: DraftPreviewContext | undefined;
+export type PreviewExplanationContext = { revisionId: string; explanationsByEntityId: ReadonlyMap<string, OperatorScope> };
+let activePreviewContext: PreviewExplanationContext | undefined;
 
 /** Ephemeral operator-only context. It is never written to browser storage. */
 export function setDraftPreviewContext(draftRevisionId: string, scopes: readonly OperatorScope[]): void {
   const explanationsByEntityId = new Map<string, OperatorScope>();
   for (const scope of scopes) if (scope.explanation) explanationsByEntityId.set(scope.scopeId, scope);
-  activePreviewContext = { draftRevisionId, explanationsByEntityId };
+  activePreviewContext = { revisionId: draftRevisionId, explanationsByEntityId };
 }
-export function getDraftPreviewContext(): DraftPreviewContext | undefined { return activePreviewContext; }
+export function setPublishedPreviewContext(versionId: string, scopes: readonly OperatorScope[]): void {
+  const explanationsByEntityId = new Map<string, OperatorScope>();
+  for (const scope of scopes) if (scope.explanation && scope.entityId) explanationsByEntityId.set(scope.entityId, scope);
+  activePreviewContext = { revisionId: versionId, explanationsByEntityId };
+}
+export function getDraftPreviewContext(): PreviewExplanationContext | undefined { return activePreviewContext; }
 export function clearDraftPreviewContext(): void { activePreviewContext = undefined; }

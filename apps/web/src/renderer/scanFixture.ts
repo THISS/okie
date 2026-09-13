@@ -318,6 +318,8 @@ export type ScanFixture = {
    * enrichment never ran (no report / no status sidecar).
    */
   enrichmentHonesty?: PublishedEnrichmentHonesty;
+  /** Immutable publication selected by the public bootstrap packet. */
+  publication?: { versionId: string; artifactRevisionId: string };
 };
 
 export type RawScanTrio = { snapshot: unknown; view: unknown; story: unknown; stories?: unknown };
@@ -332,6 +334,8 @@ export type ScanNeighborhoodHost = {
   loadEnrichmentReport?: () => Promise<unknown>;
   /** Optional secret-free `enrichment-status.json`. Missing/404 is undefined, never fatal. */
   loadEnrichmentStatus?: () => Promise<unknown>;
+  /** Identity captured from the same bootstrap neighborhood response. */
+  publication?: () => { versionId: string; artifactRevisionId: string } | undefined;
 };
 
 /** Raised when the scanned trio fails validation; carries every issue found. */
@@ -855,6 +859,7 @@ export function bootFocusFromSearch(search: string): string | undefined {
  * sidecars. Does not GET snapshot.json/view.json.
  */
 export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch = fetch): ScanNeighborhoodHost {
+  let publication: { versionId: string; artifactRevisionId: string } | undefined;
   return {
     async loadNeighborhood(focusEntityId: string) {
       const focus = focusEntityId.trim();
@@ -863,6 +868,8 @@ export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch
       if (!isNeighborhoodPacket(raw)) {
         throw new ScanFixtureError([{ path: 'neighborhood', message: 'Scan neighborhood packet is structurally invalid.' }]);
       }
+      const candidate = (raw as { publication?: unknown }).publication;
+      if (isRecord(candidate) && typeof candidate.versionId === 'string' && typeof candidate.artifactRevisionId === 'string') publication = { versionId: candidate.versionId, artifactRevisionId: candidate.artifactRevisionId };
       return raw;
     },
     async loadExcerpts(entityId: string) {
@@ -877,6 +884,7 @@ export function fetchScanNeighborhoodHost(slug?: string, fetchImpl: typeof fetch
     loadStories: () => fetchOptionalScanJson(scanObjectPath(slug, 'stories.json'), fetchImpl),
     loadEnrichmentReport: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-report.json'), fetchImpl),
     loadEnrichmentStatus: () => fetchOptionalScanJson(scanObjectPath(slug, 'enrichment-status.json'), fetchImpl),
+    publication: () => publication,
   };
 }
 
@@ -913,7 +921,9 @@ export async function loadScanNeighborhoodFixture(
     host.loadStories?.() ?? Promise.resolve(undefined),
     honestyFromHost(host),
   ]);
-  return withEnrichmentHonesty(compileScanNeighborhoodFixture(packet, story, host, options, catalog), honesty);
+  const fixture = withEnrichmentHonesty(compileScanNeighborhoodFixture(packet, story, host, options, catalog), honesty);
+  const publication = host.publication?.();
+  return publication ? { ...fixture, publication } : fixture;
 }
 
 /** Restore against the same canonical packet used by a fresh atlas entry. */

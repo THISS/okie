@@ -22,7 +22,8 @@ import { createIndexedDbPortableStore, createPortablePersistence, portableStorag
 import { registerWebMcpFoundation } from './webmcp';
 import { readPortableFile, rememberPortableSession, forgetPortableSession } from './portable/session';
 import { OperatorWorkspace } from './operator/OperatorWorkspace';
-import { clearDraftPreviewContext, setDraftPreviewContext } from './operator/previewContext';
+import { clearDraftPreviewContext, setDraftPreviewContext, setPublishedPreviewContext } from './operator/previewContext';
+import { loadPublishedExplanations } from './operator/publishedExplanations';
 import {
   availableScanRepoSlugs,
   fetchScanNeighborhoodHost,
@@ -84,6 +85,15 @@ async function tryBootNeighborhoodFixture(
       { targetAspect: bootstrapScanAspect() },
     );
     setActiveScanFixture(fixture);
+    if (slug && fixture.publication) {
+      try {
+        const scopes = await loadPublishedExplanations(slug, fixture.publication.versionId);
+        if (scopes) setPublishedPreviewContext(fixture.publication.versionId, scopes);
+      } catch {
+        // Never mix explanation content from another publication. The atlas itself
+        // remains readable when this optional sidecar is absent or unavailable.
+      }
+    }
     return { ok: true };
   } catch (error) {
     return { ok: false, error };
