@@ -26,6 +26,7 @@ import {
   serveNeighborhoodPacket,
 } from "./scanNeighborhood.js";
 import { resolvePublishedScanFile } from "./scanObjects.js";
+import { handleOperatorApi, type OperatorApiOptions } from "./operatorApi.js";
 
 export interface ScanHttpOptions {
   queue: ScanJobQueue;
@@ -37,6 +38,7 @@ export interface ScanHttpOptions {
   bind: string;
   threads?: AskThreadStore;
   sourceFetch?: typeof fetch;
+  operator?: OperatorApiOptions;
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown, pretty = true): void {
@@ -98,6 +100,13 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
 
     if (await auth.handle(request, response, url)) return;
 
+    if (options.operator && pathname.startsWith("/api/operator")) {
+      let body: unknown;
+      if (request.method === "POST") { try { body = await readJsonBody(request); } catch { sendJson(response, 400, { error: "Expected JSON body" }); return; } }
+      const result = await handleOperatorApi(options.operator, request, pathname, body);
+      if (result) { sendJson(response, result.status, result.body); return; }
+    }
+
     if (request.method === "GET" && pathname === "/api/ask") {
       sendJson(response, 200, publicAskStatus(llm));
       return;
@@ -156,6 +165,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "POST" && pathname === "/api/scans") {
+      if (options.operator) { sendJson(response, 403, { error: "use operator workflow" }); return; }
       const session = auth.sessionFromRequest(request);
       const access = resolveScanGithubAccess({
         ...(session ? { session } : {}),
@@ -202,6 +212,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && pathname.startsWith("/api/scans/")) {
+      if (options.operator) { sendJson(response, 404, { error: "not found" }); return; }
       const job = queue.get(decodeURIComponent(pathname.slice("/api/scans/".length)));
       if (!job) {
         sendJson(response, 404, { error: "no such scan job" });
@@ -212,6 +223,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && pathname === "/api/scans") {
+      if (options.operator) { sendJson(response, 404, { error: "not found" }); return; }
       sendJson(response, 200, { jobs: queue.list().slice(0, 50).map(publicJob) });
       return;
     }
