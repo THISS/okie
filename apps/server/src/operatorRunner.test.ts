@@ -31,3 +31,50 @@ test("runner writes parseable deterministic and immutable enriched drafts", asyn
     assert.equal(store.snapshot().publications.length, 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test("runner retries only the selected scope into a new immutable draft", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-retry-"));
+  try {
+    const store = new OperatorStore(root);
+    const run = store.createRun({ idempotencyKey: "retry", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r", commitSha: "abc" } }).run;
+    const scopes = [
+      { scopeId: "system", name: "System", kind: "softwareSystem", sourceRefs: [{ path: "system.ts" }] },
+      { scopeId: "component", parentScopeId: "system", name: "Component", kind: "component", sourceRefs: [{ path: "component.ts" }] },
+      { scopeId: "target", parentScopeId: "component", name: "Target", kind: "code", sourceRefs: [{ path: "target.ts", startLine: 1, endLine: 2 }] },
+      { scopeId: "sibling", parentScopeId: "component", name: "Sibling", kind: "code", sourceRefs: [{ path: "sibling.ts" }] },
+    ];
+    const oldSidecar = JSON.stringify({ schemaVersion: 1, scopes, explanations: [
+      { scopeId: "target", explanationVersionId: "target-original", content: { summary: "old target", evidence: [{ entityId: "target", path: "target.ts", startLine: 1, endLine: 2 }] } },
+      { scopeId: "sibling", explanationVersionId: "sibling-original", content: { summary: "old sibling", evidence: [{ entityId: "sibling", path: "sibling.ts" }] } },
+    ] });
+    const snapshot = JSON.stringify({ schemaVersion: 1, id: "snapshot", repositoryId: "o/r", commitSha: "abc", generatedAt: "2026-01-01T00:00:00.000Z", entities: scopes.map(scope => ({ id: scope.scopeId, ...(scope.parentScopeId ? { parentId: scope.parentScopeId } : {}), name: scope.name, kind: scope.kind, sourceRefs: scope.sourceRefs.map(ref => ({ ...ref, commitSha: "abc" })) })), relations: [] });
+    const artifact = store.writeArtifactRevision({ repositoryId: "o/r", sourceCommitSha: "abc", files: { "snapshot.json": snapshot, "operator-explanations.json": oldSidecar, "atlas.okie.json": "old atlas" } });
+    const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 4, accepted: 4, failed: 0, stale: 0 } });
+    for (const scopeId of ["system", "component", "target", "sibling"]) store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId, kind: "enrichment", state: "accepted" });
+    const calls: string[] = [];
+    const runner = createOperatorRunner({
+      store,
+      publication: new OperatorPublicationService(store),
+      scan: async () => { throw new Error("retry must not rescan"); },
+      gateway: { modelId: "fake/model", async chatCompletions(body) {
+        const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } };
+        calls.push(message.scope.scopeId);
+        return { json: { choices: [{ message: { content: JSON.stringify({ summary: "new target", evidence: message.scope.allowedEvidence }) } }] } };
+      } },
+    });
+    const oldBytes = store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!;
+    await runner.enqueue({ kind: "retry", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: ["target"], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
+
+    assert.deepEqual(calls, ["target"]);
+    assert.equal(store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!.compare(oldBytes), 0);
+    const active = store.snapshot().runs.find(value => value.runId === run.runId)!;
+    assert.notEqual(active.draftRevisionId, draft.draftRevisionId);
+    const nextDraft = store.snapshot().drafts.find(value => value.draftRevisionId === active.draftRevisionId)!;
+    assert.notEqual(nextDraft.artifactRevisionId, artifact.artifactRevisionId);
+    const next = JSON.parse(store.readArtifactFile(nextDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { explanations: Array<{ scopeId: string; explanationVersionId: string; content: { summary: string } }> };
+    assert.deepEqual(next.explanations.find(value => value.scopeId === "sibling"), { scopeId: "sibling", explanationVersionId: "sibling-original", content: { summary: "old sibling", evidence: [{ entityId: "sibling", path: "sibling.ts" }] } });
+    assert.equal(next.explanations.find(value => value.scopeId === "target")?.content.summary, "new target");
+    assert.notEqual(next.explanations.find(value => value.scopeId === "target")?.explanationVersionId, "target-original");
+    for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => attempt.stale));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
