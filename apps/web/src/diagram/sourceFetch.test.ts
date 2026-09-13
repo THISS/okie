@@ -23,6 +23,12 @@ describe('immutable source transport', () => {
     expect(immutableFileUrl(context, commit, 'src/a b.ts')).toBe(`https://github.com/acme/demo/blob/${commit}/src/a%20b.ts`);
     expect(immutableFileUrl(context, 'main', 'a.ts')).toBeUndefined();
   });
+  it('carries the bootstrap publication version to the source endpoint', async () => {
+    const urls: string[] = [];
+    const get = createSourceFetcher(async url => { urls.push(String(url)); return new Response(JSON.stringify(packet)); });
+    await get({ ...context, publicationVersion: 'publication-7' }, commit, 'a.ts', 1, 2);
+    expect(urls[0]).toContain('version=publication-7');
+  });
 });
 
 it('bounds immutable range cache to 32 entries and refetches the evicted oldest range', async () => {

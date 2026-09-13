@@ -9,11 +9,9 @@ import {
 } from './webmcp';
 
 /**
- * The paste-a-repo landing (embed-hosting v2 self-serve): a GitHub URL goes in,
- * a scan job fires on the worker, and the moment the DETERMINISTIC atlas is
- * published the user is sent to /r/<owner>/<repo> — enrichment (AI descriptions)
- * keeps running server-side and republishes in place. Rendered pre-App at /new,
- * so it stays a tiny standalone surface with no atlas machinery loaded.
+ * Public scan landing: published maps remain public, while hosted scan creation
+ * and publication belong to the operator review workspace. Rendered before App
+ * at /new so it stays a small standalone surface.
  */
 
 type PublicJob = {
@@ -81,6 +79,7 @@ export function ScanLandingScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [published, setPublished] = useState<ManifestRepo[]>([]);
   const [auth, setAuth] = useState<AuthView | undefined>();
+  const [operator, setOperator] = useState<boolean | undefined>();
   const pollRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
@@ -90,6 +89,10 @@ export function ScanLandingScreen() {
         if (body) setAuth(body);
       })
       .catch(() => {});
+    void fetch('/api/operator/session', { credentials: 'include' })
+      .then(response => response.ok ? response.json() as Promise<{ operator?: boolean }> : undefined)
+      .then(body => setOperator(body?.operator === true))
+      .catch(() => setOperator(false));
     return () => {
       if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
     };
@@ -172,7 +175,7 @@ export function ScanLandingScreen() {
 
   const stageIndex = job ? STAGE_LABELS.findIndex(stage => stage.key === job.stage) : -1;
   const signedIn = Boolean(auth?.authenticated);
-  const scanLocked = auth !== undefined && !signedIn;
+  const scanLocked = operator !== true;
   const signInHref = auth?.loginPath ?? '/api/auth/github';
   const testLoginHref = auth?.testLoginPath;
   const signOutHref = `${auth?.logoutPath ?? '/api/auth/logout'}?return=/new`;
@@ -181,12 +184,12 @@ export function ScanLandingScreen() {
     <main data-auth-state={auth ? (signedIn ? 'signed-in' : 'signed-out') : 'unknown'} style={page}>
       <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Map a repository</h1>
       <p style={mutedStyle}>
-        Sign in with GitHub to scan a public repository. Viewing a published atlas at{' '}
-        <code>/r/owner/repo</code> stays public: there is no login wall on the map.
-        AI-written descriptions layer on top of the deterministic scan.
+        Hosted scans are managed by operators. Viewing a published atlas at <code>/r/owner/repo</code> stays public.
       </p>
 
-      {auth && (
+      {operator === true ? <section style={cardStyle}><h2>Operator scans</h2><p style={mutedStyle}>Start and review public repository scans in the operator workspace.</p><a href="/operator" style={{ color: '#d9ff70', fontWeight: 600 }}>Open operator review</a></section> : <section style={cardStyle}><h2>Request a scan</h2><p style={mutedStyle}>{operator === undefined ? 'Checking operator access…' : 'Public repositories are published after an operator review. Ask a configured operator to run a scan.'}</p></section>}
+
+      {auth && operator !== true && (
         <p data-testid="scan-auth-status" style={{ ...mutedStyle, marginTop: '1rem' }}>
           {signedIn
             ? <>Signed in as <strong>@{auth.login}</strong>. <a href={signOutHref} style={{ color: '#79dfd4' }}>Sign out</a></>
@@ -199,7 +202,7 @@ export function ScanLandingScreen() {
         </p>
       )}
 
-      <form onSubmit={submit} style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem' }}>
+      {Boolean(0) && <form onSubmit={submit} style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem' }}>
         <input
           aria-label="GitHub repository URL"
           name="url"
@@ -234,7 +237,7 @@ export function ScanLandingScreen() {
         >
           {submitting ? 'Submitting…' : 'Scan'}
         </button>
-      </form>
+      </form>}
 
       {error && <p role="alert" style={{ color: '#ff9b9b', marginTop: '1rem' }}>{error}</p>}
 

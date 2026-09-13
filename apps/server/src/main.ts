@@ -7,12 +7,18 @@ import { createScanJobQueue, createSubmitLimiter } from "./jobs.js";
 import { resolveListenHost } from "./localDefaults.js";
 import {
   describeEnrichmentMode,
+  createLlmGatewayClient,
   loadOperatorDotenv,
   resolveLlmGatewayConfig,
   resolveLlmGatewayLocalConfig,
 } from "./llmGateway.js";
 import { createScanHttpServer } from "./scanServer.js";
 import { createScanJobRunner } from "./scanService.js";
+import { resolveOperatorGithubIds } from "./operatorAccess.js";
+import { OperatorStore } from "./operatorStore.js";
+import { OperatorPublicationService } from "./operatorPublication.js";
+import { createOperatorRunner } from "./operatorRunner.js";
+import { createOperatorBudgetLedger } from "./operatorBudget.js";
 
 /**
  * Paste-a-repo scan process used by the hosted public atlas (CLA-30):
@@ -68,6 +74,36 @@ const queue = createScanJobQueue(createScanJobRunner({
   log,
 }));
 const allowSubmit = createSubmitLimiter();
+const operatorStore = new OperatorStore(scanRoot);
+const operatorPublication = new OperatorPublicationService(operatorStore, scanRoot);
+const operatorGlobalBudget = createOperatorBudgetLedger({
+  maxRequests: Number.MAX_SAFE_INTEGER,
+  maxTokens: globalSpend.cap.maxTokens ?? Number.MAX_SAFE_INTEGER,
+  maxDollars: globalSpend.cap.maxDollars ?? Number.MAX_SAFE_INTEGER,
+}, { store: operatorStore, runId: "global-operator-enrichment" });
+const operatorGateway = createLlmGatewayClient(llm);
+const operatorRunner = createOperatorRunner({
+  store: operatorStore, publication: operatorPublication, gatewayConfig: llm,
+  ...(operatorGateway ? { gateway: {
+    modelId: operatorGateway.modelId,
+    async chatCompletions(body: Record<string, unknown>) {
+      const requestId = operatorGlobalBudget.reserve(Buffer.byteLength(JSON.stringify(body), "utf8") + Number(body.max_tokens ?? 4096));
+      if (!requestId) throw new Error("Global enrichment budget reached");
+      let usage: import("./llmGateway.js").GatewayUsage | undefined;
+      try {
+        const result = await operatorGateway.chatCompletions(body);
+        usage = result.usage;
+        return result;
+      } finally {
+        operatorGlobalBudget.settle(requestId, usage ? {
+          inputTokens: usage.promptTokens ?? Math.max(0, usage.totalTokens - (usage.completionTokens ?? 0)),
+          outputTokens: usage.completionTokens ?? 0,
+          measuredCostUsd: usage.costUsd,
+        } : {});
+      }
+    },
+  } } : {}),
+});
 
 const server = createScanHttpServer({
   queue,
@@ -77,6 +113,19 @@ const server = createScanHttpServer({
   llm,
   enrich,
   bind,
+  operator: {
+    auth,
+    allowedGithubIds: resolveOperatorGithubIds(process.env),
+    publicOrigin: process.env.OKIE_PUBLIC_ORIGIN ?? "http://localhost:4173",
+    store: operatorStore,
+    publications: operatorPublication,
+    enqueue: input => {
+      operatorStore.updateRun(input.runId, { state: "queued" });
+      void Promise.resolve().then(() => operatorRunner.enqueue(input)).catch(() => {
+        operatorStore.updateRun(input.runId, { state: "failed", error: "Operator job failed; review the recorded attempts." });
+      });
+    },
+  },
 });
 
 server.listen(port, bind, () => {

@@ -52,6 +52,7 @@ jobs:
         uses: dtolnay/rust-toolchain@1.87.0
         with:
           targets: wasm32-unknown-unknown
+          components: rust-analyzer, rust-src
 
       - name: Install wasm-pack
         uses: taiki-e/install-action@v2

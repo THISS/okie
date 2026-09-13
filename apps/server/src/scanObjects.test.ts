@@ -67,3 +67,13 @@ test("a published thiss__okie slot wins over the root self-scan alias", () => {
     rmSync(scanRoot, { recursive: true, force: true });
   }
 });
+
+test("public scan resolver rejects durable operator state and noncanonical paths", () => {
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-scan-private-"));
+  try {
+    mkdirSync(join(scanRoot, "operator-v1"), { recursive: true });
+    writeFileSync(join(scanRoot, "operator-v1", "state.json"), "private");
+    assert.equal(resolvePublishedScanFile(scanRoot, "/scan/operator-v1/state.json"), undefined);
+    assert.equal(resolvePublishedScanFile(scanRoot, "/scan/acme__app/nested/snapshot.json"), undefined);
+  } finally { rmSync(scanRoot, { recursive: true, force: true }); }
+});

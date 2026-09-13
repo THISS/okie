@@ -82,6 +82,8 @@ import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } 
 import { canonicalRelationForInspection, resolveRelationshipReveal } from './relations/relationshipReveal';
 import { SourceViewer, portableRepositoryRevisionUrl, type LocalWorkspaceContext } from './diagram/SourceViewer';
 import { getActivePortableAtlas } from './portable/runtime';
+import { OperatorExplanationContext } from './operator/OperatorExplanationContext';
+import { getDraftPreviewContext } from './operator/previewContext';
 import { buildArchitectureBrief, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { readDemoQuery } from './renderer/query';
@@ -1327,6 +1329,7 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
 
 export function App() {
   const query = useMemo(() => readDemoQuery(window.location.search), []);
+  const draftPreviewContext = getDraftPreviewContext();
   const initialCameraExplicit = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     return params.has('cx') || params.has('cy') || params.has('z');
@@ -5549,6 +5552,7 @@ export function App() {
               if (entity) navigateInspectorHierarchy(entity);
               else setLiveMessage('This overview item is known from the snapshot but is not available in the current map neighborhood.');
             }} />
+            {draftPreviewContext && <OperatorExplanationContext scope={draftPreviewContext.explanationsByEntityId.get(selected.id)} entityNames={new Map(activeSnapshot.entities.map(entity => [entity.id, entity.name]))}/>}
             {contextualOverview?.entity.id === scene.rootEntityId ? <ArchitectureBriefView
               brief={architectureBrief}
               containerAvailable={id => Boolean(scene.entities.find(candidate => candidate.id === id))}
@@ -5560,7 +5564,7 @@ export function App() {
             /> : null}
           </div> : inspectorTab === 'source' ? <div aria-labelledby="source-tab" className="source-panel" id="source-panel" role="tabpanel">
             {sourceAvailable && <button className="primary-detail-action" onClick={openSourceTab} type="button">Open source in a tab</button>}
-            {sourceAvailable ? <SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo } : undefined} excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/> : <section className="detail-section" data-testid="source-unavailable"><div className="section-title"><h3>Source unavailable</h3></div><p className="detail-muted">No source evidence was captured for {selected.name}. Select another tab to inspect the available architecture evidence.</p></section>}
+            {sourceAvailable ? <SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo, ...(scanFixture.publication ? { publicationVersion: scanFixture.publication.versionId } : {}) } : undefined} excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/> : <section className="detail-section" data-testid="source-unavailable"><div className="section-title"><h3>Source unavailable</h3></div><p className="detail-muted">No source evidence was captured for {selected.name}. Select another tab to inspect the available architecture evidence.</p></section>}
           </div> : <div aria-labelledby="details-tab" className="details-scroll" id="details-panel" role="tabpanel">
             {pickedCanonicalRelation && <section className="detail-section" data-testid="canonical-relation-evidence"><div className="section-title"><h3>{pickedCanonicalRelation.label ?? pickedCanonicalRelation.kind}</h3><span>{pickedCanonicalRelation.evidence.length}</span></div><p>{activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.from)?.name ?? pickedCanonicalRelation.from} → {activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.to)?.name ?? pickedCanonicalRelation.to}</p>{detailListVisible('relation-evidence', pickedCanonicalRelation.evidence).map((item, index) => <p key={index}>{item.reason}<br/>{item.source.path} · line {item.source.startLine} · {item.source.commitSha}</p>)}{pickedCanonicalRelation.evidence.length > 5 && <button aria-expanded={expandedDetailLists.has('relation-evidence')} onClick={() => toggleDetailList('relation-evidence')}>{expandedDetailLists.has('relation-evidence') ? 'Show fewer' : `Show all ${pickedCanonicalRelation.evidence.length}`}</button>}{!pickedRelationPresentation && <p>The endpoints are outside this map neighborhood. Captured evidence remains available above.</p>}</section>}
             {pickedRelationPresentation ? <article aria-labelledby="inspector-relation-title" className="inspector-presentation inspector-relation-presentation" data-inspector-presentation="relation" data-inspector-relation-id={pickedRelationPresentation.id}>
@@ -5720,7 +5724,7 @@ export function App() {
             </article>}
           </div>}
         </aside>
-        </> : activeDiagramSurface.kind === 'source' ? <section aria-label="Source workspace" id="derived-diagram-content" tabIndex={-1} className="map-stage derived-map-stage" style={{ overflow: 'auto', padding: 24 }}><SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo } : undefined} excerpt={activeDiagramSurface.excerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/></section> : <section className="map-stage derived-map-stage"><SemanticDiagramSurface flowError={activeDynamicFlowResult?.error} flowArtifact={activeDynamicFlowArtifact} mermaidSource={activeMermaidSource} notationAdvisoryCount={notationDiagnostics.length} onSessionChange={updateActiveDiagramSession} scene={scene} surface={activeDiagramSurface}/></section>}
+        </> : activeDiagramSurface.kind === 'source' ? <section aria-label="Source workspace" id="derived-diagram-content" tabIndex={-1} className="map-stage derived-map-stage" style={{ overflow: 'auto', padding: 24 }}><SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo, ...(scanFixture.publication ? { publicationVersion: scanFixture.publication.versionId } : {}) } : undefined} excerpt={activeDiagramSurface.excerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/></section> : <section className="map-stage derived-map-stage"><SemanticDiagramSurface flowError={activeDynamicFlowResult?.error} flowArtifact={activeDynamicFlowArtifact} mermaidSource={activeMermaidSource} notationAdvisoryCount={notationDiagnostics.length} onSessionChange={updateActiveDiagramSession} scene={scene} surface={activeDiagramSurface}/></section>}
       </main>
       <ImportMermaidDialog
         error={importMermaidError}

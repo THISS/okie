@@ -25,7 +25,9 @@ import {
   serveExcerptPacket,
   serveNeighborhoodPacket,
 } from "./scanNeighborhood.js";
-import { resolvePublishedScanFile } from "./scanObjects.js";
+import { resolvePublishedScanFile, resolvePublicationScanFile } from "./scanObjects.js";
+import { handleOperatorApi, type OperatorApiOptions } from "./operatorApi.js";
+import { readArtifactScopes } from "./operatorWorkflow.js";
 
 export interface ScanHttpOptions {
   queue: ScanJobQueue;
@@ -37,6 +39,7 @@ export interface ScanHttpOptions {
   bind: string;
   threads?: AskThreadStore;
   sourceFetch?: typeof fetch;
+  operator?: OperatorApiOptions;
 }
 
 function sendJson(response: ServerResponse, status: number, body: unknown, pretty = true): void {
@@ -46,6 +49,10 @@ function sendJson(response: ServerResponse, status: number, body: unknown, prett
     "cache-control": "no-store",
   });
   response.end(text);
+}
+
+function operatorRepositoryForSlug(operator: OperatorApiOptions | undefined, slug: string | undefined): string | undefined {
+  return slug && operator ? operator.publications.repositoryIdForSlug(slug) : undefined;
 }
 
 async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Promise<unknown> {
@@ -61,10 +68,19 @@ async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Pro
 }
 
 /** Serves one published scan object; the scan root is the only readable tree. */
-function serveScanObject(scanRoot: string, pathname: string, response: ServerResponse): void {
-  const target = resolvePublishedScanFile(scanRoot, pathname);
+function serveScanObject(scanRoot: string, pathname: string, response: ServerResponse, operator?: OperatorApiOptions, versionId?: string): void {
+  const slug = pathname.split("/")[2];
+  const repositoryId = operatorRepositoryForSlug(operator, slug);
+  const target = operator ? resolvePublicationScanFile({ scanRoot, pathname, ...(repositoryId ? { repositoryId } : {}), ...(versionId ? { versionId } : {}), publications: operator.publications, store: operator.store }) : resolvePublishedScanFile(scanRoot, pathname);
   if (!target) {
     sendJson(response, 404, { error: "not found" });
+    return;
+  }
+  if (pathname.endsWith("/operator-explanations.json") && operator && repositoryId) {
+    const publication = operator.publications.currentPublication(repositoryId);
+    const artifact = versionId ? operator.publications.artifactForVersion(repositoryId, versionId) : publication && operator.publications.artifactForVersion(repositoryId, publication.versionId);
+    if (!artifact) { sendJson(response, 404, { error: "not found" }); return; }
+    sendJson(response, 200, { versionId: versionId ?? publication?.versionId, explanations: readArtifactScopes(operator.store, artifact.artifactRevisionId) }, false);
     return;
   }
   response.writeHead(200, {
@@ -85,7 +101,12 @@ function askAuthDenied(): Record<string, unknown> {
 
 export function createScanHttpHandler(options: ScanHttpOptions): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   const { queue, allowSubmit, auth, scanRoot, llm, enrich, bind } = options;
-  const sourceService = createSourceService(options.sourceFetch);
+  const sourceService = createSourceService(options.sourceFetch, options.operator ? input => {
+    const operator = options.operator!;
+    const slug = input.pathname.split("/")[2];
+    const repositoryId = operatorRepositoryForSlug(operator, slug);
+    return repositoryId ? resolvePublicationScanFile({ ...input, repositoryId, publications: operator.publications, store: operator.store }) : undefined;
+  } : undefined);
   const threads = options.threads ?? createAskThreadStore();
 
   function publicJob(job: ScanJob): Record<string, unknown> {
@@ -97,6 +118,17 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     const pathname = url.pathname;
 
     if (await auth.handle(request, response, url)) return;
+
+    if (options.operator && pathname.startsWith("/api/operator")) {
+      let body: unknown;
+      if (request.method === "POST") { try { body = await readJsonBody(request); } catch { sendJson(response, 400, { error: "Expected JSON body" }); return; } }
+      const result = await handleOperatorApi(options.operator, request, pathname, body);
+      if (result) {
+        const bundle = typeof result.body === "object" && result.body !== null ? (result.body as { bundle?: unknown }).bundle : undefined;
+        if (pathname.endsWith("/bundle") && typeof bundle === "string" && result.status === 200) { response.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }); response.end(bundle); return; }
+        sendJson(response, result.status, result.body); return;
+      }
+    }
 
     if (request.method === "GET" && pathname === "/api/ask") {
       sendJson(response, 200, publicAskStatus(llm));
@@ -156,6 +188,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "POST" && pathname === "/api/scans") {
+      if (options.operator) { sendJson(response, 403, { error: "use operator workflow" }); return; }
       const session = auth.sessionFromRequest(request);
       const access = resolveScanGithubAccess({
         ...(session ? { session } : {}),
@@ -202,6 +235,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && pathname.startsWith("/api/scans/")) {
+      if (options.operator) { sendJson(response, 404, { error: "not found" }); return; }
       const job = queue.get(decodeURIComponent(pathname.slice("/api/scans/".length)));
       if (!job) {
         sendJson(response, 404, { error: "no such scan job" });
@@ -212,6 +246,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && pathname === "/api/scans") {
+      if (options.operator) { sendJson(response, 404, { error: "not found" }); return; }
       sendJson(response, 200, { jobs: queue.list().slice(0, 50).map(publicJob) });
       return;
     }
@@ -226,7 +261,8 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && isNeighborhoodScanPath(pathname)) {
-      const packet = serveNeighborhoodPacket(scanRoot, { pathname, searchParams: url.searchParams });
+      const slug = pathname.split("/")[2]; const repositoryId = operatorRepositoryForSlug(options.operator, slug);
+      const packet = serveNeighborhoodPacket(scanRoot, { pathname, searchParams: url.searchParams, ...(repositoryId ? { repositoryId, publications: options.operator!.publications, store: options.operator!.store } : {}) });
       if (!packet) {
         sendJson(response, 404, { error: "not found" });
         return;
@@ -236,7 +272,8 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && isExcerptScanPath(pathname)) {
-      const packet = serveExcerptPacket(scanRoot, { pathname, searchParams: url.searchParams });
+      const slug = pathname.split("/")[2]; const repositoryId = operatorRepositoryForSlug(options.operator, slug);
+      const packet = serveExcerptPacket(scanRoot, { pathname, searchParams: url.searchParams, ...(repositoryId ? { repositoryId, publications: options.operator!.publications, store: options.operator!.store } : {}) });
       if (!packet) {
         sendJson(response, 404, { error: "not found" });
         return;
@@ -246,7 +283,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && pathname.startsWith("/scan/")) {
-      serveScanObject(scanRoot, pathname, response);
+      serveScanObject(scanRoot, pathname, response, options.operator, url.searchParams.get("version") ?? undefined);
       return;
     }
 

@@ -253,6 +253,27 @@ describe('CLA-73 slim neighborhood boot', () => {
     expect(calls.some(url => url.includes('view.json'))).toBe(false);
   });
 
+  it('pins story, sidecars, excerpts, and deeper neighborhoods to the bootstrap publication', async () => {
+    const calls: string[] = [];
+    const packet = { ...sliceArchitectureNeighborhood(
+      structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,
+      structuredClone(demoView) as unknown as ArchitectureView,
+      { focusEntityId: 'system:okie' },
+    ), publication: { versionId: 'publication-old', artifactRevisionId: 'artifact-old' } };
+    const fetchImpl: typeof fetch = async input => {
+      const url = String(input); calls.push(url);
+      if (url.includes('neighborhood.json')) return new Response(JSON.stringify(packet));
+      if (url.includes('story.json')) return new Response(JSON.stringify(demoStory));
+      if (url.includes('excerpt.json')) return new Response(JSON.stringify({ kind: 'excerpt', schemaVersion: 1, entityId: 'code:web-shell:app', sourceExcerpts: [] }));
+      return new Response('{}', { status: 404 });
+    };
+    const fixture = await loadScanNeighborhoodFixture(fetchScanNeighborhoodHost('thiss__okie', fetchImpl), undefined);
+    await fixture.ensureExcerpts('code:web-shell:app');
+    await fixture.ensureNeighborhood('container:web-app');
+    expect(calls[0]).toBe('/scan/thiss__okie/neighborhood.json');
+    for (const url of calls.slice(1)) expect(new URL(url, 'http://fixture.test').searchParams.get('version')).toBe('publication-old');
+  });
+
   it('compiles an L1 neighborhood without L4 excerpts and still lazy-loads Source', async () => {
     const packet = sliceArchitectureNeighborhood(
       structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot,

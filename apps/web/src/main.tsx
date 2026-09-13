@@ -21,6 +21,9 @@ import { isPortableMode, portableNavigationDiffers, portableReloadPath, setActiv
 import { createIndexedDbPortableStore, createPortablePersistence, portableStorageKey } from './portable/storage';
 import { registerWebMcpFoundation } from './webmcp';
 import { readPortableFile, rememberPortableSession, forgetPortableSession } from './portable/session';
+import { OperatorWorkspace } from './operator/OperatorWorkspace';
+import { clearDraftPreviewContext, setDraftPreviewContext, setPublishedPreviewContext } from './operator/previewContext';
+import { loadPublishedExplanations } from './operator/publishedExplanations';
 import {
   availableScanRepoSlugs,
   fetchScanNeighborhoodHost,
@@ -82,6 +85,15 @@ async function tryBootNeighborhoodFixture(
       { targetAspect: bootstrapScanAspect() },
     );
     setActiveScanFixture(fixture);
+    if (slug && fixture.publication) {
+      try {
+        const scopes = await loadPublishedExplanations(slug, fixture.publication.versionId);
+        if (scopes) setPublishedPreviewContext(fixture.publication.versionId, scopes);
+      } catch {
+        // Never mix explanation content from another publication. The atlas itself
+        // remains readable when this optional sidecar is absent or unavailable.
+      }
+    }
     return { ok: true };
   } catch (error) {
     return { ok: false, error };
@@ -116,6 +128,7 @@ function preparePortableAtlas(bundle: PortableAtlas): { fixture?: ScanFixture; e
 }
 
 let portableMountSequence = 0;
+let operatorReviewSelection: { runId?: string; draftRevisionId?: string } = {};
 
 async function mountPortableAtlas(bundle: PortableAtlas, fixture: ScanFixture, notice?: string, resetNavigation = true): Promise<void> {
   const { App, refreshAppScanFixture } = await import('./App');
@@ -146,6 +159,29 @@ async function mountPortableAtlas(bundle: PortableAtlas, fixture: ScanFixture, n
     />
     </div>
   </StrictMode>);
+}
+
+/** Operator previews deliberately use the same compiled atlas and App as a portable
+ * bundle, but never place a draft in the user's portable IndexedDB session. */
+async function mountOperatorDraftPreview(draftRevisionId: string, scopes: import('./operator/api').OperatorScope[]): Promise<void> {
+  const { operatorApi } = await import('./operator/api');
+  const raw = await operatorApi.bundle(draftRevisionId);
+  const bundle = parsePortableAtlas(JSON.stringify(raw));
+  const prepared = preparePortableAtlas(bundle);
+  if (!prepared.fixture) throw new Error(prepared.error ?? 'Draft bundle could not be compiled.');
+  const { App, refreshAppScanFixture } = await import('./App');
+  flushSync(() => root.render(null));
+  setActivePortableAtlas(bundle);
+  setDraftPreviewContext(draftRevisionId, scopes);
+  setActiveScanFixture(prepared.fixture);
+  refreshAppScanFixture();
+  root.render(<StrictMode><div className="operator-preview-shell"><header><span>Operator draft preview · pinned revision {draftRevisionId}</span><button onClick={() => { setActivePortableAtlas(undefined); clearDraftPreviewContext(); setActiveScanFixture(undefined); refreshAppScanFixture(); void mountOperatorWorkspace(); }}>Return to review</button></header><div><App /></div></div></StrictMode>);
+}
+
+async function mountOperatorWorkspace(): Promise<void> {
+  flushSync(() => root.render(null));
+  clearDraftPreviewContext();
+  root.render(<StrictMode><OperatorWorkspace initialDraftRevisionId={operatorReviewSelection.draftRevisionId} initialRunId={operatorReviewSelection.runId} onPreview={async (runId, draftRevisionId, scopes) => { operatorReviewSelection = { runId, draftRevisionId }; await mountOperatorDraftPreview(draftRevisionId, scopes); }}/></StrictMode>);
 }
 
 async function openPortableFile(file: File): Promise<{ ok: true } | { ok: false; message: string }> {
@@ -216,6 +252,10 @@ async function boot() {
   void registerWebMcpFoundation();
   if (isPortableMode(window.location.search, portableMarkerEnabled())) {
     await bootPortableAtlas();
+    return;
+  }
+  if (window.location.pathname === '/operator') {
+    await mountOperatorWorkspace();
     return;
   }
   // A scanned fixture is fetched, validated and compiled BEFORE App is imported,
