@@ -324,20 +324,20 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
 }
 
 /** Runs the local scan pipeline against an already-acquired committed tree. */
-function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode']): LanguageAnalysis | undefined {
+function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode'], installationRoot?: string): LanguageAnalysis | undefined {
   if (mode !== 'full') return undefined;
-  const analyses = [analyzeTypeScript(root, discovery.sourceFiles), analyzeRust(root, discovery.sourceFiles)];
+  const analyses = [analyzeTypeScript(root, discovery.sourceFiles, installationRoot), analyzeRust(root, discovery.sourceFiles)];
   return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), coverage: analyses.flatMap(item => item.coverage) };
 }
 
-export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "root" | "pin" | "sourceName">, options: ScanOptions = {}): ScanArtifacts {
+export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "root" | "pin" | "sourceName" | "installationRoot">, options: ScanOptions = {}): ScanArtifacts {
   const sourceRoot = acquired.root;
   const packageName = rootPackageName(sourceRoot);
   const fallbackName = acquired.sourceName;
   const repositorySlug = options.repositorySlug ?? slug(packageName ?? fallbackName);
   const systemName = options.systemName ?? packageName ?? (fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1));
   const discovery = discoverExtractedTree(sourceRoot, options.includeAllMembers ? { includeAllMembers: true } : {});
-  const languageAnalysis = analyzeLanguages(sourceRoot, discovery, options.analysisMode);
+  const languageAnalysis = analyzeLanguages(sourceRoot, discovery, options.analysisMode, acquired.installationRoot);
   return buildScanArtifacts({
     discovery,
     pin: acquired.pin,

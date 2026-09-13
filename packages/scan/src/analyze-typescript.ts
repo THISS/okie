@@ -2,9 +2,10 @@ import ts from "typescript";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { AnalysisDefinition, AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
+import { dependencyContext } from './dependency-context.js';
 
 /** Real project-aware compiler analysis; unresolved dependencies remain explicit limitations. */
-export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly string[]): LanguageAnalysis {
+export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly string[], installationRoot?: string): LanguageAnalysis {
   const root = resolve(sourceRoot);
   const paths: string[] = [];
   const configs: string[] = [];
@@ -35,6 +36,8 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
   const allowed = new Set((discoveredFiles ?? paths.map(relativePath)).filter(path => /\.[cm]?[jt]sx?$/.test(path)).map(path => resolve(root, path)));
   const result: LanguageAnalysis = { schemaVersion: 1, definitions: [], references: [], modules: [], coverage: [] };
   const limitations = new Set<string>();
+  const dependencies = dependencyContext(root, installationRoot);
+  if (dependencies.limitation) limitations.add(dependencies.limitation);
   const indexed = new Set<string>();
   const definitions = new Map<string, AnalysisDefinition>();
   const references = new Map<string, LanguageAnalysis["references"][number]>();
@@ -75,7 +78,7 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
       const directory = packages.get(name);
       if (directory) mapped = resolve(directory, ...segments.slice(name.startsWith("@") ? 2 : 1));
     }
-    return sourceForOutput.get(resolve(mapped)) ?? mapped;
+    return sourceForOutput.get(resolve(mapped)) ?? dependencies.path(mapped);
   };
   const covered = new Set([...projects.values()].flatMap(project => project.fileNames.map(path => resolve(path))));
   const uncovered = [...allowed].filter(path => !covered.has(path));
@@ -102,6 +105,7 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
       || [...sourceForOutput.keys()].some(output => output.startsWith(`${virtualPath(path)}${sep}`))
       || /(?:^|\/)node_modules(?:\/@[^/]+)?$/.test(path.split(sep).join("/"));
     host.realpath = path => virtualPath(path);
+    host.getDirectories = path => ts.sys.getDirectories(virtualPath(path));
     host.getSourceFile = (path, languageVersion, onError, shouldCreateNewSourceFile) =>
       originalGetSourceFile(virtualPath(path), languageVersion, onError, shouldCreateNewSourceFile);
     // Permit source redirects through project references without requiring emitted .d.ts files.
