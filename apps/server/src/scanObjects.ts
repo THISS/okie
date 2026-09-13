@@ -1,5 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import { normalize, resolve, sep } from "node:path";
+import type { OperatorPublicationService } from "./operatorPublication.js";
+import type { OperatorStore } from "./operatorStore.js";
 
 /** Per-repo slug for the THISS/okie dogfood atlas (matches web `DOGFOOD_ATLAS_SLUG`). */
 export const DOGFOOD_SCAN_SLUG = "thiss__okie";
@@ -52,4 +54,21 @@ export function resolvePublishedScanFile(scanRoot: string, pathname: string): st
     if (existsSync(target) && statSync(target).isFile()) return target;
   }
   return undefined;
+}
+
+/** Resolves a current or explicitly pinned immutable publication before legacy slots. */
+export function resolvePublicationScanFile(input: { scanRoot: string; pathname: string; repositoryId?: string; versionId?: string; publications?: OperatorPublicationService; store?: OperatorStore }): string | undefined {
+  const { scanRoot, pathname, repositoryId, versionId, publications, store } = input;
+  if (repositoryId && publications && store && pathname.startsWith("/scan/")) {
+    const relative = normalize(decodeURIComponent(pathname.slice(6))).replace(/\\/g, "/");
+    const file = relative.split("/").at(-1);
+    if (file && PUBLISHED_BASENAMES.has(file) || file === "operator-explanations.json") {
+      const artifact = versionId ? publications.artifactForVersion(repositoryId, versionId) : publications.currentPublication(repositoryId) && publications.artifactForVersion(repositoryId, publications.currentPublication(repositoryId)!.versionId);
+      if (artifact?.files.includes(file!)) {
+        const path = resolve(store.root, "artifacts", artifact.artifactRevisionId, file!);
+        if (path.startsWith(resolve(store.root, "artifacts") + sep) && existsSync(path)) return path;
+      }
+    }
+  }
+  return resolvePublishedScanFile(scanRoot, pathname);
 }

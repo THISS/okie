@@ -25,7 +25,7 @@ import {
   serveExcerptPacket,
   serveNeighborhoodPacket,
 } from "./scanNeighborhood.js";
-import { resolvePublishedScanFile } from "./scanObjects.js";
+import { resolvePublishedScanFile, resolvePublicationScanFile } from "./scanObjects.js";
 import { handleOperatorApi, type OperatorApiOptions } from "./operatorApi.js";
 
 export interface ScanHttpOptions {
@@ -63,8 +63,10 @@ async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Pro
 }
 
 /** Serves one published scan object; the scan root is the only readable tree. */
-function serveScanObject(scanRoot: string, pathname: string, response: ServerResponse): void {
-  const target = resolvePublishedScanFile(scanRoot, pathname);
+function serveScanObject(scanRoot: string, pathname: string, response: ServerResponse, operator?: OperatorApiOptions, versionId?: string): void {
+  const slug = pathname.split("/")[2];
+  const repositoryId = slug && operator ? operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId : undefined;
+  const target = operator ? resolvePublicationScanFile({ scanRoot, pathname, ...(repositoryId ? { repositoryId } : {}), ...(versionId ? { versionId } : {}), publications: operator.publications, store: operator.store }) : resolvePublishedScanFile(scanRoot, pathname);
   if (!target) {
     sendJson(response, 404, { error: "not found" });
     return;
@@ -104,7 +106,11 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
       let body: unknown;
       if (request.method === "POST") { try { body = await readJsonBody(request); } catch { sendJson(response, 400, { error: "Expected JSON body" }); return; } }
       const result = await handleOperatorApi(options.operator, request, pathname, body);
-      if (result) { sendJson(response, result.status, result.body); return; }
+      if (result) {
+        const bundle = typeof result.body === "object" && result.body !== null ? (result.body as { bundle?: unknown }).bundle : undefined;
+        if (pathname.endsWith("/bundle") && typeof bundle === "string" && result.status === 200) { response.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }); response.end(bundle); return; }
+        sendJson(response, result.status, result.body); return;
+      }
     }
 
     if (request.method === "GET" && pathname === "/api/ask") {
@@ -258,7 +264,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && pathname.startsWith("/scan/")) {
-      serveScanObject(scanRoot, pathname, response);
+      serveScanObject(scanRoot, pathname, response, options.operator, url.searchParams.get("version") ?? undefined);
       return;
     }
 
