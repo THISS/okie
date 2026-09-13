@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -139,6 +140,40 @@ test("legacy mixed-case runs can create canonical artifact drafts during retry",
     const retryDraft = restarted.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
     assert.equal(retryDraft.repositoryId, thiss.repositoryId);
     assert.equal(retryDraft.revision, 11, "legacy case-variant drafts continue the canonical revision sequence");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("newest case-variant legacy pointer wins until a digest pointer is present", () => {
+  const { root, store } = setup();
+  try {
+    const publisher = new OperatorPublicationService(store);
+    const firstRun = store.createRun({ idempotencyKey: "legacy-pointer-first", source }).run;
+    const firstArtifact = store.writeArtifactRevision({ repositoryId: source.repositoryId, files: { "snapshot.json": "first" } });
+    const firstDraft = publisher.createDraftRevision({ runId: firstRun.runId, artifactRevisionId: firstArtifact.artifactRevisionId });
+    const first = publisher.publishDraft({ repositoryId: source.repositoryId, draftRevisionId: firstDraft.draftRevisionId });
+    assert.equal(first.ok, true);
+    const secondRun = store.createRun({ idempotencyKey: "legacy-pointer-second", source }).run;
+    const secondArtifact = store.writeArtifactRevision({ repositoryId: source.repositoryId, files: { "snapshot.json": "second" } });
+    const secondDraft = publisher.createDraftRevision({ runId: secondRun.runId, artifactRevisionId: secondArtifact.artifactRevisionId });
+    const second = publisher.publishDraft({ repositoryId: source.repositoryId, draftRevisionId: secondDraft.draftRevisionId, expectedCurrentVersionId: first.publication.versionId });
+    assert.equal(second.ok, true);
+    const statePath = join(store.root, "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf8")) as { publications: Array<{ versionId: string; repositoryId: string; createdAt: number }> };
+    const firstRow = state.publications.find(value => value.versionId === first.publication.versionId)!;
+    const secondRow = state.publications.find(value => value.versionId === second.publication.versionId)!;
+    secondRow.repositoryId = "repo:Acme/app";
+    secondRow.createdAt = firstRow.createdAt;
+    writeFileSync(statePath, `${JSON.stringify(state)}\n`);
+    const pointerRoot = join(store.root, "current");
+    for (const name of readdirSync(pointerRoot)) rmSync(join(pointerRoot, name));
+    const pointer = (publication: { versionId: string; artifactRevisionId: string }) => `${JSON.stringify({ versionId: publication.versionId, artifactRevisionId: publication.artifactRevisionId, updatedAt: 0 })}\n`;
+    writeFileSync(join(pointerRoot, `${Buffer.from(source.repositoryId).toString("hex")}.json`), pointer(first.publication));
+    writeFileSync(join(pointerRoot, `${Buffer.from("repo:Acme/app").toString("hex")}.json`), pointer(second.publication));
+    const restarted = new OperatorPublicationService(new OperatorStore(root));
+    assert.equal(restarted.currentPublication(source.repositoryId)?.versionId, second.publication.versionId, "newer mixed-case legacy pointer wins");
+    const digest = `${createHash("sha256").update(source.repositoryId).digest("hex")}.json`;
+    writeFileSync(join(pointerRoot, digest), pointer(first.publication));
+    assert.equal(restarted.currentPublication(source.repositoryId)?.versionId, first.publication.versionId, "modern digest pointer remains authoritative");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

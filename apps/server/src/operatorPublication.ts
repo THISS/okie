@@ -27,11 +27,16 @@ export class OperatorPublicationService {
    */
   private pointer(repositoryId: string): Pointer | undefined {
     const canonical = canonicalOperatorRepositoryId(repositoryId);
-    const direct = this.pointerAt(this.path(canonical)) ?? this.pointerAt(this.legacyPath(canonical));
+    // A digest pointer is the post-migration authority. Legacy hex filenames,
+    // including the canonical spelling, must be compared by publication age.
+    const direct = this.pointerAt(this.path(canonical));
     if (direct) return direct;
     const state = this.store.snapshot();
     const candidates = state.publications
       .filter(value => canonicalOperatorRepositoryId(value.repositoryId) === canonical)
+      // State is append-only; reverse first so equal-clock publications prefer
+      // the later durable row after the stable newest-first sort.
+      .reverse()
       .sort((a, b) => b.createdAt - a.createdAt);
     for (const publication of candidates) {
       const pointer = this.pointerAt(this.legacyPath(publication.repositoryId));
