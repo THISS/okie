@@ -1,6 +1,6 @@
 # Operator workflow integration
 
-Implementation is integrated on `codex/operator-workflow`, based on accepted main `2c7a7e7`. The checkpoints below retain the build and review history; final corrections are undergoing acceptance. Nothing has been pushed, merged to main, deployed, or published to a real environment.
+Implementation is accepted locally on `codex/operator-workflow`, based on accepted main `2c7a7e7`. The checkpoints below retain the build and review history. Nothing has been pushed, merged to main, deployed, or published to a real environment.
 
 ## Ownership
 
@@ -25,7 +25,7 @@ Worktree dependency directories link to existing installed dependencies for read
 
 ## Pending integration gates
 
-Implementation, repository gates and Astra low browser acceptance are complete at the checkpoint below. Astra medium independent review is underway; any findings require fixes and relevant rechecks before goal completion.
+Implementation, repository gates, Astra low browser acceptance and Astra medium independent review are complete. Updating Linear completion status remains pending destination authorization; see the final acceptance entry below.
 
 ## Integrated increments
 
@@ -63,3 +63,11 @@ The targeted browser recheck found a legacy mixed-case run could not create its 
 Post-review gates: `pnpm check`, full `pnpm test` (1,674 passing TypeScript tests, one scanner skip), and `pnpm build` completed exit 0. After the migration correction, all 193 server tests passed; the final recovery adjustment passed all five runner tests and server compilation, and the navigation adjustment passed web typechecking. The prior Rust gate remains valid because no Rust source changed. Logs: `/tmp/okie-operator-{check,tests,build}-review.log`, `/tmp/okie-operator-server-migration.log`, `/tmp/okie-operator-recovery.log`.
 
 Linear status updates were blocked by automatic approval review pending explicit destination authorization; local implementation and QA evidence continue independently. No issue has been marked complete by this final update attempt.
+
+## Final technical acceptance
+
+Astra low passed the final retry/conflict/recovery browser cycle at `8ae120a`: revisions 11 and 12 preserve the older pinned preview, stale retry reports a conflict, reviewing the new revision clears that alert, accepted siblings survive, and the new node's Overview/evidence/diagram and old published source remain available.
+
+Astra medium's bounded recheck found one additional legacy pointer precedence case. Commit `aad68c6` selects the newest valid legacy case-variant pointer when no modern digest pointer exists, including tied timestamps; digest pointers remain authoritative. Server compilation and all 11 focused store/publication API tests passed. The reviewer independently reproduced the corrected case and accepted all four findings with no confirmed residual blocker. See `final-independent-review.md`.
+
+The isolated 4174/4181 QA fixture was restarted with the final compiled backend. It uses fake authentication and a fake model with a cached real repository scan; it performs no paid calls or real publication. The original 4173/4180 processes were not restarted. Linear remains In Progress pending permission to send the completion summary to Clabrate's Okie project.
