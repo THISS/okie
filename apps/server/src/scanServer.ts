@@ -27,6 +27,7 @@ import {
 } from "./scanNeighborhood.js";
 import { resolvePublishedScanFile, resolvePublicationScanFile } from "./scanObjects.js";
 import { handleOperatorApi, type OperatorApiOptions } from "./operatorApi.js";
+import { readArtifactScopes } from "./operatorWorkflow.js";
 
 export interface ScanHttpOptions {
   queue: ScanJobQueue;
@@ -69,6 +70,14 @@ function serveScanObject(scanRoot: string, pathname: string, response: ServerRes
   const target = operator ? resolvePublicationScanFile({ scanRoot, pathname, ...(repositoryId ? { repositoryId } : {}), ...(versionId ? { versionId } : {}), publications: operator.publications, store: operator.store }) : resolvePublishedScanFile(scanRoot, pathname);
   if (!target) {
     sendJson(response, 404, { error: "not found" });
+    return;
+  }
+  if (pathname.endsWith("/operator-explanations.json") && operator && repositoryId) {
+    const publication = versionId ? operator.publications.currentPublication(repositoryId) : operator.publications.currentPublication(repositoryId);
+    const artifact = versionId ? operator.publications.artifactForVersion(repositoryId, versionId) : publication && operator.publications.artifactForVersion(repositoryId, publication.versionId);
+    if (!artifact) { sendJson(response, 404, { error: "not found" }); return; }
+    const attempts = operator.store.snapshot().attempts.filter(value => operator.store.snapshot().drafts.find(draft => draft.draftRevisionId === value.draftRevisionId)?.artifactRevisionId === artifact.artifactRevisionId);
+    sendJson(response, 200, { versionId: versionId ?? publication?.versionId, explanations: readArtifactScopes(operator.store, artifact.artifactRevisionId, attempts) }, false);
     return;
   }
   response.writeHead(200, {
