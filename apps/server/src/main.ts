@@ -13,6 +13,10 @@ import {
 } from "./llmGateway.js";
 import { createScanHttpServer } from "./scanServer.js";
 import { createScanJobRunner } from "./scanService.js";
+import { resolveOperatorGithubIds } from "./operatorAccess.js";
+import { OperatorStore } from "./operatorStore.js";
+import { OperatorPublicationService } from "./operatorPublication.js";
+import { createOperatorRunner } from "./operatorRunner.js";
 
 /**
  * Paste-a-repo scan process used by the hosted public atlas (CLA-30):
@@ -68,6 +72,9 @@ const queue = createScanJobQueue(createScanJobRunner({
   log,
 }));
 const allowSubmit = createSubmitLimiter();
+const operatorStore = new OperatorStore(scanRoot);
+const operatorPublication = new OperatorPublicationService(operatorStore, scanRoot);
+const operatorRunner = createOperatorRunner({ store: operatorStore, publication: operatorPublication });
 
 const server = createScanHttpServer({
   queue,
@@ -77,6 +84,14 @@ const server = createScanHttpServer({
   llm,
   enrich,
   bind,
+  operator: {
+    auth,
+    allowedGithubIds: resolveOperatorGithubIds(process.env),
+    publicOrigin: process.env.OKIE_PUBLIC_ORIGIN ?? "http://localhost:4173",
+    store: operatorStore,
+    publications: operatorPublication,
+    enqueue: input => { void operatorRunner.enqueue(input); },
+  },
 });
 
 server.listen(port, bind, () => {
