@@ -5552,6 +5552,7 @@ export function App() {
               if (entity) navigateInspectorHierarchy(entity);
               else setLiveMessage('This overview item is known from the snapshot but is not available in the current map neighborhood.');
             }} />
+            {draftPreviewContext && <OperatorExplanationContext scope={draftPreviewContext.explanationsByEntityId.get(selected.id)} entityNames={new Map(activeSnapshot.entities.map(entity => [entity.id, entity.name]))}/>}
             {contextualOverview?.entity.id === scene.rootEntityId ? <ArchitectureBriefView
               brief={architectureBrief}
               containerAvailable={id => Boolean(scene.entities.find(candidate => candidate.id === id))}
@@ -5626,8 +5627,6 @@ export function App() {
                 <div><span><InfoIcon size={13}/> {selectedProvenance.heading}</span><strong>{selectedProvenance.evidenceLabel}</strong></div>
                 <p>{selectedProvenance.description}</p>
               </div>
-
-              {draftPreviewContext && <OperatorExplanationContext scope={draftPreviewContext.explanationsByEntityId.get(selected.id)} entityNames={new Map(activeSnapshot.entities.map(entity => [entity.id, entity.name]))}/>}
 
               {selectedOwners.length > 0 ? <section className="detail-section ownership-section" data-inspector-section="ownership">
                 <div className="section-title"><h3>Owned by</h3><span>{selectedOwners.length}</span></div>
