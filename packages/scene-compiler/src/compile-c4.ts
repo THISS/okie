@@ -503,8 +503,15 @@ function objectForNode(
       .filter(([visualId, shellBounds]) => {
         if (!contains(bounds, shellBounds)) return false;
         const child = bundle.visualNodeById[visualId];
-        if (child?.parentVisualId) return child.parentVisualId === node.id;
+        // An omitted component reserves layout space, not a visible node.
+        // Painting its rectangle on the container makes it look selectable
+        // even though hits can only resolve to the parent. This also applies
+        // to focused compiles restored from a deep link, outside the root
+        // morph plane. Keep reservations for layout and minimap calculations.
         const childEntityId = bundle.index.entityIdByVisualNodeId[visualId];
+        const childKind = child?.kind ?? snapshot.entities.find(entity => entity.id === childEntityId)?.kind;
+        if (childKind === 'component') return false;
+        if (child?.parentVisualId) return child.parentVisualId === node.id;
         return snapshot.entities.some(entity =>
           entity.id === childEntityId && entity.parentId === node.entity.logicalId);
       })
@@ -1389,6 +1396,13 @@ function applyIntrinsicOwnerGeometry(
         continue;
       }
       if (!unpublishedIds.has(entityId) || !parentVisible) continue;
+      // Root scan morph planes reserve an L2 footprint and show a bounded set
+      // of real L3 preview pills. An unpublished file/code child has no visual
+      // node in that scene: painting its shell inside the parent made an empty,
+      // parent-pickable rectangle appear at component zoom. Its count remains
+      // in the parent's remainder badge and containment sizing, but the child
+      // itself must not become a drawable/pickable pseudo-card.
+      if (scanMorphPlane && (entities.get(entityId)?.kind === 'component' || entities.get(entityId)?.kind === 'code')) continue;
       if (band !== 'code' && entities.get(entityId)?.kind === 'code') continue;
       reservedShells[visualId] = { ...bounds };
       if (!bundle.index.entityIdByVisualNodeId[visualId]) {

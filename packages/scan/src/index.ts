@@ -11,6 +11,7 @@ export * from "./packet.js";
 export * from "./nearby-tests.js";
 export * from "./prompt.js";
 export * from "./enrich.js";
+export * from './component-map.js';
 export * from "./github.js";
 export * from "./manifest.js";
 export * from "./overview-story.js";

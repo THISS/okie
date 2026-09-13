@@ -118,6 +118,32 @@ test("CLA-81: childCounts reserve L4 owner size so opening code does not grow th
   assert.equal(Math.round(reservedFile.height * 1000), Math.round(openedFile.height * 1000));
 });
 
+test("CLA-81: root LOD does not paint unpublished L3 reservations as parent-pickable blank cards", () => {
+  const snapshot = fileSnapshot(80);
+  const unpublished = [{ id: "component:unpublished", kind: "component" as const, parentId: "container:c" }];
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: "system:d",
+    focusEntityId: "system:d",
+    familyId: "f",
+    maxBand: "code",
+    maxNodesPerBand: 12,
+    pageCodeLandmarks: true,
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  const compiled = compileC4Scene(snapshot, bundle, {
+    targetAspect: ASPECT_PRESET_TARGET.landscape,
+    childCounts: { "component:file": 80, "component:unpublished": 1, "container:c": 2, "system:d": 1 },
+    unpublishedChildren: unpublished,
+  });
+  const component = compiled.projections.projectionById[compiled.projections.family.projectionIds.component]!;
+  const layout = compiled.projections.bandLayoutById[component.layoutId]!;
+  assert.equal(compiled.projections.index.visualNodeIdsByEntityId["component:unpublished"], undefined);
+  assert.equal(Object.keys(layout.reservedShells ?? {}).some(id => id.endsWith("component-unpublished")), false);
+  const residentId = compiled.projections.index.visualNodeIdsByEntityId["component:file"]![0]!;
+  const resident = compiled.scene.objects.find(object => object.id === residentId);
+  assert.ok(resident?.representations.some(representation => representation.id === `${residentId}:component`), "resident L3 card survives bounded L4 paging");
+});
+
 test("CLA-95: scan L2 packs container peer tiles, not reserved L3/L4 shells", () => {
   const containers = Array.from({ length: 10 }, (_, index) =>
     entity(`container:p${String(index).padStart(2, "0")}`, "container", "system:d"));
@@ -210,4 +236,26 @@ test("CLA-81: hang-guard stays 2000 and focus zooms stay locked to the compiler"
   for (const band of C4_ZOOM_BANDS) {
     assert.equal(C4_BAND_FOCUS_ZOOM[band.detail], band.focusZoom);
   }
+});
+
+test('focused container retains omitted component occupancy without painting parent-owned fake cards', () => {
+  const snapshot = fileSnapshot(0);
+  snapshot.entities.push(...Array.from({ length: 79 }, (_, index) => entity(`component:peer-${index}`, 'component', 'container:c')));
+  const bundle = buildC4ProjectionBundle(snapshot, {
+    rootEntityId: 'system:d', focusEntityId: 'container:c', familyId: 'f',
+    maxBand: 'component', maxNodesPerBand: 50, targetAspect: ASPECT_PRESET_TARGET.landscape,
+  });
+  const compiled = compileC4Scene(snapshot, bundle, { targetAspect: ASPECT_PRESET_TARGET.landscape });
+  const projection = compiled.projections.projectionById[compiled.projections.family.projectionIds.component]!;
+  const layout = compiled.projections.bandLayoutById[projection.layoutId]!;
+  const reservations = Object.values(layout.reservedShells ?? {});
+  assert.ok(reservations.length > 0, 'retain the full stable layout occupancy');
+  const owner = compiled.scene.objects.find(object => object.id === 'visual-node:container:c')!;
+  const face = owner.representations.find(rep => rep.id.endsWith(':component'))!;
+  for (const reserved of reservations) {
+    assert.equal(face.primitives.some(primitive => primitive.kind === 'roundedRect' && JSON.stringify(primitive.rect) === JSON.stringify(reserved)), false,
+      'parent must not paint an omitted component as a blank card');
+  }
+  const resident = compiled.scene.objects.find(object => object.id === projection.visualNodeIds.find(id => compiled.projections.visualNodeById[id]?.kind === 'component'))!;
+  assert.ok(resident.representations.some(rep => rep.id.endsWith(':component') && rep.primitives.some(p => p.kind === 'text')));
 });

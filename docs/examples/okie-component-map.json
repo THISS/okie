@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "containers": [{
+    "containerId": "container:apps-web",
+    "components": [{
+      "id": "component:apps-web-semantic-navigation",
+      "name": "Semantic navigation",
+      "responsibility": "Controls movement through C4 levels: chooses the focused branch, manages reveal and reversal, and frames the camera while preserving spatial continuity.",
+      "paths": [
+        "apps/web/src/semantic/semanticLens.ts",
+        "apps/web/src/semantic/semanticLensEngine.ts"
+      ]
+    }]
+  }]
+}

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from 'node:crypto';
 import { dirname, isAbsolute, resolve } from "node:path";
 import { buildEnrichmentPackets, containerIdFromFileName, ENRICHMENT_PROMPT_VERSION_V3 } from "./packet.js";
 import { GithubAcquisitionError, isGithubSource, parseGithubSource, type GithubSourceRef } from "./github.js";
@@ -14,6 +15,7 @@ import { portableAtlasFromScan } from './portable.js';
 import { runPackageViewer } from './package-viewer.js';
 import { enrichPortableAtlas } from './portable-enrich.js';
 import { parsePortableAtlas } from '@okie/architecture';
+import type { ComponentMapInput } from './component-map.js';
 
 interface CliArgs {
   source: string;
@@ -28,6 +30,7 @@ interface CliArgs {
   maxTarballBytes?: number;
   lcovPath?: string;
   repositoryUrl?: string;
+  componentMapPath?: string;
 }
 
 function printUsage(): void {
@@ -37,7 +40,7 @@ function printUsage(): void {
     "Usage: okie-scan [--source <path | gh:owner/repo[@ref]>] [--out <dir>]",
     "                 [--system-name <name>] [--repo <slug>] [--max-tarball-mb <n>]",
     "                 [--emit-packets <dir>] [--emit-prompt <dir>] [--enrich-from <dir>]",
-    "                 [--revision <rev>] [--include-members] [--public-api] [--lcov <path>]",
+    "                 [--revision <rev>] [--component-map <path>] [--include-members] [--public-api] [--lcov <path>]",
     "",
     "  --source <src>      local git working tree, or gh:owner/repo[@ref] (default: cwd)",
     "  --out <dir>         output directory (default: <source>/fixtures/scan for a local",
@@ -45,6 +48,7 @@ function printUsage(): void {
     "  --system-name       display name for the software system (default: derived)",
     "  --repo <slug>       repository slug for snapshot/repo IDs (default: derived)",
     "  --revision <rev>    local Git revision to scan (default: HEAD)",
+    "  --component-map <p> explicit JSON component membership map; local external input is hash-pinned in component-map-report.json",
     "  --full / --quick    semantic analyzers (default) or syntax-only scan; limits are recorded",
     "  --include-source   include full referenced files in atlas.okie.json (snippets are always retained)",
     "  --repository-url <https-url>  explicit public repository URL to embed for a local scan",
@@ -73,6 +77,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
   let maxTarballBytes: number | undefined;
   let lcovPath: string | undefined;
   let repositoryUrl: string | undefined;
+  let componentMapPath: string | undefined;
   const options: ScanOptions = { analysisMode: 'full' };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]!;
@@ -88,6 +93,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       case "--system-name": options.systemName = next(); break;
       case "--repo": options.repositorySlug = next(); break;
       case "--revision": options.revision = next(); break;
+      case "--component-map": componentMapPath = next(); break;
       case "--quick": options.analysisMode = 'quick'; break;
       case "--full": options.analysisMode = 'full'; break;
       case "--include-source": options.includeSource = true; break;
@@ -125,6 +131,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
       ...(maxTarballBytes ? { maxTarballBytes } : {}),
       ...(lcovPath ? { lcovPath } : {}),
       ...(repositoryUrl ? { repositoryUrl } : {}),
+      ...(componentMapPath ? { componentMapPath: resolve(componentMapPath) } : {}),
     };
   }
 
@@ -139,6 +146,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
     ...(maxTarballBytes ? { maxTarballBytes } : {}),
     ...(lcovPath ? { lcovPath } : {}),
     ...(repositoryUrl ? { repositoryUrl } : {}),
+    ...(componentMapPath ? { componentMapPath: resolve(componentMapPath) } : {}),
   };
 }
 
@@ -184,6 +192,10 @@ function writeArtifacts(out: string, artifacts: ScanArtifacts, repositoryUrl?: s
   if (artifacts.enrichmentReport) {
     writeFileSync(`${out}/enrichment-report.json`, stableJson(artifacts.enrichmentReport));
   }
+  if (artifacts.componentMapReport) {
+    writeFileSync(`${out}/component-map-report.json`, stableJson(artifacts.componentMapReport));
+    if (!artifacts.componentMapReport.accepted) process.exitCode = 1;
+  }
 }
 
 function summaryLines(artifacts: ScanArtifacts): string {
@@ -211,9 +223,13 @@ function summaryLines(artifacts: ScanArtifacts): string {
   const flowNote = artifacts.stories.length > 1
     ? `  stories: ${artifacts.stories.length} (overview + ${artifacts.stories.length - 1} user-flow)\n`
     : "  stories: 1 (overview)\n";
+  const mapping = artifacts.componentMapReport;
+  const mappingNote = !mapping ? "" : mapping.accepted
+    ? `  component map: accepted (${mapping.mappedComponents} components, ${mapping.mappedPaths} files; see component-map-report.json)\n`
+    : `  component map: REJECTED; retained original file graph (see component-map-report.json)\n${mapping.reasons.map(reason => `    ${reason}\n`).join('')}`;
   return `okie-scan: ${snapshot.entities.length} entities, ${snapshot.relations.length} relations\n` +
     `  commit ${pin.commitSha}\n  tree   ${pin.treeHash}\n` +
-    modeNote + jsNote + membersNote + coverageNote + flowNote + enrichedNote + systemScopeNote;
+    modeNote + jsNote + membersNote + coverageNote + flowNote + enrichedNote + systemScopeNote + mappingNote;
 }
 
 /** Rewrites <scanRoot>/index.json to index every per-repo scan slot deterministically. */
@@ -244,6 +260,14 @@ function readExplicitLcov(sourceRoot: string | undefined, lcovPath: string): str
   }
 }
 
+function readComponentMap(path: string): ComponentMapInput {
+  let text: string;
+  try { text = readFileSync(path, 'utf8'); } catch { throw new Error(`--component-map file not found: ${path}`); }
+  let document: unknown;
+  try { document = JSON.parse(text); } catch { throw new Error(`--component-map is not valid JSON: ${path}`); }
+  return { document, provenance: { kind: 'external', path, sha256: createHash('sha256').update(text).digest('hex') } };
+}
+
 async function runGithubScan(args: CliArgs): Promise<void> {
   const github = args.github!;
   if (args.emitPacketsDir || args.emitPromptDir) {
@@ -254,6 +278,7 @@ async function runGithubScan(args: CliArgs): Promise<void> {
     ...(args.enrichFromDir ? { enrichmentDocs: readEnrichmentDocs(args.enrichFromDir) } : {}),
     ...(args.maxTarballBytes ? { maxTarballBytes: args.maxTarballBytes } : {}),
     ...(args.lcovPath ? { lcovText: readExplicitLcov(undefined, args.lcovPath) } : {}),
+    ...(args.componentMapPath ? { componentMap: readComponentMap(args.componentMapPath) } : {}),
   };
   const { artifacts, commitSha } = await scanGithubRepository(github, scanOptions);
   writeArtifacts(args.out, artifacts, `https://github.com/${github.owner}/${github.repo}`);
@@ -271,6 +296,7 @@ function runLocalScan(args: CliArgs): void {
   const scanOptions: ScanOptions = { ...args.options };
   if (args.enrichFromDir) scanOptions.enrichmentDocs = readEnrichmentDocs(args.enrichFromDir);
   if (args.lcovPath) scanOptions.lcovText = readExplicitLcov(args.source, args.lcovPath);
+  if (args.componentMapPath) scanOptions.componentMap = readComponentMap(args.componentMapPath);
 
   const acquired = acquireCommittedTree(args.source, scanOptions.revision);
   try {

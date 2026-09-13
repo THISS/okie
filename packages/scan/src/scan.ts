@@ -29,6 +29,7 @@ import {
   type ClonePair,
 } from "./extract.js";
 import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
+import { applyComponentMembership, type ComponentMapInput, type ComponentMapReport } from './component-map.js';
 import { buildEnrichmentPackets, type EmittedPackets } from "./packet.js";
 import { acquireCommittedTree, type AcquiredCommittedTree, type RepositoryPin } from "./pin.js";
 import {
@@ -53,6 +54,8 @@ export interface ScanOptions {
   includeAllMembers?: boolean;
   /** container id -> enrichment document or remainder-packet array; accepted docs merge into that scope. */
   enrichmentDocs?: ReadonlyMap<string, unknown>;
+  /** Optional explicit, pinned architectural component interpretation. */
+  componentMap?: ComponentMapInput;
   /** L4 code surface: 'all' (default, every top-level declaration) or 'public' (export surface only). */
   codeSurface?: "all" | "public";
   /**
@@ -98,6 +101,7 @@ export interface ScanArtifacts {
   timeline: Timeline;
   discoverySummary: DiscoverySummary;
   enrichmentReport?: EnrichmentReport;
+  componentMapReport?: ComponentMapReport;
 }
 
 function rootPackageName(sourceRoot: string): string | undefined {
@@ -178,6 +182,7 @@ export interface BuildScanArtifactsParams {
   repositorySlug: string;
   systemName: string;
   enrichmentDocs?: ReadonlyMap<string, unknown>;
+  componentMap?: ComponentMapInput;
   codeSurface?: "all" | "public";
   /**
    * A base extraction already computed over the SAME inputs (used by the live-enrichment
@@ -218,9 +223,15 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   const sidecar = loadLcovSidecar(readFile, params.lcovText);
   const coverageByCodeId = coverageByCodeIdFromEntities(baseExtraction.entities, sidecar);
   let extraction = baseExtraction;
+  let componentMapReport: ComponentMapReport | undefined;
+  if (params.componentMap) {
+    const outcome = applyComponentMembership(baseExtraction, params.componentMap);
+    extraction = outcome.extraction;
+    componentMapReport = outcome.report;
+  }
   let enrichmentReport: EnrichmentReport | undefined;
   if (params.enrichmentDocs && params.enrichmentDocs.size > 0) {
-    const outcome = mergeEnrichment(baseExtraction, params.enrichmentDocs, { coverageByCodeId });
+    const outcome = mergeEnrichment(extraction, params.enrichmentDocs, { coverageByCodeId });
     extraction = outcome.extraction;
     enrichmentReport = outcome.report;
   }
@@ -320,6 +331,7 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     },
     ...(params.includeSource ? { sources: portableSourcePaths(snapshot, discovery).map(path => ({ path, text: readFile(path) })) } : {}),
     ...(enrichmentReport ? { enrichmentReport } : {}),
+    ...(componentMapReport ? { componentMapReport } : {}),
   };
 }
 
@@ -348,6 +360,7 @@ export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "ro
     ...(options.analysisMode ? { analysisMode: options.analysisMode } : {}),
     ...(options.includeSource ? { includeSource: true } : {}),
     ...(options.enrichmentDocs ? { enrichmentDocs: options.enrichmentDocs } : {}),
+    ...(options.componentMap ? { componentMap: options.componentMap } : {}),
     ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
     ...(options.lcovText ? { lcovText: options.lcovText } : {}),
   });
@@ -431,6 +444,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       ...(options.analysisMode ? { analysisMode: options.analysisMode } : {}),
       ...(options.includeSource ? { includeSource: true } : {}),
       ...(enrichmentDocs ? { enrichmentDocs } : {}),
+      ...(options.componentMap ? { componentMap: options.componentMap } : {}),
       ...(options.codeSurface ? { codeSurface: options.codeSurface } : {}),
       ...(baseExtraction ? { baseExtraction } : {}),
       ...(cyclomaticById ? { cyclomaticById } : {}),
