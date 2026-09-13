@@ -88,3 +88,18 @@ test('legacy dogfood snapshot supports root and recognized repository alias only
     assert.equal(calls, 1);
   } finally { rmSync(root, { recursive: true }); }
 });
+
+test('a requested publication version resolves only its immutable snapshot after a newer publication exists', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'okie-versioned-source-'));
+  const old = join(root, 'old-snapshot.json'), newest = join(root, 'new-snapshot.json');
+  writeFileSync(old, JSON.stringify({ repositoryId: 'repo:acme-demo', commitSha: commit, entities: [{ sourceRefs: [{ path: 'src/a.ts', commitSha: commit }] }] }));
+  writeFileSync(newest, JSON.stringify({ repositoryId: 'repo:acme-demo', commitSha: 'b'.repeat(40), entities: [{ sourceRefs: [{ path: 'src/b.ts', commitSha: 'b'.repeat(40) }] }] }));
+  const resolver = ({ versionId }: { versionId: string }) => versionId === 'publication-old' ? old : versionId === 'publication-new' ? newest : undefined;
+  const service = createSourceService(async () => new Response('one\ntwo\nthree\nfour'), resolver);
+  try {
+    assert.deepEqual((await service(root, '/scan/acme__demo/source.json', params({ version: 'publication-old' }))).lines, ['two', 'three', 'four']);
+    await assert.rejects(service(root, '/scan/acme__demo/source.json', params({ version: 'publication-new' })), /not recorded/);
+    await assert.rejects(service(root, '/scan/acme__demo/source.json', params({ version: 'publication-missing' })), /snapshot unavailable/);
+    await assert.rejects(createSourceService(async () => new Response('never'))(root, '/scan/acme__demo/source.json', params({ version: 'publication-old' })), /snapshot unavailable/);
+  } finally { rmSync(root, { recursive: true }); }
+});
