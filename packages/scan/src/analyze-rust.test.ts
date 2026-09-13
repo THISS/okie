@@ -55,9 +55,42 @@ test("rust-analyzer SCIP resolves cross-crate calls, preserves uses, and emits r
   }
 });
 
-test("atlas-protocol records every seven resolved is_valid_color call sites", { timeout: 120_000 }, () => {
+test("ambiguous SCIP definitions do not select an arbitrary graph target", { timeout: 120_000 }, () => {
+  const repo = fixture({
+    "Cargo.toml": '[package]\nname = "ambiguous"\nversion = "0.1.0"\nedition = "2021"\n',
+    "src/lib.rs": 'pub fn collide() {}\n',
+    "examples/same.rs": 'pub fn collide() {}\nfn main() { collide(); }\n',
+    "examples/third.rs": 'pub fn collide() {}\n',
+  });
+  try {
+    const analysis = analyzeRust(repo.root, ["src/lib.rs", "examples/same.rs", "examples/third.rs"]);
+    assert.ok(analysis.coverage[0]?.limitations.some(item => item.includes("Ambiguous SCIP definition symbols omitted")), JSON.stringify(analysis));
+    assert.ok(!analysis.definitions.some(item => item.name === "collide"), JSON.stringify(analysis));
+    assert.ok(!analysis.references.some(item => item.path === "examples/same.rs" && item.kind === "calls"), JSON.stringify(analysis));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("whitespace around a wasm cfg gate still indexes its browser module", { timeout: 120_000 }, () => {
+  const repo = fixture({
+    "Cargo.toml": '[package]\nname = "spaced-wasm"\nversion = "0.1.0"\nedition = "2021"\n',
+    "src/lib.rs": '#[cfg(target_arch=  "wasm32")]\npub mod browser;\n',
+    "src/browser.rs": 'pub fn browser_entry() {}\n',
+  });
+  try {
+    const analysis = analyzeRust(repo.root, ["src/lib.rs", "src/browser.rs"]);
+    assert.ok(analysis.coverage[0]?.indexedFiles.includes("src/browser.rs"), JSON.stringify(analysis));
+    assert.ok(analysis.coverage[0]?.limitations.some(item => item.includes("inferred from source cfg")), JSON.stringify(analysis));
+  } finally {
+    repo.cleanup();
+  }
+});
+
+test("atlas-protocol records every resolved is_valid_color call without leaking document-local SCIP symbols", { timeout: 120_000 }, () => {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
   const analysis = analyzeRust(root, [
+    "crates/atlas-engine/src/camera.rs",
     "crates/atlas-protocol/src/geometry.rs",
     "crates/atlas-protocol/src/lib.rs",
     "crates/atlas-protocol/src/patch.rs",
@@ -76,4 +109,21 @@ test("atlas-protocol records every seven resolved is_valid_color call sites", { 
     "crates/atlas-protocol/src/scene.rs:51",
     "crates/atlas-protocol/src/timeline.rs:153",
   ]);
+  assert.equal(
+    analysis.references.filter(item => item.path === "crates/atlas-protocol/src/geometry.rs" && item.kind === "calls").length,
+    0,
+    "iterator locals in is_valid_color must not resolve to Viewport methods from another SCIP document",
+  );
+});
+
+test("rust analyzer adds the declared wasm target when source is cfg-gated", { timeout: 120_000 }, () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const analysis = analyzeRust(root, [
+    "crates/atlas-wasm/src/lib.rs",
+    "crates/atlas-wasm/src/browser.rs",
+  ]);
+  const coverage = analysis.coverage[0];
+  assert.ok(coverage, JSON.stringify(analysis));
+  assert.ok(coverage.indexedFiles.includes("crates/atlas-wasm/src/browser.rs"), JSON.stringify(coverage));
+  assert.ok(coverage.limitations.some(item => item.includes("wasm32-unknown-unknown")), JSON.stringify(coverage));
 });

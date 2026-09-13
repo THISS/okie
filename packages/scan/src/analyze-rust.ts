@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve, sep } from "node:path";
@@ -29,6 +29,21 @@ function rustParser(): Parser {
 
 function canonical<T>(items: Iterable<T>): T[] {
   return [...items].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
+/** `local N` symbols are only unique within one SCIP document. */
+function isDocumentLocalSymbol(symbol: string): boolean {
+  return /^local \d+$/.test(symbol);
+}
+
+function sameDefinition(left: AnalysisDefinition, right: AnalysisDefinition): boolean {
+  return left.path === right.path
+    && left.startOffset === right.startOffset
+    && left.endOffset === right.endOffset;
+}
+
+function hasWasmTargetGate(text: string): boolean {
+  return /target_arch\s*=\s*"wasm32"/.test(text);
 }
 
 function occurrenceRange(occurrence: Occurrence): OccurrenceRange | undefined {
@@ -176,7 +191,27 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
       result.coverage.push({ language: "rust", tool: "rust-analyzer", version: "unavailable", coverage: "unavailable", indexedFiles: [], limitations: canonical(limitations) });
       return result;
     }
-    const index = decodeScipIndex(readFileSync(indexPath));
+    const indexes = [decodeScipIndex(readFileSync(indexPath))];
+    // The browser facade is deliberately compiled only for the target used by the
+    // repository's wasm-pack build. rust-analyzer otherwise omits it on a host scan.
+    const needsWasmTarget = [...allowed].some(path => {
+      const absolute = join(root, path);
+      return existsSync(absolute) && hasWasmTargetGate(readFileSync(absolute, "utf8"));
+    });
+    if (needsWasmTarget) {
+      const wasmConfigPath = join(temporary, "wasm32.json");
+      const wasmIndexPath = join(temporary, "wasm32.scip");
+      writeFileSync(wasmConfigPath, JSON.stringify({ cargo: { target: "wasm32-unknown-unknown", allTargets: false } }));
+      const wasmRun = spawnSync("rust-analyzer", ["scip", root, "--output", wasmIndexPath, "--config-path", wasmConfigPath, "--exclude-vendored-libraries"], { encoding: "utf8", timeout: 120_000 });
+      if (wasmRun.error || wasmRun.status !== 0 || !existsSync(wasmIndexPath)) {
+        limitations.add(`wasm32-unknown-unknown SCIP indexing failed: ${wasmRun.error?.message ?? (wasmRun.stderr.trim() || "rust-analyzer exited unsuccessfully.")}`);
+      } else {
+        indexes.push(decodeScipIndex(readFileSync(wasmIndexPath)));
+        limitations.add("Rust target coverage includes wasm32-unknown-unknown inferred from source cfg(target_arch = \"wasm32\"); other targets are not inferred.");
+      }
+      limitations.add("Rust feature coverage follows Cargo's default feature selection; optional features are not inferred.");
+    }
+    const documents = indexes.flatMap(index => index.documents);
     const files = new Map<string, { text: string; starts: number[]; tree: Parser.Tree }>();
     for (const path of allowed) {
       const absolute = join(root, path);
@@ -186,15 +221,16 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
       for (const module of moduleTarget(path, text, allowed)) result.modules.push(module);
     }
     const names = new Map<string, string>();
-    for (const document of index.documents) for (const symbol of document.symbols) if (symbol.displayName) names.set(symbol.symbol, symbol.displayName);
+    for (const document of documents) for (const symbol of document.symbols) if (symbol.displayName) names.set(symbol.symbol, symbol.displayName);
     const definitions = new Map<string, AnalysisDefinition>();
+    const ambiguousSymbols = new Set<string>();
     const pending: Array<{ path: string; occurrence: Occurrence; range: OccurrenceRange; location: AnalysisLocation; tree: Parser.Tree }> = [];
-    for (const document of index.documents) {
+    for (const document of documents) {
       const path = document.relativePath.split(sep).join("/");
       const file = files.get(path);
       if (!file) continue;
       for (const occurrence of document.occurrences) {
-        if (!occurrence.symbol) continue;
+        if (!occurrence.symbol || isDocumentLocalSymbol(occurrence.symbol)) continue;
         const range = occurrenceRange(occurrence);
         if (!range) continue;
         const observed = location(path, file.text, file.starts, range, document.positionEncoding);
@@ -204,11 +240,18 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
           // Do not turn local variables and parameters into graph targets: they have
           // no matching published L4 outline entity and would create false edges.
           if (!name) continue;
-          definitions.set(occurrence.symbol, {
+          const definition = {
             ...observed,
             symbol: occurrence.symbol,
             name: names.get(occurrence.symbol) || file.text.slice(name.startIndex, name.endIndex),
-          });
+          };
+          if (ambiguousSymbols.has(occurrence.symbol)) continue;
+          const existing = definitions.get(occurrence.symbol);
+          if (!existing) definitions.set(occurrence.symbol, definition);
+          else if (!sameDefinition(existing, definition)) {
+            definitions.delete(occurrence.symbol);
+            ambiguousSymbols.add(occurrence.symbol);
+          }
         } else pending.push({ path, occurrence, range, location: observed, tree: file.tree });
       }
     }
@@ -217,7 +260,7 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     const modules = new Map(result.modules.map(item => [`${item.path}:${item.startOffset}:${item.targetPath}`, item]));
     for (const pendingReference of pending) {
       // A reference without a definition in this committed source has no target edge.
-      if (!definitions.has(pendingReference.occurrence.symbol)) continue;
+      if (ambiguousSymbols.has(pendingReference.occurrence.symbol) || !definitions.has(pendingReference.occurrence.symbol)) continue;
       if ((pendingReference.occurrence.symbolRoles & SymbolRole.Import) || importAt(pendingReference.tree, pendingReference.range.start)) {
         const target = definitions.get(pendingReference.occurrence.symbol)!;
         modules.set(`${pendingReference.path}:${pendingReference.location.startOffset}:${target.path}`, { ...pendingReference.location, targetPath: target.path });
@@ -229,10 +272,11 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     }
     result.references = canonical(references.values());
     result.modules = canonical(modules.values());
-    const indexedFiles = [...new Set(index.documents.map(document => document.relativePath.split(sep).join("/")))].filter(path => files.has(path)).sort();
+    const indexedFiles = [...new Set(documents.map(document => document.relativePath.split(sep).join("/")))].filter(path => files.has(path)).sort();
     const omitted = [...files.keys()].filter(path => !indexedFiles.includes(path)).sort();
-    const tool = index.metadata?.toolInfo;
-    if (run.stderr.includes("duplicate scip symbols")) limitations.add("rust-analyzer reported duplicate SCIP symbols; ambiguous definitions are retained only where a local definition occurrence exists.");
+    const tool = indexes[0]?.metadata?.toolInfo;
+    if (run.stderr.includes("duplicate scip symbols")) limitations.add("rust-analyzer reported duplicate SCIP symbols; ambiguous symbols are omitted rather than linked to an arbitrary definition.");
+    if (ambiguousSymbols.size) limitations.add(`Ambiguous SCIP definition symbols omitted: ${ambiguousSymbols.size}.`);
     if (omitted.length) limitations.add(`Not indexed by rust-analyzer SCIP: ${omitted.join(", ")}`);
     result.coverage.push({ language: "rust", tool: tool?.name || "rust-analyzer", version: tool?.version || "unknown", coverage: indexedFiles.length ? "semantic" : "unavailable", indexedFiles, limitations: canonical(limitations) });
     return result;
