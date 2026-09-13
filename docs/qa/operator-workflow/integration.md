@@ -1,15 +1,15 @@
 # Operator workflow integration
 
-Implementation underway on `codex/operator-workflow`, based on accepted main `2c7a7e7`. No implementation acceptance or deployment is claimed.
+Implementation is integrated on `codex/operator-workflow`, based on accepted main `2c7a7e7`. The checkpoints below retain the build and review history; final corrections are undergoing acceptance. Nothing has been pushed, merged to main, deployed, or published to a real environment.
 
 ## Ownership
 
 | Worktree | Developer | Owned work | State |
 | --- | --- | --- | --- |
-| `.okie-review/worktrees/operator-foundation` | Terra low | Durable store/publication; operator HTTP/controller and main wiring | Foundation integrated; HTTP building |
+| `.okie-review/worktrees/operator-foundation` | Terra low | Durable store/publication; operator HTTP/controller and main wiring | Integrated |
 | `.okie-review/worktrees/operator-access` | Terra low | New operator identity/CSRF helpers and focused tests | Integrated; five tests pass |
-| `.okie-review/worktrees/operator-enrichment` | Terra low | Runtime scheduler plus real scan/store/budget runner bindings | Runtime integrated; runner building |
-| `.okie-review/worktrees/operator-ui` | Terra low | Operator workspace, API client, draft App preview and contextual explanation UI | Building CLA-135 |
+| `.okie-review/worktrees/operator-enrichment` | Terra low | Runtime scheduler plus real scan/store/budget runner bindings | Integrated |
+| `.okie-review/worktrees/operator-ui` | Terra low | Operator workspace, API client, draft App preview and contextual explanation UI | Integrated |
 | Main integration checkout | Coordinator | Shared API decisions, integration, plan/evidence and Linear | Active |
 
 Worktree dependency directories link to existing installed dependencies for read-only use. Builders must not mutate shared dependencies. Worktree commits are integrated only after bounded tests and contract inspection; final independent review remains reserved for Astra medium after integrated tests and Astra low browser QA.
@@ -53,3 +53,13 @@ Remaining acceptance: budget binding and cancellation; failed retry preserving a
 - Astra low real browser acceptance passed on the separate 4174/4181 fixture. See `browser-qa.md`: real 3,574-entity local scan, operator/anonymous access, pinned previews, budget-limited failure, successful App/protocol retry preserving siblings, bottom-up stale refresh, two partial publications, old public page pinning, stories, map/minimap, expanded diagrams, excerpts and full source tab. Full source and model replies were local test doubles; no real publication or paid scan was performed. Recording was unavailable; screenshots are retained.
 - QA found accepted explanations in Details instead of Overview. Commit `4857bb6` corrected placement; Astra rechecked App/protocol Overview and diagrams, Details metadata, and an unenriched fallback node successfully.
 - Astra medium independent review dispatched after these checks; findings and follow-ups remain the final gate. Source checkout frozen during review. No main merge, push, or deployment authorized or performed.
+
+## Review corrections and regression evidence
+
+Astra medium found four P2 issues: retries could overwrite newer sibling results; ancestor refresh could treat stale children as current; GitHub URL casing split publication identity; long repository names exceeded pointer filename limits. Corrections are integrated in `c5192a4`, `0904417`, and `557ee20`. Stale/busy API mutations now return 409, the runner guards installation with a revision comparison and records conflicts, old draft attempt freshness stays unchanged, and publication pointers use fixed-width digests with legacy reads.
+
+The targeted browser recheck found a legacy mixed-case run could not create its next canonical draft. Commit `c44a82d` corrects comparison and revision numbering; its regression explicitly continues legacy revision 10 as revision 11. Recovery and revision navigation also clear obsolete error messages (`0942e4b`, `8ae120a`). Public source and accepted explanations remained intact through the reproduced failure.
+
+Post-review gates: `pnpm check`, full `pnpm test` (1,674 passing TypeScript tests, one scanner skip), and `pnpm build` completed exit 0. After the migration correction, all 193 server tests passed; the final recovery adjustment passed all five runner tests and server compilation, and the navigation adjustment passed web typechecking. The prior Rust gate remains valid because no Rust source changed. Logs: `/tmp/okie-operator-{check,tests,build}-review.log`, `/tmp/okie-operator-server-migration.log`, `/tmp/okie-operator-recovery.log`.
+
+Linear status updates were blocked by automatic approval review pending explicit destination authorization; local implementation and QA evidence continue independently. No issue has been marked complete by this final update attempt.
