@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -66,6 +66,59 @@ test("CLA-132: fixed clocks cannot collide and a failed pointer rename retries t
     const recovered = publisher.publishDraft({ repositoryId: source.repositoryId, draftRevisionId: revision.draftRevisionId });
     assert.equal(recovered.ok, true);
     assert.ok(publisher.currentPublication(source.repositoryId));
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("publication pointers are bounded for maximum GitHub names and advance twice", () => {
+  const { root, store } = setup();
+  const repositoryId = `repo:acme/${"r".repeat(95)}`;
+  const longSource = { repositoryId, owner: "acme", repo: "r".repeat(95), slug: `acme__${"r".repeat(95)}`, commitSha: "a".repeat(40) };
+  try {
+    const firstRun = store.createRun({ idempotencyKey: "long-one", source: longSource }).run;
+    const firstArtifact = store.writeArtifactRevision({ repositoryId, files: { "snapshot.json": "one" } });
+    const firstDraft = store.createDraftRevision({ runId: firstRun.runId, artifactRevisionId: firstArtifact.artifactRevisionId });
+    const publisher = new OperatorPublicationService(store);
+    const first = publisher.publishDraft({ repositoryId, draftRevisionId: firstDraft.draftRevisionId });
+    assert.equal(first.ok, true);
+    const secondRun = store.createRun({ idempotencyKey: "long-two", source: longSource }).run;
+    const secondArtifact = store.writeArtifactRevision({ repositoryId, files: { "snapshot.json": "two" } });
+    const secondDraft = publisher.createDraftRevision({ runId: secondRun.runId, artifactRevisionId: secondArtifact.artifactRevisionId });
+    const second = publisher.publishDraft({ repositoryId, draftRevisionId: secondDraft.draftRevisionId, expectedCurrentVersionId: first.publication.versionId });
+    assert.equal(second.ok, true);
+    assert.equal(publisher.currentPublication(repositoryId)?.versionId, second.publication.versionId);
+    assert.equal(publisher.artifactForVersion(repositoryId, first.publication.versionId)?.artifactRevisionId, first.publication.artifactRevisionId, "pinned reads keep the first publication");
+    const pointers = readdirSync(join(store.root, "current"));
+    assert.equal(pointers.length, 1);
+    assert.ok(pointers[0]!.length <= 70);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("case-variant durable pointers resolve and migrate onto one canonical publication key", () => {
+  const { root, store } = setup();
+  try {
+    const firstRun = store.createRun({ idempotencyKey: "legacy-case", source }).run;
+    const artifact = store.writeArtifactRevision({ repositoryId: source.repositoryId, files: { "snapshot.json": "old" } });
+    const draft = store.createDraftRevision({ runId: firstRun.runId, artifactRevisionId: artifact.artifactRevisionId });
+    const publisher = new OperatorPublicationService(store);
+    const first = publisher.publishDraft({ repositoryId: source.repositoryId, draftRevisionId: draft.draftRevisionId });
+    assert.equal(first.ok, true);
+    const canonicalPointer = readdirSync(join(store.root, "current"))[0]!;
+    const oldRepositoryId = "repo:Acme/app";
+    const oldPointer = `${Buffer.from(oldRepositoryId).toString("hex")}.json`;
+    renameSync(join(store.root, "current", canonicalPointer), join(store.root, "current", oldPointer));
+    const statePath = join(store.root, "state.json");
+    writeFileSync(statePath, readFileSync(statePath, "utf8").replaceAll(source.repositoryId, oldRepositoryId));
+    const restarted = new OperatorStore(root);
+    const restartedPublisher = new OperatorPublicationService(restarted);
+    assert.equal(restartedPublisher.currentPublication(source.repositoryId)?.versionId, first.publication.versionId, "legacy case pointer remains readable");
+    const secondRun = restarted.createRun({ idempotencyKey: "canonical-case", source: { ...source, repositoryId: "repo:ACME/app", owner: "ACME" } }).run;
+    assert.equal(secondRun.source.repositoryId, source.repositoryId, "new intake canonicalizes case variants");
+    const secondArtifact = restarted.writeArtifactRevision({ repositoryId: source.repositoryId, files: { "snapshot.json": "new" } });
+    const secondDraft = restartedPublisher.createDraftRevision({ runId: secondRun.runId, artifactRevisionId: secondArtifact.artifactRevisionId });
+    const second = restartedPublisher.publishDraft({ repositoryId: source.repositoryId, draftRevisionId: secondDraft.draftRevisionId, expectedCurrentVersionId: first.publication.versionId });
+    assert.equal(second.ok, true);
+    assert.equal(restartedPublisher.currentPublication("repo:ACME/APP")?.versionId, second.publication.versionId);
+    assert.ok(readdirSync(join(restarted.root, "current")).some(name => /^[a-f0-9]{64}\.json$/.test(name)), "the next publish installs the bounded canonical pointer");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

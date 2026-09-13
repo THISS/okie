@@ -42,3 +42,25 @@ test('operator HTTP gates, deduplicates, and serves only private portable draft 
     assert.equal((await fetch(`${origin}/scan/acme__demo/atlas.okie.json?version=${draft.draftRevisionId}`)).status, 404);
   }); } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('public scan resolution treats GitHub repository case variants as one current publication', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'okie-operator-case-http-'));
+  const store = new OperatorStore(root); const publications = new OperatorPublicationService(store);
+  const handler = createScanHttpHandler({ queue: {} as never, allowSubmit: () => true, auth: auth(), scanRoot: root, llm: { baseUrl: '', modelId: 'fake', keySource: 'none' }, enrich: 'off', bind: '127.0.0.1', operator: { auth: auth(), allowedGithubIds: new Set(['42']), publicOrigin: 'http://fixture.test', store, publications, enqueue() {} } });
+  try {
+    const firstRun = store.createRun({ idempotencyKey: 'case-first', source: { repositoryId: 'repo:Acme/app', owner: 'Acme', repo: 'app', slug: 'acme__app' } }).run;
+    const firstArtifact = store.writeArtifactRevision({ repositoryId: firstRun.source.repositoryId, files: { 'snapshot.json': '{"revision":"first"}' } });
+    const firstDraft = publications.createDraftRevision({ runId: firstRun.runId, artifactRevisionId: firstArtifact.artifactRevisionId });
+    const first = publications.publishDraft({ repositoryId: firstRun.source.repositoryId, draftRevisionId: firstDraft.draftRevisionId });
+    assert.equal(first.ok, true);
+    const secondRun = store.createRun({ idempotencyKey: 'case-second', source: { repositoryId: 'repo:acme/app', owner: 'acme', repo: 'app', slug: 'acme__app' } }).run;
+    const secondArtifact = store.writeArtifactRevision({ repositoryId: secondRun.source.repositoryId, files: { 'snapshot.json': '{"revision":"second"}' } });
+    const secondDraft = publications.createDraftRevision({ runId: secondRun.runId, artifactRevisionId: secondArtifact.artifactRevisionId });
+    const second = publications.publishDraft({ repositoryId: secondRun.source.repositoryId, draftRevisionId: secondDraft.draftRevisionId, expectedCurrentVersionId: first.publication.versionId });
+    assert.equal(second.ok, true);
+    await serve(handler, async origin => {
+      assert.deepEqual(await (await fetch(`${origin}/scan/acme__app/snapshot.json`)).json(), { revision: 'second' });
+      assert.deepEqual(await (await fetch(`${origin}/scan/acme__app/snapshot.json?version=${first.publication.versionId}`)).json(), { revision: 'first' });
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

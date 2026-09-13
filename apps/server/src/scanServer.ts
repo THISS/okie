@@ -51,6 +51,10 @@ function sendJson(response: ServerResponse, status: number, body: unknown, prett
   response.end(text);
 }
 
+function operatorRepositoryForSlug(operator: OperatorApiOptions | undefined, slug: string | undefined): string | undefined {
+  return slug && operator ? operator.publications.repositoryIdForSlug(slug) : undefined;
+}
+
 async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -66,7 +70,7 @@ async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Pro
 /** Serves one published scan object; the scan root is the only readable tree. */
 function serveScanObject(scanRoot: string, pathname: string, response: ServerResponse, operator?: OperatorApiOptions, versionId?: string): void {
   const slug = pathname.split("/")[2];
-  const repositoryId = slug && operator ? operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId : undefined;
+  const repositoryId = operatorRepositoryForSlug(operator, slug);
   const target = operator ? resolvePublicationScanFile({ scanRoot, pathname, ...(repositoryId ? { repositoryId } : {}), ...(versionId ? { versionId } : {}), publications: operator.publications, store: operator.store }) : resolvePublishedScanFile(scanRoot, pathname);
   if (!target) {
     sendJson(response, 404, { error: "not found" });
@@ -100,7 +104,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
   const sourceService = createSourceService(options.sourceFetch, options.operator ? input => {
     const operator = options.operator!;
     const slug = input.pathname.split("/")[2];
-    const repositoryId = operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId;
+    const repositoryId = operatorRepositoryForSlug(operator, slug);
     return repositoryId ? resolvePublicationScanFile({ ...input, repositoryId, publications: operator.publications, store: operator.store }) : undefined;
   } : undefined);
   const threads = options.threads ?? createAskThreadStore();
@@ -257,7 +261,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && isNeighborhoodScanPath(pathname)) {
-      const slug = pathname.split("/")[2]; const repositoryId = slug && options.operator ? options.operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId : undefined;
+      const slug = pathname.split("/")[2]; const repositoryId = operatorRepositoryForSlug(options.operator, slug);
       const packet = serveNeighborhoodPacket(scanRoot, { pathname, searchParams: url.searchParams, ...(repositoryId ? { repositoryId, publications: options.operator!.publications, store: options.operator!.store } : {}) });
       if (!packet) {
         sendJson(response, 404, { error: "not found" });
@@ -268,7 +272,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     }
 
     if (request.method === "GET" && isExcerptScanPath(pathname)) {
-      const slug = pathname.split("/")[2]; const repositoryId = slug && options.operator ? options.operator.store.snapshot().runs.find(run => run.source.slug === slug)?.source.repositoryId : undefined;
+      const slug = pathname.split("/")[2]; const repositoryId = operatorRepositoryForSlug(options.operator, slug);
       const packet = serveExcerptPacket(scanRoot, { pathname, searchParams: url.searchParams, ...(repositoryId ? { repositoryId, publications: options.operator!.publications, store: options.operator!.store } : {}) });
       if (!packet) {
         sendJson(response, 404, { error: "not found" });
