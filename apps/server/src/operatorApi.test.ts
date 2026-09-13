@@ -40,6 +40,8 @@ test('operator HTTP gates, deduplicates, and serves only private portable draft 
     assert.equal((await fetch(`${origin}/api/operator/drafts/${draft.draftRevisionId}/bundle`)).status, 401);
     const bundle = await fetch(`${origin}/api/operator/drafts/${draft.draftRevisionId}/bundle`, { headers: { 'x-test-user': 'operator' } }); assert.equal(bundle.status, 200); assert.equal(bundle.headers.get('content-type'), 'application/json; charset=utf-8'); parsePortableAtlas(await bundle.text());
     assert.equal((await fetch(`${origin}/scan/acme__demo/atlas.okie.json?version=${draft.draftRevisionId}`)).status, 404);
+    store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
+    assert.equal((await fetch(`${origin}/api/operator/drafts/${draft.draftRevisionId}/retry`, { method: 'POST', headers, body: JSON.stringify({ scopeId: 'anything' }) })).status, 409);
   }); } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
