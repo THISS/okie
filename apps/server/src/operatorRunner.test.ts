@@ -79,14 +79,18 @@ test("runner retries only the selected scope into a new immutable draft", async 
     assert.equal(nextDraft.coverage.stale, 2);
     for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => !attempt.stale));
 
-    const refreshed: string[] = [];
+    const refreshed: string[] = []; const childStates = new Map<string, Array<{ scopeId: string; state: string }>>();
     const refresher = createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { modelId: "fake/model", async chatCompletions(body) {
-      const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } };
+      const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] }; children: Array<{ scopeId: string; state: string }> };
       refreshed.push(message.scope.scopeId);
+      childStates.set(message.scope.scopeId, message.children);
       return { json: { choices: [{ message: { content: message.scope.scopeId === "system" ? "{}" : JSON.stringify({ summary: `refreshed ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence }) } }] } };
     } } });
     await refresher.enqueue({ kind: "refresh", runId: run.runId, draftRevisionId: nextDraft.draftRevisionId, scopeIds: ["system", "component"], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
     assert.deepEqual(refreshed, ["component", "system"]);
+    assert.deepEqual(childStates.get("component")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "sibling", state: "accepted" }, { scopeId: "target", state: "accepted" }]);
+    assert.deepEqual(childStates.get("system")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "component", state: "accepted" }]);
+    assert.deepEqual(store.snapshot().attempts.filter(attempt => attempt.kind === "refresh").map(attempt => attempt.scopeId), ["component", "component", "system", "system"]);
     const refreshedDraft = store.snapshot().drafts.find(value => value.draftRevisionId === store.snapshot().runs.find(value => value.runId === run.runId)?.draftRevisionId)!;
     const refreshedSidecar = JSON.parse(store.readArtifactFile(refreshedDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; stale?: boolean }>; explanations: Array<{ scopeId: string; content: { summary: string } }> };
     assert.deepEqual(refreshedSidecar.scopes.filter(scope => scope.stale).map(scope => scope.scopeId), ["system"]);
