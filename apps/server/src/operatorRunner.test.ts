@@ -51,6 +51,7 @@ test("runner retries only the selected scope into a new immutable draft", async 
     const artifact = store.writeArtifactRevision({ repositoryId: "o/r", sourceCommitSha: "abc", files: { "snapshot.json": snapshot, "operator-explanations.json": oldSidecar, "atlas.okie.json": "old atlas" } });
     const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 4, accepted: 4, failed: 0, stale: 0 } });
     for (const scopeId of ["system", "component", "target", "sibling"]) store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId, kind: "enrichment", state: "accepted" });
+    store.updateRun(run.runId, { state: "failed", error: "previous enrichment failure" });
     const calls: string[] = [];
     const runner = createOperatorRunner({
       store,
@@ -69,6 +70,7 @@ test("runner retries only the selected scope into a new immutable draft", async 
     assert.equal(store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!.compare(oldBytes), 0);
     const active = store.snapshot().runs.find(value => value.runId === run.runId)!;
     assert.notEqual(active.draftRevisionId, draft.draftRevisionId);
+    assert.equal(active.error, undefined);
     const nextDraft = store.snapshot().drafts.find(value => value.draftRevisionId === active.draftRevisionId)!;
     assert.notEqual(nextDraft.artifactRevisionId, artifact.artifactRevisionId);
     const next = JSON.parse(store.readArtifactFile(nextDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; stale?: boolean }>; explanations: Array<{ scopeId: string; explanationVersionId: string; content: { summary: string } }> };

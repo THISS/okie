@@ -101,7 +101,7 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
         if (deps.store.snapshot().runs.find(value => value.runId === run.runId)?.draftRevisionId !== draft.draftRevisionId) { conflict = true; return; }
         const nextArtifact = deps.store.writeArtifactRevision({ repositoryId: run.source.repositoryId, ...(artifact.sourceCommitSha ? { sourceCommitSha: artifact.sourceCommitSha } : {}), files });
         const nextDraft = deps.publication.createDraftRevision({ runId: run.runId, artifactRevisionId: nextArtifact.artifactRevisionId, coverage: coverageFor(nextScopes, nextExplanations) });
-        deps.store.updateRun(run.runId, { state: "awaiting_review", draftRevisionId: nextDraft.draftRevisionId }); installed = true;
+        deps.store.updateRun(run.runId, { state: "awaiting_review", draftRevisionId: nextDraft.draftRevisionId, error: undefined as never }); installed = true;
       });
       if (!installed) { if (conflict) deps.store.appendEvent({ runId: run.runId, type: "draft.conflict", detail: { reason: "retry_compare_and_swap", draftRevisionId: draft.draftRevisionId } }); return; }
       return;
@@ -131,7 +131,7 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
         const enrichedDraft = deps.publication.createDraftRevision({ runId: run.runId, artifactRevisionId: enrichedArtifact.artifactRevisionId, coverage: { total: scopes.length, accepted: explanations.length, failed: scopes.length - explanations.length, stale: 0 } });
         activeDraftRevisionId = enrichedDraft.draftRevisionId;
         deps.store.updateRun(run.runId, { state: "running", draftRevisionId: enrichedDraft.draftRevisionId });
-      deps.store.updateRun(run.runId, { state: "awaiting_review", draftRevisionId: activeDraftRevisionId, source: { ...run.source, commitSha: scanned.commitSha } });
+      deps.store.updateRun(run.runId, { state: "awaiting_review", draftRevisionId: activeDraftRevisionId, source: { ...run.source, commitSha: scanned.commitSha }, error: undefined as never });
     } catch (error) { deps.store.updateRun(run.runId, { state: "failed", error: error instanceof Error ? error.message : String(error) }); }
   } };
   return runner;
