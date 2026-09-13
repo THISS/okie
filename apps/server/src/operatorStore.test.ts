@@ -122,6 +122,26 @@ test("case-variant durable pointers resolve and migrate onto one canonical publi
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test("legacy mixed-case runs can create canonical artifact drafts during retry", () => {
+  const { root, store } = setup();
+  const thiss = { ...source, repositoryId: "repo:thiss/okie", owner: "thiss", repo: "okie", slug: "thiss__okie" };
+  try {
+    const run = store.createRun({ idempotencyKey: "legacy-retry", source: thiss }).run;
+    const statePath = join(store.root, "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf8")) as { runs: Array<{ runId: string; source: { repositoryId: string; owner: string; repo: string } }>; drafts: Array<{ repositoryId: string }> };
+    const persisted = state.runs.find(value => value.runId === run.runId)!;
+    persisted.source.repositoryId = "repo:THISS/okie";
+    persisted.source.owner = "THISS";
+    state.drafts = Array.from({ length: 10 }, () => ({ repositoryId: "repo:THISS/okie" }));
+    writeFileSync(statePath, `${JSON.stringify(state)}\n`);
+    const restarted = new OperatorStore(root);
+    const artifact = restarted.writeArtifactRevision({ repositoryId: thiss.repositoryId, files: { "snapshot.json": "retry" } });
+    const retryDraft = restarted.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
+    assert.equal(retryDraft.repositoryId, thiss.repositoryId);
+    assert.equal(retryDraft.revision, 11, "legacy case-variant drafts continue the canonical revision sequence");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("CLA-132: dead lock owners recover, while a live owner is never stolen", () => {
   const root = mkdtempSync(join(tmpdir(), "okie-operator-"));
   try {
