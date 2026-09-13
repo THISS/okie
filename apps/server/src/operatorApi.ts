@@ -1,4 +1,5 @@
 import type { IncomingMessage } from "node:http";
+import { isDeepStrictEqual } from "node:util";
 import { authorizeOperator, authorizeOperatorMutation, publicOperatorAccessView } from "./operatorAccess.js";
 import type { GithubAuthService } from "./githubOAuth.js";
 import { normalizeRepoInput } from "./repoUrl.js";
@@ -28,9 +29,20 @@ export async function handleOperatorApi(options: OperatorApiOptions, request: In
     const bundle = options.store.readArtifactFile(detail.draft.artifactRevisionId, "atlas.okie.json");
     try {
       if (!artifact || required.some(file => !artifact.files.includes(file)) || !bundle) throw new Error("missing public artifact");
-      parsePortableAtlas(bundle.toString("utf8"));
-      const snapshot = JSON.parse(options.store.readArtifactFile(detail.draft.artifactRevisionId, "snapshot.json")!.toString("utf8")) as { repositoryId?: string; commitSha?: string };
-      if (snapshot.repositoryId !== detail.source.repositoryId || (detail.source.commitSha && snapshot.commitSha !== detail.source.commitSha)) throw new Error("artifact source mismatch");
+      const portable = parsePortableAtlas(bundle.toString("utf8"));
+      const original = JSON.parse(bundle.toString("utf8")) as { snapshot: unknown; view: unknown; story: unknown };
+      const repository = portable.repository.url ? normalizeRepoInput(portable.repository.url) : undefined;
+      if (!repository || repository.owner.toLowerCase() !== detail.source.owner.toLowerCase() ||
+          repository.repo.toLowerCase() !== detail.source.repo.toLowerCase() ||
+          artifact.sourceCommitSha !== portable.repository.commitSha ||
+          (detail.source.commitSha && detail.source.commitSha !== portable.repository.commitSha)) throw new Error("artifact source mismatch");
+      const read = (name: string): unknown => JSON.parse(options.store.readArtifactFile(artifact.artifactRevisionId, name)!.toString("utf8"));
+      // Semantic repository IDs are scanner-owned, distinct from the operator's
+      // owner/repo key. Compare the actual immutable contents instead.
+      if (!isDeepStrictEqual(read("snapshot.json"), original.snapshot) ||
+          !isDeepStrictEqual(read("view.json"), original.view) ||
+          !isDeepStrictEqual(read("story.json"), original.story)) throw new Error("mixed public artifacts");
+      for (const name of ["scene.json", "stories.json", "timeline.json"]) read(name);
     } catch { return { status: 422, body: { error: "draft artifact is not publishable" } }; }
     const result = options.publications.publishDraft({ repositoryId: detail.draft.repositoryId, draftRevisionId: id, ...(typeof value.expectedCurrentVersionId === "string" ? { expectedCurrentVersionId: value.expectedCurrentVersionId } : {}), acknowledgeCoverage: value.acknowledgeCoverage === true }); return result.ok ? { status: 200, body: result } : { status: result.reason === "stale_publication" ? 409 : 422, body: result };
   }
