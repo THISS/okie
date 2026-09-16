@@ -414,3 +414,57 @@ test("okie-scan --emit-prompt is byte-identical on a re-scan of the same SHA", (
     rmSync(repo, { recursive: true, force: true });
   }
 });
+
+test("CLI emits packets from the mapped baseline instead of post-enrichment regrouping", () => {
+  const repo = mkdtempSync(join(tmpdir(), "okie-mapped-packet-repo-"));
+  const work = mkdtempSync(join(tmpdir(), "okie-mapped-packet-work-"));
+  const git = (args: string[]): string =>
+    execFileSync("git", args, { cwd: repo, encoding: "utf8" }).trim();
+  try {
+    writeFileSync(`${repo}/package.json`, `${JSON.stringify({ name: "acme", private: true }, null, 2)}\n`);
+    mkdirSync(`${repo}/src`);
+    writeFileSync(`${repo}/src/a.ts`, "export const alpha = 1;\n");
+    writeFileSync(`${repo}/src/b.ts`, "export const beta = 2;\n");
+    git(["init", "-b", "main"]);
+    git(["config", "user.email", "okie@example.test"]);
+    git(["config", "user.name", "okie"]);
+    git(["config", "commit.gpgsign", "false"]);
+    git(["add", "."]);
+    git(["commit", "-m", "init"]);
+    const cli = fileURLToPath(new URL("./cli.js", import.meta.url));
+    const baseOut = join(work, "base");
+    execFileSync(process.execPath, [cli, "--source", repo, "--out", baseOut], { encoding: "utf8" });
+    const base = JSON.parse(readFileSync(`${baseOut}/extraction.json`, "utf8")) as { entities: Array<{ id: string; kind: string; parentId?: string; name: string; sourceRefs: unknown[] }> };
+    const system = base.entities.find(entity => entity.kind === "softwareSystem")!;
+    const container = base.entities.find(entity => entity.kind === "container")!;
+    const code = base.entities.filter(entity => entity.kind === "code");
+    const mappedId = "component:acme-source-capability";
+    const regroupedId = "component:acme-post-enrichment";
+    const mapPath = join(work, "component-map.json");
+    writeFileSync(mapPath, JSON.stringify({ version: 1, containers: [{ containerId: container.id, components: [{ id: mappedId, name: "Source capability", paths: ["src/a.ts", "src/b.ts"] }] }] }));
+    const docs = join(work, "docs");
+    mkdirSync(docs);
+    writeFileSync(join(docs, packetFileName(container.id)), JSON.stringify({
+      schemaVersion: 1,
+      entities: [
+        { id: system.id, kind: system.kind, name: system.name, sourceRefs: [] },
+        { id: container.id, kind: container.kind, parentId: system.id, name: container.name, sourceRefs: [] },
+        { id: regroupedId, kind: "component", parentId: container.id, name: "Post-enrichment regroup", sourceRefs: [] },
+        ...code.map(entity => ({ id: entity.id, kind: "code", parentId: regroupedId, name: entity.name, sourceRefs: entity.sourceRefs })),
+      ],
+      relations: [],
+    }));
+    const out = join(work, "out");
+    const packets = join(work, "packets");
+    execFileSync(process.execPath, [cli, "--source", repo, "--out", out, "--component-map", mapPath, "--enrich-from", docs, "--emit-packets", packets], { encoding: "utf8" });
+    const finalExtraction = JSON.parse(readFileSync(`${out}/extraction.json`, "utf8")) as { entities: Array<{ id: string }> };
+    assert.ok(finalExtraction.entities.some(entity => entity.id === regroupedId), "enrichment regrouping was accepted");
+    const packet = JSON.parse(readFileSync(join(packets, packetFileName(container.id)), "utf8")) as EnrichmentPacket;
+    assert.deepEqual(packet.components.map(component => component.id), [mappedId]);
+    assert.equal(packet.components.some(component => component.id === regroupedId), false);
+    assert.deepEqual(packet.scopePaths, ["src/a.ts", "src/b.ts"]);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
+  }
+});

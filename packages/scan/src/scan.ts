@@ -430,7 +430,13 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       clonePairs = collected.clonePairs;
       const sidecar = loadLcovSidecar(readFile, options.lcovText);
       const coverageByCodeId = coverageByCodeIdFromEntities(baseExtraction.entities, sidecar);
-      const packets = buildEnrichmentPackets(baseExtraction, readFile, { coverageByCodeId });
+      // The live provider must see the same accepted component interpretation
+      // that the later merge targets. applyComponentMembership fails closed by
+      // returning the immutable base extraction for an invalid map.
+      const packetExtraction = options.componentMap
+        ? applyComponentMembership(baseExtraction, options.componentMap).extraction
+        : baseExtraction;
+      const packets = buildEnrichmentPackets(packetExtraction, readFile, { coverageByCodeId });
       const generated = await options.enrichWithPackets(packets);
       enrichmentDocs = generated.size > 0 ? generated : undefined;
     }

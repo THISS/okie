@@ -15,7 +15,7 @@ import { portableAtlasFromScan } from './portable.js';
 import { runPackageViewer } from './package-viewer.js';
 import { enrichPortableAtlas } from './portable-enrich.js';
 import { parsePortableAtlas } from '@okie/architecture';
-import type { ComponentMapInput } from './component-map.js';
+import { applyComponentMembership, type ComponentMapInput } from './component-map.js';
 
 interface CliArgs {
   source: string;
@@ -306,7 +306,12 @@ function runLocalScan(args: CliArgs): void {
     if (args.emitPromptDir || args.emitPacketsDir) {
       const readFile = (repoRelativePath: string): string => readFileSync(`${acquired.root}/${repoRelativePath}`, "utf8");
       const coverageByCodeId = coverageByCodeIdFromSnapshot(artifacts.snapshot.entities);
-      const emitted = buildEnrichmentPackets(artifacts.baseExtraction, readFile, { coverageByCodeId });
+      // Packets target the accepted mapped baseline, never post-enrichment
+      // regrouping output. This keeps replay packets aligned with the next merge.
+      const packetExtraction = scanOptions.componentMap
+        ? applyComponentMembership(artifacts.baseExtraction, scanOptions.componentMap).extraction
+        : artifacts.baseExtraction;
+      const emitted = buildEnrichmentPackets(packetExtraction, readFile, { coverageByCodeId });
       if (args.emitPromptDir) {
         writePromptEmission(
           args.emitPromptDir,

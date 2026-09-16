@@ -1634,7 +1634,9 @@ export function App() {
     inspectorNeighborhoodRequest.current.cancel();
     const resident = scene.entities.find(entity => entity.id === id);
     const residentPlan = resident && semanticInspectorHierarchyPlan(scene, id, viewport, measureCurrentMapSafeArea(), semanticLensSessionRef.current, renderedCameraRef.current);
-    if (resident && residentPlan) { navigateInspectorHierarchy(resident); return; }
+    // Code declarations always need the owner-rooted L4 compile below. A
+    // resident generic hierarchy plan only frames the current parent shell.
+    if (resident?.detail !== 'code' && resident && residentPlan) { navigateInspectorHierarchy(resident); return; }
     const initialNavigation = inspectorNavigationIdentity(navigationRef.current);
     const initialSelection = inspectorSelectionRef.current;
     await inspectorNeighborhoodRequest.current.run(
@@ -1644,6 +1646,16 @@ export function App() {
       () => {
         const target = activeSnapshot.entities.find(entity => entity.id === id);
         const focusId = target?.kind === 'code' ? target.parentId ?? id : id;
+        // A captured declaration reached from an implementation link must enter
+        // the owner's canonical L4 scope. The generic hierarchy flight frames
+        // its parent shell but cannot install the scan drill's component root.
+        if (target?.kind === 'code' && focusId !== id) {
+          // Match the inspector link's normal panel navigation before the
+          // canonical drill preserves that entry for its destination.
+          if (!inspectorCameraFlightControllerRef.current?.isActive()) updateInspectorHistoryForNavigation('panel');
+          openInsideLoaded(focusId, 'preserve', id);
+          return;
+        }
         // Snapshot membership is broader than the current drawable window. A
         // declaration may exist in scene.entities but have no L4 representation.
         // Compile its owner and explicitly retain it before planning the drill.
@@ -3318,6 +3330,7 @@ export function App() {
     previous?: AtlasScene,
     authoring?: ArchitectureAuthoringDocument,
     cameraOverride?: Camera,
+    keepEntityIds?: readonly string[],
   ): AtlasScene {
     const imported = importedAtlasRef.current;
     if (imported) {
@@ -3334,16 +3347,20 @@ export function App() {
       const windowCamera = scanKeepsResidentL3Landmarks(activeSnapshot, focusEntityId)
         ? undefined
         : cameraOverride;
+      const retainedEntityIds = [...new Set([
+        ...(inspectorSelectionRef.current ? [inspectorSelectionRef.current] : []),
+        ...(keepEntityIds ?? []),
+      ])];
       const residency = {
         ...(windowCamera ? { worldBounds: expandRectByTileRing(cameraWorldRect(windowCamera, viewport)) } : {}),
-        keepEntityIds: inspectorSelectionRef.current ? [inspectorSelectionRef.current] : undefined,
+        keepEntityIds: retainedEntityIds.length ? retainedEntityIds : undefined,
       };
       const cacheKey = [
         focusEntityId,
         activeSnapshot.entities.length,
         activeSnapshot.relations.length,
         viewportNeighborhoodCacheKey(focusEntityId, windowCamera, windowCamera ? viewport : undefined),
-        inspectorSelectionRef.current ?? '',
+        retainedEntityIds.join(','),
       ].join(':');
       const cached = neighborhoodScenesRef.current.get(cacheKey);
       if (cached) return cached;
@@ -4007,7 +4024,11 @@ export function App() {
     openInsideLoaded(entityId, inspectorNavigation);
   }
 
-  function openInsideLoaded(entityId = selected.id, inspectorNavigation: 'external' | 'preserve' = 'external') {
+  function openInsideLoaded(
+    entityId = selected.id,
+    inspectorNavigation: 'external' | 'preserve' = 'external',
+    codeChildId?: string,
+  ) {
     const liveCamera = abortInspectorCameraFlight();
     updateInspectorHistoryForNavigation(inspectorNavigation);
     if (query.fixture === 'stress') return;
@@ -4066,7 +4087,15 @@ export function App() {
         deeperDetail,
         scanFixture.navigation.rootEntityId,
       );
-      const nextScene = composeScene(compileFocus, scene, authoringHistoryRef.current.present);
+      // A code declaration can be outside the L4 page cap. Pin it before the
+      // scoped compile, rather than relying on the previous inspector selection.
+      const nextScene = composeScene(
+        compileFocus,
+        scene,
+        authoringHistoryRef.current.present,
+        undefined,
+        codeChildId ? [codeChildId] : undefined,
+      );
       const nextSession = semanticLevelSession(nextScene, deeperDetail, preferredIds);
       const previousAnchorId = currentSession.settled.at(-1)?.targetId
         ?? (semanticBounds(scene, target.id, previousDetail) ? target.id : navigationIdentity.rootEntityId);
@@ -4091,19 +4120,32 @@ export function App() {
       );
       const framedCamera = frameProjectionScope(nextScene, compileFocus, deeperDetail, viewport, mapSafeArea) ?? anchored;
       const nextCamera = deeperDetail === 'container' || deeperDetail === 'component' || deeperDetail === 'code' ? framedCamera : containSemanticOwnerCamera(framedCamera, targetBounds, viewport, mapSafeArea);
+      const codeChild = codeChildId
+        ? nextScene.entities.find(entity => entity.id === codeChildId && entity.detail === 'code')
+        : undefined;
+      const destination = codeChild ?? target;
       setScene({ ...nextScene, scanDrillRecompile: { targetId: target.id, deeperDetail } });
-      setSelectedId(target.id);
+      inspectorSelectionRef.current = destination.id;
+      setExplicitInspectorSelection(true);
+      setPickedRelationId(undefined);
+      setDetailsOpen(true);
+      setSelectedId(destination.id);
+      if (codeChild) {
+        setInspectorTab(inspectorTabFor(codeChild, 'source'));
+        setSafeAreaEpoch(epoch => epoch + 1);
+        window.setTimeout(() => sourceTabRef.current?.focus({ preventScroll: true }), 0);
+      }
       setNavigationIdentity(current => ({ ...current, rootEntityId: compileFocus }));
       updateCamera(nextCamera);
       commitNavigation(canonicalNavigationState({
         ...navigationRef.current,
         rootEntityId: compileFocus,
-        selectedId: target.id,
+        selectedId: destination.id,
         camera: nextCamera,
         detail: nextSession.baseDetail,
         lensPath: semanticLensCanonicalPathIds(nextSession),
       }, navigationDefaults), 'push');
-      setLiveMessage(`${target.name} opened. ${levels[semanticDetails.indexOf(deeperDetail)]?.name ?? deeperDetail} detail is now in focus.`);
+      setLiveMessage(`${destination.name} opened. ${levels[semanticDetails.indexOf(deeperDetail)]?.name ?? deeperDetail} detail is now in focus.`);
       return;
     }
     const plan = lensPlan;

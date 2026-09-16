@@ -223,7 +223,11 @@ export function buildEnrichmentPackets(
     chunks.forEach((chunk, index) => {
       const componentIds = new Set(chunk.map(component => component.id));
       const chunkCode = code.filter(item => componentIds.has(item.componentId));
-      const chunkPaths = [...new Set(chunk.map(component => component.path).filter(path => path.length > 0))].sort();
+      // `component.path` remains the primary path for compatibility, while the
+      // packet scope must retain every implementation path of mapped components.
+      // Component mappings cap source refs at 32; excerpts remain bounded to 24
+      // lines per retained file and are never silently omitted.
+      const chunkPaths = [...new Set(chunk.flatMap(component => scope.pathsByComponentId.get(component.id) ?? []))].sort();
       const memberIds = new Set<string>([containerId, ...componentIds, ...chunkCode.map(item => item.id)]);
       const hasUntestedRanges = chunkCode.some(item => (item.untestedRanges?.length ?? 0) > 0);
       packets.push({

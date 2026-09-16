@@ -186,6 +186,45 @@ describe('CLA-110: Open inside L4 lands at code-band zoom (no kick-out to system
     expect(openInsideLoaded).toContain('frameProjectionScope(nextScene, compileFocus, deeperDetail, viewport, mapSafeArea)');
   });
 
+  it('resident and nonresident implementation-link code children enter the canonical owner L4 drill', () => {
+    const openInspectorChild = sliceBetween(app, 'async function openInspectorChild(', 'const omittedChildNodes', 'openInspectorChild');
+    const openInsideLoaded = sliceBetween(app, 'function openInsideLoaded(', 'function navigateRoot(', 'openInsideLoaded');
+    const composeScene = sliceBetween(app, 'function composeScene(', '/** Recompile the current C4 neighborhood', 'composeScene');
+    expect(openInspectorChild).toContain("if (resident?.detail !== 'code' && resident && residentPlan)");
+    expect(openInspectorChild).toContain("openInsideLoaded(focusId, 'preserve', id)");
+    expect(openInspectorChild).toContain('if (target?.kind === \'code\' && focusId !== id)');
+    expect(openInspectorChild).toContain("updateInspectorHistoryForNavigation('panel')");
+    expect(openInsideLoaded).toContain('const codeChild = codeChildId');
+    expect(openInsideLoaded).toContain('codeChildId ? [codeChildId] : undefined');
+    expect(openInsideLoaded).toContain("setInspectorTab(inspectorTabFor(codeChild, 'source'))");
+    expect(openInsideLoaded).toContain('selectedId: destination.id');
+    expect(composeScene).toContain('keepEntityIds?: readonly string[]');
+    expect(composeScene).toContain('retainedEntityIds.join(\',\')');
+  });
+
+  it('pins an implementation-linked declaration beyond the L4 page cap', () => {
+    const snapshot = busyFileSnapshot(52);
+    const base = {
+      baseSnapshot: snapshot,
+      rootEntityId: 'component:ask-atlas',
+      focusEntityId: 'component:ask-atlas',
+      familyId: 'f',
+      sceneId: 'scan:cla-110:code-page',
+      title: 'askAtlas.ts',
+      subtitle: '',
+      frozenRevision: 'c',
+      maxBand: 'code' as const,
+      maxNodesPerBand: 50,
+      pageCodeLandmarks: true,
+      targetAspect: ASPECT_PRESET_TARGET.landscape,
+    };
+    const childId = 'code:ask-atlas:51';
+    const paged = createC4Scene(base);
+    const retained = createC4Scene({ ...base, keepEntityIds: [childId] });
+    expect(paged.projection?.entityIdsByDetail.code ?? []).not.toContain(childId);
+    expect(retained.projection?.entityIdsByDetail.code ?? []).toContain(childId);
+  });
+
   it('Open inside a 52-symbol file lands at code-band zoom, not container-band coverage-reveal', () => {
     const snapshot = busyFileSnapshot(52);
     const scene = createC4Scene({
