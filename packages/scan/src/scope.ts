@@ -13,6 +13,7 @@ export interface ContainerScope {
   code: ArchitectureExtractionEntity[];
   codeByComponentId: Map<string, ArchitectureExtractionEntity[]>;
   pathByComponentId: Map<string, string>;
+  pathsByComponentId: Map<string, string[]>;
   scopePaths: string[];
 }
 
@@ -45,6 +46,7 @@ export function containerScopes(extraction: ArchitectureExtraction): Map<string,
     const components = (componentsByContainer.get(container.id) ?? []).slice().sort(byIdSort);
     const codeByComponentId = new Map<string, ArchitectureExtractionEntity[]>();
     const pathByComponentId = new Map<string, string>();
+    const pathsByComponentId = new Map<string, string[]>();
     const codeBearing: ArchitectureExtractionEntity[] = [];
     const emptyComponents: ArchitectureExtractionEntity[] = [];
     const code: ArchitectureExtractionEntity[] = [];
@@ -53,6 +55,11 @@ export function containerScopes(extraction: ArchitectureExtraction): Map<string,
       codeByComponentId.set(component.id, children);
       const path = firstPath(component);
       if (path !== undefined) pathByComponentId.set(component.id, path);
+      const paths = [...new Set([
+        ...component.sourceRefs.map(ref => ref.path),
+        ...children.flatMap(child => child.sourceRefs.map(ref => ref.path)),
+      ])].sort();
+      pathsByComponentId.set(component.id, paths);
       if (children.length > 0) {
         codeBearing.push(component);
         code.push(...children);
@@ -61,10 +68,7 @@ export function containerScopes(extraction: ArchitectureExtraction): Map<string,
       }
     }
     code.sort(byIdSort);
-    const scopePaths = [...new Set(components.flatMap(component => {
-      const path = firstPath(component);
-      return path ? [path] : [];
-    }))].sort();
+    const scopePaths = [...new Set(components.flatMap(component => pathsByComponentId.get(component.id) ?? []))].sort();
     scopes.set(container.id, {
       container,
       components,
@@ -73,6 +77,7 @@ export function containerScopes(extraction: ArchitectureExtraction): Map<string,
       code,
       codeByComponentId,
       pathByComponentId,
+      pathsByComponentId,
       scopePaths,
     });
   }

@@ -23,6 +23,7 @@ import {
   type GithubClient,
   type GithubJsonResult,
 } from "./github.js";
+import { scanGithubRepository } from "./scan.js";
 
 test("isGithubSource / parseGithubSource cover owner/repo, refs, .git, and rejects", () => {
   assert.equal(isGithubSource("gh:colinhacks/zod"), true);
@@ -167,6 +168,62 @@ test("acquireGithubTree extracts the single top-level dir, exposes the root, and
     fixture.cleanup();
   }
   assert.ok(!existsSync(acquired.root), "cleanup discards the ephemeral checkout");
+});
+
+test("live enrichment packets use accepted mapped components while retaining the immutable base", async () => {
+  const fixture = makeTarball("demo-2222222", {
+    "package.json": JSON.stringify({ name: "demo" }),
+    "src/a.ts": "export const alpha = 1;\n",
+    "src/b.ts": "export const beta = 2;\n",
+  });
+  const client: GithubClient = {
+    async getJson() { return { ok: true, json: COMMIT_JSON }; },
+    async downloadTarball(_owner, _repo, _sha, destFile) {
+      copyFileSync(fixture.tgz, destFile);
+      return statSync(destFile).size;
+    },
+  };
+  const source = { owner: "acme", repo: "demo", ref: "main", dirSlug: "acme__demo" };
+  try {
+    const initial = await scanGithubRepository(source, { client });
+    const containerId = initial.artifacts.baseExtraction.entities.find(entity => entity.kind === "container")!.id;
+    const mappedId = "component:demo-source-capability";
+    let captured: import("./packet.js").EmittedPackets | undefined;
+    const result = await scanGithubRepository(source, {
+      client,
+      componentMap: {
+        document: {
+          version: 1,
+          containers: [{ containerId, components: [{ id: mappedId, name: "Source capability", paths: ["src/a.ts", "src/b.ts"] }] }],
+        },
+      },
+      enrichWithPackets: async packets => { captured = packets; return new Map(); },
+    });
+    assert.equal(result.artifacts.componentMapReport?.accepted, true);
+    assert.equal(result.artifacts.baseExtraction.entities.some(entity => entity.id === mappedId), false, "base remains immutable");
+    assert.equal(result.artifacts.extraction.entities.some(entity => entity.id === mappedId), true, "merge target is mapped");
+    const packet = captured!.packets.find(value => value.containerId === containerId)!;
+    assert.deepEqual(packet.components.map(component => component.id), [mappedId]);
+    assert.deepEqual(packet.scopePaths, ["src/a.ts", "src/b.ts"]);
+    assert.ok(packet.code.every(code => code.componentId === mappedId));
+
+    let rejectedPackets: import("./packet.js").EmittedPackets | undefined;
+    const rejected = await scanGithubRepository(source, {
+      client,
+      componentMap: {
+        document: {
+          version: 1,
+          containers: [{ containerId, components: [{ id: "component:demo-invalid", name: "Invalid", paths: ["src/missing.ts"] }] }],
+        },
+      },
+      enrichWithPackets: async packets => { rejectedPackets = packets; return new Map(); },
+    });
+    assert.equal(rejected.artifacts.componentMapReport?.accepted, false);
+    assert.equal(rejected.artifacts.extraction.entities.some(entity => entity.id === "component:demo-invalid"), false);
+    assert.equal(rejectedPackets!.packets.some(value => value.components.some(component => component.id === "component:demo-invalid")), false);
+  } finally {
+    fixture.cleanup();
+  }
 });
 
 test("createAnonymousGithubClient fails closed on a private-repo 404 and never mentions gh", async () => {

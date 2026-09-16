@@ -3,6 +3,7 @@ import test from "node:test";
 import type { Discovery } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
 import { mergeEnrichment } from "./enrich.js";
+import { applyComponentMembership } from "./component-map.js";
 import { buildEnrichmentPackets, containerIdFromFileName, contentHash, packetFileName, ENRICHMENT_PROMPT_VERSION, MAX_COMPONENTS_PER_PACKET } from "./packet.js";
 
 const files: Record<string, string> = {
@@ -51,6 +52,28 @@ test("emits one packet per code-bearing container, strictly redacted to scope", 
   assert.equal(serialized.includes("pkg/c/"), false);
   // every code entity names the component it currently belongs to (for re-parenting).
   assert.ok(a.code.every(code => a.components.some(component => component.id === code.componentId)));
+});
+
+test("mapped multi-file components retain every implementation path in packet scope and excerpts", () => {
+  const mapped = applyComponentMembership(base(), {
+    document: {
+      version: 1,
+      containers: [{
+        containerId: "container:pkg-a",
+        components: [{
+          id: "component:pkg-a-source-viewing",
+          name: "Source viewing",
+          paths: ["pkg/a/src/index.ts", "pkg/a/src/util.ts"],
+        }],
+      }],
+    },
+  });
+  assert.equal(mapped.report.accepted, true);
+  const packet = buildEnrichmentPackets(mapped.extraction, read).packets.find(value => value.containerId === "container:pkg-a")!;
+  assert.equal(packet.components[0]?.path, "pkg/a/src/index.ts", "primary component path remains compatible");
+  assert.deepEqual(packet.scopePaths, ["pkg/a/src/index.ts", "pkg/a/src/util.ts"]);
+  assert.deepEqual(packet.excerpts.map(excerpt => excerpt.path), packet.scopePaths);
+  assert.deepEqual([...new Set(packet.code.map(code => code.path))].sort(), packet.scopePaths);
 });
 
 test("packet excerpts apply the existing GitHub token scrub (planted secret stays off the wire)", () => {
