@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+step() {
+  local started=$SECONDS
+  printf '\n==> %s\n' "$*"
+  "$@"
+  printf '==> Finished in %ss\n' "$((SECONDS - started))"
+}
+
+# Node 22+ and npm are provided by the Amp orb base image.
+node -e 'if (Number(process.versions.node.split(".")[0]) < 22) throw new Error("Node 22+ is required")'
+missing=()
+for package in build-essential pkg-config libssl-dev ca-certificates curl; do
+  if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+    missing+=("$package")
+  fi
+done
+if ((${#missing[@]})); then
+  step sudo apt-get update -qq
+  step sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}"
+fi
+
+pnpm_version=$(node -p 'require("./package.json").packageManager.split("@")[1]')
+if ! command -v pnpm >/dev/null || [[ "$(pnpm --version)" != "$pnpm_version" ]]; then
+  step npm install --global "pnpm@$pnpm_version"
+fi
+
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! command -v rustup >/dev/null; then
+  installer=$(mktemp)
+  trap 'rm -f "$installer"' EXIT
+  step curl --fail --silent --show-error --location https://sh.rustup.rs -o "$installer"
+  step sh "$installer" -y --profile minimal --default-toolchain none --no-modify-path
+fi
+# Keep Rust available to subsequent agents and supervised services, not only setup.
+marker='# Okie orb Rust toolchain'
+if ! grep -Fqx "$marker" "$HOME/.bash_profile" 2>/dev/null; then
+  printf '\n%s\nexport PATH="$HOME/.cargo/bin:$PATH"\n' "$marker" >> "$HOME/.bash_profile"
+fi
+# rustup reads the version, components, and target from rust-toolchain.toml.
+step rustup show active-toolchain
+# The scan tests need these additional components, matching CI.
+step rustup component add rust-analyzer rust-src
+if ! command -v wasm-pack >/dev/null || [[ "$(wasm-pack --version)" != 'wasm-pack 0.13.1' ]]; then
+  step npm install --global wasm-pack@0.13.1
+fi
+
+step pnpm install --frozen-lockfile
+step cargo fetch --locked
+# Workspace consumers resolve emitted dist files, even during typechecking.
+step pnpm -r --if-present --filter './packages/**' --filter './apps/server' build
+step pnpm prepare:generated

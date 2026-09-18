@@ -33,3 +33,6 @@ apps/web/dist-portable/
 
 # Local review backups; never ship archived working copies.
 .okie-review/
+
+# Per-orb portal metadata is not repository configuration.
+.amp/portals/*
