@@ -29,6 +29,9 @@ importers:
       '@okie/scan':
         specifier: workspace:*
         version: link:../../packages/scan
+      '@typesafe-ai/sdk':
+        specifier: 0.6.0
+        version: 0.6.0
     devDependencies:
       '@types/node':
         specifier: ^22.15.0
@@ -854,6 +857,10 @@ packages:
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+
+  '@typesafe-ai/sdk@0.6.0':
+    resolution: {integrity: sha512-IddX+Q0XM+VagOUZFeP7wZjaO4SHMdvnh2zEBdrZZnXedWI3BNK1lKhMx3ayrkFWvVLbVcUHJy6AVZlY+e6Jaw==}
+    engines: {node: '>=20'}
 
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
@@ -2062,6 +2069,8 @@ snapshots:
 
   '@types/trusted-types@2.0.7':
     optional: true
+
+  '@typesafe-ai/sdk@0.6.0': {}
 
   '@upsetjs/venn.js@2.0.0':
     optionalDependencies:

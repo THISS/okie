@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "labelOrigin": "Source inspection before any live inference; labels are provisional engineering annotations, not model output or independent human adjudication.",
+  "sources": {
+    "okie-validation": {
+      "repository": "thiss/okie", "commit": "f04d2cbfc952611d8be6a9d121d66e69ab47351d", "path": "apps/server/src/operatorEnrichment.ts", "startLine": 118, "endLine": 123,
+      "text": "export function validateOperatorExplanation(value: unknown, allowedEvidence: readonly OperatorEvidenceRef[]): OperatorExplanation {\n  if (!isObject(value) || typeof value.summary !== \"string\" || !value.summary.trim()) throw new Error(\"malformed explanation: summary is required\");\n  if (!Array.isArray(value.evidence) || !value.evidence.every(isEvidence)) throw new Error(\"malformed explanation: evidence is required\");\n  const allowed = new Set(allowedEvidence.map(evidenceKey));\n  const evidence = value.evidence as OperatorEvidenceRef[];\n  if (evidence.some(ref => !allowed.has(evidenceKey(ref)))) throw new Error(\"rejected explanation: unknown evidence reference\");"
+    },
+    "zod-safe": {
+      "repository": "colinhacks/zod", "commit": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574", "path": "packages/zod/src/v4/core/parse.ts", "startLine": 71, "endLine": 80,
+      "text": "export const _safeParse: (_Err: $ZodErrorClass) => $SafeParse = (_Err) => (schema, value, _ctx) => {\n  const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };\n  const result = schema._zod.run({ value, issues: [] }, ctx);\n  if (result instanceof Promise) {\n    throw new core.$ZodAsyncError();\n  }\n\n  return result.issues.length ? failure(_Err, result.issues, ctx) : ({ success: true, data: result.value } as any);\n};\nexport const safeParse: $SafeParse = /* @__PURE__*/ _safeParse(errors.$ZodRealError);"
+    },
+    "zod-wrapper": {
+      "repository": "colinhacks/zod", "commit": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574", "path": "packages/zod/src/v4/classic/parse.ts", "startLine": 22, "endLine": 27,
+      "text": "export const safeParse: <T extends core.$ZodType>(\n  schema: T,\n  value: unknown,\n  _ctx?: core.ParseContext<core.$ZodIssue>\n  // _params?: { callee?: core.util.AnyFunc; Err?: core.$ZodErrorClass }\n) => ZodSafeParseResult<core.output<T>> = /* @__PURE__ */ core._safeParse(ZodRealError) as any;"
+    },
+    "tokio-send": {
+      "repository": "tokio-rs/tokio", "commit": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8", "path": "tokio/src/sync/oneshot.rs", "startLine": 591, "endLine": 597,
+      "text": "    /// A successful send occurs when it is determined that the other end of the\n    /// channel has not hung up already. An unsuccessful send would be one where\n    /// the corresponding receiver has already been deallocated. Note that a\n    /// return value of `Err` means that the data will never be received, but\n    /// a return value of `Ok` does *not* mean that the data will be received.\n    /// It is possible for the corresponding receiver to hang up immediately\n    /// after this function returns `Ok`."
+    },
+    "tokio-blocking": {
+      "repository": "tokio-rs/tokio", "commit": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8", "path": "tokio/src/sync/oneshot.rs", "startLine": 1209, "endLine": 1214,
+      "text": "    /// Blocking receive to call outside of asynchronous contexts.\n    ///\n    /// # Panics\n    ///\n    /// This function panics if called within an asynchronous execution\n    /// context."
+    }
+  },
+  "cases": [
+    { "id": "okie-reject", "split": "development", "source": "okie-validation", "claim": "Unknown evidence references are rejected.", "label": "supports", "rationale": "The allowed set membership guard throws on an unknown reference.", "replay": "support" },
+    { "id": "okie-missing", "split": "development", "source": "okie-validation", "evidenceMode": "missing", "claim": "Unknown evidence references are rejected.", "label": "unknown", "rationale": "The source is intentionally withheld; do not import repository knowledge.", "replay": "uncertain" },
+    { "id": "zod-name", "split": "development", "source": "zod-safe", "claim": "safeParse never throws.", "label": "contradicts", "rationale": "A Promise result throws ZodAsyncError despite the safe name.", "replay": "contradiction" },
+    { "id": "zod-wrapper", "split": "development", "source": "zod-wrapper", "claim": "safeParse never throws.", "label": "unknown", "rationale": "The wrapper delegates; its implementation is absent.", "replay": "support" },
+    { "id": "tokio-delivery", "split": "development", "source": "tokio-send", "claim": "Ok from send guarantees the receiver receives the value.", "label": "contradicts", "rationale": "The captured contract explicitly denies that implication.", "replay": "contradiction" },
+    { "id": "tokio-failure", "split": "development", "source": "tokio-send", "claim": "Err from send means the data will never be received.", "label": "supports", "rationale": "The contract states this implication directly.", "replay": "failure" },
+    { "id": "okie-empty", "split": "held-out", "source": "okie-validation", "claim": "An empty or whitespace-only summary is rejected.", "label": "supports", "rationale": "The summary.trim guard rejects empty or whitespace-only strings.", "replay": "support" },
+    { "id": "okie-stale", "split": "held-out", "source": "okie-validation", "evidenceMode": "stale", "claim": "The current revision rejects unknown evidence references.", "label": "unknown", "rationale": "A deliberately mismatched target commit makes current behavior unknown.", "replay": "support" },
+    { "id": "zod-promise", "split": "held-out", "source": "zod-safe", "claim": "A Promise from the synchronous schema run triggers an exception.", "label": "supports", "rationale": "The instanceof Promise branch throws.", "replay": "support" },
+    { "id": "zod-conflict", "split": "held-out", "source": "zod-safe", "conflictingNote": "Synthetic equal-authority observation at the same revision: a Promise result was returned without an exception. No provenance resolves this conflict.", "claim": "A Promise result always triggers an exception.", "label": "unknown", "rationale": "Contradictory supplied sources require abstention rather than choosing whichever sounds authoritative.", "replay": "uncertain" },
+    { "id": "tokio-context", "split": "held-out", "source": "tokio-blocking", "claim": "blocking_recv is safe to call within an asynchronous execution context.", "label": "contradicts", "rationale": "Its documented panic is the opposite of the claim.", "replay": "contradiction" },
+    { "id": "tokio-missing", "split": "held-out", "source": "tokio-blocking", "evidenceMode": "missing", "claim": "blocking_recv panics within an asynchronous execution context.", "label": "unknown", "rationale": "Without the excerpt this cannot be inferred from the name.", "replay": "uncertain" }
+  ]
+}

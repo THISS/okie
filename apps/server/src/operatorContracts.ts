@@ -2,7 +2,7 @@
 export type OperatorRunState = "queued" | "running" | "awaiting_review" | "complete" | "failed" | "cancelled" | "interrupted";
 export type OperatorDraftState = "open" | "frozen" | "superseded";
 export type OperatorAttemptState = "queued" | "running" | "accepted" | "failed" | "cancelled" | "interrupted";
-export type OperatorAttemptKind = "scan" | "enrichment" | "retry" | "refresh";
+export type OperatorAttemptKind = "scan" | "enrichment" | "retry" | "refresh" | "judgment";
 
 export interface OperatorRepository {
   repositoryId: string;

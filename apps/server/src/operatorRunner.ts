@@ -8,10 +8,11 @@ import { createOperatorBudgetLedger } from "./operatorBudget.js";
 import { runOperatorEnrichment, type OperatorEnrichmentGateway, type OperatorEnrichmentScope, type OperatorEnrichmentStore, type OperatorExplanation } from "./operatorEnrichment.js";
 import { createLlmGatewayClient, resolveEnrichmentBudget, resolveLlmGatewayConfig, type GatewayUsage, type LlmGatewayConfig } from "./llmGateway.js";
 import { githubClientForAccess } from "./githubAccess.js";
+import { createJevProvider, runOperatorJudgments, type JudgmentLimits, type JudgmentOutcome, type JudgmentProvider, type JudgmentRequest } from "./operatorJudgments.js";
 
 export interface OperatorRunnerScan { commitSha: string; artifacts: ScanArtifacts; }
-export interface OperatorRunnerDeps { store: OperatorStore; publication: OperatorPublicationService; githubClient?(access: ScanGithubAccess): GithubClient; scan?(source: GithubSourceRef, options: { client: GithubClient; analysisMode: "full"; codeSurface: "all" }): Promise<OperatorRunnerScan>; gateway?: OperatorEnrichmentGateway; gatewayConfig?: LlmGatewayConfig; }
-export interface OperatorRunner { enqueue(input: { kind: "run" | "retry" | "refresh"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Internal audit label for refresh's targeted retry execution. */ attemptKind?: "retry" | "refresh" }): Promise<void>; }
+export interface OperatorRunnerDeps { store: OperatorStore; publication: OperatorPublicationService; githubClient?(access: ScanGithubAccess): GithubClient; scan?(source: GithubSourceRef, options: { client: GithubClient; analysisMode: "full"; codeSurface: "all" }): Promise<OperatorRunnerScan>; gateway?: OperatorEnrichmentGateway; gatewayConfig?: LlmGatewayConfig; judgmentProvider?: JudgmentProvider | null; judgmentLimits?: Partial<JudgmentLimits>; }
+export interface OperatorRunner { judge(request: JudgmentRequest, signal?: AbortSignal): Promise<JudgmentOutcome>; enqueue(input: { kind: "run" | "retry" | "refresh"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Internal audit label for refresh's targeted retry execution. */ attemptKind?: "retry" | "refresh" }): Promise<void>; }
 
 function persistedUsage(usage?: GatewayUsage) {
   return usage ? {
@@ -50,7 +51,14 @@ function coverageFor(scopes: readonly { scopeId: string; stale?: boolean }[], ex
 
 /** Controller seam: full committed scans create immutable drafts only; publication is never called here. */
 export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
-  const runner: OperatorRunner = { async enqueue(input) {
+  const runner: OperatorRunner = {
+    async judge(request, signal) {
+      // No default consumer: deterministic scans and GLM generation never call Jev.
+      // Null explicitly disables the provider even if a server key exists.
+      const provider = deps.judgmentProvider === undefined ? createJevProvider() : deps.judgmentProvider;
+      return runOperatorJudgments({ store: deps.store, publication: deps.publication, request, ...(provider ? { provider } : {}), ...(deps.judgmentLimits ? { limits: deps.judgmentLimits } : {}), ...(signal ? { signal } : {}) });
+    },
+    async enqueue(input) {
     const run = deps.store.snapshot().runs.find(value => value.runId === input.runId); if (!run) throw new Error("unknown operator run");
     if (input.kind !== "run" && run.draftRevisionId !== input.draftRevisionId) {
       deps.store.appendEvent({ runId: run.runId, type: "draft.conflict", detail: { reason: "stale_retry_base", ...(input.draftRevisionId ? { draftRevisionId: input.draftRevisionId } : {}) } });

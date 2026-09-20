@@ -28,6 +28,28 @@ test("missing usage remains unknown and does not free reserved tokens", () => {
   assert.equal(ledger.snapshot().unknownCostRequests, 1);
 });
 
+test("optional concurrency and dollar reservations survive restart without inventing measured cost", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-budget-dollars-"));
+  try {
+    const store = new OperatorStore(root);
+    const run = store.createRun({ idempotencyKey: "dollars", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const limits = { maxRequests: 10, maxTokens: 1000, maxDollars: 0.5, maxConcurrent: 1 };
+    const ledger = createOperatorBudgetLedger(limits, { store, runId: run.runId });
+    const first = ledger.reserve(50, 0.3)!;
+    assert.equal(ledger.reserve(1, 0.1), undefined, "pending request occupies concurrent slot");
+    ledger.settle(first, { inputTokens: 3, outputTokens: 2 });
+    const restored = createOperatorBudgetLedger(limits, { store: new OperatorStore(root), runId: run.runId });
+    assert.equal(restored.snapshot().reservedCostUsd, 0.3);
+    assert.equal(restored.snapshot().measuredCostUsd, undefined);
+    assert.equal(restored.reserve(1, 0.201), undefined, "unknown billing cannot free dollars");
+    const second = restored.reserve(50, 0.2)!;
+    assert.ok(second, "exact dollar boundary is allowed");
+    restored.settle(second, { inputTokens: 3, outputTokens: 2, measuredCostUsd: 0.1 });
+    assert.equal(ledger.snapshot().measuredCostUsd, 0.1);
+    assert.ok(ledger.reserve(50, 0.09), "measured usage replaces only its own reservation");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("durable admission shares limits across ledger instances and restart", () => {
   const root = mkdtempSync(join(tmpdir(), "okie-budget-"));
   try {
