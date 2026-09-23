@@ -9,10 +9,11 @@ import { runOperatorEnrichment, type OperatorEnrichmentGateway, type OperatorEnr
 import { createLlmGatewayClient, resolveEnrichmentBudget, resolveLlmGatewayConfig, type GatewayUsage, type LlmGatewayConfig } from "./llmGateway.js";
 import { githubClientForAccess } from "./githubAccess.js";
 import { createJevProvider, runOperatorJudgments, type JudgmentLimits, type JudgmentOutcome, type JudgmentProvider, type JudgmentRequest } from "./operatorJudgments.js";
+import { runSectionProfile } from "./sectionProfiles.js";
 
 export interface OperatorRunnerScan { commitSha: string; artifacts: ScanArtifacts; }
 export interface OperatorRunnerDeps { store: OperatorStore; publication: OperatorPublicationService; githubClient?(access: ScanGithubAccess): GithubClient; scan?(source: GithubSourceRef, options: { client: GithubClient; analysisMode: "full"; codeSurface: "all" }): Promise<OperatorRunnerScan>; gateway?: OperatorEnrichmentGateway; gatewayConfig?: LlmGatewayConfig; judgmentProvider?: JudgmentProvider | null; judgmentLimits?: Partial<JudgmentLimits>; }
-export interface OperatorRunner { judge(request: JudgmentRequest, signal?: AbortSignal): Promise<JudgmentOutcome>; enqueue(input: { kind: "run" | "retry" | "refresh"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Internal audit label for refresh's targeted retry execution. */ attemptKind?: "retry" | "refresh" }): Promise<void>; }
+export interface OperatorRunner { profile(input: { runId: string; draftRevisionId: string; scopeId: string }, signal?: AbortSignal): ReturnType<typeof runSectionProfile>; judge(request: JudgmentRequest, signal?: AbortSignal): Promise<JudgmentOutcome>; enqueue(input: { kind: "run" | "retry" | "refresh"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Internal audit label for refresh's targeted retry execution. */ attemptKind?: "retry" | "refresh" }): Promise<void>; }
 
 function persistedUsage(usage?: GatewayUsage) {
   return usage ? {
@@ -52,6 +53,11 @@ function coverageFor(scopes: readonly { scopeId: string; stale?: boolean }[], ex
 /** Controller seam: full committed scans create immutable drafts only; publication is never called here. */
 export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
   const runner: OperatorRunner = {
+    async profile(input, signal) {
+      // Opt-in scan enrichment only. Existing scans and portable atlases need no provider.
+      const provider = deps.judgmentProvider === undefined ? createJevProvider() : deps.judgmentProvider;
+      return runSectionProfile({ store: deps.store, publication: deps.publication, ...input, ...(provider ? { provider } : {}), ...(deps.judgmentLimits ? { limits: deps.judgmentLimits } : {}), ...(signal ? { signal } : {}) });
+    },
     async judge(request, signal) {
       // No default consumer: deterministic scans and GLM generation never call Jev.
       // Null explicitly disables the provider even if a server key exists.

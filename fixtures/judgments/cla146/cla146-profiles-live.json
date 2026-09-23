@@ -1,0 +1,1793 @@
+{
+  "kind": "live-section-profiles",
+  "base": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+  "labelOrigin": "Provisional engineering source-inspection labels; not independent human adjudication",
+  "capRequests": 100,
+  "admissionBudgetUsd": 1,
+  "measuredCostUsd": null,
+  "sources": {
+    "okie-validation": {
+      "repository": "thiss/okie",
+      "commit": "f04d2cbfc952611d8be6a9d121d66e69ab47351d",
+      "path": "apps/server/src/operatorEnrichment.ts",
+      "startLine": 118,
+      "endLine": 123,
+      "text": "export function validateOperatorExplanation(value: unknown, allowedEvidence: readonly OperatorEvidenceRef[]): OperatorExplanation {\n  if (!isObject(value) || typeof value.summary !== \"string\" || !value.summary.trim()) throw new Error(\"malformed explanation: summary is required\");\n  if (!Array.isArray(value.evidence) || !value.evidence.every(isEvidence)) throw new Error(\"malformed explanation: evidence is required\");\n  const allowed = new Set(allowedEvidence.map(evidenceKey));\n  const evidence = value.evidence as OperatorEvidenceRef[];\n  if (evidence.some(ref => !allowed.has(evidenceKey(ref)))) throw new Error(\"rejected explanation: unknown evidence reference\");"
+    },
+    "zod-safe": {
+      "repository": "colinhacks/zod",
+      "commit": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574",
+      "path": "packages/zod/src/v4/core/parse.ts",
+      "startLine": 71,
+      "endLine": 80,
+      "text": "export const _safeParse: (_Err: $ZodErrorClass) => $SafeParse = (_Err) => (schema, value, _ctx) => {\n  const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };\n  const result = schema._zod.run({ value, issues: [] }, ctx);\n  if (result instanceof Promise) {\n    throw new core.$ZodAsyncError();\n  }\n\n  return result.issues.length ? failure(_Err, result.issues, ctx) : ({ success: true, data: result.value } as any);\n};\nexport const safeParse: $SafeParse = /* @__PURE__*/ _safeParse(errors.$ZodRealError);"
+    },
+    "zod-wrapper": {
+      "repository": "colinhacks/zod",
+      "commit": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574",
+      "path": "packages/zod/src/v4/classic/parse.ts",
+      "startLine": 22,
+      "endLine": 27,
+      "text": "export const safeParse: <T extends core.$ZodType>(\n  schema: T,\n  value: unknown,\n  _ctx?: core.ParseContext<core.$ZodIssue>\n  // _params?: { callee?: core.util.AnyFunc; Err?: core.$ZodErrorClass }\n) => ZodSafeParseResult<core.output<T>> = /* @__PURE__ */ core._safeParse(ZodRealError) as any;"
+    },
+    "tokio-send": {
+      "repository": "tokio-rs/tokio",
+      "commit": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8",
+      "path": "tokio/src/sync/oneshot.rs",
+      "startLine": 591,
+      "endLine": 597,
+      "text": "    /// A successful send occurs when it is determined that the other end of the\n    /// channel has not hung up already. An unsuccessful send would be one where\n    /// the corresponding receiver has already been deallocated. Note that a\n    /// return value of `Err` means that the data will never be received, but\n    /// a return value of `Ok` does *not* mean that the data will be received.\n    /// It is possible for the corresponding receiver to hang up immediately\n    /// after this function returns `Ok`."
+    },
+    "tokio-blocking": {
+      "repository": "tokio-rs/tokio",
+      "commit": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8",
+      "path": "tokio/src/sync/oneshot.rs",
+      "startLine": 1209,
+      "endLine": 1214,
+      "text": "    /// Blocking receive to call outside of asynchronous contexts.\n    ///\n    /// # Panics\n    ///\n    /// This function panics if called within an asynchronous execution\n    /// context."
+    },
+    "okie-store": {
+      "repository": "thiss/okie",
+      "commit": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+      "path": "apps/server/src/operatorStore.ts",
+      "startLine": 74,
+      "endLine": 74,
+      "text": "  private save(state: OperatorStoreState): void { const temp = `${this.statePath}.${randomUUID()}.tmp`; writeFileSync(temp, `${JSON.stringify(state)}\\n`, { mode: 0o600 }); renameSync(temp, this.statePath); }"
+    },
+    "okie-runner": {
+      "repository": "thiss/okie",
+      "commit": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+      "path": "apps/server/src/operatorRunner.ts",
+      "startLine": 119,
+      "endLine": 123,
+      "text": "    try {\n      const client = (deps.githubClient ?? githubClientForAccess)(input.githubAccess); const publicRepo = await client.getJson(repoApiPath(run.source.owner, run.source.repo));\n      if (!publicRepo.ok || !githubRepoIsPublic(publicRepo.json)) throw new Error(\"repository is not public\");\n      const scanned = await (deps.scan ?? (async (source, options) => scanGithubRepository(source, options)) )({ owner: run.source.owner, repo: run.source.repo, ...(run.source.ref ? { ref: run.source.ref } : {}), dirSlug: run.source.slug }, { client, analysisMode: \"full\", codeSurface: \"all\" });\n      if (deps.store.isCancelled(run.runId)) return;"
+    },
+    "okie-mesh": {
+      "repository": "thiss/okie",
+      "commit": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+      "path": "crates/atlas-gpu/src/mesh.rs",
+      "startLine": 782,
+      "endLine": 791,
+      "text": "    fn triangle(&mut self, a: Vec2, b: Vec2, c: Vec2, color: [f32; 4]) {\n        self.vertices.push(self.vertex(a, color));\n        self.vertices.push(self.vertex(b, color));\n        self.vertices.push(self.vertex(c, color));\n    }\n\n    fn quad(&mut self, a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: [f32; 4]) {\n        self.triangle(a, b, c, color);\n        self.triangle(a, c, d, color);\n    }"
+    },
+    "okie-test": {
+      "repository": "thiss/okie",
+      "commit": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+      "path": "apps/server/src/operatorJudgments.test.ts",
+      "startLine": 50,
+      "endLine": 55,
+      "text": "  assert.equal(createJevProvider({ TYPESAFE_API_KEY: secret }), undefined);\n  assert.ok(!inspect(client, { showHidden: true }).includes(secret));\n  const result = await client.evaluate({ state: { text: secret, password: \"other-private-value\" }, questions: { ...questions, second: questions.relation } }, new AbortController().signal);\n  assert.equal(calls, 1);\n  assert.deepEqual(result, { failed: true, usage: { inputTokens: 31, outputTokens: 7 } });\n  assert.ok(!JSON.stringify(result).includes(secret));"
+    },
+    "okie-generated": {
+      "repository": "thiss/okie",
+      "commit": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+      "path": "packages/scene-compiler/src/golden-source-excerpts.ts",
+      "startLine": 1,
+      "endLine": 12,
+      "text": "import type { SourceExcerpt } from \"@okie/architecture\";\n\n/** Checked source content; regenerate deliberately when the frozen revision changes. */\nexport const GOLDEN_SOURCE_EXCERPTS = {\n  \"code:compiler-normalized:compile-scene\": {\n    \"path\": \"packages/scene-compiler/src/compile-normalized.ts\",\n    \"symbol\": \"compileNormalizedScene\",\n    \"language\": \"typescript\",\n    \"startLine\": 34,\n    \"endLine\": 39,\n    \"highlightLine\": 34,\n    \"frozenRevision\": \"golden-worktree-okie-2026-07-14-v1\","
+    }
+  },
+  "rows": [
+    {
+      "id": "okie-validation",
+      "split": "development",
+      "expectedRoles": [
+        "validation"
+      ],
+      "inferred": [],
+      "state": "insufficient-evidence",
+      "latencyMs": 1,
+      "requests": 0,
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 0,
+        "omittedExcerpts": 1,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established.",
+          "Candidate cap or excerpt byte limit omitted evidence."
+        ]
+      }
+    },
+    {
+      "id": "okie-store",
+      "split": "development",
+      "expectedRoles": [
+        "persistence"
+      ],
+      "inferred": [
+        "persistence",
+        "orchestration"
+      ],
+      "state": "accepted",
+      "latencyMs": 248,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 2713,
+        "outputTokens": 355
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:okie-store",
+        "modelId": "jev-1.13.0",
+        "stateHash": "0c7367d590bfda365d5c9840f207f8272a21945046acfe935ded4d4124359136",
+        "observed": {
+          "scopeId": "component:okie-store",
+          "parentId": null,
+          "name": "operatorStore.ts",
+          "kind": "component",
+          "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+          "scopeDigest": "9ab92319671f79b583e6754627d5932e2b2dedd6b51b83b77fca0cbdef91b26e",
+          "evidence": [
+            {
+              "path": "apps/server/src/operatorStore.ts",
+              "startLine": 74,
+              "endLine": 74,
+              "highlightLine": 74,
+              "language": "typescript",
+              "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+              "lines": [
+                "  private save(state: OperatorStoreState): void { const temp = `${this.statePath}.${randomUUID()}.tmp`; writeFileSync(temp, `${JSON.stringify(state)}\\n`, { mode: 0o600 }); renameSync(temp, this.statePath); }"
+              ],
+              "text": "  private save(state: OperatorStoreState): void { const temp = `${this.statePath}.${randomUUID()}.tmp`; writeFileSync(temp, `${JSON.stringify(state)}\\n`, { mode: 0o600 }); renameSync(temp, this.statePath); }",
+              "entityId": "component:okie-store",
+              "id": "ebfc88d35a33085fcc338"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "487303e1fc540ddc09af18887b2cdb2a2a5c884be7e4213f7ae4fae404a1560d",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 1,
+              "probabilities": {
+                "ebfc88d35a33085fcc338": 0,
+                "unknown": 0,
+                "no_match": 1
+              }
+            }
+          },
+          "persistence": {
+            "status": "inferred",
+            "evidenceId": "ebfc88d35a33085fcc338",
+            "answer": {
+              "type": "choice",
+              "choice": "ebfc88d35a33085fcc338",
+              "confidence": 1,
+              "probabilities": {
+                "ebfc88d35a33085fcc338": 1,
+                "unknown": 0,
+                "no_match": 0
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "ebfc88d35a33085fcc338": 0.01,
+                "unknown": 0,
+                "no_match": 0.99
+              }
+            }
+          },
+          "validation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "ebfc88d35a33085fcc338": 0,
+                "unknown": 0,
+                "no_match": 1
+              }
+            }
+          },
+          "orchestration": {
+            "status": "inferred",
+            "evidenceId": "ebfc88d35a33085fcc338",
+            "answer": {
+              "type": "choice",
+              "choice": "ebfc88d35a33085fcc338",
+              "confidence": 0.82,
+              "probabilities": {
+                "ebfc88d35a33085fcc338": 0.88,
+                "unknown": 0.01,
+                "no_match": 0.11
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 1,
+              "probabilities": {
+                "ebfc88d35a33085fcc338": 0,
+                "unknown": 0,
+                "no_match": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "okie-runner",
+      "split": "development",
+      "expectedRoles": [
+        "validation",
+        "orchestration",
+        "external"
+      ],
+      "inferred": [
+        "external",
+        "validation",
+        "orchestration"
+      ],
+      "state": "accepted",
+      "latencyMs": 131,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 3274,
+        "outputTokens": 397
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:okie-runner",
+        "modelId": "jev-1.13.0",
+        "stateHash": "07b06c9dd3f56b2d7f9b796a5ae1d8ca16ac8360b7bf961ce36c6e3ed1e7d3d0",
+        "observed": {
+          "scopeId": "component:okie-runner",
+          "parentId": null,
+          "name": "operatorRunner.ts",
+          "kind": "component",
+          "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+          "scopeDigest": "14678f7a6dc7466b351c7455b07b1a355a0e05fe0c2b7b5f0c061f36d540aa66",
+          "evidence": [
+            {
+              "path": "apps/server/src/operatorRunner.ts",
+              "startLine": 119,
+              "endLine": 123,
+              "highlightLine": 119,
+              "language": "typescript",
+              "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+              "lines": [
+                "    try {",
+                "      const client = (deps.githubClient ?? githubClientForAccess)(input.githubAccess); const publicRepo = await client.getJson(repoApiPath(run.source.owner, run.source.repo));",
+                "      if (!publicRepo.ok || !githubRepoIsPublic(publicRepo.json)) throw new Error(\"repository is not public\");",
+                "      const scanned = await (deps.scan ?? (async (source, options) => scanGithubRepository(source, options)) )({ owner: run.source.owner, repo: run.source.repo, ...(run.source.ref ? { ref: run.source.ref } : {}), dirSlug: run.source.slug }, { client, analysisMode: \"full\", codeSurface: \"all\" });",
+                "      if (deps.store.isCancelled(run.runId)) return;"
+              ],
+              "text": "    try {\n      const client = (deps.githubClient ?? githubClientForAccess)(input.githubAccess); const publicRepo = await client.getJson(repoApiPath(run.source.owner, run.source.repo));\n      if (!publicRepo.ok || !githubRepoIsPublic(publicRepo.json)) throw new Error(\"repository is not public\");\n      const scanned = await (deps.scan ?? (async (source, options) => scanGithubRepository(source, options)) )({ owner: run.source.owner, repo: run.source.repo, ...(run.source.ref ? { ref: run.source.ref } : {}), dirSlug: run.source.slug }, { client, analysisMode: \"full\", codeSurface: \"all\" });\n      if (deps.store.isCancelled(run.runId)) return;",
+              "entityId": "component:okie-runner",
+              "id": "ea51836f3714a02c498f8"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "5d75c74458ded0bdc4d823aa8a7cbb7d145669e984d2ec7bdfb378f2f80cc1b2",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.83,
+              "probabilities": {
+                "unknown": 0.01,
+                "no_match": 0.89,
+                "ea51836f3714a02c498f8": 0.1
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.49,
+              "probabilities": {
+                "unknown": 0.03,
+                "no_match": 0.66,
+                "ea51836f3714a02c498f8": 0.31
+              }
+            }
+          },
+          "external": {
+            "status": "inferred",
+            "evidenceId": "ea51836f3714a02c498f8",
+            "answer": {
+              "type": "choice",
+              "choice": "ea51836f3714a02c498f8",
+              "confidence": 1,
+              "probabilities": {
+                "unknown": 0,
+                "no_match": 0,
+                "ea51836f3714a02c498f8": 1
+              }
+            }
+          },
+          "validation": {
+            "status": "inferred",
+            "evidenceId": "ea51836f3714a02c498f8",
+            "answer": {
+              "type": "choice",
+              "choice": "ea51836f3714a02c498f8",
+              "confidence": 1,
+              "probabilities": {
+                "unknown": 0,
+                "no_match": 0,
+                "ea51836f3714a02c498f8": 1
+              }
+            }
+          },
+          "orchestration": {
+            "status": "inferred",
+            "evidenceId": "ea51836f3714a02c498f8",
+            "answer": {
+              "type": "choice",
+              "choice": "ea51836f3714a02c498f8",
+              "confidence": 0.97,
+              "probabilities": {
+                "unknown": 0,
+                "no_match": 0.02,
+                "ea51836f3714a02c498f8": 0.98
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 1,
+              "probabilities": {
+                "unknown": 0,
+                "no_match": 1,
+                "ea51836f3714a02c498f8": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "okie-mesh",
+      "split": "held-out",
+      "expectedRoles": [
+        "presentation"
+      ],
+      "inferred": [
+        "orchestration",
+        "presentation"
+      ],
+      "state": "accepted",
+      "latencyMs": 234,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 3060,
+        "outputTokens": 355
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:okie-mesh",
+        "modelId": "jev-1.13.0",
+        "stateHash": "3ab78f730052c58a7321212f863659f28df69425ea7e02d94debc24e74243afa",
+        "observed": {
+          "scopeId": "component:okie-mesh",
+          "parentId": null,
+          "name": "mesh.rs",
+          "kind": "component",
+          "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+          "scopeDigest": "b510d3428e27a5579bc6f2db495e7632cf43c1bf08adf6bca58bf4cc2b4ec784",
+          "evidence": [
+            {
+              "path": "crates/atlas-gpu/src/mesh.rs",
+              "startLine": 782,
+              "endLine": 791,
+              "highlightLine": 782,
+              "language": "rust",
+              "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+              "lines": [
+                "    fn triangle(&mut self, a: Vec2, b: Vec2, c: Vec2, color: [f32; 4]) {",
+                "        self.vertices.push(self.vertex(a, color));",
+                "        self.vertices.push(self.vertex(b, color));",
+                "        self.vertices.push(self.vertex(c, color));",
+                "    }",
+                "",
+                "    fn quad(&mut self, a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: [f32; 4]) {",
+                "        self.triangle(a, b, c, color);",
+                "        self.triangle(a, c, d, color);",
+                "    }"
+              ],
+              "text": "    fn triangle(&mut self, a: Vec2, b: Vec2, c: Vec2, color: [f32; 4]) {\n        self.vertices.push(self.vertex(a, color));\n        self.vertices.push(self.vertex(b, color));\n        self.vertices.push(self.vertex(c, color));\n    }\n\n    fn quad(&mut self, a: Vec2, b: Vec2, c: Vec2, d: Vec2, color: [f32; 4]) {\n        self.triangle(a, b, c, color);\n        self.triangle(a, c, d, color);\n    }",
+              "entityId": "component:okie-mesh",
+              "id": "e698e80b28ce4bb0b4bec"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "fc7cb5f1d52537e536ee7de872bad4f58b8fadc6c4a2f3571dd6f4de5ee4d437",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "e698e80b28ce4bb0b4bec": 0,
+                "no_match": 1,
+                "unknown": 0
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "e698e80b28ce4bb0b4bec": 0,
+                "no_match": 1,
+                "unknown": 0
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 1,
+              "probabilities": {
+                "e698e80b28ce4bb0b4bec": 0,
+                "no_match": 1,
+                "unknown": 0
+              }
+            }
+          },
+          "validation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "e698e80b28ce4bb0b4bec": 0,
+                "no_match": 1,
+                "unknown": 0
+              }
+            }
+          },
+          "orchestration": {
+            "status": "inferred",
+            "evidenceId": "e698e80b28ce4bb0b4bec",
+            "answer": {
+              "type": "choice",
+              "choice": "e698e80b28ce4bb0b4bec",
+              "confidence": 0.36,
+              "probabilities": {
+                "e698e80b28ce4bb0b4bec": 0.57,
+                "no_match": 0.42,
+                "unknown": 0.01
+              }
+            }
+          },
+          "presentation": {
+            "status": "inferred",
+            "evidenceId": "e698e80b28ce4bb0b4bec",
+            "answer": {
+              "type": "choice",
+              "choice": "e698e80b28ce4bb0b4bec",
+              "confidence": 0.99,
+              "probabilities": {
+                "e698e80b28ce4bb0b4bec": 1,
+                "no_match": 0,
+                "unknown": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "zod-safe",
+      "split": "development",
+      "expectedRoles": [
+        "validation"
+      ],
+      "inferred": [
+        "validation",
+        "orchestration"
+      ],
+      "state": "accepted",
+      "latencyMs": 164,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 3156,
+        "outputTokens": 339
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:zod-safe",
+        "modelId": "jev-1.13.0",
+        "stateHash": "43f540094c9ca45a758d756de5ca3df1f188103fae8ff6d6adccb6c3ed5505be",
+        "observed": {
+          "scopeId": "component:zod-safe",
+          "parentId": null,
+          "name": "parse.ts",
+          "kind": "component",
+          "sourceCommitSha": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574",
+          "scopeDigest": "8ff3c53b164cc1cf03392522befdbbaca7f4879bd4dd7c7d1aa1c4ce66ff1ffa",
+          "evidence": [
+            {
+              "path": "packages/zod/src/v4/core/parse.ts",
+              "startLine": 71,
+              "endLine": 80,
+              "highlightLine": 71,
+              "language": "typescript",
+              "frozenRevision": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574",
+              "lines": [
+                "export const _safeParse: (_Err: $ZodErrorClass) => $SafeParse = (_Err) => (schema, value, _ctx) => {",
+                "  const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };",
+                "  const result = schema._zod.run({ value, issues: [] }, ctx);",
+                "  if (result instanceof Promise) {",
+                "    throw new core.$ZodAsyncError();",
+                "  }",
+                "",
+                "  return result.issues.length ? failure(_Err, result.issues, ctx) : ({ success: true, data: result.value } as any);",
+                "};",
+                "export const safeParse: $SafeParse = /* @__PURE__*/ _safeParse(errors.$ZodRealError);"
+              ],
+              "text": "export const _safeParse: (_Err: $ZodErrorClass) => $SafeParse = (_Err) => (schema, value, _ctx) => {\n  const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };\n  const result = schema._zod.run({ value, issues: [] }, ctx);\n  if (result instanceof Promise) {\n    throw new core.$ZodAsyncError();\n  }\n\n  return result.issues.length ? failure(_Err, result.issues, ctx) : ({ success: true, data: result.value } as any);\n};\nexport const safeParse: $SafeParse = /* @__PURE__*/ _safeParse(errors.$ZodRealError);",
+              "entityId": "component:zod-safe",
+              "id": "ecaaa15be35cedc8b8448"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "eb624eb4a77321d287dcb0c17e6bf264ce957258323cf646ff3fd7767a0e1af0",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.96,
+              "probabilities": {
+                "no_match": 0.97,
+                "unknown": 0,
+                "ecaaa15be35cedc8b8448": 0.03
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "no_match": 1,
+                "unknown": 0,
+                "ecaaa15be35cedc8b8448": 0
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "no_match": 1,
+                "unknown": 0,
+                "ecaaa15be35cedc8b8448": 0
+              }
+            }
+          },
+          "validation": {
+            "status": "inferred",
+            "evidenceId": "ecaaa15be35cedc8b8448",
+            "answer": {
+              "type": "choice",
+              "choice": "ecaaa15be35cedc8b8448",
+              "confidence": 0.99,
+              "probabilities": {
+                "no_match": 0,
+                "unknown": 0,
+                "ecaaa15be35cedc8b8448": 1
+              }
+            }
+          },
+          "orchestration": {
+            "status": "inferred",
+            "evidenceId": "ecaaa15be35cedc8b8448",
+            "answer": {
+              "type": "choice",
+              "choice": "ecaaa15be35cedc8b8448",
+              "confidence": 0.55,
+              "probabilities": {
+                "no_match": 0.29,
+                "unknown": 0,
+                "ecaaa15be35cedc8b8448": 0.71
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 1,
+              "probabilities": {
+                "no_match": 1,
+                "unknown": 0,
+                "ecaaa15be35cedc8b8448": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "zod-wrapper",
+      "split": "held-out",
+      "expectedRoles": [],
+      "inferred": [
+        "validation"
+      ],
+      "state": "accepted",
+      "latencyMs": 109,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 2907,
+        "outputTokens": 340
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:zod-wrapper",
+        "modelId": "jev-1.13.0",
+        "stateHash": "74d0d14e44a007ae86b66916d8db4568dd2f9f16a09d8009482c16df5d7312c6",
+        "observed": {
+          "scopeId": "component:zod-wrapper",
+          "parentId": null,
+          "name": "parse.ts",
+          "kind": "component",
+          "sourceCommitSha": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574",
+          "scopeDigest": "97311e32b8c410cb05673e2e1bc4c8c91ca9486cd31e28a3d90a7cb093be2403",
+          "evidence": [
+            {
+              "path": "packages/zod/src/v4/classic/parse.ts",
+              "startLine": 22,
+              "endLine": 27,
+              "highlightLine": 22,
+              "language": "typescript",
+              "frozenRevision": "0cd3af5e9f50ad11bbcd4407a46a21b8848ba574",
+              "lines": [
+                "export const safeParse: <T extends core.$ZodType>(",
+                "  schema: T,",
+                "  value: unknown,",
+                "  _ctx?: core.ParseContext<core.$ZodIssue>",
+                "  // _params?: { callee?: core.util.AnyFunc; Err?: core.$ZodErrorClass }",
+                ") => ZodSafeParseResult<core.output<T>> = /* @__PURE__ */ core._safeParse(ZodRealError) as any;"
+              ],
+              "text": "export const safeParse: <T extends core.$ZodType>(\n  schema: T,\n  value: unknown,\n  _ctx?: core.ParseContext<core.$ZodIssue>\n  // _params?: { callee?: core.util.AnyFunc; Err?: core.$ZodErrorClass }\n) => ZodSafeParseResult<core.output<T>> = /* @__PURE__ */ core._safeParse(ZodRealError) as any;",
+              "entityId": "component:zod-wrapper",
+              "id": "e4806fcc6b6848fe10df8"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "299e0234bca54768e867455735bdd197a68cb7d585efc781b4ec256c45269fa9",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.92,
+              "probabilities": {
+                "no_match": 0.94,
+                "unknown": 0.01,
+                "e4806fcc6b6848fe10df8": 0.05
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "no_match": 1,
+                "unknown": 0,
+                "e4806fcc6b6848fe10df8": 0
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "no_match": 1,
+                "unknown": 0,
+                "e4806fcc6b6848fe10df8": 0
+              }
+            }
+          },
+          "validation": {
+            "status": "inferred",
+            "evidenceId": "e4806fcc6b6848fe10df8",
+            "answer": {
+              "type": "choice",
+              "choice": "e4806fcc6b6848fe10df8",
+              "confidence": 0.22,
+              "probabilities": {
+                "no_match": 0.29,
+                "unknown": 0.22,
+                "e4806fcc6b6848fe10df8": 0.49
+              }
+            }
+          },
+          "orchestration": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.97,
+              "probabilities": {
+                "e4806fcc6b6848fe10df8": 0.01,
+                "unknown": 0.01,
+                "no_match": 0.98
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 1,
+              "probabilities": {
+                "no_match": 1,
+                "unknown": 0,
+                "e4806fcc6b6848fe10df8": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "tokio-send",
+      "split": "held-out",
+      "expectedRoles": [],
+      "inferred": [
+        "orchestration"
+      ],
+      "state": "accepted",
+      "latencyMs": 150,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 2984,
+        "outputTokens": 361
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:tokio-send",
+        "modelId": "jev-1.13.0",
+        "stateHash": "8b1583e695454309e3c2cf55d72ca5ed63f69ea6d1e3c16f13fb5e87aa478146",
+        "observed": {
+          "scopeId": "component:tokio-send",
+          "parentId": null,
+          "name": "oneshot.rs",
+          "kind": "component",
+          "sourceCommitSha": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8",
+          "scopeDigest": "91137eecb25d074c6fadf0287350a5ab572679bc898b6ae7d8bbd831ea74f8ca",
+          "evidence": [
+            {
+              "path": "tokio/src/sync/oneshot.rs",
+              "startLine": 591,
+              "endLine": 597,
+              "highlightLine": 591,
+              "language": "rust",
+              "frozenRevision": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8",
+              "lines": [
+                "    /// A successful send occurs when it is determined that the other end of the",
+                "    /// channel has not hung up already. An unsuccessful send would be one where",
+                "    /// the corresponding receiver has already been deallocated. Note that a",
+                "    /// return value of `Err` means that the data will never be received, but",
+                "    /// a return value of `Ok` does *not* mean that the data will be received.",
+                "    /// It is possible for the corresponding receiver to hang up immediately",
+                "    /// after this function returns `Ok`."
+              ],
+              "text": "    /// A successful send occurs when it is determined that the other end of the\n    /// channel has not hung up already. An unsuccessful send would be one where\n    /// the corresponding receiver has already been deallocated. Note that a\n    /// return value of `Err` means that the data will never be received, but\n    /// a return value of `Ok` does *not* mean that the data will be received.\n    /// It is possible for the corresponding receiver to hang up immediately\n    /// after this function returns `Ok`.",
+              "entityId": "component:tokio-send",
+              "id": "e3a0fb84287e809485c83"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "7b06e52b0d0da35585c6a59c54d30bb78a30fa4fcd4ebd1e7ccb140dfc008c4f",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.98,
+              "probabilities": {
+                "e3a0fb84287e809485c83": 0.01,
+                "no_match": 0.99,
+                "unknown": 0
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "e3a0fb84287e809485c83": 0.01,
+                "no_match": 0.99,
+                "unknown": 0
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.94,
+              "probabilities": {
+                "e3a0fb84287e809485c83": 0.03,
+                "no_match": 0.96,
+                "unknown": 0.01
+              }
+            }
+          },
+          "validation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.28,
+              "probabilities": {
+                "e3a0fb84287e809485c83": 0.45,
+                "no_match": 0.52,
+                "unknown": 0.03
+              }
+            }
+          },
+          "orchestration": {
+            "status": "inferred",
+            "evidenceId": "e3a0fb84287e809485c83",
+            "answer": {
+              "type": "choice",
+              "choice": "e3a0fb84287e809485c83",
+              "confidence": 0.36,
+              "probabilities": {
+                "e3a0fb84287e809485c83": 0.57,
+                "no_match": 0.41,
+                "unknown": 0.02
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "e3a0fb84287e809485c83": 0,
+                "no_match": 1,
+                "unknown": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "tokio-blocking",
+      "split": "held-out",
+      "expectedRoles": [],
+      "inferred": [],
+      "state": "accepted",
+      "latencyMs": 120,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 2691,
+        "outputTokens": 337
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:tokio-blocking",
+        "modelId": "jev-1.13.0",
+        "stateHash": "3ab330d6a9fcc0fabc531d1605fbb10e2c0d5c5ae50efec2b55166d76564e20e",
+        "observed": {
+          "scopeId": "component:tokio-blocking",
+          "parentId": null,
+          "name": "oneshot.rs",
+          "kind": "component",
+          "sourceCommitSha": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8",
+          "scopeDigest": "9fcdef0fbce116bf6343668008baf8f5ee5b3bb505dab3caef5ad31e437ae177",
+          "evidence": [
+            {
+              "path": "tokio/src/sync/oneshot.rs",
+              "startLine": 1209,
+              "endLine": 1214,
+              "highlightLine": 1209,
+              "language": "rust",
+              "frozenRevision": "cf782c5b917b7ea21b6f97f07104ebf16d35f5f8",
+              "lines": [
+                "    /// Blocking receive to call outside of asynchronous contexts.",
+                "    ///",
+                "    /// # Panics",
+                "    ///",
+                "    /// This function panics if called within an asynchronous execution",
+                "    /// context."
+              ],
+              "text": "    /// Blocking receive to call outside of asynchronous contexts.\n    ///\n    /// # Panics\n    ///\n    /// This function panics if called within an asynchronous execution\n    /// context.",
+              "entityId": "component:tokio-blocking",
+              "id": "ef8b9c79bb353e5661952"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "511c381043614e5d57d9aff4dc60fd9d02b93ad1e08d44fe0cbf8d510e93d2c8",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.97,
+              "probabilities": {
+                "unknown": 0.01,
+                "ef8b9c79bb353e5661952": 0.01,
+                "no_match": 0.98
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.98,
+              "probabilities": {
+                "unknown": 0,
+                "ef8b9c79bb353e5661952": 0.01,
+                "no_match": 0.99
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "unknown": 0,
+                "ef8b9c79bb353e5661952": 0.01,
+                "no_match": 0.99
+              }
+            }
+          },
+          "validation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.41,
+              "probabilities": {
+                "unknown": 0.04,
+                "ef8b9c79bb353e5661952": 0.36,
+                "no_match": 0.6
+              }
+            }
+          },
+          "orchestration": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.84,
+              "probabilities": {
+                "unknown": 0.03,
+                "ef8b9c79bb353e5661952": 0.08,
+                "no_match": 0.89
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "unknown": 0,
+                "no_match": 1,
+                "ef8b9c79bb353e5661952": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "okie-test",
+      "split": "held-out",
+      "expectedRoles": [
+        "validation"
+      ],
+      "inferred": [],
+      "state": "accepted",
+      "latencyMs": 262,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 3067,
+        "outputTokens": 331
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:okie-test",
+        "modelId": "jev-1.13.0",
+        "stateHash": "b88ab6b253b78ac9c566f8a7606885d854dba769cebd0e4f5140cda6cfe47a91",
+        "observed": {
+          "scopeId": "component:okie-test",
+          "parentId": null,
+          "name": "operatorJudgments.test.ts",
+          "kind": "component",
+          "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+          "scopeDigest": "e5fd1581858f87543ab6939d182453feeb230d605cb9af4db5eda970f9ddf17d",
+          "evidence": [
+            {
+              "path": "apps/server/src/operatorJudgments.test.ts",
+              "startLine": 50,
+              "endLine": 55,
+              "highlightLine": 50,
+              "language": "typescript",
+              "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+              "lines": [
+                "  assert.equal(createJevProvider({ TYPESAFE_API_KEY: secret }), undefined);",
+                "  assert.ok(!inspect(client, { showHidden: true }).includes(secret));",
+                "  const result = await client.evaluate({ state: { text: secret, password: \"other-private-value\" }, questions: { ...questions, second: questions.relation } }, new AbortController().signal);",
+                "  assert.equal(calls, 1);",
+                "  assert.deepEqual(result, { failed: true, usage: { inputTokens: 31, outputTokens: 7 } });",
+                "  assert.ok(!JSON.stringify(result).includes(secret));"
+              ],
+              "text": "  assert.equal(createJevProvider({ TYPESAFE_API_KEY: secret }), undefined);\n  assert.ok(!inspect(client, { showHidden: true }).includes(secret));\n  const result = await client.evaluate({ state: { text: secret, password: \"other-private-value\" }, questions: { ...questions, second: questions.relation } }, new AbortController().signal);\n  assert.equal(calls, 1);\n  assert.deepEqual(result, { failed: true, usage: { inputTokens: 31, outputTokens: 7 } });\n  assert.ok(!JSON.stringify(result).includes(secret));",
+              "entityId": "component:okie-test",
+              "id": "e0f8672793da85d79dda1"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "883d25c0243a27002665a769d989555d308d3afe027c5f5563c1d3a1371a34d2",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.98,
+              "probabilities": {
+                "e0f8672793da85d79dda1": 0.01,
+                "no_match": 0.99,
+                "unknown": 0
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.98,
+              "probabilities": {
+                "e0f8672793da85d79dda1": 0.01,
+                "no_match": 0.99,
+                "unknown": 0
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.45,
+              "probabilities": {
+                "e0f8672793da85d79dda1": 0.32,
+                "no_match": 0.64,
+                "unknown": 0.04
+              }
+            }
+          },
+          "validation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.4,
+              "probabilities": {
+                "e0f8672793da85d79dda1": 0.38,
+                "no_match": 0.6,
+                "unknown": 0.02
+              }
+            }
+          },
+          "orchestration": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.46,
+              "probabilities": {
+                "e0f8672793da85d79dda1": 0.35,
+                "no_match": 0.64,
+                "unknown": 0.01
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.99,
+              "probabilities": {
+                "e0f8672793da85d79dda1": 0,
+                "no_match": 1,
+                "unknown": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "okie-generated",
+      "split": "held-out",
+      "expectedRoles": [],
+      "inferred": [],
+      "state": "accepted",
+      "latencyMs": 130,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 3246,
+        "outputTokens": 349
+      },
+      "coverage": {
+        "candidateExcerpts": 1,
+        "selectedExcerpts": 1,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 0,
+        "missingSourceEntityIds": [],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      },
+      "profile": {
+        "schemaVersion": "section-capabilities/v1",
+        "scopeId": "component:okie-generated",
+        "modelId": "jev-1.13.0",
+        "stateHash": "ced82eb4dc321715fdd2dff1dfbeb2400991e66ea237b56d6fbffbdcdecb61f9",
+        "observed": {
+          "scopeId": "component:okie-generated",
+          "parentId": null,
+          "name": "golden-source-excerpts.ts",
+          "kind": "component",
+          "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+          "scopeDigest": "67a2507af6482a8c1709ee8d9fdf90d115064edadc00a7ceba0ee0dee682d9cd",
+          "evidence": [
+            {
+              "path": "packages/scene-compiler/src/golden-source-excerpts.ts",
+              "startLine": 1,
+              "endLine": 12,
+              "highlightLine": 1,
+              "language": "typescript",
+              "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+              "lines": [
+                "import type { SourceExcerpt } from \"@okie/architecture\";",
+                "",
+                "/** Checked source content; regenerate deliberately when the frozen revision changes. */",
+                "export const GOLDEN_SOURCE_EXCERPTS = {",
+                "  \"code:compiler-normalized:compile-scene\": {",
+                "    \"path\": \"packages/scene-compiler/src/compile-normalized.ts\",",
+                "    \"symbol\": \"compileNormalizedScene\",",
+                "    \"language\": \"typescript\",",
+                "    \"startLine\": 34,",
+                "    \"endLine\": 39,",
+                "    \"highlightLine\": 34,",
+                "    \"frozenRevision\": \"golden-worktree-okie-2026-07-14-v1\","
+              ],
+              "text": "import type { SourceExcerpt } from \"@okie/architecture\";\n\n/** Checked source content; regenerate deliberately when the frozen revision changes. */\nexport const GOLDEN_SOURCE_EXCERPTS = {\n  \"code:compiler-normalized:compile-scene\": {\n    \"path\": \"packages/scene-compiler/src/compile-normalized.ts\",\n    \"symbol\": \"compileNormalizedScene\",\n    \"language\": \"typescript\",\n    \"startLine\": 34,\n    \"endLine\": 39,\n    \"highlightLine\": 34,\n    \"frozenRevision\": \"golden-worktree-okie-2026-07-14-v1\",",
+              "entityId": "component:okie-generated",
+              "id": "e9a4170f82a60b87e605b"
+            }
+          ],
+          "observedRelationKinds": [],
+          "coverage": {
+            "candidateExcerpts": 1,
+            "selectedExcerpts": 1,
+            "omittedExcerpts": 0,
+            "invalidExcerpts": 0,
+            "missingSourceCount": 0,
+            "missingSourceEntityIds": [],
+            "descendantCount": 0,
+            "limitations": [
+              "Captured excerpts only; absence is not proof of absent behavior.",
+              "Scanner excerpts may truncate bodies or individual lines.",
+              "No runtime execution coverage is established."
+            ]
+          },
+          "descendantProfiles": []
+        },
+        "judgmentInputHash": "dcf812f383014ddf93c340b865c0473a1463f956917b7e8cd2af41652611a1ac",
+        "roles": {
+          "dispatch": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.84,
+              "probabilities": {
+                "e9a4170f82a60b87e605b": 0.01,
+                "unknown": 0.09,
+                "no_match": 0.9
+              }
+            }
+          },
+          "persistence": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.88,
+              "probabilities": {
+                "e9a4170f82a60b87e605b": 0.02,
+                "unknown": 0.06,
+                "no_match": 0.92
+              }
+            }
+          },
+          "external": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.82,
+              "probabilities": {
+                "e9a4170f82a60b87e605b": 0.02,
+                "unknown": 0.09,
+                "no_match": 0.89
+              }
+            }
+          },
+          "validation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.66,
+              "probabilities": {
+                "e9a4170f82a60b87e605b": 0.02,
+                "unknown": 0.21,
+                "no_match": 0.77
+              }
+            }
+          },
+          "orchestration": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.69,
+              "probabilities": {
+                "e9a4170f82a60b87e605b": 0.02,
+                "unknown": 0.18,
+                "no_match": 0.8
+              }
+            }
+          },
+          "presentation": {
+            "status": "no-match",
+            "answer": {
+              "type": "choice",
+              "choice": "no_match",
+              "confidence": 0.72,
+              "probabilities": {
+                "e9a4170f82a60b87e605b": 0.03,
+                "unknown": 0.16,
+                "no_match": 0.81
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "missing",
+      "split": "held-out",
+      "expectedRoles": [],
+      "inferred": [],
+      "state": "insufficient-evidence",
+      "latencyMs": 2,
+      "requests": 0,
+      "coverage": {
+        "candidateExcerpts": 0,
+        "selectedExcerpts": 0,
+        "omittedExcerpts": 0,
+        "invalidExcerpts": 0,
+        "missingSourceCount": 1,
+        "missingSourceEntityIds": [
+          "component:missing"
+        ],
+        "descendantCount": 0,
+        "limitations": [
+          "Captured excerpts only; absence is not proof of absent behavior.",
+          "Scanner excerpts may truncate bodies or individual lines.",
+          "No runtime execution coverage is established."
+        ]
+      }
+    }
+  ],
+  "retrieval": [
+    {
+      "query": "Where are invalid evidence references rejected?",
+      "role": "validation",
+      "relevant": [
+        "okie-validation"
+      ],
+      "lexicalTop3": [
+        {
+          "id": "okie-validation",
+          "score": 2
+        },
+        {
+          "id": "tokio-send",
+          "score": 1
+        },
+        {
+          "id": "missing",
+          "score": 0
+        }
+      ],
+      "profileTop3": [
+        {
+          "id": "okie-runner",
+          "score": 1
+        },
+        {
+          "id": "zod-safe",
+          "score": 1
+        },
+        {
+          "id": "zod-wrapper",
+          "score": 0.49
+        }
+      ],
+      "lexicalRecallAt3": 1,
+      "profileRecallAt3": 0
+    },
+    {
+      "query": "Where does the durable state get saved to disk?",
+      "role": "persistence",
+      "relevant": [
+        "okie-store"
+      ],
+      "lexicalTop3": [
+        {
+          "id": "tokio-send",
+          "score": 2
+        },
+        {
+          "id": "okie-store",
+          "score": 1
+        },
+        {
+          "id": "okie-test",
+          "score": 1
+        }
+      ],
+      "profileTop3": [
+        {
+          "id": "okie-store",
+          "score": 1
+        },
+        {
+          "id": "okie-runner",
+          "score": 0.31
+        },
+        {
+          "id": "okie-generated",
+          "score": 0.02
+        }
+      ],
+      "lexicalRecallAt3": 1,
+      "profileRecallAt3": 1
+    },
+    {
+      "query": "Where are mesh quads converted into triangles?",
+      "role": "presentation",
+      "relevant": [
+        "okie-mesh"
+      ],
+      "lexicalTop3": [
+        {
+          "id": "okie-mesh",
+          "score": 1
+        },
+        {
+          "id": "tokio-send",
+          "score": 1
+        },
+        {
+          "id": "missing",
+          "score": 0
+        }
+      ],
+      "profileTop3": [
+        {
+          "id": "okie-mesh",
+          "score": 1
+        },
+        {
+          "id": "okie-generated",
+          "score": 0.03
+        },
+        {
+          "id": "missing",
+          "score": 0
+        }
+      ],
+      "lexicalRecallAt3": 1,
+      "profileRecallAt3": 1
+    },
+    {
+      "query": "Where is public repository validation coordinated with scanning?",
+      "role": "orchestration",
+      "relevant": [
+        "okie-runner"
+      ],
+      "lexicalTop3": [
+        {
+          "id": "okie-runner",
+          "score": 2
+        },
+        {
+          "id": "tokio-blocking",
+          "score": 1
+        },
+        {
+          "id": "tokio-send",
+          "score": 1
+        }
+      ],
+      "profileTop3": [
+        {
+          "id": "okie-runner",
+          "score": 0.98
+        },
+        {
+          "id": "okie-store",
+          "score": 0.88
+        },
+        {
+          "id": "zod-safe",
+          "score": 0.71
+        }
+      ],
+      "lexicalRecallAt3": 1,
+      "profileRecallAt3": 1
+    }
+  ],
+  "metrics": {
+    "development": {
+      "truePositiveRoles": 5,
+      "inferredRoles": 7,
+      "expectedRoles": 6,
+      "precision": 0.7142857142857143,
+      "recall": 0.8333333333333334,
+      "exactRoleSets": 1,
+      "sections": 4
+    },
+    "held-out": {
+      "truePositiveRoles": 1,
+      "inferredRoles": 4,
+      "expectedRoles": 2,
+      "precision": 0.25,
+      "recall": 0.5,
+      "exactRoleSets": 3,
+      "sections": 7
+    }
+  }
+}

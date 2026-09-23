@@ -1,0 +1,227 @@
+{
+  "kind": "live",
+  "model": "jev-1.13.0",
+  "capRequests": 100,
+  "admissionBudgetUsd": 1,
+  "estimatedReservationPerRequestUsd": 0.003,
+  "measuredCostUsd": null,
+  "rows": [
+    {
+      "id": "okie-reject",
+      "split": "development",
+      "expected": "supports",
+      "state": "accepted",
+      "latencyMs": 228,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 731,
+        "outputTokens": 40
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "supports",
+        "confidence": 1,
+        "probabilities": {
+          "contradicts": 0,
+          "supports": 1,
+          "unknown": 0
+        }
+      },
+      "predicted": "supports"
+    },
+    {
+      "id": "okie-missing",
+      "predicted": "unknown",
+      "expected": "unknown",
+      "requests": 0,
+      "reason": "missing"
+    },
+    {
+      "id": "zod-name",
+      "split": "development",
+      "expected": "contradicts",
+      "state": "accepted",
+      "latencyMs": 101,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 738,
+        "outputTokens": 42
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "contradicts",
+        "confidence": 0.69,
+        "probabilities": {
+          "supports": 0.17,
+          "unknown": 0.04,
+          "contradicts": 0.79
+        }
+      },
+      "predicted": "contradicts"
+    },
+    {
+      "id": "zod-wrapper",
+      "split": "development",
+      "expected": "unknown",
+      "state": "accepted",
+      "latencyMs": 120,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 659,
+        "outputTokens": 40
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "unknown",
+        "confidence": 0.46,
+        "probabilities": {
+          "contradicts": 0.01,
+          "unknown": 0.64,
+          "supports": 0.35
+        }
+      },
+      "predicted": "unknown"
+    },
+    {
+      "id": "tokio-delivery",
+      "split": "development",
+      "expected": "contradicts",
+      "state": "accepted",
+      "latencyMs": 165,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 671,
+        "outputTokens": 42
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "contradicts",
+        "confidence": 1,
+        "probabilities": {
+          "unknown": 0,
+          "supports": 0,
+          "contradicts": 1
+        }
+      },
+      "predicted": "contradicts"
+    },
+    {
+      "id": "tokio-failure",
+      "split": "development",
+      "expected": "supports",
+      "state": "accepted",
+      "latencyMs": 164,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 672,
+        "outputTokens": 40
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "supports",
+        "confidence": 1,
+        "probabilities": {
+          "unknown": 0,
+          "contradicts": 0,
+          "supports": 1
+        }
+      },
+      "predicted": "supports"
+    },
+    {
+      "id": "okie-empty",
+      "split": "held-out",
+      "expected": "supports",
+      "state": "accepted",
+      "latencyMs": 105,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 734,
+        "outputTokens": 40
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "supports",
+        "confidence": 1,
+        "probabilities": {
+          "contradicts": 0,
+          "supports": 1,
+          "unknown": 0
+        }
+      },
+      "predicted": "supports"
+    },
+    {
+      "id": "okie-stale",
+      "predicted": "unknown",
+      "expected": "unknown",
+      "requests": 0,
+      "reason": "stale"
+    },
+    {
+      "id": "zod-promise",
+      "split": "held-out",
+      "expected": "supports",
+      "state": "accepted",
+      "latencyMs": 158,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 743,
+        "outputTokens": 40
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "supports",
+        "confidence": 0.98,
+        "probabilities": {
+          "supports": 0.99,
+          "unknown": 0,
+          "contradicts": 0.01
+        }
+      },
+      "predicted": "supports"
+    },
+    {
+      "id": "zod-conflict",
+      "state": "excluded-synthetic-conflict"
+    },
+    {
+      "id": "tokio-context",
+      "split": "held-out",
+      "expected": "contradicts",
+      "state": "accepted",
+      "latencyMs": 116,
+      "requests": 1,
+      "usage": {
+        "inputTokens": 600,
+        "outputTokens": 42
+      },
+      "model": "jev-1.13.0",
+      "answer": {
+        "type": "choice",
+        "choice": "contradicts",
+        "confidence": 1,
+        "probabilities": {
+          "contradicts": 1,
+          "unknown": 0,
+          "supports": 0
+        }
+      },
+      "predicted": "contradicts"
+    },
+    {
+      "id": "tokio-missing",
+      "predicted": "unknown",
+      "expected": "unknown",
+      "requests": 0,
+      "reason": "missing"
+    }
+  ]
+}
