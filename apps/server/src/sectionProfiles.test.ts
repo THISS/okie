@@ -8,6 +8,7 @@ import { buildSectionState, readSectionProfile, runSectionProfile } from "./sect
 import { JEV_MODEL, type JudgmentProvider } from "./operatorJudgments.js";
 import { OperatorStore } from "./operatorStore.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
+import { createOperatorRunner } from "./operatorRunner.js";
 
 const commit = "a".repeat(40);
 function snapshot() {
@@ -124,4 +125,122 @@ test("omitted evidence changes invalidate state; deterministic sampling reaches 
   const after = buildSectionState(value, "container:parent", commit);
   assert.notEqual(after.scopeDigest, before.scopeDigest);
   assert.deepEqual(after.evidence, before.evidence);
+});
+
+function replaceArtifact(ctx: ReturnType<typeof setup>, files: Record<string, string>) {
+  const artifact = ctx.store.writeArtifactRevision({ repositoryId: ctx.pin.repositoryId, sourceCommitSha: commit, files });
+  return ctx.publication.createDraftRevision({ runId: ctx.runId, artifactRevisionId: artifact.artifactRevisionId }).draftRevisionId;
+}
+
+test("corrupt sidecars/snapshots and missing snapshot return typed failures on read and run", async t => {
+  const version = "section-capabilities/v2";
+  const cases: Array<{ files: Record<string, string>; state: "corrupt" | "unavailable"; file: string }> = [
+    ...["{", JSON.stringify({ schemaVersion: version, profiles: {} }), JSON.stringify({ schemaVersion: version, profiles: [null] }), JSON.stringify({ schemaVersion: version, profiles: [{ scopeId: "component:a" }] })].map(sidecar => ({ files: { "snapshot.json": JSON.stringify(snapshot()), "section-profiles.json": sidecar }, state: "corrupt" as const, file: "section-profiles.json" })),
+    { files: { "section-profiles.json": JSON.stringify({ schemaVersion: version, profiles: [] }) }, state: "unavailable", file: "snapshot.json" },
+    ...["{", "null", JSON.stringify({ entities: {}, relations: [] }), JSON.stringify({ entities: [null], relations: [] })].map(value => ({ files: { "snapshot.json": value }, state: "corrupt" as const, file: "snapshot.json" })),
+  ];
+  for (const row of cases) {
+    const ctx = setup(t);
+    const draftRevisionId = replaceArtifact(ctx, row.files);
+    const expected = { state: row.state, file: row.file };
+    assert.deepEqual(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId }, "component:a"), expected);
+    assert.deepEqual(await runSectionProfile({ ...ctx, draftRevisionId, scopeId: "component:a" }), expected);
+    assert.equal(ctx.calls(), 0);
+    assert.equal(ctx.store.snapshot().attempts.length, 0);
+    assert.throws(() => readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: "unknown" }, "component:a"), /unknown profile pin/);
+  }
+  const io = setup(t);
+  io.store.readArtifactFile = () => { throw new Error("simulated unavailable filesystem"); };
+  assert.deepEqual(readSectionProfile(io.store, { ...io.pin, draftRevisionId: io.draftRevisionId }, "component:a"), { state: "unavailable", file: "snapshot.json" });
+  assert.deepEqual(await runSectionProfile({ ...io, scopeId: "component:a" }), { state: "unavailable", file: "snapshot.json" });
+});
+
+test("hub sizing returns an explicit coverage limit before the foundation/provider", async t => {
+  const ctx = setup(t);
+  const hub = snapshot();
+  hub.relations = Array.from({ length: 80 }, (_, index) => ({ ...hub.relations[0]!, id: `rel:${index}`, description: "captured relation evidence ".repeat(40) }));
+  const draftRevisionId = replaceArtifact(ctx, { "snapshot.json": JSON.stringify(hub) });
+  const outcome = await runSectionProfile({ ...ctx, draftRevisionId, scopeId: "component:a" });
+  assert.equal(outcome.state, "oversized"); if (outcome.state !== "oversized") return;
+  assert.ok(outcome.requestBytes > outcome.maxRequestBytes);
+  assert.equal(outcome.maxRequestBytes, 24000);
+  assert.match(outcome.observed.coverage.limitations.at(-1)!, /no provider request/);
+  assert.equal(ctx.calls(), 0);
+  assert.equal(ctx.store.snapshot().attempts.length, 0);
+  assert.equal(ctx.store.snapshot().runs[0]!.draftRevisionId, draftRevisionId);
+});
+
+test("runner seam forwards provider, budget and cancellation; pinned nondefault model reads/reuses", async t => {
+  const ctx = setup(t);
+  const input = { runId: ctx.runId, draftRevisionId: ctx.draftRevisionId, scopeId: "component:a" };
+  assert.equal((await createOperatorRunner({ ...ctx, judgmentProvider: null }).profile(input)).state, "unavailable");
+  assert.equal((await createOperatorRunner({ ...ctx, judgmentProvider: ctx.provider, judgmentLimits: { maxRequests: 0 } }).profile(input)).state, "limit");
+  const controller = new AbortController(); controller.abort();
+  assert.equal((await createOperatorRunner({ ...ctx, judgmentProvider: ctx.provider }).profile(input, controller.signal)).state, "cancelled");
+  assert.equal(ctx.calls(), 0);
+  const otherModel: JudgmentProvider = { modelId: "jev-9.9.9", async evaluate(request, signal) {
+    const reply = await ctx.provider.evaluate(request, signal);
+    return { ...reply, json: { ...(reply.json as object), model: "jev-9.9.9" } };
+  } };
+  const outcome = await createOperatorRunner({ ...ctx, judgmentProvider: otherModel }).profile(input);
+  assert.equal(outcome.state, "accepted"); if (outcome.state !== "accepted") return;
+  assert.equal(outcome.profile.modelId, "jev-9.9.9");
+  assert.equal(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: outcome.draftRevisionId }, input.scopeId).state, "ready");
+  const replay = await createOperatorRunner({ ...ctx, judgmentProvider: null }).profile({ ...input, draftRevisionId: outcome.draftRevisionId });
+  assert.equal(replay.state, "accepted");
+  assert.ok("replayed" in replay && replay.replayed);
+  assert.equal(ctx.calls(), 1);
+});
+
+test("interrupted sidecar promotion replays its judgment and excludes opaque descendant identities", async t => {
+  const ctx = setup(t);
+  const first = await runSectionProfile({ ...ctx, scopeId: "component:a" });
+  assert.equal(first.state, "accepted"); if (first.state !== "accepted") return;
+  // The preceding immutable draft has the judgment but not the derived profile.
+  const judgmentDraft = ctx.store.snapshot().drafts.at(-2)!;
+  const artifact = ctx.store.snapshot().artifacts.find(row => row.artifactRevisionId === judgmentDraft.artifactRevisionId)!;
+  const files = Object.fromEntries(artifact.files.map(file => [file, ctx.store.readArtifactFile(artifact.artifactRevisionId, file)!.toString()]));
+  const draftRevisionId = replaceArtifact(ctx, files);
+  const restored = await runSectionProfile({ ...ctx, draftRevisionId, scopeId: "component:a" });
+  assert.equal(restored.state, "accepted");
+  assert.ok("replayed" in restored && restored.replayed);
+  assert.equal(ctx.calls(), 1);
+  if (restored.state !== "accepted") return;
+  let sawState = false;
+  const inspecting: JudgmentProvider = { modelId: JEV_MODEL, async evaluate(request, signal) {
+    const state = request.state as { inputs: { section: Record<string, unknown> } };
+    assert.ok(!Object.hasOwn(state.inputs.section, "scopeDigest"));
+    assert.ok(!Object.hasOwn(state.inputs.section, "descendantProfiles"));
+    sawState = true;
+    return ctx.provider.evaluate(request, signal);
+  } };
+  const parent = await runSectionProfile({ ...ctx, provider: inspecting, draftRevisionId: restored.draftRevisionId, scopeId: "container:parent" });
+  assert.equal(parent.state, "accepted"); assert.ok(sawState);
+  if (parent.state === "accepted") assert.equal(parent.profile.observed.descendantProfiles.length, 1);
+});
+
+test("concurrent draft callers conflict without lost writes; serial retry preserves winner", async t => {
+  const ctx = setup(t);
+  const releases: Array<() => void> = [];
+  let entered!: () => void;
+  const bothEntered = new Promise<void>(resolve => { entered = resolve; });
+  const gated: JudgmentProvider = { modelId: JEV_MODEL, async evaluate(request, signal) {
+    await new Promise<void>(resolve => { releases.push(resolve); if (releases.length === 2) entered(); });
+    return ctx.provider.evaluate(request, signal);
+  } };
+  const limits = { maxRequests: 6, maxTokens: 600000, maxDollars: 0.03 };
+  const first = runSectionProfile({ ...ctx, provider: gated, limits, scopeId: "component:a" });
+  const second = runSectionProfile({ ...ctx, provider: gated, limits, scopeId: "container:parent" });
+  await bothEntered;
+  releases[0]!();
+  const winner = await first;
+  assert.equal(winner.state, "accepted"); if (winner.state !== "accepted") { releases[1]!(); await second; return; }
+  releases[1]!();
+  assert.equal((await second).state, "conflict");
+  const pinnedWinner = readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: winner.draftRevisionId }, "component:a");
+  const retry = await runSectionProfile({ ...ctx, limits, draftRevisionId: winner.draftRevisionId, scopeId: "container:parent" });
+  assert.equal(retry.state, "accepted"); if (retry.state !== "accepted") return;
+  assert.deepEqual(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: retry.draftRevisionId }, "component:a"), pinnedWinner);
+  assert.equal(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: retry.draftRevisionId }, "container:parent").state, "ready");
+  assert.equal(ctx.calls(), 3, "losing concurrent work is not secretly replayed or scheduled");
 });

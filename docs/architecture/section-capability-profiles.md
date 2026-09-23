@@ -1,7 +1,8 @@
 # Section capability profiles — CLA-146
 
-Status: implementation and live evaluation for review; **not independently reviewed,
-integrated, published, or Done**. No Start here / Ask UI or authorization changes.
+Status: independent Fable review completed; fixes awaiting recheck. **Experimental,
+unexposed, not integrated, published, or Done**. No Start here / Ask UI or
+authorization changes. Semantic usefulness is not established.
 
 ## Contract
 
@@ -12,7 +13,10 @@ calls. Missing source/commit returns `insufficient-evidence` without inference.
 
 `readSectionProfile(store, {repositoryId, draftRevisionId | publicationVersionId},
 scopeId)` reads an immutable pin, never a mutable current publication. Results are
-`missing`, `stale`, or `ready`. Authorization must happen before this server API;
+`missing`, `stale`, `ready`, or explicit `corrupt` / `unavailable` artifact failures.
+Only an absent optional profile is clean `missing`; a missing snapshot is not.
+Unknown/cross-repository pins deliberately throw. Readiness uses the profile's
+validated pinned model, not the process's default model. Authorization must happen before this server API;
 a profile never grants access or establishes question-specific answerability.
 Old/portable atlases without sidecars need no provider and remain unchanged.
 
@@ -22,6 +26,12 @@ followed by a compare-and-swap profile draft; an interruption between them leave
 an accepted reusable judgment, not a fabricated completed profile. Retry reuses it.
 Frozen publications retain their bytes. Explanation coverage is preserved.
 
+**Serial-per-draft caller contract:** await a result before profiling the next
+section and use its returned draft revision. There is no scheduler. Concurrent
+callers can spend a request and lose the draft compare-and-swap; they receive
+`conflict` and must explicitly retry against the new draft. Winners and previously
+accepted siblings are never overwritten. This is not a parallel scan API.
+
 The versioned state contains identity/parent, captured commit-pinned source ranges,
 observed relation kinds, candidate/selected/omitted/invalid/missing counts and
 explicit limitations. Each range must match its entity's source ref and commit;
@@ -29,11 +39,14 @@ its line count and text must agree. No files are fetched by inference. At most s
 source windows, 3,200 bytes each and 9,000 combined, enter the role candidate set.
 Leading type declarations are deprioritized; remaining windows are sampled across
 the scope rather than taking only its header. This is a bounded heuristic, **not
-a guarantee of behavioral coverage**. The inherited 24KB request limit still
-applies; oversized surrounding evidence fails closed.
+a guarantee of behavioral coverage**. Preflight conservatively sizes the full
+foundation request, including inherited entity/relation/explanation inputs.
+An oversized hub returns `oversized` with byte counts and a coverage limitation
+before a provider call. The inherited 24KB cap remains unchanged and enforced;
+there is no batch-name bypass. Preflight does not make large hubs supported.
 
-Descendant profile identities are explicitly attributed inference, not source
-proof. Full scope/descendant input digests invalidate affected ancestors even when
+Descendant profile identities are cache metadata, not semantic evidence; they and
+the opaque scope digest are omitted from model inputs. Full scope/descendant input digests invalidate affected ancestors even when
 changed evidence was omitted by the cap. Staleness is derived from immutable
 inputs at read time, not by mutating ancestor records. An unchanged retry reuses
 the existing profile without a provider. Accepted siblings are copied unchanged.
@@ -100,23 +113,36 @@ profiles explicitly do not imply runtime or full-language-analysis coverage.
 | Actual section | Candidate windows used | Inferred roles and selected evidence | Limitation / failure |
 |---|---:|---|---|
 | `operatorEnrichment.ts` | 6/25 | validation .96, orchestration .80; lines 157–168 | Validation is visible; orchestration overstates a truncated setup/containment-check window. |
-| `operatorRunner.ts` | 4/7 | dispatch .87, persistence .85; lines 53–64 | Both overclaims versus pre-run labels: a factory/delegation and method names do not prove request entry or durable writes. Visible validation only scored .62 and was withheld. |
+| `operatorRunner.ts` | 4/7 | dispatch .87, persistence .85; lines 53–64 | Evidence review finds overclaims: a factory/delegation and method names do not prove request entry or durable writes. Visible validation only scored .62 and was withheld. |
 | `operatorStore.ts` | 6/13 | persistence .84 at 61–72; validation 1.0 at line 12 | Filesystem directory creation and explicit identifier rejection are visible. Full durable state-writing body is not captured here. |
 | `mesh.rs` | 6/56 | presentation .86 and validation 1.0 at 816–827 | Geometry construction is visible. Guarding degenerate geometry was not labelled validation before inference; count the extra role as a disagreement, not silently relabel it. |
 
-Against those pre-run annotations, the four sections produced **4 correct of 8
-inferred roles (50% precision), recovering 4 of 5 labelled roles (80% recall)**.
+Independent Fable review supports **3/8 inferred roles strictly, or 5/8 with
+lenient interpretations** of store filesystem setup and mesh internal guards.
+The previous 4/8 assessment was the builder's retrospective interpretation.
+Actual-scan recall is **not independently auditable and is not claimed**: a
+contemporaneous commentary note existed, but was not an exhaustive committed
+label fixture. Its exact text and provenance are preserved in
+[`actual-scan-annotation-record.md`](../../fixtures/judgments/cla146/actual-scan-annotation-record.md).
 All eight selected references were supplied, range-valid candidates: citation
 validity does **not** imply role correctness. Only **22/101 available windows**
 were selected. This is selection coverage, not useful-evidence recall. These
 failures are precisely why downstream Ask must examine actual query evidence.
 
-**Recommendation:** keep this enrichment optional and provisional. Do not enable
-model-only routing or present profiles as verified architecture. Before wider
-use, independently adjudicate labels, test a fresh held-out repository/task set,
-and evaluate bounded deeper capture against the lexical/graph baseline. The
-current result is useful reusable signals with visible uncertainty, not a proven
-accuracy improvement.
+**Recommendation:** keep model inference experimental and unexposed. Deterministic
+canonical state/coverage is useful infrastructure; semantic role usefulness is
+unproven. All actual-scan windows were at most 12 lines. Bounded deeper inspection
+was **not implemented**, and the windows are structurally inadequate for many
+function/class responsibilities. No more live tuning was done in the review-fix pass.
+
+Follow-on gates, **not completed by this task**:
+
+1. Meaningful bounded function/class-body evidence capture with honest truncation.
+2. Supported hub coverage/cost, not merely explicit rejection at the 24KB cap.
+3. A fresh, independently labelled holdout committed before inference, with clear
+   section-role definitions and genuine multi-window candidates.
+4. Demonstrated benefit over lexical/graph routing before CLA-147/148 consumers
+   rely on these roles. A confidence threshold cannot substitute for this evidence.
 
 ## Reproduce
 
@@ -134,4 +160,26 @@ These commands are opt-in and not ordinary tests. The source pins must exist in
 the checkout for `git show` / committed-tree scanning. CI uses fake providers and
 synthetic replay only. `sectionProfiles.test.ts` covers pin isolation, immutable
 publication reads, ancestor staleness, replay, bounds, missing/stale/malformed
-evidence, unavailable providers, invalid selections, and cancellation.
+evidence, corrupt/non-array artifacts, unavailable providers/snapshots, hub limits,
+runner forwarding, model identity, interrupted promotion, concurrent conflicts
+without lost writes, invalid selections, and cancellation.
+
+## Review-fix verification
+
+- `GOMAXPROCS=1 NODE_OPTIONS=--max-old-space-size=1024 npm_config_workspace_concurrency=1 pnpm check`: passed.
+- Server suite with `node --test --test-concurrency=1 apps/server/dist/*.test.js`:
+  222 passed, including 10 profile tests and the runner/CAS/corruption regressions.
+- Unchanged package suites: architecture 125, scene compiler 125, web 1,045
+  passed; serial scan suite 212 passed / one existing skip. Disposable fixture
+  commits required command-local `GIT_CONFIG_COUNT=1`,
+  `GIT_CONFIG_KEY_0=commit.gpgsign`, `GIT_CONFIG_VALUE_0=false` in this orb.
+- `CARGO_BUILD_JOBS=1 cargo test --workspace`: 81 passed.
+- Root `pnpm build` stalled at Vite chunk rendering in the 2GB orb and was
+  stopped after roughly 17 minutes without progress. It is **not a passing gate**.
+  The equivalent direct web build,
+  `GOMAXPROCS=1 NODE_OPTIONS=--max-old-space-size=1024 node node_modules/vite/bin/vite.js build`
+  from `apps/web`, passed in 22.53 seconds. No build flags or tests were weakened.
+
+The first root test attempt failed on fixture signing and parallel Rust-analyzer
+resource pressure; serial reruns above passed. These environment limitations are
+separate from the unresolved semantic-quality follow-on gates.
