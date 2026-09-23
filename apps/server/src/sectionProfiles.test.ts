@@ -244,3 +244,98 @@ test("concurrent draft callers conflict without lost writes; serial retry preser
   assert.equal(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: retry.draftRevisionId }, "container:parent").state, "ready");
   assert.equal(ctx.calls(), 3, "losing concurrent work is not secretly replayed or scheduled");
 });
+
+test("missing, invalid and non-section scope IDs are caller errors on read and run", async t => {
+  const ctx = setup(t);
+  const value = snapshot();
+  value.entities.push({ ...value.entities[1]!, id: "code:c", kind: "code", parentId: "component:a" });
+  const draftRevisionId = replaceArtifact(ctx, { "snapshot.json": JSON.stringify(value) });
+  for (const scopeId of ["", "component:nonexistent", "rel:a", "code:c"]) {
+    const expected = { state: "invalid-scope", scopeId };
+    assert.deepEqual(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId }, scopeId), expected);
+    assert.deepEqual(await runSectionProfile({ ...ctx, draftRevisionId, scopeId }), expected);
+  }
+  assert.equal(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId }, "component:a").state, "missing");
+  assert.equal(ctx.calls(), 0);
+  assert.equal(ctx.store.snapshot().attempts.length, 0);
+});
+
+/** Inject only after the foundation accepted and settled, at profile lock entry. */
+function atProfilePromotion(ctx: ReturnType<typeof setup>, fault: () => void) {
+  const lock = ctx.store.withExclusiveLock.bind(ctx.store);
+  let injected = false;
+  ctx.store.withExclusiveLock = <T>(work: () => T): T => lock(() => {
+    const state = ctx.store.snapshot();
+    if (!injected && state.attempts.some(row => row.state === "accepted") && state.events.some(row => row.type === "budget.settled")) {
+      injected = true;
+      fault();
+    }
+    return work();
+  });
+  return () => assert.ok(injected, "fault must exercise stage two, not provider acceptance");
+}
+
+test("stage-two signal and run cancellation return cancelled and preserve accepted judgment", async t => {
+  for (const kind of ["signal", "run"]) {
+    const ctx = setup(t);
+    const controller = new AbortController();
+    const assertInjected = atProfilePromotion(ctx, () => {
+      if (kind === "signal") controller.abort();
+      else ctx.store.updateRun(ctx.runId, { state: "cancelled" });
+    });
+    assert.deepEqual(await runSectionProfile({ ...ctx, scopeId: "component:a", signal: controller.signal }), { state: "cancelled" });
+    assertInjected();
+    const state = ctx.store.snapshot();
+    assert.equal(ctx.calls(), 1);
+    assert.equal(state.attempts[0]!.state, "accepted");
+    assert.equal(state.drafts.length, 2, "only the initial and judgment drafts exist");
+    assert.ok(state.artifacts.at(-1)!.files.includes("operator-judgments.json"));
+    assert.ok(!state.artifacts.at(-1)!.files.includes("section-profiles.json"));
+  }
+});
+
+test("stage-two missing listed bytes or draft and malformed draft are typed failures", async t => {
+  for (const kind of ["missing-file", "unreadable-file", "missing-draft", "corrupt-draft"]) {
+    const ctx = setup(t);
+    const snapshotOfStore = ctx.store.snapshot.bind(ctx.store);
+    const read = ctx.store.readArtifactFile.bind(ctx.store);
+    const assertInjected = atProfilePromotion(ctx, () => {
+      if (kind === "missing-file") {
+        const artifact = snapshotOfStore().artifacts.at(-1)!;
+        assert.ok(artifact.files.includes("atlas.okie.json"));
+        rmSync(join(ctx.store.root, "artifacts", artifact.artifactRevisionId, "atlas.okie.json"));
+      } else if (kind === "unreadable-file") {
+        ctx.store.readArtifactFile = (id, file) => { if (file === "atlas.okie.json") throw new Error("simulated read failure"); return read(id, file); };
+      } else {
+        ctx.store.snapshot = () => {
+          const state = snapshotOfStore();
+          const currentId = state.runs[0]!.draftRevisionId;
+          if (kind === "missing-draft") return { ...state, drafts: state.drafts.filter(row => row.draftRevisionId !== currentId) };
+          state.drafts.find(row => row.draftRevisionId === currentId)!.runId = "wrong-run";
+          return state;
+        };
+      }
+    });
+    const result = await runSectionProfile({ ...ctx, scopeId: "component:a" });
+    assertInjected();
+    assert.deepEqual(result, { state: kind === "corrupt-draft" ? "corrupt" : "unavailable", file: kind.endsWith("file") ? "atlas.okie.json" : "draft" });
+    const state = snapshotOfStore();
+    assert.equal(ctx.calls(), 1);
+    assert.equal(state.attempts[0]!.state, "accepted");
+    assert.equal(state.drafts.length, 2);
+    assert.equal(state.artifacts.length, 2, "no incomplete profile artifact is written");
+    assert.equal(read(ctx.artifact.artifactRevisionId, "atlas.okie.json")!.toString(), "original", "prior pin remains unchanged");
+  }
+});
+
+test("malformed sibling fails the whole sidecar closed without changing its prior pin", async t => {
+  const ctx = setup(t);
+  const accepted = await runSectionProfile({ ...ctx, scopeId: "component:a" });
+  assert.equal(accepted.state, "accepted"); if (accepted.state !== "accepted") return;
+  const draftRevisionId = replaceArtifact(ctx, { "snapshot.json": JSON.stringify(snapshot()), "section-profiles.json": JSON.stringify({ schemaVersion: accepted.profile.schemaVersion, profiles: [accepted.profile, { scopeId: "component:b" }] }) });
+  const failure = { state: "corrupt", file: "section-profiles.json" };
+  assert.deepEqual(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId }, "component:a"), failure);
+  assert.deepEqual(await runSectionProfile({ ...ctx, draftRevisionId, scopeId: "component:a" }), failure);
+  assert.equal(ctx.calls(), 1, "no row salvage or speculative re-profiling");
+  assert.equal(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: accepted.draftRevisionId }, "component:a").state, "ready");
+});

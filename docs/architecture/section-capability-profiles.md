@@ -1,6 +1,7 @@
 # Section capability profiles — CLA-146
 
-Status: independent Fable review completed; fixes awaiting recheck. **Experimental,
+Status: independent Fable review and Grok recheck completed; final contract fixes
+awaiting Grok recheck. **Experimental,
 unexposed, not integrated, published, or Done**. No Start here / Ask UI or
 authorization changes. Semantic usefulness is not established.
 
@@ -13,8 +14,10 @@ calls. Missing source/commit returns `insufficient-evidence` without inference.
 
 `readSectionProfile(store, {repositoryId, draftRevisionId | publicationVersionId},
 scopeId)` reads an immutable pin, never a mutable current publication. Results are
-`missing`, `stale`, `ready`, or explicit `corrupt` / `unavailable` artifact failures.
+`missing`, `stale`, `ready`, `invalid-scope`, or explicit `corrupt` / `unavailable` artifact failures.
 Only an absent optional profile is clean `missing`; a missing snapshot is not.
+An absent/invalid/non-section scope on a valid snapshot is a caller error
+(`invalid-scope`), not snapshot corruption, on both read and run.
 Unknown/cross-repository pins deliberately throw. Readiness uses the profile's
 validated pinned model, not the process's default model. Authorization must happen before this server API;
 a profile never grants access or establishes question-specific answerability.
@@ -25,6 +28,16 @@ portable atlas bytes are preserved. A successful judgment produces a new draft,
 followed by a compare-and-swap profile draft; an interruption between them leaves
 an accepted reusable judgment, not a fabricated completed profile. Retry reuses it.
 Frozen publications retain their bytes. Explanation coverage is preserved.
+Cancellation at profile promotion returns `cancelled`, not `conflict`; the
+already accepted judgment may remain reusable. Missing manifest-listed bytes or
+draft records return typed `unavailable`, and an inconsistent draft returns
+`corrupt`, without writing an incomplete profile artifact.
+
+**Accepted experimental fail-closed policy:** one malformed sibling row makes the
+entire immutable profile sidecar `corrupt`, including reads/retries of otherwise
+valid scopes. There is no row salvage or automatic repair. Recovery requires an
+explicit new validated artifact/draft without the malformed data; original pins
+are retained, never rewritten. This policy is deliberately not expanded here.
 
 **Serial-per-draft caller contract:** await a result before profiling the next
 section and use its returned draft revision. There is no scheduler. Concurrent
@@ -168,7 +181,9 @@ without lost writes, invalid selections, and cancellation.
 
 - `GOMAXPROCS=1 NODE_OPTIONS=--max-old-space-size=1024 npm_config_workspace_concurrency=1 pnpm check`: passed.
 - Server suite with `node --test --test-concurrency=1 apps/server/dist/*.test.js`:
-  222 passed, including 10 profile tests and the runner/CAS/corruption regressions.
+  226 passed, including 14 profile tests and the runner/CAS/corruption regressions.
+  The final contract pass reran both commands and added read/run invalid-scope,
+  stage-two cancellation/fault interleavings, and malformed-sibling regressions.
 - Unchanged package suites: architecture 125, scene compiler 125, web 1,045
   passed; serial scan suite 212 passed / one existing skip. Disposable fixture
   commits required command-local `GIT_CONFIG_COUNT=1`,

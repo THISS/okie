@@ -43,7 +43,7 @@ export interface SectionProfile {
 }
 export type ProfilePin = { repositoryId: string } & ({ draftRevisionId: string } | { publicationVersionId: string });
 export type ProfileArtifactFailure = { state: "corrupt" | "unavailable"; file: string };
-export type SectionProfileRead = { state: "missing" } | { state: "stale" | "ready"; profile: SectionProfile } | ProfileArtifactFailure;
+export type SectionProfileRead = { state: "missing" } | { state: "invalid-scope"; scopeId: string } | { state: "stale" | "ready"; profile: SectionProfile } | ProfileArtifactFailure;
 function hash(value: unknown): string { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
 function artifactFor(store: OperatorStore, pin: ProfilePin) {
   const state = store.snapshot();
@@ -139,7 +139,10 @@ function stateAt(store: OperatorStore, artifactId: string, scopeId: string, comm
   if (document.state !== "ready") return document;
   try {
     if (!object(document.value) || !Array.isArray(document.value.entities) || !Array.isArray(document.value.relations)) throw new Error("invalid snapshot");
+    if (!document.value.entities.every(row => object(row) && typeof row.id === "string" && typeof row.kind === "string") || !document.value.relations.every(row => object(row) && typeof row.from === "string" && typeof row.to === "string" && typeof row.kind === "string")) throw new Error("invalid snapshot rows");
     const snapshot = document.value as unknown as ArchitectureSnapshot;
+    const scope = snapshot.entities.find(row => row.id === scopeId);
+    if (!scope || !["softwareSystem", "container", "component"].includes(scope.kind)) return { state: "invalid-scope" as const, scopeId };
     return { state: "ready" as const, snapshot, section: buildSectionState(snapshot, scopeId, commit, rows) };
   } catch { return { state: "corrupt" as const, file: "snapshot.json" }; }
 }
@@ -213,14 +216,25 @@ export async function runSectionProfile(options: { store: OperatorStore; publica
   })) as SectionProfile["roles"];
   const profile: SectionProfile = { schemaVersion: SECTION_PROFILE_VERSION, scopeId: options.scopeId, modelId: result.artifact.modelId, stateHash, observed: section, judgmentInputHash: result.artifact.inputHash, roles };
   return store.withExclusiveLock(() => {
-    const current = store.snapshot().runs.find(row => row.runId === run.runId);
-    if (current?.draftRevisionId !== result.draftRevisionId || store.isCancelled(run.runId) || options.signal?.aborted) return { state: "conflict" as const };
-    const nextArtifact = artifactFor(store, { repositoryId: run.source.repositoryId, draftRevisionId: result.draftRevisionId });
+    const state = store.snapshot();
+    const current = state.runs.find(row => row.runId === run.runId);
+    if (store.isCancelled(run.runId) || options.signal?.aborted) return { state: "cancelled" as const };
+    if (current?.draftRevisionId !== result.draftRevisionId) return { state: "conflict" as const };
+    const currentDraft = state.drafts.find(row => row.draftRevisionId === result.draftRevisionId);
+    if (!currentDraft) return { state: "unavailable" as const, file: "draft" };
+    if (currentDraft.runId !== run.runId || canonicalOperatorRepositoryId(currentDraft.repositoryId) !== canonicalOperatorRepositoryId(run.source.repositoryId)) return { state: "corrupt" as const, file: "draft" };
+    const nextArtifact = state.artifacts.find(row => row.artifactRevisionId === currentDraft.artifactRevisionId);
     if (!nextArtifact) return { state: "unavailable" as const, file: "artifact" };
-    const files = Object.fromEntries(nextArtifact.files.map(file => [file, store.readArtifactFile(nextArtifact.artifactRevisionId, file)!]));
+    const files: Record<string, Buffer> = {};
+    for (const file of nextArtifact.files) {
+      let bytes: Buffer | undefined;
+      try { bytes = store.readArtifactFile(nextArtifact.artifactRevisionId, file); }
+      catch { return { state: "unavailable" as const, file }; }
+      if (!bytes) return { state: "unavailable" as const, file };
+      files[file] = bytes;
+    }
     const next = store.writeArtifactRevision({ repositoryId: run.source.repositoryId, ...(artifact.sourceCommitSha ? { sourceCommitSha: artifact.sourceCommitSha } : {}), files: { ...files, [FILE]: JSON.stringify({ schemaVersion: SECTION_PROFILE_VERSION, profiles: [...rows.filter(row => row.scopeId !== options.scopeId), profile] }) } });
-    const coverage = store.snapshot().drafts.find(row => row.draftRevisionId === result.draftRevisionId)!.coverage;
-    const draft = publication.createDraftRevision({ runId: run.runId, artifactRevisionId: next.artifactRevisionId, coverage });
+    const draft = publication.createDraftRevision({ runId: run.runId, artifactRevisionId: next.artifactRevisionId, coverage: currentDraft.coverage });
     return { state: "accepted" as const, draftRevisionId: draft.draftRevisionId, profile, replayed: result.replayed };
   });
 }
