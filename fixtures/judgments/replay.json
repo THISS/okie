@@ -1,0 +1,10 @@
+{
+  "origin": "Hand-authored synthetic transport recordings, NOT live Jev outputs. Deliberately includes a confidently wrong wrapper answer and a provider failure.",
+  "model": "jev-1.13.0",
+  "responses": {
+    "support": { "model": "jev-1.13.0", "answers": { "relation": { "type": "choice", "choice": "supports", "probabilities": { "supports": 0.91, "contradicts": 0.02, "unknown": 0.07 }, "confidence": 0.86 } }, "usage": { "input_tokens": 211, "output_tokens": 32 } },
+    "contradiction": { "model": "jev-1.13.0", "answers": { "relation": { "type": "choice", "choice": "contradicts", "probabilities": { "supports": 0.04, "contradicts": 0.81, "unknown": 0.15 }, "confidence": 0.61 } }, "usage": { "input_tokens": 229, "output_tokens": 32 } },
+    "uncertain": { "model": "jev-1.13.0", "answers": { "relation": { "type": "choice", "choice": "unknown", "probabilities": { "supports": 0.28, "contradicts": 0.31, "unknown": 0.41 }, "confidence": 0.02 } }, "usage": { "input_tokens": 202, "output_tokens": 32 } },
+    "failure": { "error": "sanitized replay service failure", "usage": { "input_tokens": 13, "output_tokens": 0 } }
+  }
+}

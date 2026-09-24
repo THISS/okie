@@ -251,13 +251,13 @@ test("external emission is byte-identical across shuffled discovery order", () =
 // Real Okie scan: the obvious third parties surface with real import evidence and render at L1.
 // ---------------------------------------------------------------------------
 
-test("Okie scan L1 keeps the Anthropic SDK and drops UI/framework/utility packages", () => {
+test("Okie scan L1 keeps AI service SDKs and drops UI/framework/utility packages", () => {
   const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const { snapshot } = scanRepository(repoRoot, { systemName: "Okie", repositorySlug: "okie" });
   const ext = snapshot.entities.filter(entity => entity.kind === "externalSystem");
   const names = new Set(ext.map(entity => entity.name));
 
-  assert.deepEqual([...names].sort(), ["@anthropic-ai/sdk"], "Okie L1 externals are the Anthropic SDK only");
+  assert.deepEqual([...names].sort(), ["@anthropic-ai/sdk", "@typesafe-ai/sdk"], "Okie L1 externals are its AI service SDKs");
   for (const excluded of [
     "react", "react-dom", "mermaid", "typescript", "dompurify", "clsx",
     "@fontsource/ibm-plex-sans", "@fontsource/ibm-plex-mono",
@@ -271,6 +271,9 @@ test("Okie scan L1 keeps the Anthropic SDK and drops UI/framework/utility packag
   assert.ok(sdk.sourceRefs.some(ref => ref.path.startsWith("apps/server/")), "Anthropic SDK cites the server import");
   const sdkEdge = snapshot.relations.find(relation => relation.to === sdk.id && relation.from === "container:apps-server");
   assert.ok(sdkEdge, "Anthropic SDK is a dependency of the server container");
+  const jev = ext.find(entity => entity.name === "@typesafe-ai/sdk")!;
+  assert.ok(jev.sourceRefs.some(ref => ref.path === "apps/server/src/operatorJudgments.ts"), "TypeSafe cites its server-only boundary");
+  assert.ok(snapshot.relations.some(relation => relation.to === jev.id && relation.from === "container:apps-server"));
 
   const web = snapshot.entities.find(entity => entity.id === "container:apps-web");
   const scan = snapshot.entities.find(entity => entity.id === "container:packages-scan");
@@ -303,8 +306,7 @@ test("Okie externalSystems render in the L1 context band as system-context nodes
   const contextExternals = context.visualNodeIds
     .map(id => bundle.visualNodeById[id]!)
     .filter(node => node.kind === "externalSystem");
-  assert.equal(contextExternals.length, 1, "only service-boundary externals appear as L1 context nodes");
-  assert.equal(contextExternals[0]?.name, "@anthropic-ai/sdk");
+  assert.deepEqual(contextExternals.map(node => node.name).sort(), ["@anthropic-ai/sdk", "@typesafe-ai/sdk"], "only service-boundary externals appear as L1 context nodes");
   for (const banned of ["react", "dompurify", "mermaid", "typescript"]) {
     assert.equal(contextExternals.some(node => node.name === banned), false, `${banned} must not be an L1 visual node`);
   }
