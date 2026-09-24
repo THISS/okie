@@ -27,7 +27,7 @@ Reuse committed acquisition, TypeScript/Rust adapters, portable bundles, evidenc
 
 ## Hierarchical enrichment
 
-Runtime agents use the existing OpenRouter gateway and configurable model selection. The current code default is `z-ai/glm-5.3-flash`; preserve local/env overrides and record the resolved model per attempt. Coordinator and area-owner roles must not hard-code a vendor or model. Terra builders, Astra low QA and Astra medium reviewers describe the development team building this functionality, not the models used when a customer repository is scanned.
+Runtime agents use the existing OpenRouter gateway and configurable model selection. The current code default is `xiaomi/mimo-v2.6-pro`; preserve local/env overrides and record the resolved model per attempt. Coordinator and area-owner roles must not hard-code a vendor or model. Terra builders, Astra low QA and Astra medium reviewers describe the development team building this functionality, not the models used when a customer repository is scanned.
 
 The deterministic scan emits bounded evidence packets and structured explanation templates. A coordinator assigns ownership down the containment tree; area coordinators may delegate further within global depth, concurrency and spend limits. Batch small leaves where useful while recording per-node coverage. This must implement real task dependencies and ownership, not merely issue one flat prompt labelled as a coordinator.
 

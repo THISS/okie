@@ -18,7 +18,7 @@ publication or recovery record references it.
 
 Hosted scans require a verified GitHub session and a public repository. They use the
 configured OpenRouter-compatible gateway when credentials are available; the default
-runtime model remains `z-ai/glm-5.3-flash` unless local/environment configuration
+runtime model is `xiaomi/mimo-v2.6-pro` unless local/environment configuration
 overrides it. Analyzer/toolchain gaps must remain visible as reduced coverage. Do not
 run paid gateway calls in CI.
 
