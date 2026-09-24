@@ -322,7 +322,7 @@ test("describeEnrichmentMode never includes the key", () => {
   const line = describeEnrichmentMode("auto", keyed);
   assert.doesNotMatch(line, new RegExp(FAKE_GATEWAY_KEY));
   assert.match(line, /openrouter\.ai/);
-  assert.match(line, /model z-ai\/glm-5\.3-flash/);
+  assert.match(line, /model xiaomi\/mimo-v2\.6-pro/);
   assert.doesNotMatch(line, /\/api\/v1/);
   assert.doesNotMatch(line, /https:\/\//);
 });
