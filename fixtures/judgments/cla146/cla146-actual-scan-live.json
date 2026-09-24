@@ -1,0 +1,1752 @@
+{
+  "kind": "live-actual-scan",
+  "base": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+  "analysis": {
+    "mode": "quick",
+    "adapters": [
+      {
+        "language": "typescript/javascript",
+        "tool": "typescript",
+        "version": "syntax-v1",
+        "coverage": "syntax",
+        "limitations": [
+          "Quick scan: project-wide semantic resolution was not requested."
+        ]
+      },
+      {
+        "language": "rust",
+        "tool": "tree-sitter-rust",
+        "version": "syntax-v1",
+        "coverage": "syntax",
+        "limitations": [
+          "Quick scan: project-wide semantic resolution was not requested."
+        ]
+      }
+    ]
+  },
+  "capRequests": 4,
+  "estimatedAdmissionUsd": 0.012,
+  "measuredCostUsd": null,
+  "rows": [
+    {
+      "scopeId": "component:apps-server-src-operator-enrichment-ts",
+      "path": "apps/server/src/operatorEnrichment.ts",
+      "observed": {
+        "scopeId": "component:apps-server-src-operator-enrichment-ts",
+        "parentId": "container:apps-server",
+        "name": "src/operatorEnrichment.ts",
+        "kind": "component",
+        "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+        "scopeDigest": "9c7f59eb590528e6859d2424ae1ce496d56b4b0dbc67e4eafd07890ce873d128",
+        "evidence": [
+          {
+            "path": "apps/server/src/operatorEnrichment.ts",
+            "symbol": "DEFAULT_LIMITS",
+            "language": "typescript",
+            "startLine": 103,
+            "endLine": 103,
+            "highlightLine": 103,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "const DEFAULT_LIMITS: OperatorEnrichmentLimits = { maxDepth: 5, maxConcurrent: 2, maxScopes: 64, maxNodes: 256, maxTokens: 200_000, maxDollars: 1 };"
+            ],
+            "text": "const DEFAULT_LIMITS: OperatorEnrichmentLimits = { maxDepth: 5, maxConcurrent: 2, maxScopes: 64, maxNodes: 256, maxTokens: 200_000, maxDollars: 1 };",
+            "entityId": "code:apps-server-src-operator-enrichment-ts:default-limits",
+            "id": "e5029711e0fad3862cd57"
+          },
+          {
+            "path": "apps/server/src/operatorEnrichment.ts",
+            "symbol": "usageTotal",
+            "language": "typescript",
+            "startLine": 106,
+            "endLine": 106,
+            "highlightLine": 106,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function usageTotal(usage?: GatewayUsage): number { return usage?.totalTokens ?? 0; }"
+            ],
+            "text": "function usageTotal(usage?: GatewayUsage): number { return usage?.totalTokens ?? 0; }",
+            "entityId": "code:apps-server-src-operator-enrichment-ts:usage-total",
+            "id": "eaee6447a2972432a9f6f"
+          },
+          {
+            "path": "apps/server/src/operatorEnrichment.ts",
+            "symbol": "isEvidence",
+            "language": "typescript",
+            "startLine": 109,
+            "endLine": 112,
+            "highlightLine": 109,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function isEvidence(value: unknown): value is OperatorEvidenceRef {",
+              "  return isObject(value) && (typeof value.entityId === \"string\" || typeof value.path === \"string\")",
+              "    && (value.startLine === undefined || typeof value.startLine === \"number\") && (value.endLine === undefined || typeof value.endLine === \"number\");",
+              "}"
+            ],
+            "text": "function isEvidence(value: unknown): value is OperatorEvidenceRef {\n  return isObject(value) && (typeof value.entityId === \"string\" || typeof value.path === \"string\")\n    && (value.startLine === undefined || typeof value.startLine === \"number\") && (value.endLine === undefined || typeof value.endLine === \"number\");\n}",
+            "entityId": "code:apps-server-src-operator-enrichment-ts:is-evidence",
+            "id": "ecbe24844eababcffd6f8"
+          },
+          {
+            "path": "apps/server/src/operatorEnrichment.ts",
+            "symbol": "inputHash",
+            "language": "typescript",
+            "startLine": 115,
+            "endLine": 115,
+            "highlightLine": 115,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function inputHash(value: unknown): string { return createHash(\"sha256\").update(canonical(value)).digest(\"hex\"); }"
+            ],
+            "text": "function inputHash(value: unknown): string { return createHash(\"sha256\").update(canonical(value)).digest(\"hex\"); }",
+            "entityId": "code:apps-server-src-operator-enrichment-ts:input-hash",
+            "id": "e748c6d9eb272d9662ee2"
+          },
+          {
+            "path": "apps/server/src/operatorEnrichment.ts",
+            "symbol": "completionText",
+            "language": "typescript",
+            "startLine": 149,
+            "endLine": 149,
+            "highlightLine": 149,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function completionText(result: LlmChatCompletionResult): unknown { return parseChatCompletionDocument(result.json); }"
+            ],
+            "text": "function completionText(result: LlmChatCompletionResult): unknown { return parseChatCompletionDocument(result.json); }",
+            "entityId": "code:apps-server-src-operator-enrichment-ts:completion-text",
+            "id": "e8fcc8519ec09aa9f5617"
+          },
+          {
+            "path": "apps/server/src/operatorEnrichment.ts",
+            "symbol": "runOperatorEnrichment",
+            "language": "typescript",
+            "startLine": 157,
+            "endLine": 168,
+            "highlightLine": 157,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "export async function runOperatorEnrichment(options: OperatorEnrichmentRunOptions): Promise<OperatorEnrichmentRunResult> {",
+              "  const limits = { ...DEFAULT_LIMITS, ...options.limits };",
+              "  const now = options.now ?? Date.now;",
+              "  const modelId = options.gateway?.modelId ?? resolveLlmGatewayConfig().modelId;",
+              "  const byId = new Map(options.scopes.map(scope => [scope.scopeId, scope]));",
+              "  if (byId.size !== options.scopes.length) throw new Error(\"duplicate enrichment scope\");",
+              "  const children = new Map<string, string[]>();",
+              "  for (const scope of options.scopes) if (scope.parentScopeId) {",
+              "    if (!byId.has(scope.parentScopeId) || scope.parentScopeId === scope.scopeId) throw new Error(\"invalid enrichment containment\");",
+              "    const list = children.get(scope.parentScopeId) ?? []; list.push(scope.scopeId); children.set(scope.parentScopeId, list);",
+              "  }",
+              "  for (const list of children.values()) list.sort();"
+            ],
+            "text": "export async function runOperatorEnrichment(options: OperatorEnrichmentRunOptions): Promise<OperatorEnrichmentRunResult> {\n  const limits = { ...DEFAULT_LIMITS, ...options.limits };\n  const now = options.now ?? Date.now;\n  const modelId = options.gateway?.modelId ?? resolveLlmGatewayConfig().modelId;\n  const byId = new Map(options.scopes.map(scope => [scope.scopeId, scope]));\n  if (byId.size !== options.scopes.length) throw new Error(\"duplicate enrichment scope\");\n  const children = new Map<string, string[]>();\n  for (const scope of options.scopes) if (scope.parentScopeId) {\n    if (!byId.has(scope.parentScopeId) || scope.parentScopeId === scope.scopeId) throw new Error(\"invalid enrichment containment\");\n    const list = children.get(scope.parentScopeId) ?? []; list.push(scope.scopeId); children.set(scope.parentScopeId, list);\n  }\n  for (const list of children.values()) list.sort();",
+            "entityId": "code:apps-server-src-operator-enrichment-ts:run-operator-enrichment",
+            "id": "e18c7fc90b5c3ca11dcc4"
+          }
+        ],
+        "observedRelationKinds": [
+          "calls",
+          "dependsOn",
+          "duplicates",
+          "uses"
+        ],
+        "coverage": {
+          "candidateExcerpts": 25,
+          "selectedExcerpts": 6,
+          "omittedExcerpts": 19,
+          "invalidExcerpts": 0,
+          "missingSourceCount": 1,
+          "missingSourceEntityIds": [
+            "component:apps-server-src-operator-enrichment-ts"
+          ],
+          "descendantCount": 25,
+          "limitations": [
+            "Captured excerpts only; absence is not proof of absent behavior.",
+            "Scanner excerpts may truncate bodies or individual lines.",
+            "No runtime execution coverage is established.",
+            "Candidate cap or excerpt byte limit omitted evidence."
+          ]
+        },
+        "descendantProfiles": []
+      },
+      "outcome": {
+        "state": "accepted",
+        "draftRevisionId": "draft-82f8f786-07ea-4cf4-ace0-5d224bd22c24",
+        "profile": {
+          "schemaVersion": "section-capabilities/v2",
+          "scopeId": "component:apps-server-src-operator-enrichment-ts",
+          "modelId": "jev-1.13.0",
+          "stateHash": "1db4014174a2429ce6673d4100f4a78fea807fde01396df7eb085c79533ff5bd",
+          "observed": {
+            "scopeId": "component:apps-server-src-operator-enrichment-ts",
+            "parentId": "container:apps-server",
+            "name": "src/operatorEnrichment.ts",
+            "kind": "component",
+            "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "scopeDigest": "9c7f59eb590528e6859d2424ae1ce496d56b4b0dbc67e4eafd07890ce873d128",
+            "evidence": [
+              {
+                "path": "apps/server/src/operatorEnrichment.ts",
+                "symbol": "DEFAULT_LIMITS",
+                "language": "typescript",
+                "startLine": 103,
+                "endLine": 103,
+                "highlightLine": 103,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "const DEFAULT_LIMITS: OperatorEnrichmentLimits = { maxDepth: 5, maxConcurrent: 2, maxScopes: 64, maxNodes: 256, maxTokens: 200_000, maxDollars: 1 };"
+                ],
+                "text": "const DEFAULT_LIMITS: OperatorEnrichmentLimits = { maxDepth: 5, maxConcurrent: 2, maxScopes: 64, maxNodes: 256, maxTokens: 200_000, maxDollars: 1 };",
+                "entityId": "code:apps-server-src-operator-enrichment-ts:default-limits",
+                "id": "e5029711e0fad3862cd57"
+              },
+              {
+                "path": "apps/server/src/operatorEnrichment.ts",
+                "symbol": "usageTotal",
+                "language": "typescript",
+                "startLine": 106,
+                "endLine": 106,
+                "highlightLine": 106,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function usageTotal(usage?: GatewayUsage): number { return usage?.totalTokens ?? 0; }"
+                ],
+                "text": "function usageTotal(usage?: GatewayUsage): number { return usage?.totalTokens ?? 0; }",
+                "entityId": "code:apps-server-src-operator-enrichment-ts:usage-total",
+                "id": "eaee6447a2972432a9f6f"
+              },
+              {
+                "path": "apps/server/src/operatorEnrichment.ts",
+                "symbol": "isEvidence",
+                "language": "typescript",
+                "startLine": 109,
+                "endLine": 112,
+                "highlightLine": 109,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function isEvidence(value: unknown): value is OperatorEvidenceRef {",
+                  "  return isObject(value) && (typeof value.entityId === \"string\" || typeof value.path === \"string\")",
+                  "    && (value.startLine === undefined || typeof value.startLine === \"number\") && (value.endLine === undefined || typeof value.endLine === \"number\");",
+                  "}"
+                ],
+                "text": "function isEvidence(value: unknown): value is OperatorEvidenceRef {\n  return isObject(value) && (typeof value.entityId === \"string\" || typeof value.path === \"string\")\n    && (value.startLine === undefined || typeof value.startLine === \"number\") && (value.endLine === undefined || typeof value.endLine === \"number\");\n}",
+                "entityId": "code:apps-server-src-operator-enrichment-ts:is-evidence",
+                "id": "ecbe24844eababcffd6f8"
+              },
+              {
+                "path": "apps/server/src/operatorEnrichment.ts",
+                "symbol": "inputHash",
+                "language": "typescript",
+                "startLine": 115,
+                "endLine": 115,
+                "highlightLine": 115,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function inputHash(value: unknown): string { return createHash(\"sha256\").update(canonical(value)).digest(\"hex\"); }"
+                ],
+                "text": "function inputHash(value: unknown): string { return createHash(\"sha256\").update(canonical(value)).digest(\"hex\"); }",
+                "entityId": "code:apps-server-src-operator-enrichment-ts:input-hash",
+                "id": "e748c6d9eb272d9662ee2"
+              },
+              {
+                "path": "apps/server/src/operatorEnrichment.ts",
+                "symbol": "completionText",
+                "language": "typescript",
+                "startLine": 149,
+                "endLine": 149,
+                "highlightLine": 149,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function completionText(result: LlmChatCompletionResult): unknown { return parseChatCompletionDocument(result.json); }"
+                ],
+                "text": "function completionText(result: LlmChatCompletionResult): unknown { return parseChatCompletionDocument(result.json); }",
+                "entityId": "code:apps-server-src-operator-enrichment-ts:completion-text",
+                "id": "e8fcc8519ec09aa9f5617"
+              },
+              {
+                "path": "apps/server/src/operatorEnrichment.ts",
+                "symbol": "runOperatorEnrichment",
+                "language": "typescript",
+                "startLine": 157,
+                "endLine": 168,
+                "highlightLine": 157,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "export async function runOperatorEnrichment(options: OperatorEnrichmentRunOptions): Promise<OperatorEnrichmentRunResult> {",
+                  "  const limits = { ...DEFAULT_LIMITS, ...options.limits };",
+                  "  const now = options.now ?? Date.now;",
+                  "  const modelId = options.gateway?.modelId ?? resolveLlmGatewayConfig().modelId;",
+                  "  const byId = new Map(options.scopes.map(scope => [scope.scopeId, scope]));",
+                  "  if (byId.size !== options.scopes.length) throw new Error(\"duplicate enrichment scope\");",
+                  "  const children = new Map<string, string[]>();",
+                  "  for (const scope of options.scopes) if (scope.parentScopeId) {",
+                  "    if (!byId.has(scope.parentScopeId) || scope.parentScopeId === scope.scopeId) throw new Error(\"invalid enrichment containment\");",
+                  "    const list = children.get(scope.parentScopeId) ?? []; list.push(scope.scopeId); children.set(scope.parentScopeId, list);",
+                  "  }",
+                  "  for (const list of children.values()) list.sort();"
+                ],
+                "text": "export async function runOperatorEnrichment(options: OperatorEnrichmentRunOptions): Promise<OperatorEnrichmentRunResult> {\n  const limits = { ...DEFAULT_LIMITS, ...options.limits };\n  const now = options.now ?? Date.now;\n  const modelId = options.gateway?.modelId ?? resolveLlmGatewayConfig().modelId;\n  const byId = new Map(options.scopes.map(scope => [scope.scopeId, scope]));\n  if (byId.size !== options.scopes.length) throw new Error(\"duplicate enrichment scope\");\n  const children = new Map<string, string[]>();\n  for (const scope of options.scopes) if (scope.parentScopeId) {\n    if (!byId.has(scope.parentScopeId) || scope.parentScopeId === scope.scopeId) throw new Error(\"invalid enrichment containment\");\n    const list = children.get(scope.parentScopeId) ?? []; list.push(scope.scopeId); children.set(scope.parentScopeId, list);\n  }\n  for (const list of children.values()) list.sort();",
+                "entityId": "code:apps-server-src-operator-enrichment-ts:run-operator-enrichment",
+                "id": "e18c7fc90b5c3ca11dcc4"
+              }
+            ],
+            "observedRelationKinds": [
+              "calls",
+              "dependsOn",
+              "duplicates",
+              "uses"
+            ],
+            "coverage": {
+              "candidateExcerpts": 25,
+              "selectedExcerpts": 6,
+              "omittedExcerpts": 19,
+              "invalidExcerpts": 0,
+              "missingSourceCount": 1,
+              "missingSourceEntityIds": [
+                "component:apps-server-src-operator-enrichment-ts"
+              ],
+              "descendantCount": 25,
+              "limitations": [
+                "Captured excerpts only; absence is not proof of absent behavior.",
+                "Scanner excerpts may truncate bodies or individual lines.",
+                "No runtime execution coverage is established.",
+                "Candidate cap or excerpt byte limit omitted evidence."
+              ]
+            },
+            "descendantProfiles": []
+          },
+          "judgmentInputHash": "cf1839e9602cd8cf3015d634dd489ca56df4c3b53ed8be5c3e6f26de1edaf3c2",
+          "roles": {
+            "dispatch": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.74,
+                "probabilities": {
+                  "e8fcc8519ec09aa9f5617": 0,
+                  "e748c6d9eb272d9662ee2": 0,
+                  "ecbe24844eababcffd6f8": 0,
+                  "e5029711e0fad3862cd57": 0,
+                  "no_match": 0.78,
+                  "unknown": 0.06,
+                  "e18c7fc90b5c3ca11dcc4": 0.16,
+                  "eaee6447a2972432a9f6f": 0
+                }
+              }
+            },
+            "persistence": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.92,
+                "probabilities": {
+                  "e8fcc8519ec09aa9f5617": 0,
+                  "e748c6d9eb272d9662ee2": 0,
+                  "ecbe24844eababcffd6f8": 0,
+                  "e5029711e0fad3862cd57": 0,
+                  "no_match": 0.93,
+                  "unknown": 0.07,
+                  "e18c7fc90b5c3ca11dcc4": 0,
+                  "eaee6447a2972432a9f6f": 0
+                }
+              }
+            },
+            "external": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.61,
+                "probabilities": {
+                  "e8fcc8519ec09aa9f5617": 0.01,
+                  "e748c6d9eb272d9662ee2": 0,
+                  "e5029711e0fad3862cd57": 0,
+                  "ecbe24844eababcffd6f8": 0,
+                  "no_match": 0.66,
+                  "unknown": 0.22,
+                  "e18c7fc90b5c3ca11dcc4": 0.11,
+                  "eaee6447a2972432a9f6f": 0
+                }
+              }
+            },
+            "validation": {
+              "status": "inferred",
+              "evidenceId": "e18c7fc90b5c3ca11dcc4",
+              "answer": {
+                "type": "choice",
+                "choice": "e18c7fc90b5c3ca11dcc4",
+                "confidence": 0.95,
+                "probabilities": {
+                  "e8fcc8519ec09aa9f5617": 0,
+                  "e748c6d9eb272d9662ee2": 0,
+                  "ecbe24844eababcffd6f8": 0.04,
+                  "e5029711e0fad3862cd57": 0,
+                  "no_match": 0,
+                  "unknown": 0,
+                  "e18c7fc90b5c3ca11dcc4": 0.96,
+                  "eaee6447a2972432a9f6f": 0
+                }
+              }
+            },
+            "orchestration": {
+              "status": "inferred",
+              "evidenceId": "e18c7fc90b5c3ca11dcc4",
+              "answer": {
+                "type": "choice",
+                "choice": "e18c7fc90b5c3ca11dcc4",
+                "confidence": 0.77,
+                "probabilities": {
+                  "e8fcc8519ec09aa9f5617": 0,
+                  "e748c6d9eb272d9662ee2": 0,
+                  "e5029711e0fad3862cd57": 0,
+                  "ecbe24844eababcffd6f8": 0,
+                  "no_match": 0.14,
+                  "unknown": 0.06,
+                  "e18c7fc90b5c3ca11dcc4": 0.8,
+                  "eaee6447a2972432a9f6f": 0
+                }
+              }
+            },
+            "presentation": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.92,
+                "probabilities": {
+                  "e8fcc8519ec09aa9f5617": 0.03,
+                  "e748c6d9eb272d9662ee2": 0,
+                  "ecbe24844eababcffd6f8": 0,
+                  "e5029711e0fad3862cd57": 0,
+                  "no_match": 0.9400000000000001,
+                  "unknown": 0.03,
+                  "e18c7fc90b5c3ca11dcc4": 0,
+                  "eaee6447a2972432a9f6f": 0
+                }
+              }
+            }
+          }
+        },
+        "replayed": false
+      },
+      "latencyMs": 559
+    },
+    {
+      "scopeId": "component:apps-server-src-operator-runner-ts",
+      "path": "apps/server/src/operatorRunner.ts",
+      "observed": {
+        "scopeId": "component:apps-server-src-operator-runner-ts",
+        "parentId": "container:apps-server",
+        "name": "src/operatorRunner.ts",
+        "kind": "component",
+        "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+        "scopeDigest": "9e712912f2be5cf107b036c4173755be5ff5a48dd93181d1b753c63b5d160f4a",
+        "evidence": [
+          {
+            "path": "apps/server/src/operatorRunner.ts",
+            "symbol": "persistedUsage",
+            "language": "typescript",
+            "startLine": 17,
+            "endLine": 23,
+            "highlightLine": 17,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function persistedUsage(usage?: GatewayUsage) {",
+              "  return usage ? {",
+              "    inputTokens: usage.promptTokens ?? Math.max(0, usage.totalTokens - (usage.completionTokens ?? 0)),",
+              "    outputTokens: usage.completionTokens ?? 0,",
+              "    ...(usage.costUsd !== undefined ? { measuredCostUsd: usage.costUsd } : {}),",
+              "  } : undefined;",
+              "}"
+            ],
+            "text": "function persistedUsage(usage?: GatewayUsage) {\n  return usage ? {\n    inputTokens: usage.promptTokens ?? Math.max(0, usage.totalTokens - (usage.completionTokens ?? 0)),\n    outputTokens: usage.completionTokens ?? 0,\n    ...(usage.costUsd !== undefined ? { measuredCostUsd: usage.costUsd } : {}),\n  } : undefined;\n}",
+            "entityId": "code:apps-server-src-operator-runner-ts:persisted-usage",
+            "id": "ecc1da188e861bd244833"
+          },
+          {
+            "path": "apps/server/src/operatorRunner.ts",
+            "symbol": "budgetedGateway",
+            "language": "typescript",
+            "startLine": 26,
+            "endLine": 37,
+            "highlightLine": 26,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function budgetedGateway(gateway: OperatorEnrichmentGateway, store: OperatorStore, runId: string, budget: ReturnType<typeof resolveEnrichmentBudget>): OperatorEnrichmentGateway {",
+              "  const ledger = createOperatorBudgetLedger({ maxRequests: budget.maxScopes, maxTokens: budget.maxTokens, maxDollars: budget.maxDollars }, { store, runId });",
+              "  return {",
+              "    modelId: gateway.modelId,",
+              "    async chatCompletions(body) {",
+              "      const maxOutputTokens = typeof body.max_tokens === \"number\" && Number.isFinite(body.max_tokens) ? Math.max(0, Math.floor(body.max_tokens)) : 0;",
+              "      const requestId = ledger.reserve(Buffer.byteLength(JSON.stringify(body), \"utf8\") + maxOutputTokens);",
+              "      if (!requestId) throw new Error(\"operator enrichment budget reached\");",
+              "      let usage: GatewayUsage | undefined;",
+              "      try {",
+              "        const result = await gateway.chatCompletions(body);",
+              "        usage = result.usage;"
+            ],
+            "text": "function budgetedGateway(gateway: OperatorEnrichmentGateway, store: OperatorStore, runId: string, budget: ReturnType<typeof resolveEnrichmentBudget>): OperatorEnrichmentGateway {\n  const ledger = createOperatorBudgetLedger({ maxRequests: budget.maxScopes, maxTokens: budget.maxTokens, maxDollars: budget.maxDollars }, { store, runId });\n  return {\n    modelId: gateway.modelId,\n    async chatCompletions(body) {\n      const maxOutputTokens = typeof body.max_tokens === \"number\" && Number.isFinite(body.max_tokens) ? Math.max(0, Math.floor(body.max_tokens)) : 0;\n      const requestId = ledger.reserve(Buffer.byteLength(JSON.stringify(body), \"utf8\") + maxOutputTokens);\n      if (!requestId) throw new Error(\"operator enrichment budget reached\");\n      let usage: GatewayUsage | undefined;\n      try {\n        const result = await gateway.chatCompletions(body);\n        usage = result.usage;",
+            "entityId": "code:apps-server-src-operator-runner-ts:budgeted-gateway",
+            "id": "ee0647ceb83d6dbfc9de0"
+          },
+          {
+            "path": "apps/server/src/operatorRunner.ts",
+            "symbol": "coverageFor",
+            "language": "typescript",
+            "startLine": 46,
+            "endLine": 50,
+            "highlightLine": 46,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function coverageFor(scopes: readonly { scopeId: string; stale?: boolean }[], explanations: readonly { scopeId: string }[]) {",
+              "  const accepted = new Set(explanations.map(value => value.scopeId));",
+              "  const stale = new Set(scopes.filter(scope => scope.stale).map(scope => scope.scopeId));",
+              "  return { total: scopes.length, accepted: accepted.size, failed: scopes.filter(scope => !accepted.has(scope.scopeId) && !stale.has(scope.scopeId)).length, stale: stale.size };",
+              "}"
+            ],
+            "text": "function coverageFor(scopes: readonly { scopeId: string; stale?: boolean }[], explanations: readonly { scopeId: string }[]) {\n  const accepted = new Set(explanations.map(value => value.scopeId));\n  const stale = new Set(scopes.filter(scope => scope.stale).map(scope => scope.scopeId));\n  return { total: scopes.length, accepted: accepted.size, failed: scopes.filter(scope => !accepted.has(scope.scopeId) && !stale.has(scope.scopeId)).length, stale: stale.size };\n}",
+            "entityId": "code:apps-server-src-operator-runner-ts:coverage-for",
+            "id": "e444a0b6775794ed6cfb4"
+          },
+          {
+            "path": "apps/server/src/operatorRunner.ts",
+            "symbol": "createOperatorRunner",
+            "language": "typescript",
+            "startLine": 53,
+            "endLine": 64,
+            "highlightLine": 53,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {",
+              "  const runner: OperatorRunner = {",
+              "    async judge(request, signal) {",
+              "      // No default consumer: deterministic scans and GLM generation never call Jev.",
+              "      // Null explicitly disables the provider even if a server key exists.",
+              "      const provider = deps.judgmentProvider === undefined ? createJevProvider() : deps.judgmentProvider;",
+              "      return runOperatorJudgments({ store: deps.store, publication: deps.publication, request, ...(provider ? { provider } : {}), ...(deps.judgmentLimits ? { limits: deps.judgmentLimits } : {}), ...(signal ? { signal } : {}) });",
+              "    },",
+              "    async enqueue(input) {",
+              "    const run = deps.store.snapshot().runs.find(value => value.runId === input.runId); if (!run) throw new Error(\"unknown operator run\");",
+              "    if (input.kind !== \"run\" && run.draftRevisionId !== input.draftRevisionId) {",
+              "      deps.store.appendEvent({ runId: run.runId, type: \"draft.conflict\", detail: { reason: \"stale_retry_base\", ...(input.draftRevisionId ? { draftRevisionId: input.draftRevisionId } : {}) } });"
+            ],
+            "text": "export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {\n  const runner: OperatorRunner = {\n    async judge(request, signal) {\n      // No default consumer: deterministic scans and GLM generation never call Jev.\n      // Null explicitly disables the provider even if a server key exists.\n      const provider = deps.judgmentProvider === undefined ? createJevProvider() : deps.judgmentProvider;\n      return runOperatorJudgments({ store: deps.store, publication: deps.publication, request, ...(provider ? { provider } : {}), ...(deps.judgmentLimits ? { limits: deps.judgmentLimits } : {}), ...(signal ? { signal } : {}) });\n    },\n    async enqueue(input) {\n    const run = deps.store.snapshot().runs.find(value => value.runId === input.runId); if (!run) throw new Error(\"unknown operator run\");\n    if (input.kind !== \"run\" && run.draftRevisionId !== input.draftRevisionId) {\n      deps.store.appendEvent({ runId: run.runId, type: \"draft.conflict\", detail: { reason: \"stale_retry_base\", ...(input.draftRevisionId ? { draftRevisionId: input.draftRevisionId } : {}) } });",
+            "entityId": "code:apps-server-src-operator-runner-ts:create-operator-runner",
+            "id": "e28c8ad24684cebeb8265"
+          }
+        ],
+        "observedRelationKinds": [
+          "calls",
+          "dependsOn",
+          "uses"
+        ],
+        "coverage": {
+          "candidateExcerpts": 7,
+          "selectedExcerpts": 4,
+          "omittedExcerpts": 3,
+          "invalidExcerpts": 0,
+          "missingSourceCount": 1,
+          "missingSourceEntityIds": [
+            "component:apps-server-src-operator-runner-ts"
+          ],
+          "descendantCount": 7,
+          "limitations": [
+            "Captured excerpts only; absence is not proof of absent behavior.",
+            "Scanner excerpts may truncate bodies or individual lines.",
+            "No runtime execution coverage is established.",
+            "Candidate cap or excerpt byte limit omitted evidence."
+          ]
+        },
+        "descendantProfiles": []
+      },
+      "outcome": {
+        "state": "accepted",
+        "draftRevisionId": "draft-1dcc5015-df0a-426e-8933-091708324085",
+        "profile": {
+          "schemaVersion": "section-capabilities/v2",
+          "scopeId": "component:apps-server-src-operator-runner-ts",
+          "modelId": "jev-1.13.0",
+          "stateHash": "4dd845e69ba37843b55df74f0fd944311b3a0f3769900521520df8e1f3e54035",
+          "observed": {
+            "scopeId": "component:apps-server-src-operator-runner-ts",
+            "parentId": "container:apps-server",
+            "name": "src/operatorRunner.ts",
+            "kind": "component",
+            "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "scopeDigest": "9e712912f2be5cf107b036c4173755be5ff5a48dd93181d1b753c63b5d160f4a",
+            "evidence": [
+              {
+                "path": "apps/server/src/operatorRunner.ts",
+                "symbol": "persistedUsage",
+                "language": "typescript",
+                "startLine": 17,
+                "endLine": 23,
+                "highlightLine": 17,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function persistedUsage(usage?: GatewayUsage) {",
+                  "  return usage ? {",
+                  "    inputTokens: usage.promptTokens ?? Math.max(0, usage.totalTokens - (usage.completionTokens ?? 0)),",
+                  "    outputTokens: usage.completionTokens ?? 0,",
+                  "    ...(usage.costUsd !== undefined ? { measuredCostUsd: usage.costUsd } : {}),",
+                  "  } : undefined;",
+                  "}"
+                ],
+                "text": "function persistedUsage(usage?: GatewayUsage) {\n  return usage ? {\n    inputTokens: usage.promptTokens ?? Math.max(0, usage.totalTokens - (usage.completionTokens ?? 0)),\n    outputTokens: usage.completionTokens ?? 0,\n    ...(usage.costUsd !== undefined ? { measuredCostUsd: usage.costUsd } : {}),\n  } : undefined;\n}",
+                "entityId": "code:apps-server-src-operator-runner-ts:persisted-usage",
+                "id": "ecc1da188e861bd244833"
+              },
+              {
+                "path": "apps/server/src/operatorRunner.ts",
+                "symbol": "budgetedGateway",
+                "language": "typescript",
+                "startLine": 26,
+                "endLine": 37,
+                "highlightLine": 26,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function budgetedGateway(gateway: OperatorEnrichmentGateway, store: OperatorStore, runId: string, budget: ReturnType<typeof resolveEnrichmentBudget>): OperatorEnrichmentGateway {",
+                  "  const ledger = createOperatorBudgetLedger({ maxRequests: budget.maxScopes, maxTokens: budget.maxTokens, maxDollars: budget.maxDollars }, { store, runId });",
+                  "  return {",
+                  "    modelId: gateway.modelId,",
+                  "    async chatCompletions(body) {",
+                  "      const maxOutputTokens = typeof body.max_tokens === \"number\" && Number.isFinite(body.max_tokens) ? Math.max(0, Math.floor(body.max_tokens)) : 0;",
+                  "      const requestId = ledger.reserve(Buffer.byteLength(JSON.stringify(body), \"utf8\") + maxOutputTokens);",
+                  "      if (!requestId) throw new Error(\"operator enrichment budget reached\");",
+                  "      let usage: GatewayUsage | undefined;",
+                  "      try {",
+                  "        const result = await gateway.chatCompletions(body);",
+                  "        usage = result.usage;"
+                ],
+                "text": "function budgetedGateway(gateway: OperatorEnrichmentGateway, store: OperatorStore, runId: string, budget: ReturnType<typeof resolveEnrichmentBudget>): OperatorEnrichmentGateway {\n  const ledger = createOperatorBudgetLedger({ maxRequests: budget.maxScopes, maxTokens: budget.maxTokens, maxDollars: budget.maxDollars }, { store, runId });\n  return {\n    modelId: gateway.modelId,\n    async chatCompletions(body) {\n      const maxOutputTokens = typeof body.max_tokens === \"number\" && Number.isFinite(body.max_tokens) ? Math.max(0, Math.floor(body.max_tokens)) : 0;\n      const requestId = ledger.reserve(Buffer.byteLength(JSON.stringify(body), \"utf8\") + maxOutputTokens);\n      if (!requestId) throw new Error(\"operator enrichment budget reached\");\n      let usage: GatewayUsage | undefined;\n      try {\n        const result = await gateway.chatCompletions(body);\n        usage = result.usage;",
+                "entityId": "code:apps-server-src-operator-runner-ts:budgeted-gateway",
+                "id": "ee0647ceb83d6dbfc9de0"
+              },
+              {
+                "path": "apps/server/src/operatorRunner.ts",
+                "symbol": "coverageFor",
+                "language": "typescript",
+                "startLine": 46,
+                "endLine": 50,
+                "highlightLine": 46,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function coverageFor(scopes: readonly { scopeId: string; stale?: boolean }[], explanations: readonly { scopeId: string }[]) {",
+                  "  const accepted = new Set(explanations.map(value => value.scopeId));",
+                  "  const stale = new Set(scopes.filter(scope => scope.stale).map(scope => scope.scopeId));",
+                  "  return { total: scopes.length, accepted: accepted.size, failed: scopes.filter(scope => !accepted.has(scope.scopeId) && !stale.has(scope.scopeId)).length, stale: stale.size };",
+                  "}"
+                ],
+                "text": "function coverageFor(scopes: readonly { scopeId: string; stale?: boolean }[], explanations: readonly { scopeId: string }[]) {\n  const accepted = new Set(explanations.map(value => value.scopeId));\n  const stale = new Set(scopes.filter(scope => scope.stale).map(scope => scope.scopeId));\n  return { total: scopes.length, accepted: accepted.size, failed: scopes.filter(scope => !accepted.has(scope.scopeId) && !stale.has(scope.scopeId)).length, stale: stale.size };\n}",
+                "entityId": "code:apps-server-src-operator-runner-ts:coverage-for",
+                "id": "e444a0b6775794ed6cfb4"
+              },
+              {
+                "path": "apps/server/src/operatorRunner.ts",
+                "symbol": "createOperatorRunner",
+                "language": "typescript",
+                "startLine": 53,
+                "endLine": 64,
+                "highlightLine": 53,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {",
+                  "  const runner: OperatorRunner = {",
+                  "    async judge(request, signal) {",
+                  "      // No default consumer: deterministic scans and GLM generation never call Jev.",
+                  "      // Null explicitly disables the provider even if a server key exists.",
+                  "      const provider = deps.judgmentProvider === undefined ? createJevProvider() : deps.judgmentProvider;",
+                  "      return runOperatorJudgments({ store: deps.store, publication: deps.publication, request, ...(provider ? { provider } : {}), ...(deps.judgmentLimits ? { limits: deps.judgmentLimits } : {}), ...(signal ? { signal } : {}) });",
+                  "    },",
+                  "    async enqueue(input) {",
+                  "    const run = deps.store.snapshot().runs.find(value => value.runId === input.runId); if (!run) throw new Error(\"unknown operator run\");",
+                  "    if (input.kind !== \"run\" && run.draftRevisionId !== input.draftRevisionId) {",
+                  "      deps.store.appendEvent({ runId: run.runId, type: \"draft.conflict\", detail: { reason: \"stale_retry_base\", ...(input.draftRevisionId ? { draftRevisionId: input.draftRevisionId } : {}) } });"
+                ],
+                "text": "export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {\n  const runner: OperatorRunner = {\n    async judge(request, signal) {\n      // No default consumer: deterministic scans and GLM generation never call Jev.\n      // Null explicitly disables the provider even if a server key exists.\n      const provider = deps.judgmentProvider === undefined ? createJevProvider() : deps.judgmentProvider;\n      return runOperatorJudgments({ store: deps.store, publication: deps.publication, request, ...(provider ? { provider } : {}), ...(deps.judgmentLimits ? { limits: deps.judgmentLimits } : {}), ...(signal ? { signal } : {}) });\n    },\n    async enqueue(input) {\n    const run = deps.store.snapshot().runs.find(value => value.runId === input.runId); if (!run) throw new Error(\"unknown operator run\");\n    if (input.kind !== \"run\" && run.draftRevisionId !== input.draftRevisionId) {\n      deps.store.appendEvent({ runId: run.runId, type: \"draft.conflict\", detail: { reason: \"stale_retry_base\", ...(input.draftRevisionId ? { draftRevisionId: input.draftRevisionId } : {}) } });",
+                "entityId": "code:apps-server-src-operator-runner-ts:create-operator-runner",
+                "id": "e28c8ad24684cebeb8265"
+              }
+            ],
+            "observedRelationKinds": [
+              "calls",
+              "dependsOn",
+              "uses"
+            ],
+            "coverage": {
+              "candidateExcerpts": 7,
+              "selectedExcerpts": 4,
+              "omittedExcerpts": 3,
+              "invalidExcerpts": 0,
+              "missingSourceCount": 1,
+              "missingSourceEntityIds": [
+                "component:apps-server-src-operator-runner-ts"
+              ],
+              "descendantCount": 7,
+              "limitations": [
+                "Captured excerpts only; absence is not proof of absent behavior.",
+                "Scanner excerpts may truncate bodies or individual lines.",
+                "No runtime execution coverage is established.",
+                "Candidate cap or excerpt byte limit omitted evidence."
+              ]
+            },
+            "descendantProfiles": []
+          },
+          "judgmentInputHash": "07bea440db1a9dd4f0662ec56a5f5e54330b6de0938fceec8554e7649e0155cc",
+          "roles": {
+            "dispatch": {
+              "status": "inferred",
+              "evidenceId": "e28c8ad24684cebeb8265",
+              "answer": {
+                "type": "choice",
+                "choice": "e28c8ad24684cebeb8265",
+                "confidence": 0.85,
+                "probabilities": {
+                  "ee0647ceb83d6dbfc9de0": 0.03,
+                  "no_match": 0.07,
+                  "e444a0b6775794ed6cfb4": 0,
+                  "unknown": 0.03,
+                  "ecc1da188e861bd244833": 0,
+                  "e28c8ad24684cebeb8265": 0.87
+                }
+              }
+            },
+            "persistence": {
+              "status": "inferred",
+              "evidenceId": "e28c8ad24684cebeb8265",
+              "answer": {
+                "type": "choice",
+                "choice": "e28c8ad24684cebeb8265",
+                "confidence": 0.82,
+                "probabilities": {
+                  "ee0647ceb83d6dbfc9de0": 0.13,
+                  "no_match": 0.01,
+                  "e444a0b6775794ed6cfb4": 0,
+                  "e28c8ad24684cebeb8265": 0.85,
+                  "ecc1da188e861bd244833": 0,
+                  "unknown": 0.01
+                }
+              }
+            },
+            "external": {
+              "status": "unknown",
+              "answer": {
+                "type": "choice",
+                "choice": "ee0647ceb83d6dbfc9de0",
+                "confidence": 0.63,
+                "probabilities": {
+                  "ee0647ceb83d6dbfc9de0": 0.69,
+                  "no_match": 0.17,
+                  "e28c8ad24684cebeb8265": 0.01,
+                  "e444a0b6775794ed6cfb4": 0,
+                  "ecc1da188e861bd244833": 0,
+                  "unknown": 0.13
+                }
+              }
+            },
+            "validation": {
+              "status": "unknown",
+              "answer": {
+                "type": "choice",
+                "choice": "e28c8ad24684cebeb8265",
+                "confidence": 0.53,
+                "probabilities": {
+                  "e444a0b6775794ed6cfb4": 0,
+                  "no_match": 0,
+                  "e28c8ad24684cebeb8265": 0.62,
+                  "ee0647ceb83d6dbfc9de0": 0.38,
+                  "ecc1da188e861bd244833": 0,
+                  "unknown": 0
+                }
+              }
+            },
+            "orchestration": {
+              "status": "unknown",
+              "answer": {
+                "type": "choice",
+                "choice": "e28c8ad24684cebeb8265",
+                "confidence": 0.73,
+                "probabilities": {
+                  "e444a0b6775794ed6cfb4": 0,
+                  "no_match": 0.03,
+                  "e28c8ad24684cebeb8265": 0.78,
+                  "ee0647ceb83d6dbfc9de0": 0.16,
+                  "ecc1da188e861bd244833": 0,
+                  "unknown": 0.03
+                }
+              }
+            },
+            "presentation": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.98,
+                "probabilities": {
+                  "e444a0b6775794ed6cfb4": 0.01,
+                  "no_match": 0.98,
+                  "e28c8ad24684cebeb8265": 0,
+                  "ee0647ceb83d6dbfc9de0": 0,
+                  "ecc1da188e861bd244833": 0,
+                  "unknown": 0.01
+                }
+              }
+            }
+          }
+        },
+        "replayed": false
+      },
+      "latencyMs": 377
+    },
+    {
+      "scopeId": "component:apps-server-src-operator-store-ts",
+      "path": "apps/server/src/operatorStore.ts",
+      "observed": {
+        "scopeId": "component:apps-server-src-operator-store-ts",
+        "parentId": "container:apps-server",
+        "name": "src/operatorStore.ts",
+        "kind": "component",
+        "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+        "scopeDigest": "b30a4c627f8e7a3bed0fddf45c3e3a33b50b714277b9693326091a511fb8be4a",
+        "evidence": [
+          {
+            "path": "apps/server/src/operatorStore.ts",
+            "symbol": "empty",
+            "language": "typescript",
+            "startLine": 11,
+            "endLine": 11,
+            "highlightLine": 11,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "const empty = (): OperatorStoreState => ({ runs: [], drafts: [], attempts: [], explanations: [], events: [], artifacts: [], publications: [] });"
+            ],
+            "text": "const empty = (): OperatorStoreState => ({ runs: [], drafts: [], attempts: [], explanations: [], events: [], artifacts: [], publications: [] });",
+            "entityId": "code:apps-server-src-operator-store-ts:empty",
+            "id": "e3070512eb04779209cd9"
+          },
+          {
+            "path": "apps/server/src/operatorStore.ts",
+            "symbol": "idOk",
+            "language": "typescript",
+            "startLine": 12,
+            "endLine": 12,
+            "highlightLine": 12,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "const idOk = (value: string, repo = false): void => { if (!(repo ? /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,240}$/ : /^[A-Za-z0-9][A-Za-z0-9._:-]{0,180}$/).test(value)) throw new Error(\"invalid identifier\"); };"
+            ],
+            "text": "const idOk = (value: string, repo = false): void => { if (!(repo ? /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,240}$/ : /^[A-Za-z0-9][A-Za-z0-9._:-]{0,180}$/).test(value)) throw new Error(\"invalid identifier\"); };",
+            "entityId": "code:apps-server-src-operator-store-ts:id-ok",
+            "id": "e68e90ce49d8d7d1e9472"
+          },
+          {
+            "path": "apps/server/src/operatorStore.ts",
+            "symbol": "publicValue",
+            "language": "typescript",
+            "startLine": 13,
+            "endLine": 13,
+            "highlightLine": 13,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "const publicValue = (value: string | undefined): string | undefined => value && !/(?:key|token|secret|password|https?:\\/\\/|@)/i.test(value) ? value : undefined;"
+            ],
+            "text": "const publicValue = (value: string | undefined): string | undefined => value && !/(?:key|token|secret|password|https?:\\/\\/|@)/i.test(value) ? value : undefined;",
+            "entityId": "code:apps-server-src-operator-store-ts:public-value",
+            "id": "e6ca7ef2c9d01ad98439b"
+          },
+          {
+            "path": "apps/server/src/operatorStore.ts",
+            "symbol": "canonicalOperatorRepositoryId",
+            "language": "typescript",
+            "startLine": 21,
+            "endLine": 24,
+            "highlightLine": 21,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "export function canonicalOperatorRepositoryId(repositoryId: string): string {",
+              "  const match = /^repo:([A-Za-z0-9._-]+)\\/([A-Za-z0-9._-]+)$/.exec(repositoryId);",
+              "  return match ? `repo:${match[1]!.toLowerCase()}/${match[2]!.toLowerCase()}` : repositoryId;",
+              "}"
+            ],
+            "text": "export function canonicalOperatorRepositoryId(repositoryId: string): string {\n  const match = /^repo:([A-Za-z0-9._-]+)\\/([A-Za-z0-9._-]+)$/.exec(repositoryId);\n  return match ? `repo:${match[1]!.toLowerCase()}/${match[2]!.toLowerCase()}` : repositoryId;\n}",
+            "entityId": "code:apps-server-src-operator-store-ts:canonical-operator-repository-id",
+            "id": "e6a5363d653cf3cebd861"
+          },
+          {
+            "path": "apps/server/src/operatorStore.ts",
+            "symbol": "canonicalOperatorSource",
+            "language": "typescript",
+            "startLine": 26,
+            "endLine": 34,
+            "highlightLine": 26,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "function canonicalOperatorSource(source: OperatorRun[\"source\"]): OperatorRun[\"source\"] {",
+              "  const repositoryId = canonicalOperatorRepositoryId(source.repositoryId);",
+              "  return repositoryId === source.repositoryId ? { ...source } : {",
+              "    ...source,",
+              "    repositoryId,",
+              "    owner: source.owner.toLowerCase(),",
+              "    repo: source.repo.toLowerCase(),",
+              "  };",
+              "}"
+            ],
+            "text": "function canonicalOperatorSource(source: OperatorRun[\"source\"]): OperatorRun[\"source\"] {\n  const repositoryId = canonicalOperatorRepositoryId(source.repositoryId);\n  return repositoryId === source.repositoryId ? { ...source } : {\n    ...source,\n    repositoryId,\n    owner: source.owner.toLowerCase(),\n    repo: source.repo.toLowerCase(),\n  };\n}",
+            "entityId": "code:apps-server-src-operator-store-ts:canonical-operator-source",
+            "id": "e33458af27d9dbba6b326"
+          },
+          {
+            "path": "apps/server/src/operatorStore.ts",
+            "symbol": "OperatorStore",
+            "language": "typescript",
+            "startLine": 61,
+            "endLine": 72,
+            "highlightLine": 61,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "export class OperatorStore {",
+              "  readonly root: string;",
+              "  private readonly statePath: string;",
+              "  private readonly now: () => number;",
+              "  private readonly ownerLock: OwnerLock;",
+              "  constructor(root: string, nowOrOptions: (() => number) | OperatorStoreOptions = () => Date.now()) {",
+              "    const options = typeof nowOrOptions === \"function\" ? { now: nowOrOptions } : nowOrOptions;",
+              "    this.root = resolve(root, \"operator-v1\"); this.statePath = join(this.root, \"state.json\"); this.now = options.now ?? (() => Date.now());",
+              "    const alive = options.isProcessAlive ?? (pid => { try { process.kill(pid, 0); return true; } catch { return false; } });",
+              "    mkdirSync(join(this.root, \"artifacts\"), { recursive: true }); this.ownerLock = new OwnerLock(join(this.root, \".lock\"), options.pid ?? process.pid, alive); this.recoverInterrupted();",
+              "  }",
+              "  withExclusiveLock<T>(work: () => T): T { return this.ownerLock.with(work); }"
+            ],
+            "text": "export class OperatorStore {\n  readonly root: string;\n  private readonly statePath: string;\n  private readonly now: () => number;\n  private readonly ownerLock: OwnerLock;\n  constructor(root: string, nowOrOptions: (() => number) | OperatorStoreOptions = () => Date.now()) {\n    const options = typeof nowOrOptions === \"function\" ? { now: nowOrOptions } : nowOrOptions;\n    this.root = resolve(root, \"operator-v1\"); this.statePath = join(this.root, \"state.json\"); this.now = options.now ?? (() => Date.now());\n    const alive = options.isProcessAlive ?? (pid => { try { process.kill(pid, 0); return true; } catch { return false; } });\n    mkdirSync(join(this.root, \"artifacts\"), { recursive: true }); this.ownerLock = new OwnerLock(join(this.root, \".lock\"), options.pid ?? process.pid, alive); this.recoverInterrupted();\n  }\n  withExclusiveLock<T>(work: () => T): T { return this.ownerLock.with(work); }",
+            "entityId": "code:apps-server-src-operator-store-ts:operator-store",
+            "id": "ec2f84830e8a27f807593"
+          }
+        ],
+        "observedRelationKinds": [
+          "calls",
+          "dependsOn",
+          "uses"
+        ],
+        "coverage": {
+          "candidateExcerpts": 13,
+          "selectedExcerpts": 6,
+          "omittedExcerpts": 7,
+          "invalidExcerpts": 0,
+          "missingSourceCount": 1,
+          "missingSourceEntityIds": [
+            "component:apps-server-src-operator-store-ts"
+          ],
+          "descendantCount": 13,
+          "limitations": [
+            "Captured excerpts only; absence is not proof of absent behavior.",
+            "Scanner excerpts may truncate bodies or individual lines.",
+            "No runtime execution coverage is established.",
+            "Candidate cap or excerpt byte limit omitted evidence."
+          ]
+        },
+        "descendantProfiles": []
+      },
+      "outcome": {
+        "state": "accepted",
+        "draftRevisionId": "draft-2fe780cd-8ab9-43cf-88c1-2158c51c62fd",
+        "profile": {
+          "schemaVersion": "section-capabilities/v2",
+          "scopeId": "component:apps-server-src-operator-store-ts",
+          "modelId": "jev-1.13.0",
+          "stateHash": "8bb9ddd07c5bc9f429f76accbc7678812ef0068fbf0e6afd4bcb3064be889b19",
+          "observed": {
+            "scopeId": "component:apps-server-src-operator-store-ts",
+            "parentId": "container:apps-server",
+            "name": "src/operatorStore.ts",
+            "kind": "component",
+            "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "scopeDigest": "b30a4c627f8e7a3bed0fddf45c3e3a33b50b714277b9693326091a511fb8be4a",
+            "evidence": [
+              {
+                "path": "apps/server/src/operatorStore.ts",
+                "symbol": "empty",
+                "language": "typescript",
+                "startLine": 11,
+                "endLine": 11,
+                "highlightLine": 11,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "const empty = (): OperatorStoreState => ({ runs: [], drafts: [], attempts: [], explanations: [], events: [], artifacts: [], publications: [] });"
+                ],
+                "text": "const empty = (): OperatorStoreState => ({ runs: [], drafts: [], attempts: [], explanations: [], events: [], artifacts: [], publications: [] });",
+                "entityId": "code:apps-server-src-operator-store-ts:empty",
+                "id": "e3070512eb04779209cd9"
+              },
+              {
+                "path": "apps/server/src/operatorStore.ts",
+                "symbol": "idOk",
+                "language": "typescript",
+                "startLine": 12,
+                "endLine": 12,
+                "highlightLine": 12,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "const idOk = (value: string, repo = false): void => { if (!(repo ? /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,240}$/ : /^[A-Za-z0-9][A-Za-z0-9._:-]{0,180}$/).test(value)) throw new Error(\"invalid identifier\"); };"
+                ],
+                "text": "const idOk = (value: string, repo = false): void => { if (!(repo ? /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,240}$/ : /^[A-Za-z0-9][A-Za-z0-9._:-]{0,180}$/).test(value)) throw new Error(\"invalid identifier\"); };",
+                "entityId": "code:apps-server-src-operator-store-ts:id-ok",
+                "id": "e68e90ce49d8d7d1e9472"
+              },
+              {
+                "path": "apps/server/src/operatorStore.ts",
+                "symbol": "publicValue",
+                "language": "typescript",
+                "startLine": 13,
+                "endLine": 13,
+                "highlightLine": 13,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "const publicValue = (value: string | undefined): string | undefined => value && !/(?:key|token|secret|password|https?:\\/\\/|@)/i.test(value) ? value : undefined;"
+                ],
+                "text": "const publicValue = (value: string | undefined): string | undefined => value && !/(?:key|token|secret|password|https?:\\/\\/|@)/i.test(value) ? value : undefined;",
+                "entityId": "code:apps-server-src-operator-store-ts:public-value",
+                "id": "e6ca7ef2c9d01ad98439b"
+              },
+              {
+                "path": "apps/server/src/operatorStore.ts",
+                "symbol": "canonicalOperatorRepositoryId",
+                "language": "typescript",
+                "startLine": 21,
+                "endLine": 24,
+                "highlightLine": 21,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "export function canonicalOperatorRepositoryId(repositoryId: string): string {",
+                  "  const match = /^repo:([A-Za-z0-9._-]+)\\/([A-Za-z0-9._-]+)$/.exec(repositoryId);",
+                  "  return match ? `repo:${match[1]!.toLowerCase()}/${match[2]!.toLowerCase()}` : repositoryId;",
+                  "}"
+                ],
+                "text": "export function canonicalOperatorRepositoryId(repositoryId: string): string {\n  const match = /^repo:([A-Za-z0-9._-]+)\\/([A-Za-z0-9._-]+)$/.exec(repositoryId);\n  return match ? `repo:${match[1]!.toLowerCase()}/${match[2]!.toLowerCase()}` : repositoryId;\n}",
+                "entityId": "code:apps-server-src-operator-store-ts:canonical-operator-repository-id",
+                "id": "e6a5363d653cf3cebd861"
+              },
+              {
+                "path": "apps/server/src/operatorStore.ts",
+                "symbol": "canonicalOperatorSource",
+                "language": "typescript",
+                "startLine": 26,
+                "endLine": 34,
+                "highlightLine": 26,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "function canonicalOperatorSource(source: OperatorRun[\"source\"]): OperatorRun[\"source\"] {",
+                  "  const repositoryId = canonicalOperatorRepositoryId(source.repositoryId);",
+                  "  return repositoryId === source.repositoryId ? { ...source } : {",
+                  "    ...source,",
+                  "    repositoryId,",
+                  "    owner: source.owner.toLowerCase(),",
+                  "    repo: source.repo.toLowerCase(),",
+                  "  };",
+                  "}"
+                ],
+                "text": "function canonicalOperatorSource(source: OperatorRun[\"source\"]): OperatorRun[\"source\"] {\n  const repositoryId = canonicalOperatorRepositoryId(source.repositoryId);\n  return repositoryId === source.repositoryId ? { ...source } : {\n    ...source,\n    repositoryId,\n    owner: source.owner.toLowerCase(),\n    repo: source.repo.toLowerCase(),\n  };\n}",
+                "entityId": "code:apps-server-src-operator-store-ts:canonical-operator-source",
+                "id": "e33458af27d9dbba6b326"
+              },
+              {
+                "path": "apps/server/src/operatorStore.ts",
+                "symbol": "OperatorStore",
+                "language": "typescript",
+                "startLine": 61,
+                "endLine": 72,
+                "highlightLine": 61,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "export class OperatorStore {",
+                  "  readonly root: string;",
+                  "  private readonly statePath: string;",
+                  "  private readonly now: () => number;",
+                  "  private readonly ownerLock: OwnerLock;",
+                  "  constructor(root: string, nowOrOptions: (() => number) | OperatorStoreOptions = () => Date.now()) {",
+                  "    const options = typeof nowOrOptions === \"function\" ? { now: nowOrOptions } : nowOrOptions;",
+                  "    this.root = resolve(root, \"operator-v1\"); this.statePath = join(this.root, \"state.json\"); this.now = options.now ?? (() => Date.now());",
+                  "    const alive = options.isProcessAlive ?? (pid => { try { process.kill(pid, 0); return true; } catch { return false; } });",
+                  "    mkdirSync(join(this.root, \"artifacts\"), { recursive: true }); this.ownerLock = new OwnerLock(join(this.root, \".lock\"), options.pid ?? process.pid, alive); this.recoverInterrupted();",
+                  "  }",
+                  "  withExclusiveLock<T>(work: () => T): T { return this.ownerLock.with(work); }"
+                ],
+                "text": "export class OperatorStore {\n  readonly root: string;\n  private readonly statePath: string;\n  private readonly now: () => number;\n  private readonly ownerLock: OwnerLock;\n  constructor(root: string, nowOrOptions: (() => number) | OperatorStoreOptions = () => Date.now()) {\n    const options = typeof nowOrOptions === \"function\" ? { now: nowOrOptions } : nowOrOptions;\n    this.root = resolve(root, \"operator-v1\"); this.statePath = join(this.root, \"state.json\"); this.now = options.now ?? (() => Date.now());\n    const alive = options.isProcessAlive ?? (pid => { try { process.kill(pid, 0); return true; } catch { return false; } });\n    mkdirSync(join(this.root, \"artifacts\"), { recursive: true }); this.ownerLock = new OwnerLock(join(this.root, \".lock\"), options.pid ?? process.pid, alive); this.recoverInterrupted();\n  }\n  withExclusiveLock<T>(work: () => T): T { return this.ownerLock.with(work); }",
+                "entityId": "code:apps-server-src-operator-store-ts:operator-store",
+                "id": "ec2f84830e8a27f807593"
+              }
+            ],
+            "observedRelationKinds": [
+              "calls",
+              "dependsOn",
+              "uses"
+            ],
+            "coverage": {
+              "candidateExcerpts": 13,
+              "selectedExcerpts": 6,
+              "omittedExcerpts": 7,
+              "invalidExcerpts": 0,
+              "missingSourceCount": 1,
+              "missingSourceEntityIds": [
+                "component:apps-server-src-operator-store-ts"
+              ],
+              "descendantCount": 13,
+              "limitations": [
+                "Captured excerpts only; absence is not proof of absent behavior.",
+                "Scanner excerpts may truncate bodies or individual lines.",
+                "No runtime execution coverage is established.",
+                "Candidate cap or excerpt byte limit omitted evidence."
+              ]
+            },
+            "descendantProfiles": []
+          },
+          "judgmentInputHash": "5e80fba0faf20cd16c92a05b47a4a6b10a47585136e4986701f6e994519bbab8",
+          "roles": {
+            "dispatch": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.93,
+                "probabilities": {
+                  "e6a5363d653cf3cebd861": 0,
+                  "e6ca7ef2c9d01ad98439b": 0,
+                  "e33458af27d9dbba6b326": 0,
+                  "e68e90ce49d8d7d1e9472": 0,
+                  "no_match": 0.95,
+                  "ec2f84830e8a27f807593": 0.01,
+                  "unknown": 0.04,
+                  "e3070512eb04779209cd9": 0
+                }
+              }
+            },
+            "persistence": {
+              "status": "inferred",
+              "evidenceId": "ec2f84830e8a27f807593",
+              "answer": {
+                "type": "choice",
+                "choice": "ec2f84830e8a27f807593",
+                "confidence": 0.81,
+                "probabilities": {
+                  "e6a5363d653cf3cebd861": 0,
+                  "e6ca7ef2c9d01ad98439b": 0,
+                  "e33458af27d9dbba6b326": 0,
+                  "e68e90ce49d8d7d1e9472": 0,
+                  "no_match": 0.06,
+                  "ec2f84830e8a27f807593": 0.84,
+                  "unknown": 0.1,
+                  "e3070512eb04779209cd9": 0
+                }
+              }
+            },
+            "external": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.71,
+                "probabilities": {
+                  "e6a5363d653cf3cebd861": 0,
+                  "e6ca7ef2c9d01ad98439b": 0,
+                  "e33458af27d9dbba6b326": 0,
+                  "e68e90ce49d8d7d1e9472": 0,
+                  "no_match": 0.75,
+                  "ec2f84830e8a27f807593": 0.12,
+                  "unknown": 0.13,
+                  "e3070512eb04779209cd9": 0
+                }
+              }
+            },
+            "validation": {
+              "status": "inferred",
+              "evidenceId": "e68e90ce49d8d7d1e9472",
+              "answer": {
+                "type": "choice",
+                "choice": "e68e90ce49d8d7d1e9472",
+                "confidence": 1,
+                "probabilities": {
+                  "e33458af27d9dbba6b326": 0,
+                  "e6ca7ef2c9d01ad98439b": 0,
+                  "e6a5363d653cf3cebd861": 0,
+                  "e68e90ce49d8d7d1e9472": 1,
+                  "no_match": 0,
+                  "ec2f84830e8a27f807593": 0,
+                  "unknown": 0,
+                  "e3070512eb04779209cd9": 0
+                }
+              }
+            },
+            "orchestration": {
+              "status": "unknown",
+              "answer": {
+                "type": "choice",
+                "choice": "ec2f84830e8a27f807593",
+                "confidence": 0.52,
+                "probabilities": {
+                  "e6a5363d653cf3cebd861": 0,
+                  "e6ca7ef2c9d01ad98439b": 0,
+                  "e33458af27d9dbba6b326": 0.02,
+                  "e68e90ce49d8d7d1e9472": 0,
+                  "no_match": 0.24,
+                  "ec2f84830e8a27f807593": 0.58,
+                  "unknown": 0.16,
+                  "e3070512eb04779209cd9": 0
+                }
+              }
+            },
+            "presentation": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.97,
+                "probabilities": {
+                  "e6a5363d653cf3cebd861": 0,
+                  "e6ca7ef2c9d01ad98439b": 0.01,
+                  "e33458af27d9dbba6b326": 0,
+                  "e68e90ce49d8d7d1e9472": 0,
+                  "no_match": 0.97,
+                  "ec2f84830e8a27f807593": 0,
+                  "unknown": 0.02,
+                  "e3070512eb04779209cd9": 0
+                }
+              }
+            }
+          }
+        },
+        "replayed": false
+      },
+      "latencyMs": 388
+    },
+    {
+      "scopeId": "component:crates-atlas-gpu-src-mesh-rs",
+      "path": "crates/atlas-gpu/src/mesh.rs",
+      "observed": {
+        "scopeId": "component:crates-atlas-gpu-src-mesh-rs",
+        "parentId": "container:crates-atlas-gpu",
+        "name": "src/mesh.rs",
+        "kind": "component",
+        "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+        "scopeDigest": "b6ed5fa1129b9c5668c7ecce1cae4b9e0734d72c993b7eea873b280a95aae4d7",
+        "evidence": [
+          {
+            "path": "crates/atlas-gpu/src/mesh.rs",
+            "symbol": "VertexStyle::layout",
+            "language": "rust",
+            "startLine": 36,
+            "endLine": 42,
+            "highlightLine": 36,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "    pub fn layout() -> wgpu::VertexBufferLayout<'static> {",
+              "        wgpu::VertexBufferLayout {",
+              "            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,",
+              "            step_mode: wgpu::VertexStepMode::Vertex,",
+              "            attributes: &Self::ATTRIBUTES,",
+              "        }",
+              "    }"
+            ],
+            "text": "    pub fn layout() -> wgpu::VertexBufferLayout<'static> {\n        wgpu::VertexBufferLayout {\n            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,\n            step_mode: wgpu::VertexStepMode::Vertex,\n            attributes: &Self::ATTRIBUTES,\n        }\n    }",
+            "entityId": "code:crates-atlas-gpu-src-mesh-rs:vertex-style-layout",
+            "id": "e820297309411fb4976d4"
+          },
+          {
+            "path": "crates/atlas-gpu/src/mesh.rs",
+            "symbol": "FLOW_PARTICLE_RADIUS_PX",
+            "language": "rust",
+            "startLine": 99,
+            "endLine": 99,
+            "highlightLine": 99,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "const FLOW_PARTICLE_RADIUS_PX: f64 = 3.5;"
+            ],
+            "text": "const FLOW_PARTICLE_RADIUS_PX: f64 = 3.5;",
+            "entityId": "code:crates-atlas-gpu-src-mesh-rs:flow-particle-radius-px",
+            "id": "ef03b9fff2f5d8002eba5"
+          },
+          {
+            "path": "crates/atlas-gpu/src/mesh.rs",
+            "symbol": "protocol_stroke",
+            "language": "rust",
+            "startLine": 550,
+            "endLine": 555,
+            "highlightLine": 550,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "fn protocol_stroke(stroke: Stroke) -> RenderStroke {",
+              "    RenderStroke {",
+              "        color: stroke.color,",
+              "        width_world: f64::from(stroke.width),",
+              "    }",
+              "}"
+            ],
+            "text": "fn protocol_stroke(stroke: Stroke) -> RenderStroke {\n    RenderStroke {\n        color: stroke.color,\n        width_world: f64::from(stroke.width),\n    }\n}",
+            "entityId": "code:crates-atlas-gpu-src-mesh-rs:protocol-stroke",
+            "id": "ecea40a7db23c21d873ff"
+          },
+          {
+            "path": "crates/atlas-gpu/src/mesh.rs",
+            "symbol": "MeshBuilder::with_capacity",
+            "language": "rust",
+            "startLine": 709,
+            "endLine": 715,
+            "highlightLine": 709,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "    fn with_capacity(capacity: usize) -> Self {",
+              "        Self {",
+              "            vertices: Vec::with_capacity(capacity),",
+              "            stats: MeshStats::default(),",
+              "            lod_slot: -1.0,",
+              "        }",
+              "    }"
+            ],
+            "text": "    fn with_capacity(capacity: usize) -> Self {\n        Self {\n            vertices: Vec::with_capacity(capacity),\n            stats: MeshStats::default(),\n            lod_slot: -1.0,\n        }\n    }",
+            "entityId": "code:crates-atlas-gpu-src-mesh-rs:mesh-builder-with-capacity",
+            "id": "ee104784e5960e6028308"
+          },
+          {
+            "path": "crates/atlas-gpu/src/mesh.rs",
+            "symbol": "MeshBuilder::line",
+            "language": "rust",
+            "startLine": 816,
+            "endLine": 827,
+            "highlightLine": 816,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "    fn line(&mut self, from: Vec2, to: Vec2, width_world: f64, color: [f32; 4]) {",
+              "        let direction = to - from;",
+              "        let length = direction.distance(Vec2::ZERO);",
+              "        if length <= f64::EPSILON || width_world <= 0.0 {",
+              "            return;",
+              "        }",
+              "        let half_world = width_world / 2.0;",
+              "        let normal = Vec2::new(-direction.y / length, direction.x / length) * half_world;",
+              "        self.quad(",
+              "            from + normal,",
+              "            to + normal,",
+              "            to - normal,"
+            ],
+            "text": "    fn line(&mut self, from: Vec2, to: Vec2, width_world: f64, color: [f32; 4]) {\n        let direction = to - from;\n        let length = direction.distance(Vec2::ZERO);\n        if length <= f64::EPSILON || width_world <= 0.0 {\n            return;\n        }\n        let half_world = width_world / 2.0;\n        let normal = Vec2::new(-direction.y / length, direction.x / length) * half_world;\n        self.quad(\n            from + normal,\n            to + normal,\n            to - normal,",
+            "entityId": "code:crates-atlas-gpu-src-mesh-rs:mesh-builder-line",
+            "id": "e8cbf4b671017a31c38e2"
+          },
+          {
+            "path": "crates/atlas-gpu/src/mesh.rs",
+            "symbol": "circle_points",
+            "language": "rust",
+            "startLine": 1033,
+            "endLine": 1043,
+            "highlightLine": 1033,
+            "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "lines": [
+              "fn circle_points(center: Vec2, radius: f64, segments: usize) -> Vec<Vec2> {",
+              "    (0..segments.max(3))",
+              "        .map(|index| {",
+              "            let radians = index as f64 / segments.max(3) as f64 * std::f64::consts::TAU;",
+              "            Vec2::new(",
+              "                center.x + radians.cos() * radius,",
+              "                center.y + radians.sin() * radius,",
+              "            )",
+              "        })",
+              "        .collect()",
+              "}"
+            ],
+            "text": "fn circle_points(center: Vec2, radius: f64, segments: usize) -> Vec<Vec2> {\n    (0..segments.max(3))\n        .map(|index| {\n            let radians = index as f64 / segments.max(3) as f64 * std::f64::consts::TAU;\n            Vec2::new(\n                center.x + radians.cos() * radius,\n                center.y + radians.sin() * radius,\n            )\n        })\n        .collect()\n}",
+            "entityId": "code:crates-atlas-gpu-src-mesh-rs:circle-points",
+            "id": "e4e81561a6915fb1aa4ae"
+          }
+        ],
+        "observedRelationKinds": [],
+        "coverage": {
+          "candidateExcerpts": 56,
+          "selectedExcerpts": 6,
+          "omittedExcerpts": 50,
+          "invalidExcerpts": 0,
+          "missingSourceCount": 1,
+          "missingSourceEntityIds": [
+            "component:crates-atlas-gpu-src-mesh-rs"
+          ],
+          "descendantCount": 56,
+          "limitations": [
+            "Captured excerpts only; absence is not proof of absent behavior.",
+            "Scanner excerpts may truncate bodies or individual lines.",
+            "No runtime execution coverage is established.",
+            "Candidate cap or excerpt byte limit omitted evidence."
+          ]
+        },
+        "descendantProfiles": []
+      },
+      "outcome": {
+        "state": "accepted",
+        "draftRevisionId": "draft-ae1caef0-83b7-4f1d-9f2b-01a7c344d8b6",
+        "profile": {
+          "schemaVersion": "section-capabilities/v2",
+          "scopeId": "component:crates-atlas-gpu-src-mesh-rs",
+          "modelId": "jev-1.13.0",
+          "stateHash": "e42012b2a1f2666deb5155828738e62d15d57b8c8df871f729487c02c4c15bd1",
+          "observed": {
+            "scopeId": "component:crates-atlas-gpu-src-mesh-rs",
+            "parentId": "container:crates-atlas-gpu",
+            "name": "src/mesh.rs",
+            "kind": "component",
+            "sourceCommitSha": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+            "scopeDigest": "b6ed5fa1129b9c5668c7ecce1cae4b9e0734d72c993b7eea873b280a95aae4d7",
+            "evidence": [
+              {
+                "path": "crates/atlas-gpu/src/mesh.rs",
+                "symbol": "VertexStyle::layout",
+                "language": "rust",
+                "startLine": 36,
+                "endLine": 42,
+                "highlightLine": 36,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "    pub fn layout() -> wgpu::VertexBufferLayout<'static> {",
+                  "        wgpu::VertexBufferLayout {",
+                  "            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,",
+                  "            step_mode: wgpu::VertexStepMode::Vertex,",
+                  "            attributes: &Self::ATTRIBUTES,",
+                  "        }",
+                  "    }"
+                ],
+                "text": "    pub fn layout() -> wgpu::VertexBufferLayout<'static> {\n        wgpu::VertexBufferLayout {\n            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,\n            step_mode: wgpu::VertexStepMode::Vertex,\n            attributes: &Self::ATTRIBUTES,\n        }\n    }",
+                "entityId": "code:crates-atlas-gpu-src-mesh-rs:vertex-style-layout",
+                "id": "e820297309411fb4976d4"
+              },
+              {
+                "path": "crates/atlas-gpu/src/mesh.rs",
+                "symbol": "FLOW_PARTICLE_RADIUS_PX",
+                "language": "rust",
+                "startLine": 99,
+                "endLine": 99,
+                "highlightLine": 99,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "const FLOW_PARTICLE_RADIUS_PX: f64 = 3.5;"
+                ],
+                "text": "const FLOW_PARTICLE_RADIUS_PX: f64 = 3.5;",
+                "entityId": "code:crates-atlas-gpu-src-mesh-rs:flow-particle-radius-px",
+                "id": "ef03b9fff2f5d8002eba5"
+              },
+              {
+                "path": "crates/atlas-gpu/src/mesh.rs",
+                "symbol": "protocol_stroke",
+                "language": "rust",
+                "startLine": 550,
+                "endLine": 555,
+                "highlightLine": 550,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "fn protocol_stroke(stroke: Stroke) -> RenderStroke {",
+                  "    RenderStroke {",
+                  "        color: stroke.color,",
+                  "        width_world: f64::from(stroke.width),",
+                  "    }",
+                  "}"
+                ],
+                "text": "fn protocol_stroke(stroke: Stroke) -> RenderStroke {\n    RenderStroke {\n        color: stroke.color,\n        width_world: f64::from(stroke.width),\n    }\n}",
+                "entityId": "code:crates-atlas-gpu-src-mesh-rs:protocol-stroke",
+                "id": "ecea40a7db23c21d873ff"
+              },
+              {
+                "path": "crates/atlas-gpu/src/mesh.rs",
+                "symbol": "MeshBuilder::with_capacity",
+                "language": "rust",
+                "startLine": 709,
+                "endLine": 715,
+                "highlightLine": 709,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "    fn with_capacity(capacity: usize) -> Self {",
+                  "        Self {",
+                  "            vertices: Vec::with_capacity(capacity),",
+                  "            stats: MeshStats::default(),",
+                  "            lod_slot: -1.0,",
+                  "        }",
+                  "    }"
+                ],
+                "text": "    fn with_capacity(capacity: usize) -> Self {\n        Self {\n            vertices: Vec::with_capacity(capacity),\n            stats: MeshStats::default(),\n            lod_slot: -1.0,\n        }\n    }",
+                "entityId": "code:crates-atlas-gpu-src-mesh-rs:mesh-builder-with-capacity",
+                "id": "ee104784e5960e6028308"
+              },
+              {
+                "path": "crates/atlas-gpu/src/mesh.rs",
+                "symbol": "MeshBuilder::line",
+                "language": "rust",
+                "startLine": 816,
+                "endLine": 827,
+                "highlightLine": 816,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "    fn line(&mut self, from: Vec2, to: Vec2, width_world: f64, color: [f32; 4]) {",
+                  "        let direction = to - from;",
+                  "        let length = direction.distance(Vec2::ZERO);",
+                  "        if length <= f64::EPSILON || width_world <= 0.0 {",
+                  "            return;",
+                  "        }",
+                  "        let half_world = width_world / 2.0;",
+                  "        let normal = Vec2::new(-direction.y / length, direction.x / length) * half_world;",
+                  "        self.quad(",
+                  "            from + normal,",
+                  "            to + normal,",
+                  "            to - normal,"
+                ],
+                "text": "    fn line(&mut self, from: Vec2, to: Vec2, width_world: f64, color: [f32; 4]) {\n        let direction = to - from;\n        let length = direction.distance(Vec2::ZERO);\n        if length <= f64::EPSILON || width_world <= 0.0 {\n            return;\n        }\n        let half_world = width_world / 2.0;\n        let normal = Vec2::new(-direction.y / length, direction.x / length) * half_world;\n        self.quad(\n            from + normal,\n            to + normal,\n            to - normal,",
+                "entityId": "code:crates-atlas-gpu-src-mesh-rs:mesh-builder-line",
+                "id": "e8cbf4b671017a31c38e2"
+              },
+              {
+                "path": "crates/atlas-gpu/src/mesh.rs",
+                "symbol": "circle_points",
+                "language": "rust",
+                "startLine": 1033,
+                "endLine": 1043,
+                "highlightLine": 1033,
+                "frozenRevision": "c9c0306d16216c5420790fff4f6d2ac6f2354b05",
+                "lines": [
+                  "fn circle_points(center: Vec2, radius: f64, segments: usize) -> Vec<Vec2> {",
+                  "    (0..segments.max(3))",
+                  "        .map(|index| {",
+                  "            let radians = index as f64 / segments.max(3) as f64 * std::f64::consts::TAU;",
+                  "            Vec2::new(",
+                  "                center.x + radians.cos() * radius,",
+                  "                center.y + radians.sin() * radius,",
+                  "            )",
+                  "        })",
+                  "        .collect()",
+                  "}"
+                ],
+                "text": "fn circle_points(center: Vec2, radius: f64, segments: usize) -> Vec<Vec2> {\n    (0..segments.max(3))\n        .map(|index| {\n            let radians = index as f64 / segments.max(3) as f64 * std::f64::consts::TAU;\n            Vec2::new(\n                center.x + radians.cos() * radius,\n                center.y + radians.sin() * radius,\n            )\n        })\n        .collect()\n}",
+                "entityId": "code:crates-atlas-gpu-src-mesh-rs:circle-points",
+                "id": "e4e81561a6915fb1aa4ae"
+              }
+            ],
+            "observedRelationKinds": [],
+            "coverage": {
+              "candidateExcerpts": 56,
+              "selectedExcerpts": 6,
+              "omittedExcerpts": 50,
+              "invalidExcerpts": 0,
+              "missingSourceCount": 1,
+              "missingSourceEntityIds": [
+                "component:crates-atlas-gpu-src-mesh-rs"
+              ],
+              "descendantCount": 56,
+              "limitations": [
+                "Captured excerpts only; absence is not proof of absent behavior.",
+                "Scanner excerpts may truncate bodies or individual lines.",
+                "No runtime execution coverage is established.",
+                "Candidate cap or excerpt byte limit omitted evidence."
+              ]
+            },
+            "descendantProfiles": []
+          },
+          "judgmentInputHash": "be9b75434ea9645d567b4115b761ff47b0dfd667cc1b835fd3b10d232df06e5c",
+          "roles": {
+            "dispatch": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.94,
+                "probabilities": {
+                  "e8cbf4b671017a31c38e2": 0,
+                  "ecea40a7db23c21d873ff": 0,
+                  "e820297309411fb4976d4": 0,
+                  "ee104784e5960e6028308": 0,
+                  "e4e81561a6915fb1aa4ae": 0,
+                  "ef03b9fff2f5d8002eba5": 0,
+                  "unknown": 0.05,
+                  "no_match": 0.95
+                }
+              }
+            },
+            "persistence": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.93,
+                "probabilities": {
+                  "ef03b9fff2f5d8002eba5": 0,
+                  "ecea40a7db23c21d873ff": 0,
+                  "e820297309411fb4976d4": 0,
+                  "ee104784e5960e6028308": 0,
+                  "e4e81561a6915fb1aa4ae": 0,
+                  "e8cbf4b671017a31c38e2": 0,
+                  "unknown": 0.05,
+                  "no_match": 0.95
+                }
+              }
+            },
+            "external": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.94,
+                "probabilities": {
+                  "e8cbf4b671017a31c38e2": 0,
+                  "ecea40a7db23c21d873ff": 0,
+                  "e820297309411fb4976d4": 0,
+                  "ee104784e5960e6028308": 0,
+                  "e4e81561a6915fb1aa4ae": 0,
+                  "ef03b9fff2f5d8002eba5": 0,
+                  "no_match": 0.95,
+                  "unknown": 0.05
+                }
+              }
+            },
+            "validation": {
+              "status": "inferred",
+              "evidenceId": "e8cbf4b671017a31c38e2",
+              "answer": {
+                "type": "choice",
+                "choice": "e8cbf4b671017a31c38e2",
+                "confidence": 1,
+                "probabilities": {
+                  "e8cbf4b671017a31c38e2": 1,
+                  "ecea40a7db23c21d873ff": 0,
+                  "e820297309411fb4976d4": 0,
+                  "ee104784e5960e6028308": 0,
+                  "e4e81561a6915fb1aa4ae": 0,
+                  "ef03b9fff2f5d8002eba5": 0,
+                  "no_match": 0,
+                  "unknown": 0
+                }
+              }
+            },
+            "orchestration": {
+              "status": "no-match",
+              "answer": {
+                "type": "choice",
+                "choice": "no_match",
+                "confidence": 0.81,
+                "probabilities": {
+                  "e8cbf4b671017a31c38e2": 0.01,
+                  "ecea40a7db23c21d873ff": 0,
+                  "e820297309411fb4976d4": 0,
+                  "ee104784e5960e6028308": 0,
+                  "e4e81561a6915fb1aa4ae": 0,
+                  "ef03b9fff2f5d8002eba5": 0,
+                  "unknown": 0.15,
+                  "no_match": 0.84
+                }
+              }
+            },
+            "presentation": {
+              "status": "inferred",
+              "evidenceId": "e8cbf4b671017a31c38e2",
+              "answer": {
+                "type": "choice",
+                "choice": "e8cbf4b671017a31c38e2",
+                "confidence": 0.84,
+                "probabilities": {
+                  "ef03b9fff2f5d8002eba5": 0,
+                  "ecea40a7db23c21d873ff": 0.01,
+                  "e820297309411fb4976d4": 0.01,
+                  "ee104784e5960e6028308": 0,
+                  "e4e81561a6915fb1aa4ae": 0.12,
+                  "e8cbf4b671017a31c38e2": 0.86,
+                  "no_match": 0,
+                  "unknown": 0
+                }
+              }
+            }
+          }
+        },
+        "replayed": false
+      },
+      "latencyMs": 294
+    }
+  ],
+  "attempts": [
+    {
+      "draftRevisionId": "draft-a700ab44-148d-4634-af56-c00921adac3f",
+      "scopeId": "judgment:232587984d2516b5f621d73c4e480d18a2fbfacb6a3d9899f0411ff6d30c91b7",
+      "kind": "judgment",
+      "state": "accepted",
+      "inputHash": "cf1839e9602cd8cf3015d634dd489ca56df4c3b53ed8be5c3e6f26de1edaf3c2",
+      "attemptId": "attempt-231caa8a-e790-4e21-911b-e7111e7b9b03",
+      "createdAt": 1790166137123,
+      "updatedAt": 1790166137515,
+      "provider": "typesafe",
+      "modelId": "jev-1.13.0",
+      "usage": {
+        "inputTokens": 7321,
+        "outputTokens": 1057
+      },
+      "validation": {
+        "accepted": true,
+        "validator": "operator-choice/v1",
+        "evidenceHash": "08ee9e7c55dcb3352a3ec40a539a288d4462a2144a9cfddaa934b593ed9ffa20"
+      }
+    },
+    {
+      "draftRevisionId": "draft-82f8f786-07ea-4cf4-ace0-5d224bd22c24",
+      "scopeId": "judgment:8762299cbb040a6d62d059d4725f82d11aafcad60cd668f9d7ed50f2b793a9b1",
+      "kind": "judgment",
+      "state": "accepted",
+      "inputHash": "07bea440db1a9dd4f0662ec56a5f5e54330b6de0938fceec8554e7649e0155cc",
+      "attemptId": "attempt-0be7a97d-a850-42f6-a176-d188803a0753",
+      "createdAt": 1790166137684,
+      "updatedAt": 1790166137895,
+      "provider": "typesafe",
+      "modelId": "jev-1.13.0",
+      "usage": {
+        "inputTokens": 7916,
+        "outputTokens": 812
+      },
+      "validation": {
+        "accepted": true,
+        "validator": "operator-choice/v1",
+        "evidenceHash": "83359d838819f744cf3b1adda611e1b826983838f05ae63adb7e7cdbf29cfe00"
+      }
+    },
+    {
+      "draftRevisionId": "draft-1dcc5015-df0a-426e-8933-091708324085",
+      "scopeId": "judgment:5d03ca50b0f3faee7bff3af4ebfc588e9a21d70290c6061541fccfb4016f6a94",
+      "kind": "judgment",
+      "state": "accepted",
+      "inputHash": "5e80fba0faf20cd16c92a05b47a4a6b10a47585136e4986701f6e994519bbab8",
+      "attemptId": "attempt-f235ce8b-8452-4e78-94c1-2da7ff41e384",
+      "createdAt": 1790166138066,
+      "updatedAt": 1790166138288,
+      "provider": "typesafe",
+      "modelId": "jev-1.13.0",
+      "usage": {
+        "inputTokens": 9155,
+        "outputTokens": 1135
+      },
+      "validation": {
+        "accepted": true,
+        "validator": "operator-choice/v1",
+        "evidenceHash": "00b9921821c3cea234c95d88ecac065b403024558b864d7b8c73994b6fb2ec29"
+      }
+    },
+    {
+      "draftRevisionId": "draft-2fe780cd-8ab9-43cf-88c1-2158c51c62fd",
+      "scopeId": "judgment:a1ded593fabaacc6f8d2a6aaf53dc32330a633d14a4a1e4dbed983bb33a47fa8",
+      "kind": "judgment",
+      "state": "accepted",
+      "inputHash": "be9b75434ea9645d567b4115b761ff47b0dfd667cc1b835fd3b10d232df06e5c",
+      "attemptId": "attempt-c87b4079-8e16-416d-a6d3-8424f6f722f3",
+      "createdAt": 1790166138458,
+      "updatedAt": 1790166138586,
+      "provider": "typesafe",
+      "modelId": "jev-1.13.0",
+      "usage": {
+        "inputTokens": 6679,
+        "outputTokens": 1105
+      },
+      "validation": {
+        "accepted": true,
+        "validator": "operator-choice/v1",
+        "evidenceHash": "112323281630e5d13264ac2a5ebb18fbe76820829ff54f9548fe84773d051e50"
+      }
+    }
+  ]
+}
