@@ -91,8 +91,11 @@ test("portableSourceExcerpt clamps to architecture limits and scrubs GitHub toke
     fileText: files["pkg/a/src/long.ts"]!,
   });
   assert.ok(long);
-  assert.equal(long.lines.length, SOURCE_EXCERPT_LIMITS.maxLines);
-  assert.equal(long.endLine, SOURCE_EXCERPT_LIMITS.maxLines);
+  assert.equal(long.lines.length, 23);
+  assert.equal(long.endLine, 23);
+  assert.equal(long.sourceStartLine, 1);
+  assert.equal(long.sourceEndLine, 23);
+  assert.ok(long.text.endsWith("  return n0;\n}"));
   assert.ok(long.text.startsWith("export function longFn()"));
 
   const redacted = portableSourceExcerpt({
@@ -108,8 +111,8 @@ test("portableSourceExcerpt clamps to architecture limits and scrubs GitHub toke
   assert.ok(redacted.text.includes("[redacted-token]"));
 });
 
-test("portableSourceExcerpt skips an overlong first line without raising bounds", () => {
-  assert.equal(SOURCE_EXCERPT_LIMITS.maxLines, 12);
+test("portableSourceExcerpt skips an overlong first line and records partial capture", () => {
+  assert.equal(SOURCE_EXCERPT_LIMITS.maxLines, 48);
   assert.equal(SOURCE_EXCERPT_LIMITS.maxLineCharacters, 512);
 
   const skipped = portableSourceExcerpt({
@@ -123,6 +126,8 @@ test("portableSourceExcerpt skips an overlong first line without raising bounds"
   assert.ok(skipped);
   assert.equal(skipped.startLine, 2);
   assert.equal(skipped.endLine, 4);
+  assert.equal(skipped.sourceStartLine, 1);
+  assert.equal(skipped.sourceEndLine, 4);
   assert.equal(skipped.highlightLine, 2);
   assert.equal(skipped.lines[0], "  return 1;");
   assert.ok(!skipped.text.includes("export function wideFn"));
@@ -187,12 +192,14 @@ test("scan snapshot attaches portable excerpts to code entities and never to con
   assert.equal(alpha.sourceRefs[0]!.endLine, alpha.sourceExcerpts![0]!.endLine);
 
   assert.equal(longFn.sourceExcerpts?.length, 1);
-  assert.equal(longFn.sourceExcerpts![0]!.lines.length, SOURCE_EXCERPT_LIMITS.maxLines);
+  assert.equal(longFn.sourceExcerpts![0]!.lines.length, 23);
   assert.equal(longFn.sourceRefs[0]!.endLine, longFn.sourceExcerpts![0]!.endLine);
 
   assert.equal(wideFn.sourceExcerpts?.length, 1);
   assert.equal(wideFn.sourceExcerpts![0]!.startLine, 2);
-  assert.equal(wideFn.sourceRefs[0]!.startLine, 2);
+  assert.equal(wideFn.sourceRefs[0]!.startLine, 1);
+  assert.equal(wideFn.sourceRefs[1]!.startLine, 2);
+  assert.equal(wideFn.sourceRefs[0]!.endLine, 4);
   assert.ok(wideFn.sourceExcerpts![0]!.lines.every(line => [...line].length <= SOURCE_EXCERPT_LIMITS.maxLineCharacters));
 
   assert.equal(container.sourceExcerpts, undefined);
@@ -236,4 +243,55 @@ test("extraction documents stay excerpt-free after the host attaches snapshot ex
   assert.ok(artifacts.extraction.entities.every(entity => !("sourceExcerpts" in entity)));
   const attached = attachPortableSourceExcerpts(artifacts.snapshot, read);
   assert.equal(attached.entities.find(entity => entity.name === "alpha")?.sourceExcerpts?.length, 1);
+  assert.deepEqual(attached, artifacts.snapshot, "reattaching must not duplicate window references");
+});
+
+test("TS and Rust body capture preserves offset ranges and stops before neighbouring declarations", () => {
+  for (const path of ["body.ts", "body.rs"]) {
+    const body = [path.endsWith(".rs") ? "pub fn body() {" : "export function body() {",
+      ...Array.from({ length: 17 }, (_, i) => `  // implementation ${i}`), "  perform_write();", "}"];
+    const excerpt = portableSourceExcerpt({ path, symbol: "body", startLine: 4, endLine: 23,
+      frozenRevision: pin.commitSha, fileText: ["// before", "", "// before", ...body, "NEIGHBOUR"].join("\r\n") });
+    assert.ok(excerpt);
+    assert.deepEqual(excerpt.lines, body);
+    assert.deepEqual([excerpt.startLine, excerpt.endLine, excerpt.sourceStartLine, excerpt.sourceEndLine], [4, 23, 4, 23]);
+    assert.equal(excerpt.text.includes("NEIGHBOUR"), false);
+  }
+});
+
+test("line and text caps retain the original range and never fabricate complete capture", () => {
+  const input = { path: "body.rs", symbol: "body", startLine: 3, endLine: 62, frozenRevision: pin.commitSha };
+  const fileText = ["// before", "", ...Array.from({ length: 60 }, (_, i) => `// line ${i}`)].join("\n");
+  const excerpt = portableSourceExcerpt({ ...input, fileText })!;
+  assert.deepEqual([excerpt.startLine, excerpt.endLine, excerpt.sourceStartLine, excerpt.sourceEndLine], [3, 50, 3, 62]);
+  assert.equal(excerpt.lines.length, 48);
+  const wide = portableSourceExcerpt({ ...input, fileText: ["// before", "", ...Array(60).fill("x".repeat(100))].join("\n") })!;
+  assert.equal(wide.lines.length, 40); // 40 × 100 + 39 separators = 4039; 41 exceeds 4096.
+  assert.equal(wide.endLine, 42);
+  assert.equal(wide.sourceEndLine, 62);
+  const shortFile = portableSourceExcerpt({ ...input, fileText: "// before\n\nfirst\nlast" })!;
+  assert.equal(shortFile.endLine, 4);
+  assert.equal(shortFile.sourceEndLine, 62, "EOF must not make a longer observed range look complete");
+});
+
+test("portable validation binds both captured and original ranges to the same pinned symbol", () => {
+  const artifacts = buildScanArtifacts({ discovery: discovery(), pin, readFile: read, repositorySlug: "acme", systemName: "Acme" });
+  const wide = artifacts.snapshot.entities.find(entity => entity.name === "wideFn")!;
+  const excerpt = wide.sourceExcerpts![0]!;
+  assert.deepEqual(validateSnapshot(artifacts.snapshot), []);
+  const original = structuredClone(artifacts.snapshot);
+  for (const mutation of [
+    { sourceStartLine: 3 }, { sourceEndLine: 3 }, { sourceEndLine: 5 }, { sourceStartLine: undefined },
+  ]) {
+    Object.assign(excerpt, { sourceStartLine: 1, sourceEndLine: 4 }, mutation);
+    assert.ok(validateSnapshot(artifacts.snapshot).some(issue => issue.message.includes("original source range")));
+  }
+  const legacy = structuredClone(original);
+  for (const entity of legacy.entities) for (const item of entity.sourceExcerpts ?? []) {
+    delete item.sourceStartLine; delete item.sourceEndLine;
+  }
+  assert.deepEqual(validateSnapshot(legacy), [], "old excerpts remain valid without coverage claims");
+  const wrongPin = structuredClone(original);
+  wrongPin.entities.find(entity => entity.name === "wideFn")!.sourceRefs[0]!.commitSha = "different";
+  assert.ok(validateSnapshot(wrongPin).some(issue => issue.message.includes("original source range")));
 });

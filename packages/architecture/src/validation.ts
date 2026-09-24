@@ -163,6 +163,16 @@ function validateSourceExcerpt(
   if (!coherentSource) {
     issues.push({ path, message: "must exactly match an entity sourceRef path, symbol, revision, and range" });
   }
+  if (excerpt.sourceStartLine !== undefined || excerpt.sourceEndLine !== undefined) {
+    if (!Number.isSafeInteger(excerpt.sourceStartLine) || !Number.isSafeInteger(excerpt.sourceEndLine)
+      || excerpt.sourceStartLine! < 1 || excerpt.sourceStartLine! > excerpt.startLine
+      || excerpt.sourceEndLine! < excerpt.endLine
+      || !sourceRefs.some(source => source.path === excerpt.path
+        && source.commitSha === excerpt.frozenRevision && (source.symbol ?? '') === (excerpt.symbol ?? '')
+        && source.startLine === excerpt.sourceStartLine && source.endLine === excerpt.sourceEndLine)) {
+      issues.push({ path, message: "original source range must contain the excerpt and exactly match an entity sourceRef" });
+    }
+  }
 }
 
 export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssue[] {

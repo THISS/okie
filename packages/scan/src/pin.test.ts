@@ -21,7 +21,8 @@ test("local scans and prompt source acquisition use only the selected committed 
     git(root, ["config", "user.name", "Okie"]);
     writeFileSync(join(root, "package.json"), '{"name":"committed-source"}\n');
     mkdirSync(join(root, "src"));
-    writeFileSync(join(root, "src", "main.ts"), "export function firstRevision() { return 1; }\n");
+    const firstBody = ["export function firstRevision() {", ...Array(18).fill("  // context"), "  return 1;", "}"];
+    writeFileSync(join(root, "src", "main.ts"), firstBody.join("\n") + "\n");
     git(root, ["add", "."]);
     git(root, ["commit", "-qm", "first"]);
     const first = git(root, ["rev-parse", "HEAD"]);
@@ -54,6 +55,11 @@ test("local scans and prompt source acquisition use only the selected committed 
     assert.equal(old.pin.commitSha, first);
     assert.match(oldNames, /firstRevision/);
     assert.doesNotMatch(oldNames, /secondRevision|dirtyWorkingFile|untrackedWorkingFile/);
+    const historical = old.snapshot.entities.find(entity => entity.name === "firstRevision")!;
+    const excerpt = historical.sourceExcerpts![0]!;
+    assert.deepEqual(excerpt.lines, firstBody, "body beyond line 12 comes from the selected commit, never the dirty checkout");
+    assert.equal(excerpt.frozenRevision, first);
+    assert.deepEqual([excerpt.sourceStartLine, excerpt.sourceEndLine, excerpt.startLine, excerpt.endLine], [1, 21, 1, 21]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

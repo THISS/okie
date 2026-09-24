@@ -41,7 +41,7 @@ export type PortableExcerptInput = {
  *
  * An overlong first line (over `maxLineCharacters`) is skipped so the window
  * can still start on the next usable line. Lines are never truncated and the
- * 12-line / 512-char bounds are not raised.
+ * original observed range is retained so partial capture is explicit.
  */
 export function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerpt | undefined {
   const language = languageForScanPath(input.path);
@@ -64,6 +64,8 @@ export function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerp
           language,
           startLine,
           endLine,
+          sourceStartLine: originalStart,
+          sourceEndLine: Math.max(originalStart, declaredEnd),
           highlightLine: startLine,
           frozenRevision: input.frozenRevision,
           lines,
@@ -115,11 +117,15 @@ export function attachPortableSourceExcerpts(
         fileText,
       });
       if (!excerpt) return entity;
+      const windowRef = { ...ref, startLine: excerpt.startLine, endLine: excerpt.endLine };
       return {
         ...entity,
-        sourceRefs: entity.sourceRefs.map((item, index) => index === 0
-          ? { ...item, startLine: excerpt.startLine, endLine: excerpt.endLine }
-          : item),
+        // Preserve declaration ownership/navigation; add the exact captured
+        // window separately to satisfy portable evidence validation.
+        sourceRefs: entity.sourceRefs.some(item => item.path === windowRef.path
+          && item.commitSha === windowRef.commitSha && item.symbol === windowRef.symbol
+          && item.startLine === windowRef.startLine && item.endLine === windowRef.endLine)
+          ? entity.sourceRefs : [...entity.sourceRefs, windowRef],
         sourceExcerpts: [excerpt],
       };
     }),
