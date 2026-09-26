@@ -2,11 +2,16 @@
  * CLA-207: deterministic shortest-path exploration over one semantic snapshot.
  *
  * Directed edges come only from relations whose kind the caller names, plus
- * opt-in parent→child containment. Kinds are never merged or inferred. The
- * canonical path is the fewest-hop path with the lexicographically smallest
- * entity-ID sequence (code-unit order); per hop the smallest relation id wins,
- * and structural containment is chosen only when no observed relation joins the pair. Shuffling entities or relations yields an
- * identical result. A found path is a static claim, never runtime proof.
+ * opt-in parent→child containment. Kinds are never merged or inferred. On a
+ * pair joined by both, an observed relation (smallest id) wins over
+ * evidence-free containment. The canonical path is the fewest-hop path with the
+ * lexicographically smallest entity-ID sequence (code-unit order).
+ *
+ * `endpointScope: "subtree"` widens each endpoint to itself plus its parentId
+ * descendants (like c4.ts lifting relations), so container→container queries
+ * can route through components; the path then starts and ends at the resolved
+ * descendants. Shuffling entities or relations yields an identical result. A
+ * found path is a static claim, never runtime proof.
  */
 import type {
   ArchitectureEntity,
@@ -27,6 +32,7 @@ export const PATH_EXPLORATION_DISCLAIMER =
   "This path follows statically observed relations in one snapshot. It does not show that this path runs at runtime.";
 
 export type PathGraphCoverage = "complete" | "partial";
+export type PathEndpointScope = "exact" | "subtree";
 
 export type PathExplorationQuery = {
   fromEntityId: EntityId;
@@ -39,6 +45,8 @@ export type PathExplorationQuery = {
   graphCoverage: PathGraphCoverage;
   /** Positive integer; default PATH_EXPLORATION_DEFAULT_MAX_HOPS. */
   maxHops?: number;
+  /** `subtree` also accepts parentId descendants of either endpoint. Default `exact`. */
+  endpointScope?: PathEndpointScope;
 };
 
 export type NormalizedPathExplorationQuery = {
@@ -48,6 +56,7 @@ export type NormalizedPathExplorationQuery = {
   includeParentContainment: boolean;
   graphCoverage: PathGraphCoverage;
   maxHops: number;
+  endpointScope: PathEndpointScope;
 };
 
 export type PathHopVia = "relation" | "parentContainment";
@@ -84,6 +93,10 @@ export type PathUnavailableReason =
   | "unknownToEntity"
   | "noEligibleKinds"
   | "invalidQuery"
+  | "invalidSnapshot"
+  | "endpointNotLoaded"
+  | "nestedEndpoints"
+  | "noEligibleRelations"
   | "partialGraph"
   | "hopLimit";
 
@@ -93,17 +106,25 @@ type PathResultBase = {
   commitSha: string;
   query: NormalizedPathExplorationQuery;
   claim: typeof PATH_EXPLORATION_CLAIM;
+  /** Relations of the eligible kinds whose from/to is not in the snapshot. */
   ignoredDanglingRelationCount: number;
 };
 
 export type PathExplorationFound = PathResultBase & {
   status: "found";
+  /** First and last are the resolved endpoints (descendants under subtree scope). */
   entityIds: EntityId[];
   relationIds: RelationId[];
   hops: PathHop[];
   limits: PathResultLimit[];
+  /** Eligible kinds with no traversable relation in the snapshot, sorted. */
+  absentRelationKinds: RelationKind[];
 };
-export type PathExplorationUnreachable = PathResultBase & { status: "unreachable"; exploredEntityCount: number };
+export type PathExplorationUnreachable = PathResultBase & {
+  status: "unreachable";
+  exploredEntityCount: number;
+  absentRelationKinds: RelationKind[];
+};
 export type PathExplorationUnavailable = PathResultBase & {
   status: "unavailable";
   reason: PathUnavailableReason;
@@ -158,6 +179,7 @@ function normalizeQuery(query: PathExplorationQuery): NormalizedPathExplorationQ
     includeParentContainment: query.includeParentContainment === true,
     graphCoverage: query.graphCoverage,
     maxHops: query.maxHops === undefined ? PATH_EXPLORATION_DEFAULT_MAX_HOPS : query.maxHops,
+    endpointScope: query.endpointScope === undefined ? "exact" : query.endpointScope,
   };
 }
 
@@ -166,12 +188,15 @@ function invalidQueryMessage(query: PathExplorationQuery, normalized: Normalized
     return "fromEntityId and toEntityId must be strings.";
   }
   if (!Array.isArray(query.relationKinds)) return "relationKinds must be an array.";
-  const unknownKind = normalized.relationKinds.find(kind => !RELATION_KIND_SET.has(kind));
-  if (unknownKind !== undefined) return `Unknown relation kind "${String(unknownKind)}".`;
+  const unknownKind = normalized.relationKinds.findIndex(kind => !RELATION_KIND_SET.has(kind));
+  if (unknownKind >= 0) return `Unknown relation kind "${String(normalized.relationKinds[unknownKind])}".`;
   if (normalized.graphCoverage !== "complete" && normalized.graphCoverage !== "partial") {
     return 'graphCoverage must be "complete" or "partial".';
   }
   if (!Number.isInteger(normalized.maxHops) || normalized.maxHops < 1) return "maxHops must be a positive integer.";
+  if (normalized.endpointScope !== "exact" && normalized.endpointScope !== "subtree") {
+    return 'endpointScope must be "exact" or "subtree".';
+  }
   return undefined;
 }
 
@@ -179,7 +204,7 @@ function buildAdjacency(
   snapshot: ArchitectureSnapshot,
   entityIds: ReadonlySet<EntityId>,
   query: NormalizedPathExplorationQuery,
-): { adjacency: Map<EntityId, Map<EntityId, PathEdge[]>>; dangling: number } {
+): { adjacency: Map<EntityId, Map<EntityId, PathEdge[]>>; dangling: number; presentKinds: Set<string> } {
   const adjacency = new Map<EntityId, Map<EntityId, PathEdge[]>>();
   const add = (from: EntityId, to: EntityId, edge: PathEdge): void => {
     let targets = adjacency.get(from);
@@ -189,6 +214,7 @@ function buildAdjacency(
     else targets.set(to, [edge]);
   };
   const kinds = new Set<string>(query.relationKinds);
+  const presentKinds = new Set<string>();
   let dangling = 0;
   for (const relation of snapshot.relations) {
     if (!kinds.has(relation.kind)) continue;
@@ -196,13 +222,11 @@ function buildAdjacency(
       dangling += 1;
       continue;
     }
+    presentKinds.add(relation.kind);
     add(relation.from, relation.to, { via: "relation", relation });
   }
   if (query.includeParentContainment) {
-    const seen = new Set<EntityId>();
     for (const entity of snapshot.entities) {
-      if (seen.has(entity.id)) continue;
-      seen.add(entity.id);
       if (entity.parentId !== undefined && entity.parentId !== entity.id && entityIds.has(entity.parentId)) {
         add(entity.parentId, entity.id, { via: "parentContainment" });
       }
@@ -213,7 +237,7 @@ function buildAdjacency(
       edges.sort(compareEdges);
     }
   }
-  return { adjacency, dangling };
+  return { adjacency, dangling, presentKinds };
 }
 
 function copyEvidence(evidence: Evidence): Evidence {
@@ -257,9 +281,24 @@ function hopFor(index: number, from: EntityId, to: EntityId, edges: readonly Pat
   };
 }
 
+/** Entity plus its parentId descendants; cycle-safe, sorted by id. */
+function subtreeOf(root: EntityId, children: ReadonlyMap<EntityId, EntityId[]>): EntityId[] {
+  const seen = new Set<EntityId>([root]);
+  const stack = [root];
+  while (stack.length > 0) {
+    for (const child of children.get(stack.pop()!) ?? []) {
+      if (seen.has(child)) continue;
+      seen.add(child);
+      stack.push(child);
+    }
+  }
+  return [...seen].sort(compareText);
+}
+
 export function explorePath(snapshot: ArchitectureSnapshot, query: PathExplorationQuery): PathExplorationResult {
   const normalized = normalizeQuery(query);
-  const base = (dangling: number): PathResultBase => ({
+  let dangling = 0;
+  const base = (): PathResultBase => ({
     version: PATH_EXPLORATION_VERSION,
     snapshotId: snapshot.id,
     commitSha: snapshot.commitSha,
@@ -267,8 +306,8 @@ export function explorePath(snapshot: ArchitectureSnapshot, query: PathExplorati
     claim: PATH_EXPLORATION_CLAIM,
     ignoredDanglingRelationCount: dangling,
   });
-  const unavailable = (reason: PathUnavailableReason, message: string, dangling = 0): PathExplorationUnavailable => ({
-    ...base(dangling),
+  const unavailable = (reason: PathUnavailableReason, message: string): PathExplorationUnavailable => ({
+    ...base(),
     status: "unavailable",
     reason,
     message,
@@ -277,75 +316,95 @@ export function explorePath(snapshot: ArchitectureSnapshot, query: PathExplorati
   const invalid = invalidQueryMessage(query, normalized);
   if (invalid !== undefined) return unavailable("invalidQuery", invalid);
   const entityIds = new Set(snapshot.entities.map((entity: ArchitectureEntity) => entity.id));
+  const graph = buildAdjacency(snapshot, entityIds, normalized);
+  const { adjacency } = graph;
+  dangling = graph.dangling;
+  if (entityIds.size !== snapshot.entities.length || new Set(snapshot.relations.map(item => item.id)).size !== snapshot.relations.length) {
+    return unavailable("invalidSnapshot", "The snapshot has duplicate entity or relation ids.");
+  }
+  const partial = normalized.graphCoverage === "partial";
   const { fromEntityId: from, toEntityId: to } = normalized;
-  if (!entityIds.has(from)) return unavailable("unknownFromEntity", `Entity "${from}" is not in snapshot ${snapshot.id}.`);
-  if (!entityIds.has(to)) return unavailable("unknownToEntity", `Entity "${to}" is not in snapshot ${snapshot.id}.`);
-  if (normalized.relationKinds.length === 0 && !normalized.includeParentContainment) {
-    return unavailable("noEligibleKinds", "No relation kinds or containment were selected.");
+  for (const [id, reason] of [[from, "unknownFromEntity"], [to, "unknownToEntity"]] as const) {
+    if (entityIds.has(id)) continue;
+    return partial
+      ? unavailable("endpointNotLoaded", `Entity "${id}" is not loaded in this partial graph.`)
+      : unavailable(reason, `Entity "${id}" is not in snapshot ${snapshot.id}.`);
   }
 
-  const { adjacency, dangling } = buildAdjacency(snapshot, entityIds, normalized);
-  const partial = normalized.graphCoverage === "partial";
+  const absentRelationKinds = normalized.relationKinds.filter(kind => !graph.presentKinds.has(kind));
   const found = (entityPath: EntityId[]): PathExplorationFound => {
     const hops = entityPath.slice(1).map((target, index) => {
       const source = entityPath[index]!;
       return hopFor(index, source, target, adjacency.get(source)!.get(target)!, snapshot.commitSha);
     });
     const limits: PathResultLimit[] = [];
-    if (partial) limits.push("partialGraph");
+    if (partial && hops.length > 0) limits.push("partialGraph");
     if (hops.some(hop => hop.limits.includes("noEvidence"))) limits.push("hopsWithoutEvidence");
     return {
-      ...base(dangling),
+      ...base(),
       status: "found",
       entityIds: entityPath,
       relationIds: hops.flatMap(hop => hop.relationId !== undefined ? [hop.relationId] : []),
       hops,
       limits,
+      absentRelationKinds,
     };
   };
   if (from === to) return found([from]);
+  if (normalized.relationKinds.length === 0 && !normalized.includeParentContainment) {
+    return unavailable("noEligibleKinds", "No relation kinds or containment were selected.");
+  }
+
+  let sources = [from];
+  let targets = new Set([to]);
+  if (normalized.endpointScope === "subtree") {
+    const children = new Map<EntityId, EntityId[]>();
+    for (const entity of snapshot.entities) {
+      if (entity.parentId === undefined) continue;
+      const siblings = children.get(entity.parentId);
+      if (siblings) siblings.push(entity.id);
+      else children.set(entity.parentId, [entity.id]);
+    }
+    sources = subtreeOf(from, children);
+    targets = new Set(subtreeOf(to, children));
+    if (targets.has(from) || sources.includes(to)) {
+      return unavailable("nestedEndpoints", `"${from}" and "${to}" are nested; their subtrees overlap.`);
+    }
+  }
+  if (adjacency.size === 0) {
+    return unavailable("noEligibleRelations", "The snapshot has no traversable relations of the selected kinds.");
+  }
 
   const sortedNeighbors = new Map<EntityId, EntityId[]>();
-  for (const [source, targets] of adjacency) sortedNeighbors.set(source, [...targets.keys()].sort(compareText));
-
+  for (const [source, edges] of adjacency) sortedNeighbors.set(source, [...edges.keys()].sort(compareText));
   const parent = new Map<EntityId, EntityId>();
-  const depth = new Map<EntityId, number>([[from, 0]]);
-  const queue: EntityId[] = [from];
-  let hitCap = false;
+  const depth = new Map<EntityId, number>(sources.map(source => [source, 0]));
+  const queue = [...sources];
   for (let head = 0; head < queue.length; head += 1) {
     const current = queue[head]!;
-    const currentDepth = depth.get(current)!;
-    const neighbors = sortedNeighbors.get(current) ?? [];
-    if (currentDepth >= normalized.maxHops) {
-      if (neighbors.some(neighbor => !depth.has(neighbor))) hitCap = true;
-      continue;
-    }
-    for (const neighbor of neighbors) {
+    const nextDepth = depth.get(current)! + 1;
+    for (const neighbor of sortedNeighbors.get(current) ?? []) {
       if (depth.has(neighbor)) continue;
-      depth.set(neighbor, currentDepth + 1);
+      depth.set(neighbor, nextDepth);
       parent.set(neighbor, current);
-      if (neighbor === to) {
-        const entityPath = [to];
-        for (let step = parent.get(to); step !== undefined; step = parent.get(step)) entityPath.push(step);
-        return found(entityPath.reverse());
+      if (!targets.has(neighbor)) {
+        queue.push(neighbor);
+        continue;
       }
-      queue.push(neighbor);
+      if (nextDepth > normalized.maxHops) {
+        return unavailable("hopLimit", `A path exists but is longer than ${normalized.maxHops} hops.`);
+      }
+      const entityPath = [neighbor];
+      for (let step = parent.get(neighbor); step !== undefined; step = parent.get(step)) entityPath.push(step);
+      return found(entityPath.reverse());
     }
   }
 
-  if (hitCap) {
-    return unavailable(
-      "hopLimit",
-      `No path within ${normalized.maxHops} hops; the search stopped at the hop limit.`,
-      dangling,
-    );
-  }
   if (partial) {
     return unavailable(
       "partialGraph",
       "No path in the loaded partial graph; entities outside it may still connect these endpoints.",
-      dangling,
     );
   }
-  return { ...base(dangling), status: "unreachable", exploredEntityCount: depth.size };
+  return { ...base(), status: "unreachable", exploredEntityCount: depth.size, absentRelationKinds };
 }
