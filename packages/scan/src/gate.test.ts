@@ -43,7 +43,7 @@ test("scanning Okie passes every architecture gate cleanly", () => {
   assert.ok(excerpt.text.includes("inspectorAcceptedSummary"), "excerpt must show the scanned symbol");
   assert.equal(excerpt.path, "apps/web/src/inspector/inspectorPanel.ts");
 
-  assert.equal(SOURCE_EXCERPT_LIMITS.maxLines, 12);
+  assert.equal(SOURCE_EXCERPT_LIMITS.maxLines, 48);
   assert.equal(SOURCE_EXCERPT_LIMITS.maxLineCharacters, 512);
   const canvasViewport = snapshot.entities.find(entity => entity.name === "CanvasViewport" && entity.kind === "code");
   assert.ok(canvasViewport, "self-scan must include CanvasViewport");
@@ -53,4 +53,8 @@ test("scanning Okie passes every architecture gate cleanly", () => {
   assert.ok(viewportExcerpt.lines.length >= 1 && viewportExcerpt.lines.length <= SOURCE_EXCERPT_LIMITS.maxLines);
   assert.ok(viewportExcerpt.lines.every(line => [...line].length <= SOURCE_EXCERPT_LIMITS.maxLineCharacters));
   assert.ok([...viewportExcerpt.text].length <= SOURCE_EXCERPT_LIMITS.maxTextCharacters);
+  assert.equal(viewportExcerpt.sourceStartLine, canvasViewport.sourceRefs[0]!.startLine);
+  assert.equal(viewportExcerpt.sourceEndLine, canvasViewport.sourceRefs[0]!.endLine);
+  assert.ok(viewportExcerpt.sourceStartLine! <= viewportExcerpt.startLine);
+  assert.ok(viewportExcerpt.sourceEndLine! >= viewportExcerpt.endLine);
 });

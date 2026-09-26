@@ -91,6 +91,20 @@ function validateSourceRef(source: SourceRef, path: string, issues: ValidationIs
   }
 }
 
+/** Bind a captured window to its declaration, or an exact legacy reference. */
+export function sourceExcerptMatchesRef(excerpt: SourceExcerpt, source: SourceRef): boolean {
+  if (source.path !== excerpt.path || source.commitSha !== excerpt.frozenRevision
+    || (source.symbol ?? '') !== (excerpt.symbol ?? '')) return false;
+  const hasOriginal = excerpt.sourceStartLine !== undefined || excerpt.sourceEndLine !== undefined;
+  if (!hasOriginal) return source.startLine === excerpt.startLine && source.endLine === excerpt.endLine;
+  const start = excerpt.sourceStartLine;
+  const end = excerpt.sourceEndLine;
+  return typeof start === 'number' && typeof end === 'number'
+    && Number.isSafeInteger(start) && Number.isSafeInteger(end)
+    && start >= 1 && start <= excerpt.startLine && end >= excerpt.endLine
+    && source.startLine === start && source.endLine === end;
+}
+
 function validateSourceExcerpt(
   excerpt: SourceExcerpt,
   sourceRefs: readonly SourceRef[],
@@ -155,13 +169,11 @@ function validateSourceExcerpt(
   if (typeof excerpt.text === 'string' && unicodeLength(excerpt.text) > SOURCE_EXCERPT_LIMITS.maxTextCharacters) {
     issues.push({ path: `${path}.text`, message: `must not exceed ${SOURCE_EXCERPT_LIMITS.maxTextCharacters} characters` });
   }
-  const coherentSource = sourceRefs.some(source => source.path === excerpt.path
-    && source.commitSha === excerpt.frozenRevision
-    && (source.symbol ?? '') === (excerpt.symbol ?? '')
-    && source.startLine === excerpt.startLine
-    && source.endLine === excerpt.endLine);
+  const coherentSource = sourceRefs.some(source => sourceExcerptMatchesRef(excerpt, source));
   if (!coherentSource) {
-    issues.push({ path, message: "must exactly match an entity sourceRef path, symbol, revision, and range" });
+    issues.push({ path, message: excerpt.sourceStartLine !== undefined || excerpt.sourceEndLine !== undefined
+      ? "original source range must contain the excerpt and exactly match an entity sourceRef"
+      : "must exactly match an entity sourceRef path, symbol, revision, and range" });
   }
 }
 

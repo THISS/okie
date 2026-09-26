@@ -19,12 +19,6 @@ function unicodeLength(value: string): number {
   return [...value].length;
 }
 
-function excerptWithinLimits(lines: readonly string[]): boolean {
-  if (lines.length < 1 || lines.length > SOURCE_EXCERPT_LIMITS.maxLines) return false;
-  if (lines.some(line => unicodeLength(line) > SOURCE_EXCERPT_LIMITS.maxLineCharacters)) return false;
-  return unicodeLength(lines.join("\n")) <= SOURCE_EXCERPT_LIMITS.maxTextCharacters;
-}
-
 export type PortableExcerptInput = {
   path: string;
   symbol?: string;
@@ -41,7 +35,7 @@ export type PortableExcerptInput = {
  *
  * An overlong first line (over `maxLineCharacters`) is skipped so the window
  * can still start on the next usable line. Lines are never truncated and the
- * 12-line / 512-char bounds are not raised.
+ * original observed range is retained so partial capture is explicit.
  */
 export function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerpt | undefined {
   const language = languageForScanPath(input.path);
@@ -51,29 +45,34 @@ export function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerp
   if (!Number.isSafeInteger(originalStart) || originalStart < 1 || originalStart > fileLines.length) {
     return undefined;
   }
-  const declaredEnd = Number.isSafeInteger(input.endLine) ? input.endLine : originalStart;
-  const maxEnd = Math.min(fileLines.length, Math.max(originalStart, declaredEnd));
-  for (let startLine = originalStart; startLine <= maxEnd; startLine += 1) {
-    let endLine = Math.min(maxEnd, startLine + SOURCE_EXCERPT_LIMITS.maxLines - 1);
-    while (endLine >= startLine) {
-      const lines = fileLines.slice(startLine - 1, endLine).map(line => scrubGithubTokens(line));
-      if (excerptWithinLimits(lines)) {
-        return {
-          path: input.path,
-          ...(input.symbol ? { symbol: input.symbol } : {}),
-          language,
-          startLine,
-          endLine,
-          highlightLine: startLine,
-          frozenRevision: input.frozenRevision,
-          lines,
-          text: lines.join("\n"),
-        };
-      }
-      endLine -= 1;
+  if (!Number.isSafeInteger(input.endLine) || input.endLine < originalStart) return undefined;
+  const maxEnd = Math.min(fileLines.length, input.endLine);
+  const lines: string[] = [];
+  let startLine = originalStart;
+  let characters = 0;
+  for (let lineNumber = originalStart; lineNumber <= maxEnd; lineNumber += 1) {
+    const line = scrubGithubTokens(fileLines[lineNumber - 1]!);
+    const length = unicodeLength(line);
+    if (length > SOURCE_EXCERPT_LIMITS.maxLineCharacters) {
+      if (lines.length) break;
+      startLine = lineNumber + 1;
+      continue;
     }
+    const nextCharacters = characters + length + (lines.length ? 1 : 0);
+    if (nextCharacters > SOURCE_EXCERPT_LIMITS.maxTextCharacters) break;
+    lines.push(line);
+    characters = nextCharacters;
+    if (lines.length === SOURCE_EXCERPT_LIMITS.maxLines) break;
   }
-  return undefined;
+  if (!lines.length) return undefined;
+  return {
+    path: input.path,
+    ...(input.symbol ? { symbol: input.symbol } : {}),
+    language, startLine, endLine: startLine + lines.length - 1,
+    sourceStartLine: originalStart, sourceEndLine: input.endLine,
+    highlightLine: startLine, frozenRevision: input.frozenRevision,
+    lines, text: lines.join("\n"),
+  };
 }
 
 /**
@@ -103,23 +102,20 @@ export function attachPortableSourceExcerpts(
     entities: snapshot.entities.map(entity => {
       if (entity.kind !== "code") return entity;
       const ref = entity.sourceRefs[0];
-      if (!ref?.startLine) return entity;
+      if (!ref?.startLine || ref.endLine === undefined) return entity;
       const fileText = load(ref.path);
       if (fileText === undefined) return entity;
       const excerpt = portableSourceExcerpt({
         path: ref.path,
         ...(ref.symbol ? { symbol: ref.symbol } : {}),
         startLine: ref.startLine,
-        endLine: ref.endLine ?? ref.startLine,
+        endLine: ref.endLine,
         frozenRevision: snapshot.commitSha,
         fileText,
       });
       if (!excerpt) return entity;
       return {
         ...entity,
-        sourceRefs: entity.sourceRefs.map((item, index) => index === 0
-          ? { ...item, startLine: excerpt.startLine, endLine: excerpt.endLine }
-          : item),
         sourceExcerpts: [excerpt],
       };
     }),

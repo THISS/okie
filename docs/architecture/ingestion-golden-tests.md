@@ -216,3 +216,29 @@ The ingestion boundary is not ready for credit-bearing scans until:
    enrichment credits twice for the same committed request hash;
 8. logs, URLs, telemetry, and public exports contain no raw prompts, secrets,
    absolute source paths, or private excerpt content.
+
+## Source-to-evidence capture (CLA-175)
+
+New scans preserve the original declaration `sourceRef` without adding a second
+window reference. A captured window is valid when its original range exactly
+matches that ref's file, symbol, commit and range and contains the captured lines.
+Legacy excerpts without original-range metadata still require an exact range match.
+Snapshot validation and section-profile evidence selection share this binding rule.
+
+Captured excerpts allow up to 48 contiguous lines, still limited to 512 Unicode
+characters per line and 4096 characters of text. No line is silently shortened.
+`sourceStartLine` / `sourceEndLine` record the original observed range; differences
+from `startLine` / `endLine` indicate partial capture, including skipped wide lines
+or EOF. Absence of both fields means capture completeness is unknown. Missing or
+invalid declaration end ranges are not repaired: capture is skipped and refs remain
+unchanged. Text is token-scrubbed, not a byte-exact source archive.
+
+Old snapshots remain readable; older viewers enforcing 12-line validation may
+reject new longer captures and should be upgraded. No portable-version change is
+included in this slice. UI partial-capture labels and format negotiation remain
+follow-ups, not implemented features.
+
+This does not add method extraction where a scanner only identifies a containing
+class, guarantee full bodies for large declarations, or remove profile byte limits.
+Bounded hub selection and independently labelled semantic evaluation remain
+follow-on work. No model calls or inferred-role consumers are enabled.

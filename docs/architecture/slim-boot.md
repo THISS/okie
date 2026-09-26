@@ -18,6 +18,9 @@ After CLA-66, `/r/THISS/okie` still **downloaded** the full semantic trio (`snap
 
 Deep links (`sel` / `lens` / `root`) fetch **that** neighborhood first, not the whole tree. Open inside merges the container subgraph into the resident snapshot. Source tab lazy-fetches excerpts.
 
+See [source-to-evidence capture](./ingestion-golden-tests.md#source-to-evidence-capture-cla-175)
+for excerpt bounds, original source ranges and legacy compatibility.
+
 ## Out of slice
 
 Raising 2000; protobuf for `SceneSnapshot`; CLA-66 compile strategy; map-reduce; CLA-74 camera tiles.

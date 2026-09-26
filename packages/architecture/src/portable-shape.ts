@@ -49,6 +49,7 @@ const exposure = object({
 const sourceExcerpt = object({
   path: identifier, symbol: optional(identifier), language: choice(['typescript', 'tsx', 'javascript', 'rust']),
   startLine: line, endLine: line, highlightLine: line, frozenRevision: identifier, lines: list(string), text: string,
+  sourceStartLine: optional(line), sourceEndLine: optional(line),
 } satisfies Fields<SourceExcerpt>);
 const coverageRange = object({ startLine: line, endLine: line } satisfies Fields<CoverageLineRange>);
 const untestedBehaviour = object({ startLine: line, endLine: line, behaviour: identifier } satisfies Fields<UntestedBehaviour>);

@@ -47,7 +47,7 @@ export interface SourceRef {
 export const SOURCE_EXCERPT_LIMITS = {
   maxPathCharacters: 512,
   maxSymbolCharacters: 256,
-  maxLines: 12,
+  maxLines: 48,
   maxLineCharacters: 512,
   maxTextCharacters: 4096,
 } as const;
@@ -62,6 +62,10 @@ export interface SourceExcerpt {
   /** One-based inclusive source range. */
   startLine: number;
   endLine: number;
+  /** Original observed range before capture limits. Both absent in legacy excerpts.
+   * A differing start/end means partial capture, not a complete implementation. */
+  sourceStartLine?: number;
+  sourceEndLine?: number;
   /** One-based source line containing the curated anchor. */
   highlightLine: number;
   frozenRevision: string;

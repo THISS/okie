@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { choice, type ChoiceResponse } from "@typesafe-ai/sdk";
-import type { SourceExcerpt, ArchitectureSnapshot } from "@okie/architecture";
+import { sourceExcerptMatchesRef, type SourceExcerpt, type ArchitectureSnapshot } from "@okie/architecture";
 import { runOperatorJudgments, validateJudgmentAnswers, type JudgmentLimits, type JudgmentProvider } from "./operatorJudgments.js";
 import { canonicalOperatorRepositoryId, type OperatorStore } from "./operatorStore.js";
 import type { OperatorPublicationService } from "./operatorPublication.js";
@@ -100,7 +100,7 @@ export function buildSectionState(snapshot: ArchitectureSnapshot, scopeId: strin
   const candidates: SectionEvidence[] = [];
   let invalidExcerpts = 0;
   for (const member of members) for (const excerpt of member.sourceExcerpts ?? []) {
-    if (!excerpt.path || !Number.isSafeInteger(excerpt.startLine) || !Number.isSafeInteger(excerpt.endLine) || excerpt.startLine < 1 || excerpt.endLine < excerpt.startLine || excerpt.lines.length !== excerpt.endLine - excerpt.startLine + 1 || !excerpt.lines.every(line => typeof line === "string") || excerpt.text !== excerpt.lines.join("\n") || excerpt.frozenRevision !== sourceCommitSha || !member.sourceRefs.some(ref => ref.path === excerpt.path && ref.commitSha === sourceCommitSha && ref.startLine === excerpt.startLine && ref.endLine === excerpt.endLine)) { invalidExcerpts++; continue; }
+    if (!excerpt.path || !Number.isSafeInteger(excerpt.startLine) || !Number.isSafeInteger(excerpt.endLine) || excerpt.startLine < 1 || excerpt.endLine < excerpt.startLine || excerpt.lines.length !== excerpt.endLine - excerpt.startLine + 1 || !excerpt.lines.every(line => typeof line === "string") || excerpt.text !== excerpt.lines.join("\n") || excerpt.frozenRevision !== sourceCommitSha || !member.sourceRefs.some(ref => sourceExcerptMatchesRef(excerpt, ref))) { invalidExcerpts++; continue; }
     candidates.push({ ...excerpt, lines: [...excerpt.lines], entityId: member.id, id: `e${hash([member.id, excerpt]).slice(0, 20)}` });
   }
   candidates.sort((a, b) => Number(b.entityId === scopeId) - Number(a.entityId === scopeId) || a.path.localeCompare(b.path) || a.startLine - b.startLine || a.id.localeCompare(b.id));

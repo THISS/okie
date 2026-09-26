@@ -17,6 +17,19 @@ test('portable atlas round-trips the semantic fixture and optional source withou
   assert.deepEqual(parsePortableAtlas(serializePortableAtlas(bundle)), bundle);
 });
 
+test('portable body windows retain original ranges and reject malformed capture metadata', () => {
+  const bundle = fixture();
+  const entity = bundle.snapshot.entities.find(row => row.sourceExcerpts?.length)!;
+  const excerpt = entity.sourceExcerpts![0]!;
+  excerpt.sourceStartLine = excerpt.startLine;
+  excerpt.sourceEndLine = excerpt.endLine + 20;
+  entity.sourceRefs.push({ path: excerpt.path, commitSha: excerpt.frozenRevision,
+    ...(excerpt.symbol ? { symbol: excerpt.symbol } : {}), startLine: excerpt.sourceStartLine, endLine: excerpt.sourceEndLine });
+  assert.deepEqual(parsePortableAtlas(serializePortableAtlas(bundle)), bundle);
+  Object.assign(excerpt, { sourceEndLine: 'not a line' });
+  assert.throws(() => parsePortableAtlas(JSON.stringify(bundle)), /sourceEndLine/);
+});
+
 test('portable import rejects incompatible, malformed and mixed-revision graphs', () => {
   assert.throws(() => parsePortableAtlas('{}'), /Unsupported/);
   assert.throws(() => parsePortableAtlas('bad json'), /valid JSON/);
