@@ -31,8 +31,8 @@ regression signal, **not a substitute for browser visual QA**.
 
 `short-route` and `short-leg` go beyond the ticket's five kinds. Both are
 CLA-68 failure modes: a facing hop shorter than the arrowhead, and a U whose
-legs are shorter than the renderer's corner rounding (commit `ff673a2`). I
-added `short-leg` as a separate kind, not as an extension of `short-route`,
+legs are shorter than the renderer's corner rounding (commit `ff673a2`).
+`short-leg` is a separate kind rather than an extension of `short-route`
 because the route as a whole is long; only its legs collapse.
 
 Every finding carries sorted `edgeIds`, `nodeIds`, `labelIds` and the union of
