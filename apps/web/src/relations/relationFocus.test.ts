@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { goldenSnapshot } from '@okie/scene-compiler';
 import { createGoldenC4Scene } from '../renderer/goldenC4Scene';
 import { relationOrSetFocusPresentation, relationSetFocusPresentation, selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relationFocus';
 import { idleSemanticLens, semanticLensSessionProjectionOverride } from '../semantic/semanticLens';
@@ -195,11 +196,52 @@ describe('path relation-set focus (CLA-208)', () => {
     expect(code.endpointIds.has('component:web-shell')).toBe(false);
   });
 
+  it('lifts through snapshot parentage when a neighborhood scene omits the visited leaves', () => {
+    const full = createGoldenC4Scene();
+    const scene = { ...full, entities: full.entities.filter(entity => entity.detail !== 'code') };
+    const parents = new Map(goldenSnapshot.entities.map(entity => [entity.id, entity.parentId]));
+    const focus = { key: 'leafless', relationIds: [pathRelationId], entityIds: ['code:web-shell:app', 'code:web-navigation:history-controller'] };
+    expect(scene.entities.some(entity => entity.id === 'code:web-shell:app')).toBe(false);
+    const component = relationSetFocusPresentation(scene, focus, undefined, 'component', parents);
+    expect(component.endpointIds.has('component:web-shell')).toBe(true);
+    expect(component.endpointIds.has('component:web-navigation')).toBe(true);
+    const container = relationSetFocusPresentation(scene, focus, undefined, 'container', parents);
+    expect(container.endpointIds.has('container:web-app')).toBe(true);
+    expect(container.endpointIds.has('component:web-shell')).toBe(false);
+  });
+
+  it('only includes routes whose id or semanticIds present a hop relation', () => {
+    const scene = createGoldenC4Scene();
+    const projection = scene.projection!;
+    const presenting = new Set(Object.values(projection.projectedRelationsByDetail).flat()
+      .filter(route => route.id === pathRelationId || route.semanticIds?.includes(pathRelationId))
+      .map(route => route.id));
+    const visual = new Set(projection.semanticToVisualRelationIds[pathRelationId] ?? []);
+    const focus = { key: 'strict', relationIds: [pathRelationId], entityIds: [] };
+    const presentation = relationSetFocusPresentation(scene, focus, undefined, 'component');
+    for (const id of presentation.relationIds) {
+      expect(id === pathRelationId || presenting.has(id) || visual.has(id)).toBe(true);
+    }
+  });
+
   it('promotes retained paths without changing lens ownership and defers to a picked relation', () => {
-    const { scene, projectionOverride, relation } = ghostRelationFixture();
+    const { scene, projectionOverride, ghostPath, relation } = ghostRelationFixture();
     const focus = { key: 'k', relationIds: [relation.id], entityIds: [relation.from, relation.to] };
     const presentation = relationSetFocusPresentation(scene, focus, projectionOverride, 'component');
     expect(presentation.projectionOverride!.id).toBe(`${projectionOverride.id}:path-focus:k`);
+    // The ghosted hop route really reaches full opacity.
+    expect(ghostPath.targetOpacity).toBeLessThan(1);
+    expect(presentation.projectionOverride!.paths.find(path => path.pathId === ghostPath.pathId)).toMatchObject({ targetOpacity: 1 });
+    // At least one retained, previously dimmed endpoint object is promoted to full weight.
+    const endpointVisualIds = new Set([relation.from, relation.to].map(id => scene.projection!.semanticToVisualEntityId[id]));
+    const promotedEndpoints = presentation.projectionOverride!.objects.filter(object => {
+      if (!endpointVisualIds.has(object.objectId)) return false;
+      const before = projectionOverride.objects.find(candidate => candidate.objectId === object.objectId)!;
+      return (before.targetRepresentationId && (before.targetOpacity ?? 1) > .001 && (before.targetOpacity ?? 1) < 1 && object.targetOpacity === 1)
+        || (before.sourceRepresentationId && (before.sourceOpacity ?? 1) > .001 && (before.sourceOpacity ?? 1) < 1 && object.sourceOpacity === 1)
+        || (before.targetContentOpacity !== undefined && before.targetContentOpacity < 1 && object.targetContentOpacity === 1);
+    });
+    expect(promotedEndpoints.length).toBeGreaterThan(0);
     for (const path of presentation.projectionOverride!.paths) {
       const before = projectionOverride.paths.find(candidate => candidate.pathId === path.pathId)!;
       if (before.sourceOpacity === 0) expect(path.sourceOpacity).toBe(0);

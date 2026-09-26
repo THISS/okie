@@ -171,6 +171,8 @@ export function relationSetFocusPresentation(
   focus: RelationSetFocus | undefined,
   projectionOverride: ProjectionOverride | undefined,
   detail: SemanticDetail | undefined,
+  /** Canonical snapshot parentage; a scan neighborhood scene can omit the leaves a path visits. */
+  snapshotParentById?: ReadonlyMap<string, string | undefined>,
 ): RelationFocusPresentation {
   if (!focus || (!focus.relationIds.length && !focus.entityIds.length)) {
     return { endpointIds: new Set(), relationIds: new Set(), projectionOverride };
@@ -178,12 +180,13 @@ export function relationSetFocusPresentation(
   const semanticRelationIds = new Set(focus.relationIds);
   const relationIds = new Set<string>(focus.relationIds);
   const endpointIds = new Set<string>(focus.entityIds);
-  const parentById = new Map(scene.entities.map(entity => [entity.id, entity.parentId]));
+  const sceneParentById = new Map(scene.entities.map(entity => [entity.id, entity.parentId]));
+  const parentOf = (id: string) => snapshotParentById?.has(id) ? snapshotParentById.get(id) : sceneParentById.get(id);
   const bandIds = detail ? new Set(scene.projection?.entityIdsByDetail[detail] ?? []) : undefined;
   if (bandIds?.size) {
     for (const id of focus.entityIds) {
       const visited = new Set<string>();
-      for (let current: string | undefined = id; current !== undefined && !visited.has(current); current = parentById.get(current)) {
+      for (let current: string | undefined = id; current !== undefined && !visited.has(current); current = parentOf(current)) {
         visited.add(current);
         if (bandIds.has(current)) {
           endpointIds.add(current);
@@ -192,14 +195,11 @@ export function relationSetFocusPresentation(
       }
     }
   }
-  for (const relationId of focus.relationIds) {
-    const relation = relationForId(scene, relationId);
-    if (relation) relationIds.add(relation.id);
-  }
+  // Only routes that really present a hop relation: its own id, its visual ids, or semanticIds containing it.
   const visualRelationIds = new Set<string>();
   const projection = scene.projection;
   if (projection) {
-    for (const relationId of relationIds) {
+    for (const relationId of focus.relationIds) {
       for (const visualId of projection.semanticToVisualRelationIds[relationId] ?? []) visualRelationIds.add(visualId);
     }
     for (const band of semanticDetails) {
@@ -229,8 +229,9 @@ export function relationOrSetFocusPresentation(
   set: RelationSetFocus | undefined,
   projectionOverride: ProjectionOverride | undefined,
   detail: SemanticDetail | undefined,
+  snapshotParentById?: ReadonlyMap<string, string | undefined>,
 ): RelationFocusPresentation {
   return relationId || !set
     ? selectedRelationFocusPresentation(scene, relationId, projectionOverride)
-    : relationSetFocusPresentation(scene, set, projectionOverride, detail);
+    : relationSetFocusPresentation(scene, set, projectionOverride, detail, snapshotParentById);
 }
