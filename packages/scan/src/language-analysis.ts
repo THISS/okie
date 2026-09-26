@@ -29,6 +29,8 @@ export interface AnalysisExternalReference extends AnalysisLocation {
   /** Display name, e.g. `React.useState` or `wgpu::Device::create_buffer`. */
   symbol: string;
   kind: "uses" | "calls";
+  /** Compile-time only (TS type position or `import type` binding). */
+  typeOnly?: boolean;
   /** `typescript@<ver>` / `rust-analyzer@<ver>`. */
   analyzer: string;
 }

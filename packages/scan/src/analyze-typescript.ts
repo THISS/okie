@@ -210,6 +210,7 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
           if (!declarationName && !importExport) {
             let symbol = ts.isShorthandPropertyAssignment(parent)
               ? checker.getShorthandAssignmentValueSymbol(parent) : checker.getSymbolAtLocation(node);
+            const aliasSymbol = symbol && symbol.flags & ts.SymbolFlags.Alias ? symbol : undefined;
             if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
             let expression: ts.Node = node;
             if (ts.isPropertyAccessExpression(parent) && parent.name === node) expression = parent;
@@ -244,9 +245,16 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
               const external = externalPackage(symbol);
               if (external) {
                 // A call into the dependency's API surface; overloads/unions stay one dependency.
+                // Compile-time only: a type position (incl. `typeof x` inside a type), a binding from
+                // `import type`, or a non-call read of a property declared only by a type signature
+                // (interface / type-literal member: no dependency code runs).
+                const typeOnly = ts.isPartOfTypeNode(node)
+                  || !!ts.findAncestor(node.parent, ancestor => ts.isTypeQueryNode(ancestor) || (ts.isTypeNode(ancestor) && ts.isPartOfTypeNode(ancestor)))
+                  || !!aliasSymbol?.declarations?.some(declaration => ts.isTypeOnlyImportOrExportDeclaration(declaration))
+                  || (!callPosition && !!symbol.declarations?.length && symbol.declarations.every(ts.isPropertySignature));
                 const occurrence: AnalysisExternalReference = { ...location(node), ecosystem: "npm", ...external,
-                  symbol: displayName(symbol), kind: callPosition ? "calls" : "uses", analyzer };
-                externalReferences.set(`${occurrence.path}:${occurrence.startOffset}:${occurrence.package}:${occurrence.symbol}:${occurrence.kind}`, occurrence);
+                  symbol: displayName(symbol), kind: callPosition && !typeOnly ? "calls" : "uses", typeOnly, analyzer };
+                externalReferences.set(`${occurrence.path}:${occurrence.startOffset}:${occurrence.package}:${occurrence.symbol}:${occurrence.kind}:${typeOnly}`, occurrence);
               }
             }
           } else if (declarationName && !importExport) targetDefinition(checker.getSymbolAtLocation(node));

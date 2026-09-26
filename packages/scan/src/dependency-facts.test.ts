@@ -92,7 +92,7 @@ const cargoRepo: Record<string, string> = {
   ].join("\n"),
   "crates/gpu/Cargo.toml": [
     "[package]", 'name = "gpu"', "", "[dependencies]", 'core-lib = { path = "../core" }', 'json = { package = "serde_json", version = "1.0" }',
-    "thiserror.workspace = true", 'rand = "0.8"', 'wgpu = "25"', 'ghost = "1"', 'serde = "1"',
+    "thiserror.workspace = true", 'rand = "0.8"', 'wgpu = "25"', 'ghost = ">=1"', 'serde = "1"',
   ].join("\n"),
   "crates/gpu/src/lib.rs": "use json::Value;\nuse ::wgpu::{Device, util::DeviceExt};\nuse crate::inner;\nuse std::fmt;\nextern crate rand as random;\nfn f() { let _ = thiserror::Error; }\n",
   "crates/core/Cargo.toml": '[package]\nname = "core-lib"\n',
@@ -108,7 +108,7 @@ test("Cargo declarations resolve through Cargo.lock: single, disambiguated by th
   assert.deepEqual([byName.get("thiserror")?.workspaceInherited, byName.get("thiserror")?.requested, byName.get("thiserror")?.resolvedVersions], [true, "2.0", ["2.0.18"]]);
   assert.deepEqual([byName.get("rand")?.resolution, byName.get("rand")?.resolvedVersions], ["resolved", ["0.8.5"]], "crate lock entry selects one of two versions");
   assert.deepEqual([byName.get("ghost")?.resolution, byName.get("ghost")?.resolvedVersions], ["ambiguous", ["1.0.0", "2.0.0"]]);
-  assert.match(byName.get("ghost")!.reason!, /2 versions/);
+  assert.match(byName.get("ghost")!.reason!, /2 candidate versions/);
   assert.deepEqual(result.packages.map(row => [row.ecosystem, row.name, row.manifestPath]), [["cargo", "core-lib", "crates/core/Cargo.toml"], ["cargo", "gpu", "crates/gpu/Cargo.toml"]]);
   // Rust imports honour renames, `::` absolute paths and extern crate aliases; crate/std are skipped.
   assert.deepEqual(result.imports.map(row => [row.dependency, row.kind, row.startLine, row.specifier]), [
@@ -284,13 +284,13 @@ test("TypeScript analyzer emits external references for installed declarations, 
   });
   try {
     const analysis = analyzeTypeScript(repo.root);
-    const rows = (analysis.externalReferences ?? []).map(row => [row.path, row.startLine, row.package, row.via ?? "", row.symbol, row.kind]);
+    const rows = (analysis.externalReferences ?? []).map(row => [row.path, row.startLine, row.package, row.via ?? "", row.symbol, row.kind, row.typeOnly]);
     assert.deepEqual(rows, [
-      ["src/main.ts", 3, "pkg", "", "Options", "uses"],
-      ["src/main.ts", 3, "pkg", "", "nested.deep", "calls"],
-      ["src/main.ts", 3, "pkg", "", "helper", "calls"],
-      ["src/main.ts", 3, "pkg", "", "Options.size", "uses"],
-      ["src/main.ts", 3, "typed", "@types/typed", "value", "uses"],
+      ["src/main.ts", 3, "pkg", "", "Options", "uses", true],
+      ["src/main.ts", 3, "pkg", "", "nested.deep", "calls", false],
+      ["src/main.ts", 3, "pkg", "", "helper", "calls", false],
+      ["src/main.ts", 3, "pkg", "", "Options.size", "uses", true],
+      ["src/main.ts", 3, "typed", "@types/typed", "value", "uses", false],
     ], JSON.stringify(analysis.externalReferences, null, 1));
     assert.ok((analysis.externalReferences ?? []).every(row => row.analyzer.startsWith("typescript@")));
     assert.deepEqual(analysis, analyzeTypeScript(repo.root));

@@ -44,7 +44,7 @@ import type { PortableAtlas } from '@okie/architecture';
 import type { LanguageAnalysis } from './language-analysis.js';
 import { analyzeTypeScript } from './analyze-typescript.js';
 import { analyzeRust } from './analyze-rust.js';
-import { buildDependencyFacts } from './dependency-facts.js';
+import { buildDependencyFacts, collectDependencyInputs } from './dependency-facts.js';
 
 export interface ScanOptions {
   analysisMode?: 'full' | 'quick';
@@ -199,6 +199,11 @@ export interface BuildScanArtifactsParams {
   clonePairs?: readonly ClonePair[];
   /** Optional lcov.info bytes. Conventional `coverage/lcov.info` is read when omitted. */
   lcovText?: string;
+  /**
+   * Committed manifests/lockfiles captured before any analyzer ran (collectDependencyInputs).
+   * When omitted they are read through `readFile` (safe only when no analyzer touched the tree).
+   */
+  dependencyInputs?: ReadonlyMap<string, string>;
 }
 
 /** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
@@ -338,6 +343,8 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
       readFile,
       analysisMode: params.analysisMode ?? 'quick',
       ...(params.languageAnalysis ? { languageAnalysis: params.languageAnalysis } : {}),
+      ...(params.dependencyInputs ? { manifestInputs: params.dependencyInputs } : {}),
+      workspaceDirectories: discovery.units.filter(unit => unit.kind === 'member').map(unit => unit.dir),
     }),
     ...(params.includeSource ? { sources: portableSourcePaths(snapshot, discovery).map(path => ({ path, text: readFile(path) })) } : {}),
     ...(enrichmentReport ? { enrichmentReport } : {}),
@@ -359,11 +366,16 @@ export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "ro
   const repositorySlug = options.repositorySlug ?? slug(packageName ?? fallbackName);
   const systemName = options.systemName ?? packageName ?? (fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1));
   const discovery = discoverExtractedTree(sourceRoot, options.includeAllMembers ? { includeAllMembers: true } : {});
+  const readFile = (repoRelativePath: string): string => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8");
+  // Read manifests/lockfiles BEFORE analyzers run: cargo/rust-analyzer may write a
+  // Cargo.lock into the acquired tree, which must never be cited as committed evidence.
+  const dependencyInputs = collectDependencyInputs(discovery.sourceFiles, readFile);
   const languageAnalysis = analyzeLanguages(sourceRoot, discovery, options.analysisMode, acquired.installationRoot);
   return buildScanArtifacts({
+    dependencyInputs,
     discovery,
     pin: acquired.pin,
-    readFile: (repoRelativePath: string) => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8"),
+    readFile,
     repositorySlug,
     systemName,
     ...(languageAnalysis ? { languageAnalysis } : {}),
@@ -412,6 +424,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     const systemName = options.systemName ?? packageName ?? source.repo;
     const pin: RepositoryPin = { commitSha: commit.sha, treeHash: commit.treeSha, generatedAt: commit.generatedAt };
     const discovery = discoverExtractedTree(acquired.root, options.includeAllMembers ? { includeAllMembers: true } : {});
+    const dependencyInputs = collectDependencyInputs(discovery.sourceFiles, readFile);
     const languageAnalysis = analyzeLanguages(acquired.root, discovery, options.analysisMode);
     if (discovery.sourceFiles.length === 0) {
       throw new Error(
@@ -451,6 +464,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       enrichmentDocs = generated.size > 0 ? generated : undefined;
     }
     const artifacts = buildScanArtifacts({
+      dependencyInputs,
       discovery,
       pin,
       readFile,

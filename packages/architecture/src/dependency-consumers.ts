@@ -77,6 +77,8 @@ export interface DependencySymbolReference {
   /** Display name, e.g. `useState` or `wgpu::Device::create_buffer`. */
   symbol: string;
   kind: 'uses' | 'calls';
+  /** Type position or reached through a type-only import: compile-time only, never runtime use. */
+  typeOnly: boolean;
   /** `typescript@5.9.3` / `rust-analyzer@1.87.0`. */
   analyzer: string;
   resolvedVersion?: string;
@@ -122,16 +124,28 @@ function array(value: unknown, path: string): unknown[] {
   if (!Array.isArray(value)) fail(path, 'an array');
   return value;
 }
+/** C0/C1 control characters (ANSI/OSC escapes start with ESC or C1 CSI/OSC). */
+export const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/;
+const CONTROL_CHARACTERS_GLOBAL = /[\u0000-\u001f\u007f-\u009f]/g;
+/** Replace control characters so untrusted strings cannot drive a terminal. */
+export function sanitizeControlCharacters(value: string): string {
+  return value.replace(CONTROL_CHARACTERS_GLOBAL, '\ufffd');
+}
+function plain(value: unknown, path: string): void {
+  if (typeof value !== 'string') fail(path, 'a string');
+  if (CONTROL_CHARACTERS.test(value)) fail(path, 'a string without control characters');
+}
 function text(value: unknown, path: string, optional = false): void {
   if (optional && value === undefined) return;
   if (typeof value !== 'string' || !value.length) fail(path, 'a non-empty string');
+  plain(value, path);
 }
 function oneOf(value: unknown, values: readonly string[], path: string): void {
   if (typeof value !== 'string' || !values.includes(value)) fail(path, values.join(' or '));
 }
 function repoPath(value: unknown, path: string, optional = false): void {
   if (optional && value === undefined) return;
-  if (!portableSourcePath(value)) fail(path, 'a repository-relative path');
+  if (!portableSourcePath(value) || CONTROL_CHARACTERS.test(value)) fail(path, 'a repository-relative path');
 }
 function lines(row: Record<string, unknown>, path: string): void {
   const { startLine, endLine } = row;
@@ -168,11 +182,11 @@ export function validateDependencyFacts(raw: unknown, commitSha: string): assert
     owner(row.declaringPackage, `${path}.declaringPackage`);
     oneOf(row.section, SECTIONS, `${path}.section`);
     text(row.target, `${path}.target`, true);
-    if (typeof row.requested !== 'string') fail(`${path}.requested`, 'a string');
+    plain(row.requested, `${path}.requested`);
     if (typeof row.local !== 'boolean') fail(`${path}.local`, 'a boolean');
     if (row.workspaceInherited !== undefined && typeof row.workspaceInherited !== 'boolean') fail(`${path}.workspaceInherited`, 'a boolean');
     oneOf(row.resolution, RESOLUTIONS, `${path}.resolution`);
-    if (!Array.isArray(row.resolvedVersions) || !row.resolvedVersions.every(item => typeof item === 'string' && item.length > 0)) fail(`${path}.resolvedVersions`, 'a list of versions');
+    if (!Array.isArray(row.resolvedVersions) || !row.resolvedVersions.every(item => typeof item === 'string' && item.length > 0 && !CONTROL_CHARACTERS.test(item))) fail(`${path}.resolvedVersions`, 'a list of versions');
     repoPath(row.lockfilePath, `${path}.lockfilePath`, true);
     text(row.reason, `${path}.reason`, true);
     const source = object(row.source, `${path}.source`);
@@ -201,6 +215,7 @@ export function validateDependencyFacts(raw: unknown, commitSha: string): assert
     owner(row.consumingPackage, `${path}.consumingPackage`);
     text(row.symbol, `${path}.symbol`);
     oneOf(row.kind, ['uses', 'calls'], `${path}.kind`);
+    if (typeof row.typeOnly !== 'boolean') fail(`${path}.typeOnly`, 'a boolean');
     text(row.analyzer, `${path}.analyzer`);
     text(row.resolvedVersion, `${path}.resolvedVersion`, true);
     text(row.via, `${path}.via`, true);
@@ -211,7 +226,7 @@ export function validateDependencyFacts(raw: unknown, commitSha: string): assert
     oneOf(row.ecosystem, ECOSYSTEMS, `${path}.ecosystem`);
     oneOf(row.evidence, EVIDENCE, `${path}.evidence`);
     oneOf(row.status, ['complete', 'partial', 'unavailable'], `${path}.status`);
-    if (!Array.isArray(row.limitations) || !row.limitations.every(item => typeof item === 'string')) fail(`${path}.limitations`, 'a list of strings');
+    if (!Array.isArray(row.limitations) || !row.limitations.every(item => typeof item === 'string' && !CONTROL_CHARACTERS.test(item))) fail(`${path}.limitations`, 'a list of strings without control characters');
     if (!Number.isSafeInteger(row.dropped) || (row.dropped as number) < 0) fail(`${path}.dropped`, 'a non-negative integer');
     array(row.droppedByDependency, `${path}.droppedByDependency`).forEach((item, itemIndex) => {
       const entry = object(item, `${path}.droppedByDependency[${itemIndex}]`);
@@ -281,6 +296,8 @@ export interface DependencyConsumerReport {
     typeOnlyImports: number;
     excludedTypeOnlyImports: number;
     symbolReferences: number;
+    typeOnlySymbolReferences: number;
+    excludedTypeOnlySymbolReferences: number;
     calls: number;
   };
 }
@@ -315,7 +332,7 @@ function emptyReport(dependency: string, includeTypeOnly: boolean, factsAvailabl
   return {
     dependency, matchedNames: [], ecosystems: [], factsAvailable, includeTypeOnly,
     declarations: [], consumers: [], declaredWithoutObservedUse: [], coverage, suggestions,
-    summary: { declarations: 0, consumers: 0, files: 0, imports: 0, typeOnlyImports: 0, excludedTypeOnlyImports: 0, symbolReferences: 0, calls: 0 },
+    summary: { declarations: 0, consumers: 0, files: 0, imports: 0, typeOnlyImports: 0, excludedTypeOnlyImports: 0, symbolReferences: 0, typeOnlySymbolReferences: 0, excludedTypeOnlySymbolReferences: 0, calls: 0 },
   };
 }
 
@@ -340,11 +357,17 @@ export function queryDependencyConsumers(
     return ecosystem === 'cargo' && rustIdent(name) === rustIdent(query);
   };
   const declarations = facts.declarations.filter(row => matches(row.ecosystem, row.dependency) || matches(row.ecosystem, row.alias));
-  const allImports = facts.imports.filter(row => matches(row.ecosystem, row.dependency));
-  const references = facts.symbolReferences.filter(row => matches(row.ecosystem, row.dependency) || matches(row.ecosystem, row.via));
+  // A query by an alias key (`"s": "npm:left-pad@…"`, Cargo rename) reaches the canonical package,
+  // so both names answer with the same consumers.
+  const canonical = new Set(declarations.map(row => `${row.ecosystem}\u0000${row.dependency}`));
+  const selected = (ecosystem: DependencyEcosystem, name: string | undefined): boolean =>
+    matches(ecosystem, name) || (name !== undefined && canonical.has(`${ecosystem}\u0000${name}`));
+  const allImports = facts.imports.filter(row => selected(row.ecosystem, row.dependency));
+  const allReferences = facts.symbolReferences.filter(row => selected(row.ecosystem, row.dependency) || matches(row.ecosystem, row.via));
   const imports = includeTypeOnly ? allImports : allImports.filter(row => !row.typeOnly);
-  const matchedNames = [...new Set([...declarations, ...allImports, ...references].map(row => row.dependency))].sort(compare);
-  const ecosystems = [...new Set([...declarations, ...allImports, ...references].map(row => row.ecosystem))].sort(compare) as DependencyEcosystem[];
+  const references = includeTypeOnly ? allReferences : allReferences.filter(row => !row.typeOnly);
+  const matchedNames = [...new Set([...declarations, ...allImports, ...allReferences].map(row => row.dependency))].sort(compare);
+  const ecosystems = [...new Set([...declarations, ...allImports, ...allReferences].map(row => row.ecosystem))].sort(compare) as DependencyEcosystem[];
 
   if (!matchedNames.length) {
     const known = [...new Set([...facts.declarations.flatMap(row => [row.dependency, ...(row.alias ? [row.alias] : [])]), ...facts.imports.map(row => row.dependency)]
@@ -383,7 +406,7 @@ export function queryDependencyConsumers(
       const files = [...entry.files.values()].sort((left, right) => compare(left.path, right.path)).map(file => {
         file.imports.sort(byLine);
         file.symbolReferences.sort(byLine);
-        file.typeOnly = !file.symbolReferences.length && file.imports.every(row => row.typeOnly);
+        file.typeOnly = file.imports.every(row => row.typeOnly) && file.symbolReferences.every(row => row.typeOnly);
         return file;
       });
       const declared = declarationsOf(manifestPath);
@@ -395,14 +418,15 @@ export function queryDependencyConsumers(
   const consumerManifests = new Set(consumers.map(row => row.package.manifestPath));
   const declaringManifests = [...new Set(declarations.map(row => row.declaringPackage))].sort(compare);
   // A package whose only evidence was filtered out (type-only) is still not "without observed use".
-  const observed = new Set([...consumerManifests, ...allImports.map(row => row.consumingPackage)]);
+  const observed = new Set([...consumerManifests, ...allImports.map(row => row.consumingPackage), ...allReferences.map(row => row.consumingPackage)]);
   const declaredWithoutObservedUse: DependencyDeclarationOnly[] = declaringManifests
     .filter(manifestPath => !observed.has(manifestPath))
     .map(manifestPath => ({ package: packageRef(manifestPath, declarationsOf(manifestPath)[0]!.ecosystem), declarations: declarationsOf(manifestPath), label: DECLARATION_ONLY_LABEL }));
 
   const coverage = coverageLines(facts, ecosystems, matchedNames);
   const excludedTypeOnlyImports = allImports.length - imports.length;
-  if (excludedTypeOnlyImports) coverage.push(`${excludedTypeOnlyImports} type-only import(s) excluded by request.`);
+  const excludedTypeOnlySymbolReferences = allReferences.length - references.length;
+  if (excludedTypeOnlyImports || excludedTypeOnlySymbolReferences) coverage.push(`${excludedTypeOnlyImports} type-only import(s) and ${excludedTypeOnlySymbolReferences} type-only symbol reference(s) excluded by request.`);
   const undeclared = consumers.filter(row => row.undeclared);
   if (undeclared.length) coverage.push(`${undeclared.length} consuming package(s) do not declare ${query} in their own manifest (hoisted, inherited, or missing declaration).`);
   const firstParty = facts.packages.filter(row => matchedNames.includes(row.name) && ecosystems.includes(row.ecosystem));
@@ -413,7 +437,7 @@ export function queryDependencyConsumers(
   for (const ecosystem of ecosystems) {
     if (!symbolCoverage.some(row => row.ecosystem === ecosystem)) continue;
     const ecosystemImports = allImports.filter(row => row.ecosystem === ecosystem && !row.typeOnly);
-    if (ecosystemImports.length && !references.some(row => row.ecosystem === ecosystem) && !firstParty.some(row => row.ecosystem === ecosystem)) {
+    if (ecosystemImports.length && !allReferences.some(row => row.ecosystem === ecosystem) && !firstParty.some(row => row.ecosystem === ecosystem)) {
       coverage.push(`No ${ecosystem} symbol references resolved for ${query} despite ${ecosystemImports.length} runtime import(s); the analyzer could not see its declarations (not installed, untyped, or outside analyzed targets). Import evidence stands on its own.`);
     }
   }
@@ -429,6 +453,8 @@ export function queryDependencyConsumers(
       typeOnlyImports: imports.filter(row => row.typeOnly).length,
       excludedTypeOnlyImports,
       symbolReferences: references.length,
+      typeOnlySymbolReferences: references.filter(row => row.typeOnly).length,
+      excludedTypeOnlySymbolReferences,
       calls: references.filter(row => row.kind === 'calls').length,
     },
   };
@@ -468,10 +494,10 @@ export function formatDependencyConsumerReport(report: DependencyConsumerReport)
   const names = report.matchedNames.length && report.matchedNames.join(', ') !== report.dependency ? ` (matched: ${report.matchedNames.join(', ')})` : '';
   out.push(`Consumers of ${report.dependency}${names}${report.ecosystems.length ? ` [${report.ecosystems.join(', ')}]` : ''}`);
   const s = report.summary;
-  out.push(`${s.consumers} consuming package(s), ${s.files} file(s), ${s.imports} import(s)${s.typeOnlyImports ? ` (${s.typeOnlyImports} type-only)` : ''}, ${s.symbolReferences} symbol reference(s) (${s.calls} call(s)), ${s.declarations} declaration(s)`);
+  out.push(`${s.consumers} consuming package(s), ${s.files} file(s), ${s.imports} import(s)${s.typeOnlyImports ? ` (${s.typeOnlyImports} type-only)` : ''}, ${s.symbolReferences} symbol reference(s) (${s.calls} call(s)${s.typeOnlySymbolReferences ? `, ${s.typeOnlySymbolReferences} type-only` : ''}), ${s.declarations} declaration(s)`);
   if (!report.factsAvailable) {
     out.push('', 'Coverage limits', ...report.coverage.map(line => `  - ${line}`));
-    return `${out.join('\n')}\n`;
+    return `${out.map(sanitizeControlCharacters).join('\n')}\n`;
   }
   if (report.suggestions.length) out.push(`Did you mean: ${report.suggestions.join(', ')}?`);
   out.push('', 'Declarations');
@@ -487,7 +513,7 @@ export function formatDependencyConsumerReport(report: DependencyConsumerReport)
       out.push(`    ${file.path}${file.typeOnly ? '  (type-only)' : ''}`);
       const rows = [
         ...file.imports.map(row => ({ line: row.startLine, text: `${row.path}:${row.startLine}  ${row.kind === 'static' ? 'import' : row.kind}  '${row.specifier}'${row.typeOnly ? ' (type-only)' : ''}` })),
-        ...file.symbolReferences.map(row => ({ line: row.startLine, text: `${row.path}:${row.startLine}  ${row.kind} ${row.symbol}${row.via ? `  (via ${row.via})` : ''}` })),
+        ...file.symbolReferences.map(row => ({ line: row.startLine, text: `${row.path}:${row.startLine}  ${row.kind} ${row.symbol}${row.typeOnly ? ' (type-only)' : ''}${row.via ? `  (via ${row.via})` : ''}` })),
       ].sort((left, right) => left.line - right.line || compare(left.text, right.text));
       for (const row of rows) out.push(`      ${row.text}`);
     }
@@ -501,5 +527,6 @@ export function formatDependencyConsumerReport(report: DependencyConsumerReport)
   out.push('', 'Coverage limits');
   if (!report.coverage.length) out.push('  (none reported)');
   for (const line of report.coverage) out.push(`  - ${line}`);
-  return `${out.join('\n')}\n`;
+  // Every line carries untrusted names, specs and paths: never emit raw control bytes.
+  return `${out.map(sanitizeControlCharacters).join('\n')}\n`;
 }

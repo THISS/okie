@@ -32,9 +32,9 @@ function facts(): DependencyFacts {
       { ecosystem: 'cargo', dependency: 'serde-json', specifier: 'json', path: 'crates/gpu/src/lib.rs', startLine: 3, endLine: 3, consumingPackage: 'crates/gpu/Cargo.toml', kind: 'use', typeOnly: false },
     ],
     symbolReferences: [
-      { ecosystem: 'npm', dependency: 'react', path: 'apps/web/src/a.tsx', startLine: 5, endLine: 5, consumingPackage: 'apps/web/package.json', symbol: 'useState', kind: 'calls', analyzer: 'typescript@5.9.3', via: '@types/react' },
-      { ecosystem: 'npm', dependency: 'react', path: 'apps/web/src/a.tsx', startLine: 3, endLine: 3, consumingPackage: 'apps/web/package.json', symbol: 'FC', kind: 'uses', analyzer: 'typescript@5.9.3', via: '@types/react' },
-      { ecosystem: 'cargo', dependency: 'serde-json', path: 'crates/gpu/src/lib.rs', startLine: 9, endLine: 9, consumingPackage: 'crates/gpu/Cargo.toml', symbol: 'serde_json::to_string', kind: 'calls', analyzer: 'rust-analyzer@1.87.0', resolvedVersion: '1.0.1' },
+      { ecosystem: 'npm', dependency: 'react', path: 'apps/web/src/a.tsx', startLine: 5, endLine: 5, consumingPackage: 'apps/web/package.json', symbol: 'useState', kind: 'calls', typeOnly: false, analyzer: 'typescript@5.9.3', via: '@types/react' },
+      { ecosystem: 'npm', dependency: 'react', path: 'apps/web/src/a.tsx', startLine: 3, endLine: 3, consumingPackage: 'apps/web/package.json', symbol: 'FC', kind: 'uses', typeOnly: true, analyzer: 'typescript@5.9.3', via: '@types/react' },
+      { ecosystem: 'cargo', dependency: 'serde-json', path: 'crates/gpu/src/lib.rs', startLine: 9, endLine: 9, consumingPackage: 'crates/gpu/Cargo.toml', symbol: 'serde_json::to_string', kind: 'calls', typeOnly: false, analyzer: 'rust-analyzer@1.87.0', resolvedVersion: '1.0.1' },
     ],
     coverage: [
       { ecosystem: 'npm', evidence: 'symbolReferences', status: 'partial', limitations: ['Only where installed types were reused.'], dropped: 7, droppedByDependency: [{ dependency: 'react', dropped: 7 }] },
@@ -73,7 +73,67 @@ test('runtime-only query excludes type-only imports but keeps the package out of
   const report = queryDependencyConsumers(facts(), 'react', { includeTypeOnly: false });
   assert.deepEqual(report.consumers[0]!.files.map(file => file.path), ['apps/web/src/a.tsx']);
   assert.equal(report.summary.excludedTypeOnlyImports, 1);
-  assert.ok(report.coverage.some(line => line.includes('type-only import(s) excluded')));
+  assert.ok(report.coverage.some(line => line.includes('type-only import(s)') && line.includes('excluded by request')));
+});
+
+test('runtime-only query filters type-only symbol references and file/consumer typeOnly accounts for them (review item 1)', () => {
+  const value = facts();
+  // A file whose only evidence is a type-position reference is type-only.
+  value.symbolReferences.push({ ecosystem: 'npm', dependency: 'react', path: 'apps/web/src/c.tsx', startLine: 4, endLine: 4, consumingPackage: 'apps/web/package.json', symbol: 'ReactNode', kind: 'uses', typeOnly: true, analyzer: 'typescript@5.9.3' });
+  const all = queryDependencyConsumers(value, 'react');
+  const web = all.consumers.find(row => row.package.manifestPath === 'apps/web/package.json')!;
+  assert.equal(web.files.find(file => file.path === 'apps/web/src/c.tsx')!.typeOnly, true);
+  assert.equal(web.files.find(file => file.path === 'apps/web/src/a.tsx')!.typeOnly, false);
+  assert.equal(all.summary.typeOnlySymbolReferences, 2);
+  assert.match(formatDependencyConsumerReport(all), /apps\/web\/src\/c\.tsx:4 {2}uses ReactNode \(type-only\)/);
+  const runtime = queryDependencyConsumers(value, 'react', { includeTypeOnly: false });
+  const refs = runtime.consumers.flatMap(row => row.files.flatMap(file => file.symbolReferences));
+  assert.deepEqual(refs.map(row => row.symbol), ['useState']);
+  assert.equal(runtime.summary.excludedTypeOnlySymbolReferences, 2);
+  assert.ok(!runtime.consumers.some(row => row.files.some(file => file.path === 'apps/web/src/c.tsx')));
+  // A package whose only use is type-only drops out of runtime consumers but is not "declared without use".
+  const typeOnlyPackage = facts();
+  typeOnlyPackage.symbolReferences.push({ ecosystem: 'npm', dependency: 'react', path: 'packages/lib/src/t.ts', startLine: 1, endLine: 1, consumingPackage: 'packages/lib/package.json', symbol: 'FC', kind: 'uses', typeOnly: true, analyzer: 'typescript@5.9.3' });
+  const lib = queryDependencyConsumers(typeOnlyPackage, 'react').consumers.find(row => row.package.manifestPath === 'packages/lib/package.json')!;
+  assert.equal(lib.typeOnly, true);
+  const runtimeLib = queryDependencyConsumers(typeOnlyPackage, 'react', { includeTypeOnly: false });
+  assert.ok(!runtimeLib.consumers.some(row => row.package.manifestPath === 'packages/lib/package.json'));
+  assert.ok(!runtimeLib.declaredWithoutObservedUse.some(row => row.package.manifestPath === 'packages/lib/package.json'));
+});
+
+test('an npm alias key and its target package answer with the same consumers (QA D2)', () => {
+  const value = facts();
+  value.declarations.push({ ecosystem: 'npm', dependency: 'left-pad', alias: 's', declaringPackage: 'packages/lib/package.json', section: 'dependencies', requested: 'npm:left-pad@^1.3.0', local: false, resolution: 'resolved', resolvedVersions: ['1.3.0'], source: { path: 'packages/lib/package.json', line: 5 } });
+  value.imports.push({ ecosystem: 'npm', dependency: 'left-pad', specifier: 's', path: 'packages/lib/src/pad.ts', startLine: 1, endLine: 1, consumingPackage: 'packages/lib/package.json', kind: 'static', typeOnly: false });
+  const byAlias = queryDependencyConsumers(value, 's');
+  const byName = queryDependencyConsumers(value, 'left-pad');
+  assert.deepEqual(byAlias.consumers, byName.consumers);
+  assert.deepEqual(byAlias.consumers.map(row => row.package.manifestPath), ['packages/lib/package.json']);
+  assert.deepEqual(byAlias.declaredWithoutObservedUse, []);
+});
+
+test('formatter neutralizes terminal escapes and validation rejects control characters (review item 4)', () => {
+  const CSI = '\u001b[31m';
+  const CLEAR = '\u001b[2J';
+  const OSC52 = '\u001b]52;c;cm0gLXJmIH4=\u0007';
+  const value = facts();
+  value.declarations[0]!.requested = `^18${CSI}${OSC52}`;
+  value.imports[1]!.specifier = `react${CLEAR}`;
+  const report = queryDependencyConsumers(value, 'react');
+  const text = formatDependencyConsumerReport(report);
+  assert.doesNotMatch(text, /[\u0000-\u0009\u000b-\u001f\u007f-\u009f]/, 'no raw ESC/BEL/C1 bytes');
+  assert.ok(text.includes('\ufffd[31m'), 'escape visibly neutralized');
+  for (const [label, mutate] of [
+    ['requested', (row: DependencyFacts) => { row.declarations[0]!.requested = `x${CSI}`; }],
+    ['specifier', (row: DependencyFacts) => { row.imports[0]!.specifier = `react${OSC52}`; }],
+    ['path', (row: DependencyFacts) => { row.imports[0]!.path = `apps/web/src/${CLEAR}.tsx`; }],
+    ['dependency', (row: DependencyFacts) => { row.imports[0]!.dependency = 'react\u009b'; }],
+    ['limitation', (row: DependencyFacts) => { row.coverage[0]!.limitations = [`x${CSI}`]; }],
+  ] as const) {
+    const bad = facts();
+    mutate(bad);
+    assert.throws(() => parsePortableAtlas(JSON.stringify({ ...bundle(), dependencies: bad })), /control characters|repository-relative/, label);
+  }
 });
 
 test('cargo matches ident form and renames; ecosystem filter applies', () => {
