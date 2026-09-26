@@ -13,11 +13,11 @@ export type PathExplorerProps = {
   onOpenEvidence: (hop: PathHopView, evidence: PathEvidenceView) => void;
 };
 
-function EndpointRow({ label, endpoint, resolved }: { label: string; endpoint?: PathExplorationView['from']; resolved?: PathExplorationView['from'] }) {
+function EndpointRow({ label, endpoint, resolved, partial }: { label: string; endpoint?: PathExplorationView['from']; resolved?: PathExplorationView['from']; partial: boolean }) {
   return <div>
     <dt>{label}</dt>
     <dd data-path-endpoint={label.toLowerCase()}>
-      {endpoint ? <><strong>{endpoint.name}</strong>{endpoint.known ? null : <> · not in this snapshot</>}</> : <span className="detail-muted">Not chosen</span>}
+      {endpoint ? <><strong>{endpoint.name}</strong>{endpoint.known ? null : <> · {partial ? 'not loaded here, or no longer exists' : 'not in this snapshot'}</>}</> : <span className="detail-muted">Not chosen</span>}
       {resolved && endpoint ? <><br/><span data-path-resolved-endpoint={resolved.id}>via {resolved.name}, inside {endpoint.name}</span></> : null}
     </dd>
   </div>;
@@ -57,11 +57,12 @@ function Hop({ hop, canLoadExcerpts, onShowHop, onOpenEvidence }: { hop: PathHop
 /** CLA-208: path exploration panel. Selection-driven; framing only on explicit "Show on map". */
 export function PathExplorer({ view, canLoadExcerpts = false, onSwap, onClear, onToggleKind, onToggleContainment, onToggleScope, onShowHop, onOpenEvidence }: PathExplorerProps) {
   const ran = view.state === 'found' || view.state === 'unreachable' || view.state === 'unavailable';
+  const partial = view.coverage === 'partial';
   return <section aria-label="Path exploration" className="detail-section path-explorer" data-path-coverage={view.coverage} data-testid="path-explorer">
     <div className="section-title"><h3>Path</h3><span>{view.hops.length}</span></div>
     <dl className="relation-facts">
-      <EndpointRow endpoint={view.from} label="From" {...(view.resolvedFrom ? { resolved: view.resolvedFrom } : {})}/>
-      <EndpointRow endpoint={view.to} label="To" {...(view.resolvedTo ? { resolved: view.resolvedTo } : {})}/>
+      <EndpointRow endpoint={view.from} label="From" partial={partial} {...(view.resolvedFrom ? { resolved: view.resolvedFrom } : {})}/>
+      <EndpointRow endpoint={view.to} label="To" partial={partial} {...(view.resolvedTo ? { resolved: view.resolvedTo } : {})}/>
     </dl>
     <div className="detail-actions" role="group" aria-label="Path endpoints">
       <button className="secondary-detail-action" data-testid="path-swap" disabled={!view.from && !view.to} onClick={onSwap} type="button">Swap</button>
@@ -71,8 +72,8 @@ export function PathExplorer({ view, canLoadExcerpts = false, onSwap, onClear, o
       <legend>Follow relation kinds</legend>
       {view.kinds.length ? view.kinds.map(option => <label data-path-kind={option.kind} key={option.kind}>
         <input checked={option.checked} onChange={() => onToggleKind(option.kind)} type="checkbox"/>
-        {' '}{option.kind}{!option.known ? ' (unrecognised)' : !option.present ? ' (none in snapshot)' : ''}
-      </label>) : <p className="detail-muted">This snapshot has no relations.</p>}
+        {' '}{option.kind}{!option.known ? ' (unrecognised)' : !option.present ? ` (none ${partial ? 'in the part of the map loaded so far' : 'in this snapshot'})` : ''}
+      </label>) : <p className="detail-muted">{partial ? 'No relations in the part of the map loaded so far.' : 'This snapshot has no relations.'}</p>}
       <label data-path-option="containment"><input checked={view.containment} onChange={onToggleContainment} type="checkbox"/> Parent containment (parent → child)</label>
       <label data-path-option="scope"><input checked={view.scope === 'subtree'} onChange={onToggleScope} type="checkbox"/> Match parts inside endpoints</label>
     </fieldset>
@@ -82,7 +83,7 @@ export function PathExplorer({ view, canLoadExcerpts = false, onSwap, onClear, o
       {view.notes.map(note => <p className="detail-muted" data-path-note="" key={note}>{note}</p>)}
     </div>
     {view.hops.length ? <ol className="path-hops">{view.hops.map(hop => <Hop canLoadExcerpts={canLoadExcerpts} hop={hop} key={hop.index} onOpenEvidence={onOpenEvidence} onShowHop={onShowHop}/>)}</ol> : null}
-    {ran || view.state === 'snapshotMismatch' || view.state === 'unknownKinds'
+    {ran
       ? <p className="relation-evidence-note" data-testid="path-disclaimer">{view.disclaimer}</p>
       : null}
   </section>;

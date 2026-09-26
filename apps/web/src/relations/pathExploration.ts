@@ -51,6 +51,8 @@ export type PathDraft = {
   kinds: string[];
   containment: boolean;
   scope: PathEndpointScope;
+  /** True once the reader (or a restored link) chose the scope; endpoint edits then keep it. */
+  scopeChosen?: boolean;
   /** Set only when restored from a link made at another snapshot. */
   linkSnapshotId?: string;
 };
@@ -128,7 +130,7 @@ const UNAVAILABLE_TITLE: Record<PathUnavailableReason, string> = {
   noEligibleKinds: 'Choose at least one relation kind or parent containment.',
   invalidQuery: 'This path query is not valid.',
   invalidSnapshot: 'This snapshot cannot be explored.',
-  endpointNotLoaded: "An endpoint isn't loaded in this part of the map yet.",
+  endpointNotLoaded: "An endpoint isn't loaded in the part of the map loaded so far.",
   nestedEndpoints: 'One endpoint is inside the other.',
   noEligibleRelations: 'This snapshot has no relations of the selected kinds.',
   partialGraph: 'No path in the part of the map loaded so far.',
@@ -136,7 +138,7 @@ const UNAVAILABLE_TITLE: Record<PathUnavailableReason, string> = {
 };
 
 const UNAVAILABLE_HINT: Partial<Record<PathUnavailableReason, string>> = {
-  endpointNotLoaded: 'Open more of the map around it, then explore again.',
+  endpointNotLoaded: 'It may appear as more of the map loads; if this link is old, the entity may no longer exist.',
   partialGraph: 'More of the map must be loaded before Okie can say whether a path exists.',
   nestedEndpoints: 'Turn off “Match parts inside endpoints” or choose endpoints that are not nested.',
 };
@@ -163,9 +165,9 @@ export function setPathEndpoint(
   entityId: string,
   snapshot: ArchitectureSnapshot,
 ): PathDraft {
-  const base = draft && draft.linkSnapshotId === undefined
+  const base: Omit<PathDraft, 'linkSnapshotId'> = draft && draft.linkSnapshotId === undefined
     ? draft
-    : { kinds: presentRelationKinds(snapshot), containment: false, scope: 'exact' as const };
+    : { kinds: presentRelationKinds(snapshot), containment: false, scope: 'exact' };
   const fromId = role === 'from' ? entityId : base.fromId;
   const toId = role === 'to' ? entityId : base.toId;
   return {
@@ -173,7 +175,7 @@ export function setPathEndpoint(
     ...(toId !== undefined ? { toId } : {}),
     kinds: [...base.kinds],
     containment: base.containment,
-    scope: defaultPathScope(snapshot, fromId, toId),
+    ...(base.scopeChosen ? { scope: base.scope, scopeChosen: true } : { scope: defaultPathScope(snapshot, fromId, toId) }),
   };
 }
 
@@ -190,7 +192,7 @@ export function togglePathKind(draft: PathDraft, kind: string): PathDraft {
 
 export function setPathOption(draft: PathDraft, option: { containment?: boolean; scope?: PathEndpointScope }): PathDraft {
   const { linkSnapshotId: _link, ...rest } = draft;
-  return { ...rest, ...option };
+  return { ...rest, ...option, ...(option.scope !== undefined ? { scopeChosen: true } : {}) };
 }
 
 function writableId(value: string | undefined): value is string {
@@ -219,6 +221,7 @@ export function pathDraftFromNavigation(path: NavigationPathState | undefined): 
     kinds: [...path.kinds],
     containment: path.containment,
     scope: path.scope,
+    scopeChosen: true,
     ...(path.snapshotId !== undefined ? { linkSnapshotId: path.snapshotId } : {}),
   };
 }
@@ -268,7 +271,7 @@ function hopView(snapshot: ArchitectureSnapshot, hop: PathHop): PathHopView {
     to,
     kind: hop.kind,
     via: hop.via,
-    viaLabel: containment ? 'Parent containment' : 'Observed relation',
+    viaLabel: containment ? 'Parent containment' : 'Relation',
     ...(hop.relationId !== undefined ? { relationId: hop.relationId } : {}),
     ...(hop.label !== undefined ? { label: hop.label } : {}),
     parallelCount: hop.parallelRelationIds.length,
@@ -347,12 +350,15 @@ export function explorePathView(
     graphCoverage: coverage,
     endpointScope: draft.scope,
   });
+  const partial = coverage === 'partial';
+  const scopeCopy = partial ? 'in the part of the map loaded so far' : 'in this snapshot';
   const notes: string[] = [];
   if (result.ignoredDanglingRelationCount > 0) {
-    notes.push(`${plural(result.ignoredDanglingRelationCount, 'relation')} of the selected kinds point${result.ignoredDanglingRelationCount === 1 ? 's' : ''} outside this snapshot and ${result.ignoredDanglingRelationCount === 1 ? 'was' : 'were'} ignored.`);
+    const one = result.ignoredDanglingRelationCount === 1;
+    notes.push(`${plural(result.ignoredDanglingRelationCount, 'relation')} of the selected kinds point${one ? 's' : ''} ${partial ? 'to entities not loaded so far' : 'outside this snapshot'} and ${one ? 'was' : 'were'} ignored.`);
   }
   if (result.status !== 'unavailable' && result.absentRelationKinds.length) {
-    notes.push(`No traversable relations of kind ${result.absentRelationKinds.join(', ')} exist in this snapshot.`);
+    notes.push(`No traversable relations of kind ${result.absentRelationKinds.join(', ')} exist ${scopeCopy}.`);
   }
 
   if (result.status === 'found') {
@@ -387,13 +393,23 @@ export function explorePathView(
     };
   }
   const hint = UNAVAILABLE_HINT[result.reason];
+  const bothMissing = !from!.known && !to!.known;
+  const message = (result.reason === 'unknownFromEntity' || result.reason === 'unknownToEntity') && bothMissing
+    ? `Neither "${from!.id}" nor "${to!.id}" is in snapshot ${snapshot.id}.`
+    : result.reason === 'endpointNotLoaded' && bothMissing
+      ? `Neither "${from!.id}" nor "${to!.id}" is loaded in this partial map.`
+      : result.reason === 'nestedEndpoints'
+        ? `${from!.name} and ${to!.name} are nested: one is inside the other, so their contents overlap.`
+        : result.reason === 'noEligibleRelations'
+          ? `There are no traversable relations of the selected kinds ${scopeCopy}.`
+          : result.message;
   return {
     ...base,
     notes,
     state: 'unavailable',
     reason: result.reason,
-    title: UNAVAILABLE_TITLE[result.reason],
-    message: hint ? `${result.message} ${hint}` : result.message,
+    title: result.reason === 'noEligibleRelations' ? `No relations of the selected kinds ${scopeCopy}.` : UNAVAILABLE_TITLE[result.reason],
+    message: hint ? `${message} ${hint}` : message,
     result,
   };
 }

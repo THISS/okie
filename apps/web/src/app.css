@@ -1121,3 +1121,5 @@ a.icon-button { text-decoration: none; }
 .path-evidence code { color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; overflow-wrap: anywhere; }
 .path-evidence button { justify-self: start; min-height: 26px; padding: 0 9px; border-radius: 7px; font-size: 10px; cursor: pointer; }
 .path-explorer .detail-muted { color: var(--atlas-quiet); }
+.details-scroll > .path-explorer:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.path-explorer { margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--atlas-line); }

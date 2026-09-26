@@ -57,8 +57,21 @@ describe('PathExplorer', () => {
     const markup = render(input, coverage);
     expect(markup).toContain(`data-path-status="${status}"`);
     expect(markup).toContain(copy);
-    expect(markup).toContain('data-testid="path-disclaimer"');
+    // Nothing ran for a mismatched snapshot or unrecognised kinds, so there is no result to disclaim.
+    const ran = status === 'unreachable' || status === 'unavailable';
+    expect(markup.includes('data-testid="path-disclaimer"')).toBe(ran);
     expect(markup).not.toContain('data-testid="path-hop"');
+  });
+
+  it('uses partial-coverage copy for stale endpoints and absent kinds', () => {
+    const markup = render(draft({ toId: 'stale', kinds: ['calls', 'reads'] }), 'partial');
+    expect(markup).toContain('not loaded here, or no longer exists');
+    expect(markup).not.toContain('not in this snapshot');
+    expect(markup).toContain('reads (none in the part of the map loaded so far)');
+    expect(markup).not.toContain('none in snapshot');
+    const complete = render(draft({ toId: 'stale', kinds: ['calls', 'reads'] }), 'complete');
+    expect(complete).toContain('not in this snapshot');
+    expect(complete).toContain('reads (none in this snapshot)');
   });
 
   it('asks for the second endpoint without a disclaimer before anything ran', () => {

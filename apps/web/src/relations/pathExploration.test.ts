@@ -8,6 +8,7 @@ import {
   navigationPathFromDraft,
   pathDraftFromNavigation,
   pathGraphCoverage,
+  setPathOption,
   presentRelationKinds,
   setPathEndpoint,
   swapPathEndpoints,
@@ -104,14 +105,15 @@ describe('path exploration view model', () => {
     [{ toId: 'gone' }, 'complete', 'unknownToEntity', "isn't in this snapshot"],
     [{ toId: 'gone' }, 'partial', 'endpointNotLoaded', "isn't loaded"],
     [{ kinds: [] }, 'complete', 'noEligibleKinds', 'Choose at least one'],
-    [{ kinds: ['reads'] }, 'complete', 'noEligibleRelations', 'no relations of the selected kinds'],
+    [{ kinds: ['reads'] }, 'complete', 'noEligibleRelations', 'No relations of the selected kinds in this snapshot'],
     [{ fromId: 'web', toId: 'web.ui', scope: 'subtree' as const }, 'complete', 'nestedEndpoints', 'inside the other'],
   ] as const)('reports unavailable %j honestly', (overrides, coverage, reason, title) => {
     const view = explorePathView(snapshot(), draft(overrides), coverage);
     expect(view.state).toBe('unavailable');
     expect(view.reason).toBe(reason);
     expect(view.title).toContain(title);
-    expect(view.result?.status === 'unavailable' && view.message.startsWith(view.result.message)).toBe(true);
+    expect(view.result).toMatchObject({ status: 'unavailable', reason });
+    expect(view.message.length).toBeGreaterThan(0);
   });
 
   it('refuses unknown kinds and snapshot mismatches without running a different query', () => {
@@ -124,6 +126,46 @@ describe('path exploration view model', () => {
     expect(mismatch.state).toBe('snapshotMismatch');
     expect(mismatch.message).toContain('snapshot:older');
     expect(mismatch.result).toBeUndefined();
+  });
+
+  it('says "loaded so far" rather than "this snapshot" under partial coverage', () => {
+    const none = explorePathView(snapshot(), draft({ kinds: ['reads'] }), 'partial');
+    expect(none.reason).toBe('noEligibleRelations');
+    expect(`${none.title} ${none.message}`).toContain('in the part of the map loaded so far');
+    expect(`${none.title} ${none.message}`).not.toContain('snapshot');
+    const absent = explorePathView(snapshot(), draft({ kinds: ['calls', 'reads'] }), 'partial');
+    expect(absent.notes).toContain('No traversable relations of kind reads exist in the part of the map loaded so far.');
+    expect(absent.notes.some(note => note.includes('to entities not loaded so far'))).toBe(true);
+    expect(absent.notes.join(' ')).not.toContain('snapshot');
+    const notLoaded = explorePathView(snapshot(), draft({ toId: 'gone' }), 'partial');
+    expect(notLoaded.message).toContain('may no longer exist');
+    expect(notLoaded.message).not.toContain('Open more of the map around it');
+  });
+
+  it('names both stale endpoints and uses names for nested endpoints', () => {
+    const both = explorePathView(snapshot(), draft({ fromId: 'gone:a', toId: 'gone:b' }), 'complete');
+    expect(both.message).toContain('"gone:a"');
+    expect(both.message).toContain('"gone:b"');
+    const bothPartial = explorePathView(snapshot(), draft({ fromId: 'gone:a', toId: 'gone:b' }), 'partial');
+    expect(bothPartial.message).toContain('"gone:b"');
+    const nested = explorePathView(snapshot(), draft({ fromId: 'web', toId: 'web.ui', scope: 'subtree' }), 'complete');
+    expect(nested.message).toContain('Web and UI are nested');
+    expect(nested.message).not.toContain('"web.ui"');
+  });
+
+  it('labels relation hops neutrally', () => {
+    expect(explorePathView(snapshot(), draft(), 'complete').hops[0]!.viaLabel).toBe('Relation');
+  });
+
+  it('keeps a scope the reader chose when endpoints change', () => {
+    const snap = snapshot();
+    const chosen = setPathOption(setPathEndpoint(undefined, 'from', 'web', snap), { scope: 'exact' });
+    expect(chosen.scopeChosen).toBe(true);
+    expect(setPathEndpoint(chosen, 'to', 'api', snap).scope).toBe('exact');
+    // Without an explicit choice the default follows the endpoints.
+    expect(setPathEndpoint(setPathEndpoint(undefined, 'from', 'web.ui', snap), 'to', 'api', snap).scope).toBe('subtree');
+    // A restored link's scope counts as chosen.
+    expect(pathDraftFromNavigation({ fromId: 'web', toId: 'api', kinds: [], containment: false, scope: 'exact' })?.scopeChosen).toBe(true);
   });
 
   it('keeps stale endpoint IDs visible so the engine can report them', () => {
