@@ -91,7 +91,7 @@ import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory,
 import { createInspectorNeighborhoodRequest, inspectorNavigationIdentity } from './inspector/inspectorNeighborhoodRequest';
 import { readDemoQuery } from './renderer/query';
 import { loadStressFixture } from './renderer/stressFixture';
-import type { AtlasRenderer, AtlasScene, Camera, PickResult, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation } from './renderer/types';
+import type { AtlasRenderer, AtlasScene, Camera, PickResult, RendererDiagnostics, RendererLodState, SceneEntity, SceneRelation, SceneSourceExcerpt } from './renderer/types';
 import type { ProjectionOverride } from './renderer/types';
 import {
   composeSemanticZoomCamera, type SemanticZoomMorph,
@@ -1465,6 +1465,10 @@ export function App() {
   const [explicitInspectorSelection, setExplicitInspectorSelection] = useState(initialNavigation.selectedId !== initialNavigation.rootEntityId);
   const [selectedId, setSelectedId] = useState(initialNavigation.selectedId);
   const [pathDraft, setPathDraft] = useState<PathDraft | undefined>(() => pathDraftFromNavigation(initialNavigation.path));
+  const pathDraftRef = useRef(pathDraft);
+  pathDraftRef.current = pathDraft;
+  const openPathExcerptRef = useRef((_entityId: string, _excerpt: SceneSourceExcerpt) => {});
+  const [pathLoadEpoch, setPathLoadEpoch] = useState(0);
   const [navigationIdentity, setNavigationIdentity] = useState(() => ({
     repositoryId: initialNavigation.repositoryId,
     snapshotId: initialNavigation.snapshotId,
@@ -1872,16 +1876,19 @@ export function App() {
     },
   ), [currentStory, pickedRelationId, selected.id, storyPhase, storySelectionOverride]);
   // CLA-208: scan snapshots grow in place as neighborhoods load, so re-run on size and scene changes.
+  // Imported Mermaid atlases are not explored (their snapshot is not the inspector's); hide rather than mislead.
+  const pathAvailable = query.fixture !== 'stress' && !importedAtlas;
   const pathView = useMemo(
-    () => pathDraft && query.fixture !== 'stress' ? explorePathView(activeSnapshot, pathDraft, pathGraphCoverage({ scanBoot: scanFixture?.boot })) : undefined,
-    [pathDraft, query.fixture, scene, activeSnapshot.entities.length, activeSnapshot.relations.length],
+    () => pathDraft && pathAvailable ? explorePathView(activeSnapshot, pathDraft, pathGraphCoverage({ scanBoot: scanFixture?.boot })) : undefined,
+    [pathDraft, pathAvailable, pathLoadEpoch, scene, activeSnapshot.entities.length, activeSnapshot.relations.length],
   );
+  const pathParentById = useMemo(() => new Map(activeSnapshot.entities.map(entity => [entity.id, entity.parentId])), [pathLoadEpoch, scene, activeSnapshot.entities.length]);
   const pathFocus = useMemo(() => pathView?.reveal && { key: pathView.reveal.relationIds.join('|') || pathView.reveal.entityIds.join('|'), ...pathView.reveal }, [pathView]);
   const focusPickedRelationId = currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pickedRelationId : undefined;
   const focusPath = currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pathFocus : undefined;
   const relationFocus = useMemo(
-    () => relationOrSetFocusPresentation(scene, focusPickedRelationId, focusPath, projectionOverride, activeDetail),
-    [activeDetail, focusPath, focusPickedRelationId, projectionOverride, scene],
+    () => relationOrSetFocusPresentation(scene, focusPickedRelationId, focusPath, projectionOverride, activeDetail, pathParentById),
+    [activeDetail, focusPath, focusPickedRelationId, pathParentById, projectionOverride, scene],
   );
   function publishSemanticRenderPacket(camera: Camera, packetScene = sceneRef.current, session = semanticLensSessionRef.current) {
     const key = `${session.baseDetail}|${session.settled.map(entry => `${entry.targetId}:${entry.currentDetail}:${entry.nextDetail}`).join('>')}|${session.active.targetId ?? ''}:${session.active.currentDetail ?? ''}:${session.active.nextDetail ?? ''}|${session.focusTransfer?.sourceEntries.map(entry => entry.targetId).join('>') ?? ''}>${session.focusTransfer?.targetId ?? ''}:${session.focusTransfer?.depth ?? ''}`;
@@ -1904,6 +1911,7 @@ export function App() {
       focusPath,
       semanticProjection,
       semanticLensSessionDetail(session),
+      pathParentById,
     ).projectionOverride;
     semanticRenderPacketRef.current = {
       revision: ++semanticRenderRevisionRef.current,
@@ -2274,6 +2282,7 @@ export function App() {
         setInspectorFlightActive(false);
         commitNavigation(canonicalNavigationState({
           ...pending.navigation,
+          path: navigationRef.current.path,
           camera: input.targetCamera,
           detail: pending.targetSession.baseDetail,
           lensPath: semanticLensCanonicalPathIds(pending.targetSession),
@@ -2295,6 +2304,7 @@ export function App() {
     setInspectorFlightActive(false);
     commitNavigation(canonicalNavigationState({
       ...pending.navigation,
+      path: navigationRef.current.path,
       camera: liveCamera,
       detail: pending.targetSession.baseDetail,
       lensPath: semanticLensCanonicalPathIds(pending.targetSession),
@@ -2365,8 +2375,7 @@ export function App() {
         if (query.fixture !== 'stress') setScene(restoredScene);
         setInspectorHistory([]);
         setSelectedId(next.selectedId);
-        setPathDraft(pathDraftFromNavigation(next.path));
-        if (next.path) { setInspectorTab('details'); setDetailsOpen(true); }
+        restorePathDraft(next, source);
         updateCamera(next.camera);
         const restoredPlan = selectStoryPlan(storyCatalog, next.story?.id);
         const restoredKnown = Boolean(next.story && storyCatalog.some(plan => plan.id === next.story!.id));
@@ -5134,6 +5143,7 @@ export function App() {
       return;
     }
     importedAtlasRef.current = result.atlas;
+    setPathDraft(undefined);
     const importedAuthoring = createGestureHistory(createArchitectureAuthoringDocument(result.atlas.snapshot.repositoryId));
     authoringHistoryRef.current = importedAuthoring;
     setAuthoringHistory(importedAuthoring);
@@ -5194,6 +5204,22 @@ export function App() {
     setLiveMessage(`Imported ${kinds} onto the atlas with ${result.atlas.frameEntityIds.length} nodes.`);
   }
 
+  /** CLA-208: reveal a restored path only when it changed (or on a non-embed first load); scan links load endpoints first. */
+  function restorePathDraft(next: NavigationState, source: 'initialize' | 'popstate') {
+    const restored = pathDraftFromNavigation(next.path);
+    const changed = JSON.stringify(navigationPathFromDraft(restored)) !== JSON.stringify(navigationPathFromDraft(pathDraftRef.current));
+    setPathDraft(restored);
+    if (!next.path) return;
+    const embedded = isEmbedChrome({ framed: isFramedBrowsingContext(), embedQuery: isEmbedQueryFlag(window.location.search) });
+    if (changed || (source === 'initialize' && !embedded)) { setInspectorTab('details'); setDetailsOpen(true); }
+    const fixture = scanFixture;
+    if (fixture?.boot === 'neighborhood') {
+      const ids = [next.path.fromId, next.path.toId];
+      void Promise.all(ids.map(id => fixture.ensureNeighborhood(id).catch(() => undefined)))
+        .then(() => setPathLoadEpoch(epoch => epoch + 1));
+    }
+  }
+
   /** CLA-208: setting, swapping, or clearing endpoints is deliberate exploration (push, like a search jump); kind/option refinements replace. */
   function updatePathDraft(next: PathDraft | undefined, mode: 'push' | 'replace') {
     setPathDraft(next);
@@ -5215,17 +5241,22 @@ export function App() {
       excerpt = evidenceExcerpt(activeSnapshot, { source: { path: evidence.path, commitSha: evidence.commitSha, ...(evidence.startLine !== undefined ? { startLine: evidence.startLine } : {}) } }, [hop.from.id, hop.to.id]);
     }
     if (!excerpt) {
-      setLiveMessage(`No frozen source excerpt was captured for ${evidence.location}.`);
+      setLiveMessage(`A source excerpt for ${evidence.location} isn't available here.`);
       return;
     }
+    // Resumes after an await: use the latest render's workspace, not this closure's.
+    openPathExcerptRef.current(hop.from.id, excerpt);
+  }
+
+  openPathExcerptRef.current = (entityId: string, excerpt: SceneSourceExcerpt) => {
     const next = openDerivedDiagramSurface(diagramWorkspace, {
-      id: `source:${hop.from.id}:${excerpt.path}:${excerpt.frozenRevision}:${excerpt.highlightLine}`, kind: 'source', title: excerpt.path.split('/').at(-1) ?? excerpt.path,
-      closable: true, entityIds: [hop.from.id], excerpt,
+      id: `source:${entityId}:${excerpt.path}:${excerpt.frozenRevision}:${excerpt.highlightLine}`, kind: 'source', title: excerpt.path.split('/').at(-1) ?? excerpt.path,
+      closable: true, entityIds: [entityId], excerpt,
       session: { selectedId: selected.id, inspector: { open: false, tab: 'source', subjectId: selected.id } },
     }, currentDiagramSurfaceSession());
     setDiagramWorkspace(next);
     restoreDiagramSurface(next.surfaces[next.activeSurfaceId]!);
-  }
+  };
 
   function openSourceTab() {
     const id = `source:${selected.id}:${selectedExcerpt?.path ?? ''}:${selectedExcerpt?.frozenRevision ?? ''}`;
@@ -5675,7 +5706,7 @@ export function App() {
             {sourceAvailable && <button className="primary-detail-action" onClick={openSourceTab} type="button">Open source in a tab</button>}
             {contextualOverview?.implementationFiles ? <ComponentImplementation key={selected.id} files={contextualOverview.implementationFiles} onOpenEntity={id => { void openInspectorChild(id).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.')); }}/> : sourceAvailable ? <SourceViewer sourceContext={scanFixture && askAtlasIdentity ? { scanBasePath: `/scan${(() => { const route = parseAppRoute(window.location.pathname); const slug = route.kind === 'repo' ? route.slug : query.scanRepo; return slug ? `/${encodeURIComponent(slug)}` : ''; })()}`, owner: askAtlasIdentity.owner, repo: askAtlasIdentity.repo, ...(scanFixture.publication ? { publicationVersion: scanFixture.publication.versionId } : {}) } : undefined} excerpt={selectedExcerpt} localWorkspace={localWorkspace} onFeedback={setLiveMessage}/> : <section className="detail-section" data-testid="source-unavailable"><div className="section-title"><h3>Source unavailable</h3></div><p className="detail-muted">No source evidence was captured for {selected.name}. Select another tab to inspect the available architecture evidence.</p></section>}
           </div> : <div aria-labelledby="details-tab" className="details-scroll" id="details-panel" role="tabpanel">
-            {pathView && pathDraft && <PathExplorer canLoadExcerpts={Boolean(scanFixture)} onClear={() => updatePathDraft(undefined, 'push')} onOpenEvidence={(hop, evidence) => { void openPathEvidence(hop, evidence); }} onShowHop={showPathHopOnMap} onSwap={() => updatePathDraft(swapPathEndpoints(pathDraft), 'push')} onToggleContainment={() => updatePathDraft(setPathOption(pathDraft, { containment: !pathDraft.containment }), 'replace')} onToggleKind={kind => updatePathDraft(togglePathKind(pathDraft, kind), 'replace')} onToggleScope={() => updatePathDraft(setPathOption(pathDraft, { scope: pathDraft.scope === 'subtree' ? 'exact' : 'subtree' }), 'replace')} view={pathView}/>}
+            {pathView && pathDraft && pathAvailable && <PathExplorer canLoadExcerpts={Boolean(scanFixture)} onClear={() => updatePathDraft(undefined, 'push')} onOpenEvidence={(hop, evidence) => { void openPathEvidence(hop, evidence); }} onShowHop={showPathHopOnMap} onSwap={() => updatePathDraft(swapPathEndpoints(pathDraft), 'push')} onToggleContainment={() => updatePathDraft(setPathOption(pathDraft, { containment: !pathDraft.containment }), 'replace')} onToggleKind={kind => updatePathDraft(togglePathKind(pathDraft, kind), 'replace')} onToggleScope={() => updatePathDraft(setPathOption(pathDraft, { scope: pathDraft.scope === 'subtree' ? 'exact' : 'subtree' }), 'replace')} view={pathView}/>}
             {pickedCanonicalRelation && <section className="detail-section" data-testid="canonical-relation-evidence"><div className="section-title"><h3>{pickedCanonicalRelation.label ?? pickedCanonicalRelation.kind}</h3><span>{pickedCanonicalRelation.evidence.length}</span></div><p>{activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.from)?.name ?? pickedCanonicalRelation.from} → {activeSnapshot.entities.find(entity => entity.id === pickedCanonicalRelation.to)?.name ?? pickedCanonicalRelation.to}</p>{detailListVisible('relation-evidence', pickedCanonicalRelation.evidence).map((item, index) => <p key={index}>{item.reason}<br/>{item.source.path} · line {item.source.startLine} · {item.source.commitSha}</p>)}{pickedCanonicalRelation.evidence.length > 5 && <button aria-expanded={expandedDetailLists.has('relation-evidence')} onClick={() => toggleDetailList('relation-evidence')}>{expandedDetailLists.has('relation-evidence') ? 'Show fewer' : `Show all ${pickedCanonicalRelation.evidence.length}`}</button>}{!pickedRelationPresentation && <p>The endpoints are outside this map neighborhood. Captured evidence remains available above.</p>}</section>}
             {pickedRelationPresentation ? <article aria-labelledby="inspector-relation-title" className="inspector-presentation inspector-relation-presentation" data-inspector-presentation="relation" data-inspector-relation-id={pickedRelationPresentation.id}>
               <header className="entity-hero relation-hero">
@@ -5730,7 +5761,7 @@ export function App() {
                     ? <button className="primary-detail-action" disabled={!sourceAvailable} onClick={openSourceTab}><CodeIcon size={15}/> Open source</button>
                     : <button className="primary-detail-action" disabled={!selectedHasChildren} onClick={() => openInside(selected.id, 'preserve')}>Open inside <ArrowIcon size={15}/></button>}
                   <button className="secondary-detail-action" onClick={() => focusEntity(selected, 'replace', 'frame', 'details', 'preserve')}><FitIcon size={15}/> Show on map</button>
-                  {query.fixture !== 'stress' && <><button className="secondary-detail-action" data-testid="path-from-here" onClick={() => updatePathDraft(setPathEndpoint(pathDraft, 'from', selected.id, activeSnapshot), 'push')} type="button">Path from here</button>
+                  {pathAvailable && <><button className="secondary-detail-action" data-testid="path-from-here" onClick={() => updatePathDraft(setPathEndpoint(pathDraft, 'from', selected.id, activeSnapshot), 'push')} type="button">Path from here</button>
                   <button className="secondary-detail-action" data-testid="path-to-here" onClick={() => updatePathDraft(setPathEndpoint(pathDraft, 'to', selected.id, activeSnapshot), 'push')} type="button">Path to here</button></>}
                 </div>
               </header>
