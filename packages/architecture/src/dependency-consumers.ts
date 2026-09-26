@@ -303,6 +303,16 @@ export interface DependencyConsumerReport {
 }
 
 export const FACTS_UNAVAILABLE_LIMIT = 'This bundle predates dependency capture; rescan to query consumers.';
+/**
+ * Coverage limitation carried by a facts object whose rows were all removed to keep the
+ * bundle under its size limit. Such a bundle did capture dependencies; queries must say so.
+ */
+export const DEPENDENCY_FACTS_OMITTED_LIMIT = 'Dependency facts omitted: bundle size limit. Declarations, imports and symbol references were captured but did not fit in this bundle.';
+/** True when `facts` is the minimal stand-in left after every row was dropped for size. */
+export function dependencyFactsOmitted(facts: DependencyFacts): boolean {
+  return !facts.declarations.length && !facts.imports.length && !facts.symbolReferences.length
+    && facts.coverage.some(row => row.limitations.includes(DEPENDENCY_FACTS_OMITTED_LIMIT));
+}
 
 const compare = (left: string, right: string): number => (left < right ? -1 : left > right ? 1 : 0);
 const rustIdent = (name: string): string => name.replace(/-/g, '_');
@@ -349,6 +359,7 @@ export function queryDependencyConsumers(
   const includeTypeOnly = options.includeTypeOnly ?? true;
   const query = dependency.trim();
   if (!facts) return emptyReport(query, includeTypeOnly, false, [FACTS_UNAVAILABLE_LIMIT]);
+  if (dependencyFactsOmitted(facts)) return emptyReport(query, includeTypeOnly, false, [DEPENDENCY_FACTS_OMITTED_LIMIT]);
   const inEcosystem = (ecosystem: DependencyEcosystem): boolean => !options.ecosystem || options.ecosystem === ecosystem;
   const typesName = typesTarget(query);
   const matches = (ecosystem: DependencyEcosystem, name: string | undefined): boolean => {

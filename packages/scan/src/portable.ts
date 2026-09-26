@@ -6,8 +6,10 @@ const bytes = (value: unknown): number => Buffer.byteLength(JSON.stringify(value
 
 /**
  * Build the portable bundle. Dependency facts never push a bundle that fits without
- * them over `maxBytes`: they are trimmed (symbol references, then imports) into the
- * remaining space, with the dropped counts recorded in their coverage.
+ * them over `maxBytes`: they are trimmed (symbol references, then imports, then
+ * declarations) into the remaining space, measured after coverage is rebuilt. When no
+ * row fits, a minimal facts object (packages + coverage carrying
+ * DEPENDENCY_FACTS_OMITTED_LIMIT) is kept so queries report the size limit.
  */
 export function portableAtlasFromScan(artifacts: ScanArtifacts, repositoryUrl?: string, maxBytes: number = PORTABLE_ATLAS_MAX_BYTES): PortableAtlas {
   const base: PortableAtlas = {
@@ -23,7 +25,8 @@ export function portableAtlasFromScan(artifacts: ScanArtifacts, repositoryUrl?: 
   if (baseBytes + overhead + bytes(dependencies) > maxBytes) {
     dependencies = fitDependencyFacts(dependencies, Math.max(0, maxBytes - baseBytes - overhead));
   }
-  // Not even the facts skeleton fits: omit them rather than fail an export that fit before.
+  // Last resort, only when even the ~1 KB stand-in (no packages) cannot fit: drop the field
+  // rather than fail an export that fit before.
   const bundle: PortableAtlas = baseBytes + overhead + bytes(dependencies) > maxBytes ? base : { ...base, dependencies };
   serializePortableAtlas(bundle);
   return bundle;

@@ -3,7 +3,7 @@ import ts from "typescript";
 import Parser from "tree-sitter";
 import Rust from "tree-sitter-rust";
 import {
-  CONTROL_CHARACTERS, portableSourcePath, sanitizeControlCharacters, validateDependencyFacts,
+  CONTROL_CHARACTERS, DEPENDENCY_FACTS_OMITTED_LIMIT, portableSourcePath, sanitizeControlCharacters, validateDependencyFacts,
   type DependencyCoverage, type DependencyDeclaration, type DependencyEcosystem, type DependencyEvidenceKind, type DependencyFacts,
   type DependencyImport, type DependencyImportKind, type DependencyPackage, type DependencySection, type DependencySymbolReference,
 } from "@okie/architecture";
@@ -738,46 +738,93 @@ function sortReferences(rows: DependencySymbolReference[]): DependencySymbolRefe
 
 const byteLength = (value: unknown): number => Buffer.byteLength(JSON.stringify(value), "utf8");
 
+/** Itemized `droppedByDependency` entries per coverage row; the rest are summed in one limitation. */
+export const MAX_DROPPED_BY_DEPENDENCY = 50;
+const MORE_DROPPED = /^(\d+) more dependenc(?:y|ies) had (\d+) fact\(s\) dropped \(not itemized\)\.$/;
+
 /**
- * Deterministically trim facts to a compact-JSON byte budget: symbol references go
- * first, then imports, then (pathologically) declarations. Rows are kept in their
- * canonical order; every dropped row is counted in coverage.
+ * Add `extra` dropped rows to a coverage row and bound its size: the top
+ * MAX_DROPPED_BY_DEPENDENCY dependencies by dropped count (ties by name) are itemized,
+ * the remainder are summed in a single "N more dependencies" limitation.
+ */
+function withDropped(row: DependencyCoverage, extra: ReadonlyArray<{ dependency: string }>, note?: string): DependencyCoverage {
+  const counts = new Map(row.droppedByDependency.map(item => [item.dependency, item.dropped]));
+  for (const item of extra) counts.set(item.dependency, (counts.get(item.dependency) ?? 0) + 1);
+  let hiddenDependencies = 0;
+  let hiddenDropped = 0;
+  const limitations = row.limitations.filter(line => {
+    const match = MORE_DROPPED.exec(line);
+    if (match) { hiddenDependencies += Number(match[1]); hiddenDropped += Number(match[2]); }
+    return !match;
+  });
+  const ranked = [...counts].sort(([leftName, left], [rightName, right]) => right - left || compare(leftName, rightName));
+  for (const [, dropped] of ranked.slice(MAX_DROPPED_BY_DEPENDENCY)) { hiddenDependencies += 1; hiddenDropped += dropped; }
+  if (hiddenDependencies) limitations.push(`${hiddenDependencies} more ${hiddenDependencies === 1 ? "dependency" : "dependencies"} had ${hiddenDropped} fact(s) dropped (not itemized).`);
+  if (note && extra.length) limitations.push(note);
+  return {
+    ...row,
+    status: extra.length && row.status !== "unavailable" ? "partial" : row.status,
+    dropped: row.dropped + extra.length,
+    droppedByDependency: ranked.slice(0, MAX_DROPPED_BY_DEPENDENCY).sort(([left], [right]) => compare(left, right)).map(([dependency, dropped]) => ({ dependency, dropped })),
+    limitations: [...new Set(limitations)].sort(compare),
+  };
+}
+
+/** Bound every coverage row's itemized drop list (idempotent). */
+export function boundDependencyCoverage(facts: DependencyFacts): DependencyFacts {
+  return { ...facts, coverage: facts.coverage.map(row => withDropped(row, [])) };
+}
+
+/** The minimal valid stand-in when no fact rows fit: packages + coverage saying why. */
+function omittedDependencyFacts(facts: DependencyFacts, maxBytes: number): DependencyFacts {
+  const coverage = (withPackages: boolean): DependencyFacts => ({
+    ...facts, packages: withPackages ? facts.packages : [], declarations: [], imports: [], symbolReferences: [],
+    coverage: facts.coverage.map(row => ({
+      ecosystem: row.ecosystem, evidence: row.evidence, status: "unavailable" as const,
+      limitations: [DEPENDENCY_FACTS_OMITTED_LIMIT], droppedByDependency: [],
+      dropped: row.dropped + (facts[row.evidence] as ReadonlyArray<{ ecosystem: DependencyEcosystem }>).filter(item => item.ecosystem === row.ecosystem).length,
+    })),
+  });
+  const full = coverage(true);
+  return byteLength(full) <= maxBytes ? full : coverage(false);
+}
+
+/**
+ * Deterministically trim facts to a compact-JSON byte budget, measured on the final
+ * object (coverage included): symbol references go first, then imports, then
+ * declarations; rows keep their canonical order and every dropped row is counted.
+ * When not even the empty skeleton fits, a minimal stand-in carrying
+ * DEPENDENCY_FACTS_OMITTED_LIMIT is returned (it may still exceed a tiny budget —
+ * callers that must fit check the size).
  */
 export function fitDependencyFacts(facts: DependencyFacts, maxBytes: number): DependencyFacts {
-  if (byteLength(facts) <= maxBytes) return facts;
-  const reserve = 8192; // room for the coverage notes added below
-  let budget = maxBytes - reserve - byteLength({ ...facts, declarations: [], imports: [], symbolReferences: [] });
-  // Strict priority: once a tier is cut, every later tier is dropped entirely.
-  let exhausted = false;
-  const keep = <T>(rows: readonly T[]): { kept: T[]; dropped: T[] } => {
-    const kept: T[] = [];
-    let index = 0;
-    for (; index < rows.length && !exhausted; index += 1) {
-      const size = byteLength(rows[index]) + 1;
-      if (size > budget) { exhausted = true; break; }
-      budget -= size;
-      kept.push(rows[index]!);
-    }
-    return { kept, dropped: rows.slice(index) };
-  };
-  const declarations = keep(facts.declarations);
-  const imports = keep(facts.imports);
-  const references = keep(facts.symbolReferences);
+  const bounded = boundDependencyCoverage(facts);
+  if (byteLength(bounded) <= maxBytes) return bounded;
+  const tiers = [bounded.declarations, bounded.imports, bounded.symbolReferences] as const;
+  const total = tiers.reduce((sum, rows) => sum + rows.length, 0);
   const note = `Trimmed to the ${maxBytes}-byte dependency fact budget (symbol references first, then imports, then declarations; canonical order kept).`;
-  const coverage = facts.coverage.map(row => {
-    const dropped = row.evidence === "declarations" ? declarations.dropped : row.evidence === "imports" ? imports.dropped : references.dropped;
-    const mine = (dropped as ReadonlyArray<{ ecosystem: DependencyEcosystem; dependency: string }>).filter(item => item.ecosystem === row.ecosystem);
-    if (!mine.length) return row;
-    const counts = new Map(row.droppedByDependency.map(item => [item.dependency, item.dropped]));
-    for (const item of mine) counts.set(item.dependency, (counts.get(item.dependency) ?? 0) + 1);
+  const build = (keep: number): DependencyFacts => {
+    let rest = keep;
+    const kept = tiers.map(rows => { const count = Math.min(rest, rows.length); rest -= count; return count; });
+    const dropped = tiers.map((rows, index) => rows.slice(kept[index]) as ReadonlyArray<{ ecosystem: DependencyEcosystem; dependency: string }>);
+    const tierOf = { declarations: 0, imports: 1, symbolReferences: 2 } as const;
     return {
-      ...row, status: row.status === "unavailable" ? row.status : "partial" as const,
-      dropped: row.dropped + mine.length,
-      droppedByDependency: [...counts].sort(([left], [right]) => compare(left, right)).map(([dependency, dropped]) => ({ dependency, dropped })),
-      limitations: [...new Set([...row.limitations, note])].sort(compare),
+      ...bounded,
+      declarations: bounded.declarations.slice(0, kept[0]),
+      imports: bounded.imports.slice(0, kept[1]),
+      symbolReferences: bounded.symbolReferences.slice(0, kept[2]),
+      coverage: bounded.coverage.map(row => withDropped(row, dropped[tierOf[row.evidence]]!.filter(item => item.ecosystem === row.ecosystem), note)),
     };
-  });
-  return { ...facts, declarations: declarations.kept, imports: imports.kept, symbolReferences: references.kept, coverage };
+  };
+  if (byteLength(build(0)) > maxBytes) return omittedDependencyFacts(bounded, maxBytes);
+  // Largest prefix (in priority order) whose final serialized form fits.
+  let low = 0;
+  let high = total - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (byteLength(build(middle)) <= maxBytes) low = middle; else high = middle - 1;
+  }
+  return build(low);
 }
 
 export function buildDependencyFacts(input: DependencyFactsInput): DependencyFacts {
@@ -1144,7 +1191,7 @@ export function buildDependencyFacts(input: DependencyFactsInput): DependencyFac
     } else {
       if (reused) limitations.npm.symbolReferences.add(sanitizeControlCharacters(reused));
       limitations.npm.symbolReferences.add("Resolved only where installed dependency type declarations were available to the compiler; packages without installed or bundled types yield imports but no references.");
-      limitations.npm.symbolReferences.add("Attributed to the package whose declaration file defines the symbol (`@types/x` → x); a type re-exported from another package is attributed to that package. Node built-ins (@types/node), compiler lib types, and JSX intrinsic tag/attribute names are excluded. Type positions (incl. `typeof x` in a type), `import type` bindings and non-call reads of properties declared only by an interface/type-literal signature are marked typeOnly.");
+      limitations.npm.symbolReferences.add("Attributed to the package whose declaration file defines the symbol (`@types/x` → x); a type re-exported from another package is attributed to that package. Node built-ins (@types/node), compiler lib types, and JSX intrinsic tag/attribute names are excluded. Type positions (incl. `typeof x` in a type) and `import type` bindings are marked typeOnly; value-position reads of interface-declared members (e.g. `req.query`) count as runtime.");
       const unresolvedModules = [...tsLimits].filter(limit => /TS(2307|7016):/.test(limit)).length;
       if (unresolvedModules) limitations.npm.symbolReferences.add(`${unresolvedModules} unresolved module / missing type declaration diagnostic(s) (TS2307/TS7016); references through those imports are absent.`);
     }

@@ -245,13 +245,12 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
               const external = externalPackage(symbol);
               if (external) {
                 // A call into the dependency's API surface; overloads/unions stay one dependency.
-                // Compile-time only: a type position (incl. `typeof x` inside a type), a binding from
-                // `import type`, or a non-call read of a property declared only by a type signature
-                // (interface / type-literal member: no dependency code runs).
+                // Compile-time only: a type position (incl. `typeof x` inside a type) or a binding from
+                // `import type`. A value-position read (`req.query`, `useRef(1).current`) touches a
+                // runtime object even when its shape is declared by an interface, so it stays runtime.
                 const typeOnly = ts.isPartOfTypeNode(node)
                   || !!ts.findAncestor(node.parent, ancestor => ts.isTypeQueryNode(ancestor) || (ts.isTypeNode(ancestor) && ts.isPartOfTypeNode(ancestor)))
-                  || !!aliasSymbol?.declarations?.some(declaration => ts.isTypeOnlyImportOrExportDeclaration(declaration))
-                  || (!callPosition && !!symbol.declarations?.length && symbol.declarations.every(ts.isPropertySignature));
+                  || !!aliasSymbol?.declarations?.some(declaration => ts.isTypeOnlyImportOrExportDeclaration(declaration));
                 const occurrence: AnalysisExternalReference = { ...location(node), ecosystem: "npm", ...external,
                   symbol: displayName(symbol), kind: callPosition && !typeOnly ? "calls" : "uses", typeOnly, analyzer };
                 externalReferences.set(`${occurrence.path}:${occurrence.startOffset}:${occurrence.package}:${occurrence.symbol}:${occurrence.kind}:${typeOnly}`, occurrence);

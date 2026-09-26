@@ -289,7 +289,7 @@ test("TypeScript analyzer emits external references for installed declarations, 
       ["src/main.ts", 3, "pkg", "", "Options", "uses", true],
       ["src/main.ts", 3, "pkg", "", "nested.deep", "calls", false],
       ["src/main.ts", 3, "pkg", "", "helper", "calls", false],
-      ["src/main.ts", 3, "pkg", "", "Options.size", "uses", true],
+      ["src/main.ts", 3, "pkg", "", "Options.size", "uses", false],
       ["src/main.ts", 3, "typed", "@types/typed", "value", "uses", false],
     ], JSON.stringify(analysis.externalReferences, null, 1));
     assert.ok((analysis.externalReferences ?? []).every(row => row.analyzer.startsWith("typescript@")));

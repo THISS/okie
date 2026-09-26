@@ -5,13 +5,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import {
-  formatDependencyConsumerReport, parsePortableAtlas, queryDependencyConsumers, serializePortableAtlas, validateDependencyFacts,
+  DEPENDENCY_FACTS_OMITTED_LIMIT, formatDependencyConsumerReport, parsePortableAtlas, queryDependencyConsumers, serializePortableAtlas, validateDependencyFacts,
   type DependencyFacts, type PortableAtlas,
 } from "@okie/architecture";
 import { analyzeTypeScript } from "./analyze-typescript.js";
 import { runConsumersQuery } from "./consumers-cli.js";
 import {
-  buildDependencyFacts, cargoRequirementMatches, collectDependencyInputs, fitDependencyFacts, normalizeLockVersion,
+  buildDependencyFacts, cargoRequirementMatches, collectDependencyInputs, fitDependencyFacts, MAX_DROPPED_BY_DEPENDENCY, normalizeLockVersion,
   parseCargoManifest, parsePnpmLockImporters, redactSpec, stripTomlComment, type DependencyFactsInput,
 } from "./dependency-facts.js";
 import type { LanguageAnalysis } from "./language-analysis.js";
@@ -52,7 +52,7 @@ test("item 1: type-position and `import type` references are typeOnly and --runt
     "node_modules/pkg/index.d.ts": "export interface Opts { size: number }\nexport declare function run(): void;\nexport { Thing } from 'other';\n",
     "node_modules/other/package.json": '{"name":"other","types":"index.d.ts"}',
     "node_modules/other/index.d.ts": "export interface Thing { a: number }\n",
-    "src/types.ts": "import type { Opts } from 'pkg';\nexport function size(o: Opts): number { return o.size; }\n",
+    "src/types.ts": "import type { Opts } from 'pkg';\nexport function same(o: Opts): Opts { return o; }\n",
     "src/b.ts": "import { Thing, run } from 'pkg';\nexport const t: Thing = { a: 1 };\ntype R = typeof run;\nexport const r: R = run;\nrun();\n",
   });
   try {
@@ -64,7 +64,7 @@ test("item 1: type-position and `import type` references are typeOnly and --runt
       ["src/b.ts", 4, "pkg", "run", "uses", false],
       ["src/b.ts", 5, "pkg", "run", "calls", false],
       ["src/types.ts", 2, "pkg", "Opts", "uses", true],
-      ["src/types.ts", 2, "pkg", "Opts.size", "uses", true],
+      ["src/types.ts", 2, "pkg", "Opts", "uses", true],
     ], JSON.stringify(rows));
     const dependencyFacts = buildDependencyFacts({ commitSha: SHA, sourceFiles: ["src/b.ts", "src/types.ts"], readFile: path => readFileSync(join(repo.root, path), "utf8"), analysisMode: "full", languageAnalysis: analysis });
     const all = queryDependencyConsumers(dependencyFacts, "pkg");
@@ -74,8 +74,35 @@ test("item 1: type-position and `import type` references are typeOnly and --runt
     const refs = runtime.consumers.flatMap(row => row.files.flatMap(file => file.symbolReferences));
     assert.deepEqual(refs.map(row => [row.path, row.startLine, row.symbol, row.typeOnly]), [["src/b.ts", 4, "run", false], ["src/b.ts", 5, "run", false]]);
     assert.ok(!runtime.consumers[0]!.files.some(file => file.path === "src/types.ts"));
-    assert.equal(runtime.summary.excludedTypeOnlySymbolReferences, 3);
+    assert.equal(runtime.summary.excludedTypeOnlySymbolReferences, 2, "run (typeof) + Opts (the two same-line Opts refs are one fact)");
     assert.equal(queryDependencyConsumers(dependencyFacts, "other", { includeTypeOnly: false }).consumers.length, 0, "a type-only re-export use is not runtime");
+  } finally { repo.cleanup(); }
+});
+
+test("item 1 (round 2): value reads of interface-declared members stay runtime and survive --runtime-only", () => {
+  const repo = tree({
+    "package.json": '{"name":"app","dependencies":{"web":"1"}}',
+    "tsconfig.json": '{"compilerOptions":{"strict":true,"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","types":[]},"include":["src/**/*.ts"]}',
+    "node_modules/web/package.json": '{"name":"web","types":"index.d.ts"}',
+    "node_modules/web/index.d.ts": "export interface Request { query: Record<string, string> }\nexport interface Ref<T> { current: T }\nexport declare function useRef<T>(v: T): Ref<T>;\nexport declare function app(handler: (req: Request) => void): void;\n",
+    "src/routes.ts": "import type { Request } from 'web';\nexport function handle(req: Request): string | undefined { return req.query.id; }\n",
+    "src/ref.ts": "import { useRef } from 'web';\nconst r = useRef(1);\nexport const v = r.current;\n",
+  });
+  try {
+    const analysis = analyzeTypeScript(repo.root);
+    const rows = (analysis.externalReferences ?? []).map(row => [row.path, row.startLine, row.symbol, row.kind, row.typeOnly]);
+    assert.deepEqual(rows, [
+      ["src/ref.ts", 2, "useRef", "calls", false],
+      ["src/ref.ts", 3, "Ref.current", "uses", false],
+      ["src/routes.ts", 2, "Request.query", "uses", false],
+      ["src/routes.ts", 2, "Request", "uses", true],
+    ], JSON.stringify(rows));
+    const dependencyFacts = buildDependencyFacts({ commitSha: SHA, sourceFiles: ["src/ref.ts", "src/routes.ts"], readFile: path => readFileSync(join(repo.root, path), "utf8"), analysisMode: "full", languageAnalysis: analysis });
+    const runtime = queryDependencyConsumers(dependencyFacts, "web", { includeTypeOnly: false });
+    const refs = runtime.consumers.flatMap(row => row.files.flatMap(file => file.symbolReferences)).map(row => [row.path, row.symbol]);
+    assert.deepEqual(refs, [["src/ref.ts", "useRef"], ["src/ref.ts", "Ref.current"], ["src/routes.ts", "Request.query"]]);
+    assert.equal(queryDependencyConsumers(dependencyFacts, "web").consumers[0]!.files.find(file => file.path === "src/routes.ts")!.typeOnly, false,
+      "a file reading req.query touches a runtime object even with only `import type`");
   } finally { repo.cleanup(); }
 });
 
@@ -286,13 +313,13 @@ test("item 8: the fact byte budget trims symbol references first, then imports, 
   const symbols = fitted.coverage.find(row => row.ecosystem === "npm" && row.evidence === "symbolReferences")!;
   assert.equal(symbols.dropped, full.symbolReferences.length - fitted.symbolReferences.length);
   assert.ok(symbols.limitations.some(line => line.includes("dependency fact budget")));
-  const tight = fitDependencyFacts(full, size({ ...full, symbolReferences: [], imports: full.imports.slice(0, 5) }) + 8192);
+  const tight = fitDependencyFacts(full, size({ ...full, symbolReferences: [], imports: full.imports.slice(0, 5) }));
   assert.equal(tight.symbolReferences.length, 0);
   assert.ok(tight.imports.length < full.imports.length);
   assert.equal(tight.coverage.find(row => row.ecosystem === "npm" && row.evidence === "imports")!.dropped, full.imports.length - tight.imports.length);
   validateDependencyFacts(tight, SHA);
   assert.deepEqual(fitDependencyFacts(full, budget), fitted, "deterministic");
-  assert.equal(fitDependencyFacts(full, size(full)), full, "no-op when it fits");
+  assert.deepEqual(fitDependencyFacts(full, size(full)), full, "no-op when it fits");
 });
 
 test("item 8: dependency facts never push a bundle that fit before over the limit", () => {
@@ -310,9 +337,49 @@ test("item 8: dependency facts never push a bundle that fit before over the limi
     assert.ok(bundle.dependencies!.imports.length < artifacts.dependencies.imports.length);
     assert.ok(bundle.dependencies!.coverage.some(row => row.evidence === "imports" && row.dropped > 0));
     parsePortableAtlas(text);
-    const tiny = portableAtlasFromScan(artifacts, undefined, withoutFacts + 10);
-    assert.equal(tiny.dependencies, undefined, "facts are omitted rather than failing an export that fit");
+    // Rows cannot fit at all: a minimal facts object says so, and queries report the size limit.
+    const standIn = { ...artifacts.dependencies, declarations: [], imports: [], symbolReferences: [],
+      coverage: artifacts.dependencies.coverage.map(row => ({ ecosystem: row.ecosystem, evidence: row.evidence, status: "unavailable", limitations: [DEPENDENCY_FACTS_OMITTED_LIMIT], droppedByDependency: [], dropped: 99 })) };
+    const omittedLimit = withoutFacts + Buffer.byteLength(JSON.stringify(standIn)) + 16;
+    const omitted = portableAtlasFromScan(artifacts, undefined, omittedLimit);
+    const omittedText = serializePortableAtlas(omitted);
+    assert.ok(Buffer.byteLength(omittedText) <= omittedLimit, `${Buffer.byteLength(omittedText)} > ${omittedLimit}`);
+    const loaded = parsePortableAtlas(omittedText).dependencies!;
+    assert.ok(loaded, "a minimal facts object is kept");
+    assert.deepEqual([loaded.declarations.length, loaded.imports.length, loaded.symbolReferences.length], [0, 0, 0]);
+    assert.ok(loaded.coverage.every(row => row.status === "unavailable" && row.limitations.includes(DEPENDENCY_FACTS_OMITTED_LIMIT)));
+    assert.equal(loaded.coverage.find(row => row.evidence === "imports")!.dropped, artifacts.dependencies.imports.length);
+    const report = queryDependencyConsumers(loaded, "react");
+    assert.deepEqual(report.coverage, [DEPENDENCY_FACTS_OMITTED_LIMIT]);
+    const reportText = formatDependencyConsumerReport(report);
+    assert.match(reportText, /omitted: bundle size limit/);
+    assert.doesNotMatch(reportText, /predates/);
+    // Last resort, only when even the stand-in cannot fit: the field is dropped rather than failing the export.
+    assert.equal(portableAtlasFromScan(artifacts, undefined, withoutFacts + 10).dependencies, undefined);
   } finally { repo.cleanup(); }
+});
+
+test("round 2: many dropped dependencies stay within the byte budget; drop lists are bounded", () => {
+  const references = Array.from({ length: 3000 }, (_, index) => ({ ecosystem: "npm" as const, dependency: `dep-number-${String(index).padStart(5, "0")}`, path: "a.ts", startLine: index + 1, endLine: index + 1, consumingPackage: "package.json", symbol: "x", kind: "uses" as const, typeOnly: false, analyzer: "typescript@5" }));
+  const many: DependencyFacts = { schemaVersion: 1, commitSha: SHA, packages: [{ ecosystem: "npm", name: "a", manifestPath: "package.json", directory: "" }], declarations: [], imports: [], symbolReferences: references,
+    coverage: [{ ecosystem: "npm", evidence: "symbolReferences", status: "partial", limitations: [], dropped: 0, droppedByDependency: [] }] };
+  for (const budget of [20_000, 60_000, 200_000]) {
+    const fitted = fitDependencyFacts(many, budget);
+    const size = Buffer.byteLength(JSON.stringify(fitted));
+    assert.ok(size <= budget, `${size} > ${budget}`);
+    assert.ok(fitted.symbolReferences.length > 0, "rows are kept, not the whole object omitted");
+    const row = fitted.coverage[0]!;
+    assert.equal(row.dropped, 3000 - fitted.symbolReferences.length);
+    assert.ok(row.droppedByDependency.length <= MAX_DROPPED_BY_DEPENDENCY);
+    const more = row.limitations.find(line => / more dependencies had \d+ fact\(s\) dropped/.test(line))!;
+    assert.ok(more, row.limitations.join("\n"));
+    const [, hiddenDependencies, hiddenDropped] = /^(\d+) more dependencies had (\d+)/.exec(more)!;
+    assert.equal(Number(hiddenDependencies) + row.droppedByDependency.length, row.dropped, "every dropped dependency is itemized or summed");
+    assert.equal(Number(hiddenDropped) + row.droppedByDependency.reduce((sum, item) => sum + item.dropped, 0), row.dropped);
+    validateDependencyFacts(fitted, SHA);
+    assert.deepEqual(fitDependencyFacts(many, budget), fitted, "deterministic");
+    assert.deepEqual(fitDependencyFacts(fitted, budget), fitted, "idempotent");
+  }
 });
 
 // --- item 9 -----------------------------------------------------------------
