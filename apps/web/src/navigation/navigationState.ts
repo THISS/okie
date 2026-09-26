@@ -12,6 +12,17 @@ export type NavigationStoryState = {
   positionMs: number;
 };
 
+/** CLA-208: shared path exploration. IDs and kinds stay raw so stale links fail honestly. */
+export type NavigationPathState = {
+  fromId: string;
+  toId: string;
+  kinds: string[];
+  containment: boolean;
+  scope: 'exact' | 'subtree';
+  /** Only when the link's snapshot differs from the loaded one (URL `psnap`). */
+  snapshotId?: string;
+};
+
 export type NavigationState = {
   version: typeof NAVIGATION_URL_VERSION;
   repositoryId: string;
@@ -24,6 +35,7 @@ export type NavigationState = {
   lensPath?: string[];
   filterId?: string;
   story?: NavigationStoryState;
+  path?: NavigationPathState;
 };
 
 export type NavigationDefaults = Omit<NavigationState, 'version'> & {
@@ -36,6 +48,7 @@ export type NavigationReferences = {
   hasView?: (id: string) => boolean;
   hasEntity?: (id: string) => boolean;
   hasStory?: (id: string) => boolean;
+  hasRelationKind?: (kind: string) => boolean;
 };
 
 export type NavigationUrlOptions = {
@@ -51,6 +64,7 @@ export type NavigationDecodeResult = {
 
 const orderedKeys = [
   'nav', 'repo', 'snap', 'view', 'root', 'sel', 'cx', 'cy', 'z', 'detail', 'lens', 'filter', 'story', 'step', 't',
+  'pfrom', 'pto', 'pkind', 'pcont', 'pscope', 'psnap',
 ] as const;
 const knownKeys = new Set<string>(orderedKeys);
 const details = new Set<SemanticDetail>(['context', 'container', 'component', 'code']);
@@ -85,6 +99,25 @@ function assertWritableId(value: unknown, key: string) {
   }
 }
 
+const MAX_PATH_KINDS = 16;
+
+function canonicalPath(value: NavigationPathState | undefined, snapshotId: string): NavigationPathState | undefined {
+  if (!value) return undefined;
+  const fromId = cleanId(value.fromId, '');
+  const toId = cleanId(value.toId, '');
+  if (!fromId || !toId) return undefined;
+  const kinds = [...new Set((value.kinds ?? []).map(kind => cleanId(kind, '')).filter(Boolean))].sort().slice(0, MAX_PATH_KINDS);
+  const linkSnapshotId = value.snapshotId === undefined ? '' : cleanId(value.snapshotId, '');
+  return {
+    fromId,
+    toId,
+    kinds,
+    containment: value.containment === true,
+    scope: value.scope === 'subtree' ? 'subtree' : 'exact',
+    ...(linkSnapshotId && linkSnapshotId !== snapshotId ? { snapshotId: linkSnapshotId } : {}),
+  };
+}
+
 function cleanInteger(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fallback;
 }
@@ -115,11 +148,13 @@ export function canonicalNavigationState(
         positionMs: cleanInteger(sourceStory.positionMs, 0),
       }
     : undefined;
+  const snapshotId = cleanId(value.snapshotId, defaults.snapshotId);
+  const path = canonicalPath(value.path, snapshotId);
 
   return {
     version: NAVIGATION_URL_VERSION,
     repositoryId: cleanId(value.repositoryId, defaults.repositoryId),
-    snapshotId: cleanId(value.snapshotId, defaults.snapshotId),
+    snapshotId,
     viewId: cleanId(value.viewId, defaults.viewId),
     rootEntityId: cleanId(value.rootEntityId, defaults.rootEntityId),
     selectedId,
@@ -132,6 +167,7 @@ export function canonicalNavigationState(
     ...(lensPath.length ? { lensPath } : {}),
     ...(filterId ? { filterId } : {}),
     ...(story ? { story } : {}),
+    ...(path ? { path } : {}),
   };
 }
 
@@ -161,6 +197,10 @@ export function canonicalNavigationUrl(
   if (value.filterId !== undefined) assertWritableId(value.filterId, 'filter ID');
   for (const lensId of value.lensPath ?? []) assertWritableId(lensId, 'lens entity ID');
   if (value.story !== undefined) assertWritableId(value.story.id, 'story ID');
+  if (value.path !== undefined) {
+    for (const id of [value.path.fromId, value.path.toId, ...value.path.kinds]) assertWritableId(id, 'path ID');
+    if (value.path.snapshotId !== undefined) assertWritableId(value.path.snapshotId, 'path snapshot ID');
+  }
 
   const url = new URL(baseUrl.toString());
   const entries: Array<readonly [string, string]> = [];
@@ -180,6 +220,14 @@ export function canonicalNavigationUrl(
     append(entries, 'story', value.story.id);
     append(entries, 'step', String(value.story.step));
     append(entries, 't', String(value.story.positionMs));
+  }
+  if (value.path) {
+    append(entries, 'pfrom', value.path.fromId);
+    append(entries, 'pto', value.path.toId);
+    for (const kind of [...new Set(value.path.kinds)].sort()) append(entries, 'pkind', kind);
+    if (value.path.containment) append(entries, 'pcont', '1');
+    if (value.path.scope === 'subtree') append(entries, 'pscope', 'subtree');
+    if (value.path.snapshotId !== undefined && value.path.snapshotId !== value.snapshotId) append(entries, 'psnap', value.path.snapshotId);
   }
 
   const preserve = [...new Set(options.preserveParams ?? [])].slice(0, 32).sort();
@@ -240,6 +288,47 @@ function validatedId(
   return candidate;
 }
 
+function pathFromParams(
+  params: URLSearchParams,
+  useParams: boolean,
+  read: (key: string) => string | undefined,
+  references: NavigationReferences,
+  warnings: string[],
+): NavigationPathState | undefined {
+  const fromId = cleanId(read('pfrom'), '');
+  const toId = cleanId(read('pto'), '');
+  const rawKinds = useParams ? params.getAll('pkind') : [];
+  const rawContainment = read('pcont');
+  const rawScope = read('pscope');
+  const linkSnapshotId = read('psnap');
+  if (!fromId || !toId) {
+    if (fromId || toId || rawKinds.length || rawContainment !== undefined || rawScope !== undefined) {
+      warnings.push('Incomplete path parameters; ignoring the path.');
+    }
+    return undefined;
+  }
+  if (rawKinds.length > MAX_PATH_KINDS) warnings.push(`Path lists more than ${MAX_PATH_KINDS} relation kinds; ignoring the remainder.`);
+  const kinds = rawKinds.slice(0, MAX_PATH_KINDS).map(kind => cleanId(kind, '')).filter(Boolean);
+  for (const kind of new Set(kinds)) {
+    // Kept (not dropped) so the path explorer refuses the link instead of running a different query.
+    if (references.hasRelationKind && !references.hasRelationKind(kind)) warnings.push(`Unknown path relation kind ${kind}.`);
+  }
+  if (rawContainment !== undefined && rawContainment !== '0' && rawContainment !== '1') {
+    warnings.push(`Invalid path containment ${rawContainment}; containment is off.`);
+  }
+  if (rawScope !== undefined && rawScope !== 'exact' && rawScope !== 'subtree') {
+    warnings.push(`Unknown path scope ${rawScope}; using exact endpoints.`);
+  }
+  return {
+    fromId,
+    toId,
+    kinds,
+    containment: rawContainment === '1',
+    scope: rawScope === 'subtree' ? 'subtree' : 'exact',
+    ...(linkSnapshotId !== undefined && cleanId(linkSnapshotId, '') ? { snapshotId: cleanId(linkSnapshotId, '') } : {}),
+  };
+}
+
 export function navigationStateFromUrl(
   input: string | URL,
   defaults: NavigationDefaults,
@@ -276,6 +365,7 @@ export function navigationStateFromUrl(
     ? validatedId(storyId, '', references.hasStory, 'story', warnings)
     : '';
 
+  const path = pathFromParams(params, useParams, read, references, warnings);
   const state = canonicalNavigationState({
     repositoryId: read('repo') ?? defaults.repositoryId,
     snapshotId,
@@ -297,6 +387,7 @@ export function navigationStateFromUrl(
         positionMs: parseInteger(read('t'), 0, 't', warnings),
       },
     } : {}),
+    ...(path ? { path: { ...path, snapshotId: path.snapshotId ?? cleanId(read('snap'), snapshotId) } } : {}),
   }, defaults);
 
   for (const key of params.keys()) {
@@ -325,5 +416,6 @@ export function serializeNavigationState(state: NavigationState) {
     ...(state.lensPath?.length ? { lensPath: state.lensPath } : {}),
     ...(state.filterId ? { filterId: state.filterId } : {}),
     ...(state.story ? { story: state.story } : {}),
+    ...(state.path ? { path: state.path } : {}),
   });
 }
