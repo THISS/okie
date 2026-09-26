@@ -1,0 +1,909 @@
+import { builtinModules } from "node:module";
+import ts from "typescript";
+import Parser from "tree-sitter";
+import Rust from "tree-sitter-rust";
+import type {
+  DependencyCoverage, DependencyDeclaration, DependencyEcosystem, DependencyEvidenceKind, DependencyFacts,
+  DependencyImport, DependencyImportKind, DependencyPackage, DependencySection, DependencySymbolReference,
+} from "@okie/architecture";
+import { packageNameOfSpecifier, parseSource } from "./extract.js";
+import type { AnalysisExternalReference, LanguageAnalysis } from "./language-analysis.js";
+import { scrubGithubTokens } from "./redact.js";
+
+/**
+ * Dependency consumer facts (CLA-212): manifest declarations, syntactic imports,
+ * and analyzer-resolved symbol references — three distinct evidence kinds, each
+ * with explicit coverage. Bundle-only: nothing here feeds the architecture graph.
+ */
+export const DEPENDENCY_FACT_LIMITS = {
+  maxImports: 50_000,
+  maxSymbolReferences: 50_000,
+  maxSymbolReferencesPerDependencyFile: 200,
+} as const;
+
+export interface DependencyFactLimits {
+  maxImports: number;
+  maxSymbolReferences: number;
+  maxSymbolReferencesPerDependencyFile: number;
+}
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+
+/** Byte-stable ordering (never locale-dependent). */
+const compare = (left: string, right: string): number => (left < right ? -1 : left > right ? 1 : 0);
+const dirOf = (path: string): string => (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+const joinPath = (directory: string, name: string): string => (directory ? `${directory}/${name}` : name);
+function ancestors(directory: string): string[] {
+  const result = [directory];
+  for (let current = directory; current; ) {
+    current = dirOf(current);
+    result.push(current);
+  }
+  return result;
+}
+function relativeDirectory(from: string, to: string): string {
+  if (!from) return to;
+  return to === from ? "" : to.startsWith(`${from}/`) ? to.slice(from.length + 1) : to;
+}
+
+/** Strip URL credentials and token-shaped strings from a requested spec. */
+export function redactSpec(spec: string): string {
+  return scrubGithubTokens(spec.replace(/(\/\/)([^/@\s]+)@/g, (match, slashes: string, userinfo: string) => (userinfo === "git" ? match : `${slashes}[redacted]@`)));
+}
+
+/** Loose numeric-aware version ordering for candidate lists. */
+function compareVersions(left: string, right: string): number {
+  const a = left.split(/[.+-]/);
+  const b = right.split(/[.+-]/);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const x = a[index] ?? "";
+    const y = b[index] ?? "";
+    const nx = /^\d+$/.test(x) ? Number(x) : NaN;
+    const ny = /^\d+$/.test(y) ? Number(y) : NaN;
+    if (!Number.isNaN(nx) && !Number.isNaN(ny) && nx !== ny) return nx - ny;
+    if (x !== y) return compare(x, y);
+  }
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// npm manifests + lockfiles
+
+export const NPM_SECTIONS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"] as const;
+
+/** 1-based line of each key directly inside a top-level package.json object `section`. */
+export function jsonSectionKeyLines(text: string, section: string): Map<string, number> {
+  const lines = text.split(/\r?\n/);
+  const result = new Map<string, number>();
+  let depth = 0;
+  let inside = false;
+  let sectionDepth = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    if (!inside && depth === 1 && new RegExp(`^\\s*"${section}"\\s*:\\s*\\{`).test(line)) {
+      inside = true;
+      sectionDepth = depth + 1;
+    } else if (inside && depth === sectionDepth) {
+      const match = /^\s*"((?:[^"\\]|\\.)+)"\s*:/.exec(line);
+      if (match && !result.has(match[1]!)) result.set(match[1]!, index + 1);
+    }
+    let quoted = false;
+    for (let offset = 0; offset < line.length; offset += 1) {
+      const character = line[offset];
+      if (character === "\\" && quoted) { offset += 1; continue; }
+      if (character === '"') quoted = !quoted;
+      else if (!quoted && character === "{") depth += 1;
+      else if (!quoted && character === "}") {
+        depth -= 1;
+        if (inside && depth < sectionDepth) inside = false;
+      }
+    }
+  }
+  return result;
+}
+
+export interface NpmManifestEntry { key: string; section: typeof NPM_SECTIONS[number]; spec: string; line?: number }
+
+export function parsePackageJsonDependencies(text: string): { name?: string; entries: NpmManifestEntry[] } {
+  const manifest = JSON.parse(text) as Record<string, unknown>;
+  const entries: NpmManifestEntry[] = [];
+  for (const section of NPM_SECTIONS) {
+    const block = manifest[section];
+    if (!block || typeof block !== "object" || Array.isArray(block)) continue;
+    const lines = jsonSectionKeyLines(text, section);
+    for (const [key, spec] of Object.entries(block as Record<string, unknown>)) {
+      if (typeof spec !== "string") continue;
+      const line = lines.get(key);
+      entries.push({ key, section, spec, ...(line ? { line } : {}) });
+    }
+  }
+  return { ...(typeof manifest.name === "string" && manifest.name.trim() ? { name: manifest.name } : {}), entries };
+}
+
+/** pnpm-lock.yaml importers (v6/v9) or the top-level v5 single-project layout: importer -> name -> version. */
+export function parsePnpmLockImporters(text: string): Map<string, Map<string, string>> {
+  const importers = new Map<string, Map<string, string>>();
+  const lines = text.split(/\r?\n/);
+  const unquote = (value: string): string => value.trim().replace(/^['"]|['"]$/g, "");
+  const cleanVersion = (value: string): string => unquote(value).replace(/\(.*$/, "");
+  const sectionName = /^(dependencies|devDependencies|optionalDependencies|peerDependencies):\s*$/;
+  const hasImporters = lines.some(line => /^importers:\s*$/.test(line));
+  const read = (start: number, base: number, importer: string): number => {
+    // `base` is the indent of section keys; entries sit at base+2, nested fields at base+4.
+    const target = importers.get(importer) ?? new Map<string, string>();
+    importers.set(importer, target);
+    let index = start;
+    let inSection = false;
+    let current: string | undefined;
+    for (; index < lines.length; index += 1) {
+      const line = lines[index]!;
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const indent = line.length - line.trimStart().length;
+      if (indent < base) break;
+      if (indent === base) {
+        inSection = sectionName.test(line.trim());
+        current = undefined;
+        continue;
+      }
+      if (!inSection) continue;
+      if (indent === base + 2) {
+        const match = /^((?:'[^']*'|"[^"]*"|[^:\s]+)):\s*(.*)$/.exec(line.trim());
+        if (!match) continue;
+        current = unquote(match[1]!);
+        if (match[2]) target.set(current, cleanVersion(match[2]));
+      } else if (indent === base + 4 && current) {
+        const field = /^version:\s*(.+)$/.exec(line.trim());
+        if (field) target.set(current, cleanVersion(field[1]!));
+      }
+    }
+    return index;
+  };
+  if (hasImporters) {
+    let inImporters = false;
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index]!;
+      if (/^importers:\s*$/.test(line)) { inImporters = true; continue; }
+      if (!inImporters) continue;
+      if (/^\S/.test(line)) break;
+      const importer = /^ {2}((?:'[^']*'|"[^"]*"|[^:\s][^:]*)):\s*$/.exec(line);
+      if (importer) index = read(index + 1, 4, unquote(importer[1]!)) - 1;
+    }
+  } else {
+    // v5 single project: top-level dependency sections at indent 0.
+    for (let index = 0; index < lines.length; index += 1) {
+      if (sectionName.test(lines[index]!)) index = read(index, 0, ".") - 1;
+    }
+  }
+  return importers;
+}
+
+/** package-lock.json v2/v3 `packages` (v1 top-level `dependencies` best-effort): install path -> entry. */
+export function parsePackageLock(text: string): Map<string, { version?: string; link?: boolean }> {
+  const lock = JSON.parse(text) as { packages?: Record<string, { version?: unknown; link?: unknown }>; dependencies?: Record<string, { version?: unknown }> };
+  const result = new Map<string, { version?: string; link?: boolean }>();
+  if (lock.packages && typeof lock.packages === "object") {
+    for (const [key, value] of Object.entries(lock.packages)) {
+      if (!value || typeof value !== "object") continue;
+      result.set(key, { ...(typeof value.version === "string" ? { version: value.version } : {}), ...(value.link === true ? { link: true } : {}) });
+    }
+  } else if (lock.dependencies && typeof lock.dependencies === "object") {
+    for (const [name, value] of Object.entries(lock.dependencies)) {
+      if (value && typeof value.version === "string") result.set(`node_modules/${name}`, { version: value.version });
+    }
+  }
+  return result;
+}
+
+/** yarn.lock (v1; berry best-effort): descriptor (`name@range`) -> version. */
+export function parseYarnLock(text: string): Map<string, string> {
+  const result = new Map<string, string>();
+  let descriptors: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim() || line.startsWith("#")) continue;
+    if (/^\S/.test(line) && line.trimEnd().endsWith(":")) {
+      descriptors = line.trimEnd().slice(0, -1).split(/,\s*/).map(item => item.trim().replace(/^"|"$/g, ""));
+      continue;
+    }
+    const version = /^\s+version:?\s+"?([^"\s]+)"?\s*$/.exec(line);
+    if (version) for (const descriptor of descriptors) result.set(descriptor, version[1]!);
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Cargo manifests + lockfile
+
+export interface CargoDependencySpec {
+  version?: string;
+  path?: string;
+  git?: string;
+  gitRef?: string;
+  package?: string;
+  workspace?: boolean;
+}
+export interface CargoManifestEntry extends CargoDependencySpec {
+  key: string;
+  section: "dependencies" | "dev-dependencies" | "build-dependencies";
+  target?: string;
+  line: number;
+}
+export interface CargoManifest {
+  packageName?: string;
+  isWorkspace: boolean;
+  workspaceDependencies: Map<string, CargoDependencySpec & { line: number }>;
+  entries: CargoManifestEntry[];
+}
+
+function tomlString(text: string, key: string): string | undefined {
+  const match = new RegExp(`(?:^|[{,\\s])${key}\\s*=\\s*(?:"((?:[^"\\\\]|\\\\.)*)"|'([^']*)')`).exec(text);
+  return match ? (match[1] ?? match[2]) : undefined;
+}
+function inlineSpec(text: string): CargoDependencySpec {
+  const value = text.trim();
+  if (/^["']/.test(value)) return { version: value.replace(/^["']|["']\s*(#.*)?$/g, "") };
+  const spec: CargoDependencySpec = {};
+  for (const key of ["version", "path", "git", "package"] as const) {
+    const found = tomlString(value, key);
+    if (found !== undefined) spec[key] = found;
+  }
+  const gitRef = tomlString(value, "rev") ?? tomlString(value, "tag") ?? tomlString(value, "branch");
+  if (gitRef !== undefined) spec.gitRef = gitRef;
+  if (/(?:^|[{,\s])workspace\s*=\s*true/.test(value)) spec.workspace = true;
+  return spec;
+}
+function assignField(spec: CargoDependencySpec, field: string, rawValue: string): void {
+  const value = rawValue.trim();
+  if (field === "workspace") { if (/^true\b/.test(value)) spec.workspace = true; return; }
+  const text = /^"((?:[^"\\]|\\.)*)"|^'([^']*)'/.exec(value);
+  if (!text) return;
+  const content = text[1] ?? text[2]!;
+  if (field === "version" || field === "path" || field === "git" || field === "package") spec[field] = content;
+  else if (field === "rev" || field === "tag" || field === "branch") spec.gitRef = content;
+}
+
+/** Line-based Cargo.toml reader (no TOML dependency): package name, dependency tables, workspace inheritance. */
+export function parseCargoManifest(text: string): CargoManifest {
+  const manifest: CargoManifest = { isWorkspace: false, workspaceDependencies: new Map(), entries: [] };
+  const lines = text.split(/\r?\n/);
+  type Context = { kind: "package" } | { kind: "workspace-deps"; sub?: string } | { kind: "deps"; section: CargoManifestEntry["section"]; target?: string; sub?: string } | { kind: "other" };
+  let context: Context = { kind: "other" };
+  const byKey = new Map<string, CargoManifestEntry>();
+  const entryFor = (key: string, section: CargoManifestEntry["section"], target: string | undefined, line: number): CargoManifestEntry => {
+    const id = `${target ?? ""}\u0000${section}\u0000${key}`;
+    let entry = byKey.get(id);
+    if (!entry) {
+      entry = { key, section, ...(target ? { target } : {}), line };
+      byKey.set(id, entry);
+      manifest.entries.push(entry);
+    }
+    return entry;
+  };
+  const workspaceFor = (key: string, line: number): CargoDependencySpec & { line: number } => {
+    const existing = manifest.workspaceDependencies.get(key);
+    if (existing) return existing;
+    const created = { line };
+    manifest.workspaceDependencies.set(key, created);
+    return created;
+  };
+  const unquoteKey = (key: string): string => key.trim().replace(/^["']|["']$/g, "");
+  for (let index = 0; index < lines.length; index += 1) {
+    const raw = lines[index]!;
+    const line = raw.replace(/^\s+/, "");
+    if (!line || line.startsWith("#")) continue;
+    const header = /^\[\s*([^\][]+?)\s*\]\s*(#.*)?$/.exec(line);
+    if (header) {
+      const name = header[1]!;
+      if (name === "package") context = { kind: "package" };
+      else if (name === "workspace") { manifest.isWorkspace = true; context = { kind: "other" }; }
+      else if (/^workspace\.dependencies(\.|$)/.test(name)) {
+        manifest.isWorkspace = true;
+        const sub = /^workspace\.dependencies\.(.+)$/.exec(name)?.[1];
+        context = { kind: "workspace-deps", ...(sub ? { sub: unquoteKey(sub) } : {}) };
+        if (sub) workspaceFor(unquoteKey(sub), index + 1);
+      } else {
+        const match = /^(?:target\.('[^']*'|"[^"]*"|[^.]+)\.)?(dependencies|dev-dependencies|build-dependencies|dev_dependencies|build_dependencies)(?:\.(.+))?$/.exec(name);
+        if (match) {
+          const target = match[1] ? match[1].replace(/^['"]|['"]$/g, "") : undefined;
+          const section = match[2]!.replace("_", "-") as CargoManifestEntry["section"];
+          const sub = match[3] ? unquoteKey(match[3]) : undefined;
+          context = { kind: "deps", section, ...(target ? { target } : {}), ...(sub ? { sub } : {}) };
+          if (sub) entryFor(sub, section, target, index + 1);
+        } else context = { kind: "other" };
+      }
+      continue;
+    }
+    if (/^\[\[/.test(line)) { context = { kind: "other" }; continue; }
+    const assignment = /^((?:"[^"]*"|'[^']*'|[A-Za-z0-9_-]+)(?:\.[A-Za-z0-9_-]+)?)\s*=\s*(.*)$/.exec(line);
+    if (!assignment) continue;
+    const [left, value] = [assignment[1]!, assignment[2]!];
+    if (context.kind === "package") {
+      const name = /^"([^"]*)"|^'([^']*)'/.exec(value);
+      if (left === "name" && name) manifest.packageName = name[1] ?? name[2]!;
+      continue;
+    }
+    if (context.kind !== "deps" && context.kind !== "workspace-deps") continue;
+    if (context.sub) {
+      const spec = context.kind === "deps"
+        ? entryFor(context.sub, context.section, context.target, index + 1)
+        : workspaceFor(context.sub, index + 1);
+      assignField(spec, left, value);
+      continue;
+    }
+    const dotted = /^((?:"[^"]*"|'[^']*'|[A-Za-z0-9_-]+))\.([A-Za-z0-9_-]+)$/.exec(left);
+    const key = unquoteKey(dotted ? dotted[1]! : left);
+    const spec = context.kind === "deps" ? entryFor(key, context.section, context.target, index + 1) : workspaceFor(key, index + 1);
+    if (dotted) assignField(spec, dotted[2]!, value);
+    else Object.assign(spec, inlineSpec(value));
+  }
+  return manifest;
+}
+
+export interface CargoLockPackage { name: string; version: string; source?: string; dependencies: string[] }
+
+/** Cargo.lock `[[package]]` blocks. */
+export function parseCargoLock(text: string): CargoLockPackage[] {
+  const packages: CargoLockPackage[] = [];
+  let current: CargoLockPackage | undefined;
+  let inDependencies = false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line === "[[package]]") {
+      current = { name: "", version: "", dependencies: [] };
+      packages.push(current);
+      inDependencies = false;
+      continue;
+    }
+    if (/^\[/.test(line)) { current = undefined; continue; }
+    if (!current) continue;
+    if (inDependencies) {
+      if (line.startsWith("]")) { inDependencies = false; continue; }
+      const item = /^"([^"]+)"/.exec(line);
+      if (item) current.dependencies.push(item[1]!);
+      continue;
+    }
+    const field = /^(name|version|source)\s*=\s*"([^"]*)"/.exec(line);
+    if (field) { (current as unknown as Record<string, string>)[field[1]!] = field[2]!; continue; }
+    const deps = /^dependencies\s*=\s*\[(.*)$/.exec(line);
+    if (deps) {
+      const rest = deps[1]!;
+      for (const item of rest.matchAll(/"([^"]+)"/g)) current.dependencies.push(item[1]!);
+      inDependencies = !rest.includes("]");
+    }
+  }
+  return packages.filter(item => item.name && item.version);
+}
+
+class CargoLockIndex {
+  private readonly byName = new Map<string, CargoLockPackage[]>();
+  private readonly closures = new Map<string, Set<string>>();
+  constructor(readonly path: string, packages: readonly CargoLockPackage[]) {
+    for (const item of packages) {
+      const list = this.byName.get(item.name) ?? [];
+      list.push(item);
+      this.byName.set(item.name, list);
+    }
+  }
+  versions(name: string): string[] {
+    return [...new Set((this.byName.get(name) ?? []).map(item => item.version))].sort(compareVersions);
+  }
+  /** The lockfile's own record of which version a workspace crate depends on. */
+  versionUsedBy(crate: string, dependency: string): string | undefined {
+    const owner = (this.byName.get(crate) ?? []).find(item => !item.source);
+    const entry = owner?.dependencies.map(item => item.split(" ")).find(parts => parts[0] === dependency);
+    if (!entry) return undefined;
+    return entry[1] ?? (this.versions(dependency).length === 1 ? this.versions(dependency)[0] : undefined);
+  }
+  private resolveEdge(item: string): CargoLockPackage | undefined {
+    const [name, version] = item.split(" ");
+    const candidates = this.byName.get(name!) ?? [];
+    return version ? candidates.find(candidate => candidate.version === version) : candidates.length === 1 ? candidates[0] : undefined;
+  }
+  /** `name@version` of every package reachable from (name, version), itself included. */
+  closure(name: string, version: string): Set<string> {
+    const key = `${name}@${version}`;
+    const cached = this.closures.get(key);
+    if (cached) return cached;
+    const seen = new Set<string>();
+    const queue = (this.byName.get(name) ?? []).filter(item => item.version === version);
+    while (queue.length) {
+      const item = queue.pop()!;
+      const id = `${item.name}@${item.version}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      for (const edge of item.dependencies) {
+        const next = this.resolveEdge(edge);
+        if (next) queue.push(next);
+      }
+    }
+    this.closures.set(key, seen);
+    return seen;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Import capture
+
+const NODE_BUILTINS = new Set(builtinModules);
+
+/** npm package name of a bare, non-builtin specifier; undefined for relative/URL/builtin/virtual specifiers. */
+export function npmDependencyOfSpecifier(specifier: string): string | undefined {
+  if (!specifier || /^[./#~]/.test(specifier) || specifier.includes(":")) return undefined;
+  const name = packageNameOfSpecifier(specifier);
+  if (!name || !/^(?:@[\w.~-]+\/)?[\w.~-]+$/.test(name) || /^[._]/.test(name)) return undefined;
+  if (NODE_BUILTINS.has(name) || NODE_BUILTINS.has(specifier)) return undefined;
+  return name;
+}
+
+export interface CapturedImport { specifier: string; startLine: number; endLine: number; kind: DependencyImportKind; typeOnly: boolean }
+
+/** Static, re-export, dynamic and require module specifiers in one TS/JS file. */
+export function typeScriptImports(path: string, text: string): CapturedImport[] {
+  const source = parseSource(path, text);
+  const found: CapturedImport[] = [];
+  const lineOf = (position: number): number => source.getLineAndCharacterOfPosition(position).line + 1;
+  const push = (node: ts.Node, specifier: string, kind: DependencyImportKind, typeOnly: boolean): void => {
+    found.push({ specifier, startLine: lineOf(node.getStart(source)), endLine: lineOf(node.getEnd()), kind, typeOnly });
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
+      push(node, node.moduleSpecifier.text, "static", !!node.importClause?.isTypeOnly);
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      push(node, node.moduleSpecifier.text, "reexport", node.isTypeOnly);
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)
+      && ts.isStringLiteral(node.moduleReference.expression)) {
+      push(node, node.moduleReference.expression.text, "require", node.isTypeOnly);
+    } else if (ts.isCallExpression(node) && node.arguments.length >= 1 && ts.isStringLiteralLike(node.arguments[0]!)) {
+      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) push(node, node.arguments[0]!.text, "dynamic", false);
+      else if (ts.isIdentifier(node.expression) && node.expression.text === "require" && node.arguments.length === 1) push(node, node.arguments[0]!.text, "require", false);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
+}
+
+let rustParser: Parser | undefined;
+function parseRust(text: string): Parser.Tree {
+  if (!rustParser) {
+    rustParser = new Parser();
+    rustParser.setLanguage(Rust as Parser.Language);
+  }
+  return rustParser.parse(text);
+}
+
+/** Root path segments of `use` declarations and `extern crate` items (crate/self/super excluded). */
+export function rustImportRoots(text: string): Array<{ root: string; specifier: string; startLine: number; endLine: number; kind: "use" | "externCrate" }> {
+  const tree = parseRust(text);
+  const result: Array<{ root: string; specifier: string; startLine: number; endLine: number; kind: "use" | "externCrate" }> = [];
+  const roots = (node: Parser.SyntaxNode | null): string[] => {
+    if (!node) return [];
+    switch (node.type) {
+      case "identifier": return [node.text];
+      case "scoped_identifier": {
+        const path = node.childForFieldName("path");
+        return path ? roots(path) : roots(node.childForFieldName("name"));
+      }
+      case "scoped_use_list": {
+        const path = node.childForFieldName("path");
+        return path ? roots(path) : roots(node.childForFieldName("list"));
+      }
+      case "use_list": return node.namedChildren.flatMap(child => roots(child));
+      case "use_as_clause": return roots(node.childForFieldName("path"));
+      case "use_wildcard": return roots(node.namedChildren[0] ?? null);
+      default: return [];
+    }
+  };
+  const visit = (node: Parser.SyntaxNode): void => {
+    if (node.type === "use_declaration") {
+      const argument = node.childForFieldName("argument");
+      const specifier = (argument?.text ?? "").replace(/\s+/g, " ").slice(0, 200);
+      for (const root of new Set(roots(argument))) {
+        result.push({ root, specifier, startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, kind: "use" });
+      }
+      return;
+    }
+    if (node.type === "extern_crate_declaration") {
+      const name = node.childForFieldName("name");
+      if (name && name.type === "identifier") {
+        result.push({ root: name.text, specifier: node.text.replace(/\s+/g, " ").replace(/;$/, "").slice(0, 200), startLine: node.startPosition.row + 1, endLine: node.endPosition.row + 1, kind: "externCrate" });
+      }
+      return;
+    }
+    for (const child of node.namedChildren) visit(child);
+  };
+  visit(tree.rootNode);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Facts
+
+export interface DependencyFactsInput {
+  commitSha: string;
+  /** Discovery source files; only these are read for imports. Order-independent. */
+  sourceFiles: readonly string[];
+  readFile: (repoRelativePath: string) => string;
+  analysisMode: "full" | "quick";
+  languageAnalysis?: LanguageAnalysis;
+  limits?: Partial<DependencyFactLimits>;
+}
+
+interface NpmLock { path: string; kind: "pnpm" | "package-lock" | "yarn"; pnpm?: Map<string, Map<string, string>>; packageLock?: Map<string, { version?: string; link?: boolean }>; yarn?: Map<string, string> }
+
+const NPM_LOCKFILES: Array<[string, NpmLock["kind"]]> = [["pnpm-lock.yaml", "pnpm"], ["package-lock.json", "package-lock"], ["yarn.lock", "yarn"]];
+
+function sortImports(rows: DependencyImport[]): DependencyImport[] {
+  return rows.sort((left, right) => compare(left.path, right.path) || left.startLine - right.startLine || left.endLine - right.endLine
+    || compare(left.ecosystem, right.ecosystem) || compare(left.dependency, right.dependency) || compare(left.specifier, right.specifier)
+    || compare(left.kind, right.kind) || Number(left.typeOnly) - Number(right.typeOnly));
+}
+function sortReferences(rows: DependencySymbolReference[]): DependencySymbolReference[] {
+  return rows.sort((left, right) => compare(left.path, right.path) || left.startLine - right.startLine || left.endLine - right.endLine
+    || compare(left.ecosystem, right.ecosystem) || compare(left.dependency, right.dependency) || compare(left.symbol, right.symbol)
+    || compare(left.kind, right.kind) || compare(left.via ?? "", right.via ?? "") || compare(JSON.stringify(left), JSON.stringify(right)));
+}
+
+export function buildDependencyFacts(input: DependencyFactsInput): DependencyFacts {
+  const limits: DependencyFactLimits = { ...DEPENDENCY_FACT_LIMITS, ...input.limits };
+  const sourceFiles = [...new Set(input.sourceFiles)].sort(compare);
+  const cache = new Map<string, string | undefined>();
+  const tryRead = (path: string): string | undefined => {
+    if (!cache.has(path)) {
+      let text: string | undefined;
+      try { text = input.readFile(path); } catch { text = undefined; }
+      cache.set(path, text);
+    }
+    return cache.get(path);
+  };
+  const directories = [...new Set(sourceFiles.flatMap(path => ancestors(dirOf(path))))].sort(compare);
+  const limitations: Record<DependencyEcosystem, Record<DependencyEvidenceKind, Set<string>>> = {
+    npm: { declarations: new Set(), imports: new Set(), symbolReferences: new Set() },
+    cargo: { declarations: new Set(), imports: new Set(), symbolReferences: new Set() },
+  };
+
+  // Packages ---------------------------------------------------------------
+  const packages: DependencyPackage[] = [];
+  const npmManifests = new Map<string, { name?: string; entries: NpmManifestEntry[] }>();
+  const cargoManifests = new Map<string, CargoManifest>();
+  for (const directory of directories) {
+    const packageJson = joinPath(directory, "package.json");
+    const npmText = tryRead(packageJson);
+    if (npmText !== undefined) {
+      try {
+        const parsed = parsePackageJsonDependencies(npmText);
+        npmManifests.set(packageJson, parsed);
+        packages.push({ ecosystem: "npm", name: parsed.name ?? (directory || "(root)"), manifestPath: packageJson, directory });
+      } catch { limitations.npm.declarations.add(`${packageJson}: not valid JSON; its declarations were not read.`); }
+    }
+    const cargoToml = joinPath(directory, "Cargo.toml");
+    const cargoText = tryRead(cargoToml);
+    if (cargoText !== undefined) {
+      const parsed = parseCargoManifest(cargoText);
+      cargoManifests.set(cargoToml, parsed);
+      if (parsed.packageName) packages.push({ ecosystem: "cargo", name: parsed.packageName, manifestPath: cargoToml, directory });
+    }
+  }
+  packages.sort((left, right) => compare(left.manifestPath, right.manifestPath));
+  const ownersByDepth = [...packages].sort((left, right) => right.directory.length - left.directory.length || compare(left.manifestPath, right.manifestPath));
+  const ownerOf = (path: string, ecosystem: DependencyEcosystem): DependencyPackage | undefined =>
+    ownersByDepth.find(item => item.ecosystem === ecosystem && (item.directory === "" || path.startsWith(`${item.directory}/`)));
+  const nearest = <T>(directory: string, pick: (candidate: string) => T | undefined): T | undefined => {
+    for (const candidate of ancestors(directory)) {
+      const found = pick(candidate);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  };
+
+  // npm declarations ----------------------------------------------------------
+  const npmLocks = new Map<string, NpmLock | null>();
+  const npmLockFor = (directory: string): NpmLock | undefined => nearest(directory, candidate => {
+    if (npmLocks.has(candidate)) return npmLocks.get(candidate) ?? undefined;
+    let lock: NpmLock | null = null;
+    for (const [file, kind] of NPM_LOCKFILES) {
+      const path = joinPath(candidate, file);
+      const text = tryRead(path);
+      if (text === undefined) continue;
+      try {
+        lock = kind === "pnpm" ? { path, kind, pnpm: parsePnpmLockImporters(text) }
+          : kind === "package-lock" ? { path, kind, packageLock: parsePackageLock(text) }
+            : { path, kind, yarn: parseYarnLock(text) };
+      } catch { limitations.npm.declarations.add(`${path}: could not be parsed; versions from it are unresolved.`); }
+      break;
+    }
+    npmLocks.set(candidate, lock);
+    return lock ?? undefined;
+  });
+  const declarations: DependencyDeclaration[] = [];
+  for (const [manifestPath, manifest] of npmManifests) {
+    const directory = dirOf(manifestPath);
+    for (const entry of manifest.entries) {
+      const alias = /^npm:((?:@[^/@]+\/)?[^@]+)(?:@(.*))?$/.exec(entry.spec);
+      const dependency = alias ? alias[1]! : entry.key;
+      const local = /^(workspace|file|link|portal):/.test(entry.spec);
+      const base = {
+        ecosystem: "npm" as const, dependency, ...(alias && alias[1] !== entry.key ? { alias: entry.key } : {}),
+        declaringPackage: manifestPath, section: entry.section as DependencySection, requested: redactSpec(entry.spec),
+        source: { path: manifestPath, ...(entry.line ? { line: entry.line } : {}) },
+      };
+      if (local) { declarations.push({ ...base, local: true, resolution: "local", resolvedVersions: [] }); continue; }
+      const lock = npmLockFor(directory);
+      if (!lock) {
+        declarations.push({ ...base, local: false, resolution: "unresolved", resolvedVersions: [], reason: "No npm lockfile (pnpm-lock.yaml, package-lock.json, yarn.lock) at or above this package." });
+        continue;
+      }
+      let version: string | undefined;
+      const lockDirectory = dirOf(lock.path);
+      const relative = relativeDirectory(lockDirectory, directory);
+      if (lock.pnpm) version = lock.pnpm.get(relative || ".")?.get(entry.key);
+      else if (lock.packageLock) {
+        for (let current = relative; ; current = dirOf(current)) {
+          const found = lock.packageLock.get(joinPath(current, `node_modules/${entry.key}`));
+          if (found) { version = found.link ? "link:" : found.version; break; }
+          if (!current) break;
+        }
+      } else if (lock.yarn) version = lock.yarn.get(`${entry.key}@${entry.spec}`) ?? lock.yarn.get(`${entry.key}@npm:${entry.spec}`);
+      if (version !== undefined && /^(link|file|workspace):/.test(version)) {
+        declarations.push({ ...base, local: true, resolution: "local", resolvedVersions: [], lockfilePath: lock.path });
+      } else if (version) {
+        const clean = version.includes("@", 1) ? version.slice(version.lastIndexOf("@") + 1) : version;
+        declarations.push({ ...base, local: false, resolution: "resolved", resolvedVersions: [clean], lockfilePath: lock.path });
+      } else {
+        const reason = entry.section === "peerDependencies"
+          ? `Peer dependency: provided by the installing consumer; no ${lock.path} entry for this package.`
+          : `No ${lock.path} entry for ${entry.key} in this package${lock.kind === "yarn" ? ` (yarn.lock lookup is best-effort by descriptor)` : ""}.`;
+        declarations.push({ ...base, local: false, resolution: "unresolved", resolvedVersions: [], lockfilePath: lock.path, reason });
+      }
+    }
+  }
+
+  // Cargo declarations ---------------------------------------------------------
+  const cargoLocks = new Map<string, CargoLockIndex | null>();
+  const cargoLockFor = (directory: string): CargoLockIndex | undefined => nearest(directory, candidate => {
+    if (cargoLocks.has(candidate)) return cargoLocks.get(candidate) ?? undefined;
+    const path = joinPath(candidate, "Cargo.lock");
+    const text = tryRead(path);
+    const lock = text === undefined ? null : new CargoLockIndex(path, parseCargoLock(text));
+    cargoLocks.set(candidate, lock);
+    return lock ?? undefined;
+  });
+  const workspaceRootFor = (directory: string): CargoManifest | undefined => nearest(directory, candidate => {
+    const manifest = cargoManifests.get(joinPath(candidate, "Cargo.toml"));
+    return manifest?.isWorkspace ? manifest : undefined;
+  });
+  for (const [manifestPath, manifest] of cargoManifests) {
+    if (!manifest.packageName) continue;
+    const directory = dirOf(manifestPath);
+    for (const entry of manifest.entries) {
+      let spec: CargoDependencySpec = entry;
+      let inherited = false;
+      let missingWorkspace = false;
+      if (entry.workspace) {
+        inherited = true;
+        const root = workspaceRootFor(directory)?.workspaceDependencies.get(entry.key);
+        if (root) spec = { ...root, ...(entry.package ? { package: entry.package } : {}) };
+        else missingWorkspace = true;
+      }
+      const dependency = spec.package ?? entry.key;
+      const requested = spec.version ?? (spec.path !== undefined ? `path:${spec.path}` : spec.git !== undefined ? `git:${spec.git}${spec.gitRef ? `#${spec.gitRef}` : ""}` : inherited ? "workspace" : "*");
+      const base = {
+        ecosystem: "cargo" as const, dependency, ...(dependency !== entry.key ? { alias: entry.key } : {}),
+        declaringPackage: manifestPath, section: entry.section as DependencySection, ...(entry.target ? { target: entry.target } : {}),
+        requested: redactSpec(requested), ...(inherited ? { workspaceInherited: true } : {}),
+        source: { path: manifestPath, line: entry.line },
+      };
+      if (missingWorkspace) {
+        declarations.push({ ...base, local: false, resolution: "unresolved", resolvedVersions: [], reason: "workspace = true, but no matching [workspace.dependencies] entry was found." });
+        continue;
+      }
+      if (spec.path !== undefined) { declarations.push({ ...base, local: true, resolution: "local", resolvedVersions: [] }); continue; }
+      const lock = cargoLockFor(directory);
+      if (!lock) {
+        declarations.push({ ...base, local: false, resolution: "unresolved", resolvedVersions: [], reason: "No Cargo.lock at or above this crate." });
+        continue;
+      }
+      const candidates = lock.versions(dependency);
+      if (candidates.length === 1) declarations.push({ ...base, local: false, resolution: "resolved", resolvedVersions: candidates, lockfilePath: lock.path });
+      else if (!candidates.length) declarations.push({ ...base, local: false, resolution: "unresolved", resolvedVersions: [], lockfilePath: lock.path, reason: `${dependency} is not present in ${lock.path}.` });
+      else {
+        const used = lock.versionUsedBy(manifest.packageName, dependency);
+        if (used && candidates.includes(used)) declarations.push({ ...base, local: false, resolution: "resolved", resolvedVersions: [used], lockfilePath: lock.path });
+        else declarations.push({ ...base, local: false, resolution: "ambiguous", resolvedVersions: candidates, lockfilePath: lock.path, reason: `${lock.path} holds ${candidates.length} versions of ${dependency}; the crate's lock entry does not select one.` });
+      }
+    }
+  }
+  declarations.sort((left, right) => compare(left.ecosystem, right.ecosystem) || compare(left.dependency, right.dependency)
+    || compare(left.declaringPackage, right.declaringPackage) || compare(left.section, right.section)
+    || compare(left.target ?? "", right.target ?? "") || compare(left.alias ?? "", right.alias ?? ""));
+  const declarationsByPackage = new Map<string, DependencyDeclaration[]>();
+  for (const row of declarations) {
+    const list = declarationsByPackage.get(row.declaringPackage) ?? [];
+    list.push(row);
+    declarationsByPackage.set(row.declaringPackage, list);
+  }
+  /** Map a name used in code (alias / rename key) to the declared package, per consuming package. */
+  const canonicalNpm = (manifestPath: string, name: string): string =>
+    declarationsByPackage.get(manifestPath)?.find(row => row.alias === name)?.dependency ?? name;
+
+  // Imports -------------------------------------------------------------------
+  const imports: DependencyImport[] = [];
+  let unowned = 0;
+  let unreadable = 0;
+  for (const path of sourceFiles) {
+    const isRust = path.endsWith(".rs");
+    if (!isRust && !/\.[cm]?[jt]sx?$/.test(path)) continue;
+    const text = tryRead(path);
+    if (text === undefined) { unreadable += 1; continue; }
+    const owner = ownerOf(path, isRust ? "cargo" : "npm");
+    if (isRust) {
+      if (!owner) { unowned += 1; continue; }
+      const idents = new Map<string, string>();
+      for (const row of declarationsByPackage.get(owner.manifestPath) ?? []) idents.set((row.alias ?? row.dependency).replace(/-/g, "_"), row.dependency);
+      for (const found of rustImportRoots(text)) {
+        const dependency = idents.get(found.root);
+        if (!dependency) continue;
+        imports.push({ ecosystem: "cargo", dependency, specifier: found.specifier || found.root, path, startLine: found.startLine, endLine: found.endLine, consumingPackage: owner.manifestPath, kind: found.kind, typeOnly: false });
+      }
+    } else {
+      const captured = typeScriptImports(path, text).filter(item => npmDependencyOfSpecifier(item.specifier));
+      if (!captured.length) continue;
+      if (!owner) { unowned += 1; continue; }
+      for (const item of captured) {
+        imports.push({ ecosystem: "npm", dependency: canonicalNpm(owner.manifestPath, npmDependencyOfSpecifier(item.specifier)!), specifier: item.specifier, path,
+          startLine: item.startLine, endLine: item.endLine, consumingPackage: owner.manifestPath, kind: item.kind, typeOnly: item.typeOnly });
+      }
+    }
+  }
+  const importKey = (row: DependencyImport): string => `${row.path}\u0000${row.startLine}\u0000${row.endLine}\u0000${row.dependency}\u0000${row.specifier}\u0000${row.kind}\u0000${row.typeOnly}`;
+  const dedupedImports = sortImports([...new Map(imports.map(row => [importKey(row), row])).values()]);
+  const keptImports = dedupedImports.slice(0, limits.maxImports);
+  const droppedImports = dedupedImports.slice(limits.maxImports);
+
+  // Symbol references --------------------------------------------------------------
+  const importedInFile = new Map<string, Set<string>>();
+  for (const row of dedupedImports) {
+    const set = importedInFile.get(row.path) ?? new Set();
+    set.add(row.dependency);
+    importedInFile.set(row.path, set);
+  }
+  let unattributedTransitive = 0;
+  let unownedReferences = 0;
+  const references: DependencySymbolReference[] = [];
+  const allowedPaths = new Set(sourceFiles);
+  const ident = (name: string): string => name.replace(/-/g, "_");
+  for (const external of input.languageAnalysis?.externalReferences ?? []) {
+    if (!allowedPaths.has(external.path)) continue;
+    const owner = ownerOf(external.path, external.ecosystem);
+    if (!owner) { unownedReferences += 1; continue; }
+    const row = attribute(external, owner.manifestPath);
+    if (row) references.push(row);
+  }
+  function attribute(external: AnalysisExternalReference, manifestPath: string): DependencySymbolReference | undefined {
+    const base = {
+      ecosystem: external.ecosystem, path: external.path, startLine: external.startLine, endLine: external.endLine,
+      consumingPackage: manifestPath, symbol: external.symbol, kind: external.kind, analyzer: external.analyzer,
+    };
+    if (external.ecosystem === "npm") {
+      return { ...base, dependency: canonicalNpm(manifestPath, external.package), ...(external.via ? { via: external.via } : {}) };
+    }
+    const declared = (declarationsByPackage.get(manifestPath) ?? []).filter(row => row.ecosystem === "cargo" && !row.local);
+    const direct = declared.find(row => ident(row.dependency) === ident(external.package));
+    if (direct) return { ...base, dependency: direct.dependency, ...(external.version ? { resolvedVersion: external.version } : {}) };
+    // A re-exported item (`wgpu::Color` defined in wgpu-types): attribute to the unique
+    // declared crate whose Cargo.lock closure contains the defining crate at that version.
+    const lock = cargoLockFor(dirOf(manifestPath));
+    let candidates = lock && external.version ? [...new Set(declared.filter(row => row.resolvedVersions.some(version =>
+      lock.closure(row.dependency, version).has(`${external.package}@${external.version}`))).map(row => row.dependency))].sort(compare) : [];
+    if (candidates.length > 1) {
+      const imported = importedInFile.get(external.path);
+      const narrowed = candidates.filter(name => imported?.has(name));
+      if (narrowed.length) candidates = narrowed;
+    }
+    if (candidates.length === 1) {
+      const resolved = declared.find(row => row.dependency === candidates[0] && row.resolution === "resolved")?.resolvedVersions[0];
+      return { ...base, dependency: candidates[0]!, via: external.package, ...(resolved ? { resolvedVersion: resolved } : {}) };
+    }
+    unattributedTransitive += 1;
+    return { ...base, dependency: external.package, ...(external.version ? { resolvedVersion: external.version } : {}) };
+  }
+  const referenceKey = (row: DependencySymbolReference): string => `${row.path}\u0000${row.startLine}\u0000${row.endLine}\u0000${row.dependency}\u0000${row.symbol}\u0000${row.kind}\u0000${row.via ?? ""}`;
+  const dedupedReferences = sortReferences([...new Map(references.map(row => [referenceKey(row), row])).values()]);
+  const perGroup = new Map<string, number>();
+  const cappedPerFile: DependencySymbolReference[] = [];
+  const droppedReferences: DependencySymbolReference[] = [];
+  for (const row of dedupedReferences) {
+    const group = `${row.ecosystem}\u0000${row.dependency}\u0000${row.path}`;
+    const count = perGroup.get(group) ?? 0;
+    perGroup.set(group, count + 1);
+    (count < limits.maxSymbolReferencesPerDependencyFile ? cappedPerFile : droppedReferences).push(row);
+  }
+  const keptReferences = cappedPerFile.slice(0, limits.maxSymbolReferences);
+  droppedReferences.push(...cappedPerFile.slice(limits.maxSymbolReferences));
+
+  // Coverage ------------------------------------------------------------------------
+  const ecosystems = new Set<DependencyEcosystem>();
+  for (const item of packages) ecosystems.add(item.ecosystem);
+  for (const path of sourceFiles) {
+    if (path.endsWith(".rs")) ecosystems.add("cargo");
+    else if (/\.[cm]?[jt]sx?$/.test(path)) ecosystems.add("npm");
+  }
+  const scopeLimit = "Manifests and lockfiles are read only at directories that contain scanned source files (and their ancestors).";
+  limitations.npm.declarations.add(scopeLimit);
+  limitations.cargo.declarations.add(scopeLimit);
+  limitations.cargo.declarations.add("Cargo.toml is read line-by-line (no TOML parser): multi-line inline tables and unusual quoting may be missed.");
+  limitations.npm.declarations.add("npm lockfiles: pnpm-lock.yaml importers (v5/v6/v9), package-lock.json v2/v3 packages, yarn.lock by descriptor (v1; berry best-effort).");
+  const importScope = "Only discovered source files are read (tests, declaration files and generated output are excluded by discovery).";
+  limitations.npm.imports.add(importScope);
+  limitations.cargo.imports.add(importScope);
+  limitations.npm.imports.add("Relative specifiers, Node built-ins, URL/virtual specifiers, computed specifiers and type-position import('…') types are not recorded.");
+  limitations.cargo.imports.add("Only `use` declarations and `extern crate` whose root is a crate declared by the owning Cargo.toml; fully qualified paths without `use` appear only as symbol references (full scan).");
+  if (unowned) {
+    limitations.npm.imports.add(`${unowned} file(s) with dependency evidence have no owning package manifest and were skipped.`);
+  }
+  if (unreadable) {
+    limitations.npm.imports.add(`${unreadable} discovered source file(s) could not be read.`);
+    limitations.cargo.imports.add(`${unreadable} discovered source file(s) could not be read.`);
+  }
+  const analysisCoverage = input.languageAnalysis?.coverage ?? [];
+  const symbolStatus: Record<DependencyEcosystem, DependencyCoverage["status"]> = { npm: "partial", cargo: "partial" };
+  if (input.analysisMode !== "full" || !input.languageAnalysis) {
+    symbolStatus.npm = symbolStatus.cargo = "unavailable";
+    limitations.npm.symbolReferences.add("Symbol references unavailable for TypeScript/JavaScript: compiler analysis not run (quick scan).");
+    limitations.cargo.symbolReferences.add("Symbol references unavailable for Rust: rust-analyzer not run (quick scan).");
+  } else {
+    const tsCoverage = analysisCoverage.filter(row => row.tool === "typescript");
+    if (!tsCoverage.length || tsCoverage.every(row => row.coverage === "unavailable")) {
+      symbolStatus.npm = "unavailable";
+      limitations.npm.symbolReferences.add("Symbol references unavailable for TypeScript/JavaScript: no files were semantically indexed.");
+    } else {
+      limitations.npm.symbolReferences.add("Resolved only where installed dependency type declarations were available to the compiler; packages without installed or bundled types yield imports but no references.");
+      limitations.npm.symbolReferences.add("Attributed to the package whose declaration file defines the symbol (`@types/x` → x); a type re-exported from another package is attributed to that package. Node built-ins (@types/node) and compiler lib types are excluded.");
+      const tsLimits = new Set(tsCoverage.flatMap(row => row.limitations));
+      for (const limit of tsLimits) if (/dependency (types|context)/i.test(limit)) limitations.npm.symbolReferences.add(limit);
+      const unresolvedModules = [...tsLimits].filter(limit => /TS(2307|7016):/.test(limit)).length;
+      if (unresolvedModules) limitations.npm.symbolReferences.add(`${unresolvedModules} unresolved module / missing type declaration diagnostic(s) (TS2307/TS7016); references through those imports are absent.`);
+    }
+    const rustCoverage = analysisCoverage.filter(row => row.language === "rust");
+    if (!rustCoverage.length || rustCoverage.every(row => row.coverage === "unavailable")) {
+      symbolStatus.cargo = "unavailable";
+      const reasons = rustCoverage.flatMap(row => row.limitations);
+      limitations.cargo.symbolReferences.add(`Symbol references unavailable for Rust: rust-analyzer ${rustCoverage.length ? `unavailable (${reasons.slice(0, 2).join("; ").slice(0, 300) || "no files indexed"})` : "did not index any file"}.`);
+    } else {
+      limitations.cargo.symbolReferences.add("rust-analyzer SCIP with Cargo's default features and host target (plus inferred wasm32 where source is cfg-gated); std/core/alloc are excluded.");
+      limitations.cargo.symbolReferences.add("Items defined in a transitive crate (e.g. re-exports) are attributed to the unique declared dependency whose Cargo.lock closure contains it (`via` names the defining crate); otherwise to the defining crate itself.");
+      for (const row of rustCoverage) for (const limit of row.limitations) if (/target|feature|Not indexed/i.test(limit)) limitations.cargo.symbolReferences.add(limit.slice(0, 500));
+      if (unattributedTransitive) limitations.cargo.symbolReferences.add(`${unattributedTransitive} reference(s) to transitive crates could not be attributed to one declared dependency and name the defining crate.`);
+    }
+  }
+  if (unownedReferences) for (const ecosystem of ["npm", "cargo"] as const) limitations[ecosystem].symbolReferences.add(`${unownedReferences} reference(s) in files without an owning package manifest were skipped.`);
+  const dropCounts = (rows: ReadonlyArray<{ ecosystem: DependencyEcosystem; dependency: string }>, ecosystem: DependencyEcosystem): Array<{ dependency: string; dropped: number }> => {
+    const counts = new Map<string, number>();
+    for (const row of rows) if (row.ecosystem === ecosystem) counts.set(row.dependency, (counts.get(row.dependency) ?? 0) + 1);
+    return [...counts].sort(([left], [right]) => compare(left, right)).map(([dependency, dropped]) => ({ dependency, dropped }));
+  };
+  if (droppedImports.length) for (const ecosystem of ["npm", "cargo"] as const) limitations[ecosystem].imports.add(`Capped at ${limits.maxImports} imports in total (sorted by path, line).`);
+  if (droppedReferences.length) for (const ecosystem of ["npm", "cargo"] as const) {
+    limitations[ecosystem].symbolReferences.add(`Capped at ${limits.maxSymbolReferencesPerDependencyFile} references per dependency per file and ${limits.maxSymbolReferences} in total (sorted by path, line).`);
+  }
+  const coverage: DependencyCoverage[] = [];
+  for (const ecosystem of [...ecosystems].sort(compare)) {
+    for (const evidence of ["declarations", "imports", "symbolReferences"] as const) {
+      const dropped = evidence === "imports" ? dropCounts(droppedImports, ecosystem) : evidence === "symbolReferences" ? dropCounts(droppedReferences, ecosystem) : [];
+      const total = dropped.reduce((sum, item) => sum + item.dropped, 0);
+      const status: DependencyCoverage["status"] = evidence === "symbolReferences" ? symbolStatus[ecosystem]
+        : total || [...limitations[ecosystem][evidence]].some(limit => /could not|not valid|skipped/.test(limit)) ? "partial" : "complete";
+      coverage.push({ ecosystem, evidence, status: status === "complete" && total ? "partial" : status, limitations: [...limitations[ecosystem][evidence]].sort(compare), dropped: total, droppedByDependency: dropped });
+    }
+  }
+
+  return {
+    schemaVersion: 1,
+    commitSha: input.commitSha,
+    packages,
+    declarations,
+    imports: keptImports,
+    symbolReferences: keptReferences,
+    coverage,
+  };
+}

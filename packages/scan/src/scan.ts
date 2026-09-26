@@ -44,6 +44,7 @@ import type { PortableAtlas } from '@okie/architecture';
 import type { LanguageAnalysis } from './language-analysis.js';
 import { analyzeTypeScript } from './analyze-typescript.js';
 import { analyzeRust } from './analyze-rust.js';
+import { buildDependencyFacts } from './dependency-facts.js';
 
 export interface ScanOptions {
   analysisMode?: 'full' | 'quick';
@@ -87,6 +88,8 @@ export interface GithubScanOptions extends ScanOptions {
 export interface ScanArtifacts {
   analysis: PortableAtlas['analysis'];
   sources?: PortableAtlas['sources'];
+  /** Dependency consumer facts (CLA-212): bundle-only, never graph input. */
+  dependencies: NonNullable<PortableAtlas['dependencies']>;
   pin: RepositoryPin;
   /** The deterministic (pre-enrichment) extraction — the source for enrichment packets. */
   baseExtraction: ArchitectureExtraction;
@@ -329,6 +332,13 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
       adapters: params.languageAnalysis?.coverage.map(({ indexedFiles: _files, ...coverage }) => coverage) ??
         [...new Set(discovery.sourceFiles.map(path => path.endsWith('.rs') ? 'rust' : 'typescript/javascript'))].map(language => ({ language, tool: language === 'rust' ? 'tree-sitter-rust' : 'typescript', version: 'syntax-v1', coverage: 'syntax' as const, limitations: ['Quick scan: project-wide semantic resolution was not requested.'] })),
     },
+    dependencies: buildDependencyFacts({
+      commitSha: pin.commitSha,
+      sourceFiles: discovery.sourceFiles,
+      readFile,
+      analysisMode: params.analysisMode ?? 'quick',
+      ...(params.languageAnalysis ? { languageAnalysis: params.languageAnalysis } : {}),
+    }),
     ...(params.includeSource ? { sources: portableSourcePaths(snapshot, discovery).map(path => ({ path, text: readFile(path) })) } : {}),
     ...(enrichmentReport ? { enrichmentReport } : {}),
     ...(componentMapReport ? { componentMapReport } : {}),
@@ -339,7 +349,7 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
 function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode'], installationRoot?: string): LanguageAnalysis | undefined {
   if (mode !== 'full') return undefined;
   const analyses = [analyzeTypeScript(root, discovery.sourceFiles, installationRoot), analyzeRust(root, discovery.sourceFiles)];
-  return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), coverage: analyses.flatMap(item => item.coverage) };
+  return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), externalReferences: analyses.flatMap(item => item.externalReferences ?? []), coverage: analyses.flatMap(item => item.coverage) };
 }
 
 export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "root" | "pin" | "sourceName" | "installationRoot">, options: ScanOptions = {}): ScanArtifacts {

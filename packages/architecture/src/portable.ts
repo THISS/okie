@@ -1,6 +1,8 @@
 import type { ArchitectureSnapshot, ArchitectureStory, ArchitectureView } from './model.js';
 import { validateSnapshot, validateStoryDocument, validateView } from './validation.js';
 import { validatePortableGraphShape } from './portable-shape.js';
+import { portableSourcePath } from './portable-path.js';
+import { validateDependencyFacts, type DependencyFacts } from './dependency-consumers.js';
 
 /** A portable semantic artifact. Renderer scenes are compiled by the matching viewer. */
 export interface PortableAtlas {
@@ -17,6 +19,8 @@ export interface PortableAtlas {
   };
   /** Optional full files at repository.commitSha; snippets remain in snapshot entities. */
   sources?: { path: string; text: string }[];
+  /** Optional dependency facts (CLA-212). Absent in bundles scanned before dependency capture. */
+  dependencies?: DependencyFacts;
 }
 
 export const PORTABLE_ATLAS_MAX_BYTES = 128 * 1024 * 1024;
@@ -24,10 +28,7 @@ const commitPattern = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === 'string');
 
-export function portableSourcePath(path: unknown): path is string {
-  return typeof path === 'string' && path.length > 0 && !/[\\\u0000-\u001f:]/.test(path)
-    && path.split('/').every(part => part !== '' && part !== '.' && part !== '..');
-}
+export { portableSourcePath } from './portable-path.js';
 
 /** Reject incompatible or malformed imports before persistence or compilation. */
 export function parsePortableAtlas(text: string): PortableAtlas {
@@ -68,6 +69,10 @@ export function parsePortableAtlas(text: string): PortableAtlas {
       if (!record(file) || !portableSourcePath(file.path) || typeof file.text !== 'string' || paths.has(file.path)) throw new Error('Bundled source paths must be unique repository-relative files.');
       paths.add(file.path);
     }
+  }
+  if (raw.dependencies !== undefined) {
+    try { validateDependencyFacts(raw.dependencies, raw.repository.commitSha); }
+    catch (error) { throw new Error(`Invalid dependency facts: ${error instanceof Error ? error.message : String(error)}`); }
   }
   return bundle;
 }

@@ -8,6 +8,7 @@ export function portableAtlasFromScan(artifacts: ScanArtifacts, repositoryUrl?: 
     snapshot: artifacts.snapshot, view: artifacts.view, story: artifacts.story, stories: artifacts.stories,
     analysis: artifacts.analysis,
     ...(artifacts.sources ? { sources: artifacts.sources } : {}),
+    dependencies: artifacts.dependencies,
   };
   serializePortableAtlas(bundle);
   return bundle;
