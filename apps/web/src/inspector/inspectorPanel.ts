@@ -101,6 +101,45 @@ export function inspectorAcceptedSummary(
   return text;
 }
 
+/**
+ * CLA-130: neutral lead copy when an entity has no accepted summary and the
+ * published atlas carries no enrichment-honesty note. Not an error and not an
+ * enrichment call-to-action — there is no in-app workflow to point at.
+ */
+export const INSPECTOR_NO_EXPLANATION_COPY = 'No explanation captured yet.';
+
+export type InspectorEntityLeadKind = 'summary' | 'enrichment-honesty' | 'no-explanation';
+
+export type InspectorEntityLead = {
+  kind: InspectorEntityLeadKind;
+  text: string;
+};
+
+/**
+ * Entity hero lead: accepted summary first, then published enrichment honesty
+ * (CLA-75), then the neutral no-explanation copy (CLA-130).
+ */
+export function inspectorEntityLead(input: {
+  summary?: string;
+  honestyDetails?: string;
+}): InspectorEntityLead {
+  if (input.summary) return { kind: 'summary', text: input.summary };
+  if (input.honestyDetails) return { kind: 'enrichment-honesty', text: input.honestyDetails };
+  return { kind: 'no-explanation', text: INSPECTOR_NO_EXPLANATION_COPY };
+}
+
+/**
+ * CLA-130: the Diagrams count is openable diagrams only. C4 notation status is
+ * validation output, never a diagram, so it is deliberately not an input here.
+ */
+export function inspectorDiagramCount(input: {
+  hasCodeStructure: boolean;
+  hasDependency: boolean;
+  namedDiagramCount: number;
+}): number {
+  return Number(input.hasCodeStructure) + Number(input.hasDependency) + Math.max(0, input.namedDiagramCount);
+}
+
 export type InspectorCaptionEntity = InspectorSummaryEntity & {
   kindLabel?: string;
   kind?: string;
@@ -325,7 +364,7 @@ export type InspectorNotationDetailsView = {
   rows: InspectorNotationDiagnosticRow[];
   hiddenCount: number;
   headline: string;
-  /** User Details hides the widget when the only content is completeness noise. */
+  /** User Details shows the widget only for real notation errors (CLA-130). */
   visible: boolean;
   ready: boolean;
   total: number;
@@ -445,6 +484,10 @@ export function presentInspectorNotationDiagnostics(
  * CLA-99: user Details must not list completeness advisory entity ids
  * (`container:…` / `component:…` dumps, “+N more completeness notes”).
  * Real notation errors stay visible. Dev Mode keeps the sampled dump.
+ *
+ * CLA-130: C4 notation status (“C4 notation ready”, advisory counts) is
+ * developer diagnostics. User Details shows the block only for real notation
+ * errors; ready and advisory-only states are hidden outside Dev Mode.
  */
 export function inspectorNotationDetailsView(
   presented: InspectorNotationPresentation,
@@ -464,7 +507,7 @@ export function inspectorNotationDetailsView(
     rows,
     hiddenCount: diagnostics ? presented.hiddenCount : 0,
     headline,
-    visible: presented.ready || errorCount > 0 || diagnostics,
+    visible: diagnostics || errorCount > 0,
     ready: presented.ready,
     total: presented.total,
     errorCount,

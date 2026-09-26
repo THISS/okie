@@ -60,6 +60,35 @@ export function semanticDiagramPreview(
   return { participants, interactions };
 }
 
+export type SemanticDiagramStatus = {
+  /** Neutral user-facing context line (flow step count or derivation note). */
+  context: string;
+  /** C4 notation validation status — Dev Mode only (CLA-130). */
+  notation?: { tone: 'ready' | 'advisory'; label: string };
+};
+
+/**
+ * CLA-130: C4 notation validation (advisory counts, “C4 notation ready”) is
+ * developer diagnostics. Users only see the neutral context line.
+ */
+export function semanticDiagramStatus(input: {
+  devMode?: boolean;
+  notationAdvisoryCount?: number;
+  flowStepCount?: number;
+}): SemanticDiagramStatus {
+  const context = input.flowStepCount !== undefined
+    ? `${input.flowStepCount} ordered ${input.flowStepCount === 1 ? 'step' : 'steps'} · semantic and evidence links retained`
+    : 'Derived from the active architecture view';
+  if (!input.devMode) return { context };
+  const count = input.notationAdvisoryCount ?? 0;
+  return {
+    context,
+    notation: count
+      ? { tone: 'advisory', label: `${count} C4 notation ${count === 1 ? 'advisory' : 'advisories'}` }
+      : { tone: 'ready', label: 'C4 notation ready' },
+  };
+}
+
 type SemanticDiagramSurfaceProps = {
   scene: AtlasScene;
   surface: DerivedDiagramSurface;
@@ -67,6 +96,8 @@ type SemanticDiagramSurfaceProps = {
   flowError?: string;
   mermaidSource?: string;
   notationAdvisoryCount?: number;
+  /** Dev Mode (Shift+Alt+D): show C4 notation diagnostics. */
+  devMode?: boolean;
   onSessionChange: (session: DiagramSurfaceSession) => void;
 };
 
@@ -84,8 +115,10 @@ export function SemanticDiagramSurface({
   flowError,
   mermaidSource,
   notationAdvisoryCount = 0,
+  devMode = false,
   onSessionChange,
 }: SemanticDiagramSurfaceProps) {
+  const status = semanticDiagramStatus({ devMode, notationAdvisoryCount, flowStepCount: flowArtifact?.steps.length });
   const [mermaidView, setMermaidView] = useState(surface.kind === 'mermaid');
   const preview = flowError ? { participants: [], interactions: [] } : semanticDiagramPreview(scene, surface, flowArtifact);
   const byId = new Map(preview.participants.map(entity => [entity.id, entity]));
@@ -105,7 +138,7 @@ export function SemanticDiagramSurface({
     aria-label={`${surface.title} ${surfaceLabel(surface.kind)}`}
     className={`semantic-diagram-surface kind-${surface.kind}`}
     data-flow-artifact-id={flowArtifact?.id ?? ''}
-    data-notation-advisories={notationAdvisoryCount}
+    data-notation-advisories={status.notation ? notationAdvisoryCount : undefined}
     id="derived-diagram-content"
   >
     {flowError && <p role="alert" className="detail-muted" data-testid="named-flow-unavailable">{flowError}</p>}
@@ -114,9 +147,9 @@ export function SemanticDiagramSurface({
       <div className="semantic-diagram-summary"><strong>{preview.participants.length}</strong><span>participants</span><strong>{preview.interactions.length}</strong><span>interactions</span></div>
     </header>
 
-    <div className={`semantic-diagram-readiness ${notationAdvisoryCount ? 'advisory' : 'ready'}`} role="status">
-      <span>{notationAdvisoryCount ? `${notationAdvisoryCount} C4 notation ${notationAdvisoryCount === 1 ? 'advisory' : 'advisories'}` : 'C4 notation ready'}</span>
-      <small>{flowArtifact ? `${flowArtifact.steps.length} ordered ${flowArtifact.steps.length === 1 ? 'step' : 'steps'} · semantic and evidence links retained` : 'Derived from the active architecture view'}</small>
+    <div className={`semantic-diagram-readiness ${status.notation ? status.notation.tone : 'context'}`} role="status">
+      {status.notation && <span>{status.notation.label}</span>}
+      <small>{status.context}</small>
     </div>
 
     <button aria-pressed={mermaidView} data-diagram-action="open-mermaid" onClick={() => setMermaidView(value => !value)}>{mermaidView ? 'View structured diagram' : 'View Mermaid'}</button>

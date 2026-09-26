@@ -258,7 +258,9 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('inspectorAcceptedSummary(selected)');
     expect(app).toContain("data-inspector-has-section-summary={selectedSummary ? 'true' : 'false'}");
     expect(app).toContain('data-inspector-section-summary=""');
-    expect(app).toContain('{selectedSummary ? <p className="responsibility" data-inspector-section-summary="">{selectedSummary}</p> : scanFixture?.enrichmentHonesty ? <p className="responsibility enrichment-honesty" data-inspector-enrichment-honesty-details="">{scanFixture.enrichmentHonesty.details}</p> : null}');
+    expect(app).toContain('inspectorEntityLead({ summary: selectedSummary, honestyDetails: scanFixture?.enrichmentHonesty?.details })');
+    expect(app).toContain('{selectedLead.kind === \'summary\' ? <p className="responsibility" data-inspector-section-summary="">{selectedLead.text}</p> : selectedLead.kind === \'enrichment-honesty\' ? <p className="responsibility enrichment-honesty" data-inspector-enrichment-honesty-details="">{selectedLead.text}</p> : <p className="responsibility no-explanation" data-inspector-no-explanation="">{selectedLead.text}</p>}');
+    expect(declarations(css, '.no-explanation')).not.toContain('orange');
     expect(app).not.toContain('<p className="responsibility">{selected.responsibility}</p>');
   });
 
@@ -267,7 +269,7 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('data-inspector-enrichment-honesty={scanFixture?.enrichmentHonesty?.why ?? \'\'}');
     expect(app).toContain('data-testid="inspector-enrichment-honesty"');
     expect(app).toContain('scanFixture.enrichmentHonesty.chip');
-    expect(app).toContain('scanFixture.enrichmentHonesty.details');
+    expect(app).toContain('honestyDetails: scanFixture?.enrichmentHonesty?.details');
     expect(app).not.toMatch(/enrichmentHonesty\.note/);
     expect(app).not.toMatch(/results\[.*\]\.reasons/);
     expect(app).not.toMatch(/scanRoot|OPENROUTER_API_KEY|apiKey/);
@@ -333,6 +335,8 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('+${notationDetails.hiddenCount} more completeness notes');
     expect(app).not.toContain('notationPresentation.sample');
     expect(app).not.toContain('notationDiagnostics.map');
+    expect(app).toContain('devMode={devMode} notationAdvisoryCount={notationDiagnostics.length}');
+    expect(app).toContain('<h3>Diagrams</h3><span>{selectedDiagramCount}</span>');
     expect(app).not.toMatch(/enrichmentHonesty\.note/);
   });
 
