@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGoldenC4Scene } from '../renderer/goldenC4Scene';
-import { selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relationFocus';
+import { relationOrSetFocusPresentation, relationSetFocusPresentation, selectedProjectedRelationForFocus, selectedRelationFocusPresentation } from './relationFocus';
 import { idleSemanticLens, semanticLensSessionProjectionOverride } from '../semantic/semanticLens';
 import { attachOrthogonalRouteEndpoints, authoringBoundsForDetail, orthogonalSegmentHandles } from '../editor/relationshipInteraction';
 
@@ -170,5 +170,47 @@ describe('temporary selected-relation focus', () => {
         to: 'component:renderer-engine',
       },
     });
+  });
+});
+
+describe('path relation-set focus (CLA-208)', () => {
+  const pathRelationId = 'relation:code-app-navigation-url';
+
+  it('lifts path entities to the current band and includes aggregated routes containing hop relations', () => {
+    const scene = createGoldenC4Scene();
+    const projection = scene.projection!;
+    const focus = { key: 'test', relationIds: [pathRelationId], entityIds: ['code:web-shell:app', 'code:web-navigation:history-controller'] };
+    const aggregated = Object.values(projection.projectedRelationsByDetail).flat()
+      .filter(route => route.id === pathRelationId || route.semanticIds?.includes(pathRelationId));
+    expect(aggregated.length).toBeGreaterThan(0);
+
+    const component = relationSetFocusPresentation(scene, focus, undefined, 'component');
+    expect(component.endpointIds.has('component:web-shell')).toBe(true);
+    expect(component.endpointIds.has('component:web-navigation')).toBe(true);
+    expect(component.relationIds.has(pathRelationId)).toBe(true);
+    for (const route of aggregated) expect(component.relationIds.has(route.id)).toBe(true);
+
+    const code = relationSetFocusPresentation(scene, focus, undefined, 'code');
+    expect(code.endpointIds.has('code:web-shell:app')).toBe(true);
+    expect(code.endpointIds.has('component:web-shell')).toBe(false);
+  });
+
+  it('promotes retained paths without changing lens ownership and defers to a picked relation', () => {
+    const { scene, projectionOverride, relation } = ghostRelationFixture();
+    const focus = { key: 'k', relationIds: [relation.id], entityIds: [relation.from, relation.to] };
+    const presentation = relationSetFocusPresentation(scene, focus, projectionOverride, 'component');
+    expect(presentation.projectionOverride!.id).toBe(`${projectionOverride.id}:path-focus:k`);
+    for (const path of presentation.projectionOverride!.paths) {
+      const before = projectionOverride.paths.find(candidate => candidate.pathId === path.pathId)!;
+      if (before.sourceOpacity === 0) expect(path.sourceOpacity).toBe(0);
+      if (before.targetOpacity === 0) expect(path.targetOpacity).toBe(0);
+    }
+    expect(presentation.projectionOverride!.objects.map(object => object.sourceRepresentationId))
+      .toEqual(projectionOverride.objects.map(object => object.sourceRepresentationId));
+    const picked = relationOrSetFocusPresentation(scene, relation.id, focus, projectionOverride, 'component');
+    expect(picked.projectionOverride!.id).toBe(`${projectionOverride.id}:relation-focus:${relation.id}`);
+    const empty = relationOrSetFocusPresentation(scene, undefined, undefined, projectionOverride, 'component');
+    expect(empty.relationIds.size).toBe(0);
+    expect(empty.projectionOverride).toBe(projectionOverride);
   });
 });
