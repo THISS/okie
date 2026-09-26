@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="801.6" height="234.9" viewBox="0 0 801.6 234.9" font-family="sans-serif" font-size="11">
+<rect width="100%" height="100%" fill="#f1f2f5"/>
+<rect x="24" y="42" width="364.6" height="148.5" fill="#fff" fill-opacity="0.6" stroke="#7a8599" stroke-width="1"/>
+<rect x="413" y="42" width="364.6" height="148.5" fill="#fff" fill-opacity="0.6" stroke="#7a8599" stroke-width="1"/>
+<rect x="24" y="214.9" width="364.6" height="148.5" fill="#fff" fill-opacity="0.6" stroke="#7a8599" stroke-width="1"/>
+<rect x="413" y="214.9" width="364.6" height="148.5" fill="#fff" fill-opacity="0.6" stroke="#7a8599" stroke-width="1"/>
+<rect x="-136.6" y="-85.3" width="1074.8" height="537.4" fill="#fff" fill-opacity="0.6" stroke="#7a8599" stroke-width="1"/>
+<rect x="-786.3" y="-360.4" width="2374.2" height="1017.5" fill="#fff" fill-opacity="0.6" stroke="#7a8599" stroke-width="1"/>
+<rect x="-1303.2" y="-831.9" width="3408" height="1775" fill="#fff" fill-opacity="0.6" stroke="#7a8599" stroke-width="1"/>
+<polyline points="206.3,190.5 206.3,210.9 595.3,210.9 595.3,190.5" fill="none" stroke="#445" stroke-width="1.5"/>
+<text x="24" y="14">cla68-after-scan · code @ enter (zoom 7.1)</text>
+<text x="24" y="228.9" font-size="10" fill="#555">edge-crossing:0  shared-corridor:0  label-clearance:0  container-border-run:0  endpoint-crowding:0  short-route:0</text>
+</svg>

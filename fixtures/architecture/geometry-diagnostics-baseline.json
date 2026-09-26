@@ -1,0 +1,1503 @@
+{
+  "schemaVersion": 1,
+  "tolerances": {
+    "hiddenLengthPx": 2,
+    "collinearDistancePx": 2,
+    "labelClearancePx": 4,
+    "borderRunDistancePx": 4,
+    "borderRunMinLengthPx": 48,
+    "endpointSpacingPx": 8,
+    "sharedEndpointRadiusPx": 16,
+    "minRouteLengthPx": 16
+  },
+  "kinds": [
+    "edge-crossing",
+    "shared-corridor",
+    "label-clearance",
+    "container-border-run",
+    "endpoint-crowding",
+    "short-route"
+  ],
+  "fixtures": [
+    {
+      "id": "golden-okie",
+      "description": "Hand-authored Okie self-map, default compile, all bands",
+      "rows": [
+        {
+          "band": "context",
+          "level": "enter",
+          "zoom": 0.32,
+          "nodeCount": 4,
+          "edgeCount": 3,
+          "labelCount": 3,
+          "segmentCount": 9,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 1,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 1,
+            "exempt": 1
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 1,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 31,
+          "naivePairs": 219,
+          "visibleProblems": []
+        },
+        {
+          "band": "context",
+          "level": "focus",
+          "zoom": 0.75,
+          "nodeCount": 4,
+          "edgeCount": 3,
+          "labelCount": 3,
+          "segmentCount": 9,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 1,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 1,
+            "exempt": 1
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 1,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 31,
+          "naivePairs": 219,
+          "visibleProblems": []
+        },
+        {
+          "band": "container",
+          "level": "enter",
+          "zoom": 1.16,
+          "nodeCount": 9,
+          "edgeCount": 5,
+          "labelCount": 1,
+          "segmentCount": 15,
+          "counts": {
+            "edge-crossing": {
+              "visible": 1,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 5
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 4,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 2,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 3,
+            "hidden": 4,
+            "exempt": 6
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 5,
+            "containment": 1,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 174,
+          "naivePairs": 669,
+          "visibleProblems": [
+            "edge-crossing visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Ascene-compiler:calls,visual-edge:container:visual-node%3Alineage%3Acontainer%3Aweb-app>visual-node%3Alineage%3Acontainer%3Arust-renderer:calls",
+            "short-route visual-edge:container:visual-node%3Alineage%3Acontainer%3Ascene-compiler>visual-node%3Alineage%3Acontainer%3Arust-renderer:dependsOn [visual-node:lineage:container:rust-renderer,visual-node:lineage:container:scene-compiler]",
+            "short-route visual-edge:container:visual-node%3Alineage%3Acontainer%3Aweb-app>visual-node%3Alineage%3Acontainer%3Arust-renderer:calls [visual-node:lineage:container:rust-renderer,visual-node:lineage:container:web-app]"
+          ]
+        },
+        {
+          "band": "container",
+          "level": "focus",
+          "zoom": 1.99,
+          "nodeCount": 9,
+          "edgeCount": 5,
+          "labelCount": 1,
+          "segmentCount": 15,
+          "counts": {
+            "edge-crossing": {
+              "visible": 1,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 5
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 4,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 1,
+            "hidden": 4,
+            "exempt": 6
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 5,
+            "containment": 1,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 151,
+          "naivePairs": 669,
+          "visibleProblems": [
+            "edge-crossing visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Ascene-compiler:calls,visual-edge:container:visual-node%3Alineage%3Acontainer%3Aweb-app>visual-node%3Alineage%3Acontainer%3Arust-renderer:calls"
+          ]
+        },
+        {
+          "band": "component",
+          "level": "enter",
+          "zoom": 3.35,
+          "nodeCount": 29,
+          "edgeCount": 23,
+          "labelCount": 0,
+          "segmentCount": 64,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "shared-corridor": {
+              "visible": 1,
+              "hidden": 0,
+              "exempt": 17
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 8,
+              "hidden": 4,
+              "exempt": 13
+            },
+            "short-route": {
+              "visible": 5,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 14,
+            "hidden": 4,
+            "exempt": 31
+          },
+          "exemptions": {
+            "bundle": 20,
+            "shared-endpoint": 11,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1373,
+          "naivePairs": 9440,
+          "visibleProblems": [
+            "shared-corridor visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-story:calls,visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-scene>visual-node%3Alineage%3Acomponent%3Acompiler-protocol:dependsOn",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads,visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:calls [visual-node:lineage:component:renderer-engine]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads,visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:uses [visual-node:lineage:component:renderer-engine]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:calls [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:uses [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:calls [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:uses [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:calls,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:uses [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:calls [visual-node:lineage:component:web-shell]",
+            "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-protocol:reads [visual-node:lineage:component:compiler-normalized,visual-node:lineage:component:compiler-protocol]",
+            "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-scene:calls [visual-node:lineage:component:compiler-normalized,visual-node:lineage:component:compiler-scene]",
+            "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-normalized>visual-node%3Alineage%3Acomponent%3Amodel-schema:dependsOn [visual-node:lineage:component:model-normalized,visual-node:lineage:component:model-schema]",
+            "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-gpu]",
+            "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-gpu:calls [visual-node:lineage:component:renderer-gpu,visual-node:lineage:component:renderer-wasm]"
+          ]
+        },
+        {
+          "band": "component",
+          "level": "focus",
+          "zoom": 5.27,
+          "nodeCount": 29,
+          "edgeCount": 23,
+          "labelCount": 0,
+          "segmentCount": 64,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "shared-corridor": {
+              "visible": 1,
+              "hidden": 0,
+              "exempt": 17
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 6,
+              "hidden": 4,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 7,
+            "hidden": 4,
+            "exempt": 18
+          },
+          "exemptions": {
+            "bundle": 7,
+            "shared-endpoint": 11,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1301,
+          "naivePairs": 9440,
+          "visibleProblems": [
+            "shared-corridor visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-story:calls,visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-scene>visual-node%3Alineage%3Acomponent%3Acompiler-protocol:dependsOn",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads,visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:calls [visual-node:lineage:component:renderer-engine]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads,visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:uses [visual-node:lineage:component:renderer-engine]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:calls [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:uses [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:calls [visual-node:lineage:component:web-shell]",
+            "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses,visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:uses [visual-node:lineage:component:web-shell]"
+          ]
+        },
+        {
+          "band": "code",
+          "level": "enter",
+          "zoom": 7.1,
+          "nodeCount": 70,
+          "edgeCount": 12,
+          "labelCount": 0,
+          "segmentCount": 33,
+          "counts": {
+            "edge-crossing": {
+              "visible": 1,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 4
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 3,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 2,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 3,
+            "hidden": 3,
+            "exempt": 4
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 4,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1015,
+          "naivePairs": 9768,
+          "visibleProblems": [
+            "edge-crossing visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Aapp>visual-node%3Alineage%3Acode%3Aweb-stories%3Acreate-flight:calls,visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Acanvas-viewport>visual-node%3Alineage%3Acode%3Aweb-renderer-host%3Acreate-renderer:calls",
+            "short-route visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-scoped-view>visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-snapshot:calls [visual-node:lineage:code:model-scoping:select-scoped-view,visual-node:lineage:code:model-scoping:select-snapshot]",
+            "short-route visual-edge:code:visual-node%3Alineage%3Acode%3Arenderer-gpu%3Arenderer>visual-node%3Alineage%3Acode%3Arenderer-gpu%3Abuild-mesh:calls [visual-node:lineage:code:renderer-gpu:build-mesh,visual-node:lineage:code:renderer-gpu:renderer]"
+          ]
+        },
+        {
+          "band": "code",
+          "level": "focus",
+          "zoom": 13.96,
+          "nodeCount": 70,
+          "edgeCount": 12,
+          "labelCount": 0,
+          "segmentCount": 33,
+          "counts": {
+            "edge-crossing": {
+              "visible": 1,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 4
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 3,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 1,
+            "hidden": 3,
+            "exempt": 4
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 4,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1015,
+          "naivePairs": 9768,
+          "visibleProblems": [
+            "edge-crossing visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Aapp>visual-node%3Alineage%3Acode%3Aweb-stories%3Acreate-flight:calls,visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Acanvas-viewport>visual-node%3Alineage%3Acode%3Aweb-renderer-host%3Acreate-renderer:calls"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dense-default-40",
+      "description": "CLA-67 dense snapshot (40 components, chain + 5-copy hub), default compile",
+      "rows": [
+        {
+          "band": "component",
+          "level": "enter",
+          "zoom": 3.35,
+          "nodeCount": 42,
+          "edgeCount": 41,
+          "labelCount": 0,
+          "segmentCount": 71,
+          "counts": {
+            "edge-crossing": {
+              "visible": 24,
+              "hidden": 0,
+              "exempt": 2
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 3
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 2,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 26,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 50,
+            "hidden": 2,
+            "exempt": 5
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 5,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1045,
+          "naivePairs": 14413,
+          "visibleProblems": [
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m002>visual-node%3Acomponent%3Ac-m003:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m003>visual-node%3Acomponent%3Ac-m004:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m005>visual-node%3Acomponent%3Ac-m006:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m006>visual-node%3Acomponent%3Ac-m007:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m008>visual-node%3Acomponent%3Ac-m009:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m009>visual-node%3Acomponent%3Ac-m010:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m011>visual-node%3Acomponent%3Ac-m012:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m012>visual-node%3Acomponent%3Ac-m013:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m014>visual-node%3Acomponent%3Ac-m015:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m015>visual-node%3Acomponent%3Ac-m016:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m017>visual-node%3Acomponent%3Ac-m018:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m018>visual-node%3Acomponent%3Ac-m019:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m020>visual-node%3Acomponent%3Ac-m021:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m021>visual-node%3Acomponent%3Ac-m022:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m023>visual-node%3Acomponent%3Ac-m024:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m024>visual-node%3Acomponent%3Ac-m025:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m026>visual-node%3Acomponent%3Ac-m027:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m027>visual-node%3Acomponent%3Ac-m028:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m029>visual-node%3Acomponent%3Ac-m030:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m030>visual-node%3Acomponent%3Ac-m031:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m032>visual-node%3Acomponent%3Ac-m033:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m033>visual-node%3Acomponent%3Ac-m034:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m035>visual-node%3Acomponent%3Ac-m036:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m036>visual-node%3Acomponent%3Ac-m037:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m000>visual-node%3Acomponent%3Ac-m001:dependsOn [visual-node:component:c-m000,visual-node:component:c-m001]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m001>visual-node%3Acomponent%3Ac-m002:dependsOn [visual-node:component:c-m001,visual-node:component:c-m002]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m003>visual-node%3Acomponent%3Ac-m004:dependsOn [visual-node:component:c-m003,visual-node:component:c-m004]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m004>visual-node%3Acomponent%3Ac-m005:dependsOn [visual-node:component:c-m004,visual-node:component:c-m005]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m006>visual-node%3Acomponent%3Ac-m007:dependsOn [visual-node:component:c-m006,visual-node:component:c-m007]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m007>visual-node%3Acomponent%3Ac-m008:dependsOn [visual-node:component:c-m007,visual-node:component:c-m008]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m009>visual-node%3Acomponent%3Ac-m010:dependsOn [visual-node:component:c-m009,visual-node:component:c-m010]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m010>visual-node%3Acomponent%3Ac-m011:dependsOn [visual-node:component:c-m010,visual-node:component:c-m011]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m012>visual-node%3Acomponent%3Ac-m013:dependsOn [visual-node:component:c-m012,visual-node:component:c-m013]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m013>visual-node%3Acomponent%3Ac-m014:dependsOn [visual-node:component:c-m013,visual-node:component:c-m014]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m015>visual-node%3Acomponent%3Ac-m016:dependsOn [visual-node:component:c-m015,visual-node:component:c-m016]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m016>visual-node%3Acomponent%3Ac-m017:dependsOn [visual-node:component:c-m016,visual-node:component:c-m017]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m018>visual-node%3Acomponent%3Ac-m019:dependsOn [visual-node:component:c-m018,visual-node:component:c-m019]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m019>visual-node%3Acomponent%3Ac-m020:dependsOn [visual-node:component:c-m019,visual-node:component:c-m020]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m021>visual-node%3Acomponent%3Ac-m022:dependsOn [visual-node:component:c-m021,visual-node:component:c-m022]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m022>visual-node%3Acomponent%3Ac-m023:dependsOn [visual-node:component:c-m022,visual-node:component:c-m023]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m024>visual-node%3Acomponent%3Ac-m025:dependsOn [visual-node:component:c-m024,visual-node:component:c-m025]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m025>visual-node%3Acomponent%3Ac-m026:dependsOn [visual-node:component:c-m025,visual-node:component:c-m026]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m027>visual-node%3Acomponent%3Ac-m028:dependsOn [visual-node:component:c-m027,visual-node:component:c-m028]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m028>visual-node%3Acomponent%3Ac-m029:dependsOn [visual-node:component:c-m028,visual-node:component:c-m029]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m030>visual-node%3Acomponent%3Ac-m031:dependsOn [visual-node:component:c-m030,visual-node:component:c-m031]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m031>visual-node%3Acomponent%3Ac-m032:dependsOn [visual-node:component:c-m031,visual-node:component:c-m032]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m033>visual-node%3Acomponent%3Ac-m034:dependsOn [visual-node:component:c-m033,visual-node:component:c-m034]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m034>visual-node%3Acomponent%3Ac-m035:dependsOn [visual-node:component:c-m034,visual-node:component:c-m035]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m036>visual-node%3Acomponent%3Ac-m037:dependsOn [visual-node:component:c-m036,visual-node:component:c-m037]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m037>visual-node%3Acomponent%3Ac-m038:dependsOn [visual-node:component:c-m037,visual-node:component:c-m038]"
+          ]
+        },
+        {
+          "band": "component",
+          "level": "focus",
+          "zoom": 5.27,
+          "nodeCount": 42,
+          "edgeCount": 41,
+          "labelCount": 0,
+          "segmentCount": 71,
+          "counts": {
+            "edge-crossing": {
+              "visible": 24,
+              "hidden": 0,
+              "exempt": 2
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 3
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 2,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 24,
+            "hidden": 2,
+            "exempt": 5
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 5,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1025,
+          "naivePairs": 14413,
+          "visibleProblems": [
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m002>visual-node%3Acomponent%3Ac-m003:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m003>visual-node%3Acomponent%3Ac-m004:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m005>visual-node%3Acomponent%3Ac-m006:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m006>visual-node%3Acomponent%3Ac-m007:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m008>visual-node%3Acomponent%3Ac-m009:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m009>visual-node%3Acomponent%3Ac-m010:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m011>visual-node%3Acomponent%3Ac-m012:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m012>visual-node%3Acomponent%3Ac-m013:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m014>visual-node%3Acomponent%3Ac-m015:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m015>visual-node%3Acomponent%3Ac-m016:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m017>visual-node%3Acomponent%3Ac-m018:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m018>visual-node%3Acomponent%3Ac-m019:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m020>visual-node%3Acomponent%3Ac-m021:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m021>visual-node%3Acomponent%3Ac-m022:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m023>visual-node%3Acomponent%3Ac-m024:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m024>visual-node%3Acomponent%3Ac-m025:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m026>visual-node%3Acomponent%3Ac-m027:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m027>visual-node%3Acomponent%3Ac-m028:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m029>visual-node%3Acomponent%3Ac-m030:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m030>visual-node%3Acomponent%3Ac-m031:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m032>visual-node%3Acomponent%3Ac-m033:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m033>visual-node%3Acomponent%3Ac-m034:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m035>visual-node%3Acomponent%3Ac-m036:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m036>visual-node%3Acomponent%3Ac-m037:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dense-container-25",
+      "description": "CLA-67 container neighborhood, 25 children, scoped compile",
+      "rows": [
+        {
+          "band": "container",
+          "level": "enter",
+          "zoom": 1.16,
+          "nodeCount": 26,
+          "edgeCount": 26,
+          "labelCount": 1,
+          "segmentCount": 46,
+          "counts": {
+            "edge-crossing": {
+              "visible": 14,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 5
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 4,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 16,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 30,
+            "hidden": 4,
+            "exempt": 7
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 6,
+            "containment": 1,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 413,
+          "naivePairs": 5891,
+          "visibleProblems": [
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0002>visual-node%3Acontainer%3A0003:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0003>visual-node%3Acontainer%3A0004:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0005>visual-node%3Acontainer%3A0006:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0006>visual-node%3Acontainer%3A0007:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0008>visual-node%3Acontainer%3A0009:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0009>visual-node%3Acontainer%3A0010:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0011>visual-node%3Acontainer%3A0012:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0012>visual-node%3Acontainer%3A0013:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0014>visual-node%3Acontainer%3A0015:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0015>visual-node%3Acontainer%3A0016:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0017>visual-node%3Acontainer%3A0018:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0018>visual-node%3Acontainer%3A0019:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0020>visual-node%3Acontainer%3A0021:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0021>visual-node%3Acontainer%3A0022:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0000>visual-node%3Acontainer%3A0001:dependsOn [visual-node:container:0000,visual-node:container:0001]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0001>visual-node%3Acontainer%3A0002:dependsOn [visual-node:container:0001,visual-node:container:0002]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0003>visual-node%3Acontainer%3A0004:dependsOn [visual-node:container:0003,visual-node:container:0004]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0004>visual-node%3Acontainer%3A0005:dependsOn [visual-node:container:0004,visual-node:container:0005]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0006>visual-node%3Acontainer%3A0007:dependsOn [visual-node:container:0006,visual-node:container:0007]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0007>visual-node%3Acontainer%3A0008:dependsOn [visual-node:container:0007,visual-node:container:0008]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0009>visual-node%3Acontainer%3A0010:dependsOn [visual-node:container:0009,visual-node:container:0010]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0010>visual-node%3Acontainer%3A0011:dependsOn [visual-node:container:0010,visual-node:container:0011]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0012>visual-node%3Acontainer%3A0013:dependsOn [visual-node:container:0012,visual-node:container:0013]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0013>visual-node%3Acontainer%3A0014:dependsOn [visual-node:container:0013,visual-node:container:0014]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0015>visual-node%3Acontainer%3A0016:dependsOn [visual-node:container:0015,visual-node:container:0016]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0016>visual-node%3Acontainer%3A0017:dependsOn [visual-node:container:0016,visual-node:container:0017]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0018>visual-node%3Acontainer%3A0019:dependsOn [visual-node:container:0018,visual-node:container:0019]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0019>visual-node%3Acontainer%3A0020:dependsOn [visual-node:container:0019,visual-node:container:0020]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0021>visual-node%3Acontainer%3A0022:dependsOn [visual-node:container:0021,visual-node:container:0022]",
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0022>visual-node%3Acontainer%3A0023:dependsOn [visual-node:container:0022,visual-node:container:0023]"
+          ]
+        },
+        {
+          "band": "container",
+          "level": "focus",
+          "zoom": 1.99,
+          "nodeCount": 26,
+          "edgeCount": 26,
+          "labelCount": 1,
+          "segmentCount": 46,
+          "counts": {
+            "edge-crossing": {
+              "visible": 14,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 5
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 1
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 4,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 14,
+            "hidden": 4,
+            "exempt": 7
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 6,
+            "containment": 1,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 413,
+          "naivePairs": 5891,
+          "visibleProblems": [
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0002>visual-node%3Acontainer%3A0003:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0003>visual-node%3Acontainer%3A0004:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0005>visual-node%3Acontainer%3A0006:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0006>visual-node%3Acontainer%3A0007:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0008>visual-node%3Acontainer%3A0009:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0009>visual-node%3Acontainer%3A0010:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0011>visual-node%3Acontainer%3A0012:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0012>visual-node%3Acontainer%3A0013:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0014>visual-node%3Acontainer%3A0015:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0015>visual-node%3Acontainer%3A0016:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0017>visual-node%3Acontainer%3A0018:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0018>visual-node%3Acontainer%3A0019:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0020>visual-node%3Acontainer%3A0021:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0021>visual-node%3Acontainer%3A0022:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dense-component-50",
+      "description": "CLA-67 component neighborhood, 50 children, CLA-66 scoped product compile",
+      "rows": [
+        {
+          "band": "component",
+          "level": "enter",
+          "zoom": 3.35,
+          "nodeCount": 52,
+          "edgeCount": 24,
+          "labelCount": 0,
+          "segmentCount": 40,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 2
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 1,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 16,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 16,
+            "hidden": 1,
+            "exempt": 2
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 2,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 859,
+          "naivePairs": 9100,
+          "visibleProblems": [
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0000>visual-node%3Acomponent%3A0001:dependsOn [visual-node:component:0000,visual-node:component:0001]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0001>visual-node%3Acomponent%3A0002:dependsOn [visual-node:component:0001,visual-node:component:0002]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0003>visual-node%3Acomponent%3A0004:dependsOn [visual-node:component:0003,visual-node:component:0004]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0004>visual-node%3Acomponent%3A0005:dependsOn [visual-node:component:0004,visual-node:component:0005]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0006>visual-node%3Acomponent%3A0007:dependsOn [visual-node:component:0006,visual-node:component:0007]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0007>visual-node%3Acomponent%3A0008:dependsOn [visual-node:component:0007,visual-node:component:0008]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0009>visual-node%3Acomponent%3A0010:dependsOn [visual-node:component:0009,visual-node:component:0010]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0010>visual-node%3Acomponent%3A0011:dependsOn [visual-node:component:0010,visual-node:component:0011]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0012>visual-node%3Acomponent%3A0013:dependsOn [visual-node:component:0012,visual-node:component:0013]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0013>visual-node%3Acomponent%3A0014:dependsOn [visual-node:component:0013,visual-node:component:0014]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0015>visual-node%3Acomponent%3A0016:dependsOn [visual-node:component:0015,visual-node:component:0016]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0016>visual-node%3Acomponent%3A0017:dependsOn [visual-node:component:0016,visual-node:component:0017]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0018>visual-node%3Acomponent%3A0019:dependsOn [visual-node:component:0018,visual-node:component:0019]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0019>visual-node%3Acomponent%3A0020:dependsOn [visual-node:component:0019,visual-node:component:0020]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0021>visual-node%3Acomponent%3A0022:dependsOn [visual-node:component:0021,visual-node:component:0022]",
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0022>visual-node%3Acomponent%3A0023:dependsOn [visual-node:component:0022,visual-node:component:0023]"
+          ]
+        },
+        {
+          "band": "component",
+          "level": "focus",
+          "zoom": 5.27,
+          "nodeCount": 52,
+          "edgeCount": 24,
+          "labelCount": 0,
+          "segmentCount": 40,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 2
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 1,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 1,
+            "exempt": 2
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 2,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 802,
+          "naivePairs": 9100,
+          "visibleProblems": []
+        }
+      ]
+    },
+    {
+      "id": "dense-code-25",
+      "description": "CLA-67 code neighborhood, 25 children, scoped compile",
+      "rows": [
+        {
+          "band": "code",
+          "level": "enter",
+          "zoom": 7.1,
+          "nodeCount": 28,
+          "edgeCount": 26,
+          "labelCount": 0,
+          "segmentCount": 62,
+          "counts": {
+            "edge-crossing": {
+              "visible": 7,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 7,
+              "hidden": 0,
+              "exempt": 21
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 21,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 16,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 30,
+            "hidden": 21,
+            "exempt": 21
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 21,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1593,
+          "naivePairs": 8835,
+          "visibleProblems": [
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0003>visual-node%3Acode%3A0004:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0006>visual-node%3Acode%3A0007:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0009>visual-node%3Acode%3A0010:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0012>visual-node%3Acode%3A0013:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0015>visual-node%3Acode%3A0016:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0018>visual-node%3Acode%3A0019:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0021>visual-node%3Acode%3A0022:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0002>visual-node%3Acode%3A0003:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0005>visual-node%3Acode%3A0006:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0008>visual-node%3Acode%3A0009:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0011>visual-node%3Acode%3A0012:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0014>visual-node%3Acode%3A0015:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0017>visual-node%3Acode%3A0018:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0020>visual-node%3Acode%3A0021:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "short-route visual-edge:code:visual-node%3Acode%3A0000>visual-node%3Acode%3A0001:dependsOn [visual-node:code:0000,visual-node:code:0001]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0001>visual-node%3Acode%3A0002:dependsOn [visual-node:code:0001,visual-node:code:0002]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0003>visual-node%3Acode%3A0004:dependsOn [visual-node:code:0003,visual-node:code:0004]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0004>visual-node%3Acode%3A0005:dependsOn [visual-node:code:0004,visual-node:code:0005]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0006>visual-node%3Acode%3A0007:dependsOn [visual-node:code:0006,visual-node:code:0007]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0007>visual-node%3Acode%3A0008:dependsOn [visual-node:code:0007,visual-node:code:0008]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0009>visual-node%3Acode%3A0010:dependsOn [visual-node:code:0009,visual-node:code:0010]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0010>visual-node%3Acode%3A0011:dependsOn [visual-node:code:0010,visual-node:code:0011]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0012>visual-node%3Acode%3A0013:dependsOn [visual-node:code:0012,visual-node:code:0013]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0013>visual-node%3Acode%3A0014:dependsOn [visual-node:code:0013,visual-node:code:0014]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0015>visual-node%3Acode%3A0016:dependsOn [visual-node:code:0015,visual-node:code:0016]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0016>visual-node%3Acode%3A0017:dependsOn [visual-node:code:0016,visual-node:code:0017]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0018>visual-node%3Acode%3A0019:dependsOn [visual-node:code:0018,visual-node:code:0019]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0019>visual-node%3Acode%3A0020:dependsOn [visual-node:code:0019,visual-node:code:0020]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0021>visual-node%3Acode%3A0022:dependsOn [visual-node:code:0021,visual-node:code:0022]",
+            "short-route visual-edge:code:visual-node%3Acode%3A0022>visual-node%3Acode%3A0023:dependsOn [visual-node:code:0022,visual-node:code:0023]"
+          ]
+        },
+        {
+          "band": "code",
+          "level": "focus",
+          "zoom": 13.96,
+          "nodeCount": 28,
+          "edgeCount": 26,
+          "labelCount": 0,
+          "segmentCount": 62,
+          "counts": {
+            "edge-crossing": {
+              "visible": 7,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 7,
+              "hidden": 0,
+              "exempt": 21
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 21,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 14,
+            "hidden": 21,
+            "exempt": 21
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 21,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 1593,
+          "naivePairs": 8835,
+          "visibleProblems": [
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0003>visual-node%3Acode%3A0004:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0006>visual-node%3Acode%3A0007:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0009>visual-node%3Acode%3A0010:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0012>visual-node%3Acode%3A0013:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0015>visual-node%3Acode%3A0016:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0018>visual-node%3Acode%3A0019:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "edge-crossing visual-edge:code:visual-node%3Acode%3A0021>visual-node%3Acode%3A0022:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0002>visual-node%3Acode%3A0003:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0005>visual-node%3Acode%3A0006:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0008>visual-node%3Acode%3A0009:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0011>visual-node%3Acode%3A0012:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0014>visual-node%3Acode%3A0015:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0017>visual-node%3Acode%3A0018:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
+            "shared-corridor visual-edge:code:visual-node%3Acode%3A0020>visual-node%3Acode%3A0021:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cla68-before",
+      "description": "CLA-68 before: tight L4 gutter with the legacy facing side-to-side hop (reconstructed)",
+      "rows": [
+        {
+          "band": "code",
+          "level": "enter",
+          "zoom": 7.1,
+          "nodeCount": 7,
+          "edgeCount": 1,
+          "labelCount": 0,
+          "segmentCount": 1,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 1,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 1,
+            "hidden": 0,
+            "exempt": 0
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 0,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 12,
+          "naivePairs": 28,
+          "visibleProblems": [
+            "short-route visual-edge:code:visual-node%3Acode%3Aalpha>visual-node%3Acode%3Abeta:duplicates [visual-node:code:alpha,visual-node:code:beta]"
+          ]
+        },
+        {
+          "band": "code",
+          "level": "focus",
+          "zoom": 13.96,
+          "nodeCount": 7,
+          "edgeCount": 1,
+          "labelCount": 0,
+          "segmentCount": 1,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 0,
+            "exempt": 0
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 0,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 12,
+          "naivePairs": 28,
+          "visibleProblems": []
+        }
+      ]
+    },
+    {
+      "id": "cla68-after-tight",
+      "description": "CLA-68 after, default packing: duplicates U-loop in the tight gutter",
+      "rows": [
+        {
+          "band": "code",
+          "level": "enter",
+          "zoom": 7.1,
+          "nodeCount": 7,
+          "edgeCount": 1,
+          "labelCount": 0,
+          "segmentCount": 3,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 0,
+            "exempt": 0
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 0,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 32,
+          "naivePairs": 87,
+          "visibleProblems": []
+        },
+        {
+          "band": "code",
+          "level": "focus",
+          "zoom": 13.96,
+          "nodeCount": 7,
+          "edgeCount": 1,
+          "labelCount": 0,
+          "segmentCount": 3,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 0,
+            "exempt": 0
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 0,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 32,
+          "naivePairs": 87,
+          "visibleProblems": []
+        }
+      ]
+    },
+    {
+      "id": "cla68-after-scan",
+      "description": "CLA-68 after, scan packing (landscape): widened gutter + duplicates U-loop",
+      "rows": [
+        {
+          "band": "code",
+          "level": "enter",
+          "zoom": 7.1,
+          "nodeCount": 7,
+          "edgeCount": 1,
+          "labelCount": 0,
+          "segmentCount": 3,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 0,
+            "exempt": 0
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 0,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 32,
+          "naivePairs": 87,
+          "visibleProblems": []
+        },
+        {
+          "band": "code",
+          "level": "focus",
+          "zoom": 13.96,
+          "nodeCount": 7,
+          "edgeCount": 1,
+          "labelCount": 0,
+          "segmentCount": 3,
+          "counts": {
+            "edge-crossing": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "shared-corridor": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "label-clearance": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "container-border-run": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "endpoint-crowding": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            }
+          },
+          "totals": {
+            "visible": 0,
+            "hidden": 0,
+            "exempt": 0
+          },
+          "exemptions": {
+            "bundle": 0,
+            "shared-endpoint": 0,
+            "containment": 0,
+            "own-endpoint": 0
+          },
+          "candidatePairs": 32,
+          "naivePairs": 87,
+          "visibleProblems": []
+        }
+      ]
+    }
+  ]
+}

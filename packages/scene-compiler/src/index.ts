@@ -9,3 +9,4 @@ export * from "./display-text.js";
 export * from "./code-card-copy.js";
 export * from "./dynamic-flow.js";
 export * from "./band-cost-curve.js";
+export * from "./geometry-diagnostics-c4.js";
