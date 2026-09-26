@@ -4,11 +4,12 @@
     "hiddenLengthPx": 2,
     "collinearDistancePx": 2,
     "labelClearancePx": 4,
-    "borderRunDistancePx": 4,
+    "borderRunDistancePx": 3,
     "borderRunMinLengthPx": 48,
     "endpointSpacingPx": 8,
     "sharedEndpointRadiusPx": 16,
-    "minRouteLengthPx": 16
+    "minRouteLengthPx": 16,
+    "minLegLengthPx": 6
   },
   "kinds": [
     "edge-crossing",
@@ -16,7 +17,8 @@
     "label-clearance",
     "container-border-run",
     "endpoint-crowding",
-    "short-route"
+    "short-route",
+    "short-leg"
   ],
   "fixtures": [
     {
@@ -54,29 +56,38 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 1,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 1
             },
             "short-route": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 3,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 0,
-            "hidden": 1,
-            "exempt": 1
+            "visible": 3,
+            "hidden": 0,
+            "exempt": 2
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 1,
+            "shared-port": 1,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 31,
-          "naivePairs": 219,
-          "visibleProblems": []
+          "geometryFingerprint": "2204b9ef",
+          "visibleProblems": [
+            "short-leg visual-edge:context:visual-node%3Alineage%3Aactor%3Adeveloper>visual-node%3Alineage%3Asystem%3Aokie:uses [visual-node:lineage:actor:developer,visual-node:lineage:system:okie]",
+            "short-leg visual-edge:context:visual-node%3Alineage%3Asystem%3Aokie>visual-node%3Alineage%3Aexternal%3Abrowser-graphics:uses [visual-node:lineage:external:browser-graphics,visual-node:lineage:system:okie]",
+            "short-leg visual-edge:context:visual-node%3Alineage%3Asystem%3Aokie>visual-node%3Alineage%3Aexternal%3Asource-repository:dependsOn [visual-node:lineage:external:source-repository,visual-node:lineage:system:okie]"
+          ]
         },
         {
           "band": "context",
@@ -109,10 +120,15 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 1,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 1
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
@@ -120,17 +136,17 @@
           },
           "totals": {
             "visible": 0,
-            "hidden": 1,
-            "exempt": 1
+            "hidden": 0,
+            "exempt": 2
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 1,
+            "shared-port": 1,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 31,
-          "naivePairs": 219,
+          "geometryFingerprint": "2204b9ef",
           "visibleProblems": []
         },
         {
@@ -164,32 +180,43 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 4,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 4
             },
             "short-route": {
               "visible": 2,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 6,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 3,
-            "hidden": 4,
-            "exempt": 6
+            "visible": 9,
+            "hidden": 0,
+            "exempt": 10
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 5,
+            "shared-port": 4,
             "containment": 1,
             "own-endpoint": 0
           },
-          "candidatePairs": 174,
-          "naivePairs": 669,
+          "geometryFingerprint": "7d25d031",
           "visibleProblems": [
             "edge-crossing visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Ascene-compiler:calls,visual-edge:container:visual-node%3Alineage%3Acontainer%3Aweb-app>visual-node%3Alineage%3Acontainer%3Arust-renderer:calls",
             "short-route visual-edge:container:visual-node%3Alineage%3Acontainer%3Ascene-compiler>visual-node%3Alineage%3Acontainer%3Arust-renderer:dependsOn [visual-node:lineage:container:rust-renderer,visual-node:lineage:container:scene-compiler]",
-            "short-route visual-edge:container:visual-node%3Alineage%3Acontainer%3Aweb-app>visual-node%3Alineage%3Acontainer%3Arust-renderer:calls [visual-node:lineage:container:rust-renderer,visual-node:lineage:container:web-app]"
+            "short-route visual-edge:container:visual-node%3Alineage%3Acontainer%3Aweb-app>visual-node%3Alineage%3Acontainer%3Arust-renderer:calls [visual-node:lineage:container:rust-renderer,visual-node:lineage:container:web-app]",
+            "short-leg visual-edge:container:visual-node%3Alineage%3Acontainer%3Aarchitecture-model>visual-node%3Alineage%3Acontainer%3Ascene-compiler:dependsOn [visual-node:lineage:container:architecture-model,visual-node:lineage:container:scene-compiler]",
+            "short-leg visual-edge:container:visual-node%3Alineage%3Acontainer%3Aarchitecture-model>visual-node%3Alineage%3Acontainer%3Ascene-compiler:dependsOn [visual-node:lineage:container:architecture-model,visual-node:lineage:container:scene-compiler]",
+            "short-leg visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Arust-renderer:dependsOn [visual-node:lineage:container:rust-renderer,visual-node:lineage:container:tooling]",
+            "short-leg visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Arust-renderer:dependsOn [visual-node:lineage:container:rust-renderer,visual-node:lineage:container:tooling]",
+            "short-leg visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Ascene-compiler:calls [visual-node:lineage:container:scene-compiler,visual-node:lineage:container:tooling]",
+            "short-leg visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Ascene-compiler:calls [visual-node:lineage:container:scene-compiler,visual-node:lineage:container:tooling]"
           ]
         },
         {
@@ -223,10 +250,15 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 4,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 4
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
@@ -234,17 +266,17 @@
           },
           "totals": {
             "visible": 1,
-            "hidden": 4,
-            "exempt": 6
+            "hidden": 0,
+            "exempt": 10
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 5,
+            "shared-port": 4,
             "containment": 1,
             "own-endpoint": 0
           },
-          "candidatePairs": 151,
-          "naivePairs": 669,
+          "geometryFingerprint": "7d25d031",
           "visibleProblems": [
             "edge-crossing visual-edge:container:visual-node%3Alineage%3Acontainer%3Atooling>visual-node%3Alineage%3Acontainer%3Ascene-compiler:calls,visual-edge:container:visual-node%3Alineage%3Acontainer%3Aweb-app>visual-node%3Alineage%3Acontainer%3Arust-renderer:calls"
           ]
@@ -280,28 +312,33 @@
             },
             "endpoint-crowding": {
               "visible": 8,
-              "hidden": 4,
-              "exempt": 13
+              "hidden": 0,
+              "exempt": 17
             },
             "short-route": {
               "visible": 5,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 32,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 14,
-            "hidden": 4,
-            "exempt": 31
+            "visible": 46,
+            "hidden": 0,
+            "exempt": 35
           },
           "exemptions": {
             "bundle": 20,
             "shared-endpoint": 11,
+            "shared-port": 4,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1373,
-          "naivePairs": 9440,
+          "geometryFingerprint": "86db4d84",
           "visibleProblems": [
             "shared-corridor visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-story:calls,visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-scene>visual-node%3Alineage%3Acomponent%3Acompiler-protocol:dependsOn",
             "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads,visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:calls [visual-node:lineage:component:renderer-engine]",
@@ -316,7 +353,39 @@
             "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-scene:calls [visual-node:lineage:component:compiler-normalized,visual-node:lineage:component:compiler-scene]",
             "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-normalized>visual-node%3Alineage%3Acomponent%3Amodel-schema:dependsOn [visual-node:lineage:component:model-normalized,visual-node:lineage:component:model-schema]",
             "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-gpu]",
-            "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-gpu:calls [visual-node:lineage:component:renderer-gpu,visual-node:lineage:component:renderer-wasm]"
+            "short-route visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-gpu:calls [visual-node:lineage:component:renderer-gpu,visual-node:lineage:component:renderer-wasm]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-story:calls [visual-node:lineage:component:compiler-normalized,visual-node:lineage:component:compiler-story]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-story:calls [visual-node:lineage:component:compiler-normalized,visual-node:lineage:component:compiler-story]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-scene>visual-node%3Alineage%3Acomponent%3Acompiler-protocol:dependsOn [visual-node:lineage:component:compiler-protocol,visual-node:lineage:component:compiler-scene]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-scene>visual-node%3Alineage%3Acomponent%3Acompiler-protocol:dependsOn [visual-node:lineage:component:compiler-protocol,visual-node:lineage:component:compiler-scene]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-scoping>visual-node%3Alineage%3Acomponent%3Amodel-normalized:dependsOn [visual-node:lineage:component:model-normalized,visual-node:lineage:component:model-scoping]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-scoping>visual-node%3Alineage%3Acomponent%3Amodel-normalized:uses [visual-node:lineage:component:model-normalized,visual-node:lineage:component:model-scoping]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-validation>visual-node%3Alineage%3Acomponent%3Amodel-schema:dependsOn [visual-node:lineage:component:model-schema,visual-node:lineage:component:model-validation]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-validation>visual-node%3Alineage%3Acomponent%3Amodel-schema:dependsOn [visual-node:lineage:component:model-schema,visual-node:lineage:component:model-validation]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-validation>visual-node%3Alineage%3Acomponent%3Amodel-schema:reads [visual-node:lineage:component:model-schema,visual-node:lineage:component:model-validation]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Amodel-validation>visual-node%3Alineage%3Acomponent%3Amodel-schema:reads [visual-node:lineage:component:model-schema,visual-node:lineage:component:model-validation]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-engine>visual-node%3Alineage%3Acomponent%3Arenderer-protocol:calls [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-protocol]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-engine>visual-node%3Alineage%3Acomponent%3Arenderer-protocol:calls [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-protocol]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-engine>visual-node%3Alineage%3Acomponent%3Arenderer-protocol:dependsOn [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-protocol]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-engine>visual-node%3Alineage%3Acomponent%3Arenderer-protocol:dependsOn [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-protocol]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:calls [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-wasm]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:calls [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-wasm]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:uses [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-wasm]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:uses [visual-node:lineage:component:renderer-engine,visual-node:lineage:component:renderer-wasm]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Atooling-fixtures>visual-node%3Alineage%3Acomponent%3Acompiler-scene:calls [visual-node:lineage:component:compiler-scene,visual-node:lineage:component:tooling-fixtures]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Atooling-fixtures>visual-node%3Alineage%3Acomponent%3Acompiler-scene:calls [visual-node:lineage:component:compiler-scene,visual-node:lineage:component:tooling-fixtures]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-navigation:calls [visual-node:lineage:component:web-navigation,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-navigation:uses [visual-node:lineage:component:web-navigation,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses [visual-node:lineage:component:web-provenance,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-provenance:uses [visual-node:lineage:component:web-provenance,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:calls [visual-node:lineage:component:web-renderer-host,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:calls [visual-node:lineage:component:web-renderer-host,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:uses [visual-node:lineage:component:web-renderer-host,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-renderer-host:uses [visual-node:lineage:component:web-renderer-host,visual-node:lineage:component:web-shell]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:calls [visual-node:lineage:component:web-shell,visual-node:lineage:component:web-stories]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:calls [visual-node:lineage:component:web-shell,visual-node:lineage:component:web-stories]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:uses [visual-node:lineage:component:web-shell,visual-node:lineage:component:web-stories]",
+            "short-leg visual-edge:component:visual-node%3Alineage%3Acomponent%3Aweb-shell>visual-node%3Alineage%3Acomponent%3Aweb-stories:uses [visual-node:lineage:component:web-shell,visual-node:lineage:component:web-stories]"
           ]
         },
         {
@@ -350,10 +419,15 @@
             },
             "endpoint-crowding": {
               "visible": 6,
-              "hidden": 4,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 4
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
@@ -361,17 +435,17 @@
           },
           "totals": {
             "visible": 7,
-            "hidden": 4,
-            "exempt": 18
+            "hidden": 0,
+            "exempt": 22
           },
           "exemptions": {
             "bundle": 7,
             "shared-endpoint": 11,
+            "shared-port": 4,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1301,
-          "naivePairs": 9440,
+          "geometryFingerprint": "86db4d84",
           "visibleProblems": [
             "shared-corridor visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-normalized>visual-node%3Alineage%3Acomponent%3Acompiler-story:calls,visual-edge:component:visual-node%3Alineage%3Acomponent%3Acompiler-scene>visual-node%3Alineage%3Acomponent%3Acompiler-protocol:dependsOn",
             "endpoint-crowding visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-gpu>visual-node%3Alineage%3Acomponent%3Arenderer-engine:reads,visual-edge:component:visual-node%3Alineage%3Acomponent%3Arenderer-wasm>visual-node%3Alineage%3Acomponent%3Arenderer-engine:calls [visual-node:lineage:component:renderer-engine]",
@@ -413,32 +487,51 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 3,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 3
             },
             "short-route": {
               "visible": 2,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 14,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 3,
-            "hidden": 3,
-            "exempt": 4
+            "visible": 17,
+            "hidden": 0,
+            "exempt": 7
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 4,
+            "shared-port": 3,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1015,
-          "naivePairs": 9768,
+          "geometryFingerprint": "5b7a4d21",
           "visibleProblems": [
             "edge-crossing visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Aapp>visual-node%3Alineage%3Acode%3Aweb-stories%3Acreate-flight:calls,visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Acanvas-viewport>visual-node%3Alineage%3Acode%3Aweb-renderer-host%3Acreate-renderer:calls",
             "short-route visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-scoped-view>visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-snapshot:calls [visual-node:lineage:code:model-scoping:select-scoped-view,visual-node:lineage:code:model-scoping:select-snapshot]",
-            "short-route visual-edge:code:visual-node%3Alineage%3Acode%3Arenderer-gpu%3Arenderer>visual-node%3Alineage%3Acode%3Arenderer-gpu%3Abuild-mesh:calls [visual-node:lineage:code:renderer-gpu:build-mesh,visual-node:lineage:code:renderer-gpu:renderer]"
+            "short-route visual-edge:code:visual-node%3Alineage%3Acode%3Arenderer-gpu%3Arenderer>visual-node%3Alineage%3Acode%3Arenderer-gpu%3Abuild-mesh:calls [visual-node:lineage:code:renderer-gpu:build-mesh,visual-node:lineage:code:renderer-gpu:renderer]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Acompiler-normalized%3Acompile-scene>visual-node%3Alineage%3Acode%3Acompiler-scene%3Acompile:calls [visual-node:lineage:code:compiler-normalized:compile-scene,visual-node:lineage:code:compiler-scene:compile]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-scoped-view>visual-node%3Alineage%3Acode%3Amodel-normalized%3Astate:dependsOn [visual-node:lineage:code:model-normalized:state,visual-node:lineage:code:model-scoping:select-scoped-view]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-scoping%3Aselect-scoped-view>visual-node%3Alineage%3Acode%3Amodel-normalized%3Astate:dependsOn [visual-node:lineage:code:model-normalized:state,visual-node:lineage:code:model-scoping:select-scoped-view]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-validation%3Aview>visual-node%3Alineage%3Acode%3Amodel-schema%3Asnapshot:reads [visual-node:lineage:code:model-schema:snapshot,visual-node:lineage:code:model-validation:view]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Amodel-validation%3Aview>visual-node%3Alineage%3Acode%3Amodel-schema%3Asnapshot:reads [visual-node:lineage:code:model-schema:snapshot,visual-node:lineage:code:model-validation:view]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Arenderer-engine%3Aprotocol-engine>visual-node%3Alineage%3Acode%3Arenderer-protocol%3Avalidate-scene:calls [visual-node:lineage:code:renderer-engine:protocol-engine,visual-node:lineage:code:renderer-protocol:validate-scene]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Arenderer-engine%3Aprotocol-engine>visual-node%3Alineage%3Acode%3Arenderer-protocol%3Avalidate-scene:calls [visual-node:lineage:code:renderer-engine:protocol-engine,visual-node:lineage:code:renderer-protocol:validate-scene]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Atooling-fixtures%3Agenerator>visual-node%3Alineage%3Acode%3Acompiler-scene%3Acompile:calls [visual-node:lineage:code:compiler-scene:compile,visual-node:lineage:code:tooling-fixtures:generator]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Atooling-fixtures%3Agenerator>visual-node%3Alineage%3Acode%3Acompiler-scene%3Acompile:calls [visual-node:lineage:code:compiler-scene:compile,visual-node:lineage:code:tooling-fixtures:generator]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Aapp>visual-node%3Alineage%3Acode%3Aweb-navigation%3Ahistory-controller:calls [visual-node:lineage:code:web-navigation:history-controller,visual-node:lineage:code:web-shell:app]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Aapp>visual-node%3Alineage%3Acode%3Aweb-navigation%3Ahistory-controller:calls [visual-node:lineage:code:web-navigation:history-controller,visual-node:lineage:code:web-shell:app]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Aapp>visual-node%3Alineage%3Acode%3Aweb-stories%3Acreate-flight:calls [visual-node:lineage:code:web-shell:app,visual-node:lineage:code:web-stories:create-flight]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Acanvas-viewport>visual-node%3Alineage%3Acode%3Aweb-renderer-host%3Acreate-renderer:calls [visual-node:lineage:code:web-renderer-host:create-renderer,visual-node:lineage:code:web-shell:canvas-viewport]",
+            "short-leg visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Acanvas-viewport>visual-node%3Alineage%3Acode%3Aweb-renderer-host%3Acreate-renderer:calls [visual-node:lineage:code:web-renderer-host:create-renderer,visual-node:lineage:code:web-shell:canvas-viewport]"
           ]
         },
         {
@@ -472,10 +565,15 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 3,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 3
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
@@ -483,17 +581,17 @@
           },
           "totals": {
             "visible": 1,
-            "hidden": 3,
-            "exempt": 4
+            "hidden": 0,
+            "exempt": 7
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 4,
+            "shared-port": 3,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1015,
-          "naivePairs": 9768,
+          "geometryFingerprint": "5b7a4d21",
           "visibleProblems": [
             "edge-crossing visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Aapp>visual-node%3Alineage%3Acode%3Aweb-stories%3Acreate-flight:calls,visual-edge:code:visual-node%3Alineage%3Acode%3Aweb-shell%3Acanvas-viewport>visual-node%3Alineage%3Acode%3Aweb-renderer-host%3Acreate-renderer:calls"
           ]
@@ -514,9 +612,9 @@
           "segmentCount": 71,
           "counts": {
             "edge-crossing": {
-              "visible": 24,
+              "visible": 26,
               "hidden": 0,
-              "exempt": 2
+              "exempt": 0
             },
             "shared-corridor": {
               "visible": 0,
@@ -535,29 +633,35 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 2,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 2
             },
             "short-route": {
               "visible": 26,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 30,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 50,
-            "hidden": 2,
+            "visible": 82,
+            "hidden": 0,
             "exempt": 5
           },
           "exemptions": {
             "bundle": 0,
-            "shared-endpoint": 5,
+            "shared-endpoint": 3,
+            "shared-port": 2,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1045,
-          "naivePairs": 14413,
+          "geometryFingerprint": "be37ca3c",
           "visibleProblems": [
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m000>visual-node%3Acomponent%3Ac-m002:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m002>visual-node%3Acomponent%3Ac-m003:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m003>visual-node%3Acomponent%3Ac-m004:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m005>visual-node%3Acomponent%3Ac-m006:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
@@ -582,6 +686,7 @@
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m033>visual-node%3Acomponent%3Ac-m034:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m035>visual-node%3Acomponent%3Ac-m036:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m036>visual-node%3Acomponent%3Ac-m037:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m038>visual-node%3Acomponent%3Ac-m039:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m000>visual-node%3Acomponent%3Ac-m001:dependsOn [visual-node:component:c-m000,visual-node:component:c-m001]",
             "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m001>visual-node%3Acomponent%3Ac-m002:dependsOn [visual-node:component:c-m001,visual-node:component:c-m002]",
             "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m003>visual-node%3Acomponent%3Ac-m004:dependsOn [visual-node:component:c-m003,visual-node:component:c-m004]",
@@ -607,7 +712,37 @@
             "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m033>visual-node%3Acomponent%3Ac-m034:dependsOn [visual-node:component:c-m033,visual-node:component:c-m034]",
             "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m034>visual-node%3Acomponent%3Ac-m035:dependsOn [visual-node:component:c-m034,visual-node:component:c-m035]",
             "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m036>visual-node%3Acomponent%3Ac-m037:dependsOn [visual-node:component:c-m036,visual-node:component:c-m037]",
-            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m037>visual-node%3Acomponent%3Ac-m038:dependsOn [visual-node:component:c-m037,visual-node:component:c-m038]"
+            "short-route visual-edge:component:visual-node%3Acomponent%3Ac-m037>visual-node%3Acomponent%3Ac-m038:dependsOn [visual-node:component:c-m037,visual-node:component:c-m038]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m000>visual-node%3Acomponent%3Ac-m002:dependsOn [visual-node:component:c-m000,visual-node:component:c-m002]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m000>visual-node%3Acomponent%3Ac-m002:dependsOn [visual-node:component:c-m000,visual-node:component:c-m002]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m002>visual-node%3Acomponent%3Ac-m003:dependsOn [visual-node:component:c-m002,visual-node:component:c-m003]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m002>visual-node%3Acomponent%3Ac-m003:dependsOn [visual-node:component:c-m002,visual-node:component:c-m003]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m005>visual-node%3Acomponent%3Ac-m006:dependsOn [visual-node:component:c-m005,visual-node:component:c-m006]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m005>visual-node%3Acomponent%3Ac-m006:dependsOn [visual-node:component:c-m005,visual-node:component:c-m006]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m008>visual-node%3Acomponent%3Ac-m009:dependsOn [visual-node:component:c-m008,visual-node:component:c-m009]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m008>visual-node%3Acomponent%3Ac-m009:dependsOn [visual-node:component:c-m008,visual-node:component:c-m009]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m011>visual-node%3Acomponent%3Ac-m012:dependsOn [visual-node:component:c-m011,visual-node:component:c-m012]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m011>visual-node%3Acomponent%3Ac-m012:dependsOn [visual-node:component:c-m011,visual-node:component:c-m012]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m014>visual-node%3Acomponent%3Ac-m015:dependsOn [visual-node:component:c-m014,visual-node:component:c-m015]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m014>visual-node%3Acomponent%3Ac-m015:dependsOn [visual-node:component:c-m014,visual-node:component:c-m015]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m017>visual-node%3Acomponent%3Ac-m018:dependsOn [visual-node:component:c-m017,visual-node:component:c-m018]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m017>visual-node%3Acomponent%3Ac-m018:dependsOn [visual-node:component:c-m017,visual-node:component:c-m018]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m020>visual-node%3Acomponent%3Ac-m021:dependsOn [visual-node:component:c-m020,visual-node:component:c-m021]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m020>visual-node%3Acomponent%3Ac-m021:dependsOn [visual-node:component:c-m020,visual-node:component:c-m021]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m023>visual-node%3Acomponent%3Ac-m024:dependsOn [visual-node:component:c-m023,visual-node:component:c-m024]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m023>visual-node%3Acomponent%3Ac-m024:dependsOn [visual-node:component:c-m023,visual-node:component:c-m024]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m026>visual-node%3Acomponent%3Ac-m027:dependsOn [visual-node:component:c-m026,visual-node:component:c-m027]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m026>visual-node%3Acomponent%3Ac-m027:dependsOn [visual-node:component:c-m026,visual-node:component:c-m027]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m029>visual-node%3Acomponent%3Ac-m030:dependsOn [visual-node:component:c-m029,visual-node:component:c-m030]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m029>visual-node%3Acomponent%3Ac-m030:dependsOn [visual-node:component:c-m029,visual-node:component:c-m030]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m032>visual-node%3Acomponent%3Ac-m033:dependsOn [visual-node:component:c-m032,visual-node:component:c-m033]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m032>visual-node%3Acomponent%3Ac-m033:dependsOn [visual-node:component:c-m032,visual-node:component:c-m033]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m035>visual-node%3Acomponent%3Ac-m036:dependsOn [visual-node:component:c-m035,visual-node:component:c-m036]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m035>visual-node%3Acomponent%3Ac-m036:dependsOn [visual-node:component:c-m035,visual-node:component:c-m036]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m038>visual-node%3Acomponent%3Ac-m039:dependsOn [visual-node:component:c-m038,visual-node:component:c-m039]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m038>visual-node%3Acomponent%3Ac-m039:dependsOn [visual-node:component:c-m038,visual-node:component:c-m039]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn [visual-node:component:c-m000,visual-node:component:c-m039]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn [visual-node:component:c-m000,visual-node:component:c-m039]"
           ]
         },
         {
@@ -620,9 +755,9 @@
           "segmentCount": 71,
           "counts": {
             "edge-crossing": {
-              "visible": 24,
+              "visible": 26,
               "hidden": 0,
-              "exempt": 2
+              "exempt": 0
             },
             "shared-corridor": {
               "visible": 0,
@@ -641,29 +776,35 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 2,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 2
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
             }
           },
           "totals": {
-            "visible": 24,
-            "hidden": 2,
+            "visible": 26,
+            "hidden": 0,
             "exempt": 5
           },
           "exemptions": {
             "bundle": 0,
-            "shared-endpoint": 5,
+            "shared-endpoint": 3,
+            "shared-port": 2,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1025,
-          "naivePairs": 14413,
+          "geometryFingerprint": "be37ca3c",
           "visibleProblems": [
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m000>visual-node%3Acomponent%3Ac-m002:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m002>visual-node%3Acomponent%3Ac-m003:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m003>visual-node%3Acomponent%3Ac-m004:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m005>visual-node%3Acomponent%3Ac-m006:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
@@ -687,7 +828,8 @@
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m032>visual-node%3Acomponent%3Ac-m033:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m033>visual-node%3Acomponent%3Ac-m034:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
             "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m035>visual-node%3Acomponent%3Ac-m036:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
-            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m036>visual-node%3Acomponent%3Ac-m037:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn"
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m036>visual-node%3Acomponent%3Ac-m037:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn",
+            "edge-crossing visual-edge:component:visual-node%3Acomponent%3Ac-m038>visual-node%3Acomponent%3Ac-m039:dependsOn,visual-edge:component:visual-node%3Acomponent%3Ac-m039>visual-node%3Acomponent%3Ac-m000:dependsOn"
           ]
         }
       ]
@@ -706,9 +848,9 @@
           "segmentCount": 46,
           "counts": {
             "edge-crossing": {
-              "visible": 14,
+              "visible": 15,
               "hidden": 0,
-              "exempt": 1
+              "exempt": 0
             },
             "shared-corridor": {
               "visible": 0,
@@ -727,29 +869,35 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 4,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 4
             },
             "short-route": {
               "visible": 16,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 19,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 30,
-            "hidden": 4,
-            "exempt": 7
+            "visible": 50,
+            "hidden": 0,
+            "exempt": 10
           },
           "exemptions": {
             "bundle": 0,
-            "shared-endpoint": 6,
+            "shared-endpoint": 5,
+            "shared-port": 4,
             "containment": 1,
             "own-endpoint": 0
           },
-          "candidatePairs": 413,
-          "naivePairs": 5891,
+          "geometryFingerprint": "8c702bce",
           "visibleProblems": [
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0000>visual-node%3Acontainer%3A0002:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
             "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0002>visual-node%3Acontainer%3A0003:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
             "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0003>visual-node%3Acontainer%3A0004:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
             "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0005>visual-node%3Acontainer%3A0006:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
@@ -779,7 +927,26 @@
             "short-route visual-edge:container:visual-node%3Acontainer%3A0018>visual-node%3Acontainer%3A0019:dependsOn [visual-node:container:0018,visual-node:container:0019]",
             "short-route visual-edge:container:visual-node%3Acontainer%3A0019>visual-node%3Acontainer%3A0020:dependsOn [visual-node:container:0019,visual-node:container:0020]",
             "short-route visual-edge:container:visual-node%3Acontainer%3A0021>visual-node%3Acontainer%3A0022:dependsOn [visual-node:container:0021,visual-node:container:0022]",
-            "short-route visual-edge:container:visual-node%3Acontainer%3A0022>visual-node%3Acontainer%3A0023:dependsOn [visual-node:container:0022,visual-node:container:0023]"
+            "short-route visual-edge:container:visual-node%3Acontainer%3A0022>visual-node%3Acontainer%3A0023:dependsOn [visual-node:container:0022,visual-node:container:0023]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0000>visual-node%3Acontainer%3A0002:dependsOn [visual-node:container:0000,visual-node:container:0002]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0000>visual-node%3Acontainer%3A0002:dependsOn [visual-node:container:0000,visual-node:container:0002]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0002>visual-node%3Acontainer%3A0003:dependsOn [visual-node:container:0002,visual-node:container:0003]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0002>visual-node%3Acontainer%3A0003:dependsOn [visual-node:container:0002,visual-node:container:0003]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0005>visual-node%3Acontainer%3A0006:dependsOn [visual-node:container:0005,visual-node:container:0006]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0005>visual-node%3Acontainer%3A0006:dependsOn [visual-node:container:0005,visual-node:container:0006]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0008>visual-node%3Acontainer%3A0009:dependsOn [visual-node:container:0008,visual-node:container:0009]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0008>visual-node%3Acontainer%3A0009:dependsOn [visual-node:container:0008,visual-node:container:0009]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0011>visual-node%3Acontainer%3A0012:dependsOn [visual-node:container:0011,visual-node:container:0012]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0011>visual-node%3Acontainer%3A0012:dependsOn [visual-node:container:0011,visual-node:container:0012]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0014>visual-node%3Acontainer%3A0015:dependsOn [visual-node:container:0014,visual-node:container:0015]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0014>visual-node%3Acontainer%3A0015:dependsOn [visual-node:container:0014,visual-node:container:0015]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0017>visual-node%3Acontainer%3A0018:dependsOn [visual-node:container:0017,visual-node:container:0018]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0017>visual-node%3Acontainer%3A0018:dependsOn [visual-node:container:0017,visual-node:container:0018]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0020>visual-node%3Acontainer%3A0021:dependsOn [visual-node:container:0020,visual-node:container:0021]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0020>visual-node%3Acontainer%3A0021:dependsOn [visual-node:container:0020,visual-node:container:0021]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0023>visual-node%3Acontainer%3A0024:dependsOn [visual-node:container:0023,visual-node:container:0024]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn [visual-node:container:0000,visual-node:container:0024]",
+            "short-leg visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn [visual-node:container:0000,visual-node:container:0024]"
           ]
         },
         {
@@ -792,9 +959,9 @@
           "segmentCount": 46,
           "counts": {
             "edge-crossing": {
-              "visible": 14,
+              "visible": 15,
               "hidden": 0,
-              "exempt": 1
+              "exempt": 0
             },
             "shared-corridor": {
               "visible": 0,
@@ -813,29 +980,35 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 4,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 4
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
             }
           },
           "totals": {
-            "visible": 14,
-            "hidden": 4,
-            "exempt": 7
+            "visible": 15,
+            "hidden": 0,
+            "exempt": 10
           },
           "exemptions": {
             "bundle": 0,
-            "shared-endpoint": 6,
+            "shared-endpoint": 5,
+            "shared-port": 4,
             "containment": 1,
             "own-endpoint": 0
           },
-          "candidatePairs": 413,
-          "naivePairs": 5891,
+          "geometryFingerprint": "8c702bce",
           "visibleProblems": [
+            "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0000>visual-node%3Acontainer%3A0002:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
             "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0002>visual-node%3Acontainer%3A0003:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
             "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0003>visual-node%3Acontainer%3A0004:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
             "edge-crossing visual-edge:container:visual-node%3Acontainer%3A0005>visual-node%3Acontainer%3A0006:dependsOn,visual-edge:container:visual-node%3Acontainer%3A0024>visual-node%3Acontainer%3A0000:dependsOn",
@@ -889,28 +1062,33 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 1,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 1
             },
             "short-route": {
+              "visible": 16,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 16,
               "hidden": 0,
               "exempt": 0
             }
           },
           "totals": {
-            "visible": 16,
-            "hidden": 1,
-            "exempt": 2
+            "visible": 32,
+            "hidden": 0,
+            "exempt": 3
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 2,
+            "shared-port": 1,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 859,
-          "naivePairs": 9100,
+          "geometryFingerprint": "2fc09817",
           "visibleProblems": [
             "short-route visual-edge:component:visual-node%3Acomponent%3A0000>visual-node%3Acomponent%3A0001:dependsOn [visual-node:component:0000,visual-node:component:0001]",
             "short-route visual-edge:component:visual-node%3Acomponent%3A0001>visual-node%3Acomponent%3A0002:dependsOn [visual-node:component:0001,visual-node:component:0002]",
@@ -927,7 +1105,23 @@
             "short-route visual-edge:component:visual-node%3Acomponent%3A0018>visual-node%3Acomponent%3A0019:dependsOn [visual-node:component:0018,visual-node:component:0019]",
             "short-route visual-edge:component:visual-node%3Acomponent%3A0019>visual-node%3Acomponent%3A0020:dependsOn [visual-node:component:0019,visual-node:component:0020]",
             "short-route visual-edge:component:visual-node%3Acomponent%3A0021>visual-node%3Acomponent%3A0022:dependsOn [visual-node:component:0021,visual-node:component:0022]",
-            "short-route visual-edge:component:visual-node%3Acomponent%3A0022>visual-node%3Acomponent%3A0023:dependsOn [visual-node:component:0022,visual-node:component:0023]"
+            "short-route visual-edge:component:visual-node%3Acomponent%3A0022>visual-node%3Acomponent%3A0023:dependsOn [visual-node:component:0022,visual-node:component:0023]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0000>visual-node%3Acomponent%3A0002:dependsOn [visual-node:component:0000,visual-node:component:0002]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0000>visual-node%3Acomponent%3A0002:dependsOn [visual-node:component:0000,visual-node:component:0002]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0002>visual-node%3Acomponent%3A0003:dependsOn [visual-node:component:0002,visual-node:component:0003]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0002>visual-node%3Acomponent%3A0003:dependsOn [visual-node:component:0002,visual-node:component:0003]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0005>visual-node%3Acomponent%3A0006:dependsOn [visual-node:component:0005,visual-node:component:0006]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0005>visual-node%3Acomponent%3A0006:dependsOn [visual-node:component:0005,visual-node:component:0006]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0008>visual-node%3Acomponent%3A0009:dependsOn [visual-node:component:0008,visual-node:component:0009]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0008>visual-node%3Acomponent%3A0009:dependsOn [visual-node:component:0008,visual-node:component:0009]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0011>visual-node%3Acomponent%3A0012:dependsOn [visual-node:component:0011,visual-node:component:0012]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0011>visual-node%3Acomponent%3A0012:dependsOn [visual-node:component:0011,visual-node:component:0012]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0014>visual-node%3Acomponent%3A0015:dependsOn [visual-node:component:0014,visual-node:component:0015]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0014>visual-node%3Acomponent%3A0015:dependsOn [visual-node:component:0014,visual-node:component:0015]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0017>visual-node%3Acomponent%3A0018:dependsOn [visual-node:component:0017,visual-node:component:0018]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0017>visual-node%3Acomponent%3A0018:dependsOn [visual-node:component:0017,visual-node:component:0018]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0020>visual-node%3Acomponent%3A0021:dependsOn [visual-node:component:0020,visual-node:component:0021]",
+            "short-leg visual-edge:component:visual-node%3Acomponent%3A0020>visual-node%3Acomponent%3A0021:dependsOn [visual-node:component:0020,visual-node:component:0021]"
           ]
         },
         {
@@ -961,10 +1155,15 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 1,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 1
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
@@ -972,17 +1171,17 @@
           },
           "totals": {
             "visible": 0,
-            "hidden": 1,
-            "exempt": 2
+            "hidden": 0,
+            "exempt": 3
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 2,
+            "shared-port": 1,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 802,
-          "naivePairs": 9100,
+          "geometryFingerprint": "2fc09817",
           "visibleProblems": []
         }
       ]
@@ -1022,28 +1221,33 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 21,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 21
             },
             "short-route": {
               "visible": 16,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 19,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 30,
-            "hidden": 21,
-            "exempt": 21
+            "visible": 49,
+            "hidden": 0,
+            "exempt": 42
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 21,
+            "shared-port": 21,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1593,
-          "naivePairs": 8835,
+          "geometryFingerprint": "c5621f65",
           "visibleProblems": [
             "edge-crossing visual-edge:code:visual-node%3Acode%3A0003>visual-node%3Acode%3A0004:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
             "edge-crossing visual-edge:code:visual-node%3Acode%3A0006>visual-node%3Acode%3A0007:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
@@ -1074,7 +1278,26 @@
             "short-route visual-edge:code:visual-node%3Acode%3A0018>visual-node%3Acode%3A0019:dependsOn [visual-node:code:0018,visual-node:code:0019]",
             "short-route visual-edge:code:visual-node%3Acode%3A0019>visual-node%3Acode%3A0020:dependsOn [visual-node:code:0019,visual-node:code:0020]",
             "short-route visual-edge:code:visual-node%3Acode%3A0021>visual-node%3Acode%3A0022:dependsOn [visual-node:code:0021,visual-node:code:0022]",
-            "short-route visual-edge:code:visual-node%3Acode%3A0022>visual-node%3Acode%3A0023:dependsOn [visual-node:code:0022,visual-node:code:0023]"
+            "short-route visual-edge:code:visual-node%3Acode%3A0022>visual-node%3Acode%3A0023:dependsOn [visual-node:code:0022,visual-node:code:0023]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0000>visual-node%3Acode%3A0002:dependsOn [visual-node:code:0000,visual-node:code:0002]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0000>visual-node%3Acode%3A0002:dependsOn [visual-node:code:0000,visual-node:code:0002]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0002>visual-node%3Acode%3A0003:dependsOn [visual-node:code:0002,visual-node:code:0003]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0002>visual-node%3Acode%3A0003:dependsOn [visual-node:code:0002,visual-node:code:0003]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0005>visual-node%3Acode%3A0006:dependsOn [visual-node:code:0005,visual-node:code:0006]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0005>visual-node%3Acode%3A0006:dependsOn [visual-node:code:0005,visual-node:code:0006]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0008>visual-node%3Acode%3A0009:dependsOn [visual-node:code:0008,visual-node:code:0009]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0008>visual-node%3Acode%3A0009:dependsOn [visual-node:code:0008,visual-node:code:0009]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0011>visual-node%3Acode%3A0012:dependsOn [visual-node:code:0011,visual-node:code:0012]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0011>visual-node%3Acode%3A0012:dependsOn [visual-node:code:0011,visual-node:code:0012]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0014>visual-node%3Acode%3A0015:dependsOn [visual-node:code:0014,visual-node:code:0015]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0014>visual-node%3Acode%3A0015:dependsOn [visual-node:code:0014,visual-node:code:0015]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0017>visual-node%3Acode%3A0018:dependsOn [visual-node:code:0017,visual-node:code:0018]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0017>visual-node%3Acode%3A0018:dependsOn [visual-node:code:0017,visual-node:code:0018]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0020>visual-node%3Acode%3A0021:dependsOn [visual-node:code:0020,visual-node:code:0021]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0020>visual-node%3Acode%3A0021:dependsOn [visual-node:code:0020,visual-node:code:0021]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0023>visual-node%3Acode%3A0024:dependsOn [visual-node:code:0023,visual-node:code:0024]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn [visual-node:code:0000,visual-node:code:0024]",
+            "short-leg visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn [visual-node:code:0000,visual-node:code:0024]"
           ]
         },
         {
@@ -1108,10 +1331,15 @@
             },
             "endpoint-crowding": {
               "visible": 0,
-              "hidden": 21,
-              "exempt": 0
+              "hidden": 0,
+              "exempt": 21
             },
             "short-route": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
+            },
+            "short-leg": {
               "visible": 0,
               "hidden": 0,
               "exempt": 0
@@ -1119,17 +1347,17 @@
           },
           "totals": {
             "visible": 14,
-            "hidden": 21,
-            "exempt": 21
+            "hidden": 0,
+            "exempt": 42
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 21,
+            "shared-port": 21,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 1593,
-          "naivePairs": 8835,
+          "geometryFingerprint": "c5621f65",
           "visibleProblems": [
             "edge-crossing visual-edge:code:visual-node%3Acode%3A0003>visual-node%3Acode%3A0004:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
             "edge-crossing visual-edge:code:visual-node%3Acode%3A0006>visual-node%3Acode%3A0007:dependsOn,visual-edge:code:visual-node%3Acode%3A0024>visual-node%3Acode%3A0000:dependsOn",
@@ -1191,6 +1419,11 @@
               "visible": 1,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
@@ -1201,11 +1434,11 @@
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 0,
+            "shared-port": 0,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 12,
-          "naivePairs": 28,
+          "geometryFingerprint": "a1e7239a",
           "visibleProblems": [
             "short-route visual-edge:code:visual-node%3Acode%3Aalpha>visual-node%3Acode%3Abeta:duplicates [visual-node:code:alpha,visual-node:code:beta]"
           ]
@@ -1248,6 +1481,11 @@
               "visible": 0,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
@@ -1258,11 +1496,11 @@
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 0,
+            "shared-port": 0,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 12,
-          "naivePairs": 28,
+          "geometryFingerprint": "a1e7239a",
           "visibleProblems": []
         }
       ]
@@ -1309,22 +1547,30 @@
               "visible": 0,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 2,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
-            "visible": 0,
+            "visible": 2,
             "hidden": 0,
             "exempt": 0
           },
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 0,
+            "shared-port": 0,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 32,
-          "naivePairs": 87,
-          "visibleProblems": []
+          "geometryFingerprint": "c15918c0",
+          "visibleProblems": [
+            "short-leg visual-edge:code:visual-node%3Acode%3Aalpha>visual-node%3Acode%3Abeta:duplicates [visual-node:code:alpha,visual-node:code:beta]",
+            "short-leg visual-edge:code:visual-node%3Acode%3Aalpha>visual-node%3Acode%3Abeta:duplicates [visual-node:code:alpha,visual-node:code:beta]"
+          ]
         },
         {
           "band": "code",
@@ -1364,6 +1610,11 @@
               "visible": 0,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
@@ -1374,11 +1625,11 @@
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 0,
+            "shared-port": 0,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 32,
-          "naivePairs": 87,
+          "geometryFingerprint": "c15918c0",
           "visibleProblems": []
         }
       ]
@@ -1425,6 +1676,11 @@
               "visible": 0,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
@@ -1435,11 +1691,11 @@
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 0,
+            "shared-port": 0,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 32,
-          "naivePairs": 87,
+          "geometryFingerprint": "f71537fe",
           "visibleProblems": []
         },
         {
@@ -1480,6 +1736,11 @@
               "visible": 0,
               "hidden": 0,
               "exempt": 0
+            },
+            "short-leg": {
+              "visible": 0,
+              "hidden": 0,
+              "exempt": 0
             }
           },
           "totals": {
@@ -1490,11 +1751,11 @@
           "exemptions": {
             "bundle": 0,
             "shared-endpoint": 0,
+            "shared-port": 0,
             "containment": 0,
             "own-endpoint": 0
           },
-          "candidatePairs": 32,
-          "naivePairs": 87,
+          "geometryFingerprint": "f71537fe",
           "visibleProblems": []
         }
       ]

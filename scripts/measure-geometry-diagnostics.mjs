@@ -8,7 +8,7 @@
  *   node --expose-gc scripts/measure-geometry-diagnostics.mjs [--no-bench]
  */
 import { mkdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { diagnoseGeometry } from '../packages/architecture/dist/index.js';
 import {
   GEOMETRY_DIAGNOSTIC_FIXTURES,
@@ -17,6 +17,7 @@ import {
   renderGeometryDiagnosticsSvg,
 } from '../packages/scene-compiler/dist/geometry-diagnostics-c4.js';
 
+const resolve = (path) => fileURLToPath(new URL(`../${path}`, import.meta.url));
 const baseline = measureGeometryDiagnosticsBaseline();
 const baselinePath = resolve('fixtures/architecture/geometry-diagnostics-baseline.json');
 await writeFile(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
@@ -43,7 +44,7 @@ await mkdir(renderDir, { recursive: true });
 for (const [id, band, level] of RENDERS) {
   const fixture = GEOMETRY_DIAGNOSTIC_FIXTURES.find(value => value.id === id);
   const run = diagnoseC4Scene(fixture.compile(), [band], [level])[0];
-  const file = resolve(renderDir, `${id}-${band}-${level}.svg`);
+  const file = resolve(`docs/qa/geometry-diagnostics/${id}-${band}-${level}.svg`);
   await writeFile(file, renderGeometryDiagnosticsSvg(run.input, run.result, `${id} · ${band} @ ${level} (zoom ${run.input.zoom})`));
   console.log(`wrote ${file}`);
 }
@@ -118,14 +119,15 @@ function measure(input, broadPhase, samples) {
   return { ms: times[Math.floor(times.length / 2)], heapMb: peak / 2 ** 20, result };
 }
 
-console.log('\n| edges | segments | grid ms | grid heap MB | candidate pairs | naive pairs | all-pairs ms | findings equal |');
-console.log('|---:|---:|---:|---:|---:|---:|---:|:---:|');
-for (const edgeCount of [50, 500, 5000]) {
-  const input = syntheticLayout(140, edgeCount);
+console.log('\n| layout | edges | segments | grid ms | grid heap MB | examined pairs | candidate pairs | naive pairs | all-pairs ms | same findings |');
+console.log('|---|---:|---:|---:|---:|---:|---:|---:|---:|:---:|');
+for (const [name, edgeCount, outlier] of [['local', 50], ['local', 500], ['local', 5000], ['local + outlier@1e6', 5000, true]]) {
+  const base = syntheticLayout(140, edgeCount);
+  const input = outlier ? { ...base, nodes: [...base.nodes, { id: 'zz:far', bounds: { x: 1e6, y: 1e6, width: 20, height: 10 } }] } : base;
   diagnoseGeometry(input);
   const grid = measure(input, 'grid', edgeCount >= 5000 ? 3 : 7);
   const brute = measure(input, 'all-pairs', edgeCount >= 5000 ? 1 : 3);
   const equal = JSON.stringify(grid.result.findings) === JSON.stringify(brute.result.findings);
-  const summary = grid.result.summary;
-  console.log(`| ${edgeCount} | ${summary.segmentCount} | ${grid.ms.toFixed(1)} | ${grid.heapMb.toFixed(1)} | ${summary.broadPhase.candidatePairs} | ${summary.broadPhase.naivePairs} | ${brute.ms.toFixed(1)} | ${equal ? 'yes' : 'NO'} |`);
+  const { segmentCount, broadPhase } = grid.result.summary;
+  console.log(`| ${name} | ${edgeCount} | ${segmentCount} | ${grid.ms.toFixed(1)} | ${grid.heapMb.toFixed(1)} | ${broadPhase.examinedPairs} | ${broadPhase.candidatePairs} | ${broadPhase.naivePairs} | ${brute.ms.toFixed(1)} | ${equal ? 'yes' : 'NO'} |`);
 }

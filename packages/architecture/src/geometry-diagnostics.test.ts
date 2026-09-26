@@ -78,6 +78,17 @@ test('CLA-140: crossings near a shared endpoint node are exempt; far ones still 
   assert.ok(farCrossing.every(finding => finding.exemption === undefined));
 });
 
+test('CLA-140: shared-endpoint exemption is measured from the ports, not the (container) node rect', () => {
+  const nodes = [node('sys', 0, 0, 1000, 1000), node('a', 100, 100, 20, 10, 'sys'), node('b', 800, 800, 20, 10, 'sys'), node('c', 100, 800, 20, 10, 'sys')];
+  const result = diagnoseGeometry({ zoom: 1, nodes, edges: [
+    edge('e1', 'sys', 'b', [[500, 0], [500, 800]]),
+    edge('e2', 'sys', 'c', [[0, 500], [110, 500], [800, 500], [800, 800]]),
+  ] });
+  const crossing = of(result.findings, 'edge-crossing');
+  assert.equal(crossing.length, 1);
+  assert.equal(crossing[0]!.exemption, undefined, 'a crossing 500px from both ports is not near the shared endpoint');
+});
+
 test('CLA-140: collinear overlap is a shared corridor; separation is judged in screen px', () => {
   const lanes = (gap: number): GeometryDiagnosticsInput => ({
     zoom: 1,
@@ -165,7 +176,7 @@ test('CLA-140: long runs along a container border are flagged; own endpoint and 
     edges: [
       edge('e:hug', 'n:a', 'n:b', [[40, 50], [40, 2], [360, 2], [360, 50]]),
       edge('e:exit', 'n:box', 'n:out', [[400, 3], [600, 3]]),
-      edge('e:own', 'n:a', 'n:out', [[20, 70], [20, 72], [100, 72], [100, 120], [600, 120], [600, 13]]),
+      edge('e:own', 'n:a', 'n:out', [[20, 70], [100, 70], [100, 120], [600, 120], [600, 13]]),
     ],
   });
   const runs = of(result.findings, 'container-border-run');
@@ -184,14 +195,49 @@ test('CLA-140: long runs along a container border are flagged; own endpoint and 
   );
 });
 
-test('CLA-140: containment stub along an ancestor border is exempt', () => {
-  const result = diagnoseGeometry({
+test('CLA-140: containment exempts only the terminal stub within its own card; own-endpoint only terminal legs', () => {
+  const stub = diagnoseGeometry({
+    zoom: 1,
+    nodes: [node('n:box', 0, 0, 400, 200), node('n:a', 0, 0, 100, 20, 'n:box'), node('n:out', 600, 300)],
+    edges: [edge('e:stub', 'n:a', 'n:out', [[10, 1], [380, 1], [380, 300], [600, 300]])],
+  });
+  const runs = of(stub.findings, 'container-border-run').filter(finding => finding.nodeIds[0] === 'n:box')
+    .map(finding => [finding.exemption ?? '-', finding.geometry.screenLength]);
+  assert.deepEqual(runs, [['containment', 90], ['-', 280]], 'the 280px beyond the card still hugs the owner');
+  const beyond = diagnoseGeometry({
     zoom: 1,
     nodes: [node('n:box', 0, 0, 400, 200), node('n:a', 0, 0, 40, 20, 'n:box'), node('n:out', 600, 300)],
     edges: [edge('e:stub', 'n:a', 'n:out', [[40, 1], [380, 1], [380, 300], [600, 300]])],
   });
-  const run = of(result.findings, 'container-border-run').find(finding => finding.nodeIds[0] === 'n:box');
-  assert.equal(run?.exemption, 'containment');
+  assert.deepEqual(of(beyond.findings, 'container-border-run').map(finding => finding.exemption ?? '-'), ['-']);
+  const wrap = diagnoseGeometry({
+    zoom: 1,
+    nodes: [node('n:a', 0, 0, 300, 40), node('n:out', 600, 300)],
+    edges: [edge('e:wrap', 'n:a', 'n:out', [[300, 20], [310, 20], [310, 42], [-10, 42], [-10, 300], [600, 300]])],
+  });
+  assert.deepEqual(of(wrap.findings, 'container-border-run').map(finding => finding.exemption ?? '-'), ['-'],
+    'a middle leg wrapping its own card is reported');
+});
+
+test('CLA-140: redundant collinear vertices are merged, so crossings and runs are not split', () => {
+  const crossing = (h: [number, number][], v: [number, number][]) => of(diagnoseGeometry({
+    zoom: 1, nodes: terminals, edges: [edge('h', 'n:w', 'n:e', h), edge('v', 'n:n', 'n:s', v)],
+  }).findings, 'edge-crossing').length;
+  assert.equal(crossing([[-180, 5], [10, 5], [200, 5]], [[10, -190], [10, 200]]), 1);
+  assert.equal(crossing([[-180, 5], [10, 5], [200, 5]], [[10, -190], [10, 5], [10, 200]]), 1);
+  const nodes = [node('box', 0, 0, 400, 200), node('a', 20, 50, 80, 20, 'box'), node('b', 340, 50, 40, 20, 'box')];
+  const split = diagnoseGeometry({ zoom: 1, nodes, edges: [edge('hug', 'a', 'b',
+    [[40, 50], [40, 2], ...[80, 120, 160, 200, 240, 280, 320].map(x => [x, 2] as [number, number]), [360, 2], [360, 50]])] });
+  assert.deepEqual(of(split.findings, 'container-border-run').map(finding => finding.geometry.screenLength), [320]);
+});
+
+test('CLA-140: a route bending exactly on another counts as crossing only when it passes through', () => {
+  const run = (d: [number, number][]) => of(diagnoseGeometry({
+    zoom: 1, nodes: terminals, edges: [edge('h', 'n:w', 'n:e', [[-180, 5], [200, 5]]), edge('d', 'n:n', 'n:s', d)],
+  }).findings, 'edge-crossing');
+  assert.deepEqual(run([[0, -190], [10, 5], [0, 200]]).map(finding => finding.geometry.points), [[{ x: 10, y: 5 }]]);
+  assert.equal(run([[0, -190], [10, 5], [30, -190]]).length, 0, 'touching and bouncing back is not a crossing');
+  assert.equal(run([[0, -190], [0, 5], [60, 5], [60, 200]]).length, 0, 'joining and leaving on the other side is a merge (corridor)');
 });
 
 test('CLA-140: crowded endpoints on one side are reported unless bundled', () => {
@@ -214,7 +260,14 @@ test('CLA-140: crowded endpoints on one side are reported unless bundled', () =>
     edge('e:a', 'n:a', 'n:hub', [[10, 200], [10, 100], [48, 100], [48, 40]]),
     edge('e:d', 'n:c', 'n:hub', [[210, 200], [210, 120], [48, 120], [48, 40]]),
   ] });
-  assert.equal(of(merged.findings, 'endpoint-crowding')[0]?.visibility, 'hidden', 'coincident ports hide one arrival under the other');
+  assert.equal(of(merged.findings, 'endpoint-crowding')[0]?.exemption, 'shared-port', 'coincident ports are one shared port');
+  const corner = diagnoseGeometry({ zoom: 1, nodes: [node('hub', 0, 0, 100, 40), node('a', -200, -200), node('b', -200, 200)], edges: [
+    edge('ea', 'a', 'hub', [[-180, -195], [1, -195], [1, 0]]),
+    edge('eb', 'b', 'hub', [[-180, 205], [-100, 205], [-100, 1], [0, 1]]),
+  ] });
+  const across = of(corner.findings, 'endpoint-crowding');
+  assert.deepEqual(across.map(finding => [finding.visibility, finding.geometry.screenDistance]), [['hidden', 1.414]],
+    'ports on adjacent sides 1.4px apart across a corner are compared (sub-2px → hidden)');
   const zoomed = diagnoseGeometry({ zoom: 3, nodes, edges: [
     edge('e:a', 'n:a', 'n:hub', [[10, 200], [10, 100], [48, 100], [48, 40]]),
     edge('e:b', 'n:b', 'n:hub', [[90, 200], [90, 100], [52, 100], [52, 40]]),
@@ -246,7 +299,25 @@ test('CLA-140: huge coordinates give the same counts as the translated layout', 
   assert.deepEqual(diagnoseGeometry(shifted).summary.counts, expected.counts);
 });
 
+test('CLA-140: legs shorter than the corner radius are short-leg findings (CLA-68 tight U)', () => {
+  const u = (zoom: number) => of(diagnoseGeometry({
+    zoom,
+    nodes: [node('n:a', 0, 0, 16, 8), node('n:b', 17.146, 0, 16, 8)],
+    edges: [edge('e:u', 'n:a', 'n:b', [[8, 8], [8, 8.573], [25.146, 8.573], [25.146, 8]])],
+  }).findings, 'short-leg').map(finding => finding.geometry.screenLength);
+  assert.deepEqual(u(7.1), [4.068, 4.068], 'both U legs are ~4px at code entry');
+  assert.deepEqual(u(13.96), [], 'and 8px at focus');
+});
+
 test('CLA-140: input validation rejects duplicate ids and non-positive zoom', () => {
+  assert.throws(() => diagnoseGeometry({ zoom: 1, nodes: [node('n', Number.NaN, 0)], edges: [] }), /non-finite/);
+  assert.throws(() => diagnoseGeometry({ zoom: 1, nodes: [], edges: [edge('e', 'a', 'b', [[0, 0], [Infinity, 0]])] }), /non-finite/);
+  assert.throws(() => diagnoseGeometry({ zoom: 1, nodes: [], edges: [], tolerances: { hiddenLengthPx: Number.NaN } }), /invalid tolerance/);
+  assert.deepEqual(
+    diagnoseGeometry({ ...randomLayout(3, 20), tolerances: { hiddenLengthPx: undefined } }),
+    diagnoseGeometry(randomLayout(3, 20)),
+    'undefined overrides keep the defaults',
+  );
   assert.throws(() => diagnoseGeometry({ zoom: 1, nodes: [node('n', 0, 0), node('n', 1, 1)], edges: [] }), /duplicate node id/);
   assert.throws(() => diagnoseGeometry({ zoom: 0, nodes: [], edges: [] }), /positive finite zoom/);
   assert.deepEqual(diagnoseGeometry({ zoom: 1, nodes: [], edges: [] }).findings, []);
@@ -282,16 +353,35 @@ test('CLA-140: grid broad phase matches the all-pairs oracle and prunes candidat
     }
   }
   assert.deepEqual([...exercised].sort(), [...GEOMETRY_DIAGNOSTIC_KINDS].sort(), 'oracle cases exercise every kind');
-  const big = diagnoseGeometry(randomLayout(99, 600));
-  assert.ok(
-    big.summary.broadPhase.candidatePairs * 10 < big.summary.broadPhase.naivePairs,
-    `grid candidates ${big.summary.broadPhase.candidatePairs} vs naive ${big.summary.broadPhase.naivePairs}`,
-  );
+  const layout = randomLayout(99, 600);
+  const big = { ...layout, nodes: [...layout.nodes, node('zz:world', -5000, -5000, 40000, 30000), node('zz:wide', -50, -50, 30000, 12)] };
+  const bigGrid = diagnoseGeometry(big);
+  assert.ok(bigGrid.summary.broadPhase.largeItems > 0, 'the owner boxes take the large-item path');
+  assert.deepEqual(bigGrid.findings, diagnoseGeometry(big, { broadPhase: 'all-pairs' }).findings);
+  const { examinedPairs, naivePairs, candidatePairs } = bigGrid.summary.broadPhase;
+  assert.ok(examinedPairs * 4 < naivePairs, `grid examined ${examinedPairs} vs naive ${naivePairs} (random long routes: adversarial)`);
+  assert.ok(candidatePairs * 10 < naivePairs, `candidates ${candidatePairs} vs naive ${naivePairs}`);
+});
+
+test('CLA-140: one far outlier node does not collapse the grid to all-pairs', () => {
+  for (const edgeCount of [400, 1600]) {
+    const base = randomLayout(21, edgeCount);
+    const withOutlier = { ...base, nodes: [...base.nodes, node('zz:far', 1e6, 1e6)] };
+    const plain = diagnoseGeometry(base).summary.broadPhase;
+    const far = diagnoseGeometry(withOutlier);
+    assert.ok(
+      far.summary.broadPhase.examinedPairs <= plain.examinedPairs * 1.1 + 10,
+      `${edgeCount} edges: outlier examined ${far.summary.broadPhase.examinedPairs} vs ${plain.examinedPairs}`,
+    );
+    assert.equal(far.summary.broadPhase.largeItems, plain.largeItems, 'the outlier does not turn items into large items');
+    if (edgeCount === 400) assert.deepEqual(far.findings, diagnoseGeometry(withOutlier, { broadPhase: 'all-pairs' }).findings);
+  }
 });
 
 test('CLA-140: default tolerances are frozen screen-pixel values', () => {
   assert.ok(Object.isFrozen(GEOMETRY_DIAGNOSTIC_TOLERANCES));
   assert.equal(GEOMETRY_DIAGNOSTIC_TOLERANCES.minRouteLengthPx, 16);
+  assert.equal(GEOMETRY_DIAGNOSTIC_TOLERANCES.minLegLengthPx, 6);
 });
 
 // ---- seeded synthetic layouts ---------------------------------------------

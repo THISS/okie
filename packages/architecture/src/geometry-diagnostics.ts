@@ -8,9 +8,9 @@
  * feeds back into routing or layout.
  *
  * Determinism: inputs are canonicalized (sorted by id, zero-length steps
- * dropped), every pair is evaluated in a fixed orientation, reported numbers
- * are rounded, and findings are sorted by a total order. Shuffling any input
- * collection yields byte-identical output.
+ * dropped, collinear runs merged), every pair is evaluated in a fixed
+ * orientation, reported numbers are rounded, and findings are sorted by a
+ * total order. Shuffling any input collection yields byte-identical output.
  */
 
 export type GeometryPoint = { x: number; y: number };
@@ -28,41 +28,59 @@ export type GeometryDiagnosticEdge = {
 };
 export type GeometryDiagnosticLabel = { id: string; edgeId: string; bounds: GeometryRect };
 
-/** All values are CSS/screen pixels at the evaluated zoom. */
+/**
+ * All values are CSS/screen pixels at the evaluated zoom. Several are coupled
+ * to renderer or router constants; changing those means revisiting these.
+ */
 export type GeometryDiagnosticTolerances = {
   /** Geometry carrying a finding shorter than this is reported `hidden`. */
   hiddenLengthPx: number;
   /** Parallel segments closer than this read as one stroke (shared corridor). */
   collinearDistancePx: number;
-  /** Labels closer than this to another route or a node are flagged. */
+  /** Labels closer than this to another route or a node are flagged (half the compiler's 8px label padding). */
   labelClearancePx: number;
-  /** A segment this close to a node border and parallel to it runs along the border… */
+  /**
+   * A segment this close to a node border and parallel to it runs along the
+   * border… Set below the smallest routing clearance any band reaches (8px at
+   * focus scales to 3.41px at context entry), so routes the router kept at
+   * clearance are never flagged.
+   */
   borderRunDistancePx: number;
   /** …once the run is at least this long. */
   borderRunMinLengthPx: number;
-  /** Distinct endpoints on one node side closer than this are crowded. */
+  /** Distinct ports on one node closer than this (the 8px arrowhead radius) are crowded. */
   endpointSpacingPx: number;
   /**
-   * Edges sharing an endpoint node: a crossing within this radius of it, or a
-   * collinear overlap that starts/ends within it (fan-out/fan-in trunk), is exempt.
+   * Edges sharing an endpoint node: a crossing within this radius of either
+   * edge's port on it, or a collinear overlap that starts/ends within it
+   * (fan-out/fan-in trunk), is exempt.
    */
   sharedEndpointRadiusPx: number;
   /**
-   * Routes shorter than this read as a tick: the renderer's arrowhead radius is
-   * min(8px, half the terminal segment), so below 16px the head itself shrinks.
+   * Routes strictly shorter than this read as a tick: the renderer's arrowhead
+   * radius is min(8px, half the terminal segment) (primitives.wgsl), so below
+   * 16px the head itself shrinks. Coupled to the packing gap: packed sibling
+   * hops are exactly 16px at focus and are deliberately not flagged there.
    */
   minRouteLengthPx: number;
+  /**
+   * Legs (bend-to-bend or terminal segments) strictly shorter than this
+   * collapse under the renderer's corner rounding (PATH_CORNER_RADIUS_PX = 6,
+   * atlas-gpu mesh.rs) and under the arrowhead's min(8, half terminal).
+   */
+  minLegLengthPx: number;
 };
 
 export const GEOMETRY_DIAGNOSTIC_TOLERANCES: Readonly<GeometryDiagnosticTolerances> = Object.freeze({
   hiddenLengthPx: 2,
   collinearDistancePx: 2,
   labelClearancePx: 4,
-  borderRunDistancePx: 4,
+  borderRunDistancePx: 3,
   borderRunMinLengthPx: 48,
   endpointSpacingPx: 8,
   sharedEndpointRadiusPx: 16,
   minRouteLengthPx: 16,
+  minLegLengthPx: 6,
 });
 
 export const GEOMETRY_DIAGNOSTIC_KINDS = [
@@ -72,10 +90,11 @@ export const GEOMETRY_DIAGNOSTIC_KINDS = [
   'container-border-run',
   'endpoint-crowding',
   'short-route',
+  'short-leg',
 ] as const;
 export type GeometryDiagnosticKind = typeof GEOMETRY_DIAGNOSTIC_KINDS[number];
 
-export const GEOMETRY_DIAGNOSTIC_EXEMPTIONS = ['bundle', 'shared-endpoint', 'containment', 'own-endpoint'] as const;
+export const GEOMETRY_DIAGNOSTIC_EXEMPTIONS = ['bundle', 'shared-endpoint', 'shared-port', 'containment', 'own-endpoint'] as const;
 export type GeometryDiagnosticExemption = typeof GEOMETRY_DIAGNOSTIC_EXEMPTIONS[number];
 
 export type GeometryDiagnosticsInput = {
@@ -85,7 +104,7 @@ export type GeometryDiagnosticsInput = {
   nodes: readonly GeometryDiagnosticNode[];
   edges: readonly GeometryDiagnosticEdge[];
   labels?: readonly GeometryDiagnosticLabel[];
-  tolerances?: Partial<GeometryDiagnosticTolerances>;
+  tolerances?: { [K in keyof GeometryDiagnosticTolerances]?: number | undefined };
 };
 
 export type GeometryDiagnosticsOptions = {
@@ -105,7 +124,7 @@ export type GeometryFinding = {
     points?: GeometryPoint[];
     segments?: [GeometryPoint, GeometryPoint][];
     rects?: GeometryRect[];
-    /** Screen px length of the problem (overlap, run, route). */
+    /** Screen px length of the problem (overlap/trunk, run, route, leg). */
     screenLength?: number;
     /** Screen px separation (0 = touching/overlapping). */
     screenDistance?: number;
@@ -124,7 +143,13 @@ export type GeometryDiagnosticsSummary = {
   counts: Record<GeometryDiagnosticKind, GeometryKindCounts>;
   totals: GeometryKindCounts;
   exemptions: Record<GeometryDiagnosticExemption, number>;
-  broadPhase: { mode: 'grid' | 'all-pairs'; candidatePairs: number; naivePairs: number };
+  /**
+   * `naivePairs`: every wanted category pair; `examinedPairs`: pair tests the
+   * broad phase actually ran (grid cells count a pair once per shared cell);
+   * `candidatePairs`: unique box-overlapping pairs handed to the narrow phase
+   * (identical for both modes); `largeItems`: items that bypassed the grid.
+   */
+  broadPhase: { mode: 'grid' | 'all-pairs'; naivePairs: number; examinedPairs: number; candidatePairs: number; largeItems: number };
 };
 
 export type GeometryDiagnosticsResult = { summary: GeometryDiagnosticsSummary; findings: GeometryFinding[] };
@@ -143,20 +168,15 @@ type Segment = {
 };
 
 type CanonicalEdge = GeometryDiagnosticEdge & { points: GeometryPoint[]; relationIds: string[] };
-
-type Item =
-  | { type: 'segment'; box: GeometryRect; ref: number }
-  | { type: 'border'; box: GeometryRect; ref: number; side: Side }
-  | { type: 'label'; box: GeometryRect; ref: number }
-  | { type: 'node'; box: GeometryRect; ref: number };
-
+type ItemType = 'segment' | 'border' | 'label' | 'node';
+type Item = { type: ItemType; box: GeometryRect; ref: number; side?: Side };
 type Side = 'top' | 'right' | 'bottom' | 'left';
 const SIDES: readonly Side[] = ['top', 'right', 'bottom', 'left'];
 
 const REPORT_WORLD_DIGITS = 1e4;
 const REPORT_SCREEN_DIGITS = 1e3;
-const GRID_MAX_CELLS_PER_AXIS = 256;
-const GRID_MAX_CELLS_PER_ITEM = 1024;
+/** Items spanning more grid cells than this (whole-diagram owners) are paired by type scan instead. */
+const GRID_MAX_CELLS_PER_ITEM = 4096;
 
 const roundWorld = (value: number) => Math.round(value * REPORT_WORLD_DIGITS) / REPORT_WORLD_DIGITS + 0;
 const roundScreen = (value: number) => Math.round(value * REPORT_SCREEN_DIGITS) / REPORT_SCREEN_DIGITS + 0;
@@ -171,18 +191,22 @@ function ws(a: GeometryPoint, b: GeometryPoint): [GeometryPoint, GeometryPoint] 
   return left.x < right.x || (left.x === right.x && left.y <= right.y) ? [left, right] : [right, left];
 }
 
+const compareStrings = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
+
 function byId<T extends { id: string }>(values: readonly T[], what: string): T[] {
-  const sorted = [...values].sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+  const sorted = [...values].sort((left, right) => compareStrings(left.id, right.id));
   for (let index = 1; index < sorted.length; index += 1) {
     if (sorted[index]!.id === sorted[index - 1]!.id) throw new Error(`duplicate ${what} id ${sorted[index]!.id}`);
   }
   return sorted;
 }
 
+function assertFinite(what: string, ...values: number[]) {
+  if (!values.every(Number.isFinite)) throw new Error(`non-finite geometry in ${what}`);
+}
+
 function boxOf(a: GeometryPoint, b: GeometryPoint): GeometryRect {
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  return { x, y, width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) };
+  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(a.x - b.x), height: Math.abs(a.y - b.y) };
 }
 
 function boxesTouch(left: GeometryRect, right: GeometryRect, pad: number): boolean {
@@ -250,9 +274,7 @@ function segmentRectDistance(a: GeometryPoint, b: GeometryPoint, rect: GeometryR
     { x: rect.x + rect.width, y: rect.y + rect.height }, { x: rect.x, y: rect.y + rect.height },
   ];
   let best = Math.min(pointRectDistance(a, rect), pointRectDistance(b, rect));
-  for (let index = 0; index < 4; index += 1) {
-    best = Math.min(best, pointSegmentDistance(corners[index]!, a, b));
-  }
+  for (const corner of corners) best = Math.min(best, pointSegmentDistance(corner, a, b));
   return best;
 }
 
@@ -265,22 +287,45 @@ function borderLine(rect: GeometryRect, side: Side): [GeometryPoint, GeometryPoi
   return [{ x: right, y: rect.y }, { x: right, y: bottom }];
 }
 
-function nearestSide(point: GeometryPoint, rect: GeometryRect): Side {
-  const distances: Record<Side, number> = {
-    top: Math.abs(point.y - rect.y),
-    right: Math.abs(point.x - (rect.x + rect.width)),
-    bottom: Math.abs(point.y - (rect.y + rect.height)),
-    left: Math.abs(point.x - rect.x),
-  };
-  return SIDES.reduce((best, side) => (distances[side] < distances[best] ? side : best), 'top' as Side);
+/** Drops zero-length steps and merges consecutive collinear same-direction steps. */
+function canonicalPoints(points: readonly GeometryPoint[], edgeId: string): GeometryPoint[] {
+  const out: GeometryPoint[] = [];
+  for (const raw of points) {
+    assertFinite(`edge ${edgeId}`, raw.x, raw.y);
+    const point = { x: raw.x, y: raw.y };
+    const last = out[out.length - 1];
+    if (last && last.x === point.x && last.y === point.y) continue;
+    const prev = out[out.length - 2];
+    if (last && prev) {
+      const ax = last.x - prev.x; const ay = last.y - prev.y;
+      const bx = point.x - last.x; const by = point.y - last.y;
+      if (Math.abs(cross(ax, ay, bx, by)) <= 1e-12 * Math.hypot(ax, ay) * Math.hypot(bx, by) && ax * bx + ay * by > 0) {
+        out[out.length - 1] = point;
+        continue;
+      }
+    }
+    out.push(point);
+  }
+  return out;
 }
 
-function emptyCounts(): GeometryKindCounts {
-  return { visible: 0, hidden: 0, exempt: 0 };
-}
-
-function compareStrings(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
+/**
+ * Two polylines touch at `at` with local rays a1/a2 and b1/b2 (neighbouring
+ * vertices). They cross iff exactly one b-ray lies strictly inside the arc
+ * a1→a2; a b-ray on an a-ray is tangency or overlap, not a crossing.
+ */
+function raysInterleave(at: GeometryPoint, a1: GeometryPoint, a2: GeometryPoint, b1: GeometryPoint, b2: GeometryPoint): boolean {
+  const angle = (point: GeometryPoint) => Math.atan2(point.y - at.y, point.x - at.x);
+  const ccw = (from: number, to: number) => ((to - from) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const start = angle(a1);
+  const span = ccw(start, angle(a2));
+  const inside: boolean[] = [];
+  for (const ray of [b1, b2]) {
+    const offset = ccw(start, angle(ray));
+    if (offset < 1e-9 || Math.abs(offset - span) < 1e-9 || offset > 2 * Math.PI - 1e-9) return false;
+    inside.push(offset < span);
+  }
+  return inside[0] !== inside[1];
 }
 
 function findingSortKey(finding: GeometryFinding): string {
@@ -294,126 +339,111 @@ function findingSortKey(finding: GeometryFinding): string {
   ].join('\u0000');
 }
 
+type BroadPhase = { pairs: number[]; examined: number; large: number };
+
 /**
- * Uniform-grid broad phase. Items whose box spans more than
- * GRID_MAX_CELLS_PER_ITEM cells (whole-diagram containers) are tested only
- * against partner categories by box overlap instead of being rasterized.
- * Returns unique candidate index pairs (lower index first), in ascending order.
+ * Hashed uniform grid. The cell edge is the 75th-percentile padded item span, so one
+ * far outlier cannot stretch cells over the whole diagram. A pair is emitted
+ * only from the cell holding the min corner of the two padded boxes'
+ * intersection, so no global dedupe set is needed. Items spanning more than
+ * GRID_MAX_CELLS_PER_ITEM cells are paired by scanning their partner types.
  */
-function gridPairs(
-  items: readonly Item[],
-  wants: (left: Item, right: Item) => boolean,
-  pad: number,
-): { pairs: [number, number][]; candidates: number } {
-  if (!items.length) return { pairs: [], candidates: 0 };
-  let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
-  for (const item of items) {
-    minX = Math.min(minX, item.box.x - pad);
-    minY = Math.min(minY, item.box.y - pad);
-    maxX = Math.max(maxX, item.box.x + item.box.width + pad);
-    maxY = Math.max(maxY, item.box.y + item.box.height + pad);
-  }
-  const extent = Math.max(maxX - minX, maxY - minY, pad * 2, 1e-9);
-  const typical = Math.sqrt(((maxX - minX) * (maxY - minY)) / items.length) || 0;
-  const cell = Math.max(extent / GRID_MAX_CELLS_PER_AXIS, typical, pad * 2);
-  const cells = new Map<number, number[]>();
+function gridPairs(items: readonly Item[], wants: (left: Item, right: Item) => boolean, pad: number): BroadPhase {
+  const pairs: number[] = [];
+  if (!items.length) return { pairs, examined: 0, large: 0 };
+  const spans = items.map(item => Math.max(item.box.width, item.box.height) + 2 * pad).sort((left, right) => left - right);
+  const cell = Math.max(spans[Math.floor((spans.length - 1) * 0.75)]!, 2 * pad, Number.MIN_VALUE);
+  const index = (value: number) => Math.floor((value - pad) / cell);
+  const cells = new Map<string, { x: number; y: number; members: number[] }>();
   const large: number[] = [];
-  const stride = GRID_MAX_CELLS_PER_AXIS * 4 + 8;
-  items.forEach((item, index) => {
-    const x0 = Math.floor((item.box.x - pad - minX) / cell);
-    const x1 = Math.floor((item.box.x + item.box.width + pad - minX) / cell);
-    const y0 = Math.floor((item.box.y - pad - minY) / cell);
-    const y1 = Math.floor((item.box.y + item.box.height + pad - minY) / cell);
+  items.forEach((item, itemIndex) => {
+    const x0 = index(item.box.x);
+    const y0 = index(item.box.y);
+    const x1 = Math.floor((item.box.x + item.box.width + pad) / cell);
+    const y1 = Math.floor((item.box.y + item.box.height + pad) / cell);
     if ((x1 - x0 + 1) * (y1 - y0 + 1) > GRID_MAX_CELLS_PER_ITEM) {
-      large.push(index);
+      large.push(itemIndex);
       return;
     }
     for (let x = x0; x <= x1; x += 1) {
       for (let y = y0; y <= y1; y += 1) {
-        const key = x * stride + y;
+        const key = `${x},${y}`;
         const bucket = cells.get(key);
-        if (bucket) bucket.push(index);
-        else cells.set(key, [index]);
+        if (bucket) bucket.members.push(itemIndex);
+        else cells.set(key, { x, y, members: [itemIndex] });
       }
     }
   });
-  const seen = new Set<number>();
-  const pairs: [number, number][] = [];
-  const consider = (left: number, right: number) => {
-    const low = Math.min(left, right);
-    const high = Math.max(left, right);
-    const key = low * items.length + high;
-    if (seen.has(key) || !wants(items[low]!, items[high]!)) return;
-    seen.add(key);
-    if (!boxesTouch(items[low]!.box, items[high]!.box, pad * 2)) return;
-    pairs.push([low, high]);
-  };
-  for (const bucket of cells.values()) {
-    for (let left = 0; left < bucket.length; left += 1) {
-      for (let right = left + 1; right < bucket.length; right += 1) consider(bucket[left]!, bucket[right]!);
+  let examined = 0;
+  for (const { x, y, members } of cells.values()) {
+    for (let left = 0; left < members.length; left += 1) {
+      for (let right = left + 1; right < members.length; right += 1) {
+        const i = members[left]!;
+        const j = members[right]!;
+        const a = items[i]!;
+        const b = items[j]!;
+        if (!wants(a, b)) continue;
+        examined += 1;
+        if (!boxesTouch(a.box, b.box, 2 * pad)) continue;
+        if (index(Math.max(a.box.x, b.box.x)) !== x || index(Math.max(a.box.y, b.box.y)) !== y) continue;
+        pairs.push(Math.min(i, j), Math.max(i, j));
+      }
     }
   }
-  for (const index of large) {
-    for (let other = 0; other < items.length; other += 1) {
-      if (other !== index && wants(items[index]!, items[other]!)) consider(index, other);
+  const isLarge = new Set(large);
+  for (const i of large) {
+    for (let j = 0; j < items.length; j += 1) {
+      if (j === i || (isLarge.has(j) && j < i) || !wants(items[i]!, items[j]!)) continue;
+      examined += 1;
+      if (boxesTouch(items[i]!.box, items[j]!.box, 2 * pad)) pairs.push(Math.min(i, j), Math.max(i, j));
     }
   }
-  pairs.sort((left, right) => left[0] - right[0] || left[1] - right[1]);
-  return { pairs, candidates: seen.size };
+  return { pairs, examined, large: large.length };
 }
 
-function allPairs(
-  items: readonly Item[],
-  wants: (left: Item, right: Item) => boolean,
-  pad: number,
-): { pairs: [number, number][]; candidates: number } {
-  const pairs: [number, number][] = [];
-  let candidates = 0;
+function allPairs(items: readonly Item[], wants: (left: Item, right: Item) => boolean, pad: number): BroadPhase {
+  const pairs: number[] = [];
+  let examined = 0;
   for (let left = 0; left < items.length; left += 1) {
     for (let right = left + 1; right < items.length; right += 1) {
       if (!wants(items[left]!, items[right]!)) continue;
-      candidates += 1;
-      if (boxesTouch(items[left]!.box, items[right]!.box, pad * 2)) pairs.push([left, right]);
+      examined += 1;
+      if (boxesTouch(items[left]!.box, items[right]!.box, 2 * pad)) pairs.push(left, right);
     }
   }
-  return { pairs, candidates };
+  return { pairs, examined, large: 0 };
 }
 
-const WANTED: Readonly<Record<string, true>> = {
-  'segment|segment': true,
-  'border|segment': true,
-  'segment|border': true,
-  'label|segment': true,
-  'segment|label': true,
-  'label|node': true,
-  'node|label': true,
-};
+const WANTED = new Set(['segment|segment', 'border|segment', 'segment|border', 'label|segment', 'segment|label', 'label|node', 'node|label']);
 
 export function diagnoseGeometry(
   input: GeometryDiagnosticsInput,
   options: GeometryDiagnosticsOptions = {},
 ): GeometryDiagnosticsResult {
   if (!(input.zoom > 0) || !Number.isFinite(input.zoom)) throw new Error('geometry diagnostics need a positive finite zoom');
-  const tolerances: GeometryDiagnosticTolerances = { ...GEOMETRY_DIAGNOSTIC_TOLERANCES, ...input.tolerances };
+  const tolerances: GeometryDiagnosticTolerances = { ...GEOMETRY_DIAGNOSTIC_TOLERANCES };
+  for (const [name, value] of Object.entries(input.tolerances ?? {})) {
+    if (value === undefined) continue;
+    if (!(name in tolerances) || !Number.isFinite(value) || value < 0) throw new Error(`invalid tolerance ${name}`);
+    tolerances[name as keyof GeometryDiagnosticTolerances] = value;
+  }
   const zoom = input.zoom;
   const world = (px: number) => px / zoom;
-  const screen = (length: number) => roundScreen(length * zoom);
-  /** Threshold comparisons use the same rounded screen value that is reported. */
-  const px = screen;
+  /** Reported screen values; threshold comparisons use the same rounded value. */
+  const px = (length: number) => roundScreen(length * zoom);
   const mode = options.broadPhase ?? 'grid';
 
   const nodes = byId(input.nodes, 'node');
+  for (const node of nodes) assertFinite(`node ${node.id}`, node.bounds.x, node.bounds.y, node.bounds.width, node.bounds.height);
   const nodeIndex = new Map(nodes.map((node, index) => [node.id, index]));
-  const edges: CanonicalEdge[] = byId(input.edges, 'edge').map(edge => {
-    const points: GeometryPoint[] = [];
-    for (const point of edge.points) {
-      const last = points[points.length - 1];
-      if (!last || last.x !== point.x || last.y !== point.y) points.push({ x: point.x, y: point.y });
-    }
-    return { ...edge, points, relationIds: [...new Set(edge.canonicalRelationIds ?? [])].sort(compareStrings) };
-  });
+  const edges: CanonicalEdge[] = byId(input.edges, 'edge').map(edge => ({
+    ...edge,
+    points: canonicalPoints(edge.points, edge.id),
+    relationIds: [...new Set(edge.canonicalRelationIds ?? [])].sort(compareStrings),
+  }));
   const edgeIndex = new Map(edges.map((edge, index) => [edge.id, index]));
   const labels = byId(input.labels ?? [], 'label').filter(label => edgeIndex.has(label.edgeId));
+  for (const label of labels) assertFinite(`label ${label.id}`, label.bounds.x, label.bounds.y, label.bounds.width, label.bounds.height);
 
   let magnitude = 1;
   for (const node of nodes) magnitude = Math.max(magnitude, Math.abs(node.bounds.x), Math.abs(node.bounds.y));
@@ -421,18 +451,26 @@ export function diagnoseGeometry(
   const eps = 1e-9 * magnitude;
 
   const ancestors = nodes.map(node => {
-    const chain: number[] = [];
-    const seen = new Set<string>([node.id]);
+    const chain = new Set<number>();
     let parent = node.parentId;
-    while (parent !== undefined && nodeIndex.has(parent) && !seen.has(parent)) {
-      chain.push(nodeIndex.get(parent)!);
-      seen.add(parent);
+    while (parent !== undefined && nodeIndex.has(parent) && !chain.has(nodeIndex.get(parent)!) && parent !== node.id) {
+      chain.add(nodeIndex.get(parent)!);
       parent = nodes[nodeIndex.get(parent)!]!.parentId;
     }
-    return new Set(chain);
+    return chain;
   });
-  const endpointNodes = edges.map(edge => [nodeIndex.get(edge.fromNodeId), nodeIndex.get(edge.toNodeId)]
-    .filter((value): value is number => value !== undefined));
+  const fromOf = edges.map(edge => nodeIndex.get(edge.fromNodeId));
+  const toOf = edges.map(edge => nodeIndex.get(edge.toNodeId));
+  const endpointNodes = edges.map((_, number) => [fromOf[number], toOf[number]].filter((value): value is number => value !== undefined));
+  /** The route's actual port point(s) on `node`. */
+  const portsOn = (number: number, node: number): GeometryPoint[] => {
+    const points = edges[number]!.points;
+    if (!points.length) return [];
+    return [
+      ...(fromOf[number] === node ? [points[0]!] : []),
+      ...(toOf[number] === node ? [points[points.length - 1]!] : []),
+    ];
+  };
 
   const segments: Segment[] = [];
   edges.forEach((edge, edgeNumber) => {
@@ -449,13 +487,10 @@ export function diagnoseGeometry(
   });
 
   const findings: GeometryFinding[] = [];
-  const edgeIdsOf = (...numbers: number[]) => [...new Set(numbers.map(value => edges[value]!.id))].sort(compareStrings);
-  const relationIdsOf = (...numbers: number[]) => [...new Set(numbers.flatMap(value => edges[value]!.relationIds))].sort(compareStrings);
   const bundled = (left: number, right: number) => {
     const key = edges[left]!.bundleKey;
     return key !== undefined && key === edges[right]!.bundleKey;
   };
-  const sharedNodes = (left: number, right: number) => endpointNodes[left]!.filter(value => endpointNodes[right]!.includes(value));
   const push = (
     kind: GeometryDiagnosticKind,
     visible: boolean,
@@ -467,17 +502,19 @@ export function diagnoseGeometry(
       kind,
       visibility: visible ? 'visible' : 'hidden',
       ...(exemption ? { exemption } : {}),
-      edgeIds: edgeIdsOf(...ids.edges),
+      edgeIds: [...new Set(ids.edges.map(value => edges[value]!.id))].sort(compareStrings),
       nodeIds: [...new Set((ids.nodes ?? []).map(value => nodes[value]!.id))].sort(compareStrings),
       labelIds: [...new Set((ids.labels ?? []).map(value => labels[value]!.id))].sort(compareStrings),
-      canonicalRelationIds: relationIdsOf(...ids.edges),
+      canonicalRelationIds: [...new Set(ids.edges.flatMap(value => edges[value]!.relationIds))].sort(compareStrings),
       geometry,
     });
   };
-  /** A shared endpoint node within the radius of any of `where` (crossing point, or either end of an overlap). */
-  const nearShared = (left: number, right: number, where: GeometryPoint[]): number | undefined => {
-    const radius = world(tolerances.sharedEndpointRadiusPx);
-    return sharedNodes(left, right).find(node => where.some(point => pointRectDistance(point, nodes[node]!.bounds) <= radius + eps));
+  /** Any of `where` within the radius of either edge's port on a node both edges share. */
+  const nearSharedPort = (left: number, right: number, where: GeometryPoint[]): boolean => {
+    const radius = world(tolerances.sharedEndpointRadiusPx) + eps;
+    return endpointNodes[left]!.filter(node => endpointNodes[right]!.includes(node)).some(node =>
+      [...portsOn(left, node), ...portsOn(right, node)].some(port =>
+        where.some(point => Math.hypot(point.x - port.x, point.y - port.y) <= radius)));
   };
 
   // ---- broad phase -------------------------------------------------------
@@ -491,7 +528,7 @@ export function diagnoseGeometry(
     ...nodes.map((node, ref) => ({ type: 'node' as const, box: node.bounds, ref })),
   ];
   const wants = (left: Item, right: Item) => {
-    if (!WANTED[`${left.type}|${right.type}`]) return false;
+    if (!WANTED.has(`${left.type}|${right.type}`)) return false;
     if (left.type === 'segment' && right.type === 'segment') return segments[left.ref]!.edge !== segments[right.ref]!.edge;
     if (left.type === 'border' || right.type === 'border') {
       const segment = segments[(left.type === 'segment' ? left : right).ref]!;
@@ -503,44 +540,43 @@ export function diagnoseGeometry(
   const broad = mode === 'all-pairs' ? allPairs(items, wants, pad) : gridPairs(items, wants, pad);
 
   // ---- narrow phase ------------------------------------------------------
-  const labelHits = new Map<string, { label: number; edge?: number; node?: number; distance: number; exemption?: GeometryDiagnosticExemption }>();
-  for (const [leftIndex, rightIndex] of broad.pairs) {
-    const left = items[leftIndex]!;
-    const right = items[rightIndex]!;
-    if (left.type === 'segment' && right.type === 'segment') {
-      segmentPair(segments[left.ref]!, segments[right.ref]!);
-    } else if (left.type === 'border' || right.type === 'border') {
-      const border = (left.type === 'border' ? left : right) as Extract<Item, { type: 'border' }>;
-      borderRun(segments[(left.type === 'segment' ? left : right).ref]!, border.ref, border.side);
-    } else if (left.type === 'label' || right.type === 'label') {
-      const label = (left.type === 'label' ? left : right).ref;
-      const other = left.type === 'label' ? right : left;
-      if (other.type === 'segment') labelSegment(label, segments[other.ref]!);
-      else labelNode(label, other.ref);
-    }
-  }
+  type LabelHit = { label: number; edge?: number; node?: number; distance: number; exemption?: GeometryDiagnosticExemption };
+  const labelHits = new Map<string, LabelHit>();
+  const recordLabel = (key: string, hit: LabelHit) => {
+    const previous = labelHits.get(key);
+    if (!previous || hit.distance < previous.distance) labelHits.set(key, hit);
+  };
 
-  function segmentPair(first: Segment, second: Segment) {
+  const segmentPair = (first: Segment, second: Segment) => {
     if (first.length <= eps || second.length <= eps) return;
-    const [s, t] = first.edge < second.edge || (first.edge === second.edge && first.index <= second.index)
-      ? [first, second] : [second, first];
+    const [s, t] = first.edge < second.edge ? [first, second] : [second, first];
     const rx = s.b.x - s.a.x; const ry = s.b.y - s.a.y;
     const qx = t.b.x - t.a.x; const qy = t.b.y - t.a.y;
     const denominator = cross(rx, ry, qx, qy);
-    const parallel = Math.abs(denominator) <= 1e-9 * s.length * t.length;
-    if (!parallel) {
+    if (Math.abs(denominator) > 1e-9 * s.length * t.length) {
       const u = cross(t.a.x - s.a.x, t.a.y - s.a.y, qx, qy) / denominator;
       const v = cross(t.a.x - s.a.x, t.a.y - s.a.y, rx, ry) / denominator;
-      if (u * s.length <= eps || (1 - u) * s.length <= eps || v * t.length <= eps || (1 - v) * t.length <= eps) return;
-      if (u < 0 || u > 1 || v < 0 || v > 1) return;
-      const point = { x: s.a.x + u * rx, y: s.a.y + u * ry };
+      const place = (param: number, segment: Segment) => {
+        const along = param * segment.length;
+        if (along < -eps || along > segment.length + eps) return 'outside';
+        if (along <= eps) return 'start';
+        return along >= segment.length - eps ? 'end' : 'interior';
+      };
+      const ps = place(u, s);
+      const pt = place(v, t);
+      // Each vertex contact is examined once, from the segment it starts; route ends are junctions.
+      if (ps === 'outside' || pt === 'outside' || ps === 'end' || pt === 'end') return;
+      if ((ps === 'start' && s.first) || (pt === 'start' && t.first)) return;
+      const point = ps === 'start' ? s.a : pt === 'start' ? t.a : { x: s.a.x + u * rx, y: s.a.y + u * ry };
+      const behind = (segment: Segment, at: string) => (at === 'start' ? edges[segment.edge]!.points[segment.index - 1]! : segment.a);
+      if ((ps !== 'interior' || pt !== 'interior') && !raysInterleave(point, behind(s, ps), s.b, behind(t, pt), t.b)) return;
       const exemption = bundled(s.edge, t.edge) ? 'bundle' as const
-        : nearShared(s.edge, t.edge, [point]) !== undefined ? 'shared-endpoint' as const : undefined;
+        : nearSharedPort(s.edge, t.edge, [point]) ? 'shared-endpoint' as const : undefined;
       const shortest = Math.min(s.length, t.length);
       push('edge-crossing', px(shortest) >= tolerances.hiddenLengthPx, exemption, { edges: [s.edge, t.edge] }, {
         points: [wp(point)],
         segments: [ws(s.a, s.b), ws(t.a, t.b)],
-        screenLength: screen(shortest),
+        screenLength: px(shortest),
       });
       return;
     }
@@ -555,48 +591,47 @@ export function diagnoseGeometry(
     const from = { x: s.a.x + ux * start, y: s.a.y + uy * start };
     const to = { x: s.a.x + ux * end, y: s.a.y + uy * end };
     const exemption = bundled(s.edge, t.edge) ? 'bundle' as const
-      : nearShared(s.edge, t.edge, [from, to]) !== undefined ? 'shared-endpoint' as const : undefined;
+      : nearSharedPort(s.edge, t.edge, [from, to]) ? 'shared-endpoint' as const : undefined;
+    // For a shared-endpoint exemption screenLength is the fan-out/fan-in trunk length.
     push('shared-corridor', px(end - start) >= tolerances.hiddenLengthPx, exemption, { edges: [s.edge, t.edge] }, {
       segments: [ws(from, to)],
-      screenLength: screen(end - start),
-      screenDistance: screen(distance),
+      screenLength: px(end - start),
+      screenDistance: px(distance),
     });
-  }
+  };
 
-  function borderRun(segment: Segment, node: number, side: Side) {
+  const borderRun = (segment: Segment, node: number, side: Side) => {
     const bounds = nodes[node]!.bounds;
-    const horizontalSide = side === 'top' || side === 'bottom';
-    if ((segment.axis === 'h') !== horizontalSide) return;
+    const horizontal = side === 'top' || side === 'bottom';
+    if ((segment.axis === 'h') !== horizontal) return;
     const [a, b] = borderLine(bounds, side);
-    const offset = horizontalSide ? Math.abs(segment.a.y - a.y) : Math.abs(segment.a.x - a.x);
+    const offset = horizontal ? Math.abs(segment.a.y - a.y) : Math.abs(segment.a.x - a.x);
     if (offset > world(tolerances.borderRunDistancePx) + eps) return;
-    const [lo, hi] = horizontalSide ? [a.x, b.x] : [a.y, b.y];
-    const [s0, s1] = horizontalSide
-      ? [Math.min(segment.a.x, segment.b.x), Math.max(segment.a.x, segment.b.x)]
-      : [Math.min(segment.a.y, segment.b.y), Math.max(segment.a.y, segment.b.y)];
-    const run = Math.min(hi, s1) - Math.max(lo, s0);
-    if (px(run) < tolerances.borderRunMinLengthPx) return;
-    const edge = edges[segment.edge]!;
-    const endpoints = endpointNodes[segment.edge]!;
-    const ownEndpoint = endpoints.includes(node);
-    const containerStub = (segment.first && nodeIndex.has(edge.fromNodeId) && ancestors[nodeIndex.get(edge.fromNodeId)!]!.has(node))
-      || (segment.last && nodeIndex.has(edge.toNodeId) && ancestors[nodeIndex.get(edge.toNodeId)!]!.has(node));
-    const runStart = Math.max(lo, s0);
-    const runEnd = runStart + run;
-    const from = horizontalSide ? { x: runStart, y: segment.a.y } : { x: segment.a.x, y: runStart };
-    const to = horizontalSide ? { x: runEnd, y: segment.a.y } : { x: segment.a.x, y: runEnd };
-    push('container-border-run', px(run) >= tolerances.hiddenLengthPx,
-      ownEndpoint ? 'own-endpoint' : containerStub ? 'containment' : undefined,
-      { edges: [segment.edge], nodes: [node] },
-      { segments: [ws(from, to)], rects: [wr(bounds)], screenLength: screen(run), screenDistance: screen(offset) });
-  }
+    const along = (point: GeometryPoint) => (horizontal ? point.x : point.y);
+    const r0 = Math.max(along(a), Math.min(along(segment.a), along(segment.b)));
+    const r1 = Math.min(along(b), Math.max(along(segment.a), along(segment.b)));
+    if (px(r1 - r0) < tolerances.borderRunMinLengthPx) return;
+    const report = (lo: number, hi: number, exemption?: GeometryDiagnosticExemption) => {
+      if (hi - lo <= eps || (!exemption && px(hi - lo) < tolerances.borderRunMinLengthPx)) return;
+      const at = (value: number) => (horizontal ? { x: value, y: segment.a.y } : { x: segment.a.x, y: value });
+      push('container-border-run', px(hi - lo) >= tolerances.hiddenLengthPx, exemption, { edges: [segment.edge], nodes: [node] },
+        { segments: [ws(at(lo), at(hi))], rects: [wr(bounds)], screenLength: px(hi - lo), screenDistance: px(offset) });
+    };
+    const endCard = segment.first ? fromOf[segment.edge] : segment.last ? toOf[segment.edge] : undefined;
+    const alsoEnd = segment.first && segment.last ? toOf[segment.edge] : undefined;
+    if (endCard === node || alsoEnd === node) return report(r0, r1, 'own-endpoint');
+    const card = [endCard, alsoEnd].find(value => value !== undefined && ancestors[value]!.has(node));
+    if (card === undefined) return report(r0, r1);
+    // Containment: only the part of the terminal stub within its own card's extent is exempt.
+    const cardBounds = nodes[card]!.bounds;
+    const c0 = horizontal ? cardBounds.x : cardBounds.y;
+    const c1 = c0 + (horizontal ? cardBounds.width : cardBounds.height);
+    report(r0, Math.min(r1, c0));
+    report(Math.max(r0, c0), Math.min(r1, c1), 'containment');
+    report(Math.max(r0, c1), r1);
+  };
 
-  function recordLabel(key: string, hit: { label: number; edge?: number; node?: number; distance: number; exemption?: GeometryDiagnosticExemption }) {
-    const previous = labelHits.get(key);
-    if (!previous || hit.distance < previous.distance) labelHits.set(key, hit);
-  }
-
-  function labelSegment(label: number, segment: Segment) {
+  const labelSegment = (label: number, segment: Segment) => {
     const owner = edgeIndex.get(labels[label]!.edgeId)!;
     if (segment.edge === owner) return;
     const distance = segmentRectDistance(segment.a, segment.b, labels[label]!.bounds);
@@ -604,9 +639,9 @@ export function diagnoseGeometry(
     recordLabel(`e${label}:${segment.edge}`, {
       label, edge: segment.edge, distance, ...(bundled(owner, segment.edge) ? { exemption: 'bundle' as const } : {}),
     });
-  }
+  };
 
-  function labelNode(label: number, node: number) {
+  const labelNode = (label: number, node: number) => {
     const owner = edgeIndex.get(labels[label]!.edgeId)!;
     const bounds = nodes[node]!.bounds;
     const distance = rectRectDistance(labels[label]!.bounds, bounds);
@@ -615,87 +650,92 @@ export function diagnoseGeometry(
     const containsBoth = !endpoints.includes(node) && endpoints.length > 0
       && endpoints.every(endpoint => ancestors[endpoint]!.has(node) || contains(bounds, nodes[endpoint]!.bounds));
     recordLabel(`n${label}:${node}`, { label, node, distance, ...(containsBoth ? { exemption: 'containment' as const } : {}) });
+  };
+
+  for (let index = 0; index < broad.pairs.length; index += 2) {
+    const left = items[broad.pairs[index]!]!;
+    const right = items[broad.pairs[index + 1]!]!;
+    const segment = left.type === 'segment' ? left : right.type === 'segment' ? right : undefined;
+    const other = segment === left ? right : left;
+    if (other.type === 'segment') segmentPair(segments[left.ref]!, segments[right.ref]!);
+    else if (other.type === 'border') borderRun(segments[segment!.ref]!, other.ref, other.side!);
+    else if (segment) labelSegment(other.ref, segments[segment.ref]!);
+    else labelNode((left.type === 'label' ? left : right).ref, (left.type === 'node' ? left : right).ref);
   }
 
   for (const hit of labelHits.values()) {
     const label = labels[hit.label]!;
     const owner = edgeIndex.get(label.edgeId)!;
-    const minSide = Math.min(label.bounds.width, label.bounds.height);
-    push('label-clearance', px(minSide) >= tolerances.hiddenLengthPx, hit.exemption, {
+    push('label-clearance', px(Math.min(label.bounds.width, label.bounds.height)) >= tolerances.hiddenLengthPx, hit.exemption, {
       edges: hit.edge !== undefined ? [owner, hit.edge] : [owner],
       ...(hit.node !== undefined ? { nodes: [hit.node] } : {}),
       labels: [hit.label],
     }, {
       rects: [wr(label.bounds), ...(hit.node !== undefined ? [wr(nodes[hit.node]!.bounds)] : [])],
-      screenDistance: screen(hit.distance),
+      screenDistance: px(hit.distance),
     });
   }
 
-  // ---- endpoint crowding: per node side, 1-D sweep ------------------------
-  const ports = new Map<string, { edge: number; node: number; side: Side; along: number; point: GeometryPoint }[]>();
+  // ---- endpoint crowding: per node, x-sorted sweep with Euclidean distance (catches corners) ----
+  const ports = new Map<number, { edge: number; point: GeometryPoint }[]>();
   edges.forEach((edge, number) => {
     if (edge.points.length < 2) return;
-    const ends: [string, GeometryPoint][] = [[edge.fromNodeId, edge.points[0]!], [edge.toNodeId, edge.points[edge.points.length - 1]!]];
-    for (const [nodeId, point] of ends) {
-      const node = nodeIndex.get(nodeId);
-      if (node === undefined) continue;
-      const side = nearestSide(point, nodes[node]!.bounds);
-      const key = `${node}:${side}`;
-      const list = ports.get(key) ?? [];
-      list.push({ edge: number, node, side, along: side === 'top' || side === 'bottom' ? point.x : point.y, point });
-      ports.set(key, list);
+    for (const node of new Set(endpointNodes[number])) {
+      for (const point of portsOn(number, node)) {
+        const list = ports.get(node) ?? [];
+        list.push({ edge: number, point });
+        ports.set(node, list);
+      }
     }
   });
   const spacing = world(tolerances.endpointSpacingPx);
-  for (const list of [...ports.values()]) {
-    list.sort((left, right) => left.along - right.along || left.edge - right.edge);
+  for (const [node, list] of ports) {
+    list.sort((left, right) => left.point.x - right.point.x || left.point.y - right.point.y || left.edge - right.edge);
     for (let left = 0; left < list.length; left += 1) {
-      for (let right = left + 1; right < list.length && list[right]!.along - list[left]!.along < spacing - eps; right += 1) {
+      for (let right = left + 1; right < list.length && list[right]!.point.x - list[left]!.point.x < spacing; right += 1) {
         const a = list[left]!;
         const b = list[right]!;
-        if (a.edge === b.edge) continue;
-        // Coincident ports merge into one: the second endpoint is hidden under the first.
-        push('endpoint-crowding', px(b.along - a.along) >= tolerances.hiddenLengthPx, bundled(a.edge, b.edge) ? 'bundle' : undefined,
-          { edges: [a.edge, b.edge], nodes: [a.node] },
-          { points: [wp(a.point), wp(b.point)].sort((p, q) => p.x - q.x || p.y - q.y), screenDistance: screen(b.along - a.along) });
+        const distance = Math.hypot(b.point.x - a.point.x, b.point.y - a.point.y);
+        if (a.edge === b.edge || px(distance) >= tolerances.endpointSpacingPx) continue;
+        const exemption = bundled(a.edge, b.edge) ? 'bundle' as const : distance <= eps ? 'shared-port' as const : undefined;
+        push('endpoint-crowding', px(distance) >= tolerances.hiddenLengthPx, exemption, { edges: [a.edge, b.edge], nodes: [node] },
+          { points: [wp(a.point), wp(b.point)].sort((p, q) => p.x - q.x || p.y - q.y), screenDistance: px(distance) });
       }
     }
   }
 
-  // ---- short routes ------------------------------------------------------
+  // ---- short routes and legs --------------------------------------------
   edges.forEach((edge, number) => {
-    let length = 0;
-    for (let index = 0; index + 1 < edge.points.length; index += 1) {
-      length += Math.hypot(edge.points[index + 1]!.x - edge.points[index]!.x, edge.points[index + 1]!.y - edge.points[index]!.y);
+    const own = segments.filter(segment => segment.edge === number);
+    const length = own.reduce((sum, segment) => sum + segment.length, 0);
+    if (px(length) < tolerances.minRouteLengthPx) {
+      push('short-route', px(length) >= tolerances.hiddenLengthPx, undefined, { edges: [number], nodes: endpointNodes[number]! },
+        { points: edge.points.map(wp), screenLength: px(length) });
+      return;
     }
-    if (px(length) >= tolerances.minRouteLengthPx) return;
-    push('short-route', px(length) >= tolerances.hiddenLengthPx, undefined, { edges: [number], nodes: endpointNodes[number]! }, {
-      points: edge.points.map(wp),
-      screenLength: screen(length),
-    });
+    if (own.length < 2) return;
+    for (const segment of own) {
+      if (px(segment.length) >= tolerances.minLegLengthPx) continue;
+      push('short-leg', px(segment.length) >= tolerances.hiddenLengthPx, undefined, { edges: [number], nodes: endpointNodes[number]! },
+        { segments: [ws(segment.a, segment.b)], screenLength: px(segment.length) });
+    }
   });
 
   // ---- stable output -----------------------------------------------------
   const keyed = findings.map(finding => ({ key: findingSortKey(finding), finding }))
-    .sort((left, right) => compareStrings(left.key, right.key));
-  const unique: GeometryFinding[] = [];
-  for (let index = 0; index < keyed.length; index += 1) {
-    if (index > 0 && keyed[index]!.key === keyed[index - 1]!.key) continue;
-    unique.push(keyed[index]!.finding);
-  }
-  const counts = Object.fromEntries(GEOMETRY_DIAGNOSTIC_KINDS.map(kind => [kind, emptyCounts()])) as Record<GeometryDiagnosticKind, GeometryKindCounts>;
+    .sort((left, right) => compareStrings(left.key, right.key))
+    .filter((value, index, all) => index === 0 || value.key !== all[index - 1]!.key);
+  const counts = Object.fromEntries(GEOMETRY_DIAGNOSTIC_KINDS.map(kind => [kind, { visible: 0, hidden: 0, exempt: 0 }])) as Record<GeometryDiagnosticKind, GeometryKindCounts>;
   const exemptions = Object.fromEntries(GEOMETRY_DIAGNOSTIC_EXEMPTIONS.map(value => [value, 0])) as Record<GeometryDiagnosticExemption, number>;
-  const totals = emptyCounts();
-  for (const finding of unique) {
+  const totals: GeometryKindCounts = { visible: 0, hidden: 0, exempt: 0 };
+  for (const { finding } of keyed) {
     const bucket = finding.exemption ? 'exempt' : finding.visibility;
     counts[finding.kind][bucket] += 1;
     totals[bucket] += 1;
     if (finding.exemption) exemptions[finding.exemption] += 1;
   }
-  const byType = { segment: 0, border: 0, label: 0, node: 0 };
+  const byType: Record<ItemType, number> = { segment: 0, border: 0, label: 0, node: 0 };
   for (const item of items) byType[item.type] += 1;
-  const naivePairs = (byType.segment * (byType.segment - 1)) / 2 + byType.segment * byType.border
-    + byType.label * byType.segment + byType.label * byType.node;
   return {
     summary: {
       ...(input.band !== undefined ? { band: input.band } : {}),
@@ -707,9 +747,16 @@ export function diagnoseGeometry(
       counts,
       totals,
       exemptions,
-      broadPhase: { mode, candidatePairs: broad.candidates, naivePairs },
+      broadPhase: {
+        mode,
+        naivePairs: (byType.segment * (byType.segment - 1)) / 2 + byType.segment * byType.border
+          + byType.label * byType.segment + byType.label * byType.node,
+        examinedPairs: broad.examined,
+        candidatePairs: broad.pairs.length / 2,
+        largeItems: broad.large,
+      },
     },
-    findings: unique,
+    findings: keyed.map(value => value.finding),
   };
 }
 
