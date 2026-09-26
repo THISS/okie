@@ -119,7 +119,13 @@ outlier node. The QA test asserts the same on every real fixture. A
 400-layout adversarial fuzz (mixed scales 1e-3…1e7, outliers, diagonal and
 border-snapped routes, giant labels) matched the oracle in all 1,380 runs.
 Output is byte-identical under seeded shuffles of nodes/edges/labels (unit +
-QA).
+QA). Vertex contacts (a vertex of one route on the other route) are examined
+once per (edge, vertex-or-segment) pair whatever the segments' parallelism, so
+a shared vertex whose outgoing legs are collinear-opposite is still tested.
+`magnitude` (the epsilon scale) includes node far corners and label rects, and
+items whose cell range is not safe-integer steppable take the large-item path.
+Grid and oracle must agree on `candidatePairs` as well as findings, which
+guards pair ownership and large×large dedupe.
 
 `summary.broadPhase` reports `naivePairs` (every wanted category pair),
 `examinedPairs` (pair tests the grid actually ran, counted once per shared
@@ -184,7 +190,10 @@ Readings:
   - `cla68-after-tight`, the shipped U on the default packing, is flagged at
     code entry. Its two legs are 4.07px, under the 6px corner radius, so the
     U collapses exactly as commit `ff673a2` describes. It is 8px, and clean,
-    at focus. This is known-degraded, not clean.
+    at focus. This is known-degraded, not clean. `short-leg` confirms the
+    degradation but does not single the U out: the same ~4.07px entry-zoom
+    stub (the router's 8px clearance at code entry) fires on ordinary
+    routes too (see the short-leg column).
   - `cla68-after-scan`, the U on the widened scan gutter, has 20.3px legs at
     entry (40px at focus) and zero findings.
 - **Crossings** concentrate where a 5-copy hub pair cuts a packed chain
@@ -228,9 +237,11 @@ node --expose-gc scripts/measure-geometry-diagnostics.mjs   # --no-bench skips t
 ```
 
 The script resolves paths from its own location. It rewrites the baseline
-JSON and the SVG renders, and both are byte-stable across runs. The renders
-frame all nodes, draw owners unfilled from outer to inner, show short card
-names, and highlight visible findings per kind with a wrapped legend. A
+JSON and the SVG renders, and both are byte-stable across runs. Each render
+frames the visible findings plus their edges' endpoint cards (all routes and
+endpoint cards when there are no findings), with 32px padding. Everything else
+is clipped to that frame. Renders are scaled down to at most 1600px wide; the
+title states the scale. Title and legend sit in their own strips. A
 routing/layout change that moves counts or geometry fails
 `geometry-diagnostics.qa.test.ts` until the baseline is regenerated. Review
 the renders and explain the delta in the PR.
@@ -251,7 +262,10 @@ Use `diagnoseC4Scene(compiled)` (or `c4BandGeometryInput` + `diagnoseGeometry`)
 as the before/after oracle for routing changes. Gate on `visibleGeometryProblems`
 deltas per band at **entry** zoom. The actionable kinds today are:
 
-- `short-leg`: entry stubs below the corner radius; `cla68-after-tight`;
+- `short-leg`: at entry zoom this mostly measures the router's
+  clearance/stub policy, not specific shapes. Split terminal stubs
+  (first/last legs) from bend-to-bend legs to get a U-specific signal such as
+  `cla68-after-tight`;
 - `short-route`: packed hops;
 - unexempted `shared-corridor` and `edge-crossing`.
 

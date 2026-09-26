@@ -72,7 +72,9 @@ test('CLA-140: diagnostics on real fixtures are shuffle-invariant and grid == al
         });
         assert.equal(JSON.stringify(reordered), JSON.stringify(expected), `${value.id} ${band} seed ${seed}`);
       }
-      assert.deepEqual(diagnoseGeometry(input, { broadPhase: 'all-pairs' }).findings, expected.findings, `${value.id} ${band} oracle`);
+      const oracle = diagnoseGeometry(input, { broadPhase: 'all-pairs' });
+      assert.deepEqual(oracle.findings, expected.findings, `${value.id} ${band} oracle`);
+      assert.equal(oracle.summary.broadPhase.candidatePairs, expected.summary.broadPhase.candidatePairs, `${value.id} ${band} pair ownership`);
     }
   }
 });

@@ -306,36 +306,55 @@ const KIND_COLOR: Readonly<Record<GeometryDiagnosticKind, string>> = {
 };
 
 /**
- * Compact SVG of one diagnostic run in screen px: owners (unfilled, outer to
- * inner), cards with short names, routes, labels, then visible findings
- * (exempt/hidden omitted) highlighted per kind, with a wrapped legend.
+ * Compact SVG of one diagnostic run. Frames the visible findings plus their
+ * edges' endpoint cards (all routes + endpoint cards when there are none),
+ * clips everything else to that frame, and scales down to at most
+ * RENDER_MAX_WIDTH px. Title and legend sit in their own strips.
  */
+const RENDER_MAX_WIDTH = 1600;
 export function renderGeometryDiagnosticsSvg(input: GeometryDiagnosticsInput, result: GeometryDiagnosticsResult, title: string): string {
-  const zoom = input.zoom;
-  const xs = [...input.nodes.flatMap(node => [node.bounds.x, node.bounds.x + node.bounds.width]), ...input.edges.flatMap(edge => edge.points.map(point => point.x))];
-  const ys = [...input.nodes.flatMap(node => [node.bounds.y, node.bounds.y + node.bounds.height]), ...input.edges.flatMap(edge => edge.points.map(point => point.y))];
-  const pad = 24;
-  const top = 26;
-  const legendRows: string[] = [];
-  for (let index = 0; index < GEOMETRY_DIAGNOSTIC_KINDS.length; index += 4) {
-    legendRows.push(GEOMETRY_DIAGNOSTIC_KINDS.slice(index, index + 4)
-      .map(kind => `${kind}: ${result.summary.counts[kind].visible}`).join('   '));
-  }
-  const minX = (xs.length ? Math.min(...xs) : 0) - pad / zoom;
-  const minY = (ys.length ? Math.min(...ys) : 0) - pad / zoom;
+  const problems = visibleGeometryProblems(result);
+  const focusEdges = new Set(problems.length ? problems.flatMap(finding => finding.edgeIds) : input.edges.map(edge => edge.id));
+  const endpointIds = new Set(input.edges.filter(edge => focusEdges.has(edge.id)).flatMap(edge => [edge.fromNodeId, edge.toNodeId]));
+  const framePoints = [
+    ...input.nodes.filter(node => endpointIds.has(node.id)).flatMap(node => [
+      { x: node.bounds.x, y: node.bounds.y }, { x: node.bounds.x + node.bounds.width, y: node.bounds.y + node.bounds.height },
+    ]),
+    ...(problems.length
+      ? problems.flatMap(finding => [
+        ...(finding.geometry.points ?? []),
+        ...(finding.geometry.segments ?? []).flat(),
+        ...(finding.kind === 'label-clearance' ? [finding.geometry.rects![0]!].flatMap(r => [{ x: r.x, y: r.y }, { x: r.x + r.width, y: r.y + r.height }]) : []),
+      ])
+      : input.edges.flatMap(edge => edge.points)),
+  ];
+  const minWX = framePoints.length ? Math.min(...framePoints.map(point => point.x)) : 0;
+  const minWY = framePoints.length ? Math.min(...framePoints.map(point => point.y)) : 0;
+  const maxWX = framePoints.length ? Math.max(...framePoints.map(point => point.x)) : 0;
+  const maxWY = framePoints.length ? Math.max(...framePoints.map(point => point.y)) : 0;
+  const margin = 32;
+  const rawWidth = (maxWX - minWX) * input.zoom + margin * 2;
+  const scale = Math.min(1, RENDER_MAX_WIDTH / rawWidth);
+  const k = input.zoom * scale;
   const n = (value: number) => Number(value.toFixed(1));
-  const sx = (x: number) => n((x - minX) * zoom);
-  const sy = (y: number) => n((y - minY) * zoom + top);
-  const width = Math.max(560, n(((xs.length ? Math.max(...xs) : 0) - minX) * zoom + pad));
-  const bodyBottom = n(((ys.length ? Math.max(...ys) : 0) - minY) * zoom + pad + top);
-  const height = n(bodyBottom + legendRows.length * 14 + 8);
+  const titleStrip = 24;
+  const legendStrip = 36;
+  const frameWidth = n(Math.max(480, rawWidth * scale));
+  const frameHeight = n((maxWY - minWY) * k + margin * 2 * scale);
+  const width = frameWidth;
+  const height = n(titleStrip + frameHeight + legendStrip);
+  const sx = (x: number) => n((x - minWX) * k + margin * scale);
+  const sy = (y: number) => n((y - minWY) * k + margin * scale + titleStrip);
   const rect = (r: { x: number; y: number; width: number; height: number }, attrs: string) =>
-    `<rect x="${sx(r.x)}" y="${sy(r.y)}" width="${n(r.width * zoom)}" height="${n(r.height * zoom)}" ${attrs}/>`;
+    `<rect x="${sx(r.x)}" y="${sy(r.y)}" width="${n(r.width * k)}" height="${n(r.height * k)}" ${attrs}/>`;
   const line = (points: readonly { x: number; y: number }[], attrs: string) =>
     `<polyline points="${points.map(point => `${sx(point.x)},${sy(point.y)}`).join(' ')}" fill="none" ${attrs}/>`;
   const out: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="sans-serif" font-size="11">`,
-    `<rect width="100%" height="100%" fill="#f1f2f5"/>`,
+    `<defs><clipPath id="frame"><rect x="0" y="${titleStrip}" width="${frameWidth}" height="${frameHeight}"/></clipPath></defs>`,
+    `<rect width="100%" height="100%" fill="#fff"/>`,
+    `<rect x="0" y="${titleStrip}" width="${frameWidth}" height="${frameHeight}" fill="#f1f2f5"/>`,
+    '<g clip-path="url(#frame)">',
   ];
   const parents = new Set(input.nodes.flatMap(node => (node.parentId ? [node.parentId] : [])));
   const depth = (id: string | undefined): number => {
@@ -349,16 +368,15 @@ export function renderGeometryDiagnosticsSvg(input: GeometryDiagnosticsInput, re
   for (const node of ordered) {
     const owner = parents.has(node.id);
     out.push(rect(node.bounds, owner ? 'fill="none" stroke="#9aa3b5" stroke-width="1"' : 'fill="#fff" stroke="#5c6680" stroke-width="1"'));
-    const screenWidth = node.bounds.width * zoom;
-    if (!owner && screenWidth >= 48 && node.bounds.height * zoom >= 14) {
+    const screenWidth = node.bounds.width * k;
+    if (!owner && screenWidth >= 48 && node.bounds.height * k >= 14) {
       const name = decodeURIComponent(node.id.slice(node.id.lastIndexOf(':') + 1)).replace(/[<&"]/g, '');
       out.push(`<text x="${n(sx(node.bounds.x) + 4)}" y="${n(sy(node.bounds.y) + 11)}" font-size="9" fill="#5c6680">${name.slice(0, Math.floor((screenWidth - 8) / 5.5))}</text>`);
     }
   }
   for (const label of input.labels ?? []) out.push(rect(label.bounds, 'fill="#fff" stroke="#b0b0b0" stroke-dasharray="2 2"'));
   for (const edge of input.edges) out.push(line(edge.points, 'stroke="#445" stroke-width="1.5"'));
-  for (const finding of result.findings) {
-    if (finding.exemption || finding.visibility !== 'visible') continue;
+  for (const finding of problems) {
     const color = KIND_COLOR[finding.kind];
     if (finding.kind !== 'edge-crossing') {
       for (const segment of finding.geometry.segments ?? []) out.push(line(segment, `stroke="${color}" stroke-width="4" stroke-opacity="0.75"`));
@@ -369,8 +387,13 @@ export function renderGeometryDiagnosticsSvg(input: GeometryDiagnosticsInput, re
       out.push(`<circle cx="${sx(point.x)}" cy="${sy(point.y)}" r="4" fill="none" stroke="${color}" stroke-width="2"/>`);
     }
   }
-  out.push(`<rect width="100%" height="${top - 4}" fill="#f1f2f5"/>`, `<text x="${pad}" y="16">${title.replace(/[<&]/g, '')}</text>`);
-  legendRows.forEach((row, index) => out.push(`<text x="${pad}" y="${n(bodyBottom + 12 + index * 14)}" font-size="10" fill="#555">${row}</text>`));
+  const legend: string[] = [];
+  for (let index = 0; index < GEOMETRY_DIAGNOSTIC_KINDS.length; index += 4) {
+    legend.push(GEOMETRY_DIAGNOSTIC_KINDS.slice(index, index + 4)
+      .map(kind => `${kind}: ${result.summary.counts[kind].visible}`).join('   '));
+  }
+  out.push('</g>', `<text x="8" y="16">${title.replace(/[<&]/g, '')} · render scale ${n(scale * 100)}% of screen px${problems.length ? '' : ' · no visible findings'}</text>`);
+  legend.forEach((row, index) => out.push(`<text x="8" y="${n(titleStrip + frameHeight + 14 + index * 14)}" font-size="10" fill="#555">${row}</text>`));
   out.push('</svg>');
   return `${out.join('\n')}\n`;
 }

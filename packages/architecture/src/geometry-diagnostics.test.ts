@@ -78,6 +78,31 @@ test('CLA-140: crossings near a shared endpoint node are exempt; far ones still 
   assert.ok(farCrossing.every(finding => finding.exemption === undefined));
 });
 
+test('CLA-140: a shared vertex with opposite outgoing legs is still a crossing (parallel segments)', () => {
+  const nodes = [node('a1', -300, -5, 10, 10), node('a2', -5, -300, 10, 10), node('b1', -300, -300, 10, 10), node('b2', -5, 300, 10, 10)];
+  const run = (b: [number, number][]) => of(diagnoseGeometry({ zoom: 1, nodes, edges: [
+    edge('A', 'a1', 'a2', [[-290, 0], [0, 0], [0, -290]]),
+    edge('B', 'b1', 'b2', b),
+  ] }).findings, 'edge-crossing').map(finding => finding.geometry.points);
+  assert.deepEqual(run([[-290, -290], [0, 0], [0, 290]]), [[{ x: 0, y: 0 }]], 'B enters inside A\'s corner and leaves opposite A\'s out-leg');
+  assert.deepEqual(run([[290, 0], [0, 0], [0, 290]]), [], 'back-to-back Ls only touch');
+});
+
+test('CLA-140: a label at a huge coordinate terminates and matches the oracle', () => {
+  const result = diagnoseGeometry({
+    zoom: 1,
+    nodes: [node('a', 0, 0), node('b', 100, 0)],
+    edges: [edge('e', 'a', 'b', [[20, 5], [100, 5]])],
+    labels: [{ id: 'l', edgeId: 'e', bounds: { x: 1e18, y: 0, width: 10, height: 4 } }],
+  });
+  assert.deepEqual(result.findings, diagnoseGeometry({
+    zoom: 1,
+    nodes: [node('a', 0, 0), node('b', 100, 0)],
+    edges: [edge('e', 'a', 'b', [[20, 5], [100, 5]])],
+    labels: [{ id: 'l', edgeId: 'e', bounds: { x: 1e18, y: 0, width: 10, height: 4 } }],
+  }, { broadPhase: 'all-pairs' }).findings);
+});
+
 test('CLA-140: shared-endpoint exemption is measured from the ports, not the (container) node rect', () => {
   const nodes = [node('sys', 0, 0, 1000, 1000), node('a', 100, 100, 20, 10, 'sys'), node('b', 800, 800, 20, 10, 'sys'), node('c', 100, 800, 20, 10, 'sys')];
   const result = diagnoseGeometry({ zoom: 1, nodes, edges: [
@@ -349,6 +374,7 @@ test('CLA-140: grid broad phase matches the all-pairs oracle and prunes candidat
       const oracle = diagnoseGeometry(layout, { broadPhase: 'all-pairs' });
       assert.deepEqual(grid.findings, oracle.findings, `seed ${seed} zoom ${zoom}`);
       assert.deepEqual(grid.summary.counts, oracle.summary.counts);
+      assert.equal(grid.summary.broadPhase.candidatePairs, oracle.summary.broadPhase.candidatePairs, 'each pair emitted exactly once');
       for (const finding of grid.findings) exercised.add(finding.kind);
     }
   }
@@ -357,7 +383,9 @@ test('CLA-140: grid broad phase matches the all-pairs oracle and prunes candidat
   const big = { ...layout, nodes: [...layout.nodes, node('zz:world', -5000, -5000, 40000, 30000), node('zz:wide', -50, -50, 30000, 12)] };
   const bigGrid = diagnoseGeometry(big);
   assert.ok(bigGrid.summary.broadPhase.largeItems > 0, 'the owner boxes take the large-item path');
-  assert.deepEqual(bigGrid.findings, diagnoseGeometry(big, { broadPhase: 'all-pairs' }).findings);
+  const bigOracle = diagnoseGeometry(big, { broadPhase: 'all-pairs' });
+  assert.deepEqual(bigGrid.findings, bigOracle.findings);
+  assert.equal(bigGrid.summary.broadPhase.candidatePairs, bigOracle.summary.broadPhase.candidatePairs, 'large×large pairs are not duplicated');
   const { examinedPairs, naivePairs, candidatePairs } = bigGrid.summary.broadPhase;
   assert.ok(examinedPairs * 4 < naivePairs, `grid examined ${examinedPairs} vs naive ${naivePairs} (random long routes: adversarial)`);
   assert.ok(candidatePairs * 10 < naivePairs, `candidates ${candidatePairs} vs naive ${naivePairs}`);
@@ -374,7 +402,11 @@ test('CLA-140: one far outlier node does not collapse the grid to all-pairs', ()
       `${edgeCount} edges: outlier examined ${far.summary.broadPhase.examinedPairs} vs ${plain.examinedPairs}`,
     );
     assert.equal(far.summary.broadPhase.largeItems, plain.largeItems, 'the outlier does not turn items into large items');
-    if (edgeCount === 400) assert.deepEqual(far.findings, diagnoseGeometry(withOutlier, { broadPhase: 'all-pairs' }).findings);
+    if (edgeCount === 400) {
+      const oracle = diagnoseGeometry(withOutlier, { broadPhase: 'all-pairs' });
+      assert.deepEqual(far.findings, oracle.findings);
+      assert.equal(far.summary.broadPhase.candidatePairs, oracle.summary.broadPhase.candidatePairs);
+    }
   }
 });
 

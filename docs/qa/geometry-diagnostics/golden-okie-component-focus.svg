@@ -1,95 +1,98 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="10904.2" height="2797.7" viewBox="0 0 10904.2 2797.7" font-family="sans-serif" font-size="11">
-<rect width="100%" height="100%" fill="#f1f2f5"/>
-<rect x="24" y="366.2" width="2529.6" height="1001.3" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="28" y="377.2" font-size="9" fill="#5c6680">developer</text>
-<rect x="8350.6" y="366.2" width="2529.6" height="1001.3" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="8354.6" y="377.2" font-size="9" fill="#5c6680">browser-graphics</text>
-<rect x="24" y="1736.4" width="2529.6" height="1001.3" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="28" y="1747.4" font-size="9" fill="#5c6680">source-repository</text>
-<rect x="3923.8" y="50" width="2529.6" height="1317.5" fill="none" stroke="#9aa3b5" stroke-width="1"/>
-<rect x="4042.6" y="379.6" width="735.8" height="376.8" fill="none" stroke="#9aa3b5" stroke-width="1"/>
-<rect x="4820.7" y="397.4" width="735.8" height="341.3" fill="none" stroke="#9aa3b5" stroke-width="1"/>
-<rect x="5598.8" y="410.4" width="735.8" height="315.3" fill="none" stroke="#9aa3b5" stroke-width="1"/>
-<rect x="4042.6" y="829.5" width="735.8" height="315.3" fill="none" stroke="#9aa3b5" stroke-width="1"/>
-<rect x="4820.7" y="798.8" width="735.8" height="376.8" fill="none" stroke="#9aa3b5" stroke-width="1"/>
-<rect x="5760.8" y="487.1" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5764.8" y="498.1" font-size="9" fill="#5c6680">compiler-normalized</text>
-<rect x="5974.7" y="487.1" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5978.7" y="498.1" font-size="9" fill="#5c6680">compiler-protocol</text>
-<rect x="5760.8" y="602" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5764.8" y="613" font-size="9" fill="#5c6680">compiler-scene</text>
-<rect x="5974.7" y="602" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5978.7" y="613" font-size="9" fill="#5c6680">compiler-story</text>
-<rect x="4204.6" y="469.4" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4208.6" y="480.4" font-size="9" fill="#5c6680">model-normalized</text>
-<rect x="4418.5" y="451.6" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4422.5" y="462.6" font-size="9" fill="#5c6680">model-schema</text>
-<rect x="4204.6" y="619.7" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4208.6" y="630.7" font-size="9" fill="#5c6680">model-scoping</text>
-<rect x="4418.5" y="602" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4422.5" y="613" font-size="9" fill="#5c6680">model-validation</text>
-<rect x="4982.7" y="469.4" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4986.7" y="480.4" font-size="9" fill="#5c6680">renderer-engine</text>
-<rect x="5196.6" y="469.4" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5200.6" y="480.4" font-size="9" fill="#5c6680">renderer-gpu</text>
-<rect x="4982.7" y="619.7" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4986.7" y="630.7" font-size="9" fill="#5c6680">renderer-protocol</text>
-<rect x="5196.6" y="619.7" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5200.6" y="630.7" font-size="9" fill="#5c6680">renderer-wasm</text>
-<rect x="4204.6" y="906.2" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4208.6" y="917.2" font-size="9" fill="#5c6680">tooling-fixtures</text>
-<rect x="4418.5" y="906.2" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4422.5" y="917.2" font-size="9" fill="#5c6680">tooling-stress</text>
-<rect x="4204.6" y="1021.2" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4208.6" y="1032.2" font-size="9" fill="#5c6680">tooling-wasm</text>
-<rect x="4875.7" y="870.8" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4879.7" y="881.8" font-size="9" fill="#5c6680">web-navigation</text>
-<rect x="5089.6" y="888.5" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5093.6" y="899.5" font-size="9" fill="#5c6680">web-provenance</text>
-<rect x="5303.6" y="870.8" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5307.6" y="881.8" font-size="9" fill="#5c6680">web-renderer-host</text>
-<rect x="4875.7" y="1038.9" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="4879.7" y="1049.9" font-size="9" fill="#5c6680">web-shell</text>
-<rect x="5089.6" y="1021.2" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
-<text x="5093.6" y="1032.2" font-size="9" fill="#5c6680">web-stories</text>
-<polyline points="5958.7,536.6 5974.7,536.6" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5859.8,586 5859.8,602" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5958.7,536.6 5966.7,536.6 5966.7,651.5 5974.7,651.5" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5958.7,651.5 5966.7,651.5 5966.7,536.6 5974.7,536.6" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4402.5,518.8 4418.5,518.8" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4298.5,619.7 4298.5,576.3 4308.5,576.3 4308.5,568.3" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4308.5,619.7 4308.5,576.3 4298.5,576.3 4298.5,568.3" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4512.4,602 4512.4,594 4522.4,594 4522.4,586" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4522.4,602 4522.4,594 4512.4,594 4512.4,586" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5076.6,603.7 5076.6,611.7 5086.6,611.7 5086.6,619.7" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5086.6,603.7 5086.6,611.7 5076.6,611.7 5076.6,619.7" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5196.6,536.6 5180.6,536.6" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5196.6,664.2 5188.6,664.2 5188.6,541.6 5180.6,541.6" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5196.6,674.2 5188.6,674.2 5188.6,531.6 5180.6,531.6" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5295.6,619.7 5295.6,603.7" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4402.5,955.7 4410.5,955.7 4410.5,764.4 5752.8,764.4 5752.8,651.5 5760.8,651.5" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4969.7,1038.9 4969.7,1013.2 4979.7,1013.2 4979.7,1005.2" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="4979.7,1038.9 4979.7,1013.2 4969.7,1013.2 4969.7,1005.2" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5073.6,1088.4 5081.6,1088.4 5081.6,938 5089.6,938" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5073.6,1083.4 5081.6,1083.4 5081.6,995.5 5295.6,995.5 5295.6,943 5303.6,943" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5073.6,1093.4 5081.6,1093.4 5081.6,1013.2 5397.5,1013.2 5397.5,1005.2" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5073.6,1083.4 5081.6,1083.4 5081.6,1093.4 5089.6,1093.4" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5073.6,1093.4 5081.6,1093.4 5081.6,1083.4 5089.6,1083.4" fill="none" stroke="#445" stroke-width="1.5"/>
-<polyline points="5966.7,536.6 5966.7,651.5" fill="none" stroke="#f46036" stroke-width="4" stroke-opacity="0.75"/>
-<circle cx="5180.6" cy="536.6" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5180.6" cy="541.6" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5180.6" cy="531.6" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5180.6" cy="536.6" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1083.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1088.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1088.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1093.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1083.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1088.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1088.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<circle cx="5073.6" cy="1093.4" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
-<rect width="100%" height="22" fill="#f1f2f5"/>
-<text x="24" y="16">golden-okie · component @ focus (zoom 5.27)</text>
-<text x="24" y="2773.7" font-size="10" fill="#555">edge-crossing: 0   shared-corridor: 1   label-clearance: 0   container-border-run: 0</text>
-<text x="24" y="2787.7" font-size="10" fill="#555">endpoint-crowding: 6   short-route: 0   short-leg: 0</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1360.9" height="810.2" viewBox="0 0 1360.9 810.2" font-family="sans-serif" font-size="11">
+<defs><clipPath id="frame"><rect x="0" y="24" width="1360.9" height="750.2"/></clipPath></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<rect x="0" y="24" width="1360.9" height="750.2" fill="#f1f2f5"/>
+<g clip-path="url(#frame)">
+<rect x="-4819.7" y="-47.2" width="2529.6" height="1001.3" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-4815.7" y="-36.2" font-size="9" fill="#5c6680">developer</text>
+<rect x="3506.9" y="-47.2" width="2529.6" height="1001.3" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="3510.9" y="-36.2" font-size="9" fill="#5c6680">browser-graphics</text>
+<rect x="-4819.7" y="1323" width="2529.6" height="1001.3" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-4815.7" y="1334" font-size="9" fill="#5c6680">source-repository</text>
+<rect x="-919.9" y="-363.4" width="2529.6" height="1317.5" fill="none" stroke="#9aa3b5" stroke-width="1"/>
+<rect x="-801.2" y="-33.7" width="735.8" height="376.8" fill="none" stroke="#9aa3b5" stroke-width="1"/>
+<rect x="-23" y="-16" width="735.8" height="341.3" fill="none" stroke="#9aa3b5" stroke-width="1"/>
+<rect x="755.1" y="-3" width="735.8" height="315.3" fill="none" stroke="#9aa3b5" stroke-width="1"/>
+<rect x="-801.2" y="416.2" width="735.8" height="315.3" fill="none" stroke="#9aa3b5" stroke-width="1"/>
+<rect x="-23" y="385.4" width="735.8" height="376.8" fill="none" stroke="#9aa3b5" stroke-width="1"/>
+<rect x="917.1" y="73.7" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="921.1" y="84.7" font-size="9" fill="#5c6680">compiler-normalized</text>
+<rect x="1131" y="73.7" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="1135" y="84.7" font-size="9" fill="#5c6680">compiler-protocol</text>
+<rect x="917.1" y="188.7" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="921.1" y="199.7" font-size="9" fill="#5c6680">compiler-scene</text>
+<rect x="1131" y="188.7" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="1135" y="199.7" font-size="9" fill="#5c6680">compiler-story</text>
+<rect x="-639.2" y="56" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-635.2" y="67" font-size="9" fill="#5c6680">model-normalized</text>
+<rect x="-425.3" y="38.3" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-421.3" y="49.3" font-size="9" fill="#5c6680">model-schema</text>
+<rect x="-639.2" y="206.4" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-635.2" y="217.4" font-size="9" fill="#5c6680">model-scoping</text>
+<rect x="-425.3" y="188.7" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-421.3" y="199.7" font-size="9" fill="#5c6680">model-validation</text>
+<rect x="139" y="56" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="143" y="67" font-size="9" fill="#5c6680">renderer-engine</text>
+<rect x="352.9" y="56" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="356.9" y="67" font-size="9" fill="#5c6680">renderer-gpu</text>
+<rect x="139" y="206.4" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="143" y="217.4" font-size="9" fill="#5c6680">renderer-protocol</text>
+<rect x="352.9" y="206.4" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="356.9" y="217.4" font-size="9" fill="#5c6680">renderer-wasm</text>
+<rect x="-639.2" y="492.9" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-635.2" y="503.9" font-size="9" fill="#5c6680">tooling-fixtures</text>
+<rect x="-425.3" y="492.9" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-421.3" y="503.9" font-size="9" fill="#5c6680">tooling-stress</text>
+<rect x="-639.2" y="607.8" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="-635.2" y="618.8" font-size="9" fill="#5c6680">tooling-wasm</text>
+<rect x="32" y="457.4" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="36" y="468.4" font-size="9" fill="#5c6680">web-navigation</text>
+<rect x="245.9" y="475.2" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="249.9" y="486.2" font-size="9" fill="#5c6680">web-provenance</text>
+<rect x="459.8" y="457.4" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="463.8" y="468.4" font-size="9" fill="#5c6680">web-renderer-host</text>
+<rect x="32" y="625.5" width="197.9" height="99" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="36" y="636.5" font-size="9" fill="#5c6680">web-shell</text>
+<rect x="245.9" y="607.8" width="197.9" height="134.4" fill="#fff" stroke="#5c6680" stroke-width="1"/>
+<text x="249.9" y="618.8" font-size="9" fill="#5c6680">web-stories</text>
+<polyline points="1115,123.2 1131,123.2" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="1016,172.7 1016,188.7" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="1115,123.2 1123,123.2 1123,238.1 1131,238.1" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="1115,238.1 1123,238.1 1123,123.2 1131,123.2" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="-441.3,105.5 -425.3,105.5" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="-545.2,206.4 -545.2,163 -535.2,163 -535.2,155" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="-535.2,206.4 -535.2,163 -545.2,163 -545.2,155" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="-331.3,188.7 -331.3,180.7 -321.3,180.7 -321.3,172.7" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="-321.3,188.7 -321.3,180.7 -331.3,180.7 -331.3,172.7" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="232.9,190.4 232.9,198.4 242.9,198.4 242.9,206.4" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="242.9,190.4 242.9,198.4 232.9,198.4 232.9,206.4" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="352.9,123.2 336.9,123.2" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="352.9,250.9 344.9,250.9 344.9,128.2 336.9,128.2" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="352.9,260.9 344.9,260.9 344.9,118.2 336.9,118.2" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="451.8,206.4 451.8,190.4" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="-441.3,542.4 -433.3,542.4 -433.3,351.1 909.1,351.1 909.1,238.1 917.1,238.1" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="126,625.5 126,599.8 136,599.8 136,591.8" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="136,625.5 136,599.8 126,599.8 126,591.8" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="229.9,675 237.9,675 237.9,524.6 245.9,524.6" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="229.9,670 237.9,670 237.9,582.1 451.8,582.1 451.8,529.6 459.8,529.6" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="229.9,680 237.9,680 237.9,599.8 553.8,599.8 553.8,591.8" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="229.9,670 237.9,670 237.9,680 245.9,680" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="229.9,680 237.9,680 237.9,670 245.9,670" fill="none" stroke="#445" stroke-width="1.5"/>
+<polyline points="1123,123.2 1123,238.1" fill="none" stroke="#f46036" stroke-width="4" stroke-opacity="0.75"/>
+<circle cx="336.9" cy="123.2" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="336.9" cy="128.2" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="336.9" cy="118.2" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="336.9" cy="123.2" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="670" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="675" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="675" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="680" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="670" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="675" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="675" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+<circle cx="229.9" cy="680" r="4" fill="none" stroke="#e2a400" stroke-width="2"/>
+</g>
+<text x="8" y="16">golden-okie · component @ focus (zoom 5.27) · render scale 100% of screen px</text>
+<text x="8" y="788.2" font-size="10" fill="#555">edge-crossing: 0   shared-corridor: 1   label-clearance: 0   container-border-run: 0</text>
+<text x="8" y="802.2" font-size="10" fill="#555">endpoint-crowding: 6   short-route: 0   short-leg: 0</text>
 </svg>

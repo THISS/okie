@@ -361,7 +361,8 @@ function gridPairs(items: readonly Item[], wants: (left: Item, right: Item) => b
     const y0 = index(item.box.y);
     const x1 = Math.floor((item.box.x + item.box.width + pad) / cell);
     const y1 = Math.floor((item.box.y + item.box.height + pad) / cell);
-    if ((x1 - x0 + 1) * (y1 - y0 + 1) > GRID_MAX_CELLS_PER_ITEM) {
+    // Unsafe (huge) cell indices cannot be stepped; such items take the large-item path too.
+    if (![x0, y0, x1, y1].every(Number.isSafeInteger) || (x1 - x0 + 1) * (y1 - y0 + 1) > GRID_MAX_CELLS_PER_ITEM) {
       large.push(itemIndex);
       return;
     }
@@ -446,7 +447,9 @@ export function diagnoseGeometry(
   for (const label of labels) assertFinite(`label ${label.id}`, label.bounds.x, label.bounds.y, label.bounds.width, label.bounds.height);
 
   let magnitude = 1;
-  for (const node of nodes) magnitude = Math.max(magnitude, Math.abs(node.bounds.x), Math.abs(node.bounds.y));
+  for (const { bounds } of [...nodes, ...labels]) {
+    magnitude = Math.max(magnitude, Math.abs(bounds.x), Math.abs(bounds.y), Math.abs(bounds.x + bounds.width), Math.abs(bounds.y + bounds.height));
+  }
   for (const edge of edges) for (const point of edge.points) magnitude = Math.max(magnitude, Math.abs(point.x), Math.abs(point.y));
   const eps = 1e-9 * magnitude;
 
@@ -547,6 +550,40 @@ export function diagnoseGeometry(
     if (!previous || hit.distance < previous.distance) labelHits.set(key, hit);
   };
 
+  type Place = 'outside' | 'start' | 'interior' | 'end';
+  const placeAlong = (along: number, segment: Segment): Place => {
+    if (along < -eps || along > segment.length + eps) return 'outside';
+    if (along <= eps) return 'start';
+    return along >= segment.length - eps ? 'end' : 'interior';
+  };
+  const crossing = (s: Segment, t: Segment, point: GeometryPoint) => {
+    const exemption = bundled(s.edge, t.edge) ? 'bundle' as const
+      : nearSharedPort(s.edge, t.edge, [point]) ? 'shared-endpoint' as const : undefined;
+    const shortest = Math.min(s.length, t.length);
+    push('edge-crossing', px(shortest) >= tolerances.hiddenLengthPx, exemption, { edges: [s.edge, t.edge] }, {
+      points: [wp(point)],
+      segments: [ws(s.a, s.b), ws(t.a, t.b)],
+      screenLength: px(shortest),
+    });
+  };
+  /**
+   * A contact where at least one route has a vertex. Examined once per
+   * (edge, vertex-or-segment) × (edge, vertex-or-segment), whatever the two
+   * segments' parallelism; route ends are junctions, never crossings.
+   */
+  const contacts = new Set<string>();
+  const vertexContact = (s: Segment, ps: Place, t: Segment, pt: Place, point: GeometryPoint) => {
+    if (ps === 'outside' || pt === 'outside' || ps === 'end' || pt === 'end') return;
+    if ((ps === 'start' && s.first) || (pt === 'start' && t.first)) return;
+    const key = `${s.edge}:${ps === 'start' ? 'v' : 's'}${s.index}:${t.edge}:${pt === 'start' ? 'v' : 's'}${t.index}`;
+    if (contacts.has(key)) return;
+    contacts.add(key);
+    const behind = (segment: Segment, at: Place) => (at === 'start' ? edges[segment.edge]!.points[segment.index - 1]! : segment.a);
+    if (raysInterleave(point, behind(s, ps), s.b, behind(t, pt), t.b)) crossing(s, t, point);
+  };
+  const alongOf = (point: GeometryPoint, segment: Segment) =>
+    ((point.x - segment.a.x) * (segment.b.x - segment.a.x) + (point.y - segment.a.y) * (segment.b.y - segment.a.y)) / segment.length;
+
   const segmentPair = (first: Segment, second: Segment) => {
     if (first.length <= eps || second.length <= eps) return;
     const [s, t] = first.edge < second.edge ? [first, second] : [second, first];
@@ -556,30 +593,14 @@ export function diagnoseGeometry(
     if (Math.abs(denominator) > 1e-9 * s.length * t.length) {
       const u = cross(t.a.x - s.a.x, t.a.y - s.a.y, qx, qy) / denominator;
       const v = cross(t.a.x - s.a.x, t.a.y - s.a.y, rx, ry) / denominator;
-      const place = (param: number, segment: Segment) => {
-        const along = param * segment.length;
-        if (along < -eps || along > segment.length + eps) return 'outside';
-        if (along <= eps) return 'start';
-        return along >= segment.length - eps ? 'end' : 'interior';
-      };
-      const ps = place(u, s);
-      const pt = place(v, t);
-      // Each vertex contact is examined once, from the segment it starts; route ends are junctions.
-      if (ps === 'outside' || pt === 'outside' || ps === 'end' || pt === 'end') return;
-      if ((ps === 'start' && s.first) || (pt === 'start' && t.first)) return;
-      const point = ps === 'start' ? s.a : pt === 'start' ? t.a : { x: s.a.x + u * rx, y: s.a.y + u * ry };
-      const behind = (segment: Segment, at: string) => (at === 'start' ? edges[segment.edge]!.points[segment.index - 1]! : segment.a);
-      if ((ps !== 'interior' || pt !== 'interior') && !raysInterleave(point, behind(s, ps), s.b, behind(t, pt), t.b)) return;
-      const exemption = bundled(s.edge, t.edge) ? 'bundle' as const
-        : nearSharedPort(s.edge, t.edge, [point]) ? 'shared-endpoint' as const : undefined;
-      const shortest = Math.min(s.length, t.length);
-      push('edge-crossing', px(shortest) >= tolerances.hiddenLengthPx, exemption, { edges: [s.edge, t.edge] }, {
-        points: [wp(point)],
-        segments: [ws(s.a, s.b), ws(t.a, t.b)],
-        screenLength: px(shortest),
-      });
-      return;
+      const ps = placeAlong(u * s.length, s);
+      const pt = placeAlong(v * t.length, t);
+      if (ps === 'interior' && pt === 'interior') return crossing(s, t, { x: s.a.x + u * rx, y: s.a.y + u * ry });
+      return vertexContact(s, ps, t, pt, ps === 'start' ? s.a : pt === 'start' ? t.a : { x: s.a.x + u * rx, y: s.a.y + u * ry });
     }
+    // Parallel: a vertex of one route lying on the other is still a contact (e.g. opposite outgoing legs).
+    if (!s.first && pointSegmentDistance(s.a, t.a, t.b) <= eps) vertexContact(s, 'start', t, placeAlong(alongOf(s.a, t), t), s.a);
+    if (!t.first && pointSegmentDistance(t.a, s.a, s.b) <= eps) vertexContact(s, placeAlong(alongOf(t.a, s), s), t, 'start', t.a);
     const distance = Math.abs(cross(rx, ry, t.a.x - s.a.x, t.a.y - s.a.y)) / s.length;
     if (distance > world(tolerances.collinearDistancePx) + eps) return;
     const ux = rx / s.length; const uy = ry / s.length;
