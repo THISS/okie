@@ -2,6 +2,8 @@ export {
   clampInspectorWidth,
   defaultInspectorWidth,
   inspectorAcceptedSummary,
+  inspectorDiagramCount,
+  inspectorEntityLead,
   inspectorSecondaryCopy,
   inspectorCanShowSource,
   inspectorCyclomatic,
@@ -18,6 +20,7 @@ export {
   inspectorWidthStorageKey,
   presentInspectorNotationDiagnostics,
   INSPECTOR_NOTATION_ADVISORY_SAMPLE,
+  INSPECTOR_NO_EXPLANATION_COPY,
   type InspectorTab,
 } from './inspectorPanel';
 export { buildArchitectureBrief } from './architectureBrief';
