@@ -327,21 +327,65 @@ test("item 9: manifests and lockfiles come only from inputs captured before anal
   assert.deepEqual(result.declarations.map(row => [row.resolution, row.lockfilePath ?? "", row.reason ?? ""]), [["unresolved", "", "No committed Cargo.lock at or above this crate."]]);
 });
 
-test("item 9: quick and full scans give identical declarations for a crate with no committed Cargo.lock", { timeout: 300_000 }, () => {
-  const repo = tree({
-    // `itoa` is a registry crate: when cargo can reach the index it writes a Cargo.lock
-    // resolving it into the acquired tree during the full scan. Offline, both modes agree trivially.
-    "Cargo.toml": '[package]\nname = "nolock"\nversion = "0.1.0"\nedition = "2021"\n\n[dependencies]\nhelper = { path = "helper" }\nitoa = "1"\n',
-    "src/lib.rs": "use helper::value;\npub fn f() -> u32 { let _ = itoa::Buffer::new(); value() }\n",
-    "helper/Cargo.toml": '[package]\nname = "helper"\nversion = "0.1.0"\nedition = "2021"\n',
-    "helper/src/lib.rs": "pub fn value() -> u32 { 1 }\n",
-  }, true);
+const NOLOCK_CRATE: Record<string, string> = {
+  "Cargo.toml": '[package]\nname = "nolock"\nversion = "0.1.0"\nedition = "2021"\n\n[dependencies]\nhelper = { path = "helper" }\nitoa = "1"\n',
+  "src/lib.rs": "use helper::value;\npub fn f() -> u32 { let _ = itoa::Buffer::new(); value() }\n",
+  "helper/Cargo.toml": '[package]\nname = "helper"\nversion = "0.1.0"\nedition = "2021"\n',
+  "helper/src/lib.rs": "pub fn value() -> u32 { 1 }\n",
+};
+
+test("item 9: a Cargo.lock written by the analyzer mid-scan is never cited; quick and full declarations match (hermetic)", { skip: process.platform === "win32" ? "fake analyzer is a POSIX shell script" : false }, () => {
+  // Hermetic stand-in for rust-analyzer: the full scan spawns `rust-analyzer scip <acquired root> …`
+  // from PATH. This fake writes a Cargo.lock into the acquired tree (exactly what cargo does
+  // during a real index) and then fails, so the lockfile appears only AFTER the scan began.
+  const bin = tree({
+    "rust-analyzer": [
+      "#!/bin/sh",
+      'if [ "$1" = "scip" ]; then',
+      "  cat > \"$2/Cargo.lock\" <<'LOCK'",
+      "version = 4", "", "[[package]]", 'name = "helper"', 'version = "0.1.0"', "",
+      "[[package]]", 'name = "itoa"', 'version = "1.0.11"', 'source = "registry+https://github.com/rust-lang/crates.io-index"', "",
+      "[[package]]", 'name = "nolock"', 'version = "0.1.0"', 'dependencies = [', ' "helper",', ' "itoa",', "]",
+      "LOCK",
+      "  touch \"$OKIE_FAKE_RA_MARKER\"",
+      "fi",
+      "echo 'fake rust-analyzer: no index' >&2",
+      "exit 1",
+    ].join("\n") + "\n",
+  });
+  execFileSync("chmod", ["+x", join(bin.root, "rust-analyzer")]);
+  const marker = join(bin.root, "ran");
+  const repo = tree(NOLOCK_CRATE, true);
+  const saved = { PATH: process.env.PATH, OKIE_FAKE_RA_MARKER: process.env.OKIE_FAKE_RA_MARKER };
+  try {
+    process.env.PATH = `${bin.root}:${process.env.PATH ?? ""}`;
+    process.env.OKIE_FAKE_RA_MARKER = marker;
+    const quick = scanRepository(repo.root, { analysisMode: "quick" }).dependencies;
+    const full = scanRepository(repo.root, { analysisMode: "full" }).dependencies;
+    assert.doesNotThrow(() => readFileSync(marker), "the fake analyzer ran and wrote Cargo.lock into the acquired tree");
+    const itoa = full.declarations.find(row => row.dependency === "itoa")!;
+    assert.deepEqual([itoa.resolution, itoa.lockfilePath, itoa.resolvedVersions, itoa.reason],
+      ["unresolved", undefined, [], "No committed Cargo.lock at or above this crate."], "declared facts reflect the committed tree");
+    assert.ok(!full.declarations.some(row => row.lockfilePath !== undefined), "no analyzer-written lockfile is cited");
+    assert.deepEqual(full.declarations, quick.declarations);
+  } finally {
+    process.env.PATH = saved.PATH;
+    if (saved.OKIE_FAKE_RA_MARKER === undefined) delete process.env.OKIE_FAKE_RA_MARKER; else process.env.OKIE_FAKE_RA_MARKER = saved.OKIE_FAKE_RA_MARKER;
+    repo.cleanup();
+    bin.cleanup();
+  }
+});
+
+test("item 9 (network): real rust-analyzer + cargo resolution gives identical quick and full declarations", {
+  timeout: 300_000,
+  skip: process.env.OKIE_NETWORK_TESTS === "1" ? false : "requires crates.io (set OKIE_NETWORK_TESTS=1)",
+}, () => {
+  const repo = tree(NOLOCK_CRATE, true);
   try {
     const quick = scanRepository(repo.root, { analysisMode: "quick" }).dependencies;
     const full = scanRepository(repo.root, { analysisMode: "full" }).dependencies;
     assert.deepEqual(full.declarations, quick.declarations);
-    assert.deepEqual(full.declarations.find(row => row.dependency === "itoa")!.resolution, "unresolved");
-    assert.ok(!full.declarations.some(row => row.lockfilePath === "Cargo.lock"), "an analyzer-written Cargo.lock is never cited");
+    assert.equal(full.declarations.find(row => row.dependency === "itoa")!.resolution, "unresolved");
   } finally { repo.cleanup(); }
 });
 
