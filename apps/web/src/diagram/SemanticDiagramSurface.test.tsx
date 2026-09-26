@@ -139,6 +139,18 @@ describe('semantic diagram C4 notation status (CLA-130)', () => {
     expect(ready).toContain('data-notation-advisories="0"');
   });
 
+  it('shows neutral no-explanation copy for a diagram element without a summary', () => {
+    const entity = { ...scene.entities.find(candidate => candidate.id === relation.from)!, responsibility: 'No summary supplied.' };
+    const blankScene = { ...scene, entities: scene.entities.map(candidate => candidate.id === entity.id ? entity : candidate) };
+    const open: DerivedDiagramSurface = { ...surface, session: { selectedElementId: entity.id, inspector: { open: true, tab: 'details', subjectId: entity.id } } };
+    const markup = renderToStaticMarkup(<SemanticDiagramSurface scene={blankScene} surface={open} onSessionChange={() => undefined}/>);
+    expect(markup).toContain('data-diagram-element-no-explanation');
+    expect(markup).toContain('No explanation captured yet.');
+    expect(markup).not.toContain('No summary supplied.');
+    const described = renderToStaticMarkup(<SemanticDiagramSurface scene={scene} surface={{ ...open, session: { selectedElementId: relation.from, inspector: { open: true, tab: 'details', subjectId: relation.from } } }} onSessionChange={() => undefined}/>);
+    expect(described).not.toContain('No explanation captured yet.');
+  });
+
   it('keeps the flow step context for users', () => {
     expect(semanticDiagramStatus({ flowStepCount: 4, notationAdvisoryCount: 9 })).toEqual({ context: '4 ordered steps · semantic and evidence links retained' });
     expect(semanticDiagramStatus({ devMode: true, flowStepCount: 1, notationAdvisoryCount: 1 })).toEqual({

@@ -487,7 +487,9 @@ export function presentInspectorNotationDiagnostics(
  *
  * CLA-130: C4 notation status (“C4 notation ready”, advisory counts) is
  * developer diagnostics. User Details shows the block only for real notation
- * errors; ready and advisory-only states are hidden outside Dev Mode.
+ * errors, as a count headline without the raw rows (their messages embed
+ * entity / relation / view ids); ready and advisory-only states are hidden
+ * outside Dev Mode.
  */
 export function inspectorNotationDetailsView(
   presented: InspectorNotationPresentation,
@@ -497,7 +499,7 @@ export function inspectorNotationDetailsView(
   const errorCount = presented.errors.length;
   const rows = diagnostics
     ? [...presented.errors, ...presented.sample]
-    : [...presented.errors];
+    : [];
   const headline = presented.ready
     ? 'C4 notation ready'
     : diagnostics || errorCount === 0

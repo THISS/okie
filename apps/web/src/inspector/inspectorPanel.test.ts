@@ -844,7 +844,7 @@ describe('inspector C4 notation user Details (CLA-99)', () => {
     expect(user.rows.some(row => row.message.includes('container:') || row.message.includes('component:'))).toBe(false);
   });
 
-  it('still lists a real notation error without the completeness dump', () => {
+  it('still surfaces a real notation error without the completeness dump or raw ids', () => {
     const noise = Array.from({ length: 100 }, (_, index) => advisory(
       'element.description.missing',
       `entities.container:pkg-${index}.responsibility`,
@@ -861,12 +861,16 @@ describe('inspector C4 notation user Details (CLA-99)', () => {
     const user = inspectorNotationDetailsView(presented, 'user');
 
     expect(user.visible).toBe(true);
-    expect(user.rows).toHaveLength(1);
-    expect(user.rows[0]?.tone).toBe('error');
-    expect(user.rows[0]?.code).toBe('element.type.unsupported');
+    expect(user.errorCount).toBe(1);
     expect(user.hiddenCount).toBe(0);
     expect(user.headline).toBe('1 C4 error');
-    expect(user.rows.some(row => row.subjectId.startsWith('container:'))).toBe(false);
+    // CLA-130: raw rows embed entity ids ("widget:x"); they stay in Dev Mode.
+    expect(user.rows).toEqual([]);
+
+    const diagnostics = inspectorNotationDetailsView(presented, 'diagnostics');
+    expect(diagnostics.rows[0]?.tone).toBe('error');
+    expect(diagnostics.rows[0]?.code).toBe('element.type.unsupported');
+    expect(diagnostics.rows[0]?.message).toContain('widget:x');
   });
 
   it('keeps the CLA-59 sample and +N more notes in diagnostics mode', () => {
@@ -919,11 +923,12 @@ describe('inspector C4 notation is developer diagnostics (CLA-130)', () => {
     expect(inspectorNotationDetailsView(presentInspectorNotationDiagnostics(noise), 'user').visible).toBe(false);
   });
 
-  it('keeps genuine notation errors visible to users (CLA-99)', () => {
+  it('keeps genuine notation errors visible to users as a headline without raw rows (CLA-99, CLA-130)', () => {
     const user = inspectorNotationDetailsView(presentInspectorNotationDiagnostics([...noise, error]), 'user');
     expect(user.visible).toBe(true);
     expect(user.headline).toBe('1 C4 error');
-    expect(user.rows.map(row => row.tone)).toEqual(['error']);
+    expect(user.errorCount).toBe(1);
+    expect(user.rows).toEqual([]);
   });
 
   it('keeps ready and advisory status in diagnostics mode', () => {
@@ -936,12 +941,10 @@ describe('inspector C4 notation is developer diagnostics (CLA-130)', () => {
     expect(advisories.rows).toHaveLength(INSPECTOR_NOTATION_ADVISORY_SAMPLE);
   });
 
-  it('counts only openable diagrams, never notation status', () => {
+  it('counts openable diagrams only (refactor guard; notation status is not an input)', () => {
     expect(inspectorDiagramCount({ hasCodeStructure: false, hasDependency: false, namedDiagramCount: 0 })).toBe(0);
+    expect(inspectorDiagramCount({ hasCodeStructure: false, hasDependency: true, namedDiagramCount: 0 })).toBe(1);
     expect(inspectorDiagramCount({ hasCodeStructure: true, hasDependency: true, namedDiagramCount: 3 })).toBe(5);
-    // The helper takes no notation input: advisory / ready blocks cannot inflate the count.
-    const withNotation = { hasCodeStructure: false, hasDependency: true, namedDiagramCount: 0, notationAdvisoryCount: 4337, notationReady: true };
-    expect(inspectorDiagramCount(withNotation)).toBe(1);
   });
 });
 

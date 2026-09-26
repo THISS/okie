@@ -172,6 +172,8 @@ Okie remains notation-independent while following the [C4 notation guidance](htt
 
 Validation reports missing responsibilities, technology, relationship labels, and container protocols. It does not silently make an incomplete diagram look authoritative.
 
+Validation output (advisory counts, raw element and relationship ids, "C4 notation ready") is a developer-diagnostics surface shown only in Dev Mode (CLA-130). Users see neutral cues instead: "No explanation captured yet." for a missing responsibility, "Technology not specified" for missing technology, and a count headline without raw ids when the active diagram has a genuine notation error. Missing prose never reads as broken or disconnected code.
+
 ### Diagram families
 
 1. **Dynamic flow.** Compile current story steps and traced relations into ordered interactions. Start with numbered collaboration edges over a scoped spatial layout, then offer sequence-diagram presentation over the same interaction data. Add sync/async, response, branch, and loop metadata only when the source model can support them. This follows the selective, story-scoped use described by [C4 dynamic diagrams](https://c4model.com/diagrams/dynamic).

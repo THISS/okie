@@ -5739,6 +5739,7 @@ export function App() {
                   {detailListVisible('named-diagrams', namedDiagramStories).map(story => <div className="diagram-action-row" key={story.id}><button data-diagram-action="open-flow" onClick={() => openDerivedDiagram('flow', story)}><span><strong>{story.title}</strong><small>Captured named flow</small></span></button><DiagramActionHelp label={`About ${story.title}`}>Shows the evidence-backed steps of this published story in a separate diagram tab.</DiagramActionHelp></div>)}
                   {namedDiagramStories.length > 5 && <button aria-expanded={expandedDetailLists.has('named-diagrams')} onClick={() => toggleDetailList('named-diagrams')}>{expandedDetailLists.has('named-diagrams') ? 'Show fewer' : `Show all ${namedDiagramStories.length} named diagrams`}</button>}
                   {hasCodeStructureDiagram ? <div className="diagram-action-row"><button data-diagram-action="open-code" onClick={() => openDerivedDiagram('code')} type="button"><span><strong>Open code structure</strong><small>Source-backed child structure for this component</small></span><ArrowIcon size={15}/></button><DiagramActionHelp label="What does Open code structure show?">Opens a separate tab for this component's captured code-level children. It does not infer call ordering.</DiagramActionHelp></div> : null}
+                  {selectedDiagramCount === 0 && !notationDetails.visible ? <p className="empty-inspector-section" data-inspector-diagrams-empty="">No diagrams for this element yet.</p> : null}
                 </div>
               </section>
 

@@ -4,6 +4,7 @@ import { MermaidDiagram, MermaidSourceDisclosure } from './MermaidDiagram';
 import type { DerivedDiagramSurface, DiagramSurfaceSession } from './diagramWorkspace';
 import type { AtlasScene, SceneEntity } from '../renderer/types';
 import type { DynamicFlowArtifact } from '@okie/scene-compiler';
+import { INSPECTOR_NO_EXPLANATION_COPY, inspectorAcceptedSummary } from '../inspector/inspectorPanel';
 
 export type SemanticDiagramInteraction = {
   id: string;
@@ -173,7 +174,7 @@ export function SemanticDiagramSurface({
       {surface.session.inspector.open && selected && <aside aria-label={`Diagram element details for ${selected.name}`} className="semantic-diagram-inspector">
         <header><span>Diagram element</span><button aria-label="Close diagram element details" onClick={() => onSessionChange({ ...surface.session, inspector: { ...surface.session.inspector, open: false } })}><CloseIcon size={15}/></button></header>
         <h2>{selected.name}</h2>
-        <p>{selected.responsibility}</p>
+        {inspectorAcceptedSummary(selected) ? <p>{inspectorAcceptedSummary(selected)}</p> : <p className="no-explanation" data-diagram-element-no-explanation="">{INSPECTOR_NO_EXPLANATION_COPY}</p>}
         <dl><div><dt>Kind</dt><dd>{selected.kindLabel ?? selected.kind}</dd></div>{selected.technology && <div><dt>Technology</dt><dd>{selected.technology}</dd></div>}</dl>
         {selected.sourceRefs?.[0] && <div className="semantic-diagram-source"><FileIcon size={15}/><span><strong>{selected.sourceRefs[0].path.split('/').at(-1)}</strong><small>{selected.sourceRefs[0].path}</small></span></div>}
       </aside>}

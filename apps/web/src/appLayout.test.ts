@@ -337,6 +337,7 @@ describe('compact inspector presentation', () => {
     expect(app).not.toContain('notationDiagnostics.map');
     expect(app).toContain('devMode={devMode} notationAdvisoryCount={notationDiagnostics.length}');
     expect(app).toContain('<h3>Diagrams</h3><span>{selectedDiagramCount}</span>');
+    expect(app).toContain('selectedDiagramCount === 0 && !notationDetails.visible ? <p className="empty-inspector-section" data-inspector-diagrams-empty="">No diagrams for this element yet.</p>');
     expect(app).not.toMatch(/enrichmentHonesty\.note/);
   });
 
