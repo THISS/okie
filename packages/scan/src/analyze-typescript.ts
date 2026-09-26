@@ -177,6 +177,13 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
       if (packages.has(owner) || (typed && packages.has(typed))) return undefined;
       return typed ? { package: typed, via: owner } : { package: owner };
     };
+    // `<div className=…>` resolves into React's JSX typings; that is markup, not API use.
+    const jsxTypingOnly = (node: ts.Node): boolean => {
+      const parent = node.parent;
+      if (ts.isJsxAttribute(parent) && parent.name === node) return true;
+      return (ts.isJsxOpeningElement(parent) || ts.isJsxSelfClosingElement(parent) || ts.isJsxClosingElement(parent))
+        && parent.tagName === node && ts.isIdentifier(node) && /^[a-z]/.test(node.text);
+    };
     const displayName = (symbol: ts.Symbol): string => {
       const qualified = checker.getFullyQualifiedName(symbol).replace(/^"[^"]*"\./, "");
       return qualified && !/["\\/]/.test(qualified) ? qualified : symbol.getName();
@@ -232,7 +239,7 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
               const kind = definiteCall ? "calls" : "uses";
               const occurrence = { ...location(node), symbol: target.symbol, kind } as LanguageAnalysis["references"][number];
               references.set(`${occurrence.path}:${occurrence.startOffset}:${target.symbol}:${kind}`, occurrence);
-            } else if (symbol) {
+            } else if (symbol && !jsxTypingOnly(node)) {
               const external = externalPackage(symbol);
               if (external) {
                 // A call into the dependency's API surface; overloads/unions stay one dependency.

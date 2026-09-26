@@ -376,7 +376,7 @@ export function parseCargoLock(text: string): CargoLockPackage[] {
 
 class CargoLockIndex {
   private readonly byName = new Map<string, CargoLockPackage[]>();
-  private readonly closures = new Map<string, Set<string>>();
+  private readonly closures = new Map<string, Map<string, number>>();
   constructor(readonly path: string, packages: readonly CargoLockPackage[]) {
     for (const item of packages) {
       const list = this.byName.get(item.name) ?? [];
@@ -399,25 +399,28 @@ class CargoLockIndex {
     const candidates = this.byName.get(name!) ?? [];
     return version ? candidates.find(candidate => candidate.version === version) : candidates.length === 1 ? candidates[0] : undefined;
   }
-  /** `name@version` of every package reachable from (name, version), itself included. */
-  closure(name: string, version: string): Set<string> {
+  /** Shortest lock-graph distance from (name, version) to every reachable `name@version` (itself at 0). */
+  closure(name: string, version: string): Map<string, number> {
     const key = `${name}@${version}`;
     const cached = this.closures.get(key);
     if (cached) return cached;
-    const seen = new Set<string>();
-    const queue = (this.byName.get(name) ?? []).filter(item => item.version === version);
-    while (queue.length) {
-      const item = queue.pop()!;
-      const id = `${item.name}@${item.version}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      for (const edge of item.dependencies) {
-        const next = this.resolveEdge(edge);
-        if (next) queue.push(next);
+    const distance = new Map<string, number>();
+    let frontier = (this.byName.get(name) ?? []).filter(item => item.version === version);
+    for (let depth = 0; frontier.length; depth += 1) {
+      const next: CargoLockPackage[] = [];
+      for (const item of frontier) {
+        const id = `${item.name}@${item.version}`;
+        if (distance.has(id)) continue;
+        distance.set(id, depth);
+        for (const edge of item.dependencies) {
+          const resolved = this.resolveEdge(edge);
+          if (resolved) next.push(resolved);
+        }
       }
+      frontier = next;
     }
-    this.closures.set(key, seen);
-    return seen;
+    this.closures.set(key, distance);
+    return distance;
   }
 }
 
@@ -761,12 +764,6 @@ export function buildDependencyFacts(input: DependencyFactsInput): DependencyFac
   const droppedImports = dedupedImports.slice(limits.maxImports);
 
   // Symbol references --------------------------------------------------------------
-  const importedInFile = new Map<string, Set<string>>();
-  for (const row of dedupedImports) {
-    const set = importedInFile.get(row.path) ?? new Set();
-    set.add(row.dependency);
-    importedInFile.set(row.path, set);
-  }
   let unattributedTransitive = 0;
   let unownedReferences = 0;
   const references: DependencySymbolReference[] = [];
@@ -790,15 +787,24 @@ export function buildDependencyFacts(input: DependencyFactsInput): DependencyFac
     const declared = (declarationsByPackage.get(manifestPath) ?? []).filter(row => row.ecosystem === "cargo" && !row.local);
     const direct = declared.find(row => ident(row.dependency) === ident(external.package));
     if (direct) return { ...base, dependency: direct.dependency, ...(external.version ? { resolvedVersion: external.version } : {}) };
-    // A re-exported item (`wgpu::Color` defined in wgpu-types): attribute to the unique
-    // declared crate whose Cargo.lock closure contains the defining crate at that version.
+    // A re-exported or macro-provided item (`wgpu::Color` defined in wgpu-types, a derive
+    // from `serde_derive`): attribute to the declared crate NEAREST to the defining crate in
+    // the Cargo.lock graph; a tie is broken only by the facade naming convention
+    // (`wgpu` → `wgpu-types`, `serde` → `serde_core`). Anything else stays unattributed.
     const lock = cargoLockFor(dirOf(manifestPath));
-    let candidates = lock && external.version ? [...new Set(declared.filter(row => row.resolvedVersions.some(version =>
-      lock.closure(row.dependency, version).has(`${external.package}@${external.version}`))).map(row => row.dependency))].sort(compare) : [];
+    const target = `${external.package}@${external.version}`;
+    const reach = new Map<string, number>();
+    if (lock && external.version) {
+      for (const row of declared) for (const version of row.resolvedVersions) {
+        const depth = lock.closure(row.dependency, version).get(target);
+        if (depth !== undefined) reach.set(row.dependency, Math.min(depth, reach.get(row.dependency) ?? depth));
+      }
+    }
+    const nearestDepth = Math.min(...reach.values());
+    let candidates = [...reach].filter(([, depth]) => depth === nearestDepth).map(([name]) => name).sort(compare);
     if (candidates.length > 1) {
-      const imported = importedInFile.get(external.path);
-      const narrowed = candidates.filter(name => imported?.has(name));
-      if (narrowed.length) candidates = narrowed;
+      const facade = candidates.filter(name => ident(external.package).startsWith(`${ident(name)}_`));
+      if (facade.length === 1) candidates = facade;
     }
     if (candidates.length === 1) {
       const resolved = declared.find(row => row.dependency === candidates[0] && row.resolution === "resolved")?.resolvedVersions[0];
@@ -858,7 +864,7 @@ export function buildDependencyFacts(input: DependencyFactsInput): DependencyFac
       limitations.npm.symbolReferences.add("Symbol references unavailable for TypeScript/JavaScript: no files were semantically indexed.");
     } else {
       limitations.npm.symbolReferences.add("Resolved only where installed dependency type declarations were available to the compiler; packages without installed or bundled types yield imports but no references.");
-      limitations.npm.symbolReferences.add("Attributed to the package whose declaration file defines the symbol (`@types/x` → x); a type re-exported from another package is attributed to that package. Node built-ins (@types/node) and compiler lib types are excluded.");
+      limitations.npm.symbolReferences.add("Attributed to the package whose declaration file defines the symbol (`@types/x` → x); a type re-exported from another package is attributed to that package. Node built-ins (@types/node), compiler lib types, and JSX intrinsic tag/attribute names are excluded.");
       const tsLimits = new Set(tsCoverage.flatMap(row => row.limitations));
       for (const limit of tsLimits) if (/dependency (types|context)/i.test(limit)) limitations.npm.symbolReferences.add(limit);
       const unresolvedModules = [...tsLimits].filter(limit => /TS(2307|7016):/.test(limit)).length;
@@ -871,7 +877,7 @@ export function buildDependencyFacts(input: DependencyFactsInput): DependencyFac
       limitations.cargo.symbolReferences.add(`Symbol references unavailable for Rust: rust-analyzer ${rustCoverage.length ? `unavailable (${reasons.slice(0, 2).join("; ").slice(0, 300) || "no files indexed"})` : "did not index any file"}.`);
     } else {
       limitations.cargo.symbolReferences.add("rust-analyzer SCIP with Cargo's default features and host target (plus inferred wasm32 where source is cfg-gated); std/core/alloc are excluded.");
-      limitations.cargo.symbolReferences.add("Items defined in a transitive crate (e.g. re-exports) are attributed to the unique declared dependency whose Cargo.lock closure contains it (`via` names the defining crate); otherwise to the defining crate itself.");
+      limitations.cargo.symbolReferences.add("Items defined in a transitive crate (re-exports, derive macros) are attributed to the declared dependency nearest to it in the Cargo.lock graph, ties broken only by facade naming (`wgpu` → `wgpu-types`); `via` names the defining crate. Otherwise the defining crate itself is named.");
       for (const row of rustCoverage) for (const limit of row.limitations) if (/target|feature|Not indexed/i.test(limit)) limitations.cargo.symbolReferences.add(limit.slice(0, 500));
       if (unattributedTransitive) limitations.cargo.symbolReferences.add(`${unattributedTransitive} reference(s) to transitive crates could not be attributed to one declared dependency and name the defining crate.`);
     }

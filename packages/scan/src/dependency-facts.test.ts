@@ -76,20 +76,23 @@ const cargoRepo: Record<string, string> = {
   "Cargo.toml": '[workspace]\nmembers = ["crates/*"]\n\n[workspace.dependencies]\nthiserror = "2.0"\n',
   "Cargo.lock": [
     "version = 4", "",
-    "[[package]]", 'name = "gpu"', 'version = "0.1.0"', "dependencies = [", ' "core-lib",', ' "rand 0.8.5",', ' "serde_json",', ' "thiserror",', ' "wgpu",', "]", "",
+    "[[package]]", 'name = "gpu"', 'version = "0.1.0"', "dependencies = [", ' "core-lib",', ' "rand 0.8.5",', ' "serde",', ' "serde_json",', ' "thiserror",', ' "wgpu",', "]", "",
+    "[[package]]", 'name = "serde"', 'version = "1.0.228"', 'source = "registry+x"', 'dependencies = ["serde_core"]', "",
+    "[[package]]", 'name = "serde_core"', 'version = "1.0.228"', 'source = "registry+x"', "",
+    "[[package]]", 'name = "thiserror-impl"', 'version = "2.0.18"', 'source = "registry+x"', "",
     "[[package]]", 'name = "core-lib"', 'version = "0.1.0"', "",
     "[[package]]", 'name = "rand"', 'version = "0.7.3"', 'source = "registry+x"', "",
     "[[package]]", 'name = "rand"', 'version = "0.8.5"', 'source = "registry+x"', "",
-    "[[package]]", 'name = "serde_json"', 'version = "1.0.1"', 'source = "registry+x"', "",
-    "[[package]]", 'name = "thiserror"', 'version = "2.0.18"', 'source = "registry+x"', "",
-    "[[package]]", 'name = "wgpu"', 'version = "25.0.2"', 'source = "registry+x"', 'dependencies = ["wgpu-types"]', "",
+    "[[package]]", 'name = "serde_json"', 'version = "1.0.1"', 'source = "registry+x"', 'dependencies = ["serde_core"]', "",
+    "[[package]]", 'name = "thiserror"', 'version = "2.0.18"', 'source = "registry+x"', 'dependencies = ["thiserror-impl"]', "",
+    "[[package]]", 'name = "wgpu"', 'version = "25.0.2"', 'source = "registry+x"', 'dependencies = ["wgpu-types", "thiserror"]', "",
     "[[package]]", 'name = "wgpu-types"', 'version = "25.0.0"', 'source = "registry+x"', "",
     "[[package]]", 'name = "ghost"', 'version = "1.0.0"', 'source = "registry+x"', "",
     "[[package]]", 'name = "ghost"', 'version = "2.0.0"', 'source = "registry+x"',
   ].join("\n"),
   "crates/gpu/Cargo.toml": [
     "[package]", 'name = "gpu"', "", "[dependencies]", 'core-lib = { path = "../core" }', 'json = { package = "serde_json", version = "1.0" }',
-    "thiserror.workspace = true", 'rand = "0.8"', 'wgpu = "25"', 'ghost = "1"',
+    "thiserror.workspace = true", 'rand = "0.8"', 'wgpu = "25"', 'ghost = "1"', 'serde = "1"',
   ].join("\n"),
   "crates/gpu/src/lib.rs": "use json::Value;\nuse ::wgpu::{Device, util::DeviceExt};\nuse crate::inner;\nuse std::fmt;\nextern crate rand as random;\nfn f() { let _ = thiserror::Error; }\n",
   "crates/core/Cargo.toml": '[package]\nname = "core-lib"\n',
@@ -200,6 +203,8 @@ test("Rust SCIP symbols: classification, display and attribution of re-exports t
       { ...at(2), package: "wgpu-types", version: "25.0.0", symbol: "wgpu_types::Color", kind: "uses" },
       { ...at(1), package: "serde_json", version: "1.0.1", symbol: "serde_json::Value", kind: "uses" },
       { ...at(6), package: "orphan-crate", version: "9.9.9", symbol: "orphan_crate::X", kind: "uses" },
+      { ...at(7), package: "thiserror-impl", version: "2.0.18", symbol: "thiserror_impl::Error", kind: "uses" },
+      { ...at(8), package: "serde_core", version: "1.0.228", symbol: "serde_core::Serialize", kind: "uses" },
     ]),
   });
   assert.deepEqual(result.symbolReferences.map(row => [row.startLine, row.dependency, row.via ?? "", row.resolvedVersion ?? "", row.kind]), [
@@ -207,6 +212,8 @@ test("Rust SCIP symbols: classification, display and attribution of re-exports t
     [2, "wgpu", "", "25.0.2", "calls"],
     [2, "wgpu", "wgpu-types", "25.0.2", "uses"],
     [6, "orphan-crate", "", "9.9.9", "uses"],
+    [7, "thiserror", "thiserror-impl", "2.0.18", "uses"], // depth 1 via thiserror beats depth 2 via wgpu
+    [8, "serde", "serde_core", "1.0.228", "uses"], // serde and serde_json tie at depth 1; facade naming picks serde
   ]);
   const rust = result.coverage.find(row => row.ecosystem === "cargo" && row.evidence === "symbolReferences")!;
   assert.equal(rust.status, "partial");
