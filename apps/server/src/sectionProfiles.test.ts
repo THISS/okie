@@ -54,8 +54,21 @@ test("bounded canonical evidence rejects stale/range/text mismatches; labels and
   assert.equal(buildSectionState(snapshot(), "component:a", "b".repeat(40)).evidence.length, 0);
   const many = snapshot();
   many.entities[1]!.sourceExcerpts = Array.from({ length: 7 }, (_, i) => ({ ...snapshot().entities[1]!.sourceExcerpts![0]!, symbol: `s${i}` }));
+  many.entities[1]!.sourceRefs = many.entities[1]!.sourceExcerpts.map(excerpt => ({ path: excerpt.path, startLine: excerpt.startLine, endLine: excerpt.endLine, symbol: excerpt.symbol!, commitSha: commit }));
   assert.equal(buildSectionState(many, "component:a", commit).evidence.length, 6);
   assert.equal(buildSectionState(many, "component:a", commit).coverage.omittedExcerpts, 1);
+});
+test("profile evidence accepts a contained capture with one original ref and rejects false bindings", () => {
+  const value = snapshot();
+  const entity = value.entities[1]!;
+  const excerpt = entity.sourceExcerpts![0]!;
+  Object.assign(excerpt, { sourceStartLine: 1, sourceEndLine: 83, symbol: "body" });
+  Object.assign(entity.sourceRefs[0]!, { startLine: 1, endLine: 83, symbol: "body" });
+  assert.equal(buildSectionState(value, "component:a", commit).evidence.length, 1);
+  for (const mutation of [{ sourceEndLine: 82 }, { sourceStartLine: undefined }, { symbol: "other" }]) {
+    Object.assign(excerpt, { sourceStartLine: 1, sourceEndLine: 83, symbol: "body" }, mutation);
+    assert.equal(buildSectionState(value, "component:a", commit).coverage.invalidExcerpts, 1);
+  }
 });
 test("immutable pinned read, provider-free reuse, child retry stales ancestors only in new draft", async t => {
   const ctx = setup(t);
@@ -116,7 +129,7 @@ test("omitted evidence changes invalidate state; deterministic sampling reaches 
   const value = snapshot();
   const example = value.entities[1]!;
   example.sourceExcerpts = Array.from({ length: 8 }, (_, index) => ({ ...example.sourceExcerpts![0]!, symbol: `s${index}`, startLine: index + 1, endLine: index + 1 }));
-  example.sourceRefs = example.sourceExcerpts.map(ref => ({ path: ref.path, startLine: ref.startLine, endLine: ref.endLine, commitSha: commit }));
+  example.sourceRefs = example.sourceExcerpts.map(ref => ({ path: ref.path, symbol: ref.symbol!, startLine: ref.startLine, endLine: ref.endLine, commitSha: commit }));
   const before = buildSectionState(value, "container:parent", commit);
   assert.equal(before.evidence.length, 6);
   assert.ok(before.evidence.some(ref => ref.startLine === 8));

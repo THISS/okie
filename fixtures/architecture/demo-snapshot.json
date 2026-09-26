@@ -1408,8 +1408,8 @@
           "path": "packages/architecture/src/validation.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "validateSnapshot",
-          "startLine": 178,
-          "endLine": 183
+          "startLine": 180,
+          "endLine": 185
         }
       ],
       "sourceExcerpts": [
@@ -1417,9 +1417,9 @@
           "path": "packages/architecture/src/validation.ts",
           "symbol": "validateSnapshot",
           "language": "typescript",
-          "startLine": 178,
-          "endLine": 183,
-          "highlightLine": 178,
+          "startLine": 180,
+          "endLine": 185,
+          "highlightLine": 180,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function validateSnapshot(snapshot: ArchitectureSnapshot): ValidationIssue[] {",
@@ -1449,8 +1449,8 @@
           "path": "packages/architecture/src/validation.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "validateView",
-          "startLine": 355,
-          "endLine": 360
+          "startLine": 357,
+          "endLine": 362
         }
       ],
       "sourceExcerpts": [
@@ -1458,9 +1458,9 @@
           "path": "packages/architecture/src/validation.ts",
           "symbol": "validateView",
           "language": "typescript",
-          "startLine": 355,
-          "endLine": 360,
-          "highlightLine": 355,
+          "startLine": 357,
+          "endLine": 362,
+          "highlightLine": 357,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function validateView(snapshot: ArchitectureSnapshot, view: ArchitectureView): ValidationIssue[] {",
@@ -1490,8 +1490,8 @@
           "path": "packages/architecture/src/validation.ts",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "validateStory",
-          "startLine": 627,
-          "endLine": 632
+          "startLine": 629,
+          "endLine": 634
         }
       ],
       "sourceExcerpts": [
@@ -1499,9 +1499,9 @@
           "path": "packages/architecture/src/validation.ts",
           "symbol": "validateStory",
           "language": "typescript",
-          "startLine": 627,
-          "endLine": 632,
-          "highlightLine": 627,
+          "startLine": 629,
+          "endLine": 634,
+          "highlightLine": 629,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "export function validateStory(snapshot: ArchitectureSnapshot, view: ArchitectureView, story: ArchitectureStory): ValidationIssue[] {",

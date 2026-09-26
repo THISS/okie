@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SOURCE_EXCERPT_LIMITS, validateSnapshot } from "@okie/architecture";
+import { SOURCE_EXCERPT_LIMITS, validateSnapshot, normalizeArchitecture, selectArchitectureSnapshot } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import { attachPortableSourceExcerpts, languageForScanPath, portableSourceExcerpt } from "./excerpt.js";
 import { extractArchitecture } from "./extract.js";
@@ -198,7 +198,7 @@ test("scan snapshot attaches portable excerpts to code entities and never to con
   assert.equal(wideFn.sourceExcerpts?.length, 1);
   assert.equal(wideFn.sourceExcerpts![0]!.startLine, 2);
   assert.equal(wideFn.sourceRefs[0]!.startLine, 1);
-  assert.equal(wideFn.sourceRefs[1]!.startLine, 2);
+  assert.equal(wideFn.sourceRefs.length, 1);
   assert.equal(wideFn.sourceRefs[0]!.endLine, 4);
   assert.ok(wideFn.sourceExcerpts![0]!.lines.every(line => [...line].length <= SOURCE_EXCERPT_LIMITS.maxLineCharacters));
 
@@ -288,10 +288,41 @@ test("portable validation binds both captured and original ranges to the same pi
   }
   const legacy = structuredClone(original);
   for (const entity of legacy.entities) for (const item of entity.sourceExcerpts ?? []) {
+    entity.sourceRefs = [{ ...entity.sourceRefs[0]!, startLine: item.startLine, endLine: item.endLine }];
     delete item.sourceStartLine; delete item.sourceEndLine;
   }
   assert.deepEqual(validateSnapshot(legacy), [], "old excerpts remain valid without coverage claims");
   const wrongPin = structuredClone(original);
   wrongPin.entities.find(entity => entity.name === "wideFn")!.sourceRefs[0]!.commitSha = "different";
   assert.ok(validateSnapshot(wrongPin).some(issue => issue.message.includes("original source range")));
+});
+
+test("normalize and reattach preserve a single 1–83 declaration beside its partial 1–48 capture", () => {
+  const original = buildScanArtifacts({ discovery: discovery(), pin, readFile: read, repositorySlug: "acme", systemName: "Acme" }).snapshot;
+  const entity = original.entities.find(row => row.name === "longFn")!;
+  delete entity.sourceExcerpts;
+  entity.sourceRefs[0]!.endLine = 83;
+  const load = (path: string) => path.endsWith("long.ts") ? Array(83).fill("// source").join("\n") : read(path);
+  const attached = attachPortableSourceExcerpts(original, load);
+  const normalized = normalizeArchitecture({ snapshot: attached });
+  const roundTrip = selectArchitectureSnapshot(normalized, attached.id);
+  const again = attachPortableSourceExcerpts(roundTrip, load);
+  const result = again.entities.find(row => row.id === entity.id)!;
+  assert.equal(result.sourceRefs.length, 1);
+  assert.deepEqual([result.sourceRefs[0]!.startLine, result.sourceRefs[0]!.endLine], [1, 83]);
+  assert.deepEqual([result.sourceExcerpts![0]!.startLine, result.sourceExcerpts![0]!.endLine, result.sourceExcerpts![0]!.sourceEndLine], [1, 48, 83]);
+  assert.deepEqual(validateSnapshot(again), []);
+});
+
+test("unknown or invalid declaration ends do not synthesize a captured reference", () => {
+  const original = buildScanArtifacts({ discovery: discovery(), pin, readFile: read, repositorySlug: "acme", systemName: "Acme" }).snapshot;
+  const entity = original.entities.find(row => row.name === "wideFn")!;
+  delete entity.sourceExcerpts;
+  delete entity.sourceRefs[0]!.endLine;
+  const attached = attachPortableSourceExcerpts(original, read);
+  assert.deepEqual(attached, original);
+  assert.deepEqual(validateSnapshot(attached), []);
+  for (const endLine of [0, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.equal(portableSourceExcerpt({ path: "a.ts", startLine: 1, endLine, frozenRevision: pin.commitSha, fileText: "source" }), undefined);
+  }
 });

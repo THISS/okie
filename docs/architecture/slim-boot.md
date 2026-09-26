@@ -18,28 +18,8 @@ After CLA-66, `/r/THISS/okie` still **downloaded** the full semantic trio (`snap
 
 Deep links (`sel` / `lens` / `root`) fetch **that** neighborhood first, not the whole tree. Open inside merges the container subgraph into the resident snapshot. Source tab lazy-fetches excerpts.
 
-## Source-to-evidence capture (CLA-175)
-
-New scans preserve the original declaration `sourceRef` instead of replacing it
-with a shortened excerpt range. When capture is partial, an additional reference
-pins the exact captured window to the same file, symbol and commit. Portable
-validation checks both ranges; navigation can retain the declaration identity
-without claiming that all its lines were captured.
-
-Captured excerpts allow up to 48 contiguous lines, still limited to 512 Unicode
-characters per line and 4096 characters of text. No line is silently shortened.
-`sourceStartLine` / `sourceEndLine` record the original observed range; differences
-from `startLine` / `endLine` explicitly indicate partial capture (including skipped
-wide lines or EOF). Absence of these fields in older snapshots means capture
-completeness is unknown. Text remains token-scrubbed, not a byte-exact source archive.
-Old snapshots remain readable; older viewers with the 12-line validator may reject
-new longer captures and should be upgraded.
-
-This does not add method extraction where a scanner only identifies the containing
-class, guarantee complete bodies for large declarations, or remove the profile
-sampler's byte limits. Bounded hub selection and independently labelled semantic
-evaluation remain follow-on work. No model calls or inferred-role consumers are
-enabled by this capture change.
+See [source-to-evidence capture](./ingestion-golden-tests.md#source-to-evidence-capture-cla-175)
+for excerpt bounds, original source ranges and legacy compatibility.
 
 ## Out of slice
 

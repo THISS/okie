@@ -55,5 +55,6 @@ test("scanning Okie passes every architecture gate cleanly", () => {
   assert.ok([...viewportExcerpt.text].length <= SOURCE_EXCERPT_LIMITS.maxTextCharacters);
   assert.equal(viewportExcerpt.sourceStartLine, canvasViewport.sourceRefs[0]!.startLine);
   assert.equal(viewportExcerpt.sourceEndLine, canvasViewport.sourceRefs[0]!.endLine);
-  assert.ok(viewportExcerpt.sourceStartLine! < viewportExcerpt.startLine, "skipped signature is explicitly partial, not rewritten ownership");
+  assert.ok(viewportExcerpt.sourceStartLine! <= viewportExcerpt.startLine);
+  assert.ok(viewportExcerpt.sourceEndLine! >= viewportExcerpt.endLine);
 });
