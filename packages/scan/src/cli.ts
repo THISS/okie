@@ -16,6 +16,7 @@ import { runPackageViewer } from './package-viewer.js';
 import { enrichPortableAtlas } from './portable-enrich.js';
 import { parsePortableAtlas } from '@okie/architecture';
 import { applyComponentMembership, type ComponentMapInput } from './component-map.js';
+import { runConsumersQuery } from './consumers-cli.js';
 
 interface CliArgs {
   source: string;
@@ -54,6 +55,8 @@ function printUsage(): void {
     "  --repository-url <https-url>  explicit public repository URL to embed for a local scan",
     "  export --bundle <file> --viewer <built-dir> --out <empty-dir>  package a static atlas",
     "  enrich --bundle <atlas.okie.json> --docs <enrichment-dir> --out <atlas.okie.json>",
+    "  consumers <dependency> --bundle <atlas.okie.json> [--ecosystem npm|cargo] [--json] [--runtime-only]",
+    "                      who declares/imports/references a dependency (declarations alone are not use)",
     "  --max-tarball-mb    cap on a gh: tarball download (default: 150)",
     "  --emit-packets <d>  (local only) write bounded, redacted enrichment packets to <d>",
     "  --emit-prompt <d>   (local only) write packets plus concatenated prompts to <d>",
@@ -189,6 +192,7 @@ function writeArtifacts(out: string, artifacts: ScanArtifacts, repositoryUrl?: s
   writeFileSync(`${out}/stories.json`, stableJson(artifacts.catalog));
   writeFileSync(`${out}/scene.json`, stableJson(artifacts.scene));
   writeFileSync(`${out}/timeline.json`, stableJson(artifacts.timeline));
+  writeFileSync(`${out}/dependencies.json`, stableJson(artifacts.dependencies));
   if (artifacts.enrichmentReport) {
     writeFileSync(`${out}/enrichment-report.json`, stableJson(artifacts.enrichmentReport));
   }
@@ -360,6 +364,7 @@ function runPortableEnrichment(args: readonly string[]): void {
 async function main(): Promise<void> {
   if (process.argv[2] === 'export') { runPackageViewer(process.argv.slice(3)); return; }
   if (process.argv[2] === 'enrich') { runPortableEnrichment(process.argv.slice(3)); return; }
+  if (process.argv[2] === 'consumers') { process.stdout.write(runConsumersQuery(process.argv.slice(3))); return; }
   const args = parseArgs(process.argv.slice(2));
   if (args.github) await runGithubScan(args);
   else runLocalScan(args);

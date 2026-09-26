@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import Parser from "tree-sitter";
 import Rust from "tree-sitter-rust";
 import { PositionEncoding, SymbolRole, type Occurrence } from "@scip-code/scip";
-import type { AnalysisDefinition, AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
+import type { AnalysisDefinition, AnalysisExternalReference, AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
 import { decodeScipIndex } from "./scip.js";
 
 type Point = { row: number; column: number };
@@ -29,6 +29,70 @@ function rustParser(): Parser {
 
 function canonical<T>(items: Iterable<T>): T[] {
   return [...items].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+}
+
+/** Sysroot crates are the language, not a dependency. */
+const SYSROOT_CRATES = new Set(["std", "core", "alloc", "proc_macro", "test"]);
+
+/** `<scheme> cargo <crate> <version> <descriptors>`; undefined for locals and other managers. */
+export function parseScipCargoSymbol(symbol: string): { crate: string; version: string; descriptors: string } | undefined {
+  const match = /^\S+ cargo (\S+) (\S+) (.+)$/.exec(symbol);
+  return match ? { crate: match[1]!, version: match[2]!, descriptors: match[3]! } : undefined;
+}
+
+/** Render SCIP descriptors as a Rust-ish path: `device/Device#create_buffer().` → `wgpu::device::Device::create_buffer`. */
+export function rustSymbolDisplay(crate: string, descriptors: string): string | undefined {
+  const parts: string[] = [];
+  let index = 0;
+  const readName = (): string => {
+    if (descriptors[index] === "`") {
+      let out = "";
+      index += 1;
+      while (index < descriptors.length) {
+        if (descriptors[index] === "`") {
+          if (descriptors[index + 1] === "`") { out += "`"; index += 2; continue; }
+          break;
+        }
+        out += descriptors[index++];
+      }
+      index += 1;
+      return out;
+    }
+    const start = index;
+    while (index < descriptors.length && /[A-Za-z0-9_$+-]/.test(descriptors[index]!)) index += 1;
+    return descriptors.slice(start, index);
+  };
+  while (index < descriptors.length) {
+    const character = descriptors[index];
+    if (character === "[" || character === "(") {
+      index += 1;
+      const name = readName();
+      if (descriptors[index] !== (character === "[" ? "]" : ")")) return undefined;
+      index += 1;
+      if (character === "[" && parts.length) parts[parts.length - 1] += `<${name}>`;
+      continue;
+    }
+    const name = readName();
+    if (!name) return undefined;
+    const suffix = descriptors[index];
+    if (suffix === "(") {
+      const close = descriptors.indexOf(").", index);
+      if (close < 0) return undefined;
+      index = close + 2;
+    } else if (suffix !== undefined && "/#.:!".includes(suffix)) index += 1;
+    else return undefined;
+    parts.push(name);
+  }
+  return parts.length ? [crate.replace(/-/g, "_"), ...parts].join("::") : undefined;
+}
+
+/** A SCIP symbol from a third-party crate (not sysroot, not a workspace crate, not a bare crate root). */
+export function externalCargoSymbol(symbol: string, firstPartyCrates: ReadonlySet<string>): { crate: string; version: string; display: string } | undefined {
+  const parsed = parseScipCargoSymbol(symbol);
+  if (!parsed || SYSROOT_CRATES.has(parsed.crate) || parsed.version.includes("://") || firstPartyCrates.has(parsed.crate)) return undefined;
+  if (parsed.descriptors === "crate/") return undefined;
+  const display = rustSymbolDisplay(parsed.crate, parsed.descriptors);
+  return display ? { crate: parsed.crate, version: parsed.version, display } : undefined;
 }
 
 /** `local N` symbols are only unique within one SCIP document. */
@@ -225,6 +289,14 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     const definitions = new Map<string, AnalysisDefinition>();
     const ambiguousSymbols = new Set<string>();
     const pending: Array<{ path: string; occurrence: Occurrence; range: OccurrenceRange; location: AnalysisLocation; tree: Parser.Tree }> = [];
+    // Crates with a definition anywhere in the indexed repository are first-party.
+    const firstPartyCrates = new Set<string>();
+    for (const document of documents) for (const occurrence of document.occurrences) {
+      if (occurrence.symbolRoles & SymbolRole.Definition) {
+        const crate = parseScipCargoSymbol(occurrence.symbol)?.crate;
+        if (crate) firstPartyCrates.add(crate);
+      }
+    }
     for (const document of documents) {
       const path = document.relativePath.split(sep).join("/");
       const file = files.get(path);
@@ -257,8 +329,22 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     }
     result.definitions = canonical(definitions.values());
     const references = new Map<string, LanguageAnalysis["references"][number]>();
+    const externalReferences = new Map<string, AnalysisExternalReference>();
+    const toolInfo = indexes[0]?.metadata?.toolInfo;
+    const analyzer = `${toolInfo?.name || "rust-analyzer"}@${(toolInfo?.version || "unknown").split(" ")[0]}`;
     const modules = new Map(result.modules.map(item => [`${item.path}:${item.startOffset}:${item.targetPath}`, item]));
     for (const pendingReference of pending) {
+      if (!ambiguousSymbols.has(pendingReference.occurrence.symbol) && !definitions.has(pendingReference.occurrence.symbol)) {
+        const external = externalCargoSymbol(pendingReference.occurrence.symbol, firstPartyCrates);
+        // `use` paths are import evidence, captured syntactically elsewhere.
+        if (external && !(pendingReference.occurrence.symbolRoles & SymbolRole.Import) && !importAt(pendingReference.tree, pendingReference.range.start)) {
+          const kind = callAt(pendingReference.tree, pendingReference.range.start) ? "calls" : "uses";
+          const reference: AnalysisExternalReference = { ...pendingReference.location, ecosystem: "cargo", package: external.crate,
+            version: external.version, symbol: external.display, kind, analyzer };
+          externalReferences.set(`${reference.path}:${reference.startOffset}:${pendingReference.occurrence.symbol}:${kind}`, reference);
+        }
+        continue;
+      }
       // A reference without a definition in this committed source has no target edge.
       if (ambiguousSymbols.has(pendingReference.occurrence.symbol) || !definitions.has(pendingReference.occurrence.symbol)) continue;
       if ((pendingReference.occurrence.symbolRoles & SymbolRole.Import) || importAt(pendingReference.tree, pendingReference.range.start)) {
@@ -272,6 +358,7 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     }
     result.references = canonical(references.values());
     result.modules = canonical(modules.values());
+    result.externalReferences = canonical(externalReferences.values());
     const indexedFiles = [...new Set(documents.map(document => document.relativePath.split(sep).join("/")))].filter(path => files.has(path)).sort();
     const omitted = [...files.keys()].filter(path => !indexedFiles.includes(path)).sort();
     const tool = indexes[0]?.metadata?.toolInfo;

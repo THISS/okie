@@ -44,6 +44,7 @@ import type { PortableAtlas } from '@okie/architecture';
 import type { LanguageAnalysis } from './language-analysis.js';
 import { analyzeTypeScript } from './analyze-typescript.js';
 import { analyzeRust } from './analyze-rust.js';
+import { buildDependencyFacts, collectDependencyInputs } from './dependency-facts.js';
 
 export interface ScanOptions {
   analysisMode?: 'full' | 'quick';
@@ -87,6 +88,8 @@ export interface GithubScanOptions extends ScanOptions {
 export interface ScanArtifacts {
   analysis: PortableAtlas['analysis'];
   sources?: PortableAtlas['sources'];
+  /** Dependency consumer facts (CLA-212): bundle-only, never graph input. */
+  dependencies: NonNullable<PortableAtlas['dependencies']>;
   pin: RepositoryPin;
   /** The deterministic (pre-enrichment) extraction — the source for enrichment packets. */
   baseExtraction: ArchitectureExtraction;
@@ -196,6 +199,11 @@ export interface BuildScanArtifactsParams {
   clonePairs?: readonly ClonePair[];
   /** Optional lcov.info bytes. Conventional `coverage/lcov.info` is read when omitted. */
   lcovText?: string;
+  /**
+   * Committed manifests/lockfiles captured before any analyzer ran (collectDependencyInputs).
+   * When omitted they are read through `readFile` (safe only when no analyzer touched the tree).
+   */
+  dependencyInputs?: ReadonlyMap<string, string>;
 }
 
 /** Pure pipeline over an already-collected discovery + pin (drives the determinism gate). */
@@ -329,6 +337,15 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
       adapters: params.languageAnalysis?.coverage.map(({ indexedFiles: _files, ...coverage }) => coverage) ??
         [...new Set(discovery.sourceFiles.map(path => path.endsWith('.rs') ? 'rust' : 'typescript/javascript'))].map(language => ({ language, tool: language === 'rust' ? 'tree-sitter-rust' : 'typescript', version: 'syntax-v1', coverage: 'syntax' as const, limitations: ['Quick scan: project-wide semantic resolution was not requested.'] })),
     },
+    dependencies: buildDependencyFacts({
+      commitSha: pin.commitSha,
+      sourceFiles: discovery.sourceFiles,
+      readFile,
+      analysisMode: params.analysisMode ?? 'quick',
+      ...(params.languageAnalysis ? { languageAnalysis: params.languageAnalysis } : {}),
+      ...(params.dependencyInputs ? { manifestInputs: params.dependencyInputs } : {}),
+      workspaceDirectories: discovery.units.filter(unit => unit.kind === 'member').map(unit => unit.dir),
+    }),
     ...(params.includeSource ? { sources: portableSourcePaths(snapshot, discovery).map(path => ({ path, text: readFile(path) })) } : {}),
     ...(enrichmentReport ? { enrichmentReport } : {}),
     ...(componentMapReport ? { componentMapReport } : {}),
@@ -339,7 +356,7 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
 function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode'], installationRoot?: string): LanguageAnalysis | undefined {
   if (mode !== 'full') return undefined;
   const analyses = [analyzeTypeScript(root, discovery.sourceFiles, installationRoot), analyzeRust(root, discovery.sourceFiles)];
-  return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), coverage: analyses.flatMap(item => item.coverage) };
+  return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), externalReferences: analyses.flatMap(item => item.externalReferences ?? []), coverage: analyses.flatMap(item => item.coverage) };
 }
 
 export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "root" | "pin" | "sourceName" | "installationRoot">, options: ScanOptions = {}): ScanArtifacts {
@@ -349,11 +366,16 @@ export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "ro
   const repositorySlug = options.repositorySlug ?? slug(packageName ?? fallbackName);
   const systemName = options.systemName ?? packageName ?? (fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1));
   const discovery = discoverExtractedTree(sourceRoot, options.includeAllMembers ? { includeAllMembers: true } : {});
+  const readFile = (repoRelativePath: string): string => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8");
+  // Read manifests/lockfiles BEFORE analyzers run: cargo/rust-analyzer may write a
+  // Cargo.lock into the acquired tree, which must never be cited as committed evidence.
+  const dependencyInputs = collectDependencyInputs(discovery.sourceFiles, readFile);
   const languageAnalysis = analyzeLanguages(sourceRoot, discovery, options.analysisMode, acquired.installationRoot);
   return buildScanArtifacts({
+    dependencyInputs,
     discovery,
     pin: acquired.pin,
-    readFile: (repoRelativePath: string) => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8"),
+    readFile,
     repositorySlug,
     systemName,
     ...(languageAnalysis ? { languageAnalysis } : {}),
@@ -402,6 +424,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     const systemName = options.systemName ?? packageName ?? source.repo;
     const pin: RepositoryPin = { commitSha: commit.sha, treeHash: commit.treeSha, generatedAt: commit.generatedAt };
     const discovery = discoverExtractedTree(acquired.root, options.includeAllMembers ? { includeAllMembers: true } : {});
+    const dependencyInputs = collectDependencyInputs(discovery.sourceFiles, readFile);
     const languageAnalysis = analyzeLanguages(acquired.root, discovery, options.analysisMode);
     if (discovery.sourceFiles.length === 0) {
       throw new Error(
@@ -441,6 +464,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
       enrichmentDocs = generated.size > 0 ? generated : undefined;
     }
     const artifacts = buildScanArtifacts({
+      dependencyInputs,
       discovery,
       pin,
       readFile,
