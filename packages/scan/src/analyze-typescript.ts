@@ -185,7 +185,8 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
         && parent.tagName === node && ts.isIdentifier(node) && /^[a-z]/.test(node.text);
     };
     const displayName = (symbol: ts.Symbol): string => {
-      const qualified = checker.getFullyQualifiedName(symbol).replace(/^"[^"]*"\./, "");
+      // Anonymous object/type literals print as `__type` / `__object`; drop those segments.
+      const qualified = checker.getFullyQualifiedName(symbol).replace(/^"[^"]*"\./, "").split(".").filter(part => part !== "__type" && part !== "__object").join(".");
       return qualified && !/["\\/]/.test(qualified) ? qualified : symbol.getName();
     };
     for (const source of program.getSourceFiles()) {

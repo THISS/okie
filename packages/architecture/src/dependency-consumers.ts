@@ -405,11 +405,15 @@ export function queryDependencyConsumers(
   if (excludedTypeOnlyImports) coverage.push(`${excludedTypeOnlyImports} type-only import(s) excluded by request.`);
   const undeclared = consumers.filter(row => row.undeclared);
   if (undeclared.length) coverage.push(`${undeclared.length} consuming package(s) do not declare ${query} in their own manifest (hoisted, inherited, or missing declaration).`);
+  const firstParty = facts.packages.filter(row => matchedNames.includes(row.name) && ecosystems.includes(row.ecosystem));
+  for (const row of firstParty) {
+    coverage.push(`${row.name} is a first-party package (${row.manifestPath}); its symbol-level use is captured as code relations in the architecture graph, not as dependency symbol references.`);
+  }
   const symbolCoverage = facts.coverage.filter(row => row.evidence === 'symbolReferences' && ecosystems.includes(row.ecosystem) && row.status !== 'unavailable');
   for (const ecosystem of ecosystems) {
     if (!symbolCoverage.some(row => row.ecosystem === ecosystem)) continue;
     const ecosystemImports = allImports.filter(row => row.ecosystem === ecosystem && !row.typeOnly);
-    if (ecosystemImports.length && !references.some(row => row.ecosystem === ecosystem)) {
+    if (ecosystemImports.length && !references.some(row => row.ecosystem === ecosystem) && !firstParty.some(row => row.ecosystem === ecosystem)) {
       coverage.push(`No ${ecosystem} symbol references resolved for ${query} despite ${ecosystemImports.length} runtime import(s); the analyzer could not see its declarations (not installed, untyped, or outside analyzed targets). Import evidence stands on its own.`);
     }
   }

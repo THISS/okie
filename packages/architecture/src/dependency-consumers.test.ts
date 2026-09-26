@@ -89,6 +89,15 @@ test('cargo matches ident form and renames; ecosystem filter applies', () => {
   assert.equal(queryDependencyConsumers(facts(), '@types/react').consumers.length, 2);
 });
 
+test('first-party packages explain where symbol-level use lives instead of claiming unresolved references', () => {
+  const value = facts();
+  value.imports.push({ ecosystem: 'npm', dependency: '@x/lib', specifier: '@x/lib', path: 'apps/web/src/a.tsx', startLine: 9, endLine: 9, consumingPackage: 'apps/web/package.json', kind: 'static', typeOnly: false });
+  const report = queryDependencyConsumers(value, '@x/lib');
+  assert.equal(report.consumers.length, 1);
+  assert.ok(report.coverage.some(line => line.includes('first-party package (packages/lib/package.json)')), report.coverage.join('\n'));
+  assert.ok(!report.coverage.some(line => line.startsWith('No npm symbol references')), report.coverage.join('\n'));
+});
+
 test('old bundle without facts reports a limit; unknown names suggest close declarations', () => {
   const old = queryDependencyConsumers(undefined, 'react');
   assert.equal(old.factsAvailable, false);
