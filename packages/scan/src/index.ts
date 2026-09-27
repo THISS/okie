@@ -23,3 +23,5 @@ export * from "./analyze-typescript.js";
 export * from "./analyze-rust.js";
 export * from "./scip.js";
 export * from "./portable-enrich.js";
+export * from "./dependency-facts.js";
+export * from "./consumers-cli.js";

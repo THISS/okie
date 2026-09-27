@@ -126,4 +126,9 @@ test("rust analyzer adds the declared wasm target when source is cfg-gated", { t
   assert.ok(coverage, JSON.stringify(analysis));
   assert.ok(coverage.indexedFiles.includes("crates/atlas-wasm/src/browser.rs"), JSON.stringify(coverage));
   assert.ok(coverage.limitations.some(item => item.includes("wasm32-unknown-unknown")), JSON.stringify(coverage));
+  // CLA-212: third-party crate references are kept aside from graph references;
+  // sysroot and workspace crates never appear as external dependencies.
+  const external = analysis.externalReferences ?? [];
+  assert.ok(external.some(item => item.package.startsWith("wasm-bindgen") && item.symbol.startsWith("wasm_bindgen")), JSON.stringify(external.slice(0, 5)));
+  assert.ok(external.every(item => !["std", "core", "alloc"].includes(item.package) && !item.package.startsWith("atlas-") && item.analyzer.startsWith("rust-analyzer@") && item.version), JSON.stringify(external.filter(item => !item.version || item.package.startsWith("atlas-")).slice(0, 5)));
 });

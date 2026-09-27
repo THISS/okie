@@ -1,8 +1,26 @@
 import ts from "typescript";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import type { AnalysisDefinition, AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
+import type { AnalysisDefinition, AnalysisExternalReference, AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
 import { dependencyContext } from './dependency-context.js';
+
+/** The package owning a declaration file: the segment after the LAST `node_modules/` (pnpm `.pnpm/…` layout safe). */
+export function nodeModulesPackageOf(fileName: string): string | undefined {
+  const normalized = fileName.split(sep).join("/");
+  const marker = normalized.lastIndexOf("/node_modules/");
+  if (marker < 0) return undefined;
+  const segments = normalized.slice(marker + 14).split("/");
+  const name = segments[0]!.startsWith("@") ? (segments[1] ? `${segments[0]}/${segments[1]}` : undefined) : segments[0];
+  return name && !name.startsWith(".") ? name : undefined;
+}
+
+/** `@types/foo` types `foo`; `@types/scope__pkg` types `@scope/pkg`. */
+export function typedPackageOf(name: string): string | undefined {
+  const match = /^@types\/(.+)$/.exec(name);
+  if (!match) return undefined;
+  const scoped = /^([^_]+)__(.+)$/.exec(match[1]!);
+  return scoped ? `@${scoped[1]}/${scoped[2]}` : match[1];
+}
 
 /** Real project-aware compiler analysis; unresolved dependencies remain explicit limitations. */
 export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly string[], installationRoot?: string): LanguageAnalysis {
@@ -40,6 +58,8 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
   const definitions = new Map<string, AnalysisDefinition>();
   const references = new Map<string, LanguageAnalysis["references"][number]>();
   const modules = new Map<string, LanguageAnalysis["modules"][number]>();
+  const externalReferences = new Map<string, AnalysisExternalReference>();
+  const analyzer = `typescript@${ts.version}`;
   const projects = new Map<string, ts.ParsedCommandLine>();
   const loadConfig = (path: string): void => {
     if (projects.has(path)) return;
@@ -138,6 +158,37 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
       definitions.set(symbolId, definition);
       return definition;
     };
+    // Third-party symbols: every declaration in ONE node_modules package (never the
+    // compiler's default lib, never a workspace package, never Node's own @types/node).
+    const externalPackage = (symbol: ts.Symbol): { package: string; via?: string } | undefined => {
+      // Namespace/module qualifiers (`ts` in `ts.Node`) are not references; their members are.
+      if (symbol.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)) return undefined;
+      const declarations = symbol.declarations ?? [];
+      let owner: string | undefined;
+      for (const declaration of declarations) {
+        const file = declaration.getSourceFile();
+        if (program.isSourceFileDefaultLibrary(file)) return undefined;
+        const name = nodeModulesPackageOf(file.fileName);
+        if (!name || (owner && owner !== name)) return undefined;
+        owner = name;
+      }
+      if (!owner || owner === "@types/node") return undefined;
+      const typed = typedPackageOf(owner);
+      if (packages.has(owner) || (typed && packages.has(typed))) return undefined;
+      return typed ? { package: typed, via: owner } : { package: owner };
+    };
+    // `<div className=…>` resolves into React's JSX typings; that is markup, not API use.
+    const jsxTypingOnly = (node: ts.Node): boolean => {
+      const parent = node.parent;
+      if (ts.isJsxAttribute(parent) && parent.name === node) return true;
+      return (ts.isJsxOpeningElement(parent) || ts.isJsxSelfClosingElement(parent) || ts.isJsxClosingElement(parent))
+        && parent.tagName === node && ts.isIdentifier(node) && /^[a-z]/.test(node.text);
+    };
+    const displayName = (symbol: ts.Symbol): string => {
+      // Anonymous object/type literals print as `__type` / `__object`; drop those segments.
+      const qualified = checker.getFullyQualifiedName(symbol).replace(/^"[^"]*"\./, "").split(".").filter(part => part !== "__type" && part !== "__object").join(".");
+      return qualified && !/["\\/]/.test(qualified) ? qualified : symbol.getName();
+    };
     for (const source of program.getSourceFiles()) {
       if (!allowed.has(resolve(source.fileName))) continue;
       indexed.add(relativePath(source.fileName));
@@ -159,6 +210,7 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
           if (!declarationName && !importExport) {
             let symbol = ts.isShorthandPropertyAssignment(parent)
               ? checker.getShorthandAssignmentValueSymbol(parent) : checker.getSymbolAtLocation(node);
+            const aliasSymbol = symbol && symbol.flags & ts.SymbolFlags.Alias ? symbol : undefined;
             if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
             let expression: ts.Node = node;
             if (ts.isPropertyAccessExpression(parent) && parent.name === node) expression = parent;
@@ -189,6 +241,20 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
               const kind = definiteCall ? "calls" : "uses";
               const occurrence = { ...location(node), symbol: target.symbol, kind } as LanguageAnalysis["references"][number];
               references.set(`${occurrence.path}:${occurrence.startOffset}:${target.symbol}:${kind}`, occurrence);
+            } else if (symbol && !jsxTypingOnly(node)) {
+              const external = externalPackage(symbol);
+              if (external) {
+                // A call into the dependency's API surface; overloads/unions stay one dependency.
+                // Compile-time only: a type position (incl. `typeof x` inside a type) or a binding from
+                // `import type`. A value-position read (`req.query`, `useRef(1).current`) touches a
+                // runtime object even when its shape is declared by an interface, so it stays runtime.
+                const typeOnly = ts.isPartOfTypeNode(node)
+                  || !!ts.findAncestor(node.parent, ancestor => ts.isTypeQueryNode(ancestor) || (ts.isTypeNode(ancestor) && ts.isPartOfTypeNode(ancestor)))
+                  || !!aliasSymbol?.declarations?.some(declaration => ts.isTypeOnlyImportOrExportDeclaration(declaration));
+                const occurrence: AnalysisExternalReference = { ...location(node), ecosystem: "npm", ...external,
+                  symbol: displayName(symbol), kind: callPosition && !typeOnly ? "calls" : "uses", typeOnly, analyzer };
+                externalReferences.set(`${occurrence.path}:${occurrence.startOffset}:${occurrence.package}:${occurrence.symbol}:${occurrence.kind}:${typeOnly}`, occurrence);
+              }
             }
           } else if (declarationName && !importExport) targetDefinition(checker.getSymbolAtLocation(node));
         }
@@ -201,6 +267,7 @@ export function analyzeTypeScript(sourceRoot: string, discoveredFiles?: readonly
   result.definitions = canonical([...definitions.values()]);
   result.references = canonical([...references.values()]);
   result.modules = canonical([...modules.values()]);
+  result.externalReferences = canonical([...externalReferences.values()]);
   const missed = [...allowed].filter(path => !indexed.has(relativePath(path)));
   if (missed.length) limitations.add(`Not indexed: ${missed.map(relativePath).sort().join(", ")}`);
   for (const language of ["typescript", "javascript"]) {

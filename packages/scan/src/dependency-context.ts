@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 /** Read installed dependency declarations without exposing working-tree source. */
 export function dependencyContext(root: string, installationRoot?: string, compilerLibraryDirectories: readonly string[] = []): { path: (path: string) => string; limitation?: string } {
@@ -26,6 +26,9 @@ export function dependencyContext(root: string, installationRoot?: string, compi
   walk(root);
   if (manifests.some(path => !existsSync(resolve(installationRoot, path)) || !readFileSync(resolve(root, path)).equals(readFileSync(resolve(installationRoot, path))))) {
     return { path: identity, limitation: 'Local dependency context not reused: working-tree package manifests or lockfiles differ from the scanned commit.' };
+  }
+  if (!existsSync(resolve(installationRoot, 'node_modules')) && !manifests.some(path => existsSync(resolve(installationRoot, dirname(path), 'node_modules')))) {
+    return { path: identity, limitation: 'No local dependency installation found; npm symbol references unavailable.' };
   }
   return {
     limitation: 'Installed dependency types reused read-only from the local checkout after matching committed manifests and lockfiles; installation contents are not verified against the lockfile.',
