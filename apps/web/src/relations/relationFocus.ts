@@ -111,11 +111,29 @@ export function selectedRelationFocusPresentation(
     return { endpointIds, relationIds, projectionOverride };
   }
 
+  return {
+    endpointIds,
+    relationIds,
+    projectionOverride: promoteProjection(
+      scene,
+      projectionOverride,
+      endpointIds,
+      new Set(scene.projection.semanticToVisualRelationIds[relation.id] ?? [relation.id]),
+      `relation-focus:${relation.id}`,
+    ),
+  };
+}
+
+function promoteProjection(
+  scene: AtlasScene,
+  projectionOverride: ProjectionOverride,
+  endpointIds: ReadonlySet<string>,
+  visualRelationIds: ReadonlySet<string>,
+  suffix: string,
+): ProjectionOverride {
   const visualEndpointIds = new Set([...endpointIds]
     .flatMap(id => scene.projection?.semanticToVisualEntityId[id] ?? []));
-  const visualRelationIds = new Set(scene.projection.semanticToVisualRelationIds[relation.id] ?? [relation.id]);
   const relationLabelIds = new Set([...visualRelationIds].map(id => `relation-label:${id}`));
-
   const objects = projectionOverride.objects.map(object => {
     if (!visualEndpointIds.has(object.objectId) && !relationLabelIds.has(object.objectId)) return object;
     return promoteObject(object);
@@ -128,15 +146,92 @@ export function selectedRelationFocusPresentation(
       targetOpacity: path.targetOpacity > .001 ? 1 : path.targetOpacity,
     };
   });
+  return { ...projectionOverride, id: `${projectionOverride.id}:${suffix}`, objects, paths };
+}
 
+/** A set of semantic relations (for example an explored path) plus the entities it visits. */
+export type RelationSetFocus = {
+  /** Stable identity for the projection override id. */
+  key: string;
+  relationIds: readonly string[];
+  entityIds: readonly string[];
+};
+
+/**
+ * CLA-208: multi-relation variant of selectedRelationFocusPresentation.
+ *
+ * Promotes every retained route that presents one of the relations —
+ * individual or aggregated (a projected route whose semanticIds contain it) —
+ * and lifts each visited entity to the nearest ancestor drawn at `detail`,
+ * so a code-level path reads at L2 containers, L3 components, and L4 code.
+ * Like the single-relation variant it never changes lens ownership.
+ */
+export function relationSetFocusPresentation(
+  scene: AtlasScene,
+  focus: RelationSetFocus | undefined,
+  projectionOverride: ProjectionOverride | undefined,
+  detail: SemanticDetail | undefined,
+  /** Canonical snapshot parentage; a scan neighborhood scene can omit the leaves a path visits. */
+  snapshotParentById?: ReadonlyMap<string, string | undefined>,
+): RelationFocusPresentation {
+  if (!focus || (!focus.relationIds.length && !focus.entityIds.length)) {
+    return { endpointIds: new Set(), relationIds: new Set(), projectionOverride };
+  }
+  const semanticRelationIds = new Set(focus.relationIds);
+  const relationIds = new Set<string>(focus.relationIds);
+  const endpointIds = new Set<string>(focus.entityIds);
+  const sceneParentById = new Map(scene.entities.map(entity => [entity.id, entity.parentId]));
+  const parentOf = (id: string) => snapshotParentById?.has(id) ? snapshotParentById.get(id) : sceneParentById.get(id);
+  const bandIds = detail ? new Set(scene.projection?.entityIdsByDetail[detail] ?? []) : undefined;
+  if (bandIds?.size) {
+    for (const id of focus.entityIds) {
+      const visited = new Set<string>();
+      for (let current: string | undefined = id; current !== undefined && !visited.has(current); current = parentOf(current)) {
+        visited.add(current);
+        if (bandIds.has(current)) {
+          endpointIds.add(current);
+          break;
+        }
+      }
+    }
+  }
+  // Only routes that really present a hop relation: its own id, its visual ids, or semanticIds containing it.
+  const visualRelationIds = new Set<string>();
+  const projection = scene.projection;
+  if (projection) {
+    for (const relationId of focus.relationIds) {
+      for (const visualId of projection.semanticToVisualRelationIds[relationId] ?? []) visualRelationIds.add(visualId);
+    }
+    for (const band of semanticDetails) {
+      for (const route of projection.projectedRelationsByDetail[band]) {
+        if (!semanticRelationIds.has(route.id) && !route.semanticIds?.some(id => semanticRelationIds.has(id))) continue;
+        visualRelationIds.add(route.id);
+        relationIds.add(route.id);
+        if (band === detail) {
+          endpointIds.add(route.from);
+          endpointIds.add(route.to);
+        }
+      }
+    }
+  }
+  if (!projectionOverride || !projection) return { endpointIds, relationIds, projectionOverride };
   return {
     endpointIds,
     relationIds,
-    projectionOverride: {
-      ...projectionOverride,
-      id: `${projectionOverride.id}:relation-focus:${relation.id}`,
-      objects,
-      paths,
-    },
+    projectionOverride: promoteProjection(scene, projectionOverride, endpointIds, visualRelationIds, `path-focus:${focus.key}`),
   };
+}
+
+/** A picked relation keeps presentation authority; otherwise an explored path set (if any) is promoted. */
+export function relationOrSetFocusPresentation(
+  scene: AtlasScene,
+  relationId: string | undefined,
+  set: RelationSetFocus | undefined,
+  projectionOverride: ProjectionOverride | undefined,
+  detail: SemanticDetail | undefined,
+  snapshotParentById?: ReadonlyMap<string, string | undefined>,
+): RelationFocusPresentation {
+  return relationId || !set
+    ? selectedRelationFocusPresentation(scene, relationId, projectionOverride)
+    : relationSetFocusPresentation(scene, set, projectionOverride, detail, snapshotParentById);
 }
