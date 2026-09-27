@@ -298,6 +298,7 @@ a.icon-button { text-decoration: none; }
 .semantic-diagram-readiness.advisory { border-color: rgba(255,174,112,.22); background: rgba(255,174,112,.025); }
 .semantic-diagram-readiness span { color: var(--atlas-accent); font-family: var(--atlas-font-mono); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .semantic-diagram-readiness.advisory span { color: var(--atlas-orange); }
+.semantic-diagram-readiness.context { border-color: var(--atlas-line); background: transparent; }
 .semantic-diagram-readiness small { min-width: 0; overflow: hidden; color: var(--atlas-quiet); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .semantic-diagram-layout { max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin: 0 auto; }
 .semantic-diagram-layout.has-inspector { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
@@ -740,6 +741,7 @@ a.icon-button { text-decoration: none; }
 .entity-hero h2 { overflow-wrap: anywhere; margin: 13px 0 0; font-size: 27px; font-weight: 650; line-height: 1.08; letter-spacing: -.035em; }
 .responsibility { margin: 10px 0 0; color: var(--atlas-muted); font-size: 12px; line-height: 1.6; }
 .enrichment-honesty { color: var(--atlas-quiet); }
+.no-explanation { color: var(--atlas-quiet); font-style: italic; }
 .enrichment-honesty-chip { flex: 0 1 auto; min-width: 0; padding: 3px 7px; border: 1px solid var(--atlas-line); border-radius: 999px; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .entity-metadata { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 13px; }
 .entity-metadata span { display: inline-flex; min-width: 0; padding: 4px 7px; border: 1px solid var(--atlas-line); border-radius: 6px; background: rgba(255,255,255,.02); color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 10px; overflow-wrap: anywhere; }

@@ -4,6 +4,8 @@ import {
   clampInspectorWidth,
   defaultInspectorWidth,
   inspectorAcceptedSummary,
+  inspectorDiagramCount,
+  inspectorEntityLead,
   inspectorSecondaryCopy,
   inspectorCanShowSource,
   inspectorCyclomatic,
@@ -20,6 +22,7 @@ import {
   presentInspectorNotationDiagnostics,
   INSPECTOR_EMPTY_SUMMARY,
   INSPECTOR_NOTATION_ADVISORY_SAMPLE,
+  INSPECTOR_NO_EXPLANATION_COPY,
 } from './inspectorPanel';
 import { createC4Scene, createGoldenC4Scene } from '../renderer/goldenC4Scene';
 import type {
@@ -841,7 +844,7 @@ describe('inspector C4 notation user Details (CLA-99)', () => {
     expect(user.rows.some(row => row.message.includes('container:') || row.message.includes('component:'))).toBe(false);
   });
 
-  it('still lists a real notation error without the completeness dump', () => {
+  it('still surfaces a real notation error without the completeness dump or raw ids', () => {
     const noise = Array.from({ length: 100 }, (_, index) => advisory(
       'element.description.missing',
       `entities.container:pkg-${index}.responsibility`,
@@ -858,12 +861,16 @@ describe('inspector C4 notation user Details (CLA-99)', () => {
     const user = inspectorNotationDetailsView(presented, 'user');
 
     expect(user.visible).toBe(true);
-    expect(user.rows).toHaveLength(1);
-    expect(user.rows[0]?.tone).toBe('error');
-    expect(user.rows[0]?.code).toBe('element.type.unsupported');
+    expect(user.errorCount).toBe(1);
     expect(user.hiddenCount).toBe(0);
     expect(user.headline).toBe('1 C4 error');
-    expect(user.rows.some(row => row.subjectId.startsWith('container:'))).toBe(false);
+    // CLA-130: raw rows embed entity ids ("widget:x"); they stay in Dev Mode.
+    expect(user.rows).toEqual([]);
+
+    const diagnostics = inspectorNotationDetailsView(presented, 'diagnostics');
+    expect(diagnostics.rows[0]?.tone).toBe('error');
+    expect(diagnostics.rows[0]?.code).toBe('element.type.unsupported');
+    expect(diagnostics.rows[0]?.message).toContain('widget:x');
   });
 
   it('keeps the CLA-59 sample and +N more notes in diagnostics mode', () => {
@@ -883,11 +890,77 @@ describe('inspector C4 notation user Details (CLA-99)', () => {
     expect(diagnostics.rows[0]?.subjectId).toBe('container:pkg-0');
   });
 
-  it('still shows C4 notation ready when the scoped pane has no diagnostics', () => {
-    const ready = inspectorNotationDetailsView(presentInspectorNotationDiagnostics([]), 'user');
+  it('hides C4 notation ready from user Details and keeps it in diagnostics mode (CLA-130)', () => {
+    const presented = presentInspectorNotationDiagnostics([]);
+    const user = inspectorNotationDetailsView(presented, 'user');
+    expect(user.visible).toBe(false);
+    expect(user.rows).toEqual([]);
+    expect(user.hiddenCount).toBe(0);
+
+    const diagnostics = inspectorNotationDetailsView(presented, 'diagnostics');
+    expect(diagnostics.visible).toBe(true);
+    expect(diagnostics.ready).toBe(true);
+    expect(diagnostics.headline).toBe('C4 notation ready');
+  });
+});
+
+describe('inspector C4 notation is developer diagnostics (CLA-130)', () => {
+  const noise = Array.from({ length: 12 }, (_, index) => advisory(
+    'element.description.missing',
+    `entities.container:pkg-${index}.responsibility`,
+    `C4 element container:pkg-${index} should have a description.`,
+    { kind: 'element', id: `container:pkg-${index}` },
+  ));
+  const error = advisory(
+    'relationship.direction.invalid',
+    'relations.r:x.direction',
+    'C4 relationship r:x has an invalid direction.',
+    { kind: 'relationship', id: 'r:x' },
+  );
+
+  it('hides ready and advisory-only notation from users', () => {
+    expect(inspectorNotationDetailsView(presentInspectorNotationDiagnostics([]), 'user').visible).toBe(false);
+    expect(inspectorNotationDetailsView(presentInspectorNotationDiagnostics(noise), 'user').visible).toBe(false);
+  });
+
+  it('keeps genuine notation errors visible to users as a headline without raw rows (CLA-99, CLA-130)', () => {
+    const user = inspectorNotationDetailsView(presentInspectorNotationDiagnostics([...noise, error]), 'user');
+    expect(user.visible).toBe(true);
+    expect(user.headline).toBe('1 C4 error');
+    expect(user.errorCount).toBe(1);
+    expect(user.rows).toEqual([]);
+  });
+
+  it('keeps ready and advisory status in diagnostics mode', () => {
+    const ready = inspectorNotationDetailsView(presentInspectorNotationDiagnostics([]), 'diagnostics');
     expect(ready.visible).toBe(true);
     expect(ready.headline).toBe('C4 notation ready');
-    expect(ready.rows).toEqual([]);
-    expect(ready.hiddenCount).toBe(0);
+    const advisories = inspectorNotationDetailsView(presentInspectorNotationDiagnostics(noise), 'diagnostics');
+    expect(advisories.visible).toBe(true);
+    expect(advisories.headline).toBe('12 C4 advisories');
+    expect(advisories.rows).toHaveLength(INSPECTOR_NOTATION_ADVISORY_SAMPLE);
+  });
+
+  it('counts openable diagrams only (refactor guard; notation status is not an input)', () => {
+    expect(inspectorDiagramCount({ hasCodeStructure: false, hasDependency: false, namedDiagramCount: 0 })).toBe(0);
+    expect(inspectorDiagramCount({ hasCodeStructure: false, hasDependency: true, namedDiagramCount: 0 })).toBe(1);
+    expect(inspectorDiagramCount({ hasCodeStructure: true, hasDependency: true, namedDiagramCount: 3 })).toBe(5);
+  });
+});
+
+describe('inspector entity lead (CLA-130)', () => {
+  it('shows neutral no-explanation copy when summary and honesty are absent', () => {
+    expect(INSPECTOR_NO_EXPLANATION_COPY).toBe('No explanation captured yet.');
+    expect(inspectorEntityLead({})).toEqual({ kind: 'no-explanation', text: 'No explanation captured yet.' });
+    expect(inspectorEntityLead({ summary: inspectorAcceptedSummary({ responsibility: INSPECTOR_EMPTY_SUMMARY }) }))
+      .toEqual({ kind: 'no-explanation', text: INSPECTOR_NO_EXPLANATION_COPY });
+    expect(INSPECTOR_NO_EXPLANATION_COPY).not.toMatch(/enrich|run |generate|missing|error|warning/i);
+  });
+
+  it('prefers the accepted summary, then published enrichment honesty', () => {
+    expect(inspectorEntityLead({ summary: 'Owns routing.', honestyDetails: 'Enrichment skipped.' }))
+      .toEqual({ kind: 'summary', text: 'Owns routing.' });
+    expect(inspectorEntityLead({ honestyDetails: 'Enrichment skipped.' }))
+      .toEqual({ kind: 'enrichment-honesty', text: 'Enrichment skipped.' });
   });
 });
