@@ -45,7 +45,8 @@ export interface OperatorDraftRevision {
   /** Version current when the draft was created; used to surface stale review. */
   basePublicationVersionId?: string;
   artifactRevisionId: string;
-  coverage: { total: number; accepted: number; failed: number; stale: number };
+  /** accepted/failed/notRun partition `total` by per-scope state; stale overlays accepted scopes. */
+  coverage: { total: number; accepted: number; failed: number; notRun: number; stale: number };
   createdAt: number;
   frozenAt?: number;
 }

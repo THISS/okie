@@ -6,8 +6,12 @@ import test from "node:test";
 import { parsePortableAtlas } from "@okie/architecture";
 import { scanRepository } from "@okie/scan";
 import { OperatorPublicationService } from "./operatorPublication.js";
+import { createOperatorBudgetLedger } from "./operatorBudget.js";
 import { createOperatorRunner } from "./operatorRunner.js";
 import { OperatorStore } from "./operatorStore.js";
+import { OperatorWorkflow } from "./operatorWorkflow.js";
+import { LlmGatewayError } from "./llmGateway.js";
+import { LlmRateLimiter } from "./llmRateLimiter.js";
 
 test("runner writes parseable deterministic and immutable enriched drafts", async () => {
   const root = mkdtempSync(join(tmpdir(), "okie-runner-"));
@@ -16,8 +20,7 @@ test("runner writes parseable deterministic and immutable enriched drafts", asyn
     const run = store.createRun({ idempotencyKey: "x", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
     const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" });
     const runner = createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions(body) {
-      const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { role?: string; directChildren?: string[]; scope?: { scopeId: string; allowedEvidence: unknown[] } };
-      if (message.role === "coordinator") return { json: { choices: [{ message: { content: JSON.stringify({ assignments: (message.directChildren ?? []).map(scopeId => ({ scopeId })) }) } }] } };
+      const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope?: { scopeId: string; allowedEvidence: unknown[] } };
       return { json: { choices: [{ message: { content: JSON.stringify({ summary: `Summary ${message.scope!.scopeId}`, evidence: message.scope!.allowedEvidence.slice(0, 1) }) } }] }, usage: { totalTokens: 2 } };
     } } });
     await runner.enqueue({ kind: "run", runId: run.runId, githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
@@ -29,6 +32,11 @@ test("runner writes parseable deterministic and immutable enriched drafts", asyn
     assert.match(sidecar.explanations[0]!.content.summary, /^Summary/);
     assert.deepEqual(deterministic, store.readArtifactFile(drafts[0]!.artifactRevisionId, "atlas.okie.json"));
     assert.equal(store.snapshot().publications.length, 0);
+    const enriched = JSON.parse(store.readArtifactFile(drafts[1]!.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ kind: string; state: string }> };
+    assert.ok(enriched.scopes.filter(scope => scope.kind === "code").every(scope => scope.state === "not run"), "code symbols are below the default depth cap");
+    assert.ok(enriched.scopes.filter(scope => scope.kind !== "code").every(scope => scope.state === "accepted"));
+    assert.equal(drafts[1]!.coverage.accepted + drafts[1]!.coverage.failed + drafts[1]!.coverage.notRun, drafts[1]!.coverage.total);
+    assert.ok(store.snapshot().attempts.every(attempt => attempt.state === "accepted"));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -44,12 +52,14 @@ test("runner retries only the selected scope into a new immutable draft", async 
       { scopeId: "sibling", parentScopeId: "component", name: "Sibling", kind: "code", sourceRefs: [{ path: "sibling.ts" }] },
     ];
     const oldSidecar = JSON.stringify({ schemaVersion: 1, scopes, explanations: [
+      { scopeId: "system", explanationVersionId: "system-original", content: { summary: "old system", evidence: [{ entityId: "system", path: "system.ts" }] } },
+      { scopeId: "component", explanationVersionId: "component-original", content: { summary: "old component", evidence: [{ entityId: "component", path: "component.ts" }] } },
       { scopeId: "target", explanationVersionId: "target-original", content: { summary: "old target", evidence: [{ entityId: "target", path: "target.ts", startLine: 1, endLine: 2 }] } },
       { scopeId: "sibling", explanationVersionId: "sibling-original", content: { summary: "old sibling", evidence: [{ entityId: "sibling", path: "sibling.ts" }] } },
     ] });
     const snapshot = JSON.stringify({ schemaVersion: 1, id: "snapshot", repositoryId: "o/r", commitSha: "abc", generatedAt: "2026-01-01T00:00:00.000Z", entities: scopes.map(scope => ({ id: scope.scopeId, ...(scope.parentScopeId ? { parentId: scope.parentScopeId } : {}), name: scope.name, kind: scope.kind, sourceRefs: scope.sourceRefs.map(ref => ({ ...ref, commitSha: "abc" })) })), relations: [] });
     const artifact = store.writeArtifactRevision({ repositoryId: "o/r", sourceCommitSha: "abc", files: { "snapshot.json": snapshot, "operator-explanations.json": oldSidecar, "atlas.okie.json": "old atlas" } });
-    const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 4, accepted: 4, failed: 0, stale: 0 } });
+    const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 4, accepted: 4, failed: 0, notRun: 0, stale: 0 } });
     for (const scopeId of ["system", "component", "target", "sibling"]) store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId, kind: "enrichment", state: "accepted" });
     store.updateRun(run.runId, { state: "failed", error: "previous enrichment failure" });
     const calls: string[] = [];
@@ -91,8 +101,8 @@ test("runner retries only the selected scope into a new immutable draft", async 
     await refresher.enqueue({ kind: "refresh", runId: run.runId, draftRevisionId: nextDraft.draftRevisionId, scopeIds: ["system", "component"], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
     assert.deepEqual(refreshed, ["component", "system"]);
     assert.deepEqual(childStates.get("component")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "sibling", state: "accepted" }, { scopeId: "target", state: "accepted" }]);
-    assert.deepEqual(childStates.get("system")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "component", state: "failed" }]);
-    assert.deepEqual(store.snapshot().attempts.filter(attempt => attempt.kind === "refresh").map(attempt => attempt.scopeId), ["component", "component", "system", "system"]);
+    assert.deepEqual(childStates.get("system")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "component", state: "stale" }], "the failed refresh keeps component's pinned, still-stale explanation");
+    assert.deepEqual(store.snapshot().attempts.filter(attempt => attempt.kind === "refresh").map(attempt => attempt.scopeId), ["component", "system"], "one owner attempt per refreshed scope; no coordinator planning attempts");
     const refreshedDraft = store.snapshot().drafts.find(value => value.draftRevisionId === store.snapshot().runs.find(value => value.runId === run.runId)?.draftRevisionId)!;
     const refreshedSidecar = JSON.parse(store.readArtifactFile(refreshedDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; stale?: boolean }>; explanations: Array<{ scopeId: string; content: { summary: string } }> };
     assert.deepEqual(refreshedSidecar.scopes.filter(scope => scope.stale).map(scope => scope.scopeId), ["system", "component"]);
@@ -131,17 +141,204 @@ test("runner rejects pinned and concurrent retries once a newer draft exists", a
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test("runner reserves its durable budget before gateway calls", async () => {
-  const root = mkdtempSync(join(tmpdir(), "okie-runner-budget-")); const old = process.env.OKIE_LLM_MAX_SCOPES;
+const operatorEnvKeys = ["OKIE_LLM_OPERATOR_MAX_REQUESTS", "OKIE_LLM_MAX_CONCURRENT", "OKIE_LLM_ENRICH_DEPTH", "OKIE_LLM_REASONING_LEAVES"] as const;
+async function withEnv(values: Partial<Record<(typeof operatorEnvKeys)[number], string>>, work: () => Promise<void>): Promise<void> {
+  const old = Object.fromEntries(operatorEnvKeys.map(key => [key, process.env[key]]));
+  try { for (const key of operatorEnvKeys) { if (values[key] === undefined) delete process.env[key]; else process.env[key] = values[key]; } await work(); }
+  finally { for (const key of operatorEnvKeys) { if (old[key] === undefined) delete process.env[key]; else process.env[key] = old[key]; } }
+}
+const access = { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } as const;
+const summaryReply = (body: Record<string, unknown>) => { const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } }; return { json: { choices: [{ message: { content: JSON.stringify({ summary: `Summary ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence.slice(0, 1) }) } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } }; };
+
+test("runner reserves its durable budget before gateway calls and a refusal creates no attempt row", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-budget-"));
   try {
-    process.env.OKIE_LLM_MAX_SCOPES = "1";
-    const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "budget", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
-    const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" }); let calls = 0;
-    await createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions() { calls += 1; return { json: { choices: [{ message: { content: "{}" } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } }; } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
-    assert.equal(calls, 1);
-    assert.equal(store.snapshot().events.filter(event => event.type === "budget.reserved").length, 1);
-    assert.equal(store.snapshot().events.filter(event => event.type === "budget.settled").length, 1);
-  } finally { if (old === undefined) delete process.env.OKIE_LLM_MAX_SCOPES; else process.env.OKIE_LLM_MAX_SCOPES = old; rmSync(root, { recursive: true, force: true }); }
+    await withEnv({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "1" }, async () => {
+      const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "budget", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+      const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" }); let calls = 0;
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions() { calls += 1; return { json: { choices: [{ message: { content: "{}" } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } }; } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
+      assert.equal(calls, 1);
+      assert.equal(store.snapshot().events.filter(event => event.type === "budget.reserved").length, 1);
+      assert.equal(store.snapshot().events.filter(event => event.type === "budget.settled").length, 1);
+      assert.equal(store.snapshot().attempts.length, 1, "the ledger refusal does not leave a failed attempt row");
+      const draft = store.snapshot().drafts.at(-1)!;
+      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 0, failed: 1, notRun: draft.coverage.total - 1 });
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("runner keeps finished explanations when the budget stops the run", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-partial-"));
+  try {
+    await withEnv({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "3", OKIE_LLM_MAX_CONCURRENT: "2" }, async () => {
+      const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "partial", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+      const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" });
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions(body) { return summaryReply(body); } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
+      const state = store.snapshot(); const draft = state.drafts.at(-1)!;
+      assert.equal(state.drafts.length, 2); assert.equal(state.runs[0]?.state, "awaiting_review"); assert.equal(state.runs[0]?.draftRevisionId, draft.draftRevisionId);
+      assert.equal(state.explanations.length, 3);
+      assert.ok(state.attempts.every(attempt => attempt.state === "accepted"), "no failed rows for budget-skipped scopes");
+      assert.deepEqual(state.events.filter(event => event.type === "enrichment.budget_reached").map(event => event.detail), [{ accepted: 3, attempted: 3, ledger: "run" }], "the stop reason is visible in run activity");
+      const sidecar = JSON.parse(store.readArtifactFile(draft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; state: string }>; explanations: Array<{ scopeId: string }> };
+      assert.equal(sidecar.explanations.length, 3);
+      assert.deepEqual(sidecar.scopes.filter(scope => scope.state === "accepted").map(scope => scope.scopeId).sort(), sidecar.explanations.map(value => value.scopeId).sort());
+      assert.equal(sidecar.scopes.filter(scope => scope.state === "not run").length, sidecar.scopes.length - 3);
+      assert.deepEqual(draft.coverage, { total: sidecar.scopes.length, accepted: 3, failed: 0, notRun: sidecar.scopes.length - 3, stale: 0 });
+      const detail = new OperatorWorkflow({ store, publications: new OperatorPublicationService(store), enqueue() {} }).draftDetail(draft.draftRevisionId)!;
+      assert.equal(detail.scopes.filter(scope => scope.state === "accepted").length, draft.coverage.accepted);
+      assert.equal(detail.scopes.filter(scope => scope.state === "not run").length, draft.coverage.notRun);
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("runner rate-limit retries do not consume the durable request budget", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-429-"));
+  try {
+    await withEnv({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "2" }, async () => {
+      const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "rate", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+      const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" }); let calls = 0;
+      const rateLimiter = new LlmRateLimiter({ maxConcurrent: 4, retries: 2, backoffMs: 1, sleep: async () => undefined, now: (() => { let clock = 0; return () => (clock += 10); })() });
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), rateLimiter, githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions(body) { calls += 1; if (calls === 1) throw new LlmGatewayError("llm gateway 429: slow", { kind: "rate_limit", status: 429 }); return summaryReply(body); } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
+      assert.equal(calls, 3, "one retried 429 plus two admitted requests");
+      assert.equal(store.snapshot().events.filter(event => event.type === "budget.reserved").length, 2);
+      assert.equal(store.snapshot().explanations.length, 2);
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+const scanned = () => scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" });
+const publicClient = () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never;
+
+test("a global-ledger refusal creates no attempt row, leaves scopes not run, and releases nothing onto the run ledger", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-global-"));
+  try {
+    await withEnv({}, async () => {
+      const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "global", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+      const globalLedger = createOperatorBudgetLedger({ maxRequests: 0, maxTokens: 1_000_000, maxDollars: 1 }, { store, runId: "global-operator-enrichment" }); let calls = 0;
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), globalLedger, githubClient: publicClient, scan: async () => ({ commitSha: "abc", artifacts: scanned() }), gateway: { modelId: "fake/model", async chatCompletions(body) { calls += 1; return summaryReply(body); } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
+      const state = store.snapshot(); const draft = state.drafts.at(-1)!;
+      assert.equal(calls, 0); assert.equal(state.attempts.length, 0);
+      assert.equal(state.events.filter(event => event.runId === run.runId && event.type.startsWith("budget.")).length, 0);
+      assert.deepEqual(state.events.filter(event => event.type === "enrichment.budget_reached").map(event => event.detail?.ledger), ["global"], "the stop names the ledger that refused");
+      assert.equal(state.runs.find(value => value.runId === run.runId)?.state, "awaiting_review");
+      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 0, failed: 0, notRun: draft.coverage.total });
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("429 retries hold a single global and run reservation per admitted request", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-global-429-"));
+  try {
+    await withEnv({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "2" }, async () => {
+      const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "global-429", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+      const globalLedger = createOperatorBudgetLedger({ maxRequests: 1_000, maxTokens: 100_000_000, maxDollars: 100 }, { store, runId: "global-operator-enrichment" }); let calls = 0;
+      const rateLimiter = new LlmRateLimiter({ maxConcurrent: 1, retries: 3, backoffMs: 1, sleep: async () => undefined, now: (() => { let clock = 0; return () => (clock += 10); })() });
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), globalLedger, rateLimiter, githubClient: publicClient, scan: async () => ({ commitSha: "abc", artifacts: scanned() }), gateway: { modelId: "fake/model", async chatCompletions(body) { calls += 1; if (calls <= 2) throw new LlmGatewayError("llm gateway 429: slow", { kind: "rate_limit", status: 429 }); return summaryReply(body); } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
+      const events = store.snapshot().events; const global = events.filter(event => event.runId === "global-operator-enrichment");
+      assert.equal(calls, 4, "two 429s retried below admission plus two admitted requests");
+      assert.equal(global.filter(event => event.type === "budget.reserved").length, 2, "retries never re-reserve the global ledger");
+      assert.equal(global.filter(event => event.type === "budget.settled").length, 2);
+      assert.equal(globalLedger.snapshot().requests, 2); assert.equal(globalLedger.snapshot().reservedTokens, 0, "settled with real usage");
+      assert.equal(events.filter(event => event.runId === run.runId && event.type === "budget.reserved").length, 2);
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("the durable run ledger can refuse while the run-level cap would still admit; the global reservation is released", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-seeded-"));
+  try {
+    await withEnv({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "3" }, async () => {
+      const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "seeded", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+      const seeded = createOperatorBudgetLedger({ maxRequests: 3, maxTokens: 4_000_000, maxDollars: 5 }, { store, runId: run.runId });
+      for (let index = 0; index < 2; index += 1) seeded.settle(seeded.reserve(10)!, { inputTokens: 1, outputTokens: 1 });
+      let calls = 0; const globalLedger = createOperatorBudgetLedger({ maxRequests: 1_000, maxTokens: 100_000_000, maxDollars: 100 }, { store, runId: "global-operator-enrichment" });
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), globalLedger, githubClient: publicClient, scan: async () => ({ commitSha: "abc", artifacts: scanned() }), gateway: { modelId: "fake/model", async chatCompletions(body) { calls += 1; return summaryReply(body); } } }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
+      const state = store.snapshot(); const draft = state.drafts.at(-1)!;
+      assert.equal(calls, 1, "the run-level cap (3) allowed more, but the durable ledger had one request left");
+      const global = state.events.filter(event => event.runId === "global-operator-enrichment");
+      assert.ok(global.filter(event => event.type === "budget.released").length >= 1);
+      assert.equal(global.filter(event => event.type === "budget.reserved").length - global.filter(event => event.type === "budget.released").length, 1);
+      assert.equal(globalLedger.snapshot().requests, 1); assert.equal(global.filter(event => event.type === "budget.settled").length, 1);
+      assert.equal(state.attempts.length, 1); assert.equal(state.explanations.length, 1);
+      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 1, failed: 0, notRun: draft.coverage.total - 1 });
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("without a gateway the run records an unavailable event, no attempt rows, and every scope not run", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-unavailable-"));
+  try {
+    const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "unavailable", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    await createOperatorRunner({ store, publication: new OperatorPublicationService(store), gatewayConfig: { baseUrl: "https://gateway.invalid/v1", modelId: "m", keySource: "none" }, githubClient: publicClient, scan: async () => ({ commitSha: "abc", artifacts: scanned() }) }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
+    const state = store.snapshot(); const draft = state.drafts.at(-1)!;
+    assert.equal(state.attempts.length, 0); assert.equal(draft.coverage.notRun, draft.coverage.total);
+    assert.equal(state.events.filter(event => event.type === "enrichment.unavailable").length, 1);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("a retry refused by an exhausted budget mints no draft, persists no stale marks, and explains why", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-retry-refused-"));
+  try {
+    await withEnv({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "1" }, async () => {
+      const store = new OperatorStore(root);
+      const run = store.createRun({ idempotencyKey: "refused", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r", commitSha: "abc" } }).run;
+      const scopes = [{ scopeId: "system", name: "System", kind: "softwareSystem", state: "accepted", sourceRefs: [{ path: "s.ts" }] }, { scopeId: "leaf", parentScopeId: "system", name: "Leaf", kind: "component", state: "failed", sourceRefs: [{ path: "l.ts" }] }];
+      const snapshot = JSON.stringify({ schemaVersion: 1, id: "snapshot", repositoryId: "o/r", commitSha: "abc", generatedAt: "2026-01-01T00:00:00.000Z", entities: scopes.map(scope => ({ id: scope.scopeId, ...(scope.parentScopeId ? { parentId: scope.parentScopeId } : {}), name: scope.name, kind: scope.kind, sourceRefs: scope.sourceRefs.map(ref => ({ ...ref, commitSha: "abc" })) })), relations: [] });
+      const artifact = store.writeArtifactRevision({ repositoryId: "o/r", sourceCommitSha: "abc", files: { "snapshot.json": snapshot, "operator-explanations.json": JSON.stringify({ schemaVersion: 1, scopes, explanations: [{ scopeId: "system", content: { summary: "old", evidence: [{ entityId: "system", path: "s.ts" }] } }] }), "atlas.okie.json": "atlas" } });
+      const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 2, accepted: 1, failed: 1, notRun: 0, stale: 0 } });
+      store.updateRun(run.runId, { state: "awaiting_review" });
+      const exhausted = createOperatorBudgetLedger({ maxRequests: 1, maxTokens: 4_000_000, maxDollars: 5 }, { store, runId: run.runId }); exhausted.settle(exhausted.reserve(10)!, { inputTokens: 1, outputTokens: 1 });
+      let calls = 0;
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { modelId: "fake/model", async chatCompletions(body) { calls += 1; return summaryReply(body); } } }).enqueue({ kind: "retry", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: ["leaf"], githubAccess: access });
+      const state = store.snapshot(); const current = state.runs.find(value => value.runId === run.runId)!;
+      assert.equal(calls, 0); assert.equal(state.drafts.length, 1); assert.equal(state.attempts.length, 0);
+      assert.equal(current.state, "awaiting_review"); assert.equal(current.draftRevisionId, draft.draftRevisionId); assert.match(current.error ?? "", /was not run: this run's enrichment budget is exhausted/);
+      assert.deepEqual(state.events.filter(event => event.type === "enrichment.budget_refused").map(event => event.detail?.ledger), ["run"]);
+      assert.ok(!store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!.toString().includes("stale"));
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("a retry refused by the global ledger names the global limits, not the run budget; (variant of) a retry refused by an exhausted budget mints no draft, persists no stale marks, and explains why", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-retry-refused-"));
+  try {
+    await withEnv({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "1" }, async () => {
+      const store = new OperatorStore(root);
+      const run = store.createRun({ idempotencyKey: "refused", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r", commitSha: "abc" } }).run;
+      const scopes = [{ scopeId: "system", name: "System", kind: "softwareSystem", state: "accepted", sourceRefs: [{ path: "s.ts" }] }, { scopeId: "leaf", parentScopeId: "system", name: "Leaf", kind: "component", state: "failed", sourceRefs: [{ path: "l.ts" }] }];
+      const snapshot = JSON.stringify({ schemaVersion: 1, id: "snapshot", repositoryId: "o/r", commitSha: "abc", generatedAt: "2026-01-01T00:00:00.000Z", entities: scopes.map(scope => ({ id: scope.scopeId, ...(scope.parentScopeId ? { parentId: scope.parentScopeId } : {}), name: scope.name, kind: scope.kind, sourceRefs: scope.sourceRefs.map(ref => ({ ...ref, commitSha: "abc" })) })), relations: [] });
+      const artifact = store.writeArtifactRevision({ repositoryId: "o/r", sourceCommitSha: "abc", files: { "snapshot.json": snapshot, "operator-explanations.json": JSON.stringify({ schemaVersion: 1, scopes, explanations: [{ scopeId: "system", content: { summary: "old", evidence: [{ entityId: "system", path: "s.ts" }] } }] }), "atlas.okie.json": "atlas" } });
+      const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 2, accepted: 1, failed: 1, notRun: 0, stale: 0 } });
+      store.updateRun(run.runId, { state: "awaiting_review" });
+      const globalLedger = createOperatorBudgetLedger({ maxRequests: 0, maxTokens: 1_000_000, maxDollars: 1 }, { store, runId: "global-operator-enrichment" });
+      let calls = 0;
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), globalLedger, gateway: { modelId: "fake/model", async chatCompletions(body) { calls += 1; return summaryReply(body); } } }).enqueue({ kind: "retry", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: ["leaf"], githubAccess: access });
+      const state = store.snapshot(); const current = state.runs.find(value => value.runId === run.runId)!;
+      assert.equal(calls, 0); assert.equal(state.drafts.length, 1); assert.equal(state.attempts.length, 0);
+      assert.equal(current.state, "awaiting_review"); assert.equal(current.draftRevisionId, draft.draftRevisionId); assert.match(current.error ?? "", /was not run: the process-wide operator budget is exhausted\. Raise the global operator limits \(OKIE_LLM_GLOBAL_MAX_DOLLARS/);
+      assert.deepEqual(state.events.filter(event => event.type === "enrichment.budget_refused").map(event => event.detail?.ledger), ["global"]);
+      assert.ok(!store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!.toString().includes("stale"));
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("a retry leaves a not-run ancestor not run and unstale, and coverage matches the scope labels", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-runner-notrun-ancestor-"));
+  try {
+    await withEnv({}, async () => {
+      const store = new OperatorStore(root);
+      const run = store.createRun({ idempotencyKey: "notrun", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r", commitSha: "abc" } }).run;
+      const scopes = [{ scopeId: "system", name: "System", kind: "softwareSystem", state: "not run", sourceRefs: [{ path: "s.ts" }] }, { scopeId: "container", parentScopeId: "system", name: "Container", kind: "container", state: "accepted", sourceRefs: [{ path: "c.ts" }] }, { scopeId: "leaf", parentScopeId: "container", name: "Leaf", kind: "component", state: "failed", sourceRefs: [{ path: "l.ts" }] }];
+      const snapshot = JSON.stringify({ schemaVersion: 1, id: "snapshot", repositoryId: "o/r", commitSha: "abc", generatedAt: "2026-01-01T00:00:00.000Z", entities: scopes.map(scope => ({ id: scope.scopeId, ...(scope.parentScopeId ? { parentId: scope.parentScopeId } : {}), name: scope.name, kind: scope.kind, sourceRefs: scope.sourceRefs.map(ref => ({ ...ref, commitSha: "abc" })) })), relations: [] });
+      const artifact = store.writeArtifactRevision({ repositoryId: "o/r", sourceCommitSha: "abc", files: { "snapshot.json": snapshot, "operator-explanations.json": JSON.stringify({ schemaVersion: 1, scopes, explanations: [{ scopeId: "container", content: { summary: "old", evidence: [{ entityId: "container", path: "c.ts" }] } }] }), "atlas.okie.json": "atlas" } });
+      const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 3, accepted: 1, failed: 1, notRun: 1, stale: 0 } });
+      await createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { modelId: "fake/model", async chatCompletions(body) { return summaryReply(body); } } }).enqueue({ kind: "retry", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: ["leaf"], githubAccess: access });
+      const next = store.snapshot().drafts.at(-1)!; assert.notEqual(next.draftRevisionId, draft.draftRevisionId);
+      const detail = new OperatorWorkflow({ store, publications: new OperatorPublicationService(store), enqueue() {} }).draftDetail(next.draftRevisionId)!;
+      assert.deepEqual(detail.scopes.map(scope => [scope.scopeId, scope.state, scope.stale]), [["system", "not run", false], ["container", "accepted", true], ["leaf", "accepted", false]]);
+      assert.deepEqual(next.coverage, { total: 3, accepted: 2, failed: 0, notRun: 1, stale: 1 });
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test("runner leaves cancelled scans and late gateway replies cancelled", async () => {
@@ -159,4 +356,29 @@ test("runner leaves cancelled scans and late gateway replies cancelled", async (
     assert.equal(store.snapshot().runs.find(value => value.runId === late.runId)?.state, "cancelled");
     assert.equal(store.snapshot().explanations.filter(value => value.draftRevisionId === store.snapshot().drafts.at(-1)?.draftRevisionId).length, 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("leaf reasoning control: only OpenRouter leaf requests get reasoning.enabled=false, and only when OKIE_LLM_REASONING_LEAVES=off", async () => {
+  const bodyFor = async (setting: "on" | "off", baseUrl: string, role: "leaf" | "parent"): Promise<Record<string, unknown>> => {
+    const root = mkdtempSync(join(tmpdir(), "okie-runner-reasoning-"));
+    try {
+      let captured: Record<string, unknown> | undefined;
+      await withEnv({ OKIE_LLM_REASONING_LEAVES: setting }, async () => {
+        const store = new OperatorStore(root);
+        const run = store.createRun({ idempotencyKey: "reasoning", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r", commitSha: "abc" } }).run;
+        const scopes = [{ scopeId: "system", name: "System", kind: "softwareSystem", state: "accepted", sourceRefs: [{ path: "s.ts" }] }, { scopeId: "leaf", parentScopeId: "system", name: "Leaf", kind: "component", state: "accepted", sourceRefs: [{ path: "l.ts" }] }];
+        const snapshot = JSON.stringify({ schemaVersion: 1, id: "snapshot", repositoryId: "o/r", commitSha: "abc", generatedAt: "2026-01-01T00:00:00.000Z", entities: scopes.map(scope => ({ id: scope.scopeId, ...(scope.parentScopeId ? { parentId: scope.parentScopeId } : {}), name: scope.name, kind: scope.kind, sourceRefs: scope.sourceRefs.map(ref => ({ ...ref, commitSha: "abc" })) })), relations: [] });
+        const explanations = scopes.map(scope => ({ scopeId: scope.scopeId, content: { summary: "old", evidence: [{ entityId: scope.scopeId, path: scope.sourceRefs[0]!.path }] } }));
+        const artifact = store.writeArtifactRevision({ repositoryId: "o/r", sourceCommitSha: "abc", files: { "snapshot.json": snapshot, "operator-explanations.json": JSON.stringify({ schemaVersion: 1, scopes, explanations }), "atlas.okie.json": "atlas" } });
+        const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 2, accepted: 2, failed: 0, notRun: 0, stale: 0 } });
+        await createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { baseUrl, modelId: "fake/model", async chatCompletions(body: Record<string, unknown>) { captured = body; return summaryReply(body); } } as never }).enqueue({ kind: "retry", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: [role === "leaf" ? "leaf" : "system"], githubAccess: access });
+      });
+      return captured!;
+    } finally { rmSync(root, { recursive: true, force: true }); }
+  };
+  for (const setting of ["on", "off"] as const) for (const baseUrl of ["https://openrouter.ai/api/v1", "https://api.example.test/v1"]) for (const role of ["leaf", "parent"] as const) {
+    const body = await bodyFor(setting, baseUrl, role);
+    const expected = setting === "off" && baseUrl.includes("openrouter.ai") && role === "leaf";
+    assert.deepEqual(body.reasoning, expected ? { enabled: false } : undefined, `${setting} × ${baseUrl} × ${role}`);
+  }
 });

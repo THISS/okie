@@ -30,6 +30,11 @@ import {
   requireUsableModelId,
   resolveEnrichmentBudget,
   resolveLlmGatewayConfig,
+  resolveLlmRateLimitConfig,
+  resolveOperatorEnrichmentBudget,
+  resolveOperatorEnrichmentDepth,
+  resolveOperatorLeafReasoning,
+  isOpenRouterProvider,
   resolveLlmGatewayLocalConfig,
   safeGatewayProvider,
   shouldSkipRemainingScopes,
@@ -451,6 +456,29 @@ test("resolveEnrichmentBudget reads env and keeps documented defaults", () => {
     OKIE_LLM_MAX_DOLLARS: "",
   });
   assert.deepEqual(invalid, resolveEnrichmentBudget({}));
+});
+
+test("operator enrichment env: budget, depth cap, and rate-limit keys with defaults", () => {
+  assert.deepEqual(resolveOperatorEnrichmentBudget({}), { requestTimeoutMs: 120_000, maxScopes: 512, maxTokens: 4_000_000, maxDollars: 5 });
+  assert.equal(resolveOperatorEnrichmentBudget({ OKIE_LLM_TIMEOUT_MS: "900" }).requestTimeoutMs, 120_000, "the public timeout key does not shorten operator requests");
+  assert.equal(resolveEnrichmentBudget({ OKIE_LLM_OPERATOR_TIMEOUT_MS: "900" }).requestTimeoutMs, DEFAULT_REQUEST_TIMEOUT_MS, "public scans keep OKIE_LLM_TIMEOUT_MS at 60s");
+  assert.equal(DEFAULT_REQUEST_TIMEOUT_MS, 60_000);
+  assert.deepEqual(resolveOperatorEnrichmentBudget({ OKIE_LLM_OPERATOR_TIMEOUT_MS: "900", OKIE_LLM_OPERATOR_MAX_REQUESTS: "12", OKIE_LLM_OPERATOR_MAX_TOKENS: "5000", OKIE_LLM_OPERATOR_MAX_DOLLARS: "0.5", OKIE_LLM_MAX_SCOPES: "1" }), { requestTimeoutMs: 900, maxScopes: 12, maxTokens: 5000, maxDollars: 0.5 });
+  assert.deepEqual(resolveOperatorEnrichmentBudget({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "0", OKIE_LLM_OPERATOR_MAX_TOKENS: "x", OKIE_LLM_OPERATOR_MAX_DOLLARS: "-1", OKIE_LLM_OPERATOR_TIMEOUT_MS: "0" }), resolveOperatorEnrichmentBudget({}));
+  assert.equal(resolveEnrichmentBudget({ OKIE_LLM_OPERATOR_MAX_REQUESTS: "99" }).maxScopes, DEFAULT_MAX_ENRICHMENT_SCOPES, "public scan budget ignores operator keys");
+  assert.equal(resolveOperatorEnrichmentDepth({}), "component");
+  assert.equal(resolveOperatorEnrichmentDepth({ OKIE_LLM_ENRICH_DEPTH: " Code " }), "code");
+  assert.equal(resolveOperatorEnrichmentDepth({ OKIE_LLM_ENRICH_DEPTH: "everything" }), "component");
+  assert.equal(resolveOperatorLeafReasoning({}), "on");
+  assert.equal(resolveOperatorLeafReasoning({ OKIE_LLM_REASONING_LEAVES: " OFF " }), "off");
+  assert.equal(resolveOperatorLeafReasoning({ OKIE_LLM_REASONING_LEAVES: "on" }), "on");
+  assert.equal(resolveOperatorLeafReasoning({ OKIE_LLM_REASONING_LEAVES: "maybe" }), "on");
+  assert.equal(isOpenRouterProvider(safeGatewayProvider("https://openrouter.ai/api/v1")), true);
+  assert.equal(isOpenRouterProvider(safeGatewayProvider("https://api.openai.com/v1")), false);
+  assert.equal(isOpenRouterProvider("openrouter.ai.evil.test"), false); assert.equal(isOpenRouterProvider(undefined), false);
+  assert.deepEqual(resolveLlmRateLimitConfig({}), { maxConcurrent: 64, retries: 4, backoffMs: 1000 });
+  assert.deepEqual(resolveLlmRateLimitConfig({ OKIE_LLM_MAX_CONCURRENT: "3", OKIE_LLM_RATE_LIMIT_RETRIES: "0", OKIE_LLM_RATE_LIMIT_BACKOFF_MS: "250" }), { maxConcurrent: 3, retries: 0, backoffMs: 250 });
+  assert.deepEqual(resolveLlmRateLimitConfig({ OKIE_LLM_MAX_CONCURRENT: "0", OKIE_LLM_RATE_LIMIT_RETRIES: "-2", OKIE_LLM_RATE_LIMIT_BACKOFF_MS: "nope" }), { maxConcurrent: 64, retries: 4, backoffMs: 1000 });
 });
 
 test("readGatewayUsage parses OpenAI tokens and OpenRouter cost", () => {

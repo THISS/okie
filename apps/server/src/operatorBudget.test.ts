@@ -67,3 +67,13 @@ test("durable admission shares limits across ledger instances and restart", () =
     assert.equal(a.reserve(0), undefined);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test("release drops an unused reservation so an admission-chain refusal does not burn budget", () => {
+  const ledger = createOperatorBudgetLedger({ maxRequests: 1, maxTokens: 100, maxDollars: 1 });
+  const first = ledger.reserve(60)!;
+  assert.equal(ledger.reserve(10), undefined);
+  ledger.release(first);
+  assert.equal(ledger.snapshot().requests, 0); assert.equal(ledger.snapshot().reservedTokens, 0);
+  const second = ledger.reserve(90)!; ledger.settle(second, { inputTokens: 1, outputTokens: 1 });
+  assert.throws(() => ledger.release(second), /settled/); assert.throws(() => ledger.release("missing"), /unknown/);
+});

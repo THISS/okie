@@ -76,7 +76,7 @@ test("acceptance is immutable, separate from facts, replayable across restart an
   assert.equal(replay.replayed, true);
   assert.equal(restarted.snapshot().attempts.length, 1);
   assert.deepEqual(restarted.snapshot().attempts[0]!.usage, { inputTokens: 17, outputTokens: 9 });
-  assert.equal(readArtifactScopes(restarted, ctx.artifact.artifactRevisionId, restarted.snapshot().attempts)[0]!.state, "failed", "judgment must not masquerade as an explanation");
+  assert.equal(readArtifactScopes(restarted, ctx.artifact.artifactRevisionId, restarted.snapshot().attempts)[0]!.state, "not run", "judgment must not masquerade as an explanation");
   const changed = await runOperatorJudgments({ ...ctx, provider, request: { ...ctx.request, draftRevisionId: first.draftRevisionId, inputs: { claim: "Other claim" } } });
   assert.equal(changed.state, "accepted");
   assert.equal(ctx.store.snapshot().runs[0]!.state, "awaiting_review");

@@ -23,7 +23,7 @@ test("draft scope metadata preserves full immutable explanations and untouched s
     assert.equal(detail.scopes[0]?.name, "handle");
     assert.deepEqual(detail.scopes[0]?.explanation, explanation);
     assert.equal(detail.scopes[0]?.explanationVersionId, "explanation-original");
-    assert.equal(detail.scopes[1]?.state, "failed");
+    assert.equal(detail.scopes[1]?.state, "not run", "a scope with no attempt and no explanation was never run");
     assert.equal(detail.usage.measuredCostUsd, 0);
     assert.equal(detail.usage.costStatus, "measured");
 
@@ -35,5 +35,29 @@ test("draft scope metadata preserves full immutable explanations and untouched s
     assert.equal(combined.usage.costStatus, "unknown");
     assert.equal(combined.usage.unknownCostAttempts, 1);
     assert.deepEqual(workflow.draftDetail(draft.draftRevisionId)?.scopes[0]?.explanation, explanation);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("the enriched sidecar's per-scope state is authoritative for a draft with no attempts of its own", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-workflow-states-"));
+  try {
+    const store = new OperatorStore(root);
+    const publications = new OperatorPublicationService(store);
+    const run = store.createRun({ idempotencyKey: "states", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const scopes = [{ scopeId: "a", name: "a", state: "accepted" }, { scopeId: "b", name: "b", state: "failed" }, { scopeId: "c", name: "c", state: "not run" }, { scopeId: "d", name: "d", state: "accepted", stale: true }];
+    const content = { summary: "ok", evidence: [] };
+    const artifact = store.writeArtifactRevision({ repositoryId: "o/r", files: { "operator-explanations.json": JSON.stringify({ scopes, explanations: [{ scopeId: "a", content }, { scopeId: "d", content }] }) } });
+    const first = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
+    store.createAttempt({ draftRevisionId: first.draftRevisionId, scopeId: "b", kind: "enrichment", state: "failed" });
+    const enriched = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
+    const detail = new OperatorWorkflow({ store, publications, enqueue() {} }).draftDetail(enriched.draftRevisionId)!;
+    assert.deepEqual(detail.scopes.map(scope => [scope.scopeId, scope.state, scope.stale]), [["a", "accepted", false], ["b", "failed", false], ["c", "not run", false], ["d", "accepted", true]]);
+    const running = store.createAttempt({ draftRevisionId: enriched.draftRevisionId, scopeId: "b", kind: "retry", state: "running" });
+    store.createAttempt({ draftRevisionId: enriched.draftRevisionId, scopeId: "c", kind: "retry", state: "cancelled" });
+    store.createAttempt({ draftRevisionId: enriched.draftRevisionId, scopeId: "a", kind: "retry", state: "failed" });
+    const live = new OperatorWorkflow({ store, publications, enqueue() {} }).draftDetail(enriched.draftRevisionId)!;
+    assert.deepEqual(live.scopes.map(scope => [scope.scopeId, scope.state]), [["a", "accepted"], ["b", "running"], ["c", "cancelled"], ["d", "accepted"]], "running/queued/cancelled attempts win; a settled attempt does not override the sidecar");
+    store.updateAttempt(running.attemptId, { state: "queued" });
+    assert.equal(new OperatorWorkflow({ store, publications, enqueue() {} }).draftDetail(enriched.draftRevisionId)!.scopes[1]?.state, "queued");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

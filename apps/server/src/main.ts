@@ -11,6 +11,7 @@ import {
   loadOperatorDotenv,
   resolveLlmGatewayConfig,
   resolveLlmGatewayLocalConfig,
+  resolveOperatorEnrichmentBudget,
 } from "./llmGateway.js";
 import { createScanHttpServer } from "./scanServer.js";
 import { createScanJobRunner } from "./scanService.js";
@@ -81,28 +82,12 @@ const operatorGlobalBudget = createOperatorBudgetLedger({
   maxTokens: globalSpend.cap.maxTokens ?? Number.MAX_SAFE_INTEGER,
   maxDollars: globalSpend.cap.maxDollars ?? Number.MAX_SAFE_INTEGER,
 }, { store: operatorStore, runId: "global-operator-enrichment" });
-const operatorGateway = createLlmGatewayClient(llm);
+const operatorGateway = createLlmGatewayClient(llm, { timeoutMs: resolveOperatorEnrichmentBudget().requestTimeoutMs });
+// Raw gateway + global ledger: the runner reserves global then per-run budget before
+// an attempt row exists, and wraps only the raw client in the 429 limiter.
 const operatorRunner = createOperatorRunner({
-  store: operatorStore, publication: operatorPublication, gatewayConfig: llm,
-  ...(operatorGateway ? { gateway: {
-    modelId: operatorGateway.modelId,
-    async chatCompletions(body: Record<string, unknown>) {
-      const requestId = operatorGlobalBudget.reserve(Buffer.byteLength(JSON.stringify(body), "utf8") + Number(body.max_tokens ?? 4096));
-      if (!requestId) throw new Error("Global enrichment budget reached");
-      let usage: import("./llmGateway.js").GatewayUsage | undefined;
-      try {
-        const result = await operatorGateway.chatCompletions(body);
-        usage = result.usage;
-        return result;
-      } finally {
-        operatorGlobalBudget.settle(requestId, usage ? {
-          inputTokens: usage.promptTokens ?? Math.max(0, usage.totalTokens - (usage.completionTokens ?? 0)),
-          outputTokens: usage.completionTokens ?? 0,
-          measuredCostUsd: usage.costUsd,
-        } : {});
-      }
-    },
-  } } : {}),
+  store: operatorStore, publication: operatorPublication, gatewayConfig: llm, globalLedger: operatorGlobalBudget,
+  ...(operatorGateway ? { gateway: operatorGateway } : {}),
 });
 
 const server = createScanHttpServer({
