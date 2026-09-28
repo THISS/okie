@@ -20,6 +20,15 @@ describe('operator API client', () => {
     expect(fetch.mock.calls[2]![1]).toMatchObject({ body: JSON.stringify({ expectedCurrentVersionId: 'version-current', acknowledgeCoverage: true }) });
   });
 
+  it('sends batch retries with scopeIds and the explicit below-cap opt-in only when asked', async () => {
+    const fetch = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ run: {}, draftRevisionId: 'draft-1' })));
+    globalThis.fetch = fetch;
+    await operatorApi.retryScopes('draft-1', ['a', 'b']);
+    await operatorApi.retryScopes('draft-1', ['code:x'], true);
+    expect(fetch.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: JSON.stringify({ scopeIds: ['a', 'b'] }) });
+    expect(fetch.mock.calls[1]![1]).toMatchObject({ body: JSON.stringify({ scopeIds: ['code:x'], includeBelowCap: true }) });
+  });
+
   it('fetches a draft preview from the authenticated bundle endpoint', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ format: 'okie-portable/v1' })));
     globalThis.fetch = fetch;

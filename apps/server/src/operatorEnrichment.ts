@@ -104,6 +104,18 @@ export interface OperatorEnrichmentRunOptions {
   admitRequest?: (request: { modelId: string; role: "owner"; scopeId: string; body: Record<string, unknown>; maxOutputTokens: number }) => OperatorAdmission | boolean | Promise<OperatorAdmission | boolean>;
   /** Retry one selected scope; successful siblings remain untouched. */
   retryScopeId?: string;
+  /** Retry several selected scopes in one pass through the same pool (takes precedence over `retryScopeId`). */
+  retryScopeIds?: readonly string[];
+  /**
+   * Batch retry (CLA-258): the unselected ancestors of the selected scopes join the pass and wait on
+   * their target children. Such an ancestor re-runs only when one of its children got a new accepted
+   * explanation in this pass — its prompt input changed — and none of its in-cap children is still "not run";
+   * otherwise it is skipped with no admission, no row and no stale mark. An ancestor with a changed descendant
+   * that did not itself get a new accepted explanation (refused, halted, failed, or skipped) is marked stale
+   * if it has one.
+   * Without this flag a retry marks every accepted ancestor stale up front (the CLA-134 behaviour).
+   */
+  reReduceAncestors?: boolean;
   /** Explicit parent refresh; normal retry only marks ancestors with an accepted explanation stale. */
   refreshStale?: boolean;
 }
@@ -113,6 +125,8 @@ export interface OperatorEnrichmentRunResult {
   attempts: OperatorEnrichmentAttempt[];
   staleScopes: string[];
   stopped: "complete" | "cancelled" | "limit" | "unavailable";
+  /** Unselected ancestors that re-reduce mode skipped because nothing below them changed. */
+  skippedScopes?: string[];
 }
 
 const DEFAULT_LIMITS: OperatorEnrichmentLimits = { maxDepth: 5, maxConcurrent: 64, maxScopes: 512, maxTokens: 4_000_000, maxDollars: 5 };
@@ -260,28 +274,40 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
   for (const list of children.values()) list.sort();
   const ancestors = (scopeId: string): string[] => { const result: string[] = []; let cursor = byId.get(scopeId)?.parentScopeId; const seen = new Set<string>(); while (cursor) { if (seen.has(cursor)) throw new Error("enrichment containment cycle"); seen.add(cursor); result.push(cursor); cursor = byId.get(cursor)?.parentScopeId; } return result; };
   for (const scope of options.scopes) if (ancestors(scope.scopeId).length > limits.maxDepth) throw new Error("enrichment depth limit exceeded");
-  if (options.retryScopeId && !byId.has(options.retryScopeId)) throw new Error("unknown retry scope");
-  const target = options.retryScopeId ? new Set([options.retryScopeId, ...(options.refreshStale ? ancestors(options.retryScopeId) : [])]) : new Set(options.scopes.filter(inCap).map(scope => scope.scopeId));
+  const retryIds = options.retryScopeIds ? [...new Set(options.retryScopeIds)] : options.retryScopeId ? [options.retryScopeId] : undefined;
+  if (retryIds && !retryIds.length) throw new Error("empty retry selection");
+  if (retryIds?.some(scopeId => !byId.has(scopeId))) throw new Error("unknown retry scope");
+  const selected = new Set(retryIds ?? []);
+  const reReduce = Boolean(retryIds && options.reReduceAncestors);
+  /** Unselected ancestors of the selection, nearest first per selected scope. */
+  const selectionAncestors = [...new Set((retryIds ?? []).flatMap(ancestors))].filter(scopeId => !selected.has(scopeId));
+  const target = retryIds ? new Set([...retryIds, ...(options.refreshStale || reReduce ? selectionAncestors : [])]) : new Set(options.scopes.filter(inCap).map(scope => scope.scopeId));
   // Nothing can run without a gateway: every scope stays "not run" and no row or stale mark is written.
   if (!options.gateway) return { modelId, attempts: [], staleScopes: [], stopped: "unavailable" };
   const gateway = options.gateway;
   // Only an ancestor with a pinned explanation can go stale; a not-run ancestor stays not run.
-  const staleScopes = options.retryScopeId ? (await Promise.all(ancestors(options.retryScopeId).map(async scopeId => (await options.store.getAcceptedExplanation(scopeId)) ? scopeId : undefined))).filter((scopeId): scopeId is string => scopeId !== undefined) : [];
+  const staleScopes = retryIds && !reReduce ? (await Promise.all(selectionAncestors.map(async scopeId => (await options.store.getAcceptedExplanation(scopeId)) ? scopeId : undefined))).filter((scopeId): scopeId is string => scopeId !== undefined) : [];
   if (staleScopes.length) await options.store.markStale(staleScopes);
+  /** Re-reduce mode: `dirty` = a child got a new accepted explanation (input changed); `changedBelow` = any descendant did. */
+  const dirty = new Set<string>(); const changedBelow = new Set<string>(); const acceptedNow = new Set<string>(); const skippedScopes: string[] = [];
   const attempts: OperatorEnrichmentAttempt[] = []; let tokens = 0; let dollars = 0; let requests = 0; let stopped: OperatorEnrichmentRunResult["stopped"] = "complete";
   let halted = false;
   const halt = (reason: "cancelled" | "limit") => { if (stopped !== "cancelled") stopped = reason; halted = true; };
   const finish = async (attempt: OperatorEnrichmentAttempt, patch: Partial<Pick<OperatorEnrichmentAttempt, "state" | "updatedAt" | "usage" | "error">>) => { await options.store.updateAttempt(attempt.attemptId, patch); Object.assign(attempt, patch); };
   const errorText = (error: unknown) => scrubGithubTokens(error instanceof Error ? error.message : String(error));
-  /** Resolves true when the scope settled (accepted or failed), false when it was not run. */
-  const execute = async (definition: OperatorEnrichmentScope): Promise<boolean> => {
-    if (halted) return false;
-    if (await options.cancelled?.()) { halt("cancelled"); return false; }
+  /** "settled" = accepted or failed; "skipped" = re-reduce found nothing to do (parents may proceed); "unrun" = not run. */
+  const execute = async (definition: OperatorEnrichmentScope): Promise<"settled" | "skipped" | "unrun"> => {
+    if (halted) return "unrun";
+    const reReduceOnly = reReduce && !selected.has(definition.scopeId);
+    if (reReduceOnly && !dirty.has(definition.scopeId)) { skippedScopes.push(definition.scopeId); return "skipped"; }
+    if (await options.cancelled?.()) { halt("cancelled"); return "unrun"; }
     // Below-cap children are omitted unless they already carry a known state (retry of a code-level scope's parent).
     const belowCap = (children.get(definition.scopeId) ?? []).map(scopeId => byId.get(scopeId)!).filter(child => !inCap(child));
     const digest = belowCap.length ? symbolDigest(belowCap) : undefined;
     const scope: OperatorEnrichmentScope = digest ? { ...definition, facts: { ...(isObject(definition.facts) ? definition.facts : { observed: definition.facts }), symbols: digest.symbols, symbolCount: digest.symbolCount }, allowedEvidence: [...definition.allowedEvidence, ...digest.evidence] } : definition;
     const childInputs = (await Promise.all((children.get(scope.scopeId) ?? []).map(async scopeId => { const latest = await options.store.latestAttempt(scopeId); const explanation = await options.store.getAcceptedExplanation(scopeId); if (!latest && !explanation && !inCap(byId.get(scopeId)!)) return undefined; const state: OperatorChildState = latest?.state ?? (explanation ? "accepted" : "not run"); return { scopeId, state, ...(explanation ? { explanation } : {}) }; }))).filter((input): input is NonNullable<typeof input> => input !== undefined);
+    // Incomplete-parent policy also holds for a re-reduce: a parent with a not-run child is not re-run.
+    if (reReduceOnly && childInputs.some(input => input.state === "not run")) { skippedScopes.push(definition.scopeId); return "skipped"; }
     const reasoning = options.leafReasoning === "off" && childInputs.length === 0 ? "off" : "provider-default";
     const hash = inputHash({ promptVersion: PROMPT_VERSION, modelId, reasoning, facts: scope.facts, allowedEvidence: scope.allowedEvidence, children: childInputs.map(input => ({ scopeId: input.scopeId, state: input.state, explanation: input.explanation })) });
     const body = bodyFor(modelId, scope, childInputs, reasoning === "off");
@@ -295,7 +321,7 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
       return granted;
     };
     const first = await admit();
-    if (!first) { halt("limit"); return false; }
+    if (!first) { halt("limit"); return "unrun"; }
     let current: OperatorAdmission | boolean | undefined = first; let usage: GatewayUsage | undefined;
     const settleCurrent = async (callUsage?: GatewayUsage) => { const ticket = current; current = undefined; if (ticket && typeof ticket === "object") await ticket.settle(callUsage); };
     const attempt: OperatorEnrichmentAttempt = { attemptId: options.nextAttemptId?.() ?? randomUUID(), scopeId: scope.scopeId, role: "owner", state: "running", modelId, inputHash: hash, createdAt: now(), updatedAt: now() };
@@ -322,16 +348,17 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
         outcome = await send();
         if ("retry" in outcome) throw outcome.retry;
       }
-      if (await options.cancelled?.()) { halt("cancelled"); await finish(attempt, { state: "cancelled", updatedAt: now(), ...(attempt.usage ? { usage: attempt.usage } : {}) }); return false; }
+      if (await options.cancelled?.()) { halt("cancelled"); await finish(attempt, { state: "cancelled", updatedAt: now(), ...(attempt.usage ? { usage: attempt.usage } : {}) }); return "unrun"; }
       const explanation = validateOperatorExplanation(outcome.parsed, scope.allowedEvidence);
       await options.store.putAcceptedExplanation(scope.scopeId, explanation, attempt.attemptId, hash);
       await finish(attempt, { state: "accepted", updatedAt: now(), ...(attempt.usage ? { usage: attempt.usage } : {}) });
+      acceptedNow.add(scope.scopeId); if (reReduce) { if (scope.parentScopeId) dirty.add(scope.parentScopeId); for (const ancestorId of ancestors(scope.scopeId)) changedBelow.add(ancestorId); }
     } catch (error) {
       await settleCurrent();
       await finish(attempt, { state: "failed", updatedAt: now(), ...(attempt.usage ? { usage: attempt.usage } : {}), error: errorText(error) });
       if (admissionError) throw admissionError.error;
     }
-    return true;
+    return "settled";
   };
   // Dependency-driven pool: a target scope waits only on its target children.
   const waitingOn = new Map<string, number>();
@@ -341,15 +368,16 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
   const byPriority = (left: string, right: string) => Number(isParent.has(right)) - Number(isParent.has(left)) || (left < right ? -1 : left > right ? 1 : 0);
   const ready = [...target].filter(scopeId => waitingOn.get(scopeId) === 0).sort(byPriority);
   const cap = Math.max(1, Math.floor(limits.maxConcurrent));
-  await new Promise<void>((resolve, reject) => {
+  let poolFailure: { error: unknown } | undefined;
+  try { await new Promise<void>((resolve, reject) => {
     let active = 0; let failure: { error: unknown } | undefined;
     const pump = () => {
       while (!halted && active < cap && ready.length) {
         const scopeId = ready.shift()!; active += 1;
-        execute(byId.get(scopeId)!).then(settled => {
+        execute(byId.get(scopeId)!).then(outcome => {
           active -= 1;
           const parentId = byId.get(scopeId)!.parentScopeId;
-          if (settled && parentId && target.has(parentId)) { const remaining = waitingOn.get(parentId)! - 1; waitingOn.set(parentId, remaining); if (remaining === 0) { ready.push(parentId); ready.sort(byPriority); } }
+          if (outcome !== "unrun" && parentId && target.has(parentId)) { const remaining = waitingOn.get(parentId)! - 1; waitingOn.set(parentId, remaining); if (remaining === 0) { ready.push(parentId); ready.sort(byPriority); } }
           pump();
         }, error => { active -= 1; failure ??= { error }; halted = true; pump(); });
       }
@@ -357,6 +385,16 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
       if (active === 0 && (halted || !ready.length)) { if (failure) reject(failure.error); else resolve(); }
     };
     pump();
-  });
-  return { modelId, attempts, staleScopes, stopped };
+  }); } catch (error) { poolFailure = { error }; }
+  // Honest staleness: any scope (selected or a re-reduce ancestor) with a changed descendant that has no new accepted
+  // explanation of its own keeps its old one and is marked stale. Runs even when a scope threw mid-pass.
+  const markChangedStale = async () => {
+    const unrefreshed = [...changedBelow].filter(scopeId => !acceptedNow.has(scopeId));
+    const stale = (await Promise.all(unrefreshed.map(async scopeId => (await options.store.getAcceptedExplanation(scopeId)) ? scopeId : undefined))).filter((scopeId): scopeId is string => scopeId !== undefined);
+    if (stale.length) await options.store.markStale(stale);
+    staleScopes.push(...stale);
+  };
+  if (reReduce) { if (poolFailure) await markChangedStale().catch(() => undefined); else await markChangedStale(); }
+  if (poolFailure) throw poolFailure.error;
+  return { modelId, attempts, staleScopes, stopped, ...(reReduce ? { skippedScopes } : {}) };
 }

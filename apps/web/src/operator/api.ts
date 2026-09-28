@@ -6,8 +6,12 @@ export interface OperatorRun { runId: string; state: RunState; createdAt: number
 export interface OperatorAttempt { attemptId: string; scopeId: string; kind: 'scan' | 'enrichment' | 'retry' | 'refresh'; state: AttemptState; provider?: string; modelId?: string; usage?: OperatorUsage; stale?: boolean; error?: string; validation?: { accepted: boolean; validator: string; evidenceHash?: string; reason?: string }; }
 export interface OperatorEvent { eventId: string; at: number; type: string; detail?: Record<string, string | number | boolean | null>; }
 export interface OperatorExplanation { explanationVersionId?: string; summary: string; roleWithinParent?: string; interactions?: string[]; evidence: Array<{ entityId?: string; path?: string; startLine?: number; endLine?: number }>; diagram?: { nodes: string[]; edges: Array<{ from: string; to: string; label?: string }> }; diagramError?: string; }
-export interface OperatorScope { scopeId: string; entityId?: string; parentScopeId?: string; name: string; state: AttemptState | 'stale' | 'not run'; stale?: boolean; explanation?: OperatorExplanation; explanationVersionId?: string; diagramError?: string; attempts?: OperatorAttempt[]; }
-export interface OperatorDraft { draftRevisionId: string; runId: string; revision: number; state: 'open' | 'frozen' | 'superseded'; basePublicationVersionId?: string; /** `notRun` is absent on drafts written before CLA-254. */ coverage: { total: number; accepted: number; failed: number; notRun?: number; stale: number }; }
+/** `kind` is the C4 kind; `depth` counts ancestors (both absent on very old servers). "below cap": below the run's enrichment depth cap. */
+export interface OperatorScope { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; depth?: number; state: AttemptState | 'stale' | 'not run' | 'below cap'; stale?: boolean; explanation?: OperatorExplanation; explanationVersionId?: string; diagramError?: string; attempts?: OperatorAttempt[]; }
+export interface OperatorDraft { draftRevisionId: string; runId: string; revision: number; state: 'open' | 'frozen' | 'superseded'; basePublicationVersionId?: string; /** `notRun` is absent on drafts written before CLA-254; `belowCap` before CLA-258 (the server derives it for drafts it reads). */ coverage: { total: number; accepted: number; failed: number; notRun?: number; stale: number; belowCap?: number }; }
+/** The run ledger: spend so far against the configured per-run limits. */
+export interface OperatorRunBudget { maxDollars: number; spentDollars: number; maxRequests: number; requests: number; maxTokens: number; tokens: number; /** Only when a global operator dollar cap is configured. */ globalRemainingDollars?: number; /** Run requests left (absent on older servers). */ remainingRequests?: number; /** Only when a global request cap is configured. */ globalRemainingRequests?: number; }
+export interface OperatorRunDetail { run: OperatorRun; draft?: OperatorDraft; attempts: OperatorAttempt[]; events: OperatorEvent[]; usage: OperatorUsage; budget?: OperatorRunBudget; avgCostPerScopeUsd?: number; progress?: { accepted: number; failed: number; inFlight: number }; }
 export interface DraftDetail { draft: OperatorDraft; source: { owner: string; repo: string; commitSha?: string }; scopes: OperatorScope[]; usage: OperatorUsage; currentPublicationVersionId?: string; }
 
 /** `body` is the parsed JSON error body when the server sent one (e.g. `currentDraftRevisionId` on a stale-revision 409). */
@@ -28,10 +32,12 @@ export const operatorApi = {
   session: () => request<{ operator: boolean }>('/api/operator/session'),
   runs: () => request<{ runs: OperatorRun[] }>('/api/operator/runs'),
   start: (url: string, idempotencyKey: string) => request<{ run: OperatorRun; deduped: boolean }>('/api/operator/runs', { method: 'POST', body: JSON.stringify({ url, idempotencyKey }) }),
-  run: (runId: string) => request<{ run: OperatorRun; draft?: OperatorDraft; attempts: OperatorAttempt[]; events: OperatorEvent[]; usage: OperatorUsage }>(`/api/operator/runs/${encodeURIComponent(runId)}`),
+  run: (runId: string) => request<OperatorRunDetail>(`/api/operator/runs/${encodeURIComponent(runId)}`),
   cancel: (runId: string) => request<{ run: OperatorRun }>(`/api/operator/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST', body: '{}' }),
   draft: (id: string) => request<DraftDetail>(`/api/operator/drafts/${encodeURIComponent(id)}`),
   bundle: (id: string) => request<unknown>(`/api/operator/drafts/${encodeURIComponent(id)}/bundle`),
+  /** Batch retry (CLA-258): one pass, affected ancestors re-reduced. Below-cap scopes need `includeBelowCap`. */
+  retryScopes: (id: string, scopeIds: string[], includeBelowCap = false) => request<{ run: OperatorRun; draftRevisionId: string }>(`/api/operator/drafts/${encodeURIComponent(id)}/retry`, { method: 'POST', body: JSON.stringify({ scopeIds, ...(includeBelowCap ? { includeBelowCap: true } : {}) }) }),
   retry: (id: string, scopeId: string) => request<{ run: OperatorRun; draftRevisionId: string }>(`/api/operator/drafts/${encodeURIComponent(id)}/retry`, { method: 'POST', body: JSON.stringify({ scopeId }) }),
   refresh: (id: string, scopeIds: string[]) => request<{ run: OperatorRun; draftRevisionId: string }>(`/api/operator/drafts/${encodeURIComponent(id)}/refresh`, { method: 'POST', body: JSON.stringify({ scopeIds }) }),
   publish: (id: string, expectedCurrentVersionId: string | undefined, acknowledgeCoverage: boolean) => request<{ publication: { versionId: string } }>(`/api/operator/drafts/${encodeURIComponent(id)}/publish`, { method: 'POST', body: JSON.stringify({ expectedCurrentVersionId, acknowledgeCoverage }) }),

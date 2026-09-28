@@ -104,6 +104,7 @@ const server = createScanHttpServer({
     publicOrigin: process.env.OKIE_PUBLIC_ORIGIN ?? "http://localhost:4173",
     store: operatorStore,
     publications: operatorPublication,
+    ...(globalSpend.cap.maxDollars !== undefined ? { globalBudget: { maxDollars: globalSpend.cap.maxDollars, ledger: operatorGlobalBudget } } : {}),
     enqueue: input => {
       operatorStore.updateRun(input.runId, { state: "queued" });
       void Promise.resolve().then(() => operatorRunner.enqueue(input)).catch(() => {
