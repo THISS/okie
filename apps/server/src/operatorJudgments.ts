@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { APIError, TypeSafeClient, type ChoiceQuestion, type ChoiceResponse, type EntryType, type Fetch } from "@typesafe-ai/sdk";
 import { redactGatewayText } from "./llmGateway.js";
 import { createOperatorBudgetLedger } from "./operatorBudget.js";
+import { explanationRowForJudgment } from "./operatorEnrichment.js";
 import type { OperatorUsage } from "./operatorContracts.js";
 import type { OperatorPublicationService } from "./operatorPublication.js";
 import type { OperatorStore } from "./operatorStore.js";
@@ -136,7 +137,7 @@ export async function runOperatorJudgments(options: { store: OperatorStore; publ
   const entity = (Array.isArray(observed.entities) ? observed.entities : []).find(value => record(value).id === request.scopeId);
   if (!entity) throw new Error("unknown judgment scope");
   const explanations = record(read("operator-explanations.json"));
-  const explanation = (Array.isArray(explanations.explanations) ? explanations.explanations : []).find(value => record(value).scopeId === request.scopeId) ?? null;
+  const explanation = explanationRowForJudgment((Array.isArray(explanations.explanations) ? explanations.explanations : []).find(value => record(value).scopeId === request.scopeId) ?? null);
   const scope = (Array.isArray(explanations.scopes) ? explanations.scopes : []).find(value => record(value).scopeId === request.scopeId) ?? null;
   const evidence = { sourceCommitSha: artifact.sourceCommitSha ?? null, entity, scope, explanation, relations: (Array.isArray(observed.relations) ? observed.relations : []).filter(value => record(value).from === request.scopeId || record(value).to === request.scopeId) };
   const secrets = [...(options.secrets ?? []), ...[process.env.JEV_API, process.env.OKIE_LLM_API_KEY, process.env.OPENROUTER_API_KEY, process.env.OPENAI_API_KEY, process.env.GITHUB_TOKEN].filter((value): value is string => Boolean(value))];

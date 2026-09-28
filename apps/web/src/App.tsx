@@ -84,7 +84,7 @@ import { evidenceExcerpt, explorePathView, isKnownRelationKind, navigationPathFr
 import { canonicalRelationForInspection, resolveRelationshipReveal } from './relations/relationshipReveal';
 import { SourceViewer, portableRepositoryRevisionUrl, type LocalWorkspaceContext } from './diagram/SourceViewer';
 import { getActivePortableAtlas } from './portable/runtime';
-import { OperatorExplanationContext } from './operator/OperatorExplanationContext';
+import { resolveExplanationExcerpt } from './explanation/explanationSource';
 import { getDraftPreviewContext } from './operator/previewContext';
 import { OperatorMenuLink } from './operator/OperatorMenuLink';
 import { buildArchitectureBrief, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorDiagramCount, inspectorEntityLead, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type InspectorTab } from './inspector/inspectorSupport';
@@ -5692,8 +5692,8 @@ export function App() {
             <button aria-controls="details-panel" aria-selected={inspectorTab === 'details'} id="details-tab" onClick={() => selectInspectorTab('details')} ref={detailsTabRef} role="tab" tabIndex={inspectorTab === 'details' ? 0 : -1} type="button">Details</button>
           </div>
           {inspectorTab === 'overview' ? <div aria-labelledby="overview-tab" className="details-scroll overview-panel" data-testid="inspector-overview" id="overview-panel" role="tabpanel">
-            <ContextualOverviewView key={contextualOverview?.entity.id} overview={contextualOverview} onOpenEntity={id => { void openInspectorChild(id).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.')); }} />
-            {draftPreviewContext && <OperatorExplanationContext scope={draftPreviewContext.explanationsByEntityId.get(selected.id)} entityNames={new Map(activeSnapshot.entities.map(entity => [entity.id, entity.name]))}/>}
+            <ContextualOverviewView key={contextualOverview?.entity.id} overview={contextualOverview} explanation={draftPreviewContext?.explanationsByEntityId.get(selected.id)} entityName={id => activeSnapshot.entities.find(entity => entity.id === id)?.name} onOpenEntity={id => { void openInspectorChild(id).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.')); }}
+              onOpenEvidence={evidence => { void resolveExplanationExcerpt(activeSnapshot, evidence, id => scanFixture?.ensureExcerpts(id)).then(found => { if (!found) { setLiveMessage(`A source excerpt for ${evidence.path ?? 'this evidence'} isn't available here.`); return; } openPathExcerptRef.current(found.entityId, found.excerpt); if (!found.exact) setLiveMessage(`Line ${evidence.startLine} of ${evidence.path} wasn't captured; showing the nearest captured excerpt.`); }).catch(() => setLiveMessage('Unable to open this source evidence. Please try again.')); }}/>
             {contextualOverview?.entity.id === scene.rootEntityId ? <ArchitectureBriefView
               brief={architectureBrief}
               containerAvailable={id => Boolean(scene.entities.find(candidate => candidate.id === id))}

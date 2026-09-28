@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { LlmGatewayError } from "./llmGateway.js";
 import { LlmRateLimiter, rateLimitedGateway } from "./llmRateLimiter.js";
-import { DIGEST_LINE_CHARS, OPERATOR_OUTPUT_SCHEMA_PROMPT, childPromptInput, normalizeInteractions, validateOperatorExplanation, SYMBOL_DIGEST_BUDGET, runOperatorEnrichment, symbolDigest, type OperatorEnrichmentAttempt, type OperatorEnrichmentGateway, type OperatorEnrichmentScope, type OperatorEnrichmentStore, type OperatorExplanation } from "./operatorEnrichment.js";
+import { DIGEST_LINE_CHARS, OPERATOR_OUTPUT_SCHEMA_PROMPT, OPERATOR_EXPLANATION_LIMITS, checkMermaidDiagram, childPromptInput, containsHtmlTag, explanationRowForJudgment, operatorRequestBody, validateOperatorExplanation, SYMBOL_DIGEST_BUDGET, runOperatorEnrichment, symbolDigest, type OperatorEnrichmentAttempt, type OperatorEnrichmentGateway, type OperatorEnrichmentScope, type OperatorEnrichmentStore, type OperatorExplanation } from "./operatorEnrichment.js";
 
 class MemoryStore implements OperatorEnrichmentStore {
   readonly attempts = new Map<string, OperatorEnrichmentAttempt>();
@@ -26,8 +26,9 @@ const scope = (scopeId: string, kind: OperatorEnrichmentScope["kind"], parentSco
 type Prompt = { scope: { scopeId: string }; children: Array<{ scopeId: string; state: string; summary?: string; explanation?: unknown; evidence?: unknown; diagram?: unknown }> };
 const prompt = (body: Record<string, unknown>): Prompt => JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as Prompt;
 
+const KEY_POINTS = ["Start at `run()`.", "Beware the cache."];
 function reply(scopeId: string, usage = 3): { json: unknown; usage: { totalTokens: number; costUsd: number } } {
-  return { json: { choices: [{ message: { content: JSON.stringify({ summary: `${scopeId} summary`, evidence: [{ entityId: scopeId }] }) } }] }, usage: { totalTokens: usage, costUsd: 0.01 } };
+  return { json: { choices: [{ message: { content: JSON.stringify({ summary: `${scopeId} summary`, keyPoints: KEY_POINTS, evidence: [{ entityId: scopeId }] }) } }] }, usage: { totalTokens: usage, costUsd: 0.01 } };
 }
 const echo = (modelId = "m"): OperatorEnrichmentGateway => ({ modelId, async chatCompletions(body) { return reply(prompt(body).scope.scopeId); } });
 
@@ -64,15 +65,18 @@ test("fan-out: all leaves start before any parent, parents wait for settled chil
   assert.ok(at("start:sys") > at("end:c1") && at("start:sys") > at("end:c2"));
 });
 
-test("a failed child still settles: its parent runs and receives it as failed without an explanation", async () => {
+test("a failed child still settles: its parent runs, the child is left out of the prompt, and no enrichment state is sent", async () => {
   const tree = [scope("c", "container"), scope("ok", "component", "c"), scope("bad", "component", "c")];
-  const store = new MemoryStore(); let parentChildren: Prompt["children"] = [];
-  await runOperatorEnrichment({ draftRevisionId: "d", scopes: tree, store, gateway: { modelId: "m", async chatCompletions(body) {
-    const message = prompt(body); if (message.scope.scopeId === "c") parentChildren = message.children;
+  const store = new MemoryStore(); let parentChildren: Prompt["children"] = []; let parentSystem = "";
+  const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: tree, store, nextAttemptId: (() => { let next = 0; return () => `a${next++}`; })(), gateway: { modelId: "m", async chatCompletions(body) {
+    const message = prompt(body); if (message.scope.scopeId === "c") { parentChildren = message.children; parentSystem = String((body.messages as Array<{ content: string }>)[0]!.content); }
     return message.scope.scopeId === "bad" ? { json: { choices: [{ message: { content: "{}" } }] } } : reply(message.scope.scopeId);
   } } });
-  assert.deepEqual(parentChildren.map(child => ({ scopeId: child.scopeId, state: child.state, explained: child.summary !== undefined })), [{ scopeId: "bad", state: "failed", explained: false }, { scopeId: "ok", state: "accepted", explained: true }]);
+  assert.deepEqual(parentChildren, [{ scopeId: "ok", name: "ok", kind: "component", summary: "ok summary", keyPoints: KEY_POINTS }], "the failed child is absent and no child carries a state");
+  assert.match(parentSystem, /Never mention enrichment or documentation status, failures or coverage/);
   assert.equal(store.current.has("c"), true);
+  // Pinned before the prompt change: the hash still covers every child with its state, so stale/re-reduce semantics are unchanged.
+  assert.equal(result.attempts.find(attempt => attempt.scopeId === "c")?.inputHash, "e2f053b678601bf3caefc26d4b9ae4e4e247aed843bba1069a7d2cf96e8248e6");
 });
 
 test("failed retry preserves accepted sibling/current explanation and makes ancestors stale", async () => {
@@ -147,13 +151,26 @@ test("ready parents dispatch before ready leaves, then by scopeId", async () => 
   assert.deepEqual(starts, ["a1", "c1", "z1", "z2", "z3"], "c1 jumps ahead of queued leaves once a1 settles");
 });
 
-test("v2 prompt carries the explicit output schema and a parent synthesis instruction", async () => {
-  const bodies: Record<string, unknown>[] = [];
-  await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scope("c", "container"), scope("k", "component", "c")], store: new MemoryStore(), gateway: { modelId: "m", async chatCompletions(body) { bodies.push(body); return reply(prompt(body).scope.scopeId); } } });
+test("v3 prompt: area-owner voice, explicit v3 schema with no interactions, parent synthesis, and v3 in the input hash", async () => {
+  const bodies: Record<string, unknown>[] = []; const hashes = new Map<string, string>();
+  const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scope("c", "container"), scope("k", "component", "c")], store: new MemoryStore(), gateway: { modelId: "m", async chatCompletions(body) { bodies.push(body); return reply(prompt(body).scope.scopeId); } } });
+  for (const attempt of result.attempts) hashes.set(attempt.scopeId, attempt.inputHash);
   const system = (body: Record<string, unknown>) => String((body.messages as Array<{ content: string }>)[0]!.content);
-  assert.ok(system(bodies[0]!).startsWith(OPERATOR_OUTPUT_SCHEMA_PROMPT)); assert.match(system(bodies[0]!), /"interactions": string\[\] \(optional; each a short plain-text sentence, not an object\)/);
-  assert.doesNotMatch(system(bodies[0]!), /synthesise/); assert.match(system(bodies[1]!), /synthesise how the children fit together/);
-  assert.equal((JSON.parse(String((bodies[0]!.messages as Array<{ content: string }>)[1]!.content)) as { promptVersion: string }).promptVersion, "operator-enrichment/v2");
+  assert.ok(system(bodies[0]!).startsWith(OPERATOR_OUTPUT_SCHEMA_PROMPT)); assert.match(system(bodies[0]!), /new teammate/);
+  assert.match(system(bodies[0]!), /"keyPoints": string\[\] \(2-4 items, each ONE idea in at most 20 words/); assert.match(system(bodies[0]!), /Never list or restate dependencies, dependents/);
+  assert.doesNotMatch(system(bodies[0]!), /"interactions"|roleWithinParent/, "v3 no longer asks for interactions or a role");
+  assert.doesNotMatch(system(bodies[0]!), /how the pieces fit/); assert.match(system(bodies[1]!), /how the pieces fit together/);
+  assert.equal((JSON.parse(String((bodies[0]!.messages as Array<{ content: string }>)[1]!.content)) as { promptVersion: string }).promptVersion, "operator-enrichment/v3");
+  assert.deepEqual(prompt(bodies[1]!).children, [{ scopeId: "k", name: "k", kind: "component", summary: "k summary", keyPoints: KEY_POINTS }], "a v3 child travels up with its human name, kind, summary and keyPoints");
+  assert.match(hashes.get("k") ?? "", /^[0-9a-f]{64}$/);
+});
+
+test("operatorRequestBody is the body the run sends", () => {
+  const leaf = scope("k", "component");
+  const body = operatorRequestBody("m", leaf, []);
+  assert.equal(body.model, "m"); assert.deepEqual(body.response_format, { type: "json_object" });
+  assert.equal(String((body.messages as Array<{ content: string }>)[0]!.content), OPERATOR_OUTPUT_SCHEMA_PROMPT);
+  assert.deepEqual(operatorRequestBody("m", leaf, [], true).reasoning, { enabled: false });
 });
 
 const codeScope = (scopeId: string, startLine: number, exported = false, lines = 6): OperatorEnrichmentScope => ({ scopeId, parentScopeId: "comp", name: scopeId, kind: "code", facts: { exposure: exported ? [{ kind: "moduleExport", evidence: {} }] : undefined, sourceExcerpts: [{ sourceStartLine: startLine, sourceEndLine: startLine + lines - 1, startLine, endLine: startLine + lines - 1, text: Array.from({ length: lines }, (_, index) => `line ${startLine + index} of ${scopeId}`).join("\n") }] }, allowedEvidence: [{ entityId: scopeId, path: "src/comp.ts", startLine, endLine: startLine + lines - 1 }] });
@@ -177,7 +194,7 @@ test("a component prompt carries its code-symbol digest and accepts digest refs 
   const many = Array.from({ length: 200 }, (_, index) => codeScope(`fn${String(index).padStart(3, "0")}`, index * 10 + 1));
   const run = async (evidence: unknown[]) => {
     const store = new MemoryStore(); let seen: { scope: { facts: { symbols: unknown[]; symbolCount: number }; allowedEvidence: unknown[] } } | undefined;
-    const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [component, ...many], store, gateway: { modelId: "m", async chatCompletions(body) { seen = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)); return { json: { choices: [{ message: { content: JSON.stringify({ summary: "digest", evidence }) } }] } }; } } });
+    const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [component, ...many], store, gateway: { modelId: "m", async chatCompletions(body) { seen = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)); return { json: { choices: [{ message: { content: JSON.stringify({ summary: "digest", keyPoints: KEY_POINTS, evidence }) } }] } }; } } });
     return { result, seen: seen! };
   };
   const inside = { entityId: "fn000", path: "src/comp.ts", startLine: 1, endLine: 6 };
@@ -212,7 +229,7 @@ test("depth cap: code scopes are not attempted by default and are when opted in"
   seen.length = 0;
   const optedIn = await runOperatorEnrichment({ draftRevisionId: "d", scopes: tree, store: new MemoryStore(), gateway, maxKind: "code" });
   assert.deepEqual(optedIn.attempts.map(attempt => attempt.scopeId), ["fn-a", "fn-b", "comp"]);
-  assert.deepEqual(seen.at(-1)?.children.map(child => child.state), ["accepted", "accepted"]);
+  assert.deepEqual(seen.at(-1)?.children.map(child => child.summary), ["fn-a summary", "fn-b summary"]);
   const huge = Array.from({ length: 4_048 }, (_, index) => scope(`code-${index}`, "code", index ? "code-0" : undefined));
   huge[0] = scope("code-0", "component");
   const bounded = await runOperatorEnrichment({ draftRevisionId: "d", scopes: huge, store: new MemoryStore(), gateway: echo() });
@@ -230,34 +247,164 @@ test("rate-limit retries below admission do not consume budget", async () => {
 });
 
 test("attempt IDs are UUIDs by default and invalid structured diagrams preserve prose", async () => {
-  const store = new MemoryStore(); const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scopes[0]!], store, gateway: { modelId: "m", async chatCompletions() { return { json: { choices: [{ message: { content: JSON.stringify({ summary: "useful", evidence: [{ entityId: "system" }], diagram: { nodes: ["invented"], edges: [] } }) } }] } }; } } });
+  const store = new MemoryStore(); const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scopes[0]!], store, gateway: { modelId: "m", async chatCompletions() { return { json: { choices: [{ message: { content: JSON.stringify({ summary: "useful", keyPoints: KEY_POINTS, evidence: [{ entityId: "system" }], diagram: { nodes: ["invented"], edges: [] } }) } }] } }; } } });
   assert.match(result.attempts[0]!.attemptId, /^[0-9a-f-]{36}$/); assert.equal((await store.getAcceptedExplanation("system"))?.summary, "useful"); assert.match((await store.getAcceptedExplanation("system"))?.diagramError ?? "", /rejected diagram/);
 });
 
-test("parent prompts carry child prose only: evidence and diagrams stay out of the upward reduction", () => {
-  const explanation: OperatorExplanation = { summary: "does x", roleWithinParent: "r", interactions: ["calls y"], evidence: [{ entityId: "k", path: "k.ts", startLine: 1, endLine: 9 }], diagram: { nodes: ["k"], edges: [] } };
-  assert.deepEqual(childPromptInput({ scopeId: "k", state: "accepted", explanation }), { scopeId: "k", state: "accepted", summary: "does x", roleWithinParent: "r", interactions: ["calls y"] });
-  assert.deepEqual(childPromptInput({ scopeId: "k", state: "failed" }), { scopeId: "k", state: "failed" });
-  assert.deepEqual(childPromptInput({ scopeId: "k", state: "accepted", explanation: { summary: "s", evidence: [], interactions: [] } }), { scopeId: "k", state: "accepted", summary: "s" });
+test("parent prompts carry child prose only: v3 children send summary + keyPoints, legacy children their summary; no state, evidence, diagrams or tables", () => {
+  const v3: OperatorExplanation = { format: "v3", summary: "does x", keyPoints: ["open `a.ts`", "gotcha"], evidence: [{ entityId: "k", path: "k.ts", startLine: 1, endLine: 9 }], diagram: "flowchart LR\n  a --> b", table: { columns: ["a", "b"], rows: [["1", "2"]] } };
+  assert.deepEqual(childPromptInput({ scopeId: "k", state: "accepted", explanation: v3 }), { scopeId: "k", summary: "does x", keyPoints: ["open `a.ts`", "gotcha"] });
+  const legacy: OperatorExplanation = { summary: "old prose", roleWithinParent: "r", interactions: ["Depends on y"], evidence: [{ entityId: "k" }], diagram: { nodes: ["k"], edges: [] } };
+  assert.deepEqual(childPromptInput({ scopeId: "k", state: "stale", explanation: legacy }), { scopeId: "k", summary: "old prose" }, "legacy role/interactions and the stale state are not fed back into v3 prompts");
+  assert.equal(childPromptInput({ scopeId: "k", state: "failed" }), undefined, "an unexplained child is left out");
+  assert.equal(childPromptInput({ scopeId: "k", state: "not run" }), undefined);
+  assert.deepEqual(childPromptInput({ scopeId: "container:packages-scan", name: "@okie/scan", kind: "container", state: "accepted", explanation: v3 }), { scopeId: "container:packages-scan", name: "@okie/scan", kind: "container", summary: "does x", keyPoints: ["open `a.ts`", "gotcha"] });
+  const body = operatorRequestBody("m", scope("c", "container"), [{ scopeId: "k", state: "failed" }, { scopeId: "j", state: "not run" }]);
+  assert.deepEqual(prompt(body).children, [], "no explained children: nothing is sent");
+  assert.equal(String((body.messages as Array<{ content: string }>)[0]!.content), OPERATOR_OUTPUT_SCHEMA_PROMPT, "and the parent-synthesis instruction is not added");
 });
 
-test("MiMo's live output shapes validate: relation-object interactions become text, null optionals are absent, evidence keeps canonical fields", () => {
-  const allowed = [{ entityId: "component:a", path: "a.ts" }];
-  // Verbatim shapes captured from xiaomi/mimo-v2.6-pro replies in the CLA-254 live probe.
-  const reply = { summary: " a.ts does x. ", roleWithinParent: null, diagram: null,
-    interactions: [{ from: "component:a", to: "component:b", kind: "dependsOn" }, { relationId: "relation:a:c", direction: "outgoing", kind: "dependsOn", peerId: "component:c", peerName: "src/c.ts", note: "reads config" }, "  plain sentence  ", {}],
-    evidence: [{ entityId: "component:a", path: "a.ts", note: "allowed path", quote: "x", confidence: "declared" }] };
-  assert.deepEqual(validateOperatorExplanation(reply, allowed), { summary: "a.ts does x.", evidence: [{ entityId: "component:a", path: "a.ts" }], interactions: ["component:a dependsOn component:b", "dependsOn src/c.ts: reads config", "plain sentence"] });
-  assert.equal(normalizeInteractions(null), undefined); assert.equal(normalizeInteractions([{}, " "]), undefined);
+test("parent prompt names children by their human name and kind, and a renamed child changes the parent's input hash", async () => {
+  const run = async (childName: string) => {
+    let parentChildren: Prompt["children"] = [];
+    const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scope("system:x", "softwareSystem"), { ...scope("container:packages-scan", "container", "system:x"), name: childName }], store: new MemoryStore(), gateway: { modelId: "m", async chatCompletions(body) { const message = prompt(body); if (message.scope.scopeId === "system:x") parentChildren = message.children; return reply(message.scope.scopeId); } } });
+    return { parentChildren, hash: result.attempts.find(attempt => attempt.scopeId === "system:x")!.inputHash };
+  };
+  const scan = await run("@okie/scan"); const renamed = await run("@okie/scanner");
+  assert.deepEqual(scan.parentChildren.map(child => ({ scopeId: child.scopeId, name: (child as { name?: string }).name, kind: (child as { kind?: string }).kind })), [{ scopeId: "container:packages-scan", name: "@okie/scan", kind: "container" }]);
+  assert.notEqual(scan.hash, renamed.hash);
 });
 
-test("tolerance stays narrow: wrong-typed optionals and missing or invented evidence still reject", () => {
-  const allowed = [{ entityId: "component:a", path: "a.ts" }]; const base = { summary: "s", evidence: [{ entityId: "component:a", path: "a.ts" }] };
-  assert.throws(() => validateOperatorExplanation({ ...base, interactions: "calls b" }, allowed), /interactions/);
-  assert.throws(() => validateOperatorExplanation({ ...base, interactions: [3] }, allowed), /interactions/);
-  assert.throws(() => validateOperatorExplanation({ ...base, roleWithinParent: 7 }, allowed), /roleWithinParent/);
-  assert.throws(() => validateOperatorExplanation({ summary: "s" }, allowed), /evidence is required/);
+const allowed = [{ entityId: "component:a", path: "a.ts" }, { entityId: "component:a", path: "a.ts", startLine: 3, endLine: 9 }];
+const base = { summary: "**a.ts** does x. It matters because y.", keyPoints: ["Start at `run()` in `a.ts`.", "Gotcha: the cache is per process."], evidence: [{ entityId: "component:a", path: "a.ts" }] };
+
+test("v3 validator: stamps format, trims prose, keeps canonical evidence, and ignores null optionals and v2-only fields (MiMo habits)", () => {
+  const reply = { ...base, summary: "  **a.ts** does x.\r\n\n\n\nIt matters because y.  ", keyPoints: ["- Start at `run()`\n in `a.ts`.", " ", "2. Gotcha: the cache is per process."], diagram: null, table: null, roleWithinParent: null, interactions: [{ from: "a", to: "b" }],
+    evidence: [{ entityId: "component:a", path: "a.ts", startLine: 3, endLine: 9, note: "allowed", quote: "x", confidence: "declared" }] };
+  assert.deepEqual(validateOperatorExplanation(reply, allowed), { format: "v3", summary: "**a.ts** does x.\n\nIt matters because y.", keyPoints: ["Start at `run()` in `a.ts`.", "Gotcha: the cache is per process."], evidence: [{ entityId: "component:a", path: "a.ts", startLine: 3, endLine: 9 }] });
+  assert.equal(validateOperatorExplanation({ ...base, format: "v2" }, allowed).format, "v3", "format is set by the server, never the model");
+  assert.deepEqual(validateOperatorExplanation({ ...base, evidence: [{ entityId: "component:a", path: "a.ts", startLine: null, endLine: null }] }, allowed).evidence, [{ entityId: "component:a", path: "a.ts" }], "null line numbers are absent");
+});
+
+test("v3 validator: over-limit or malformed required prose rejects (reported as a failed, retryable scope)", () => {
+  const limits = OPERATOR_EXPLANATION_LIMITS;
+  assert.doesNotThrow(() => validateOperatorExplanation({ ...base, summary: "s".repeat(limits.summaryChars) }, allowed));
+  assert.throws(() => validateOperatorExplanation({ ...base, summary: "s".repeat(limits.summaryChars + 1) }, allowed), /summary is 601 characters \(limit 600\)/);
+  assert.throws(() => validateOperatorExplanation({ ...base, summary: Array.from({ length: 7 }, (_, index) => `- item ${index}`).join("\n") }, allowed), /more than 6 bullets/);
+  assert.throws(() => validateOperatorExplanation({ ...base, keyPoints: ["k".repeat(limits.keyPointChars + 1), "ok"] }, allowed), /keyPoints\[0\] is 221 characters \(limit 220\)/);
+  assert.throws(() => validateOperatorExplanation({ ...base, keyPoints: ["only one"] }, allowed), /1 keyPoints \(allowed 2-5\)/);
+  assert.throws(() => validateOperatorExplanation({ ...base, keyPoints: Array.from({ length: 6 }, (_, index) => `p${index}`) }, allowed), /6 keyPoints/);
+  assert.throws(() => validateOperatorExplanation({ summary: base.summary, evidence: base.evidence }, allowed), /keyPoints is required/, "a v2-shaped reply is not accepted as v3");
+  assert.throws(() => validateOperatorExplanation({ ...base, keyPoints: null }, allowed), /keyPoints is required/);
+  assert.throws(() => validateOperatorExplanation({ ...base, keyPoints: ["ok", { title: "x" }] }, allowed), /keyPoints must be strings/);
+  assert.throws(() => validateOperatorExplanation({ ...base, summary: "   " }, allowed), /summary is required/);
+});
+
+test("v3 validator: active HTML in summary or keyPoints rejects; bare element mentions are code-wrapped; generics and code spans pass untouched", () => {
+  const active = ["<script>alert(1)</script>", "Hi <img src=x onerror=alert(1)>", "x <!-- y -->", "<a href=\"u\">u</a>", "<Foo bar=\"1\">", "<SCRIPT SRC=x>",
+    "<svg/onload=alert(1)>", "<img/src=x/onerror=alert(1)>", "<ScRiPt>", "end </SCRIPT >", "<marquee>", "<math>", "<noscript>", "<dialog open>", "<p style=\"x\">", "<div onclick=f()>"];
+  for (const html of active) {
+    assert.equal(containsHtmlTag(html), true, html);
+    assert.throws(() => validateOperatorExplanation({ ...base, summary: html }, allowed), /raw HTML in summary/, html);
+    assert.throws(() => validateOperatorExplanation({ ...base, keyPoints: ["ok", html] }, allowed), /raw HTML in keyPoints\[1\]/, html);
+  }
+  const mentions: Array<[string, string]> = [
+    ["Fills the <summary> field.", "Fills the `<summary>` field."], ["Uses <p> elements.", "Uses `<p>` elements."], ["Wraps the <code> tag.", "Wraps the `<code>` tag."],
+    ["Line break <br/> here; closes </div>.", "Line break `<br/>` here; closes `</div>`."], ["Renders a <button> and an <img>.", "Renders a `<button>` and an `<img>`."],
+  ];
+  for (const [input, stored] of mentions) {
+    assert.equal(containsHtmlTag(input), false, input);
+    assert.equal(validateOperatorExplanation({ ...base, summary: input }, allowed).summary, stored);
+    assert.deepEqual(validateOperatorExplanation({ ...base, keyPoints: [input, "ok"] }, allowed).keyPoints, [stored, "ok"]);
+  }
+  for (const text of ["Returns Promise<void> and Vec<Node>.", "Uses `<script>` tags in `index.html`.", "a < b and c > d", "Map<string, number[]>", "Option<S>, Vec<U>, Box<A>, Rc<B>, Cell<I>, fn<P>(x: P)", "Array<a> and x<em>y", "`<img src=x onerror=y>` is what the sanitizer strips"]) {
+    assert.equal(containsHtmlTag(text), false, text);
+    assert.equal(validateOperatorExplanation({ ...base, summary: text }, allowed).summary, text, "left untouched");
+  }
+});
+
+test("v3 validator: evidence stays mandatory and grounded", () => {
+  assert.throws(() => validateOperatorExplanation({ ...base, evidence: undefined }, allowed), /evidence is required/);
+  assert.throws(() => validateOperatorExplanation({ ...base, evidence: [] }, allowed), /evidence is required/);
   assert.throws(() => validateOperatorExplanation({ ...base, evidence: [{ entityId: "component:zzz", path: "z.ts" }] }, allowed), /unknown evidence reference/);
+  assert.throws(() => validateOperatorExplanation({ ...base, evidence: [{ entityId: "component:a", path: "a.ts", startLine: 4, endLine: 9 }] }, allowed), /unknown evidence reference/, "line ranges must match verbatim");
+});
+
+test("v3 validator: a safe Mermaid flowchart is kept; unsafe or oversized ones are dropped with a diagramError while the prose is kept", () => {
+  const good = "```mermaid\nflowchart TD\n  scan[\"Repository scan\"] -->|facts| model[\"C4 model\"]\n  model --> scene(\"Scene\")\n  scene -.-> gpu{{\"GPU\"}}\n```";
+  const kept = validateOperatorExplanation({ ...base, diagram: good }, allowed);
+  assert.equal(kept.diagram, "flowchart TB\n  scan[\"Repository scan\"] -->|facts| model[\"C4 model\"]\n  model --> scene(\"Scene\")\n  scene -.-> gpu{{\"GPU\"}}", "fence unwrapped, TD normalised to its synonym TB");
+  assert.equal(kept.diagramError, undefined);
+  const twelve = ["flowchart LR", ...Array.from({ length: 11 }, (_, index) => `  n${index} --> n${index + 1}`)].join("\n");
+  assert.ok("diagram" in checkMermaidDiagram(twelve));
+  const cases: Array<[string, RegExp]> = [
+    ["graph LR\n  a --> b", /must start with flowchart LR or flowchart TB/],
+    ["sequenceDiagram\n  a->>b: hi", /must start with flowchart/],
+    ["%%{init: {\"securityLevel\": \"loose\"}}%%\nflowchart LR\n  a --> b", /must start with flowchart/],
+    ["flowchart LR\n  %%{init: {}}%%\n  a --> b", /%%\{ directives/],
+    ["flowchart LR\n  a --> b\n  click a \"https://x\"", /click/],
+    ["flowchart LR\n  a --> b\n  style a fill:#f00", /style/],
+    ["flowchart LR\n  a --> b\n  classDef hot fill:#f00", /classDef/],
+    ["flowchart LR\n  a --> b\n  linkStyle 0 stroke:#f00", /linkStyle/],
+    ["flowchart LR\n  a:::hot --> b", /class shorthand/],
+    ["flowchart LR\n  a[\"javascript:alert(1)\"] --> b", /javascript: URL/],
+    ["flowchart LR\n  a[\"data:text/html,x\"] --> b", /a URL is not allowed/],
+    ["flowchart LR\n  a[\"<img src=x>\"] --> b", /raw HTML/],
+    ["flowchart LR\n  a[\"component:a\"] --> b", /human-readable/],
+    [["flowchart LR", ...Array.from({ length: 12 }, (_, index) => `  n${index} --> n${index + 1}`)].join("\n"), /13 nodes \(limit 12\)/],
+    [["flowchart LR", ...Array.from({ length: 40 }, () => "  a --> b")].join("\n"), /41 lines \(limit 40\)/],
+    [`flowchart LR\n  a["${"x".repeat(2000)}"] --> b`, /characters \(limit 2000\)/],
+    ["flowchart LR\n  a@{ img: \"https://attacker/p.png\", label: \"x\" } --> b", /shape data/],
+    ["flowchart LR\n  a@{ shape: rounded } --> b", /shape data/],
+    ["flowchart LR\n  a[\"see https://example.com\"] --> b", /a URL is not allowed/],
+    ["flowchart LR\n  a[\"see //cdn.example/x\"] --> b", /a URL is not allowed/],
+    ["flowchart LR\n  a[\"ftp:host\"] --> b", /a URL is not allowed/],
+    ["flowchart LR\n  a[\"file:etc\"] --> b", /a URL is not allowed/],
+    ["flowchart LR\n  a --> b; style a fill:#f00", /style/],
+    ["flowchart LR\n  a --> b;click a call()", /click/],
+    ["flowchart LR\n  a --> b; classDef hot fill:#f00", /classDef/],
+    ["flowchart LR\n  a --> b; class a hot", /class/],
+    ["flowchart LR\n  a --> b; linkStyle 0 stroke:#f00", /linkStyle/],
+    ["flowchart LR\n  a --> b\nflowchart TB\n  c --> d", /only one flowchart header/],
+    ["flowchart LR\n  a --> b; graph TD", /only one flowchart header/],
+    ["flowchart LR\n  a[\"Uses <b>bold</b>\"] --> b", /raw HTML/],
+  ];
+  for (const [diagram, reason] of cases) {
+    const result = validateOperatorExplanation({ ...base, diagram }, allowed);
+    assert.equal(result.diagram, undefined, diagram); assert.match(result.diagramError ?? "", reason, diagram); assert.equal(result.summary, base.summary);
+  }
+  assert.match(validateOperatorExplanation({ ...base, diagram: { nodes: ["component:a"], edges: [] } }, allowed).diagramError ?? "", /not Mermaid source text/, "the legacy structured diagram is not v3");
+});
+
+test("v3 validator: a valid small table is kept; an invalid one is dropped with a note and never fails the scope", () => {
+  const table = { caption: "Entry points", columns: ["File", "Why open it"], rows: [["`a.ts`", "**Start** here"], ["`b.ts`", 3]] };
+  assert.deepEqual(validateOperatorExplanation({ ...base, table }, allowed).table, { caption: "Entry points", columns: ["File", "Why open it"], rows: [["`a.ts`", "**Start** here"], ["`b.ts`", "3"]] });
+  assert.deepEqual(validateOperatorExplanation({ ...base, table: { columns: ["Tag", "Use"], rows: [["<table>", "grid"]] } }, allowed).table?.rows, [["`<table>`", "grid"]], "bare element mentions in cells are code-wrapped");
+  const bad: Array<[unknown, RegExp]> = [
+    [{ columns: ["only"], rows: [["x"]] }, /1 columns/], [{ columns: ["a", "b", "c", "d", "e"], rows: [["1", "2", "3", "4", "5"]] }, /5 columns/],
+    [{ columns: ["a", "b"], rows: [] }, /0 rows/], [{ columns: ["a", "b"], rows: Array.from({ length: 9 }, () => ["1", "2"]) }, /9 rows/],
+    [{ columns: ["a", "b"], rows: [["1"]] }, /one cell per column/], [{ columns: ["a", "x".repeat(41)], rows: [["1", "2"]] }, /column headings/],
+    [{ columns: ["a", "b"], rows: [["1", "x".repeat(161)]] }, /cells must be text/], [{ caption: "c".repeat(121), columns: ["a", "b"], rows: [["1", "2"]] }, /caption over 120/],
+    [{ columns: ["a", "b"], rows: [["<b onclick=x>1</b>", "2"]] }, /raw HTML/], ["| a | b |", /needs columns and rows/],
+  ];
+  for (const [candidate, reason] of bad) {
+    const result = validateOperatorExplanation({ ...base, table: candidate }, allowed);
+    assert.equal(result.table, undefined); assert.match(result.diagramError ?? "", reason);
+  }
+  const both = validateOperatorExplanation({ ...base, diagram: "graph LR\n a-->b", table: { columns: ["a"], rows: [] } }, allowed);
+  assert.match(both.diagramError ?? "", /^rejected diagram: .*; rejected table: /, "both drop reasons are recorded");
+});
+
+test("legacy v1/v2 explanations already stored still load, travel up and pass through the runner unchanged", async () => {
+  const legacy: OperatorExplanation = { summary: "old parent prose", roleWithinParent: "API", interactions: ["Is depended on by web"], evidence: [{ entityId: "c" }], diagram: { nodes: ["c"], edges: [] } };
+  const store = new MemoryStore(); store.current.set("c", legacy); store.current.set("k", { summary: "old child", evidence: [{ entityId: "k" }] });
+  const seen: Prompt[] = [];
+  await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scope("c", "container"), scope("k", "component", "c"), scope("j", "component", "c")], store, retryScopeId: "j", gateway: { modelId: "m", async chatCompletions(body) { seen.push(prompt(body)); return reply(prompt(body).scope.scopeId); } } });
+  assert.deepEqual(store.current.get("c"), legacy, "a stale legacy parent keeps its stored content byte-for-byte");
+  assert.equal(store.current.get("j")?.format, "v3");
+  const refresh = new MemoryStore(); refresh.current.set("k", { summary: "old child", roleWithinParent: "r", evidence: [{ entityId: "k" }] });
+  await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scope("c", "container"), scope("k", "component", "c")], store: refresh, retryScopeId: "c", gateway: { modelId: "m", async chatCompletions(body) { seen.push(prompt(body)); return reply(prompt(body).scope.scopeId); } } });
+  assert.deepEqual(seen.at(-1)?.children, [{ scopeId: "k", name: "k", kind: "component", summary: "old child" }], "a legacy child reaches a v3 parent as its summary only");
 });
 
 test("one oversized symbol cannot empty the digest: lines are capped and an entry over budget is skipped", () => {
@@ -298,7 +445,7 @@ test("retry-once: two timeouts fail after exactly two requests", async () => {
 });
 
 test("retry-once never retries validation rejects, other HTTP errors, or 429s", async () => {
-  for (const failure of [async () => ({ json: { choices: [{ message: { content: JSON.stringify({ summary: "x", evidence: [{ entityId: "invented" }] }) } }] } }), async () => { throw new LlmGatewayError("llm gateway 500: down", { kind: "server", status: 500 }); }, async () => { throw new LlmGatewayError("llm gateway 429: busy", { kind: "rate_limit", status: 429 }); }]) {
+  for (const failure of [async () => ({ json: { choices: [{ message: { content: JSON.stringify({ summary: "x", keyPoints: KEY_POINTS, evidence: [{ entityId: "invented" }] }) } }] } }), async () => { throw new LlmGatewayError("llm gateway 500: down", { kind: "server", status: 500 }); }, async () => { throw new LlmGatewayError("llm gateway 429: busy", { kind: "rate_limit", status: 429 }); }]) {
     let calls = 0; const counter = ticketCounter();
     const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scope("a", "component")], store: new MemoryStore(), admitRequest: counter.admitRequest, gateway: { modelId: "m", async chatCompletions() { calls += 1; return failure(); } } });
     assert.equal(calls, 1); assert.equal(result.attempts[0]?.state, "failed"); assert.deepEqual([counter.state.admitted, counter.state.settled], [1, 1]);
@@ -331,4 +478,11 @@ test("leaf reasoning: off adds reasoning.enabled=false to leaf bodies only (a di
   assert.equal("reasoning" in off.bodies.get("c")!, false, "parents never get the field");
   for (const bodies of [byDefault.bodies, explicit.bodies]) for (const body of bodies.values()) assert.equal("reasoning" in body, false);
   assert.notEqual(off.hashes.get("k"), byDefault.hashes.get("k")); assert.equal(explicit.hashes.get("k"), byDefault.hashes.get("k"));
+});
+
+test("explanationRowForJudgment drops only a v3 row's diagram and table", () => {
+  const v3 = { scopeId: "k", explanationVersionId: "e", content: { format: "v3", summary: "s", keyPoints: ["a", "b"], evidence: [{ entityId: "k" }], diagram: "flowchart LR\n a --> b", table: { columns: ["a", "b"], rows: [["1", "2"]] }, diagramError: "rejected table: x" } };
+  assert.deepEqual(explanationRowForJudgment(v3), { scopeId: "k", explanationVersionId: "e", content: { format: "v3", summary: "s", keyPoints: ["a", "b"], evidence: [{ entityId: "k" }], diagramError: "rejected table: x" } });
+  const legacy = { scopeId: "k", content: { summary: "s", evidence: [], diagram: { nodes: ["k"], edges: [] } } };
+  assert.equal(explanationRowForJudgment(legacy), legacy); assert.equal(explanationRowForJudgment(null), null);
 });

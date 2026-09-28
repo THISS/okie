@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { goldenSnapshot } from '@okie/scene-compiler';
 import { buildContextualOverview } from './contextualOverview';
-import { ContextualOverviewView } from './ContextualOverviewView';
+import { ContextualOverviewView, overviewScrollHost, resetOverviewScroll } from './ContextualOverviewView';
 
 describe('contextual overview contract', () => {
   it('uses accepted local responsibility and immediate parent, deduplicating identical links', () => {
@@ -25,7 +25,7 @@ describe('contextual overview contract', () => {
     expect((markup.match(/<span>Child /g) ?? []).length).toBe(Math.min(count, 5));
     expect(markup.includes(`Show all ${count}`)).toBe(count > 5);
     if (count) expect(markup).toContain(`detail-count">${count}</span>`);
-    else { expect(markup).toContain('No relationships captured.'); expect(markup).not.toContain('Direct dependencies'); }
+    else { expect(markup).not.toContain('No relationships captured.'); expect(markup).not.toContain('Direct dependencies'); }
   });
 });
 
@@ -49,4 +49,52 @@ it('presents authored multi-file membership with declarations and preserves file
   expect(markup).toContain('navigate');
   expect(buildContextualOverview(snapshot, 'component:file')?.componentBasis).toBe('file');
   expect(buildContextualOverview(snapshot, 'container:app')?.implementationFiles).toBeUndefined();
+});
+
+describe('overview leads with an accepted explanation (CLA-260)', () => {
+  const overview = { entity: { id: 'system:okie', name: 'okie', kind: 'softwareSystem', summary: 'Local responsibility.' }, dependencies: [], dependents: [], children: [{ id: 'container:web', name: 'Web', relationship: 'container' }] };
+  const scope = { scopeId: 'system:okie', entityId: 'system:okie', name: 'okie', state: 'accepted' as const, stale: true, explanation: { format: 'v3' as const, summary: 'Maps a repository as an **atlas**.', keyPoints: ['Start at `App.tsx`.'], evidence: [{ entityId: 'container:web', path: 'apps/web/src/App.tsx', startLine: 1, endLine: 9 }] } };
+  it('shows name, kind chip, explanation and evidence, without boilerplate', () => {
+    const markup = renderToStaticMarkup(<ContextualOverviewView entityName={id => id === 'container:web' ? 'Web' : undefined} explanation={scope} onOpenEntity={() => undefined} onOpenEvidence={() => undefined} overview={overview}/>);
+    expect(markup).toContain('<h3 class="overview-title">okie</h3>');
+    expect(markup).toContain('<span class="overview-chip">Software system</span>');
+    expect(markup).toContain('>Stale</span>');
+    expect(markup).toContain('<strong>atlas</strong>');
+    expect(markup).toContain('<code>apps/web/src/App.tsx:1–9</code>');
+    expect(markup.indexOf('explanation-view')).toBeLessThan(markup.indexOf('Children'));
+    expect(markup).not.toMatch(/Accepted operator explanation|softwareSystem|is a softwareSystem|No relationships captured|Local responsibility/iu);
+  });
+  it('falls back to the captured summary, then a quiet placeholder', () => {
+    expect(renderToStaticMarkup(<ContextualOverviewView onOpenEntity={() => undefined} overview={overview}/>)).toContain('<p class="overview-description">Local responsibility.</p>');
+    const bare = renderToStaticMarkup(<ContextualOverviewView onOpenEntity={() => undefined} overview={{ ...overview, entity: { id: 'system:okie', name: 'okie', kind: 'softwareSystem' } }}/>);
+    expect(bare).toContain('No description has been captured yet.');
+    expect(bare).not.toContain('is a softwareSystem');
+  });
+  it('ignores an explanation with no summary, key points or evidence', () => {
+    const empty = { ...scope, explanation: { format: 'v3' as const, summary: ' ', keyPoints: [], evidence: [] } };
+    const markup = renderToStaticMarkup(<ContextualOverviewView explanation={empty} onOpenEntity={() => undefined} overview={overview}/>);
+    expect(markup).toContain('<p class="overview-description">Local responsibility.</p>');
+    expect(markup).not.toMatch(/explanation-view|>Stale</u);
+  });
+  it('renders legacy explanations without interactions', () => {
+    const legacyScope = { ...scope, stale: false, explanation: { summary: 'Legacy text.', interactions: ['Calls the database'], roleWithinParent: 'Gateway', evidence: [] } };
+    const markup = renderToStaticMarkup(<ContextualOverviewView explanation={legacyScope} onOpenEntity={() => undefined} overview={overview}/>);
+    expect(markup).toContain('Legacy text.');
+    expect(markup).not.toMatch(/Calls the database|Important interactions|Gateway|>Stale</u);
+  });
+});
+
+describe('overview scroll reset on entity change', () => {
+  it('resets only the enclosing inspector scroll container', () => {
+    const host = { scrollTop: 400 };
+    const selectors: string[] = [];
+    resetOverviewScroll({ closest: selector => { selectors.push(selector); return host; } });
+    expect(host.scrollTop).toBe(0);
+    expect(selectors).toEqual(['.details-scroll']);
+  });
+  it('is a no-op outside the inspector (operator page, tests, unmounted)', () => {
+    expect(overviewScrollHost({ closest: () => null })).toBeUndefined();
+    expect(overviewScrollHost(null)).toBeUndefined();
+    expect(() => resetOverviewScroll(undefined)).not.toThrow();
+  });
 });

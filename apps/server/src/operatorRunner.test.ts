@@ -21,7 +21,7 @@ test("runner writes parseable deterministic and immutable enriched drafts", asyn
     const artifacts = scanRepository(process.cwd(), { systemName: "Okie", repositorySlug: "okie" });
     const runner = createOperatorRunner({ store, publication: new OperatorPublicationService(store), githubClient: () => ({ getJson: async () => ({ ok: true, json: { private: false } }) }) as never, scan: async () => ({ commitSha: "abc", artifacts }), gateway: { modelId: "fake/model", async chatCompletions(body) {
       const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope?: { scopeId: string; allowedEvidence: unknown[] } };
-      return { json: { choices: [{ message: { content: JSON.stringify({ summary: `Summary ${message.scope!.scopeId}`, evidence: message.scope!.allowedEvidence.slice(0, 1) }) } }] }, usage: { totalTokens: 2 } };
+      return { json: { choices: [{ message: { content: JSON.stringify({ keyPoints: ["Start at the entry point.", "Watch the cache."], summary: `Summary ${message.scope!.scopeId}`, evidence: message.scope!.allowedEvidence.slice(0, 1) }) } }] }, usage: { totalTokens: 2 } };
     } } });
     await runner.enqueue({ kind: "run", runId: run.runId, githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
     const drafts = store.snapshot().drafts;
@@ -73,7 +73,7 @@ test("runner retries only the selected scope into a new immutable draft", async 
       gateway: { modelId: "fake/model", async chatCompletions(body) {
         const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } };
         calls.push(message.scope.scopeId);
-        return { json: { choices: [{ message: { content: JSON.stringify({ summary: "new target", evidence: message.scope.allowedEvidence }) } }] } };
+        return { json: { choices: [{ message: { content: JSON.stringify({ keyPoints: ["Start at the entry point.", "Watch the cache."], summary: "new target", evidence: message.scope.allowedEvidence }) } }] } };
       } },
     });
     const oldBytes = store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!;
@@ -94,17 +94,17 @@ test("runner retries only the selected scope into a new immutable draft", async 
     assert.equal(nextDraft.coverage.stale, 2);
     for (const scopeId of ["system", "component"]) assert.ok(store.listAttempts(draft.draftRevisionId, scopeId).every(attempt => !attempt.stale));
 
-    const refreshed: string[] = []; const childStates = new Map<string, Array<{ scopeId: string; state: string }>>();
+    const refreshed: string[] = []; const childStates = new Map<string, Array<{ scopeId: string; state?: string; summary?: string }>>();
     const refresher = createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { modelId: "fake/model", async chatCompletions(body) {
       const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] }; children: Array<{ scopeId: string; state: string }> };
       refreshed.push(message.scope.scopeId);
       childStates.set(message.scope.scopeId, message.children);
-      return { json: { choices: [{ message: { content: message.scope.scopeId === "component" ? "{}" : JSON.stringify({ summary: `refreshed ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence }) } }] } };
+      return { json: { choices: [{ message: { content: message.scope.scopeId === "component" ? "{}" : JSON.stringify({ keyPoints: ["Start at the entry point.", "Watch the cache."], summary: `refreshed ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence }) } }] } };
     } } });
     await refresher.enqueue({ kind: "refresh", runId: run.runId, draftRevisionId: nextDraft.draftRevisionId, scopeIds: ["system", "component"], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
     assert.deepEqual(refreshed, ["component", "system"]);
-    assert.deepEqual(childStates.get("component")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "sibling", state: "accepted" }, { scopeId: "target", state: "accepted" }]);
-    assert.deepEqual(childStates.get("system")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "component", state: "stale" }], "the failed refresh keeps component's pinned, still-stale explanation");
+    assert.deepEqual(childStates.get("component")?.map(child => ({ scopeId: child.scopeId, state: child.state })), [{ scopeId: "sibling", state: undefined }, { scopeId: "target", state: undefined }], "no enrichment state reaches the prompt");
+    assert.deepEqual(childStates.get("system")?.map(child => ({ scopeId: child.scopeId, summary: child.summary })), [{ scopeId: "component", summary: "old component" }], "the failed refresh keeps component's pinned, still-stale explanation, sent without its state");
     assert.deepEqual(store.snapshot().attempts.filter(attempt => attempt.kind === "refresh").map(attempt => attempt.scopeId), ["component", "system"], "one owner attempt per refreshed scope; no coordinator planning attempts");
     const refreshedDraft = store.snapshot().drafts.find(value => value.draftRevisionId === store.snapshot().runs.find(value => value.runId === run.runId)?.draftRevisionId)!;
     const refreshedSidecar = JSON.parse(store.readArtifactFile(refreshedDraft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; stale?: boolean }>; explanations: Array<{ scopeId: string; content: { summary: string } }> };
@@ -127,7 +127,7 @@ test("runner rejects pinned and concurrent retries once a newer draft exists", a
     for (const scope of scopes) store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: scope.scopeId, kind: "enrichment", state: "accepted" });
     const runner = createOperatorRunner({ store, publication: new OperatorPublicationService(store), gateway: { modelId: "fake/model", async chatCompletions(body) {
       const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } };
-      return { json: { choices: [{ message: { content: JSON.stringify({ summary: `new ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence }) } }] } };
+      return { json: { choices: [{ message: { content: JSON.stringify({ keyPoints: ["Start at the entry point.", "Watch the cache."], summary: `new ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence }) } }] } };
     } } });
     const job = (scopeId: string) => runner.enqueue({ kind: "retry", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: [scopeId], githubAccess: { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } });
     await Promise.all([job("a"), job("b")]);
@@ -151,7 +151,7 @@ async function withEnv(values: Partial<Record<(typeof operatorEnvKeys)[number], 
   finally { for (const key of operatorEnvKeys) { if (old[key] === undefined) delete process.env[key]; else process.env[key] = old[key]; } }
 }
 const access = { kind: "github", source: "test-double", token: "secret", login: "x", userId: "1" } as const;
-const summaryReply = (body: Record<string, unknown>) => { const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } }; return { json: { choices: [{ message: { content: JSON.stringify({ summary: `Summary ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence.slice(0, 1) }) } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } }; };
+const summaryReply = (body: Record<string, unknown>) => { const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } }; return { json: { choices: [{ message: { content: JSON.stringify({ keyPoints: ["Start at the entry point.", "Watch the cache."], summary: `Summary ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence.slice(0, 1) }) } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 } }; };
 
 test("runner reserves its durable budget before gateway calls and a refusal creates no attempt row", async () => {
   const root = mkdtempSync(join(tmpdir(), "okie-runner-budget-"));
