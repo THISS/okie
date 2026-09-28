@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename } from "node:path";
+import ts from "typescript";
+import { resolveRelativeImport } from "./extract.js";
 import { slug } from "./ids.js";
 
 /**
@@ -11,12 +13,25 @@ import { slug } from "./ids.js";
  */
 export interface SourceUnit {
   kind: "member" | "root" | "tooling" | "rust";
+  /**
+   * The unit key (`unitByFile` value): the member/crate directory, the root slug, or
+   * {@link TOOLING_UNIT_KEY} for the synthetic bucket. The container id is derived
+   * via `slug`, so the bucket is still `container:tooling`.
+   */
   dir: string;
   name: string;
   packageName?: string;
   /** Repository-relative anchor for the container. */
   evidencePath: string;
 }
+
+/**
+ * Unit key of the synthetic non-member bucket. It can never be a repository path
+ * (NUL is not a valid path byte), so a workspace member literally named `tooling`
+ * keeps its own unit instead of sharing — and losing its files to — the bucket.
+ * `slug` drops the NUL, so the container id stays `container:tooling`.
+ */
+export const TOOLING_UNIT_KEY = "\0tooling";
 
 /** Visible accounting of what discovery included and deliberately left out. */
 export interface DiscoverySummary {
@@ -28,6 +43,25 @@ export interface DiscoverySummary {
   skippedJsFiles: number;
   /** Workspace members skipped as fixtures/examples/playgrounds/e2e. */
   skippedMembers: string[];
+  /**
+   * Pure re-export shims outside every workspace member (e.g. a root Vercel
+   * `api/share.ts` that is only `export { default } from '../apps/web/api/share.ts'`)
+   * folded into the unit that owns their target instead of becoming a second
+   * component in the tooling bucket. Sorted by `path`. Never evidence (not a
+   * sourceRef): persisted in the scan's membership report / portable-atlas
+   * `analysis.membership`, and importers of a shim resolve to its target.
+   */
+  reexportAliases?: ReexportAlias[];
+}
+
+/** A re-export shim folded into the component of the file it re-exports. */
+export interface ReexportAlias {
+  /** The shim's repository-relative path (not emitted as its own component). */
+  path: string;
+  /** The re-exported source file whose component absorbs the shim. */
+  target: string;
+  /** The unit dir owning `target` (never the tooling bucket). */
+  unit: string;
 }
 
 export interface Discovery {
@@ -44,6 +78,12 @@ export interface Discovery {
 export interface DiscoverOptions {
   /** Scan workspace members that look like fixtures/examples/playgrounds/e2e too. */
   includeAllMembers?: boolean;
+  /**
+   * Fold pure re-export shims outside every member into their target (default
+   * true). `false` reproduces the pre-CLA-263 shape — each shim is its own
+   * tooling component — which the membership diagnostic must then flag.
+   */
+  foldReexportShims?: boolean;
 }
 
 function git(sourceRoot: string, args: readonly string[]): string[] {
@@ -136,6 +176,76 @@ function isWorkspaceMemberDir(dir: string, globs: readonly string[]): boolean {
   return globs.some(glob => workspaceGlobToRegExp(glob).test(dir));
 }
 
+/**
+ * The most specific (longest) directory in `dirs` containing `file`, or undefined.
+ * With nested roots (`apps/web` and `apps/web/api` both packages) a file under
+ * `apps/web/api/` belongs to the nested member only — container membership is
+ * exclusive and the deepest package root wins, independent of `dirs` order.
+ */
+export function mostSpecificRoot(file: string, dirs: readonly string[]): string | undefined {
+  let best: string | undefined;
+  for (const dir of dirs) {
+    if (file !== dir && !file.startsWith(`${dir}/`)) continue;
+    if (best === undefined || dir.length > best.length) best = dir;
+  }
+  return best;
+}
+
+const REEXPORT_SHIM_EXTENSION = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
+const REEXPORT_SHIM_MAX_CHARS = 8 * 1024;
+
+/**
+ * Relative specifiers of a file whose top-level statements are ALL re-exports
+ * (`export { a } from './x'`, `export * from './x'`); undefined for anything else
+ * (a declaration, an import, a bare-specifier re-export, an empty file).
+ */
+export function pureRelativeReexportSpecifiers(path: string, text: string): string[] | undefined {
+  if (!REEXPORT_SHIM_EXTENSION.test(path)) return undefined;
+  // Cheap prefilter before a parse: a shim is short and must re-export `from` somewhere.
+  if (text.length > REEXPORT_SHIM_MAX_CHARS || !/\bexport\b/.test(text) || !/\bfrom\b/.test(text)) return undefined;
+  const sourceFile = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, false);
+  if (sourceFile.statements.length === 0) return undefined;
+  const specifiers: string[] = [];
+  for (const statement of sourceFile.statements) {
+    if (!ts.isExportDeclaration(statement)) return undefined;
+    const specifier = statement.moduleSpecifier;
+    if (!specifier || !ts.isStringLiteral(specifier) || !specifier.text.startsWith(".")) return undefined;
+    specifiers.push(specifier.text);
+  }
+  return specifiers;
+}
+
+/**
+ * Folds pure re-export shims out of the tooling bucket: a NON-MEMBER file whose
+ * statements only re-export relative files that ALL resolve to one discovered
+ * file owned by a workspace member / Rust crate (never another non-member file)
+ * is removed from `unitByFile` and `nonMemberFiles` and recorded as an alias of
+ * that target. Returns aliases sorted by path. Unreadable / unresolved /
+ * multi-target shims stay as-is. Membership is decided by the `nonMemberFiles`
+ * set, never by the bucket's unit key.
+ */
+function foldReexportShims(sourceRoot: string, unitByFile: Map<string, string>, nonMemberFiles: Set<string>): ReexportAlias[] {
+  const fileSet = new Set(unitByFile.keys());
+  const aliases: ReexportAlias[] = [];
+  for (const file of [...nonMemberFiles].sort()) {
+    let text: string;
+    try { text = readFileSync(`${sourceRoot}/${file}`, "utf8"); } catch { continue; }
+    const specifiers = pureRelativeReexportSpecifiers(file, text);
+    if (!specifiers) continue;
+    const targets = new Set(specifiers.map(specifier => resolveRelativeImport(file, specifier, fileSet)));
+    if (targets.size !== 1) continue;
+    const target = [...targets][0];
+    const targetUnit = target ? unitByFile.get(target) : undefined;
+    if (!target || target === file || !targetUnit || nonMemberFiles.has(target)) continue;
+    aliases.push({ path: file, target, unit: targetUnit });
+  }
+  for (const alias of aliases) {
+    unitByFile.delete(alias.path);
+    nonMemberFiles.delete(alias.path);
+  }
+  return aliases;
+}
+
 /** All tracked files at the current index/HEAD (gitignore-aware), repo-relative POSIX. */
 function listTrackedFiles(sourceRoot: string): string[] {
   return git(sourceRoot, ["ls-files"]);
@@ -167,7 +277,8 @@ function walkExtractedTree(root: string): string[] {
 
 /**
  * Pure discovery core over an already-listed set of repository-relative file paths
- * plus an `fs`-readable root (for `package.json`/`tsconfig`/`pnpm-workspace.yaml`).
+ * plus an `fs`-readable root (for `package.json`/`tsconfig`/`pnpm-workspace.yaml`,
+ * and the text of non-member source files checked for re-export shims).
  * Both the git (`git ls-files`) and tarball (`fs` walk) providers feed the SAME core,
  * so a repo scanned either way yields identical containers/units/sort — the property
  * the byte-identical determinism contract needs.
@@ -192,19 +303,18 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
   const rustCrateDirs = allFiles
     .filter(path => /^crates\/[^/]+\/Cargo\.toml$/.test(path))
     .map(manifest => manifest.replace(/\/Cargo\.toml$/, "")).sort();
-  const rustCrateOf = (file: string): string | undefined =>
-    rustCrateDirs.find(dir => file === dir || file.startsWith(`${dir}/`));
+  const rustCrateOf = (file: string): string | undefined => mostSpecificRoot(file, rustCrateDirs);
 
   const allMembers = [...memberDirs].sort();
   const skippedMembers = options.includeAllMembers ? [] : allMembers.filter(dir => FIXTURE_MEMBER_PATTERN.test(dir));
   const skippedMemberSet = new Set(skippedMembers);
-  const memberOf = (file: string): string | undefined =>
-    allMembers.find(dir => file === dir || file.startsWith(`${dir}/`));
+  const memberOf = (file: string): string | undefined => mostSpecificRoot(file, allMembers);
 
   const unitByFile = new Map<string, string>();
   const unitByPackageName = new Map<string, string>();
   const units: SourceUnit[] = [];
   const singlePackage = allMembers.length === 0;
+  let reexportAliases: ReexportAlias[] = [];
 
   if (singlePackage) {
     // Whole repo is one package -> one container derived from the root manifest.
@@ -221,7 +331,7 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
     });
     if (rootPackage) unitByPackageName.set(rootPackage, rootKey);
   } else {
-    let hasTooling = false;
+    const nonMemberFiles = new Set<string>();
     for (const file of sourceCandidates) {
       const rustCrate = rustCrateOf(file);
       if (rustCrate) {
@@ -231,8 +341,11 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
       const member = memberOf(file);
       if (member && skippedMemberSet.has(member)) continue; // fixture/example member — dropped
       if (member) unitByFile.set(file, member);
-      else { unitByFile.set(file, "tooling"); hasTooling = true; }
+      else { unitByFile.set(file, TOOLING_UNIT_KEY); nonMemberFiles.add(file); }
     }
+    if (options.foldReexportShims !== false) reexportAliases = foldReexportShims(sourceRoot, unitByFile, nonMemberFiles);
+    // Pruned when every non-member file was a folded shim.
+    const hasTooling = nonMemberFiles.size > 0;
     const membersWithSource = allMembers
       .filter(dir => !skippedMemberSet.has(dir))
       .filter(dir => sourceCandidates.some(file => unitByFile.get(file) === dir));
@@ -242,7 +355,7 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
       if (name) unitByPackageName.set(name, dir);
     }
     if (hasTooling) {
-      units.push({ kind: "tooling", dir: "tooling", name: "Build & fixture tooling", evidencePath: "scripts" });
+      units.push({ kind: "tooling", dir: TOOLING_UNIT_KEY, name: "Build & fixture tooling", evidencePath: "scripts" });
     }
   }
 
@@ -256,7 +369,13 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
     units,
     unitByFile,
     unitByPackageName,
-    summary: { singlePackage, includedJs, skippedJsFiles, skippedMembers },
+    summary: {
+      singlePackage,
+      includedJs,
+      skippedJsFiles,
+      skippedMembers,
+      ...(reexportAliases.length > 0 ? { reexportAliases } : {}),
+    },
   };
 }
 

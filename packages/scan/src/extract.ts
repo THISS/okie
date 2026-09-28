@@ -1061,6 +1061,15 @@ export function extractArchitecture(input: ExtractInput): ArchitectureExtraction
 export function collectExtractedArchitecture(input: ExtractInput): ExtractedArchitecture {
   const { discovery, readFile } = input;
   const fileSet = new Set(discovery.sourceFiles);
+  // Folded re-export shims (CLA-263) are not components, but importers still resolve
+  // through them: an import of a shim path lands on the shim's target file, so the
+  // dependency edge survives the fold instead of vanishing with the shim.
+  const aliasTargetByPath = new Map((discovery.summary.reexportAliases ?? []).map(alias => [alias.path, alias.target]));
+  const resolvableFiles: ReadonlySet<string> = aliasTargetByPath.size ? new Set([...fileSet, ...aliasTargetByPath.keys()]) : fileSet;
+  const resolveFile = (fromFile: string, specifier: string): string | undefined => {
+    const resolved = resolveRelativeImport(fromFile, specifier, resolvableFiles);
+    return resolved === undefined ? undefined : aliasTargetByPath.get(resolved) ?? resolved;
+  };
   const systemName = input.systemName ?? "Okie";
   const systemSlug = input.systemSlug ?? systemName;
 
@@ -1232,7 +1241,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
         source: { path: file, startLine: dependency.startLine, endLine: dependency.endLine },
       };
       if (dependency.specifier.startsWith(".")) {
-        const target = resolveRelativeImport(file, dependency.specifier, fileSet);
+        const target = resolveFile(file, dependency.specifier);
         if (target && target !== file) {
           addRelation(file, target, typedId("relation", file, target), `comp:${file}->${target}`, evidence);
         } else if (!target) {
@@ -1281,7 +1290,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
       if (key) return { key, file: scan.file, name: binding.localName };
       const imported = scan.imports.get(binding.localName);
       if (imported?.specifier.startsWith(".") && !imported.namespace) {
-        const targetFile = resolveRelativeImport(scan.file, imported.specifier, fileSet);
+        const targetFile = resolveFile(scan.file, imported.specifier);
         const targetScan = targetFile ? scanByFile.get(targetFile) : undefined;
         return targetScan ? resolveExport(targetScan, imported.exportedName, seen) : undefined;
       }
@@ -1289,7 +1298,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     }
     const resolveFrom = (specifier: string, name: string): ResolvedExport => {
       if (!specifier.startsWith(".")) return undefined;
-      const targetFile = resolveRelativeImport(scan.file, specifier, fileSet);
+      const targetFile = resolveFile(scan.file, specifier);
       const targetScan = targetFile ? scanByFile.get(targetFile) : undefined;
       return targetScan ? resolveExport(targetScan, name, seen) : undefined;
     };
@@ -1308,7 +1317,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     const names = new Set(scan.exports.keys());
     for (const specifier of scan.exportStars) {
       if (!specifier.startsWith(".")) continue;
-      const file = resolveRelativeImport(scan.file, specifier, fileSet);
+      const file = resolveFile(scan.file, specifier);
       const target = file ? scanByFile.get(file) : undefined;
       if (target) for (const name of exportNames(target, seen)) if (name !== "default") names.add(name);
     }
@@ -1329,7 +1338,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
     const bins = stringsIn(manifest.bin);
     for (const [kind, paths] of [["publicApi", publicPaths], ["entryPoint", bins]] as const) {
       for (const path of paths) {
-        const file = resolveRelativeImport(manifestPath, path, fileSet);
+        const file = resolveFile(manifestPath, path);
         const scan = file ? scanByFile.get(file) : undefined;
         if (!scan) continue;
         const evidence: ArchitectureExtractionEvidence = { source: { path: manifestPath }, reason: kind === "publicApi" ? "package entrypoint export" : "package bin entrypoint" };
@@ -1363,7 +1372,7 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
         const binding = scan.imports.get(reference.name);
         if (binding) {
           if (!binding.specifier.startsWith(".")) continue;
-          const targetFile = resolveRelativeImport(scan.file, binding.specifier, fileSet);
+          const targetFile = resolveFile(scan.file, binding.specifier);
           const targetScan = targetFile ? scanByFile.get(targetFile) : undefined;
           if (!targetScan) continue;
           const resolved = binding.namespace
@@ -1422,9 +1431,11 @@ export function collectExtractedArchitecture(input: ExtractInput): ExtractedArch
         { source: { path: reference.path, startLine: reference.startLine, endLine: reference.endLine } }, reference.kind);
     }
     for (const module of input.languageAnalysis.modules) {
-      if (module.path === module.targetPath || !fileSet.has(module.path) || !fileSet.has(module.targetPath)) continue;
-      addRelation(module.path, module.targetPath, typedId("relation", module.path, module.targetPath),
-        `comp:${module.path}->${module.targetPath}`, { source: { path: module.path, startLine: module.startLine, endLine: module.endLine } });
+      // A module edge into a folded shim lands on the shim's target (CLA-263).
+      const targetPath = aliasTargetByPath.get(module.targetPath) ?? module.targetPath;
+      if (module.path === targetPath || !fileSet.has(module.path) || !fileSet.has(targetPath)) continue;
+      addRelation(module.path, targetPath, typedId("relation", module.path, targetPath),
+        `comp:${module.path}->${targetPath}`, { source: { path: module.path, startLine: module.startLine, endLine: module.endLine } });
     }
   }
 

@@ -1,6 +1,7 @@
 export * from "./pin.js";
 export * from "./redact.js";
 export * from "./discover.js";
+export * from "./container-membership.js";
 export * from "./ids.js";
 export * from "./extract.js";
 export * from "./excerpt.js";

@@ -19,7 +19,8 @@ import { attachCoverage, coverageByCodeIdFromEntities, parseLcov, readLcov, type
 import { attachPortableSourceExcerpts } from "./excerpt.js";
 import { buildOverviewStory } from "./overview-story.js";
 import { buildUserFlowStories, publishedStoryCatalog, type PublishedStoryCatalog } from "./flow-story.js";
-import { discoverExtractedTree, type Discovery, type DiscoverySummary } from "./discover.js";
+import { discoverExtractedTree, TOOLING_UNIT_KEY, type Discovery, type DiscoverySummary } from "./discover.js";
+import { membershipDiagnostics, membershipReport, type MembershipReport } from "./container-membership.js";
 import {
   attachCyclomaticComplexity,
   attachDuplicateRelations,
@@ -103,6 +104,8 @@ export interface ScanArtifacts {
   scene: SceneSnapshot;
   timeline: Timeline;
   discoverySummary: DiscoverySummary;
+  /** CLA-263: folded re-export shims + container-membership warnings (always present; persisted). */
+  membership: MembershipReport;
   enrichmentReport?: EnrichmentReport;
   componentMapReport?: ComponentMapReport;
 }
@@ -244,6 +247,14 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     enrichmentReport = outcome.report;
   }
 
+  // CLA-263: container membership should be exclusive — a file cited from two
+  // containers (or a shim re-exporting another container's file) double-counts
+  // components/enrichment and yields duplicate operator scopes. Warnings only:
+  // persisted in the report + bundle, never fatal to a scan or operator run.
+  const nonMemberPaths = new Set(discovery.sourceFiles.filter(path => discovery.unitByFile.get(path) === TOOLING_UNIT_KEY));
+  const membership = membershipReport(discovery.summary.reexportAliases, membershipDiagnostics(extraction, readFile, nonMemberPaths));
+  const hasMembershipFacts = membership.reexportAliases.length > 0 || membership.diagnostics.length > 0;
+
   const metadata: ArchitectureExtractionSnapshotMetadata = {
     snapshotId: typedId("snapshot", repositorySlug, pin.commitSha.slice(0, 12)),
     repositoryId: typedId("repo", repositorySlug),
@@ -332,10 +343,12 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
     scene: compiled.scene,
     timeline,
     discoverySummary: discovery.summary,
+    membership,
     analysis: {
       mode: params.analysisMode ?? 'quick',
       adapters: params.languageAnalysis?.coverage.map(({ indexedFiles: _files, ...coverage }) => coverage) ??
         [...new Set(discovery.sourceFiles.map(path => path.endsWith('.rs') ? 'rust' : 'typescript/javascript'))].map(language => ({ language, tool: language === 'rust' ? 'tree-sitter-rust' : 'typescript', version: 'syntax-v1', coverage: 'syntax' as const, limitations: ['Quick scan: project-wide semantic resolution was not requested.'] })),
+      ...(hasMembershipFacts ? { membership } : {}),
     },
     dependencies: buildDependencyFacts({
       commitSha: pin.commitSha,
