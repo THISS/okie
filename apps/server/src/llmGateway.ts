@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { inspect } from "node:util";
-import { scrubGithubTokens } from "@okie/scan";
+import { scrubGithubTokens, scrubProviderIdentifiers } from "@okie/scan";
 
 /**
  * OpenAI-compatible LLM gateway config + client construction (CLA-20).
@@ -80,12 +80,15 @@ export interface GatewayUsage {
 export class LlmGatewayError extends Error {
   readonly kind: LlmGatewayFailureKind;
   readonly status?: number;
+  /** Provider error code from the response body (e.g. OpenRouter `error.code`), when it has one. */
+  readonly providerCode?: string;
 
-  constructor(message: string, options: { kind: LlmGatewayFailureKind; status?: number; cause?: unknown }) {
+  constructor(message: string, options: { kind: LlmGatewayFailureKind; status?: number; providerCode?: string; cause?: unknown }) {
     super(message, options.cause !== undefined ? { cause: options.cause } : undefined);
     this.name = "LlmGatewayError";
     this.kind = options.kind;
     if (options.status !== undefined) this.status = options.status;
+    if (options.providerCode !== undefined) this.providerCode = options.providerCode;
   }
 }
 
@@ -190,13 +193,108 @@ export function resolveLlmRateLimitConfig(env: NodeJS.Dict<string> = process.env
   };
 }
 
+/** Longest provider message an error keeps; the rest of a provider body is never stored. */
+export const GATEWAY_ERROR_MESSAGE_MAX_CHARS = 200;
+
+function clip(text: string, max: number): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > max ? `${flat.slice(0, max - 1).trimEnd()}…` : flat;
+}
+
+/** Scrub for error text headed to storage, logs, API responses, or the UI (CLA-261). */
+export function redactGatewayErrorText(text: string, secret?: string): string {
+  return scrubProviderIdentifiers(redactGatewayText(text, secret));
+}
+
+/** Provider error codes are numeric or a lowercase word (`rate_limit_exceeded`); anything else is dropped. */
+function safeProviderCode(value: unknown): string | undefined {
+  const raw = typeof value === "number" && Number.isInteger(value) ? String(value) : typeof value === "string" ? value.trim() : undefined;
+  return raw && /^(?:\d{1,6}|[a-z][a-z0-9_]{0,39})$/.test(raw) && scrubProviderIdentifiers(raw) === raw ? raw : undefined;
+}
+
+/** Decode a captured JSON string body (`\u0040` → `@`) so the scrub sees the real characters; raw text if it does not decode. */
+function decodeJsonString(captured: string): string {
+  try { return JSON.parse(`"${captured}"`) as string; } catch { return captured; }
+}
+
+/** Raw provider text is cut to this before any scrub runs, so a huge body costs bounded work. */
+const GATEWAY_ERROR_RAW_MAX_CHARS = 4000;
+
+/** Pre-clip, scrub, then clip to the stored message length. */
+function providerMessage(raw: string, secret: string | undefined): string {
+  return clip(redactGatewayErrorText(raw.slice(0, GATEWAY_ERROR_RAW_MAX_CHARS), secret), GATEWAY_ERROR_MESSAGE_MAX_CHARS);
+}
+
+/**
+ * CLA-261: reduce a provider error body to `{ code?, message }`. Only the
+ * OpenAI/OpenRouter `error.message` / `error.code` (or `error.type`) fields
+ * are read — `metadata`, `user_id`, and every other field are dropped. A
+ * non-JSON body keeps a short scrubbed snippet (HTML keeps nothing).
+ */
+export function summarizeGatewayErrorBody(body: string, secret?: string): { code?: string; message: string } {
+  let parsed: unknown;
+  const trimmed = body.trim();
+  try { parsed = JSON.parse(trimmed) as unknown; } catch {
+    // A legacy stored body may have been cut mid-JSON: take the message/code fields by shape,
+    // only from before `metadata` (whose nested fields must never supply a message or code).
+    if (trimmed.startsWith("{")) {
+      const metadataAt = trimmed.indexOf("\"metadata\"");
+      const head = (metadataAt >= 0 ? trimmed.slice(0, metadataAt) : trimmed).slice(0, GATEWAY_ERROR_RAW_MAX_CHARS);
+      const message = /"message"\s*:\s*"((?:[^"\\]|\\.)*)/.exec(head)?.[1];
+      const code = safeProviderCode(/"(?:code|type)"\s*:\s*"?([A-Za-z0-9._-]+)"?/.exec(head)?.[1]);
+      return { ...(code ? { code } : {}), message: message !== undefined ? providerMessage(decodeJsonString(message), secret) : "provider error (details withheld)" };
+    }
+    if (!trimmed) return { message: "empty response" };
+    if (/^<|<html|<!doctype/i.test(trimmed.slice(0, 512))) return { message: "non-JSON response" };
+    return { message: providerMessage(trimmed, secret) };
+  }
+  const record = typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+  const error = record.error;
+  const errorRecord = typeof error === "object" && error !== null && !Array.isArray(error) ? error as Record<string, unknown> : undefined;
+  const rawMessage = typeof errorRecord?.message === "string" ? errorRecord.message
+    : typeof error === "string" ? error
+      : typeof record.message === "string" ? record.message
+        : undefined;
+  const code = safeProviderCode(errorRecord?.code) ?? safeProviderCode(errorRecord?.type);
+  const message = rawMessage?.trim() ? providerMessage(rawMessage, secret) : "provider error (no message)";
+  return { ...(code ? { code } : {}), message };
+}
+
+/**
+ * `llm gateway <status>[ (<provider code>)]: <short message>` — the prefix {@link classifyLlmGatewayFailure} parses.
+ * A message that itself starts with `{` is marked so the stored text can never be mistaken for a raw body later.
+ */
+function gatewayErrorMessage(status: number, summary: { code?: string; message: string }): string {
+  const code = summary.code && summary.code !== String(status) ? ` (${summary.code})` : "";
+  const message = summary.message.startsWith("{") ? `provider message ${summary.message}` : summary.message;
+  return `llm gateway ${status}${code}: ${message}`;
+}
+
+/** A raw provider body: an object with an `error` key (or, cut mid-JSON, text that starts like one). */
+function looksLikeRawBody(tail: string): boolean {
+  try { const parsed = JSON.parse(tail) as unknown; return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && "error" in parsed; } catch { return /^\{\s*"error"\s*:/.test(tail); }
+}
+
+/**
+ * A stored/logged `llm gateway NNN: {raw body}` (pre-CLA-261) → the normalized shape; other text is scrubbed only.
+ * Applying it to its own output is a no-op: normalized messages carry no raw body (see {@link gatewayErrorMessage}).
+ */
+export function normalizeGatewayErrorText(text: string, secret?: string): string {
+  const bounded = text.slice(0, GATEWAY_ERROR_RAW_MAX_CHARS);
+  const match = /llm gateway (\d{3}): (\{[\s\S]*)$/.exec(bounded);
+  if (!match || !looksLikeRawBody(match[2]!)) return redactGatewayErrorText(bounded, secret);
+  const head = redactGatewayErrorText(bounded.slice(0, match.index), secret);
+  return `${head}${gatewayErrorMessage(Number(match[1]), summarizeGatewayErrorBody(match[2]!, secret))}`;
+}
+
 export function llmGatewayErrorFromHttp(status: number, body: string, apiKey?: string): LlmGatewayError {
   const kind: LlmGatewayFailureKind = status === 429
     ? "rate_limit"
     : status >= 500 && status <= 599
       ? "server"
       : "http";
-  return new LlmGatewayError(`llm gateway ${status}: ${redactGatewayText(body, apiKey)}`, { kind, status });
+  const summary = summarizeGatewayErrorBody(body, apiKey);
+  return new LlmGatewayError(gatewayErrorMessage(status, summary), { kind, status, ...(summary.code ? { providerCode: summary.code } : {}) });
 }
 
 /**

@@ -2,7 +2,7 @@ import { scrubGithubTokens, CYCLOMATIC_FLAG_THRESHOLD } from "@okie/scan";
 import {
   createLlmGatewayClient,
   isUsableModelId,
-  redactGatewayText,
+  redactGatewayErrorText,
   requireUsableModelId,
   type LlmChatCompletionResult,
   type LlmGatewayConfig,
@@ -193,7 +193,7 @@ export async function answerAskQuestion(
     };
   } catch (error: unknown) {
     const raw = error instanceof Error ? error.message : String(error);
-    return { connected: true, error: redactGatewayText(raw, config.apiKey) };
+    return { connected: true, error: redactGatewayErrorText(raw, config.apiKey) };
   }
 }
 

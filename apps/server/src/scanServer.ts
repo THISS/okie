@@ -17,7 +17,7 @@ import {
   sanitizeAskAtlasIdentity,
   type AskThreadStore,
 } from "./askThreads.js";
-import { redactGatewayText, type LlmGatewayConfig } from "./llmGateway.js";
+import { redactGatewayErrorText, redactGatewayText, type LlmGatewayConfig } from "./llmGateway.js";
 import { normalizeRepoInput } from "./repoUrl.js";
 import {
   isExcerptScanPath,
@@ -110,7 +110,7 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
   const threads = options.threads ?? createAskThreadStore();
 
   function publicJob(job: ScanJob): Record<string, unknown> {
-    return toPublicJob(job, text => redactGatewayText(text, llm.apiKey));
+    return toPublicJob(job, text => redactGatewayErrorText(text, llm.apiKey));
   }
 
   return async (request, response) => {
@@ -301,7 +301,7 @@ export function createScanHttpServer(options: ScanHttpOptions) {
   return createServer((request, response) => {
     void handle(request, response).catch((error: unknown) => {
       const raw = error instanceof Error ? error.message : String(error);
-      sendJson(response, 500, { error: redactGatewayText(raw, options.llm.apiKey) });
+      sendJson(response, 500, { error: redactGatewayErrorText(raw, options.llm.apiKey) });
     });
   });
 }

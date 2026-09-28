@@ -486,3 +486,16 @@ test("explanationRowForJudgment drops only a v3 row's diagram and table", () => 
   const legacy = { scopeId: "k", content: { summary: "s", evidence: [], diagram: { nodes: ["k"], edges: [] } } };
   assert.equal(explanationRowForJudgment(legacy), legacy); assert.equal(explanationRowForJudgment(null), null);
 });
+
+test("CLA-261: a failed attempt's stored error is scrubbed of provider identifiers even when it is not a gateway HTTP error", async () => {
+  // Fabricated identifiers — never a real account.
+  const store = new MemoryStore();
+  const result = await runOperatorEnrichment({ draftRevisionId: "d", scopes: [scope("leaf", "component")], store, gateway: { modelId: "m", async chatCompletions() {
+    throw new Error("upstream said {\"user_id\":\"user_2fAbCdEfGhIjKlMnOpQrStUv\",\"email\":\"okie.fake.operator@example.invalid\"} org-AbCdEf1234567890");
+  } } });
+  const error = result.attempts[0]?.error ?? "";
+  assert.equal(result.attempts[0]?.state, "failed");
+  for (const value of ["user_2fAbCdEfGhIjKlMnOpQrStUv", "okie.fake.operator@example.invalid", "org-AbCdEf1234567890"]) assert.equal(error.includes(value), false, error);
+  assert.equal([...store.attempts.values()][0]?.error, error, "the store adapter receives the scrubbed text");
+  assert.match(error, /^upstream said/);
+});

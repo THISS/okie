@@ -1,4 +1,4 @@
-import { scrubGithubTokens } from "@okie/scan";
+import { scrubProviderIdentifiers } from "@okie/scan";
 import type { ScanGithubAccess } from "./githubAccess.js";
 
 export type ScanJobStage =
@@ -112,7 +112,7 @@ export function createScanJobQueue(
         const raw = error instanceof Error ? error.message : String(error);
         update({
           stage: "failed",
-          error: scrubGithubTokens(raw),
+          error: scrubProviderIdentifiers(raw),
         });
       })
       .finally(() => {

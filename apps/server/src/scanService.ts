@@ -25,7 +25,7 @@ import {
   enrichmentProviderLabel,
   hasLlmCredentials,
   isUsableModelId,
-  redactGatewayText,
+  redactGatewayErrorText,
   resolveEnrichmentBudget,
   resolveLlmGatewayConfig,
   type LlmGatewayConfig,
@@ -191,7 +191,7 @@ export function createScanJobRunner(options: ScanServiceOptions): JobRunner {
   const enricherFactory = options.enricherFactory
     ?? (enrichMode === "off" ? () => undefined : createDefaultEnricherFactory(enrichMode, env, llmLocal, globalSpend));
   const githubClientOverride = options.githubClient;
-  const redact = (line: string): string => redactGatewayText(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
+  const redact = (line: string): string => redactGatewayErrorText(line, resolveLlmGatewayConfig(env, llmLocal).apiKey);
 
   const clientForJob = (job: ScanJob): GithubClient => {
     if (githubClientOverride) return githubClientOverride;

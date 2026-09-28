@@ -67,7 +67,8 @@ test("healthz and scan HTTP never put an LLM API key on the wire", () => {
   assert.doesNotMatch(server, /healthzBody\([^)]*apiKey/);
   assert.doesNotMatch(server, /healthzBody\([^)]*llm/);
   assert.match(main, /describeEnrichmentMode\(enrich,\s*llm\)/);
-  assert.match(server, /toPublicJob\(job,\s*text => redactGatewayText\(text,\s*llm\.apiKey\)\)/);
+  // CLA-261: job errors go through the error scrub (redactGatewayText + provider identifiers).
+  assert.match(server, /toPublicJob\(job,\s*text => redactGatewayErrorText\(text,\s*llm\.apiKey\)\)/);
 });
 
 test("scan HTTP wires GitHub session identity and never the operator gh client", () => {

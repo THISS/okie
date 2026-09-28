@@ -1,6 +1,11 @@
 import { askSignInHref } from '../ask/askAtlas';
 import { OPERATOR_SESSION_EXPIRED, staleRevisionFor, type StaleRevisionContext } from './reviewState';
 
+/** A stored run or attempt error (scope detail + run header). The server normalizes and scrubs it (CLA-261); shown as sent. */
+export function OperatorStoredError({ error }: { error: string }) {
+  return <p className="operator-alert">{error}</p>;
+}
+
 /** Access-denied and expired-session page: message, sign-in back to /operator, and a way home. */
 export function OperatorAccessMessage({ expired = false }: { expired?: boolean }) {
   return <main className="operator-shell operator-message" role="alert"><h1>Operator workspace</h1><p>{expired ? OPERATOR_SESSION_EXPIRED : 'This workspace is available only to configured operators.'}</p><nav className="operator-message-links"><a href={askSignInHref('/api/auth/github', '/operator')}>Sign in with GitHub</a><a href="/">Return to atlas</a></nav></main>;

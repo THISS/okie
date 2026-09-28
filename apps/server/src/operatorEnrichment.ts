@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { scrubGithubTokens } from "@okie/scan";
+import { scrubGithubTokens, scrubProviderIdentifiers } from "@okie/scan";
 import { parseChatCompletionDocument } from "./enrichment.js";
 import { classifyLlmGatewayFailure, resolveLlmGatewayConfig, type GatewayUsage, type LlmChatCompletionResult } from "./llmGateway.js";
 
@@ -466,7 +466,7 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
   let halted = false;
   const halt = (reason: "cancelled" | "limit") => { if (stopped !== "cancelled") stopped = reason; halted = true; };
   const finish = async (attempt: OperatorEnrichmentAttempt, patch: Partial<Pick<OperatorEnrichmentAttempt, "state" | "updatedAt" | "usage" | "error">>) => { await options.store.updateAttempt(attempt.attemptId, patch); Object.assign(attempt, patch); };
-  const errorText = (error: unknown) => scrubGithubTokens(error instanceof Error ? error.message : String(error));
+  const errorText = (error: unknown) => scrubProviderIdentifiers(error instanceof Error ? error.message : String(error));
   /** "settled" = accepted or failed; "skipped" = re-reduce found nothing to do (parents may proceed); "unrun" = not run. */
   const execute = async (definition: OperatorEnrichmentScope): Promise<"settled" | "skipped" | "unrun"> => {
     if (halted) return "unrun";

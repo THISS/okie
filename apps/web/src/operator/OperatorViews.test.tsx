@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { OperatorAccessMessage, OperatorErrorAlert } from './OperatorViews';
+import { OperatorAccessMessage, OperatorErrorAlert, OperatorStoredError } from './OperatorViews';
 import { OPERATOR_SESSION_EXPIRED, STALE_REVISION_MESSAGE } from './reviewState';
 
 const noop = () => undefined;
@@ -26,5 +26,10 @@ describe('operator access and stale-revision views', () => {
     const markup = renderToStaticMarkup(<OperatorErrorAlert error={STALE_REVISION_MESSAGE} onOpenCurrent={noop} opening selectedRunId="run-a" stale={{ runId: 'run-a' }}/>);
     expect(markup).toContain('Opening…');
     expect(markup).toContain('disabled');
+  });
+  it('renders a stored run/attempt error as sent (the server normalizes and scrubs it, CLA-261)', () => {
+    const normalized = 'llm gateway 400: fake/model is not a valid model ID';
+    const markup = renderToStaticMarkup(<OperatorStoredError error={normalized}/>);
+    expect(markup).toBe(`<p class="operator-alert">${normalized}</p>`);
   });
 });
