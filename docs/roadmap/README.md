@@ -21,6 +21,8 @@ Read those first. Every recommendation below is tied to a current file or symbol
 
 Operational / distribution layer (how scans run and reach users): [`scan-runner.md`](./scan-runner.md) — source access, checkout, refresh cadence; [`embed-hosting.md`](./embed-hosting.md) — hosting the atlases and the docs-site embed growth loop.
 
+Presentation: [`overview-blocks.md`](./overview-blocks.md) — the inspector Overview as ordered typed blocks (`blocks/v1`): renderer registry, provenance, per-block validation, planner seam, json-render decision.
+
 ## Status: today vs proposed
 
 | Capability | Today (file · symbol) | Gap | Doc |
