@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { OperatorAccessMessage, OperatorErrorAlert, OperatorStoredError } from './OperatorViews';
-import { OPERATOR_SESSION_EXPIRED, STALE_REVISION_MESSAGE } from './reviewState';
+import { OperatorAccessMessage, OperatorCoverage, OperatorErrorAlert, OperatorStoredError } from './OperatorViews';
+import { OPERATOR_NOT_OPERATOR, OPERATOR_SESSION_EXPIRED, STALE_REVISION_MESSAGE } from './reviewState';
 
 const noop = () => undefined;
 
@@ -13,6 +13,17 @@ describe('operator access and stale-revision views', () => {
     expect(markup).toContain('href="/"');
     expect(renderToStaticMarkup(<OperatorAccessMessage/>)).toContain('available only to configured operators');
     expect(renderToStaticMarkup(<OperatorAccessMessage/>)).not.toContain('session expired');
+  });
+  it('shows a removed operator a distinct not-an-operator page, not "session expired" (CLA-264)', () => {
+    const revoked = renderToStaticMarkup(<OperatorAccessMessage revoked/>);
+    expect(revoked).toContain(OPERATOR_NOT_OPERATOR); expect(revoked).not.toContain(OPERATOR_SESSION_EXPIRED); expect(revoked).toContain('data-access="not-operator"');
+    expect(renderToStaticMarkup(<OperatorAccessMessage expired/>)).toContain('data-access="expired"');
+    expect(revoked).toContain(`href="/api/auth/github?return=${encodeURIComponent('/operator')}"`);
+  });
+  it('renders no coverage row for a superseded revision: the completion banner is its one notice (CLA-264)', () => {
+    const detail = { draft: { draftRevisionId: 'draft-1', runId: 'run-1', revision: 1, state: 'open' as const, coverage: { total: 2, accepted: 0, failed: 1, notRun: 1, stale: 0 } }, scopes: [{ scopeId: 'a', name: 'A', state: 'not run' as const }, { scopeId: 'b', name: 'B', state: 'failed' as const }] };
+    expect(renderToStaticMarkup(<OperatorCoverage detail={detail} superseded={{ revision: 4 }}/>)).toBe('');
+    expect(renderToStaticMarkup(<OperatorCoverage detail={detail}/>)).toContain('not run');
   });
   it('shows "Open current revision" only when the stale context belongs to the selected run', () => {
     const stale = { runId: 'run-a', currentDraftRevisionId: 'draft-2' };

@@ -60,7 +60,8 @@ export const DEFAULT_MAX_ENRICHMENT_TOKENS = 200_000;
 /** Scan-level dollar cap, applied only when the gateway reports cost. */
 export const DEFAULT_MAX_ENRICHMENT_DOLLARS = 1;
 
-export type LlmGatewayFailureKind = "timeout" | "rate_limit" | "server" | "http";
+/** `transport`: the connection failed or dropped before a full response arrived (undici `fetch failed` / `terminated`; CLA-264). */
+export type LlmGatewayFailureKind = "timeout" | "rate_limit" | "server" | "http" | "transport";
 
 export interface EnrichmentBudget {
   requestTimeoutMs: number;
@@ -108,7 +109,35 @@ export function classifyLlmGatewayFailure(error: unknown): LlmGatewayFailureKind
   if (/llm gateway timeout/i.test(message) || /\btimeout after \d+ms\b/i.test(message)) {
     return "timeout";
   }
+  // Legacy/raw undici failures (stored before CLA-264, or thrown by a non-gateway fetch): same meaning as `transport`.
+  // Whole-message matches only: undici throws exactly `TypeError: fetch failed` / `TypeError: terminated`.
+  const exact = /^(?:fetch failed|terminated)$/.test(message);
+  if ((exact && (!(error instanceof Error) || error.name === "TypeError")) || /^(?:TypeError: )(?:fetch failed|terminated)$/.test(message) || /\bllm gateway transport error\b/.test(message)) return "transport";
   return undefined;
+}
+
+/**
+ * A short, scrub-safe name for a transport failure's root cause: undici puts the socket error on `cause`
+ * (`UND_ERR_SOCKET`, `ECONNRESET`, …). Only an upper-case code or a plain error name is kept, never a message,
+ * address or host, so the text is safe to store (CLA-261).
+ */
+export function transportCauseCode(error: unknown): string {
+  const seen = new Set<unknown>();
+  for (let cursor: unknown = error; cursor && typeof cursor === "object" && !seen.has(cursor); cursor = (cursor as { cause?: unknown }).cause) {
+    seen.add(cursor);
+    const code = (cursor as { code?: unknown }).code;
+    if (typeof code === "string" && /^[A-Z][A-Z0-9_]{1,39}$/.test(code)) return code;
+  }
+  const inner = error && typeof error === "object" ? (error as { cause?: unknown }).cause : undefined;
+  for (const candidate of [inner, error]) {
+    const name = candidate instanceof Error ? candidate.name : undefined;
+    if (name && /^[A-Za-z][A-Za-z0-9]{1,39}$/.test(name) && name !== "Error") return name;
+  }
+  return "unknown cause";
+}
+/** `status` is set when the response had started (the body dropped mid-read): the provider may already have billed the call. */
+function transportError(error: unknown, status?: number): LlmGatewayError {
+  return new LlmGatewayError(`llm gateway transport error (${transportCauseCode(error)})`, { kind: "transport", cause: error, ...(status !== undefined ? { status } : {}) });
 }
 
 /** Rate-limit and 5xx abort the rest of the scan's enrichment pass. */
@@ -697,9 +726,19 @@ export class LlmGatewayClient {
           cause: error,
         });
       }
-      throw error;
+      // CLA-264: keep the root cause (`TypeError: fetch failed` hides UND_ERR_SOCKET/ECONNRESET on `cause`).
+      throw transportError(error);
     }
-    const text = await response.text();
+    let text: string;
+    try {
+      text = await response.text();
+    } catch (error) {
+      // The body stream can also time out or drop mid-read (`TypeError: terminated`).
+      if (signal.aborted || isAbortLike(error)) {
+        throw new LlmGatewayError(`llm gateway timeout after ${this.timeoutMs}ms`, { kind: "timeout", cause: error });
+      }
+      throw transportError(error, response.status);
+    }
     if (!response.ok) {
       throw llmGatewayErrorFromHttp(response.status, text, this.#apiKey);
     }

@@ -8,18 +8,18 @@ export function OperatorCompletionBanner({ banner, busy, onPreview, onPublish, o
     {banner.actions.length > 0 && <div className="operator-actions">
       {banner.actions.includes('preview-publish') && <><button disabled={busy === 'preview'} onClick={onPreview}>Preview</button><span aria-hidden="true">→</span><button onClick={onPublish}>Publish</button></>}
       {banner.actions.includes('retry-failed') && banner.retryFailedLabel && <button onClick={onRetryFailed}>{banner.retryFailedLabel}</button>}
-      {banner.actions.includes('review-newer') && <button disabled={busy === 'review'} onClick={onReviewNewer}>Review newer revision</button>}
+      {banner.actions.includes('review-newer') && <button disabled={busy === 'review'} onClick={onReviewNewer}>{banner.reviewNewerLabel ?? 'Review newer revision'}</button>}
       {banner.actions.includes('retry-not-run') && banner.notRunScopeIds.length > 0 && <button onClick={onRetryNotRun}>Retry not run ({count(banner.notRunScopeIds.length)})…</button>}
     </div>}
   </section>;
 }
 
 /** `fit` comes from `fitToBudget`; `warning` is shown when the estimate exceeds the remaining budget; `error` blocks sending. */
-export interface RetryConfirmProps { fit: { count: number } | { unavailable: string }; warning?: string; error?: string; summary: string; selectionSize: number; sendCount: number; fraction: RetryFraction; firstCount: number; remainingUsd?: number; remainingRequests?: number; avgCostPerScopeUsd?: number; includesBelowCap: boolean; busy: boolean; onFraction(fraction: RetryFraction): void; onFirstCount(value: number): void; onConfirm(): void; onCancel(): void; }
+export interface RetryConfirmProps { fit: { count: number } | { unavailable: string }; warning?: string; error?: string; summary: string; selectionSize: number; sendCount: number; fraction: RetryFraction; firstCount: number; remainingUsd?: number; remainingRequests?: number; /** Tokens left (CLA-264: fit to budget also respects the token cap). */ remainingTokens?: number; avgCostPerScopeUsd?: number; includesBelowCap: boolean; busy: boolean; onFraction(fraction: RetryFraction): void; onFirstCount(value: number): void; onConfirm(): void; onCancel(): void; }
 /** Confirm step: how much of the selection to run, the estimate, and an explicit send. */
 export function OperatorRetryConfirm(props: RetryConfirmProps) {
   const fit = props.fit;
-  const left = [...(props.remainingUsd !== undefined ? [usd(props.remainingUsd)] : []), ...(props.remainingRequests !== undefined ? [`${count(props.remainingRequests)} request${props.remainingRequests === 1 ? '' : 's'}`] : [])];
+  const left = [...(props.remainingUsd !== undefined ? [usd(props.remainingUsd)] : []), ...(props.remainingRequests !== undefined ? [`${count(props.remainingRequests)} request${props.remainingRequests === 1 ? '' : 's'}`] : []), ...(props.remainingTokens !== undefined ? [`${count(props.remainingTokens)} tokens`] : [])];
   return <section aria-label="Confirm batch retry" className="operator-retry-confirm">
     <fieldset><legend>Run</legend>
       <label><input checked={props.fraction.mode === 'all'} name="retry-fraction" onChange={() => props.onFraction({ mode: 'all' })} type="radio"/> all selected ({count(props.selectionSize)})</label>

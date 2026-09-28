@@ -12,7 +12,13 @@ export interface WriteArtifactInput { repositoryId: string; sourceCommitSha?: st
 export interface OperatorStoreOptions { now?: () => number; pid?: number; isProcessAlive?: (pid: number) => boolean; }
 const empty = (): OperatorStoreState => ({ runs: [], drafts: [], attempts: [], explanations: [], events: [], artifacts: [], publications: [] });
 const idOk = (value: string, repo = false): void => { if (!(repo ? /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,240}$/ : /^[A-Za-z0-9][A-Za-z0-9._:-]{0,180}$/).test(value)) throw new Error("invalid identifier"); };
-const publicValue = (value: string | undefined): string | undefined => value && !/(?:key|token|secret|password|https?:\/\/|@)/i.test(value) ? value : undefined;
+/**
+ * Withholds text that names a credential, a URL or an address: any `key`/`token`/`secret`/`password` substring, so camelCase
+ * names (`authToken`, `clientSecret`, `masterKey`) withhold too. Only known-safe validator vocabulary is removed before the
+ * test, so "5 keyPoints (allowed 2-4)" is shown (CLA-264). Values are scrubbed separately (CLA-261).
+ */
+const SAFE_VOCABULARY = /\bkeyPoints\b/g;
+const publicValue = (value: string | undefined): string | undefined => value && !/(?:key|token|secret|password|passwd|bearer|https?:\/\/|@)/i.test(value.replace(SAFE_VOCABULARY, "")) ? value : undefined;
 /** CLA-261: provider bodies are normalized and account identifiers scrubbed before the existing withhold/cap rules. */
 const errorValue = (value: string | undefined): string => publicValue(value === undefined ? undefined : normalizeGatewayErrorText(value))?.slice(0, 800) ?? "operation failed (details withheld)";
 type EventDetailValue = string | number | boolean | null;

@@ -64,11 +64,17 @@ describe('completion banner', () => {
     // A clean retry pass still reads as the revision's outcome.
     expect(completionBanner({ run: run(), events: [finished({ kind: 'retry', stopped: 'complete', durationMs: 1, selected: 1, retryAccepted: 1, retryFailed: 0 })], scopes })!.kind).toBe('complete');
   });
-  it('points at a newer revision and describes only the displayed one', () => {
-    const banner = completionBanner({ run: run(), events: [finished({ kind: 'retry', stopped: 'complete', durationMs: 1, selected: 1, retryAccepted: 1, retryFailed: 0 })], scopes: [sys, scope('a', 'failed'), scope('b', 'not run')], newerRevision: true })!;
-    expect(banner.kind).toBe('older'); expect(banner.title).toBe('A newer revision exists');
-    expect(banner.detail).toBe("You are viewing an older revision: 1/3 accepted, 1 failed, 1 not run. The latest pass's outcome is on the newer revision.");
-    expect(banner.actions).toEqual(['review-newer']);
+  it('says a superseded revision is superseded and never presents its scopes as failures to retry (CLA-264)', () => {
+    const banner = completionBanner({ run: run(), events: [finished({ kind: 'retry', stopped: 'complete', durationMs: 1, selected: 1, retryAccepted: 1, retryFailed: 0 })], scopes: [sys, scope('a', 'failed'), scope('b', 'not run')], newerRevision: true, newerRevisionNumber: 7 })!;
+    expect(banner.kind).toBe('older'); expect(banner.title).toBe('Superseded — results are in revision 7');
+    expect(banner.detail).toBe("You are viewing an older revision of this run. Its scope states are as of that revision, not the run's results, so retry is off here; open revision 7 to review, retry and publish.");
+    expect(banner.detail).not.toMatch(/failed|not run/);
+    expect(banner.actions).toEqual(['review-newer']); expect(banner.reviewNewerLabel).toBe('Open revision 7');
+    expect(banner.failedScopeIds).toEqual([]); expect(banner.notRunScopeIds).toEqual([]);
+    const unnumbered = completionBanner({ run: run(), events: [], scopes: [sys, scope('b', 'not run')], newerRevision: true })!;
+    expect(unnumbered.title).toBe('Superseded — results are in a newer revision'); expect(unnumbered.reviewNewerLabel).toBe('Review newer revision');
+    // It is the one superseded notice, so it wins over the running/failed banners too (the coverage row renders nothing).
+    for (const state of ['running', 'failed'] as const) expect(completionBanner({ run: run(state), events: [], scopes: [sys, scope('b', 'not run')], newerRevision: true, newerRevisionNumber: 3 })!.kind).toBe('older');
   });
   it('includes stale and not-run counts in the failed title', () => {
     expect(completionBanner({ run: run(), events: [finished({ stopped: 'complete', durationMs: 1 })], scopes: [sys, scope('a', 'failed'), scope('b', 'accepted', { stale: true }), scope('c', 'not run')] })!.title).toBe('Enrichment finished with 1 failed — 1/4 accepted, 1 not run, 1 stale');

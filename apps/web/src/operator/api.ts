@@ -3,7 +3,7 @@ export type AttemptState = 'queued' | 'running' | 'accepted' | 'failed' | 'cance
 
 export interface OperatorUsage { inputTokens?: number; outputTokens?: number; measuredCostUsd?: number; estimatedCostUsd?: number; }
 export interface OperatorRun { runId: string; state: RunState; createdAt: number; updatedAt: number; draftRevisionId?: string; error?: string; source: { owner: string; repo: string; slug: string; commitSha?: string }; }
-export interface OperatorAttempt { attemptId: string; scopeId: string; kind: 'scan' | 'enrichment' | 'retry' | 'refresh'; state: AttemptState; createdAt?: number; updatedAt?: number; provider?: string; modelId?: string; usage?: OperatorUsage; stale?: boolean; error?: string; validation?: { accepted: boolean; validator: string; evidenceHash?: string; reason?: string }; }
+export interface OperatorAttempt { attemptId: string; scopeId: string; kind: 'scan' | 'enrichment' | 'retry' | 'refresh'; state: AttemptState; createdAt?: number; updatedAt?: number; provider?: string; modelId?: string; usage?: OperatorUsage; stale?: boolean; error?: string; validation?: { accepted: boolean; validator: string; evidenceHash?: string; reason?: string }; /** Borrowed from an earlier revision of the run (CLA-264): shown for its error, never counted in metrics. */ inherited?: boolean; }
 export interface OperatorEvent { eventId: string; at: number; type: string; detail?: Record<string, string | number | boolean | null>; }
 export interface OperatorEvidenceRef { entityId?: string; path?: string; startLine?: number; endLine?: number; }
 /** v1/v2 content (no `format`): still rendered by the legacy explanation renderer. */
@@ -16,12 +16,17 @@ export interface OperatorScope { scopeId: string; entityId?: string; parentScope
 export interface OperatorScopeMetrics { costUsd?: number; totalTokens?: number; updatedAt?: number; }
 export interface OperatorDraft { draftRevisionId: string; runId: string; revision: number; state: 'open' | 'frozen' | 'superseded'; basePublicationVersionId?: string; /** `notRun` is absent on drafts written before CLA-254; `belowCap` before CLA-258 (the server derives it for drafts it reads). */ coverage: { total: number; accepted: number; failed: number; notRun?: number; stale: number; belowCap?: number }; }
 /** The run ledger: spend so far against the configured per-run limits. */
-export interface OperatorRunBudget { maxDollars: number; spentDollars: number; maxRequests: number; requests: number; maxTokens: number; tokens: number; /** Only when a global operator dollar cap is configured. */ globalRemainingDollars?: number; /** Run requests left (absent on older servers). */ remainingRequests?: number; /** Only when a global request cap is configured. */ globalRemainingRequests?: number; }
-export interface OperatorRunDetail { run: OperatorRun; draft?: OperatorDraft; attempts: OperatorAttempt[]; events: OperatorEvent[]; usage: OperatorUsage; budget?: OperatorRunBudget; avgCostPerScopeUsd?: number; progress?: { accepted: number; failed: number; inFlight: number }; }
+export interface OperatorRunBudget { maxDollars: number; spentDollars: number; maxRequests: number; requests: number; maxTokens: number; tokens: number; /** Only when a global operator dollar cap is configured. */ globalRemainingDollars?: number; /** Run requests left (absent on older servers). */ remainingRequests?: number; /** Only when a global request cap is configured. */ globalRemainingRequests?: number; /** Run tokens left (absent on older servers: derive maxTokens − tokens). */ remainingTokens?: number; /** Only when a global token cap is configured. */ globalRemainingTokens?: number; /** Requests a pass keeps in flight at once (absent on older servers). */ maxConcurrent?: number; /** Average tokens one admission reserved in this run (request bytes + max output tokens). */ avgTokenReservation?: number; }
+export interface OperatorRunDetail { run: OperatorRun; draft?: OperatorDraft; attempts: OperatorAttempt[]; events: OperatorEvent[]; usage: OperatorUsage; budget?: OperatorRunBudget; avgCostPerScopeUsd?: number; /** Average reported tokens per attempt (CLA-264; absent until one reports usage). */ avgTokensPerScope?: number; progress?: { accepted: number; failed: number; inFlight: number }; }
 export interface DraftDetail { draft: OperatorDraft; source: { owner: string; repo: string; commitSha?: string }; scopes: OperatorScope[]; usage: OperatorUsage; currentPublicationVersionId?: string; }
 
+/**
+ * Stable machine-readable failure codes (CLA-264). The web decides on these, never on `error` text (which is display-only).
+ * 401 `session_expired`; 403 `not_operator` | `csrf_rejected`; 409 `run_active` | `draft_superseded` | `publication_stale`.
+ */
+export type OperatorErrorCode = 'session_expired' | 'not_operator' | 'csrf_rejected' | 'run_active' | 'draft_superseded' | 'publication_stale';
 /** `body` is the parsed JSON error body when the server sent one (e.g. `currentDraftRevisionId` on a stale-revision 409). */
-export type OperatorApiErrorBody = { error?: string; message?: string; currentDraftRevisionId?: string; [key: string]: unknown };
+export type OperatorApiErrorBody = { error?: string; message?: string; code?: OperatorErrorCode | (string & {}); currentDraftRevisionId?: string; [key: string]: unknown };
 export class OperatorApiError extends Error { constructor(readonly status: number, message: string, readonly body?: OperatorApiErrorBody) { super(message); } }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

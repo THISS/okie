@@ -1,5 +1,5 @@
 import type { OperatorEvent, OperatorRun, OperatorRunBudget, OperatorScope, OperatorUsage } from './api';
-import { scopeStateLabel } from './reviewState';
+import { scopeStateLabel, supersededLabel } from './reviewState';
 import { count, retryEstimate, usd } from './scopeSelection';
 
 /**
@@ -9,7 +9,7 @@ import { count, retryEstimate, usd } from './scopeSelection';
  */
 export type CompletionKind = 'running' | 'complete' | 'failures' | 'budget' | 'incomplete' | 'cancelled' | 'unavailable' | 'run-failed' | 'interrupted' | 'retry' | 'older';
 export type CompletionAction = 'preview-publish' | 'retry-failed' | 'retry-not-run' | 'review-newer';
-export interface CompletionBanner { kind: CompletionKind; title: string; detail?: string; actions: CompletionAction[]; failedScopeIds: string[]; notRunScopeIds: string[]; retryFailedLabel?: string; }
+export interface CompletionBanner { kind: CompletionKind; title: string; detail?: string; actions: CompletionAction[]; failedScopeIds: string[]; notRunScopeIds: string[]; retryFailedLabel?: string; /** Button text for `review-newer` ("Open revision 7" when its number is known). */ reviewNewerLabel?: string; }
 export interface CompletionInput {
   run: Pick<OperatorRun, 'state' | 'createdAt' | 'updatedAt'>;
   events: readonly Pick<OperatorEvent, 'type' | 'detail'>[];
@@ -18,8 +18,10 @@ export interface CompletionInput {
   avgCostPerScopeUsd?: number;
   budget?: OperatorRunBudget;
   progress?: { accepted: number; failed: number; inFlight: number };
-  /** The displayed revision is not the run's current one: the banner describes only this revision and points at the newer one. */
+  /** The displayed revision is not the run's current one: the banner says it is superseded and points at the newer one. */
   newerRevision?: boolean;
+  /** The current revision's number, when known ("results are in revision 7"). */
+  newerRevisionNumber?: number;
 }
 
 /** "4m 12s", "38s", "1h 2m". */
@@ -46,15 +48,19 @@ export function completionBanner(input: CompletionInput): CompletionBanner | und
   const base = { failedScopeIds: failed, notRunScopeIds: notRun };
   const tally = `${count(accepted)}/${count(total)} accepted`;
 
+  // CLA-264: a superseded revision's failed/not-run counts are not the run's results (a full run's working revision shows
+  // every scope "not run"), so none are stated and no retry is offered; the only action opens the current revision. It is checked first so a
+  // superseded view always gets this one notice (the coverage row then renders nothing), even while the run is active.
+  if (input.newerRevision) {
+    const where = input.newerRevisionNumber !== undefined ? `revision ${input.newerRevisionNumber}` : 'a newer revision';
+    return { kind: 'older', title: supersededLabel(input.newerRevisionNumber !== undefined ? { revision: input.newerRevisionNumber } : {}), detail: `You are viewing an older revision of this run. Its scope states are as of that revision, not the run's results, so retry is off here; open ${where} to review, retry and publish.`, actions: ['review-newer'], reviewNewerLabel: input.newerRevisionNumber !== undefined ? `Open revision ${input.newerRevisionNumber}` : 'Review newer revision', failedScopeIds: [], notRunScopeIds: [] };
+  }
+
   if (input.run.state === 'queued' || input.run.state === 'running') {
     const settled = input.progress ? input.progress.accepted + input.progress.failed : undefined;
     return { kind: 'running', title: settled !== undefined ? `Enriching… ${count(settled)} settled${input.progress!.inFlight ? ` · ${count(input.progress!.inFlight)} in flight` : ''}` : 'Enriching…', detail: `${count(total)} scopes in scope. This page refreshes every few seconds.`, actions: [], ...base };
   }
   if (input.run.state === 'failed') return { kind: 'run-failed', title: 'Run failed', detail: 'See the error above and the event log.', actions: [], ...base };
-  if (input.newerRevision) {
-    const rest = [...(failed.length ? [`${count(failed.length)} failed`] : []), ...(notRun.length ? [`${count(notRun.length)} not run`] : []), ...(stale ? [`${count(stale)} stale`] : [])];
-    return { kind: 'older', title: 'A newer revision exists', detail: `You are viewing an older revision: ${[tally, ...rest].join(', ')}. The latest pass's outcome is on the newer revision.`, actions: ['review-newer'], ...base };
-  }
   if (!total) return undefined;
 
   // Latest completion record; legacy runs only have the stop reasons (or nothing, when they completed).

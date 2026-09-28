@@ -38,6 +38,9 @@ describe('scope tree order and sorting', () => {
     expect(metrics.costUsd).toBeCloseTo(0.06); expect(metrics).toMatchObject({ tokens: 100, updatedAt: 50 });
     expect(scopeMetrics({ attempts: [{ ...attempt(5), usage: { estimatedCostUsd: 0.5 } }] })).toEqual({ costUsd: 0.5, updatedAt: 5 });
     expect(scopeMetrics({})).toEqual({});
+    // CLA-264: an attempt borrowed from an earlier revision is shown for its error but never counted (nor sorted on).
+    expect(scopeMetrics({ attempts: [{ ...attempt(7), usage: { measuredCostUsd: 0.4, inputTokens: 9, outputTokens: 1 }, inherited: true }] })).toEqual({});
+    expect(ids(orderTree([s('sys', 'softwareSystem', 'accepted'), s('borrowed', 'component', 'failed', 'sys', { attempts: [{ ...attempt(7), usage: { measuredCostUsd: 9 }, inherited: true }] }), s('own', 'component', 'failed', 'sys', { attempts: [{ ...attempt(3), usage: { measuredCostUsd: 0.1 } }] })], 'cost'))).toEqual(['sys', 'own', 'borrowed']);
     // The server summary wins (enriched revisions carry no attempts), mapped to the same shape.
     expect(scopeMetrics({ metrics: { costUsd: 0.2, totalTokens: 537, updatedAt: 9 }, attempts: [attempt(99, 5, 5)] })).toEqual({ costUsd: 0.2, tokens: 537, updatedAt: 9 });
     const enriched = [s('sys', 'softwareSystem', 'accepted'), s('cheap', 'component', 'accepted', 'sys', { metrics: { costUsd: 0.001, updatedAt: 5 } }), s('dear', 'component', 'accepted', 'sys', { metrics: { costUsd: 0.3, updatedAt: 1 } }), s('none', 'component', 'accepted', 'sys')];

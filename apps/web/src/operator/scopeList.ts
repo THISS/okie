@@ -25,12 +25,14 @@ export interface ScopeListOptions { filter: ScopeFilter; query: string; showBelo
 export interface ScopeMetrics { costUsd?: number; tokens?: number; updatedAt?: number }
 /**
  * Cost, tokens and last-updated time. Prefers the server's `metrics` summary (it also covers enriched revisions, whose
- * scopes carry no attempts); falls back to summing this revision's attempts (measured cost, else estimated).
+ * scopes carry no attempts of their own); falls back to summing this revision's own attempts (measured cost, else estimated);
+ * attempts inherited from an earlier revision are never counted.
  */
 export function scopeMetrics(scope: Pick<Scope, 'attempts' | 'metrics'>): ScopeMetrics {
   if (scope.metrics) { const { costUsd, totalTokens, updatedAt } = scope.metrics; return { ...(costUsd !== undefined ? { costUsd } : {}), ...(totalTokens !== undefined ? { tokens: totalTokens } : {}), ...(updatedAt !== undefined ? { updatedAt } : {}) }; }
   let costUsd: number | undefined; let tokens: number | undefined; let updatedAt: number | undefined;
   for (const attempt of scope.attempts ?? []) {
+    if (attempt.inherited) continue; // an earlier revision's attempt (CLA-264 lineage) is display-only
     const cost = attempt.usage?.measuredCostUsd ?? attempt.usage?.estimatedCostUsd;
     if (cost !== undefined) costUsd = (costUsd ?? 0) + cost;
     if (attempt.usage?.inputTokens !== undefined || attempt.usage?.outputTokens !== undefined) tokens = (tokens ?? 0) + (attempt.usage.inputTokens ?? 0) + (attempt.usage.outputTokens ?? 0);

@@ -40,3 +40,5 @@
 .operator-shell .explanation-table-expand,.operator-shell .explanation-evidence-link { border-color:transparent; background:transparent; }
 .operator-shell .explanation-table-expand { border-color:var(--atlas-line); padding:5px 10px; }
 .operator-scope .explanation-key-points ul,.operator-scope .explanation-evidence ul { padding-left:0; }
+/* CLA-264: a superseded revision replaces its coverage chips with this notice and a way to the current revision. */
+.operator-scope-rows small[data-state="superseded"] { font-style:italic; }

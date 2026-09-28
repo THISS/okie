@@ -27,7 +27,9 @@ describe('batch retry views', () => {
   it('renders "Review newer revision" in the older-revision banner', () => {
     const banner = completionBanner({ run: { state: 'awaiting_review', createdAt: 0, updatedAt: 1 }, events: [], scopes, newerRevision: true })!;
     const markup = renderToStaticMarkup(<OperatorCompletionBanner banner={banner} onPreview={noop} onPublish={noop} onRetryFailed={noop} onRetryNotRun={noop} onReviewNewer={noop}/>);
-    expect(markup).toContain('A newer revision exists'); expect(markup).toContain('>Review newer revision</button>'); expect(markup).not.toContain('>Publish</button>');
+    expect(markup).toContain('Superseded — results are in a newer revision'); expect(markup).toContain('>Review newer revision</button>'); expect(markup).not.toContain('>Publish</button>');
+    const numbered = renderToStaticMarkup(<OperatorCompletionBanner banner={completionBanner({ run: { state: 'awaiting_review', createdAt: 0, updatedAt: 1 }, events: [], scopes, newerRevision: true, newerRevisionNumber: 7 })!} onPreview={noop} onPublish={noop} onRetryFailed={noop} onRetryNotRun={noop} onReviewNewer={noop}/>);
+    expect(numbered).toContain('>Open revision 7</button>'); expect(numbered).not.toContain('Retry all failed');
   });
   it('shows duplicate component names with their container as a secondary label, under their container in the tree', () => {
     const dupes: OperatorScope[] = [

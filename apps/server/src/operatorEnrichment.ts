@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { scrubGithubTokens, scrubProviderIdentifiers } from "@okie/scan";
 import { parseChatCompletionDocument } from "./enrichment.js";
-import { classifyLlmGatewayFailure, resolveLlmGatewayConfig, type GatewayUsage, type LlmChatCompletionResult } from "./llmGateway.js";
+import { classifyLlmGatewayFailure, LlmGatewayError, resolveLlmGatewayConfig, type GatewayUsage, type LlmChatCompletionResult } from "./llmGateway.js";
 
 /**
  * CLA-134's runtime boundary.  This deliberately does not own draft storage or
@@ -94,7 +94,8 @@ export interface OperatorEnrichmentLimits {
   maxDollars: number;
 }
 
-export interface OperatorAdmission { settle(usage?: GatewayUsage): void | Promise<void>; }
+/** `estimate`: an estimated cost for a call that reported no usage but was likely billed (a response body that dropped mid-read). */
+export interface OperatorAdmission { settle(usage?: GatewayUsage, estimate?: { estimatedCostUsd: number }): void | Promise<void>; }
 
 export interface OperatorEnrichmentRunOptions {
   draftRevisionId: string;
@@ -137,6 +138,13 @@ export interface OperatorEnrichmentRunOptions {
   reReduceAncestors?: boolean;
   /** Explicit parent refresh; normal retry only marks ancestors with an accepted explanation stale. */
   refreshStale?: boolean;
+  /**
+   * Estimated cost of a call whose response started but whose body dropped (no usage arrives, yet the provider may have
+   * billed it), so the dollar cap is not undercounted. Default: this pass's average reported cost per call (CLA-264).
+   */
+  estimateDroppedCostUsd?: () => number | undefined;
+  /** Pause before the one retry of a transport failure (default {@link TRANSPORT_RETRY_DELAY_MS}; tests pass 0). */
+  transportRetryDelayMs?: number;
 }
 
 export interface OperatorEnrichmentRunResult {
@@ -159,8 +167,10 @@ function addUsage(left: GatewayUsage | undefined, right: GatewayUsage | undefine
   const promptTokens = addOptional(left.promptTokens, right.promptTokens); const completionTokens = addOptional(left.completionTokens, right.completionTokens); const costUsd = addOptional(left.costUsd, right.costUsd);
   return { totalTokens: left.totalTokens + right.totalTokens, ...(promptTokens !== undefined ? { promptTokens } : {}), ...(completionTokens !== undefined ? { completionTokens } : {}), ...(costUsd !== undefined ? { costUsd } : {}) };
 }
-/** The only failures retried once: a request timeout or an empty/missing message content. */
-function isRetryOnce(error: unknown): boolean { return classifyLlmGatewayFailure(error) === "timeout" || (error instanceof Error && /missing message content/.test(error.message)); }
+/** The only failures retried once: a request timeout, a dropped connection (transport, CLA-264), or an empty/missing message content. */
+function isRetryOnce(error: unknown): boolean { const kind = classifyLlmGatewayFailure(error); return kind === "timeout" || kind === "transport" || (error instanceof Error && /missing message content/.test(error.message)); }
+/** Default pause before retrying a transport failure: live drops came in bursts, so an immediate retry would land in the same one. */
+export const TRANSPORT_RETRY_DELAY_MS = 1500;
 function usageCost(usage?: GatewayUsage): number { return usage?.costUsd ?? 0; }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function isEvidence(value: unknown): value is OperatorEvidenceRef {
@@ -287,11 +297,46 @@ export function checkExplanationTable(value: unknown): { table: OperatorExplanat
   return { table: { ...(caption ? { caption: clean(caption) } : {}), columns: (columns as string[]).map(clean), rows: rows.map(row => row.map(clean)) } };
 }
 
+/** `-` and `_` compare equal in paths: the only rewrite models were seen to make (`flow_story.ts` for `flow-story.ts`). */
+const foldPath = (path: string) => path.replace(/_/g, "-");
+/**
+ * Resolves one cited ref against the scope's allowed evidence (CLA-264). The entityId is the identity: a ref whose entityId
+ * is allowed, whose lines are absent or equal to that allowed ref's, and whose path is absent or equal to it up to `-`/`_`
+ * resolves to the ALLOWED ref, so the stored path is always the scanner's. An entity with several refs is disambiguated by
+ * lines, then by exact path. Unknown entityIds, different lines, any other path, or an ambiguous match resolve to nothing
+ * (rejected); a ref without an entityId must match an allowed ref exactly, as before.
+ */
+function resolveEvidence(ref: OperatorEvidenceRef, allowedEvidence: readonly OperatorEvidenceRef[]): OperatorEvidenceRef | undefined {
+  const exact = allowedEvidence.find(item => evidenceKey(item) === evidenceKey(ref));
+  if (exact || ref.entityId === undefined) return exact;
+  const fits = (item: OperatorEvidenceRef) => (ref.startLine === undefined || ref.startLine === item.startLine) && (ref.endLine === undefined || ref.endLine === item.endLine) && (ref.path === undefined || (typeof ref.path === "string" && item.path !== undefined && foldPath(ref.path) === foldPath(item.path)));
+  const candidates = allowedEvidence.filter(item => item.entityId === ref.entityId && fits(item));
+  if (candidates.length <= 1) return candidates[0];
+  for (const narrowed of [candidates.filter(item => item.startLine === ref.startLine && item.endLine === ref.endLine), candidates.filter(item => item.path === ref.path)]) if (narrowed.length === 1) return narrowed[0];
+  return undefined;
+}
+/** `entityId path:start-end` for a rejection message; model-supplied parts are shown only when identifier-shaped (never free text). */
+function describeEvidence(ref: OperatorEvidenceRef): string {
+  const safe = (text: string | undefined) => text === undefined ? undefined : /^[\w.:/+-]{1,160}$/.test(text) ? text : "(invalid)";
+  const lines = ref.startLine !== undefined || ref.endLine !== undefined ? `:${ref.startLine ?? "?"}-${ref.endLine ?? "?"}` : "";
+  return scrubProviderIdentifiers([safe(ref.entityId) ?? "(no entity)", `${safe(ref.path) ?? "(no path)"}${lines}`].join(" "));
+}
+/**
+ * Backticked spans that are exactly a path spelling this reply cited as evidence and that resolved to a different allowed
+ * path (a corrected `-`/`_` spelling) become the allowed path (CLA-264). Any other mention, including a real file whose
+ * name differs only by `-`/`_`, is left as written.
+ */
+function canonicalPathSpans(text: string, corrections: ReadonlyMap<string, string>): string {
+  if (!corrections.size) return text;
+  return text.replace(/`([^`\n]+)`/g, (span, token: string) => { const path = corrections.get(token); return path ? `\`${path}\`` : span; });
+}
+
 /**
  * Strictly accepts v3 explanation-shaped output; it cannot alter scanner facts. Required prose
  * (summary, keyPoints) over the contract limits or containing raw HTML rejects the attempt, so
  * it is reported as a failed scope and can be retried. An invalid optional diagram or table is
- * dropped with a `diagramError` note instead. Evidence must be copied from `allowedEvidence`.
+ * dropped with a `diagramError` note instead. Evidence must name `allowedEvidence` (see resolveEvidence); the
+ * stored refs are always the allowed copies.
  * `null` optionals are absent (a live MiMo habit); v2-only fields (interactions, roleWithinParent)
  * are ignored, never stored.
  */
@@ -303,10 +348,12 @@ export function validateOperatorExplanation(value: unknown, allowedEvidence: rea
   const keyPoints = value.keyPoints.map(keyPointText).filter(item => item !== "").map((item, index) => validText(item, `keyPoints[${index}]`, L.keyPointChars));
   if (keyPoints.length < L.keyPointsMin || keyPoints.length > L.keyPointsMax) throw new Error(`rejected explanation: ${keyPoints.length} keyPoints (allowed ${L.keyPointsMin}-${L.keyPointsMax})`);
   if (!Array.isArray(value.evidence) || !value.evidence.length || !value.evidence.every(isEvidence)) throw new Error("malformed explanation: evidence is required");
-  const allowed = new Set(allowedEvidence.map(evidenceKey));
   // Canonical fields only: models decorate refs with note/quote/confidence, which must not be stored as evidence; null line numbers (a MiMo habit) are absent.
-  const evidence = (value.evidence as OperatorEvidenceRef[]).map(ref => ({ ...(ref.entityId !== undefined ? { entityId: ref.entityId } : {}), ...(ref.path !== undefined ? { path: ref.path } : {}), ...(typeof ref.startLine === "number" ? { startLine: ref.startLine } : {}), ...(typeof ref.endLine === "number" ? { endLine: ref.endLine } : {}) }));
-  if (evidence.some(ref => !allowed.has(evidenceKey(ref)))) throw new Error("rejected explanation: unknown evidence reference");
+  const cited = (value.evidence as OperatorEvidenceRef[]).map(ref => ({ ...(ref.entityId !== undefined ? { entityId: ref.entityId } : {}), ...(ref.path !== undefined ? { path: ref.path } : {}), ...(typeof ref.startLine === "number" ? { startLine: ref.startLine } : {}), ...(typeof ref.endLine === "number" ? { endLine: ref.endLine } : {}) }));
+  const resolved = cited.map(ref => resolveEvidence(ref, allowedEvidence));
+  const unknown = cited.filter((_ref, index) => resolved[index] === undefined);
+  if (unknown.length) throw new Error(`rejected explanation: unknown evidence reference(s): ${unknown.slice(0, 3).map(describeEvidence).join(", ")}${unknown.length > 3 ? ` (+${unknown.length - 3} more)` : ""}`);
+  const seen = new Set<string>(); const evidence = (resolved as OperatorEvidenceRef[]).filter(ref => { const key = evidenceKey(ref); if (seen.has(key)) return false; seen.add(key); return true; });
   const dropped: string[] = []; let diagram: string | undefined; let table: OperatorExplanationTable | undefined;
   if (value.diagram !== undefined && value.diagram !== null && value.diagram !== "") {
     const checked = checkMermaidDiagram(value.diagram, new Set(allowedEvidence.map(ref => ref.entityId).filter((id): id is string => id !== undefined)));
@@ -316,7 +363,8 @@ export function validateOperatorExplanation(value: unknown, allowedEvidence: rea
     const checked = checkExplanationTable(value.table);
     if ("table" in checked) table = checked.table; else dropped.push(checked.error);
   }
-  return { format: "v3", summary, keyPoints, ...(diagram ? { diagram } : {}), ...(table ? { table } : {}), evidence, ...(dropped.length ? { diagramError: dropped.join("; ") } : {}) };
+  const corrections = new Map<string, string>(); cited.forEach((ref, index) => { const path = resolved[index]!.path; if (typeof ref.path === "string" && path !== undefined && ref.path !== path) corrections.set(ref.path, path); });
+  return { format: "v3", summary: canonicalPathSpans(summary, corrections), keyPoints: keyPoints.map(item => canonicalPathSpans(item, corrections)), ...(diagram ? { diagram } : {}), ...(table ? { table } : {}), evidence, ...(dropped.length ? { diagramError: dropped.join("; ") } : {}) };
 }
 
 /**
@@ -424,8 +472,8 @@ export function symbolDigest(symbols: readonly OperatorEnrichmentScope[]): { sym
  * in-flight scopes finish and are stored. Scopes below `maxKind` are never
  * attempted; an explicit retry target bypasses that depth cap.
  *
- * Retry-once: a request timeout or an empty/missing message content gets exactly
- * one more request inside the same attempt row (usage summed). The retry is
+ * Retry-once: a request timeout, a transport failure (after a short delay) or an
+ * empty/missing message content gets exactly one more request inside the same attempt row (usage summed). The retry is
  * admitted like any request (run cap + admitRequest, after the first ticket is
  * settled); if refused, the attempt fails with the original error and the run
  * stops at "limit". Nothing else is retried here (429s live in the limiter).
@@ -462,7 +510,7 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
   if (staleScopes.length) await options.store.markStale(staleScopes);
   /** Re-reduce mode: `dirty` = a child got a new accepted explanation (input changed); `changedBelow` = any descendant did. */
   const dirty = new Set<string>(); const changedBelow = new Set<string>(); const acceptedNow = new Set<string>(); const skippedScopes: string[] = [];
-  const attempts: OperatorEnrichmentAttempt[] = []; let tokens = 0; let dollars = 0; let requests = 0; let stopped: OperatorEnrichmentRunResult["stopped"] = "complete";
+  const attempts: OperatorEnrichmentAttempt[] = []; let tokens = 0; let dollars = 0; let costCalls = 0; let requests = 0; let stopped: OperatorEnrichmentRunResult["stopped"] = "complete";
   let halted = false;
   const halt = (reason: "cancelled" | "limit") => { if (stopped !== "cancelled") stopped = reason; halted = true; };
   const finish = async (attempt: OperatorEnrichmentAttempt, patch: Partial<Pick<OperatorEnrichmentAttempt, "state" | "updatedAt" | "usage" | "error">>) => { await options.store.updateAttempt(attempt.attemptId, patch); Object.assign(attempt, patch); };
@@ -495,15 +543,21 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
     const first = await admit();
     if (!first) { halt("limit"); return "unrun"; }
     let current: OperatorAdmission | boolean | undefined = first; let usage: GatewayUsage | undefined;
-    const settleCurrent = async (callUsage?: GatewayUsage) => { const ticket = current; current = undefined; if (ticket && typeof ticket === "object") await ticket.settle(callUsage); };
+    const settleCurrent = async (callUsage?: GatewayUsage, estimate?: { estimatedCostUsd: number }) => { const ticket = current; current = undefined; if (ticket && typeof ticket === "object") await ticket.settle(callUsage, estimate); };
+    /** A transport failure after the response started (status set): settle with an estimated cost, never as free. */
+    const droppedEstimate = (error: unknown): { estimatedCostUsd: number } | undefined => {
+      if (!(error instanceof LlmGatewayError) || error.kind !== "transport" || error.status === undefined) return undefined;
+      const estimate = options.estimateDroppedCostUsd ? options.estimateDroppedCostUsd() : costCalls ? dollars / costCalls : undefined;
+      return estimate !== undefined && Number.isFinite(estimate) && estimate > 0 ? { estimatedCostUsd: estimate } : undefined;
+    };
     const attempt: OperatorEnrichmentAttempt = { attemptId: options.nextAttemptId?.() ?? randomUUID(), scopeId: scope.scopeId, role: "owner", state: "running", modelId, inputHash: hash, createdAt: now(), updatedAt: now() };
     try { await options.store.createAttempt(attempt); } catch (error) { await settleCurrent(); throw error; }
     attempts.push(attempt);
     /** One provider call under the current ticket; settles it with that call's usage. */
     const send = async (): Promise<{ parsed: unknown } | { retry: unknown }> => {
       let reply: LlmChatCompletionResult;
-      try { reply = await gateway.chatCompletions(body); } catch (error) { await settleCurrent(); if (isRetryOnce(error)) return { retry: error }; throw error; }
-      if (reply.usage) { tokens += usageTotal(reply.usage); dollars += usageCost(reply.usage); await options.onUsage?.(reply.usage); const summed = addUsage(usage, reply.usage)!; usage = summed; attempt.usage = summed; }
+      try { reply = await gateway.chatCompletions(body); } catch (error) { const estimate = droppedEstimate(error); if (estimate) dollars += estimate.estimatedCostUsd; await settleCurrent(undefined, estimate); if (isRetryOnce(error)) return { retry: error }; throw error; }
+      if (reply.usage) { tokens += usageTotal(reply.usage); dollars += usageCost(reply.usage); if (reply.usage.costUsd !== undefined) costCalls += 1; await options.onUsage?.(reply.usage); const summed = addUsage(usage, reply.usage)!; usage = summed; attempt.usage = summed; }
       await settleCurrent(reply.usage);
       try { return { parsed: completionText(reply) }; } catch (error) { if (isRetryOnce(error)) return { retry: error }; throw error; }
     };
@@ -513,6 +567,8 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
       if ("retry" in outcome) {
         // Exactly one more request, admitted (and counted) like any other; a refusal fails the attempt with the original error.
         const original = outcome.retry;
+        // A dropped connection waits briefly (no ticket is held) so the retry does not land in the same provider/edge burst.
+        if (classifyLlmGatewayFailure(original) === "transport") { const delay = options.transportRetryDelayMs ?? TRANSPORT_RETRY_DELAY_MS; if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay)); if (await options.cancelled?.()) { halt("cancelled"); await finish(attempt, { state: "cancelled", updatedAt: now(), ...(attempt.usage ? { usage: attempt.usage } : {}) }); return "unrun"; } }
         let second: OperatorAdmission | boolean;
         try { second = await admit(); } catch (error) { admissionError = { error }; throw error; }
         if (!second) { halt("limit"); throw original; }

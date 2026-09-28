@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { OperatorApiError, type OperatorEvent } from './api';
-import { acceptsReviewResponse, ACTION_RUNNING_MESSAGE, attemptLabel, belowCapChip, classifyOperatorFailure, usageSummary, coverageChips, coverageIncomplete, currentRevisionTarget, draftBelongsToRun, humanizeEventType, money, runStateLabel, staleRevisionAfterFailure, staleRevisionFor, usageDiffers, operatorEventLabel, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, scopeStateLabel, selectedDraftForRun, STALE_REVISION_MESSAGE } from './reviewState';
+import { acceptsReviewResponse, ACTION_RUNNING_MESSAGE, OPERATOR_SESSION_EXPIRED, attemptLabel, belowCapChip, classifyOperatorFailure, usageSummary, coverageChips, coverageIncomplete, currentRevisionTarget, draftBelongsToRun, followsCurrentRevision, humanizeEventType, isPublicationConflict, OPERATOR_NOT_OPERATOR, supersededBy, supersededLabel, money, runStateLabel, staleRevisionAfterFailure, staleRevisionFor, usageDiffers, operatorEventLabel, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, scopeStateLabel, selectedDraftForRun, STALE_REVISION_MESSAGE } from './reviewState';
 
 describe('operator review flow state', () => {
   it('keeps a selected draft pinned while polling discovers a newer run revision', () => {
     expect(selectedDraftForRun('draft-1', { draftRevisionId: 'draft-2' })).toBe('draft-1');
     expect(selectedDraftForRun(undefined, { draftRevisionId: 'draft-2' })).toBe('draft-2');
+  });
+  it('follows the run to its current revision unless a revision was explicitly pinned (CLA-264)', () => {
+    // A full run: enrichment works on draft-1, then installs its results as draft-2. Unpinned review must move on.
+    expect(followsCurrentRevision(undefined, 'draft-2', 'draft-1')).toBe(true);
+    expect(followsCurrentRevision(undefined, 'draft-2', 'draft-2')).toBe(false);
+    expect(followsCurrentRevision('draft-1', 'draft-2', 'draft-1')).toBe(false); // an explicit choice stays
+    expect(followsCurrentRevision(undefined, undefined, 'draft-1')).toBe(false);
+  });
+  it('marks a displayed revision superseded, naming the current revision number when known (CLA-264)', () => {
+    const displayed = { draftRevisionId: 'draft-1' }; const run = { draftRevisionId: 'draft-2' };
+    expect(supersededBy(displayed, run, { draftRevisionId: 'draft-2', revision: 4 })).toEqual({ draftRevisionId: 'draft-2', revision: 4 });
+    expect(supersededBy(displayed, run, { draftRevisionId: 'draft-1', revision: 3 })).toEqual({ draftRevisionId: 'draft-2' }); // a mismatched current draft never lends its number
+    expect(supersededBy({ draftRevisionId: 'draft-2' }, run)).toBeUndefined();
+    expect(supersededBy(displayed, { draftRevisionId: undefined })).toBeUndefined();
+    expect(supersededLabel({ revision: 4 })).toBe('Superseded — results are in revision 4');
+    expect(supersededLabel({})).toBe('Superseded — results are in a newer revision');
   });
   it('rejects a late response after selection changes', () => {
     expect(acceptsReviewResponse(3, 4, 'run-a', 'run-a')).toBe(false);
@@ -133,11 +149,23 @@ describe('operator failure classification', () => {
     expect(checks).toBe(0);
     expect(await classifyOperatorFailure(new Error('boom'), true, notOperator)).toEqual({ kind: 'error', message: 'boom' });
   });
-  it('distinguishes a stale revision 409 from an action already running', async () => {
-    expect(await classifyOperatorFailure(new OperatorApiError(409, 'draft is no longer current', { error: 'draft is no longer current', currentDraftRevisionId: 'draft-2' }), true, operator)).toEqual({ kind: 'stale-revision', message: STALE_REVISION_MESSAGE, currentDraftRevisionId: 'draft-2' });
-    expect(await classifyOperatorFailure(new OperatorApiError(409, 'draft is no longer current', { error: 'draft is no longer current' }), true, operator)).toEqual({ kind: 'stale-revision', message: STALE_REVISION_MESSAGE });
-    expect(await classifyOperatorFailure(new OperatorApiError(409, 'operator action already running', { error: 'operator action already running' }), true, operator)).toEqual({ kind: 'action-running', message: ACTION_RUNNING_MESSAGE });
+  it('distinguishes a stale revision 409 from an action already running by code, never by message text (CLA-264)', async () => {
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'draft is no longer current', { error: 'draft is no longer current', code: 'draft_superseded', currentDraftRevisionId: 'draft-2' }), true, operator)).toEqual({ kind: 'stale-revision', message: STALE_REVISION_MESSAGE, currentDraftRevisionId: 'draft-2' });
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'reworded by the server', { error: 'reworded by the server', code: 'draft_superseded' }), true, operator)).toEqual({ kind: 'stale-revision', message: STALE_REVISION_MESSAGE });
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'operator action already running', { error: 'operator action already running', code: 'run_active' }), true, operator)).toEqual({ kind: 'action-running', message: ACTION_RUNNING_MESSAGE });
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'operator action already running', { error: 'operator action already running' }), true, operator)).toEqual({ kind: 'error', message: 'operator action already running' }); // text alone is display-only
     expect(await classifyOperatorFailure(new OperatorApiError(409, 'Request failed (409)'), true, operator)).toEqual({ kind: 'error', message: 'Request failed (409)' });
+    expect(isPublicationConflict(new OperatorApiError(409, 'stale', { code: 'publication_stale', reason: 'stale_publication' }))).toBe(true);
+    expect(isPublicationConflict(new OperatorApiError(409, 'operator action already running', { code: 'run_active' }))).toBe(false);
+    expect(isPublicationConflict(new Error('publication_stale'))).toBe(false);
+  });
+  it('tells a removed operator apart from an expired session by the 401/403 code, without a session re-check (CLA-264)', async () => {
+    let checks = 0; const counted = async () => { checks += 1; return { operator: false }; };
+    expect(await classifyOperatorFailure(new OperatorApiError(403, 'operator access required', { error: 'operator access required', code: 'not_operator' }), true, counted)).toEqual({ kind: 'not-operator' });
+    expect(await classifyOperatorFailure(new OperatorApiError(401, 'operator access required', { error: 'operator access required', code: 'session_expired' }), true, counted)).toEqual({ kind: 'expired' });
+    const csrf = await classifyOperatorFailure(new OperatorApiError(403, 'operator access required', { error: 'operator access required', code: 'csrf_rejected' }), true, counted);
+    expect(csrf.kind).toBe('error'); expect(checks).toBe(0);
+    expect(OPERATOR_NOT_OPERATOR).not.toBe(OPERATOR_SESSION_EXPIRED);
   });
   it('opens the freshly refreshed run revision, falling back to the 409-reported one', () => {
     expect(currentRevisionTarget('draft-3', 'draft-2')).toBe('draft-3');

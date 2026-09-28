@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OperatorScope } from './api';
-import { affectedAncestors, applyFraction, budgetWarning, buildRetryRequest, confirmText, fitToBudget, levelTag, remainingBudgetUsd, remainingRequests, retryEstimate, selectable, selectByLevel, selectByState, selectionIncludesBelowCap, selectSubtree, selectVisible, usd } from './scopeSelection';
+import { affectedAncestors, applyFraction, budgetWarning, buildRetryRequest, confirmText, fitToBudget, levelTag, remainingBudgetUsd, remainingRequests, remainingTokens, refreshLabel, retryEstimate, tokenBudgetOf, tokensNeeded, selectable, selectByLevel, selectByState, selectionIncludesBelowCap, selectSubtree, selectVisible, usd } from './scopeSelection';
 
 const s = (scopeId: string, kind: string, depth: number, state: OperatorScope['state'], parentScopeId?: string, stale = false): OperatorScope => ({ scopeId, name: scopeId, kind, depth, state, ...(parentScopeId ? { parentScopeId } : {}), ...(stale ? { stale } : {}) });
 const scopes: OperatorScope[] = [
@@ -73,6 +73,37 @@ describe('fraction and estimates', () => {
     expect(budgetWarning(retryEstimate(scopes, ['b-comp', 'a-comp'], 1, { maxDollars: 3, spentDollars: 0 }))).toContain('est. $4.00 but only $3.00 left');
     expect(budgetWarning(retryEstimate(scopes, ['b-comp', 'a-comp'], 1, { maxDollars: 4, spentDollars: 0 }))).toBeUndefined();
     expect(budgetWarning(retryEstimate(scopes, ['b-comp'], undefined, { maxDollars: 1, spentDollars: 0 }))).toBeUndefined();
+  });
+  it('states the refresh request ceiling: stale scopes plus the ancestors that may re-reduce once (CLA-264)', () => {
+    expect(refreshLabel(scopes, ['b-comp', 'a-comp'], 0.01)).toEqual({ label: 'Refresh 2 stale scopes · up to 4 requests', title: 'One pass over 2 stale scopes (+ up to 2 parents re-reduced once) · est. up to $0.04' });
+    expect(refreshLabel([{ scopeId: 'sys', name: 'sys', state: 'accepted' }], ['sys'])).toEqual({ label: 'Refresh 1 stale scope · up to 1 request', title: 'One pass over 1 stale scope' });
+  });
+  it('respects the token cap too: fit, request body, warning, confirm line and 0-left (CLA-264)', () => {
+    const selection = ['b-comp', 'a-comp', 'c-comp']; // requests with parents: 3 (web, sys), 4, 6 (api)
+    // Plenty of dollars and requests, but 4,500 tokens left at ~1,000 tokens per scope: (n + parents) × 1,000 ≤ 4,500 → 2.
+    expect(fitToBudget(selection, scopes, 100, 0.001, 100, { remainingTokens: 4500, avgTokensPerScope: 1000 })).toEqual({ count: 2 });
+    expect(fitToBudget(selection, scopes, 100, 0.001, 100, { remainingTokens: 2999, avgTokensPerScope: 1000 })).toEqual({ count: 0 });
+    expect(fitToBudget(selection, scopes, 100, 0.001, 100, { remainingTokens: 4500 })).toEqual({ count: 3 }); // no token average yet: only requests and dollars bound the fit
+    expect(fitToBudget(selection, scopes, 100, 0.001, 100, { remainingTokens: 0, avgTokensPerScope: 1000 })).toEqual({ unavailable: 'No tokens left in the run budget (token cap reached).' });
+    expect(buildRetryRequest({ orderedSelection: selection, fraction: { mode: 'fit' }, scopes, showBelowCap: false, remainingUsd: 100, avgCostPerScopeUsd: 0.001, tokens: { remainingTokens: 4500, avgTokensPerScope: 1000 } })).toEqual({ scopeIds: ['b-comp', 'a-comp'], includeBelowCap: false });
+    // Admission holds a full reservation per in-flight call and halts on the first refusal (reviewer case: 4,500 left, ~1,000 avg).
+    expect(fitToBudget(selection, scopes, 100, 0.001, 100, { remainingTokens: 4500, avgTokensPerScope: 1000, tokenReservation: 5000, maxConcurrent: 64 })).toEqual({ count: 0 }); // one 5,000-token reservation already overshoots
+    expect(fitToBudget(selection, scopes, 100, 0.001, 100, { remainingTokens: 4500, avgTokensPerScope: 1000, tokenReservation: 2000, maxConcurrent: 64 })).toEqual({ count: 0 }); // 3 in flight × 2,000 = 6,000
+    expect(fitToBudget(selection, scopes, 100, 0.001, 100, { remainingTokens: 4500, avgTokensPerScope: 1000, tokenReservation: 2000, maxConcurrent: 1 })).toEqual({ count: 1 }); // 2 × 1,000 + 2,000 ≤ 4,500; 3 × 1,000 + 2,000 > 4,500
+    expect(tokensNeeded(3, { avgTokensPerScope: 1000, tokenReservation: 2000, maxConcurrent: 2 })).toBe(5000);
+    expect(tokensNeeded(3, { avgTokensPerScope: 1000 })).toBe(3000); // defaults: one in flight, reservation = average
+    expect(tokensNeeded(3, {})).toBeUndefined();
+    expect(tokenBudgetOf({ maxDollars: 1, spentDollars: 0, maxTokens: 10, tokens: 4, maxConcurrent: 8, avgTokenReservation: 5 }, 2)).toEqual({ remainingTokens: 6, avgTokensPerScope: 2, tokenReservation: 5, maxConcurrent: 8 });
+    const budget = { maxDollars: 100, spentDollars: 0, maxTokens: 10_000, tokens: 5_500 };
+    expect(remainingTokens(budget)).toBe(4500); // older servers: derived from maxTokens − tokens
+    expect(remainingTokens({ ...budget, remainingTokens: 4000, globalRemainingTokens: 3000 })).toBe(3000);
+    expect(remainingTokens(undefined)).toBeUndefined();
+    const estimate = retryEstimate(scopes, selection, 0.001, budget, 1000);
+    expect(estimate).toMatchObject({ estimatedTokens: 6000, remainingTokens: 4500 });
+    expect(budgetWarning(estimate)).toContain('est. 6,000 tokens but only 4,500 left');
+    expect(confirmText(estimate)).toContain('· est. 6,000 tokens of 4,500 left');
+    expect(budgetWarning(retryEstimate(scopes, ['b-comp'], 0.001, budget, 1000))).toBeUndefined();
+    expect(confirmText(retryEstimate(scopes, ['b-comp'], 0.001, budget))).not.toContain('tokens'); // no token average: no token estimate
   });
   it('respects the request cap: fit, warning, confirm line and 0-left (QA: cheap runs hit the request cap first)', () => {
     const selection = ['b-comp', 'a-comp', 'c-comp']; // requests with parents: 3 (web, sys), 4, 6 (api)
