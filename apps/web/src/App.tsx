@@ -86,6 +86,7 @@ import { SourceViewer, portableRepositoryRevisionUrl, type LocalWorkspaceContext
 import { getActivePortableAtlas } from './portable/runtime';
 import { OperatorExplanationContext } from './operator/OperatorExplanationContext';
 import { getDraftPreviewContext } from './operator/previewContext';
+import { OperatorMenuLink } from './operator/OperatorMenuLink';
 import { buildArchitectureBrief, clampInspectorWidth, defaultInspectorWidth, inspectorAcceptedSummary, inspectorCanShowSource, inspectorDiagramCount, inspectorEntityLead, inspectorCyclomatic, inspectorCoverage, inspectorDuplicates, inspectorUntestedBehaviours, formatCoverageRange, inspectorNotationDetailsView, inspectorNotationScope, inspectorPathOwners, inspectorSecondaryCopy, inspectorTabForEntity, inspectorWidthRange, inspectorWidthStorageKey, presentInspectorNotationDiagnostics, selectedEntityReframePlan, selectedRelationPresentation, type InspectorTab } from './inspector/inspectorSupport';
 import { inspectorHistoryRestorePlan, popInspectorHistory, pushInspectorHistory, type InspectorHistorySubject } from './inspector/inspectorHistory';
 import { createInspectorNeighborhoodRequest, inspectorNavigationIdentity } from './inspector/inspectorNeighborhoodRequest';
@@ -5406,7 +5407,7 @@ export function App() {
             {shareFeedback?.tone === 'success' ? <CheckIcon/> : <ShareIcon/>}
           </button>
           {sourceRepositoryUrl && <a aria-label="Open source repository" className="icon-button" data-testid="open-source-repo" href={sourceRepositoryUrl} rel="noreferrer" target="_blank" title="Open source repository"><CodeIcon/></a>}
-          {!portableAtlas && <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>}
+          {!portableAtlas && <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p><OperatorMenuLink signedIn={askSignedIn}/><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>}
         </div>
       </header>
 

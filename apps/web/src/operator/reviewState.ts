@@ -1,12 +1,23 @@
-import type { DraftDetail, OperatorDraft, OperatorRun, OperatorScope } from './api';
+import { OperatorApiError, type DraftDetail, type OperatorAttempt, type OperatorDraft, type OperatorEvent, type OperatorRun, type OperatorScope, type OperatorUsage } from './api';
 
+export function money(value?: number): string { return value === undefined ? 'unknown' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(value); }
+/** "awaiting_review" → "Awaiting review" for the run list and run header. */
+export function runStateLabel(state: string): string { const text = state.replace(/_/g, ' ').trim(); return text ? text[0]!.toUpperCase() + text.slice(1) : 'Unknown'; }
+/** The selected revision's usage is shown only when it differs from the run total (multi-revision runs). */
+export function usageDiffers(run: OperatorUsage | undefined, revision: OperatorUsage | undefined): boolean { const keys = ['inputTokens', 'outputTokens', 'measuredCostUsd', 'estimatedCostUsd'] as const; return !!revision && keys.some(key => run?.[key] !== revision[key]); }
+
+/** Scope-list label vocabulary, in chip order. The first four always show; the rest only when non-zero. */
+const CHIP_LABELS = ['accepted', 'failed', 'not run', 'stale', 'queued', 'running', 'cancelled', 'interrupted'] as const;
 /**
- * Coverage chips mirror the scope list: accepted / failed / not run partition the total; stale overlays.
- * Legacy drafts (no `notRun`) derive every count from the scope list states so chips always match it.
+ * Coverage chips count exactly the labels the scope list shows (`scopeStateLabel` is the single source of truth),
+ * so a stale accepted scope counts as `stale`, not `accepted`, and the chips partition the total.
+ * Without a scope list (never the case in the workspace) the stored coverage counts are shown as-is.
  */
 export function coverageChips(coverage: OperatorDraft['coverage'], scopes?: readonly Pick<OperatorScope, 'state' | 'stale'>[]): string[] {
-  const counts = coverage.notRun === undefined && scopes ? { total: scopes.length, accepted: scopes.filter(scope => scope.state === 'accepted').length, failed: scopes.filter(scope => scope.state === 'failed').length, notRun: scopes.filter(scope => scope.state === 'not run').length, stale: scopes.filter(scope => scope.stale).length } : { ...coverage, notRun: coverage.notRun ?? Math.max(0, coverage.total - coverage.accepted - coverage.failed) };
-  return [`${counts.accepted}/${counts.total} accepted`, `${counts.failed} failed`, `${counts.notRun} not run`, `${counts.stale} stale`];
+  if (!scopes) return [`${coverage.accepted}/${coverage.total} accepted`, `${coverage.failed} failed`, `${coverage.notRun ?? Math.max(0, coverage.total - coverage.accepted - coverage.failed)} not run`, `${coverage.stale} stale`];
+  const counts = new Map<string, number>(); for (const scope of scopes) { const label = scopeStateLabel(scope); counts.set(label, (counts.get(label) ?? 0) + 1); }
+  const labels = [...CHIP_LABELS, ...[...counts.keys()].filter(label => !(CHIP_LABELS as readonly string[]).includes(label)).sort()];
+  return labels.flatMap((label, index) => { const count = counts.get(label) ?? 0; if (label === 'accepted') return [`${count}/${scopes.length} accepted`]; return index < 4 || count > 0 ? [`${count} ${label}`] : []; });
 }
 /** Any non-accepted or stale coverage still requires publish acknowledgement. */
 export function coverageIncomplete(coverage: OperatorDraft['coverage']): boolean {
@@ -42,3 +53,74 @@ export class OperatorReviewLoader {
     return acceptsReviewResponse(epoch, this.epoch, runId, selectedRunId) ? { run: result.run, detail } : undefined;
   }
 }
+
+/** "enrichment.retry_failed" → "Enrichment retry failed"; never echoes the dotted raw type. */
+export function humanizeEventType(type: string): string {
+  const words = type.split(/[._\-\s]+/).filter(Boolean).join(' ').toLowerCase();
+  return words ? words[0]!.toUpperCase() + words.slice(1) : 'Event';
+}
+const runStateText = (state: unknown): string => typeof state === 'string' ? state.replace(/_/g, ' ') : 'changed';
+/** One unambiguous entry per attempt: "<scope name>: enrichment failed". */
+export function attemptLabel(attempt: Pick<OperatorAttempt, 'kind' | 'state' | 'scopeId'>, scopeName?: (scopeId: string) => string | undefined): string {
+  const name = scopeName?.(attempt.scopeId) ?? attempt.scopeId;
+  const action = `${humanizeEventType(String(attempt.kind)).toLowerCase()} ${runStateText(attempt.state)}`;
+  return name ? `${name}: ${action}` : action[0]!.toUpperCase() + action.slice(1);
+}
+/** Human label for a durable run event (types emitted by apps/server operatorStore/operatorRunner/operatorBudget). */
+export function operatorEventLabel(event: Pick<OperatorEvent, 'type' | 'detail'>, scopeName?: (scopeId: string) => string | undefined): string {
+  const detail = event.detail ?? {};
+  const scope = typeof detail.scopeId === 'string' ? ` · ${scopeName?.(detail.scopeId) ?? detail.scopeId}` : '';
+  const num = (key: string) => typeof detail[key] === 'number' ? detail[key] as number : undefined;
+  const budget = detail.kind === 'judgment' ? 'Judgment budget' : 'Budget';
+  switch (event.type) {
+    case 'run.state': return `Run ${runStateText(detail.state)}`;
+    case 'budget.reserved': { const tokens = num('tokens'); const dollars = num('dollars'); const limits = [tokens !== undefined ? `${tokens} tokens` : '', dollars !== undefined ? money(dollars) : ''].filter(Boolean).join(' / '); return `${budget} reserved${limits ? ` · up to ${limits}` : ''}`; }
+    case 'budget.settled': { const input = num('inputTokens'); const output = num('outputTokens'); const cost = num('measuredCostUsd') ?? num('estimatedCostUsd'); return `${budget} settled${input !== undefined || output !== undefined ? ` · ${input ?? 0} in / ${output ?? 0} out tokens` : ''}${cost !== undefined ? ` · ${money(cost)}` : ''}`; }
+    case 'budget.released': return `${budget} released (request not sent)`;
+    case 'draft.conflict': return detail.reason === 'stale_retry_base' ? 'Draft conflict: action started from an older revision' : detail.reason === 'retry_compare_and_swap' ? 'Draft conflict: a newer revision was installed first' : 'Draft conflict';
+    case 'enrichment.retry_failed': return `Retry failed${scope}`;
+    case 'enrichment.budget_refused': return `Enrichment refused by the ${typeof detail.ledger === 'string' ? `${detail.ledger} ` : ''}budget${scope}`;
+    case 'enrichment.unavailable': return `Enrichment unavailable${scope || (typeof detail.reason === 'string' ? `: ${detail.reason}` : '')}`;
+    case 'enrichment.budget_reached': { const accepted = num('accepted'); const attempted = num('attempted'); return `Enrichment stopped at the budget limit${accepted !== undefined && attempted !== undefined ? ` · ${accepted} accepted of ${attempted} attempted` : ''}`; }
+    default: return humanizeEventType(event.type);
+  }
+}
+
+export const OPERATOR_SESSION_EXPIRED = 'Your session expired — sign in again.';
+export const STALE_REVISION_MESSAGE = 'This revision is out of date: the run has a newer draft revision. Open the current revision to retry or refresh scopes.';
+export const ACTION_RUNNING_MESSAGE = 'Another operator action is already running for this run. Wait for it to finish, then try again.';
+export type OperatorFailure = { kind: 'expired' } | { kind: 'stale-revision'; message: string; currentDraftRevisionId?: string } | { kind: 'action-running'; message: string } | { kind: 'error'; message: string };
+/**
+ * Classifies a failed operator call. A 401/403 after the workspace was allowed re-checks the session:
+ * only a session that is no longer an operator counts as expired (a CSRF 403 keeps its message).
+ */
+export async function classifyOperatorFailure(cause: unknown, wasAllowed: boolean, checkSession: () => Promise<{ operator: boolean }>, fallback = 'Operator action failed.'): Promise<OperatorFailure> {
+  const message = cause instanceof Error ? cause.message : fallback;
+  if (!(cause instanceof OperatorApiError)) return { kind: 'error', message };
+  if ((cause.status === 401 || cause.status === 403) && wasAllowed) {
+    try { if (!(await checkSession()).operator) return { kind: 'expired' }; } catch { /* keep the original failure when the re-check itself fails */ }
+    return { kind: 'error', message };
+  }
+  if (cause.status === 409) {
+    const body = cause.body;
+    if (body?.error === 'draft is no longer current') return { kind: 'stale-revision', message: STALE_REVISION_MESSAGE, ...(typeof body.currentDraftRevisionId === 'string' ? { currentDraftRevisionId: body.currentDraftRevisionId } : {}) };
+    if (body?.error === 'operator action already running') return { kind: 'action-running', message: ACTION_RUNNING_MESSAGE };
+  }
+  return { kind: 'error', message };
+}
+/** The revision "Open current revision" loads: the freshly refreshed run's, else the one the 409 reported. */
+export function currentRevisionTarget(freshRunDraftRevisionId: string | undefined, reported: string | undefined): string | undefined { return freshRunDraftRevisionId ?? reported; }
+/** Stale-revision context belongs to one run; its alert/button render only while that run is selected. */
+export type StaleRevisionContext = { runId: string; currentDraftRevisionId?: string };
+export function staleRevisionFor(stale: StaleRevisionContext | undefined, selectedRunId: string | undefined): StaleRevisionContext | undefined { return stale && selectedRunId !== undefined && stale.runId === selectedRunId ? stale : undefined; }
+/**
+ * Next stale-revision context after a classified failure of an action started for `failedRunId`.
+ * `undefined` for `apply` means the failure arrived after the user switched runs and must be ignored.
+ */
+export function staleRevisionAfterFailure(outcome: OperatorFailure, failedRunId: string | undefined, selectedRunId: string | undefined, current: StaleRevisionContext | undefined, keepStale = false): { apply: boolean; stale: StaleRevisionContext | undefined } {
+  if (failedRunId !== undefined && failedRunId !== selectedRunId) return { apply: false, stale: current };
+  if (outcome.kind === 'stale-revision' && failedRunId !== undefined) return { apply: true, stale: { runId: failedRunId, ...(outcome.currentDraftRevisionId ? { currentDraftRevisionId: outcome.currentDraftRevisionId } : {}) } };
+  return { apply: true, stale: keepStale ? current : undefined };
+}
+/** A loaded draft must belong to the run it was opened for. */
+export function draftBelongsToRun(detail: Pick<DraftDetail, 'draft'>, runId: string): boolean { return detail.draft.runId === runId; }
