@@ -76,7 +76,8 @@ test("a failed child still settles: its parent runs, the child is left out of th
   assert.match(parentSystem, /Never mention enrichment or documentation status, failures or coverage/);
   assert.equal(store.current.has("c"), true);
   // Pinned before the prompt change: the hash still covers every child with its state, so stale/re-reduce semantics are unchanged.
-  assert.equal(result.attempts.find(attempt => attempt.scopeId === "c")?.inputHash, "e2f053b678601bf3caefc26d4b9ae4e4e247aed843bba1069a7d2cf96e8248e6");
+  // Re-pinned for CLA-145: the only input that changed is promptVersion (operator-enrichment/v3 → v4; was e2f053b6…).
+  assert.equal(result.attempts.find(attempt => attempt.scopeId === "c")?.inputHash, "11f37b8cbc4c634565a26b829d2f1d02594b2c71152c6527452b146783a73e4f");
 });
 
 test("failed retry preserves accepted sibling/current explanation and makes ancestors stale", async () => {
@@ -157,10 +158,10 @@ test("v3 prompt: area-owner voice, explicit v3 schema with no interactions, pare
   for (const attempt of result.attempts) hashes.set(attempt.scopeId, attempt.inputHash);
   const system = (body: Record<string, unknown>) => String((body.messages as Array<{ content: string }>)[0]!.content);
   assert.ok(system(bodies[0]!).startsWith(OPERATOR_OUTPUT_SCHEMA_PROMPT)); assert.match(system(bodies[0]!), /new teammate/);
-  assert.match(system(bodies[0]!), /"keyPoints": string\[\] \(2-4 items, each ONE idea in at most 20 words/); assert.match(system(bodies[0]!), /Never list or restate dependencies, dependents/);
+  assert.match(system(bodies[0]!), /"keyPoints": \(string \| \{"text": string, "evidence": EvidenceRef\[\]\}\)\[\] \(2-4 items, each ONE idea in at most 20 words/); assert.match(system(bodies[0]!), /Never list or restate dependencies, dependents/);
   assert.doesNotMatch(system(bodies[0]!), /"interactions"|roleWithinParent/, "v3 no longer asks for interactions or a role");
   assert.doesNotMatch(system(bodies[0]!), /how the pieces fit/); assert.match(system(bodies[1]!), /how the pieces fit together/);
-  assert.equal((JSON.parse(String((bodies[0]!.messages as Array<{ content: string }>)[1]!.content)) as { promptVersion: string }).promptVersion, "operator-enrichment/v3");
+  assert.equal((JSON.parse(String((bodies[0]!.messages as Array<{ content: string }>)[1]!.content)) as { promptVersion: string }).promptVersion, "operator-enrichment/v4", "CLA-145 claim mapping bumped the prompt version; stored content stays format v3");
   assert.deepEqual(prompt(bodies[1]!).children, [{ scopeId: "k", name: "k", kind: "component", summary: "k summary", keyPoints: KEY_POINTS }], "a v3 child travels up with its human name, kind, summary and keyPoints");
   assert.match(hashes.get("k") ?? "", /^[0-9a-f]{64}$/);
 });

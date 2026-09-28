@@ -1,6 +1,7 @@
 import type { OperatorScope } from './api';
 import { scopeStateLabel } from './reviewState';
 import { isBelowCap, levelOf, type ScopeFilter } from './scopeSelection';
+import { attentionRollup, attentionTier } from './claimChecks';
 
 /**
  * Pure scope-list model for the operator workspace (CLA-259): search, sorting, the C4 tree (system → container →
@@ -13,10 +14,11 @@ import { isBelowCap, levelOf, type ScopeFilter } from './scopeSelection';
  * their collapsed defaults and show how many matches they hold, so rendering stays bounded. Non-hierarchy sorts order
  * siblings; the tree shape never changes.
  */
-type Scope = Pick<OperatorScope, 'scopeId' | 'name' | 'state' | 'stale' | 'kind' | 'depth' | 'parentScopeId' | 'path' | 'attempts' | 'metrics'>;
+type Scope = Pick<OperatorScope, 'scopeId' | 'name' | 'state' | 'stale' | 'kind' | 'depth' | 'parentScopeId' | 'path' | 'attempts' | 'metrics' | 'claimChecks' | 'explanation'>;
 
-export type ScopeSort = 'hierarchy' | 'name' | 'state' | 'cost' | 'updated';
-export const SCOPE_SORTS: ReadonlyArray<{ value: ScopeSort; label: string }> = [{ value: 'hierarchy', label: 'Hierarchy' }, { value: 'name', label: 'Name' }, { value: 'state', label: 'State' }, { value: 'cost', label: 'Cost / tokens' }, { value: 'updated', label: 'Last updated' }];
+export type ScopeSort = 'hierarchy' | 'attention' | 'name' | 'state' | 'cost' | 'updated';
+/** `attention` (CLA-145): failed checks, then stale/missing coverage, contradicted, uncertain/insufficient; siblings only, each by the worst tier in its subtree; nothing hidden. */
+export const SCOPE_SORTS: ReadonlyArray<{ value: ScopeSort; label: string }> = [{ value: 'hierarchy', label: 'Hierarchy' }, { value: 'attention', label: 'Review attention' }, { value: 'name', label: 'Name' }, { value: 'state', label: 'State' }, { value: 'cost', label: 'Cost / tokens' }, { value: 'updated', label: 'Last updated' }];
 /** Filtering auto-expands the ancestors of matches only up to this many matches (rendering stays bounded). */
 export const AUTO_EXPAND_LIMIT = 300;
 
@@ -76,10 +78,12 @@ const byId = (left: Scope, right: Scope) => (left.scopeId < right.scopeId ? -1 :
 /** Missing values sort last; larger first. */
 const descending = (left?: number, right?: number) => (left === undefined ? (right === undefined ? 0 : 1) : right === undefined ? -1 : right - left);
 /** Sibling order for a sort key; ties fall back to level (system → externals → container → component → code), then name, then id. */
-export function scopeComparator(sort: ScopeSort, metrics: (scope: Scope) => ScopeMetrics = scopeMetrics): (left: Scope, right: Scope) => number {
+/** `tier`: the attention tier to sort by (the subtree roll-up in the list; a scope's own tier by default). */
+export function scopeComparator(sort: ScopeSort, metrics: (scope: Scope) => ScopeMetrics = scopeMetrics, tier: (scope: Scope) => number = attentionTier): (left: Scope, right: Scope) => number {
   const natural = (left: Scope, right: Scope) => rank(left) - rank(right) || collator.compare(left.name, right.name) || byId(left, right);
   switch (sort) {
     case 'name': return (left, right) => collator.compare(left.name, right.name) || natural(left, right);
+    case 'attention': return (left, right) => tier(left) - tier(right) || natural(left, right);
     case 'state': return (left, right) => (STATE_RANK[scopeStateLabel(left)] ?? 9) - (STATE_RANK[scopeStateLabel(right)] ?? 9) || natural(left, right);
     case 'cost': return (left, right) => { const a = metrics(left); const b = metrics(right); return descending(a.costUsd, b.costUsd) || descending(a.tokens, b.tokens) || natural(left, right); };
     case 'updated': return (left, right) => descending(metrics(left).updatedAt, metrics(right).updatedAt) || natural(left, right);
@@ -110,6 +114,7 @@ function forest<T extends Scope>(scopes: readonly T[], sort: ScopeSort): Forest<
   return { roots, children };
 }
 function cachedComparator(sort: ScopeSort, scopes: readonly Scope[]) {
+  if (sort === 'attention') { const rollup = attentionRollup(scopes); return scopeComparator(sort, scopeMetrics, scope => rollup.get(scope.scopeId) ?? attentionTier(scope)); }
   if (sort !== 'cost' && sort !== 'updated') return scopeComparator(sort);
   const cache = new Map(scopes.map(scope => [scope.scopeId, scopeMetrics(scope)]));
   return scopeComparator(sort, scope => cache.get(scope.scopeId) ?? scopeMetrics(scope));

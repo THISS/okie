@@ -32,7 +32,7 @@ still depends on provider latency. A component whose code children are below the
 depth cap gets a bounded, deterministic digest of those symbols (name, export,
 line range, first lines; about 6,000 characters, plus the total symbol count), and
 the included symbols' source refs become allowed evidence for it. Prompts use
-`operator-enrichment/v3` (CLA-260): an area owner's short note for a new teammate,
+`operator-enrichment/v4` (CLA-260 voice; v4 adds CLA-145 claim mapping): an area owner's short note for a new teammate,
 with a summary, 2-5 key points, evidence, and an optional Mermaid diagram or small
 table. See [operator-enrichment-prompt.md](../../architecture/operator-enrichment-prompt.md).
 A parent receives only its explained children's name, kind and prose: summary and key
@@ -121,3 +121,108 @@ inspect the portable bundle's `analysis.adapters` coverage and limitations rathe
 than treating every successful scan as a complete call graph. Published source
 requests remain pinned to the captured commit; unavailable upstream source leaves
 the saved excerpt usable.
+
+## Claim checks (CLA-145)
+
+Claim checks are report-only and **off by default**. Turn them on with `OKIE_JEV_CLAIM_CHECKS=on`;
+they also need `JEV_API`. `POST /api/operator/drafts/:id/claim-checks` takes an optional
+`{ scopeIds }` (at most 256 known scopes that have a claim mapping). Without `scopeIds` it checks
+every non-stale scope with a claim mapping. The route uses the same mutation auth, `run_active` and
+`draft_superseded` guards as retry. When claim checks are off it answers 422
+`claim_checks_disabled`.
+
+Stale scopes are never sent to Jev. A selection whose scopes are all stale gets 422
+`claim_scopes_stale` (refresh first). A pass skips the stale members of a mixed selection and
+writes no rows for them; its event reports them as skipped with "Explanation is stale; refresh it,
+then re-check."
+
+A pass runs in two steps.
+
+1. **Code checks.** Each cited ref is resolved against the pinned `snapshot.json`: the entity, the
+   ref path, the cited lines inside a declared range, and a captured excerpt at the artifact
+   commit that passes integrity checks and covers the lines.
+   - A failure is a **failed check** and goes to no model.
+   - Missing or truncated capture is **insufficient context**: insufficient evidence, not falsehood.
+2. **Jev.** The remaining claims go to Jev in batches of at most 8 claims and 24 KB per scope. The
+   shared state holds only the cited excerpts, never explanation prose.
+
+A pass installs **one** new artifact and draft revision (`claim-checks.json`). Coverage,
+publication and acknowledgement are unchanged. The pass reports its outcome (for example a budget
+stop, no provider, or skipped stale scopes) in the `message` of its `claim_checks.finished` event,
+shown in the event log and once at the draft level (not in every scope's panel). While a pass runs,
+the status reads "Checking claims…", not enrichment progress. It never sets, clears or overwrites
+`run.error`, which stays the enrichment error. Claim-check attempts are listed apart from enrichment
+attempts ("<scope>: claim check accepted"), so they never displace them from the capped list.
+A timeout stops the rest of the pass, because the remaining batches would each wait out the same
+deadline. A live run with an invalid `JEV_API` stalled until `OKIE_JEV_TIMEOUT_MS`. A fast 401 or
+403 reads as a provider failure, not a timeout.
+
+Claim mappings are operator-only. The public `/scan/<slug>/operator-explanations.json` strips
+`claims` and `claimsNote`, and `claim-checks.json` is not a published scan file.
+
+A summary claim must be one or more whole sentences of the summary. It starts at the start of the
+summary or after `[.!?]` and a space, and ends at a sentence end or the end of the summary, with at
+least 12 characters. A fragment that would drop a negation ("writes rows to disk" out of "never
+writes rows to disk") is dropped with a note.
+
+Claim evidence should be ref objects copied verbatim from `allowedEvidence`. Each one is resolved
+like the reply's `evidence` and must also appear in it. Zero-based indices into the reply's
+`evidence` still work. Dropped mappings are shown in the claim panel ("N statements could not be
+mapped to evidence and were not evaluated"), with the stored `claimsNote` collapsible.
+
+Each claim reads as one of these states:
+
+- supported, contradicted or insufficient: Jev's choice at a reported confidence of at least 0.7.
+  The 0.7 threshold is provisional. It comes from the live held-out run (jev-1.13.0, 33 claims):
+  every threshold from 0.3 to 0.7 gave 32 correct, 0 false acceptances and 0 false alarms. At 0.8,
+  a correct supported answer at confidence 0.75 (the lowest correct confidence seen) became
+  uncertain. With only 28 judged cases, re-evaluate before relying on it.
+- uncertain: below the threshold.
+- unavailable: no provider, a failure or timeout, or a budget refusal.
+- failed check.
+- insufficient context.
+- not evaluated.
+- stale.
+
+A stored check is fresh only while three things still match: its claim id, its evidence digest
+(the excerpt bytes plus the commit) and its explanation digest. When the scope is `stale` in
+`operator-explanations.json` (for example, a retried child), every claim reads **stale** ("Explanation
+is stale; refresh it, then re-check"), even over the live code check. "Re-check claims" is disabled
+there, with the reason shown inline.
+
+The **Review attention** sort orders scopes by attention tier:
+
+1. failed check
+2. stale
+3. contradicted
+4. uncertain or insufficient
+5. context not captured
+6. not checked, not run or not evaluated
+7. nothing to review
+
+A parent takes the worst tier in its subtree. A collapsed parent shows a "… below" cue only for
+tiers 1 to 5, so untouched scopes never outrank real results. Identical
+per-claim inputs replay from `claim-checks.json` without a provider call. There is no automatic
+retry.
+
+Budget, per run (ledger kind `claim-check`):
+
+| Variable | Default | Controls |
+| --- | --- | --- |
+| `OKIE_JEV_MAX_REQUESTS` | 32 | requests per run |
+| `OKIE_JEV_MAX_TOKENS` | 2,621,440 | tokens reserved per run |
+| `OKIE_JEV_MAX_DOLLARS` | 0.10 | dollars per run |
+| `OKIE_JEV_TIMEOUT_MS` | 20,000 | deadline per request |
+
+Each request reserves 81,920 tokens and $0.003. Jev bills input only, at about $0.042 per 1M
+tokens, and reports no cost, so the reservation stays counted: 32 × $0.003 = $0.096. Every request
+is admitted through the process-wide ledger (`OKIE_LLM_GLOBAL_*`) first, then this `OKIE_JEV_*` run
+ledger. Claim checks do **not** count toward the enrichment run ledger (`OKIE_LLM_OPERATOR_*`),
+the run's budget readout, or enrichment progress and per-scope cost averages. CLA-144 judgments
+still count toward the enrichment ledger as before.
+
+To evaluate claim checks, run `node scripts/evaluate-claim-checks.mjs --live --output=<path>`
+(add `--write-replay` to record raw answers). Use `--replay` to run offline against
+`fixtures/judgments/cla145/replay.json`, which holds raw jev-1.13.0 answers recorded by the live
+run. CI replays them through the real pipeline and asserts the recorded numbers: 33 claims,
+32 correct, 0 false acceptances, 0 false alarms, and one miss (`finished-detail-cost`).

@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "ticket": "CLA-145",
+  "labelOrigin": "Provisional engineering source-inspection labels fixed before any live claim-check inference (2026-09-29); not model output and not independent human adjudication.",
+  "license": "Excerpts from thiss/okie under ../LICENSE (MIT, Okie excerpts).",
+  "extraction": "git show ef89f2ed0da29906b44fa5da58553cb28694f102:<path>, lines startLine..endLine inclusive",
+  "expectedStates": [
+    "supported",
+    "contradicted",
+    "insufficient",
+    "failed-check",
+    "insufficient-context"
+  ],
+  "categories": [
+    "supported",
+    "wrong-assertion",
+    "negation",
+    "dependency-as-runtime",
+    "compound-one-false",
+    "incomplete-coverage",
+    "contradictory-context",
+    "code-check"
+  ],
+  "sources": {
+    "budget-release": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "apps/server/src/operatorBudget.ts",
+      "startLine": 112,
+      "endLine": 120,
+      "text": "    /** Drops an unused reservation (no request was sent), e.g. when a later ledger in an admission chain refuses. */\n    release(requestId: string): void {\n      locked(() => {\n        const row = read().reservations.get(requestId);\n        if (!row) throw new Error(\"unknown budget reservation\");\n        if (row.usage) throw new Error(\"settled budget reservation cannot be released\");\n        append({ type: \"budget.released\", detail: { requestId } });\n      });\n    },"
+    },
+    "global-spend": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "apps/server/src/globalSpend.ts",
+      "startLine": 62,
+      "endLine": 89,
+      "text": "export function createGlobalEnrichmentSpend(\n  cap: GlobalEnrichmentCap = {},\n): GlobalEnrichmentSpend {\n  const spent: GlobalSpendSnapshot = { tokens: 0, dollars: 0 };\n\n  return {\n    cap,\n    snapshot: () => ({ tokens: spent.tokens, dollars: spent.dollars }),\n    remaining: () => ({\n      ...(cap.maxTokens !== undefined ? { tokens: Math.max(0, cap.maxTokens - spent.tokens) } : {}),\n      ...(cap.maxDollars !== undefined ? { dollars: Math.max(0, addDollars(cap.maxDollars, -spent.dollars)) } : {}),\n    }),\n    isExhausted: () => {\n      if (cap.maxTokens !== undefined && spent.tokens >= cap.maxTokens) return true;\n      if (cap.maxDollars !== undefined && spent.dollars >= cap.maxDollars) return true;\n      return false;\n    },\n    record: usage => {\n      const tokens = usage.totalTokens;\n      if (typeof tokens === \"number\" && Number.isFinite(tokens) && tokens > 0) {\n        spent.tokens += Math.floor(tokens);\n      }\n      if (usage.costUsd !== undefined && Number.isFinite(usage.costUsd) && usage.costUsd > 0) {\n        spent.dollars = addDollars(spent.dollars, usage.costUsd);\n      }\n    },\n  };\n}"
+    },
+    "runner-pass-cost": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "apps/server/src/operatorRunner.ts",
+      "startLine": 31,
+      "endLine": 39,
+      "text": "/** Durable completion record for an enrichment pass (CLA-258); counts are the installed draft's coverage. */\n/** This pass's own provider cost (sum of its attempts' reported cost); absent when no attempt reported one. */\nfunction passCost(attempts: readonly { usage?: GatewayUsage }[]): { costUsd?: number } {\n  const costs = attempts.map(attempt => attempt.usage?.costUsd).filter((value): value is number => value !== undefined);\n  return costs.length ? { costUsd: costs.reduce((total, value) => total + value, 0) } : {};\n}\nfunction finishedDetail(kind: \"run\" | \"retry\", stopped: string, coverage: ReturnType<typeof coverageFor>, startedAt: number, extra: Record<string, number> = {}): Record<string, string | number> {\n  return { kind, stopped, accepted: coverage.accepted, failed: coverage.failed, notRun: coverage.notRun, belowCap: coverage.belowCap, inScope: coverage.total - coverage.belowCap, durationMs: Math.max(0, Date.now() - startedAt), ...extra };\n}"
+    },
+    "retry-selection": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "apps/server/src/operatorApi.ts",
+      "startLine": 14,
+      "endLine": 37,
+      "text": "/** Upper bound on one batch retry selection. */\nexport const MAX_RETRY_SCOPES = 1024;\n/**\n * Retry body: `{ scopeId }` (single, CLA-134 semantics) or `{ scopeIds, includeBelowCap? }` (batch, CLA-258).\n * Duplicates are removed; below-cap scopes need an explicit `includeBelowCap: true` in either form.\n */\nexport function parseRetrySelection(value: Record<string, unknown>, scopes: readonly { scopeId: string; state: string }[]): { scopeIds: string[]; batch: boolean } | { error: string } {\n  const byId = new Map(scopes.map(scope => [scope.scopeId, scope]));\n  const optIn = value.includeBelowCap === true;\n  if (value.scopeIds === undefined && typeof value.scopeId === \"string\") {\n    const single = byId.get(value.scopeId);\n    if (!single) return { error: \"known scope id required\" };\n    return single.state === \"below cap\" && !optIn ? { error: \"below-cap scopes require explicit opt-in (includeBelowCap: true)\" } : { scopeIds: [value.scopeId], batch: false };\n  }\n  if (!Array.isArray(value.scopeIds)) return { error: \"scopeIds must be an array of scope ids\" };\n  if (!value.scopeIds.length) return { error: \"scopeIds must not be empty\" };\n  if (value.scopeIds.some(scopeId => typeof scopeId !== \"string\")) return { error: \"scopeIds must contain only strings\" };\n  const scopeIds = [...new Set(value.scopeIds as string[])];\n  if (scopeIds.length > MAX_RETRY_SCOPES) return { error: `at most ${MAX_RETRY_SCOPES} scopes can be retried at once` };\n  const unknown = scopeIds.find(scopeId => !byId.has(scopeId));\n  if (unknown !== undefined) return { error: `unknown scope id: ${unknown}` };\n  if (!optIn && scopeIds.some(scopeId => byId.get(scopeId)!.state === \"below cap\")) return { error: \"below-cap scopes require explicit opt-in (includeBelowCap: true)\" };\n  return { scopeIds, batch: true };\n}"
+    },
+    "scan-excerpt": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "packages/scan/src/excerpt.ts",
+      "startLine": 32,
+      "endLine": 76,
+      "text": " * Bounded, commit-pinned source window for one observed code ref. Clamps to\n * architecture excerpt limits and scrubs GitHub-token shapes so a planted\n * credential cannot land in the portable snapshot.\n *\n * An overlong first line (over `maxLineCharacters`) is skipped so the window\n * can still start on the next usable line. Lines are never truncated and the\n * original observed range is retained so partial capture is explicit.\n */\nexport function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerpt | undefined {\n  const language = languageForScanPath(input.path);\n  if (!language) return undefined;\n  const fileLines = input.fileText.replace(/\\r\\n/g, \"\\n\").split(\"\\n\");\n  const originalStart = input.startLine;\n  if (!Number.isSafeInteger(originalStart) || originalStart < 1 || originalStart > fileLines.length) {\n    return undefined;\n  }\n  if (!Number.isSafeInteger(input.endLine) || input.endLine < originalStart) return undefined;\n  const maxEnd = Math.min(fileLines.length, input.endLine);\n  const lines: string[] = [];\n  let startLine = originalStart;\n  let characters = 0;\n  for (let lineNumber = originalStart; lineNumber <= maxEnd; lineNumber += 1) {\n    const line = scrubGithubTokens(fileLines[lineNumber - 1]!);\n    const length = unicodeLength(line);\n    if (length > SOURCE_EXCERPT_LIMITS.maxLineCharacters) {\n      if (lines.length) break;\n      startLine = lineNumber + 1;\n      continue;\n    }\n    const nextCharacters = characters + length + (lines.length ? 1 : 0);\n    if (nextCharacters > SOURCE_EXCERPT_LIMITS.maxTextCharacters) break;\n    lines.push(line);\n    characters = nextCharacters;\n    if (lines.length === SOURCE_EXCERPT_LIMITS.maxLines) break;\n  }\n  if (!lines.length) return undefined;\n  return {\n    path: input.path,\n    ...(input.symbol ? { symbol: input.symbol } : {}),\n    language, startLine, endLine: startLine + lines.length - 1,\n    sourceStartLine: originalStart, sourceEndLine: input.endLine,\n    highlightLine: startLine, frozenRevision: input.frozenRevision,\n    lines, text: lines.join(\"\\n\"),\n  };\n}"
+    },
+    "jev-provider": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "apps/server/src/operatorJudgments.ts",
+      "startLine": 65,
+      "endLine": 84,
+      "text": "/** JEV_API is resolved only here; SDK env defaults cannot redirect or log payloads. */\nexport function createJevProvider(env: NodeJS.Dict<string> = process.env, transport?: Fetch): JudgmentProvider | undefined {\n  const apiKey = env.JEV_API?.trim();\n  if (!apiKey) return undefined;\n  const client = new TypeSafeClient({ apiKey, baseURL: \"https://api.typesafe.ai\", defaultModel: JEV_MODEL, logLevel: \"off\", retry: { maxRetries: 0 }, ...(transport ? { fetch: transport } : {}) });\n  return {\n    modelId: JEV_MODEL,\n    async evaluate(request, signal, timeoutMs = DEFAULT_LIMITS.timeoutMs) {\n      try {\n        if (canonical(redact(request.questions, [apiKey], false)) !== canonical(request.questions)) return { failed: true, usage: {} };\n        const safe = { questions: request.questions, state: redact(request.state, [apiKey]) as EntryType };\n        const json: unknown = await client.systemOne({ ...safe, model: JEV_MODEL }, { signal, timeout: timeoutMs, retry: { maxRetries: 0 } });\n        return { json, usage: usageOf(json) };\n      } catch (error) {\n        // Never retain error message, response body, SDK instance, or cause.\n        return { failed: true, usage: usageOf(error instanceof APIError ? error.body : undefined) };\n      }\n    },\n  };\n}"
+    },
+    "operator-budget-env": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "apps/server/src/llmGateway.ts",
+      "startLine": 158,
+      "endLine": 193,
+      "text": "function parsePositiveNumber(raw: string | undefined, fallback: number): number {\n  const parsed = optionalFiniteNumber(raw);\n  if (parsed === undefined || parsed <= 0) return fallback;\n  return parsed;\n}\n\n/** Operator env overlay. Missing / invalid values keep the documented defaults. */\nexport function resolveEnrichmentBudget(env: NodeJS.Dict<string> = process.env): EnrichmentBudget {\n  return {\n    requestTimeoutMs: Math.floor(parsePositiveNumber(env.OKIE_LLM_TIMEOUT_MS, DEFAULT_REQUEST_TIMEOUT_MS)),\n    maxScopes: Math.floor(parsePositiveNumber(env.OKIE_LLM_MAX_SCOPES, DEFAULT_MAX_ENRICHMENT_SCOPES)),\n    maxTokens: Math.floor(parsePositiveNumber(env.OKIE_LLM_MAX_TOKENS, DEFAULT_MAX_ENRICHMENT_TOKENS)),\n    maxDollars: parsePositiveNumber(env.OKIE_LLM_MAX_DOLLARS, DEFAULT_MAX_ENRICHMENT_DOLLARS),\n  };\n}\n\n/** Operator-run request cap (CLA-254). Isolated so the product default can be swapped. */\nexport const DEFAULT_OPERATOR_MAX_REQUESTS = 512;\nexport const DEFAULT_OPERATOR_MAX_TOKENS = 4_000_000;\nexport const DEFAULT_OPERATOR_MAX_DOLLARS = 5;\n/** Operator per-request deadline; long component/container prompts routinely exceed the public 60s. */\nexport const DEFAULT_OPERATOR_REQUEST_TIMEOUT_MS = 120_000;\n\n/**\n * Operator enrichment budget: `OKIE_LLM_OPERATOR_MAX_{REQUESTS,TOKENS,DOLLARS}`\n * and `OKIE_LLM_OPERATOR_TIMEOUT_MS` (default 120s). Public scan enrichment keeps\n * {@link resolveEnrichmentBudget}; the two must not share defaults.\n */\nexport function resolveOperatorEnrichmentBudget(env: NodeJS.Dict<string> = process.env): EnrichmentBudget {\n  return {\n    requestTimeoutMs: Math.floor(parsePositiveNumber(env.OKIE_LLM_OPERATOR_TIMEOUT_MS, DEFAULT_OPERATOR_REQUEST_TIMEOUT_MS)),\n    maxScopes: Math.floor(parsePositiveNumber(env.OKIE_LLM_OPERATOR_MAX_REQUESTS, DEFAULT_OPERATOR_MAX_REQUESTS)),\n    maxTokens: Math.floor(parsePositiveNumber(env.OKIE_LLM_OPERATOR_MAX_TOKENS, DEFAULT_OPERATOR_MAX_TOKENS)),\n    maxDollars: parsePositiveNumber(env.OKIE_LLM_OPERATOR_MAX_DOLLARS, DEFAULT_OPERATOR_MAX_DOLLARS),\n  };\n}"
+    },
+    "runner-imports": {
+      "repository": "thiss/okie",
+      "commit": "ef89f2ed0da29906b44fa5da58553cb28694f102",
+      "path": "apps/server/src/operatorRunner.ts",
+      "startLine": 1,
+      "endLine": 15,
+      "text": "import { scanGithubRepository, stableJson, portableAtlasFromScan, type GithubClient, type GithubSourceRef, type ScanArtifacts } from \"@okie/scan\";\nimport { serializePortableAtlas, type ArchitectureSnapshot } from \"@okie/architecture\";\nimport { githubRepoIsPublic, repoApiPath } from \"@okie/scan\";\nimport type { ScanGithubAccess } from \"./githubAccess.js\";\nimport { OperatorPublicationService } from \"./operatorPublication.js\";\nimport { OperatorStore } from \"./operatorStore.js\";\nimport { createOperatorBudgetLedger, type OperatorBudgetLedger } from \"./operatorBudget.js\";\nimport { runOperatorEnrichment, type OperatorAdmission, type OperatorEnrichmentGateway, type OperatorEnrichmentScope, type OperatorEnrichmentStore, type OperatorExplanation } from \"./operatorEnrichment.js\";\nimport { createLlmGatewayClient, isOpenRouterProvider, resolveOperatorLeafReasoning, resolveLlmGatewayConfig, resolveLlmRateLimitConfig, resolveOperatorEnrichmentBudget, resolveOperatorEnrichmentDepth, safeGatewayProvider, type GatewayUsage, type LlmGatewayConfig } from \"./llmGateway.js\";\nimport { avgCost } from \"./operatorWorkflow.js\";\nimport { rateLimitedGateway, sharedLlmRateLimiter, type LlmRateLimiter } from \"./llmRateLimiter.js\";\nimport { githubClientForAccess } from \"./githubAccess.js\";\nimport { belowEnrichmentCap, coverageFor, legacyEnrichmentCap, sidecarState, type OperatorEnrichmentCap, type OperatorSidecarScopeState } from \"./operatorContracts.js\";\nimport { createJevProvider, runOperatorJudgments, type JudgmentLimits, type JudgmentOutcome, type JudgmentProvider, type JudgmentRequest } from \"./operatorJudgments.js\";\nimport { runSectionProfile } from \"./sectionProfiles.js\";"
+    }
+  },
+  "cases": [
+    {
+      "id": "release-settled-throws",
+      "category": "supported",
+      "source": "budget-release",
+      "claim": "Releasing a reservation that already has settled usage throws an error.",
+      "expected": "supported",
+      "rationale": "Line 117 throws \"settled budget reservation cannot be released\" when row.usage is set."
+    },
+    {
+      "id": "release-unknown-throws",
+      "category": "supported",
+      "source": "budget-release",
+      "claim": "Releasing an unknown reservation id throws an error.",
+      "expected": "supported",
+      "rationale": "Line 116 throws \"unknown budget reservation\" when no row exists."
+    },
+    {
+      "id": "release-settled-allowed",
+      "category": "negation",
+      "source": "budget-release",
+      "claim": "A reservation that has settled usage can still be released.",
+      "expected": "contradicted",
+      "rationale": "Negated form of line 117: settled rows throw instead of releasing."
+    },
+    {
+      "id": "spend-positive-only",
+      "category": "supported",
+      "source": "global-spend",
+      "claim": "Token and dollar spend are recorded only when the reported values are finite and positive.",
+      "expected": "supported",
+      "rationale": "record() guards both with Number.isFinite and > 0 (lines 81, 84)."
+    },
+    {
+      "id": "exhausted-ten-percent",
+      "category": "wrong-assertion",
+      "source": "global-spend",
+      "claim": "isExhausted reports exhaustion once dollar spend comes within 10% of the cap.",
+      "expected": "contradicted",
+      "rationale": "Real citation, wrong threshold: line 76 compares spent.dollars >= cap.maxDollars."
+    },
+    {
+      "id": "never-caps-tokens",
+      "category": "negation",
+      "source": "global-spend",
+      "claim": "The global spend ledger never caps tokens.",
+      "expected": "contradicted",
+      "rationale": "Lines 71 and 75 enforce cap.maxTokens when it is set."
+    },
+    {
+      "id": "add-dollars-rounding",
+      "category": "incomplete-coverage",
+      "source": "global-spend",
+      "claim": "addDollars rounds sums to six decimal places.",
+      "expected": "insufficient",
+      "rationale": "addDollars is only called here; its body is outside the cited window (it is true in the file, but not shown)."
+    },
+    {
+      "id": "retry-dedupe",
+      "category": "supported",
+      "source": "retry-selection",
+      "claim": "Duplicate scope ids in a batch retry are removed.",
+      "expected": "supported",
+      "rationale": "Line 31 builds scopeIds from a Set."
+    },
+    {
+      "id": "retry-cap-512",
+      "category": "compound-one-false",
+      "source": "retry-selection",
+      "claim": "A batch retry removes duplicate scope ids and accepts at most 512 scopes at once.",
+      "expected": "contradicted",
+      "rationale": "Dedupe is true (line 31) but MAX_RETRY_SCOPES is 1024 (line 15)."
+    },
+    {
+      "id": "below-cap-single-free",
+      "category": "wrong-assertion",
+      "source": "retry-selection",
+      "claim": "A below-cap scope named in the single scopeId form is retried without any opt-in.",
+      "expected": "contradicted",
+      "rationale": "Line 26 returns the opt-in error for a below-cap single scope without includeBelowCap."
+    },
+    {
+      "id": "empty-scopeids-rejected",
+      "category": "supported",
+      "source": "retry-selection",
+      "claim": "An empty scopeIds array is rejected.",
+      "expected": "supported",
+      "rationale": "Line 29 returns \"scopeIds must not be empty\"."
+    },
+    {
+      "id": "excerpt-lines-not-cut",
+      "category": "supported",
+      "source": "scan-excerpt",
+      "claim": "Source lines are never cut; an overlong first line is skipped so the window starts on the next usable line.",
+      "expected": "supported",
+      "rationale": "Lines 56-59 skip an overlong leading line; no slicing of line text occurs."
+    },
+    {
+      "id": "excerpt-no-original-range",
+      "category": "negation",
+      "source": "scan-excerpt",
+      "claim": "The excerpt does not record the originally requested line range.",
+      "expected": "contradicted",
+      "rationale": "Line 72 stores sourceStartLine and sourceEndLine from the input."
+    },
+    {
+      "id": "excerpt-crlf-and-truncate",
+      "category": "compound-one-false",
+      "source": "scan-excerpt",
+      "claim": "The excerpt normalises CRLF line endings and truncates overlong lines to the character limit.",
+      "expected": "contradicted",
+      "rationale": "CRLF normalisation is true (line 43); overlong lines are skipped or end the window, never truncated (lines 56-58)."
+    },
+    {
+      "id": "scrub-replacement-text",
+      "category": "incomplete-coverage",
+      "source": "scan-excerpt",
+      "claim": "scrubGithubTokens replaces every token with the literal string [redacted].",
+      "expected": "insufficient",
+      "rationale": "scrubGithubTokens is only called here (line 54); its replacement text is not shown."
+    },
+    {
+      "id": "pass-cost-completion-record",
+      "category": "contradictory-context",
+      "source": "runner-pass-cost",
+      "claim": "passCost returns the durable completion record with the installed draft's coverage counts.",
+      "expected": "contradicted",
+      "rationale": "A stray doc comment (line 31) says this, but the code (lines 33-36) returns only an optional costUsd sum."
+    },
+    {
+      "id": "pass-cost-omits",
+      "category": "supported",
+      "source": "runner-pass-cost",
+      "claim": "passCost omits the cost field when no attempt reported a cost.",
+      "expected": "supported",
+      "rationale": "Line 35 returns {} when costs is empty."
+    },
+    {
+      "id": "finished-detail-cost",
+      "category": "contradictory-context",
+      "source": "runner-pass-cost",
+      "claim": "finishedDetail computes the pass's provider cost itself.",
+      "expected": "insufficient",
+      "rationale": "The cost comment sits next to finishedDetail, but finishedDetail (lines 37-38) only spreads caller-supplied extra values; whether cost is passed is not shown."
+    },
+    {
+      "id": "jev-no-retries",
+      "category": "supported",
+      "source": "jev-provider",
+      "claim": "The Jev client is created with SDK retries disabled.",
+      "expected": "supported",
+      "rationale": "Lines 69 and 76 set retry: { maxRetries: 0 }."
+    },
+    {
+      "id": "jev-openai",
+      "category": "wrong-assertion",
+      "source": "jev-provider",
+      "claim": "createJevProvider sends requests to the OpenAI API.",
+      "expected": "contradicted",
+      "rationale": "Line 69 pins baseURL https://api.typesafe.ai."
+    },
+    {
+      "id": "jev-rethrows",
+      "category": "negation",
+      "source": "jev-provider",
+      "claim": "Provider errors are rethrown to the caller with their original message.",
+      "expected": "contradicted",
+      "rationale": "Lines 78-81 catch and return { failed: true } without the message."
+    },
+    {
+      "id": "usage-cost-field",
+      "category": "incomplete-coverage",
+      "source": "jev-provider",
+      "claim": "usageOf reads a cost_usd field from the response when present.",
+      "expected": "insufficient",
+      "rationale": "usageOf is only called here; its body is outside the window."
+    },
+    {
+      "id": "runner-rate-limits-every-request",
+      "category": "dependency-as-runtime",
+      "source": "runner-imports",
+      "claim": "The operator runner sends every enrichment request through the rate limiter.",
+      "expected": "insufficient",
+      "rationale": "Only the import of rateLimitedGateway/sharedLlmRateLimiter (line 11) is shown; an import is not runtime use."
+    },
+    {
+      "id": "runner-publishes",
+      "category": "dependency-as-runtime",
+      "source": "runner-imports",
+      "claim": "The operator runner publishes drafts through OperatorPublicationService.",
+      "expected": "insufficient",
+      "rationale": "Only the import (line 5) is shown. (In fact the runner never publishes; it only creates drafts.)"
+    },
+    {
+      "id": "budget-env-fallback",
+      "category": "supported",
+      "source": "operator-budget-env",
+      "claim": "Operator budget values that parse to zero or less fall back to the defaults.",
+      "expected": "supported",
+      "rationale": "parsePositiveNumber returns the fallback when parsed <= 0 (line 160), and lines 188-191 use it for every operator budget value. (How optionalFiniteNumber parses strings is not shown, so the claim avoids it.)"
+    },
+    {
+      "id": "budget-defaults-50",
+      "category": "compound-one-false",
+      "source": "operator-budget-env",
+      "claim": "The operator request cap defaults to 512 and the operator dollar cap defaults to $50.",
+      "expected": "contradicted",
+      "rationale": "512 is true (line 175); DEFAULT_OPERATOR_MAX_DOLLARS is 5 (line 177)."
+    },
+    {
+      "id": "budget-shared-timeout",
+      "category": "wrong-assertion",
+      "source": "operator-budget-env",
+      "claim": "Operator enrichment reads its request timeout from OKIE_LLM_TIMEOUT_MS.",
+      "expected": "contradicted",
+      "rationale": "Line 188 reads OKIE_LLM_OPERATOR_TIMEOUT_MS; OKIE_LLM_TIMEOUT_MS is the public budget (line 167)."
+    },
+    {
+      "id": "budget-timeout-fixed",
+      "category": "negation",
+      "source": "operator-budget-env",
+      "claim": "The operator per-request timeout is not configurable.",
+      "expected": "contradicted",
+      "rationale": "Line 188 reads it from OKIE_LLM_OPERATOR_TIMEOUT_MS."
+    }
+  ],
+  "codeChecks": [
+    {
+      "id": "code-unknown-entity",
+      "category": "code-check",
+      "source": "budget-release",
+      "claim": "Releasing an unknown reservation id throws an error.",
+      "expected": "failed-check",
+      "expectedReason": "unknown-entity",
+      "mutation": "cite-missing-entity",
+      "rationale": "The claim cites an entity id that is not in the snapshot."
+    },
+    {
+      "id": "code-out-of-bounds",
+      "category": "code-check",
+      "source": "budget-release",
+      "claim": "Releasing an unknown reservation id throws an error.",
+      "expected": "failed-check",
+      "expectedReason": "out-of-bounds",
+      "mutation": "cite-outside-range",
+      "rationale": "Cited lines 100-130 fall outside the entity's declared range 112-120."
+    },
+    {
+      "id": "code-identity-mismatch",
+      "category": "code-check",
+      "source": "global-spend",
+      "claim": "The global spend ledger never caps tokens.",
+      "expected": "failed-check",
+      "expectedReason": "identity-mismatch",
+      "mutation": "foreign-commit-capture",
+      "rationale": "The captured excerpt is frozen at a different commit than the artifact."
+    },
+    {
+      "id": "code-truncated",
+      "category": "code-check",
+      "source": "scan-excerpt",
+      "claim": "The excerpt normalises CRLF line endings.",
+      "expected": "insufficient-context",
+      "expectedReason": "truncated-capture",
+      "mutation": "truncated-capture",
+      "rationale": "The scanner recorded an original range to line 140 but captured only through line 76."
+    },
+    {
+      "id": "code-missing",
+      "category": "code-check",
+      "source": "jev-provider",
+      "claim": "The Jev client is created with SDK retries disabled.",
+      "expected": "insufficient-context",
+      "expectedReason": "missing-capture",
+      "mutation": "no-capture",
+      "rationale": "The cited symbol has no captured excerpt."
+    }
+  ]
+}

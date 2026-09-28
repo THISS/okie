@@ -22,19 +22,22 @@ const amount = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
 
 /** Reservations survive restart and are shared by retries of the same run.
+ * A kinded ledger sees only its own kind. The kindless (enrichment) ledger sees every event except
+ * CLA-145 claim checks, which are admitted by their own OKIE_JEV_* ledger (plus the global one) and
+ * never spend the enrichment budget; CLA-144 judgment events keep counting as before.
  * Missing usage retains the token reservation. Dollar limits stop admission on
  * reported/estimated spend; they cannot promise a hard provider billing cap.
  */
 export function createOperatorBudgetLedger(
   limits: { maxRequests: number; maxTokens: number; maxDollars: number; maxConcurrent?: number },
-  durable?: { store: OperatorStore; runId: string; kind?: "judgment" },
+  durable?: { store: OperatorStore; runId: string; kind?: "judgment" | "claim-check" },
 ) {
   for (const value of Object.values(limits)) {
     if (amount(value) === undefined) throw new Error("invalid operator budget");
   }
   const memory: BudgetEvent[] = [];
   const events = (): BudgetEvent[] => durable
-    ? durable.store.snapshot().events.filter(event => event.runId === durable.runId && event.type.startsWith("budget.") && (!durable.kind || event.detail?.kind === durable.kind))
+    ? durable.store.snapshot().events.filter(event => event.runId === durable.runId && event.type.startsWith("budget.") && (durable.kind ? event.detail?.kind === durable.kind : event.detail?.kind !== "claim-check"))
     : memory;
   const append = (event: BudgetEvent) => {
     if (durable) durable.store.appendEvent({ runId: durable.runId, ...event, detail: { ...event.detail, ...(durable.kind ? { kind: durable.kind } : {}) } });

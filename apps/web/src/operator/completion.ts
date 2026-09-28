@@ -33,6 +33,18 @@ export function formatDuration(ms: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 
+/** The running claim-check pass: its `claim_checks.started` event when no `claim_checks.finished` followed it. */
+export function activeClaimPass(events: CompletionInput['events']) {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const type = events[index]!.type;
+    if (type === 'claim_checks.finished') return undefined;
+    if (type === 'claim_checks.started') return events[index];
+    // The claim pass enters "running" before it records claim_checks.started; a later running transition is another pass.
+    if (type === 'enrichment.finished' || (type === 'run.state' && events[index]!.detail?.state === 'running')) return undefined;
+  }
+  return undefined;
+}
+
 function lastOf(events: CompletionInput['events'], types: readonly string[]) { for (let index = events.length - 1; index >= 0; index -= 1) if (types.includes(events[index]!.type)) return events[index]; return undefined; }
 
 export function completionBanner(input: CompletionInput): CompletionBanner | undefined {
@@ -57,6 +69,9 @@ export function completionBanner(input: CompletionInput): CompletionBanner | und
   }
 
   if (input.run.state === 'queued' || input.run.state === 'running') {
+    // CLA-145: a claim-check pass also runs as "running"; it is not enrichment, so it never shows enrichment progress.
+    const claimPass = activeClaimPass(input.events);
+    if (claimPass) { const scopes = typeof claimPass.detail?.scopes === 'number' ? claimPass.detail.scopes : undefined; return { kind: 'running', title: 'Checking claims…', detail: `${scopes !== undefined ? `${count(scopes)} scope${scopes === 1 ? '' : 's'} selected. ` : ''}Report-only: model judgment over captured excerpts. This page refreshes every few seconds.`, actions: [], ...base }; }
     const settled = input.progress ? input.progress.accepted + input.progress.failed : undefined;
     return { kind: 'running', title: settled !== undefined ? `Enriching… ${count(settled)} settled${input.progress!.inFlight ? ` · ${count(input.progress!.inFlight)} in flight` : ''}` : 'Enriching…', detail: `${count(total)} scopes in scope. This page refreshes every few seconds.`, actions: [], ...base };
   }

@@ -17,6 +17,16 @@ Outputs are gitignored and rebuilt on demand — never hand-edit them.
   and `docs/qa/geometry-diagnostics/*.svg`, then prints the grid-vs-all-pairs
   benchmark (`--no-bench` skips it). Run with `node --expose-gc` after building
   `@okie/scene-compiler`.
+- **`evaluate-claim-checks.mjs`**: CLA-145 held-out claim-check evaluation over
+  `fixtures/judgments/cla145/heldout.json`, using the real server pipeline (build `@okie/server` first).
+  - `--live --output=<path>` calls Jev (needs `JEV_API`). `--write-replay` records the raw answers
+    into `replay.json`.
+  - `--replay` runs offline against the recorded live answers in `replay.json` (CI asserts the same
+    numbers in `apps/server/src/claimCheckEvaluation.test.ts`).
+  - Reports per-category false acceptance and false alarms, review load, p50/p95 latency, cost and
+    accuracy at several confidence thresholds.
+- **`generate-claim-check-heldout.mjs`** re-extracts the held-out excerpt text from the pinned
+  commit (`git show`). The labels live in the script and were fixed before any live run.
 - **Pins:** both script paths are dogfooding-pinned in the golden fixture; keep
   `build-wasm.mjs`'s wasm-pack args + crate name frozen (the WASM import
   boundary). See the dogfooding-pin gotcha in root `CLAUDE.md` before editing.

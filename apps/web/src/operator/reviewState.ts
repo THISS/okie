@@ -1,4 +1,5 @@
 import { OperatorApiError, type DraftDetail, type OperatorAttempt, type OperatorDraft, type OperatorEvent, type OperatorRun, type OperatorScope, type OperatorUsage } from './api';
+import { claimCheckAttemptScope } from './claimChecks';
 
 /** Sub-cent amounts keep four decimals ($0.0008), so a small real cost never reads as $0.00. */
 export function money(value?: number): string { return value === undefined ? 'unknown' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: value !== 0 && Math.abs(value) < 0.01 ? 4 : 2 }).format(value); }
@@ -106,6 +107,12 @@ export function humanizeEventType(type: string): string {
 const runStateText = (state: unknown): string => typeof state === 'string' ? state.replace(/_/g, ' ') : 'changed';
 /** One unambiguous entry per attempt: "<scope name>: enrichment failed". */
 export function attemptLabel(attempt: Pick<OperatorAttempt, 'kind' | 'state' | 'scopeId'>, scopeName?: (scopeId: string) => string | undefined): string {
+  if (attempt.scopeId.startsWith('claim-check:')) {
+    // CLA-145: "<scope name>: claim check accepted", never the raw batch id.
+    const checked = claimCheckAttemptScope(attempt.scopeId);
+    const label = checked ? `${scopeName?.(checked) ?? checked}: claim check` : 'Claim check';
+    return `${label} ${runStateText(attempt.state)}`;
+  }
   const name = scopeName?.(attempt.scopeId) ?? attempt.scopeId;
   const action = `${humanizeEventType(String(attempt.kind)).toLowerCase()} ${runStateText(attempt.state)}`;
   return name ? `${name}: ${action}` : action[0]!.toUpperCase() + action.slice(1);
@@ -115,7 +122,7 @@ export function operatorEventLabel(event: Pick<OperatorEvent, 'type' | 'detail'>
   const detail = event.detail ?? {};
   const scope = typeof detail.scopeId === 'string' ? ` · ${scopeName?.(detail.scopeId) ?? detail.scopeId}` : '';
   const num = (key: string) => typeof detail[key] === 'number' ? detail[key] as number : undefined;
-  const budget = detail.kind === 'judgment' ? 'Judgment budget' : 'Budget';
+  const budget = detail.kind === 'judgment' ? 'Judgment budget' : detail.kind === 'claim-check' ? 'Claim-check budget' : 'Budget';
   switch (event.type) {
     case 'run.state': return `Run ${runStateText(detail.state)}`;
     case 'budget.reserved': { const tokens = num('tokens'); const dollars = num('dollars'); const limits = [tokens !== undefined ? `${tokens} tokens` : '', dollars !== undefined ? money(dollars) : ''].filter(Boolean).join(' / '); return `${budget} reserved${limits ? ` · up to ${limits}` : ''}`; }
@@ -127,6 +134,8 @@ export function operatorEventLabel(event: Pick<OperatorEvent, 'type' | 'detail'>
     case 'enrichment.unavailable': return `Enrichment unavailable${scope || (typeof detail.reason === 'string' ? `: ${detail.reason}` : '')}`;
     case 'enrichment.finished': { const stopped = detail.stopped; const accepted = num('accepted'); const inScope = num('inScope'); const what = detail.kind === 'retry' ? 'Retry pass' : 'Enrichment'; const outcome = stopped === 'limit' ? 'stopped at the budget limit' : stopped === 'cancelled' ? 'cancelled' : stopped === 'unavailable' ? 'finished without a gateway' : 'finished'; return `${what} ${outcome}${accepted !== undefined && inScope !== undefined ? ` · ${fmt(accepted)}/${fmt(inScope)} in scope accepted` : ''}`; }
     case 'enrichment.budget_reached': { const accepted = num('accepted'); const attempted = num('attempted'); return `Enrichment stopped at the budget limit${accepted !== undefined && attempted !== undefined ? ` · ${accepted} accepted of ${attempted} attempted` : ''}`; }
+    case 'claim_checks.started': { const scopes = num('scopes'); return `Claim checks started${scopes !== undefined ? ` · ${scopes} scope${scopes === 1 ? '' : 's'}` : ''} · report-only`; }
+    case 'claim_checks.finished': { const claims = num('claims'); const stopped = detail.stopped; const message = claimPassMessage(event); return `Claim checks ${stopped === 'cancelled' ? 'cancelled' : stopped === 'limit' ? 'stopped at the claim-check budget' : stopped === 'unavailable' ? 'finished without Jev (code checks only)' : stopped === 'complete' || stopped === 'failed' ? 'finished' : `not run (${String(stopped)})`}${claims !== undefined ? ` · ${claims} claim${claims === 1 ? '' : 's'}` : ''} · report-only${message ? ` · ${message}` : ''}`; }
     default: return humanizeEventType(event.type);
   }
 }
@@ -177,3 +186,16 @@ export function staleRevisionAfterFailure(outcome: OperatorFailure, failedRunId:
 }
 /** A loaded draft must belong to the run it was opened for. */
 export function draftBelongsToRun(detail: Pick<DraftDetail, 'draft'>, runId: string): boolean { return detail.draft.runId === runId; }
+
+/**
+ * CLA-145: a claim-check pass reports its outcome on its `claim_checks.finished` event (never on run.error, which stays
+ * the enrichment error). The message of the run's latest pass, if it has one.
+ */
+export function claimPassMessage(event: Pick<OperatorEvent, 'type' | 'detail'> | undefined): string | undefined {
+  const message = event?.type === 'claim_checks.finished' ? event.detail?.message : undefined;
+  return typeof message === 'string' && message ? message : undefined;
+}
+export function latestClaimPassMessage(events: readonly Pick<OperatorEvent, 'type' | 'detail'>[] | undefined): string | undefined {
+  for (let index = (events?.length ?? 0) - 1; index >= 0; index -= 1) if (events![index]!.type === 'claim_checks.finished') return claimPassMessage(events![index]);
+  return undefined;
+}

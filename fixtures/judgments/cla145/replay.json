@@ -1,0 +1,325 @@
+{
+  "origin": "LIVE: raw jev-1.13.0 System One answers recorded by scripts/evaluate-claim-checks.mjs on 2026-09-28T14:52:09.468Z. Not labels.",
+  "synthetic": false,
+  "model": "jev-1.13.0",
+  "usagePerRequest": [
+    {
+      "input_tokens": 1392,
+      "output_tokens": 128
+    },
+    {
+      "input_tokens": 1891,
+      "output_tokens": 174
+    },
+    {
+      "input_tokens": 2129,
+      "output_tokens": 171
+    },
+    {
+      "input_tokens": 2170,
+      "output_tokens": 174
+    },
+    {
+      "input_tokens": 1543,
+      "output_tokens": 130
+    },
+    {
+      "input_tokens": 1935,
+      "output_tokens": 174
+    },
+    {
+      "input_tokens": 1537,
+      "output_tokens": 91
+    },
+    {
+      "input_tokens": 2150,
+      "output_tokens": 173
+    }
+  ],
+  "usagePerQuestion": {
+    "input_tokens": 527,
+    "output_tokens": 43
+  },
+  "answers": {
+    "release-settled-throws": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 1,
+      "probabilities": {
+        "contradicts": 0,
+        "supports": 1,
+        "insufficient": 0
+      }
+    },
+    "release-unknown-throws": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 1,
+      "probabilities": {
+        "contradicts": 0,
+        "supports": 1,
+        "insufficient": 0
+      }
+    },
+    "release-settled-allowed": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "contradicts": 1,
+        "supports": 0,
+        "insufficient": 0
+      }
+    },
+    "spend-positive-only": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 0.98,
+      "probabilities": {
+        "insufficient": 0,
+        "contradicts": 0.01,
+        "supports": 0.99
+      }
+    },
+    "exhausted-ten-percent": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 0.97,
+      "probabilities": {
+        "insufficient": 0.02,
+        "contradicts": 0.98,
+        "supports": 0
+      }
+    },
+    "never-caps-tokens": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 0.93,
+      "probabilities": {
+        "insufficient": 0.02,
+        "contradicts": 0.96,
+        "supports": 0.02
+      }
+    },
+    "add-dollars-rounding": {
+      "type": "choice",
+      "choice": "insufficient",
+      "confidence": 1,
+      "probabilities": {
+        "insufficient": 1,
+        "contradicts": 0,
+        "supports": 0
+      }
+    },
+    "retry-dedupe": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 1,
+      "probabilities": {
+        "contradicts": 0,
+        "supports": 1,
+        "insufficient": 0
+      }
+    },
+    "retry-cap-512": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "contradicts": 1,
+        "supports": 0,
+        "insufficient": 0
+      }
+    },
+    "below-cap-single-free": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "contradicts": 1,
+        "supports": 0,
+        "insufficient": 0
+      }
+    },
+    "empty-scopeids-rejected": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 1,
+      "probabilities": {
+        "contradicts": 0,
+        "supports": 1,
+        "insufficient": 0
+      }
+    },
+    "excerpt-lines-not-cut": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 0.75,
+      "probabilities": {
+        "supports": 0.83,
+        "insufficient": 0.01,
+        "contradicts": 0.16
+      }
+    },
+    "excerpt-no-original-range": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "supports": 0,
+        "insufficient": 0,
+        "contradicts": 1
+      }
+    },
+    "excerpt-crlf-and-truncate": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "supports": 0,
+        "insufficient": 0,
+        "contradicts": 1
+      }
+    },
+    "scrub-replacement-text": {
+      "type": "choice",
+      "choice": "insufficient",
+      "confidence": 0.99,
+      "probabilities": {
+        "supports": 0,
+        "insufficient": 0.99,
+        "contradicts": 0.01
+      }
+    },
+    "pass-cost-completion-record": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 0.98,
+      "probabilities": {
+        "insufficient": 0.01,
+        "contradicts": 0.98,
+        "supports": 0.01
+      }
+    },
+    "pass-cost-omits": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 1,
+      "probabilities": {
+        "insufficient": 0,
+        "contradicts": 0,
+        "supports": 1
+      }
+    },
+    "finished-detail-cost": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 0.97,
+      "probabilities": {
+        "insufficient": 0.02,
+        "contradicts": 0.98,
+        "supports": 0
+      }
+    },
+    "jev-no-retries": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 1,
+      "probabilities": {
+        "insufficient": 0,
+        "supports": 1,
+        "contradicts": 0
+      }
+    },
+    "jev-openai": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 0.99,
+      "probabilities": {
+        "insufficient": 0.01,
+        "supports": 0,
+        "contradicts": 0.99
+      }
+    },
+    "jev-rethrows": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "insufficient": 0,
+        "supports": 0,
+        "contradicts": 1
+      }
+    },
+    "usage-cost-field": {
+      "type": "choice",
+      "choice": "insufficient",
+      "confidence": 1,
+      "probabilities": {
+        "supports": 0,
+        "insufficient": 1,
+        "contradicts": 0
+      }
+    },
+    "runner-rate-limits-every-request": {
+      "type": "choice",
+      "choice": "insufficient",
+      "confidence": 1,
+      "probabilities": {
+        "insufficient": 1,
+        "contradicts": 0,
+        "supports": 0
+      }
+    },
+    "runner-publishes": {
+      "type": "choice",
+      "choice": "insufficient",
+      "confidence": 1,
+      "probabilities": {
+        "insufficient": 1,
+        "contradicts": 0,
+        "supports": 0
+      }
+    },
+    "budget-env-fallback": {
+      "type": "choice",
+      "choice": "supports",
+      "confidence": 1,
+      "probabilities": {
+        "supports": 1,
+        "insufficient": 0,
+        "contradicts": 0
+      }
+    },
+    "budget-defaults-50": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "supports": 0,
+        "contradicts": 1,
+        "insufficient": 0
+      }
+    },
+    "budget-shared-timeout": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "supports": 0,
+        "contradicts": 1,
+        "insufficient": 0
+      }
+    },
+    "budget-timeout-fixed": {
+      "type": "choice",
+      "choice": "contradicts",
+      "confidence": 1,
+      "probabilities": {
+        "supports": 0,
+        "contradicts": 1,
+        "insufficient": 0
+      }
+    }
+  }
+}
