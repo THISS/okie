@@ -38,6 +38,15 @@ export function authorizeOperator(
   return { authorized: true, session };
 }
 
+/** Stable machine-readable denial codes for operator routes (CLA-264); the web keys its messages on these, never on text. */
+export type OperatorDenialCode = "session_expired" | "not_operator" | "csrf_rejected";
+/** `unsigned` (no verified session: signed out or expired) vs `not-operator` (signed in, not on the allow-list) vs a CSRF refusal. */
+export function operatorDenialBody(reason: "unsigned" | "not-operator" | "csrf"): { error: string; code: OperatorDenialCode } {
+  if (reason === "unsigned") return { error: "operator access required", code: "session_expired" };
+  if (reason === "not-operator") return { error: "operator access required", code: "not_operator" };
+  return { error: "operator access required", code: "csrf_rejected" };
+}
+
 export function publicOperatorAccessView(authorization: OperatorAuthorization): PublicOperatorAccessView {
   return { operator: authorization.authorized };
 }

@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { OperatorScope } from './api';
-import { belowCapChip, scopeStateLabel } from './reviewState';
+import { belowCapChip, reviewStateLabel, supersededRetryHint } from './reviewState';
 import { activeToggles, collapseAll, focusSearchOnShortcut, SCOPE_SORTS, scopeLabel, scopeListView, searchEscapeAction, withToggles, type ExpansionState, type ScopeSort } from './scopeList';
 import { count, isBelowCap, levelTag, SCOPE_FILTERS, selectable, selectByLevel, selectByState, selectSubtree, selectVisible, type ScopeFilter } from './scopeSelection';
 
@@ -10,6 +10,8 @@ export interface ScopeListProps {
   onOpen(scope: OperatorScope): void; onFilter(filter: ScopeFilter): void; onQuery(query: string): void; onSort(sort: ScopeSort): void; onShowBelowCap(show: boolean): void; onSelection(next: Set<string>): void; onReview(): void;
   /** Initial explicit expand/collapse toggles (tests); the list owns them afterwards. */
   initialExpanded?: ReadonlyMap<string, boolean>;
+  /** The displayed revision is superseded (CLA-264): rows read "superseded" instead of not run/failed and retry selection is off. */
+  superseded?: { revision?: number };
 }
 
 /**
@@ -38,6 +40,7 @@ export function OperatorScopeList(props: ScopeListProps) {
   const setOpen = (scopeId: string, open: boolean) => setExpanded(new Map(expanded).set(scopeId, open));
   const openScope = props.openScopeId ? lookup.get(props.openScopeId) : undefined;
   const matching = selectVisible(view.matches, showBelowCap);
+  const superseded = props.superseded;
   return <nav aria-label="Draft scopes" className="operator-scope-list">
     <div className="operator-scope-controls">
       <div className="operator-scope-heading"><h3>Scopes</h3><span className="operator-muted" role="status">{view.filtering ? `${count(view.matches.length)} of ${count(view.universe)}` : `${count(view.universe)} scopes`}</span></div>
@@ -46,7 +49,7 @@ export function OperatorScopeList(props: ScopeListProps) {
       <div className="operator-scope-sort"><label>Sort <select aria-label="Sort scopes" onChange={event => props.onSort(event.target.value as ScopeSort)} value={props.sort}>{SCOPE_SORTS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label><button onClick={() => setExpanded(collapseAll(scopes))} type="button">Collapse all</button></div>
       {belowCap > 0 && <label className="operator-toggle"><input checked={showBelowCap} onChange={event => props.onShowBelowCap(event.target.checked)} type="checkbox"/> Show {count(belowCap)} below depth cap</label>}
       {showBelowCap && belowCap > 0 && <p className="operator-muted operator-note">{chip}: never requested because their level is below this run's enrichment depth cap. Selecting them is an explicit opt-in and adds cost.</p>}
-      <div aria-label="Select scopes" className="operator-select-toolbar" role="toolbar">
+      {superseded ? <p className="operator-muted operator-note" data-retry-disabled="superseded">{supersededRetryHint(superseded)}</p> : <><div aria-label="Select scopes" className="operator-select-toolbar" role="toolbar">
         <button onClick={() => replace(matching)} type="button">{view.filtering ? 'Select matching' : 'Select all'} ({count(matching.length)})</button>
         <button onClick={() => replace(selectByState(scopes, 'failed', showBelowCap))} type="button">Failed</button>
         <button onClick={() => replace(selectByState(scopes, 'not run', showBelowCap))} type="button">Not run</button>
@@ -57,12 +60,12 @@ export function OperatorScopeList(props: ScopeListProps) {
         <button disabled={!openScope} onClick={() => openScope && replace(selectSubtree(scopes, openScope.scopeId, showBelowCap))} title={openScope ? `${openScope.name} and its descendants` : 'Open a scope first'} type="button">Subtree</button>
         <button disabled={!selected.size} onClick={() => replace([])} type="button">Clear</button>
       </div>
-      {selected.size > 0 && <div className="operator-selection-bar"><span>{selectionSummary(selected, view.matches)}</span><button onClick={props.onReview} type="button">Retry selected…</button></div>}
+      {selected.size > 0 && <div className="operator-selection-bar"><span>{selectionSummary(selected, view.matches)}</span><button onClick={props.onReview} type="button">Retry selected…</button></div>}</>}
       {view.filtering && !view.autoExpanded && view.matches.length > 0 && <p className="operator-muted operator-note">{count(view.matches.length)} matches: expand a node to see the ones it holds.</p>}
     </div>
     {view.rows.length === 0 && <p className="operator-muted operator-scope-empty">No scopes match {props.query ? 'this search' : 'this filter'}.</p>}
     <ul aria-label="Scope tree" className="operator-scope-rows" id={listId}>{view.rows.map(row => {
-      const item = row.scope; const canSelect = selectable(item, showBelowCap); const label = scopeStateLabel(item); const name = scopeLabel(item, lookup);
+      const item = row.scope; const canSelect = !superseded && selectable(item, showBelowCap); const label = reviewStateLabel(item, !!superseded); const name = scopeLabel(item, lookup);
       const badge = row.hasChildren ? (view.filtering ? `${count(row.matchesBelow)} match${row.matchesBelow === 1 ? '' : 'es'}` : count(row.descendants)) : undefined;
       return <li aria-current={props.openScopeId === item.scopeId ? 'true' : undefined} aria-level={row.depth + 1} className={[props.openScopeId === item.scopeId ? 'selected' : '', row.match || !view.filtering ? '' : 'context'].filter(Boolean).join(' ') || undefined} data-scope-id={item.scopeId} key={item.scopeId} style={{ '--depth': row.depth } as CSSProperties}>
         {row.hasChildren ? <button aria-controls={listId} aria-expanded={row.expanded} aria-label={`${row.expanded ? 'Collapse' : 'Expand'} ${name.primary}`} className="operator-tree-toggle" onClick={() => setOpen(item.scopeId, !row.expanded)} type="button">{row.expanded ? '▾' : '▸'}</button> : <span aria-hidden="true" className="operator-tree-toggle"/>}

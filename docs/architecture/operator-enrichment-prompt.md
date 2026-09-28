@@ -59,7 +59,7 @@ diagramError? }`, no `format`) that is already stored loads, publishes and rende
 | --- | --- | --- |
 | `summary` | required; trimmed; <= 600 chars; <= 6 bullets; no active HTML (see below) | attempt fails (retryable scope) |
 | `keyPoints` | required array of strings; list markers and newlines are normalised; 2-5 items; each <= 220 chars; no active HTML | attempt fails |
-| `evidence` | >= 1 ref, each copied verbatim from `allowedEvidence`; only `entityId`/`path`/`startLine`/`endLine` are stored; `null` line numbers count as absent | attempt fails |
+| `evidence` | >= 1 ref naming `allowedEvidence`: resolved by `entityId` (lines absent or equal to the allowed ref's; path absent or equal to the allowed ref's after `_`/`-` folding, so a different file rejects; an entity with several refs is disambiguated by lines, then exact path) and stored as the allowed copy, so a model's path spelling (`flow_story.ts` for `flow-story.ts`) is never stored; a ref without `entityId` must match exactly; `null` line numbers count as absent. A backticked span in `summary`/`keyPoints` is rewritten only when it exactly equals a path this reply cited as evidence under a different spelling, and it becomes the resolved allowed path; other spans are left as written | attempt fails, naming up to 3 offending refs (`entityId path:start-end`, `+N more`) |
 | `diagram` | string; one ```` ```mermaid ```` fence is unwrapped; first line `flowchart LR` or `flowchart TB` (`TD` becomes `TB`); <= 12 nodes, <= 40 lines, <= 2000 chars; no second `flowchart`/`graph` header; no `%%`, `@{` shape data, `:::`, or `click`/`style`/`class`/`classDef`/`linkStyle` statements (at line start or after `;`); no URLs (`http(s):`, `//`, `ftp:`, `file:`, `data:`, `javascript:`); no HTML element tags; no entity ids | dropped, reason in `diagramError` |
 | `table` | 2-4 columns (<= 40 chars), 1-8 rows of exactly one cell per column (<= 160 chars; numbers become text), caption <= 120 chars, no active HTML | dropped, reason in `diagramError` |
 
@@ -89,8 +89,8 @@ a judgment body limited to 24 KB. They use `explanationRowForJudgment`, which le
 diagram and table (up to about 9 KB at the caps). A judgment needs the claims, not the presentation.
 Legacy rows pass unchanged, so their cached judgment hashes stay valid.
 
-Validation rejects are not retried automatically: the retry-once rule covers only timeouts and empty
-content. A rejected scope is recorded as failed with the reason, and the operator can retry it.
+Validation rejects are not retried automatically: the retry-once rule covers only timeouts, transport
+failures, and empty content. A rejected scope is recorded as failed with the reason, and the operator can retry it.
 
 ## Prompt experiment (CLA-260)
 

@@ -43,10 +43,36 @@ export function coverageIncomplete(coverage: OperatorDraft['coverage']): boolean
 }
 export function scopeStateLabel(scope: Pick<OperatorScope, 'state' | 'stale'>): string { return scope.stale ? 'stale' : scope.state; }
 
-/** Keeps review on an explicitly selected revision while background status changes. */
-export function selectedDraftForRun(selectedDraftRevisionId: string | undefined, run: Pick<OperatorRun, 'draftRevisionId'>, loaded?: OperatorDraft): string | undefined {
-  return selectedDraftRevisionId ?? loaded?.draftRevisionId ?? run.draftRevisionId;
+/**
+ * Keeps review on an explicitly pinned revision while background status changes. Without a pin the workspace follows
+ * the run's current revision (`loaded` is the run detail's current draft). Only an explicit choice may pin (CLA-264):
+ * pinning whatever was loaded kept a finished run on the working revision its enrichment ran on.
+ */
+export function selectedDraftForRun(pinnedDraftRevisionId: string | undefined, run: Pick<OperatorRun, 'draftRevisionId'>, loaded?: OperatorDraft): string | undefined {
+  return pinnedDraftRevisionId ?? loaded?.draftRevisionId ?? run.draftRevisionId;
 }
+/** Unpinned review follows the run: reload when the run's current revision is not the one displayed (CLA-264). */
+export function followsCurrentRevision(pinnedDraftRevisionId: string | undefined, currentDraftRevisionId: string | undefined, displayedDraftRevisionId: string | undefined): boolean {
+  return pinnedDraftRevisionId === undefined && currentDraftRevisionId !== undefined && currentDraftRevisionId !== displayedDraftRevisionId;
+}
+/**
+ * The displayed revision is superseded when the run's current revision is another one: `revision` is the current one's
+ * number when the run detail carried it. Its scope states are as of that older revision, never the run's results.
+ */
+export function supersededBy(displayed: Pick<OperatorDraft, 'draftRevisionId'> | undefined, run: Pick<OperatorRun, 'draftRevisionId'> | undefined, current?: Pick<OperatorDraft, 'draftRevisionId' | 'revision'>): { draftRevisionId: string; revision?: number } | undefined {
+  if (!displayed || !run?.draftRevisionId || run.draftRevisionId === displayed.draftRevisionId) return undefined;
+  return { draftRevisionId: run.draftRevisionId, ...(current?.draftRevisionId === run.draftRevisionId ? { revision: current.revision } : {}) };
+}
+/** "Superseded — results are in revision 7": replaces the coverage chips of a superseded revision (its counts are not the run's). */
+export function supersededLabel(superseded: { revision?: number }): string { return `Superseded — results are in ${superseded.revision !== undefined ? `revision ${superseded.revision}` : 'a newer revision'}`; }
+/**
+ * The state a scope row/inspector shows (CLA-264). On a superseded revision "not run" and "failed" are not the run's
+ * results (a full run's working revision is all "not run"), so they read as a muted "superseded"; accepted, stale and
+ * below-cap stay as stored.
+ */
+export function reviewStateLabel(scope: Pick<OperatorScope, 'state' | 'stale'>, superseded: boolean): string { const label = scopeStateLabel(scope); return superseded && (label === 'not run' || label === 'failed') ? 'superseded' : label; }
+/** Why retry is unavailable on a superseded revision (the server would answer 409 draft_superseded). */
+export function supersededRetryHint(superseded: { revision?: number }): string { return `This revision is superseded. Open ${superseded.revision !== undefined ? `revision ${superseded.revision}` : 'the current revision'} to retry scopes.`; }
 
 /** A monotonically increasing request epoch makes late run/draft responses inert. */
 export function acceptsReviewResponse(expectedEpoch: number, currentEpoch: number, runId: string, selectedRunId: string | undefined): boolean {
@@ -106,27 +132,35 @@ export function operatorEventLabel(event: Pick<OperatorEvent, 'type' | 'detail'>
 }
 
 export const OPERATOR_SESSION_EXPIRED = 'Your session expired — sign in again.';
+export const OPERATOR_NOT_OPERATOR = 'You are signed in, but this GitHub account is not (or is no longer) a configured operator. Sign in with an operator account or ask to be added.';
 export const STALE_REVISION_MESSAGE = 'This revision is out of date: the run has a newer draft revision. Open the current revision to retry or refresh scopes.';
 export const ACTION_RUNNING_MESSAGE = 'Another operator action is already running for this run. Wait for it to finish, then try again.';
-export type OperatorFailure = { kind: 'expired' } | { kind: 'stale-revision'; message: string; currentDraftRevisionId?: string } | { kind: 'action-running'; message: string } | { kind: 'error'; message: string };
+export type OperatorFailure = { kind: 'expired' } | { kind: 'not-operator' } | { kind: 'stale-revision'; message: string; currentDraftRevisionId?: string } | { kind: 'action-running'; message: string } | { kind: 'error'; message: string };
 /**
- * Classifies a failed operator call. A 401/403 after the workspace was allowed re-checks the session:
- * only a session that is no longer an operator counts as expired (a CSRF 403 keeps its message).
+ * Classifies a failed operator call on the server's structured `code` (CLA-264), never on its message text:
+ * `session_expired` → expired, `not_operator` (e.g. removed from the allow-list mid-session) → not an operator,
+ * `draft_superseded` / `run_active` 409s get their own UI; a `csrf_rejected` 403 keeps its message. A code-less
+ * 401/403 (an older server) after the workspace was allowed re-checks the session and counts as expired.
  */
 export async function classifyOperatorFailure(cause: unknown, wasAllowed: boolean, checkSession: () => Promise<{ operator: boolean }>, fallback = 'Operator action failed.'): Promise<OperatorFailure> {
   const message = cause instanceof Error ? cause.message : fallback;
   if (!(cause instanceof OperatorApiError)) return { kind: 'error', message };
+  // Access denials are decided by code. A code-less 401/403 (an older server or a proxy) still falls back to a session
+  // re-check below. The 409 cases rely on codes only: the server and this client ship together, so no text matching.
+  const code = cause.body?.code;
+  if (code === 'session_expired') return { kind: 'expired' };
+  if (code === 'not_operator') return { kind: 'not-operator' };
+  if (code === 'csrf_rejected') return { kind: 'error', message: 'This request was refused because it did not come from this site. Reload the page and try again.' };
   if ((cause.status === 401 || cause.status === 403) && wasAllowed) {
     try { if (!(await checkSession()).operator) return { kind: 'expired' }; } catch { /* keep the original failure when the re-check itself fails */ }
     return { kind: 'error', message };
   }
-  if (cause.status === 409) {
-    const body = cause.body;
-    if (body?.error === 'draft is no longer current') return { kind: 'stale-revision', message: STALE_REVISION_MESSAGE, ...(typeof body.currentDraftRevisionId === 'string' ? { currentDraftRevisionId: body.currentDraftRevisionId } : {}) };
-    if (body?.error === 'operator action already running') return { kind: 'action-running', message: ACTION_RUNNING_MESSAGE };
-  }
+  if (code === 'draft_superseded') return { kind: 'stale-revision', message: STALE_REVISION_MESSAGE, ...(typeof cause.body?.currentDraftRevisionId === 'string' ? { currentDraftRevisionId: cause.body.currentDraftRevisionId } : {}) };
+  if (code === 'run_active') return { kind: 'action-running', message: ACTION_RUNNING_MESSAGE };
   return { kind: 'error', message };
 }
+/** A publish refused because the publication changed elsewhere (409 `publication_stale`). */
+export function isPublicationConflict(cause: unknown): boolean { return cause instanceof OperatorApiError && cause.body?.code === 'publication_stale'; }
 /** The revision "Open current revision" loads: the freshly refreshed run's, else the one the 409 reported. */
 export function currentRevisionTarget(freshRunDraftRevisionId: string | undefined, reported: string | undefined): string | undefined { return freshRunDraftRevisionId ?? reported; }
 /** Stale-revision context belongs to one run; its alert/button render only while that run is selected. */

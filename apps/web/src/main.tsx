@@ -22,6 +22,7 @@ import { createIndexedDbPortableStore, createPortablePersistence, portableStorag
 import { registerWebMcpFoundation } from './webmcp';
 import { readPortableFile, rememberPortableSession, forgetPortableSession } from './portable/session';
 import { OperatorWorkspace } from './operator/OperatorWorkspace';
+import { previewReturnSelection } from './operator/workspaceController';
 import { clearDraftPreviewContext, setDraftPreviewContext, setPublishedPreviewContext } from './operator/previewContext';
 import { loadPublishedExplanations } from './operator/publishedExplanations';
 import { documentPageFor, setDocumentPage } from './pageScroll';
@@ -130,6 +131,7 @@ function preparePortableAtlas(bundle: PortableAtlas): { fixture?: ScanFixture; e
 }
 
 let portableMountSequence = 0;
+/** Restored when returning from a draft preview. `draftRevisionId` only when the reviewed revision was an explicit pin (CLA-264): otherwise the workspace follows the run's current revision. */
 let operatorReviewSelection: { runId?: string; draftRevisionId?: string } = {};
 
 async function mountPortableAtlas(bundle: PortableAtlas, fixture: ScanFixture, notice?: string, resetNavigation = true): Promise<void> {
@@ -186,7 +188,7 @@ async function mountOperatorWorkspace(): Promise<void> {
   flushSync(() => root.render(null));
   clearDraftPreviewContext();
   setDocumentPage(documentPageFor('operator'));
-  root.render(<StrictMode><OperatorWorkspace initialDraftRevisionId={operatorReviewSelection.draftRevisionId} initialRunId={operatorReviewSelection.runId} onPreview={async (runId, draftRevisionId, scopes) => { operatorReviewSelection = { runId, draftRevisionId }; await mountOperatorDraftPreview(draftRevisionId, scopes); }}/></StrictMode>);
+  root.render(<StrictMode><OperatorWorkspace initialDraftRevisionId={operatorReviewSelection.draftRevisionId} initialRunId={operatorReviewSelection.runId} onPreview={async (runId, draftRevisionId, scopes, pinned) => { operatorReviewSelection = previewReturnSelection(runId, draftRevisionId, pinned); await mountOperatorDraftPreview(draftRevisionId, scopes); }}/></StrictMode>);
 }
 
 async function openPortableFile(file: File): Promise<{ ok: true } | { ok: false; message: string }> {

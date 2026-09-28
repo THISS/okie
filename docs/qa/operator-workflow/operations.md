@@ -84,8 +84,10 @@ the whole provider pauses and retries with exponential backoff starting at
 failure. Rate-limit retries wrap only the raw gateway, below budget admission, so
 they reserve nothing on the run or global ledger.
 
-Retry once: a request that times out, or whose reply has an empty or missing
-`choices[0].message.content`, gets exactly one more request inside the same
+Retry once: a request that times out, fails in transport (`fetch failed`,
+`terminated`, or a dropped response body; stored as
+`llm gateway transport error (<cause code>)`, retried after a 1.5 s delay), or
+whose reply has an empty or missing `choices[0].message.content`, gets exactly one more request inside the same
 attempt row (its usage is the sum of both calls). That second request is a real
 request for budget purposes: the first reservation is settled, then the retry is
 admitted again through the run-level request cap and both ledgers. If the retry

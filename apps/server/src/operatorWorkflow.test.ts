@@ -90,7 +90,8 @@ test("operator draft detail summarizes per-scope metrics, including an enriched 
     const draft = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: enriched.artifactRevisionId });
     const workflow = new OperatorWorkflow({ store, publications, enqueue() {} });
     const scopes = workflow.draftDetail(draft.draftRevisionId)!.scopes;
-    assert.equal(scopes[0]!.attempts, undefined, "enriched scopes carry no attempts on this draft");
+    assert.deepEqual(scopes[0]!.attempts?.map(attempt => attempt.attemptId), [produced.attemptId], "no attempt on this draft: the run's latest attempt from the pre-enrichment draft is listed (CLA-264 lineage)");
+    assert.equal(scopes[0]!.attempts?.[0]?.inherited, true);
     assert.deepEqual(scopes[0]!.metrics, { costUsd: 0.0003, totalTokens: 537, updatedAt: produced.updatedAt + 5 });
     assert.deepEqual(scopes[1]!.metrics, { updatedAt: 42 }, "an unknown attempt still reports the install time");
     assert.equal("metrics" in scopes[2]!, false, "no attempt and no explanation: no metrics");
@@ -101,5 +102,36 @@ test("operator draft detail summarizes per-scope metrics, including an enriched 
     assert.equal(retried.metrics?.costUsd, 0.01); assert.equal(retried.metrics?.totalTokens, 10);
     // Public reads (published explanations) never include operator metrics.
     assert.equal(readArtifactScopes(store, enriched.artifactRevisionId).some(scope => "metrics" in scope), false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("draft detail shows the run's latest attempt error from earlier revisions when this revision has none (CLA-264 lineage)", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-workflow-lineage-"));
+  try {
+    const store = new OperatorStore(root);
+    const publications = new OperatorPublicationService(store);
+    const run = store.createRun({ idempotencyKey: "lineage", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const other = store.createRun({ idempotencyKey: "lineage-other", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const sidecar = (states: Record<string, string>) => store.writeArtifactRevision({ repositoryId: "o/r", files: { "operator-explanations.json": JSON.stringify({ maxKind: "component", scopes: Object.entries(states).map(([scopeId, state]) => ({ scopeId, name: scopeId, kind: "component", state })), explanations: [] }) } }).artifactRevisionId;
+    // Another run's revision of the same repository: its attempts never leak into this run.
+    const foreign = publications.createDraftRevision({ runId: other.runId, artifactRevisionId: sidecar({ a: "not run", b: "not run", c: "not run" }) });
+    store.createAttempt({ draftRevisionId: foreign.draftRevisionId, scopeId: "c", kind: "enrichment", state: "failed", error: "other run's failure" });
+    // Full run: attempts land on the pre-enrichment draft, then the enriched revision is installed with none.
+    const pre = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: sidecar({ a: "not run", b: "not run", c: "not run" }) });
+    store.createAttempt({ draftRevisionId: pre.draftRevisionId, scopeId: "a", kind: "enrichment", state: "failed", error: "rejected explanation: 5 keyPoints (allowed 2-4)" });
+    store.createAttempt({ draftRevisionId: pre.draftRevisionId, scopeId: "b", kind: "enrichment", state: "cancelled" });
+    const enriched = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: sidecar({ a: "failed", b: "not run", c: "not run" }) });
+    const workflow = new OperatorWorkflow({ store, publications, enqueue() {} });
+    const first = workflow.draftDetail(enriched.draftRevisionId)!.scopes;
+    assert.equal(first[0]!.attempts?.at(-1)?.error, "rejected explanation: 5 keyPoints (allowed 2-4)", "the failure shows on the enriched revision");
+    assert.equal(first[0]!.attempts?.at(-1)?.inherited, true, "marked as borrowed from an earlier revision");
+    assert.equal("metrics" in first[0]!, false, "a borrowed attempt never counts toward the scope's metrics");
+    assert.deepEqual(first.map(scope => scope.state), ["failed", "not run", "not run"], "lineage never changes a scope's state (b's earlier cancelled attempt does not win over the sidecar)");
+    assert.equal(first[2]!.attempts, undefined, "another run's attempts are not lineage");
+    // A batch retry that fails on the enriched revision and installs a newer one (another scope changed): the newest error wins.
+    store.createAttempt({ draftRevisionId: enriched.draftRevisionId, scopeId: "a", kind: "retry", state: "failed", error: "llm gateway transport error (UND_ERR_SOCKET)" });
+    const retried = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: sidecar({ a: "failed", b: "accepted", c: "not run" }) });
+    assert.equal(workflow.draftDetail(retried.draftRevisionId)!.scopes[0]!.attempts?.at(-1)?.error, "llm gateway transport error (UND_ERR_SOCKET)");
+    assert.equal(workflow.draftDetail(pre.draftRevisionId)!.scopes[0]!.attempts?.length, 1, "an older revision never borrows a newer revision's attempts");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

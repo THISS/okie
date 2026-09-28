@@ -273,6 +273,59 @@ test("refresh enters running while it executes; a stale-base job releases the qu
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test("refresh of N stale scopes is one batch pass: one pool, shared ancestors re-reduced once, one new revision (CLA-264)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-batch-refresh-"));
+  try {
+    await withEnv({}, async () => {
+      const scopes = [row("system", "softwareSystem", undefined, "accepted"), row("container", "container", "system", "accepted"), { ...row("c1", "component", "container", "accepted"), stale: true }, { ...row("c2", "component", "container", "accepted"), stale: true }, row("c3", "component", "container", "accepted")];
+      const { store, publications, run, draft } = fixture(root, scopes, { explained: ["system", "container", "c1", "c2", "c3"], maxKind: "component" });
+      const calls: string[] = []; let active = 0; let peak = 0; const gateway = summaryGateway(calls);
+      const watching: OperatorEnrichmentGateway = { modelId: gateway.modelId, async chatCompletions(body) { active += 1; peak = Math.max(peak, active); await new Promise(resolve => setTimeout(resolve, 5)); active -= 1; return gateway.chatCompletions(body); } };
+      await createOperatorRunner({ store, publication: publications, gateway: watching }).enqueue({ kind: "refresh", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: ["c1", "c2", "c3"], githubAccess: access });
+      assert.deepEqual(calls.slice(0, 2).sort(), ["c1", "c2"], "only the stale scopes are refreshed (c3 is fresh)"); assert.ok(peak > 1, "the refreshed scopes share one pool");
+      assert.deepEqual(calls.slice(2), ["container", "system"], "the shared ancestors re-reduce once each, after both children");
+      const state = store.snapshot();
+      assert.equal(state.drafts.length, 2, "one pass installs exactly one new revision");
+      assert.deepEqual(state.attempts.filter(attempt => attempt.kind === "refresh").map(attempt => attempt.scopeId).sort(), ["c1", "c2", "container", "system"], "one refresh-labelled attempt per scope");
+      assert.equal(state.events.filter(event => event.type === "enrichment.finished").length, 1);
+      const current = state.runs[0]!; assert.equal(current.state, "awaiting_review"); assert.equal(current.error, undefined);
+      assert.deepEqual(sidecarOf(store, current.draftRevisionId!).scopes.map(value => [value.scopeId, Boolean(value.stale)]), [["system", false], ["container", false], ["c1", false], ["c2", false], ["c3", false]]);
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("refresh API enqueues one batch job; a refresh with no stale scope releases the run", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-batch-refresh-api-"));
+  try {
+    await withEnv({}, async () => {
+      const { store, publications, run, draft } = fixture(root, [row("system", "softwareSystem", undefined, "accepted"), row("c1", "component", "system", "accepted")], { explained: ["system", "c1"], maxKind: "component" });
+      const jobs: OperatorWorkflowJob[] = [];
+      assert.equal((await api(store, publications, jobs)(`/api/operator/drafts/${draft.draftRevisionId}/refresh`, { scopeIds: ["system", "c1"] }))?.status, 202);
+      assert.deepEqual(jobs.map(job => [job.kind, job.scopeIds, job.batch]), [["refresh", ["system", "c1"], true]]);
+      store.updateRun(run.runId, { state: "queued" }); const calls: string[] = [];
+      await createOperatorRunner({ store, publication: publications, gateway: summaryGateway(calls) }).enqueue({ kind: "refresh", runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: ["system", "c1"], githubAccess: access });
+      assert.deepEqual(calls, []); assert.equal(store.snapshot().runs[0]!.state, "awaiting_review"); assert.equal(store.snapshot().drafts.length, 1);
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("runner: a dropped response body settles the run ledger with the run's average cost (CLA-264)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-batch-dropped-"));
+  try {
+    await withEnv({ OKIE_LLM_MAX_CONCURRENT: "1" }, async () => {
+      const { store, publications, run, draft } = fixture(root, runnerScopes(), { explained: ["system", "container", "c3"], maxKind: "component" });
+      const calls: string[] = []; const ok = summaryGateway(calls, new Set(), 0.002);
+      const gateway: OperatorEnrichmentGateway = { modelId: ok.modelId, async chatCompletions(body) { const scopeId = (JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string } }).scope.scopeId; if (scopeId === "c2") { calls.push(scopeId); throw new LlmGatewayError("llm gateway transport error (UND_ERR_SOCKET)", { kind: "transport", status: 200 }); } return ok.chatCompletions(body); } };
+      await createOperatorRunner({ store, publication: publications, gateway, transportRetryDelayMs: 0 }).enqueue({ kind: "retry", batch: true, runId: run.runId, draftRevisionId: draft.draftRevisionId, scopeIds: ["c1", "c2"], githubAccess: access });
+      assert.deepEqual(calls.filter(scopeId => scopeId === "c2").length, 2, "retried once");
+      const ledger = createOperatorBudgetLedger({ maxRequests: 100, maxTokens: 10_000_000, maxDollars: 5 }, { store, runId: run.runId }).snapshot();
+      assert.ok(Math.abs((ledger.estimatedCostUsd ?? 0) - 0.004) < 1e-9, `two dropped calls at the run average $0.002 (got ${ledger.estimatedCostUsd})`);
+      assert.equal(ledger.unknownCostRequests, 0);
+      assert.match(store.snapshot().attempts.find(attempt => attempt.scopeId === "c2")!.error ?? "", /UND_ERR_SOCKET/);
+    });
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test("runner batch retry refuses a stale base revision and installs nothing", async () => {
   const root = mkdtempSync(join(tmpdir(), "okie-batch-stale-"));
   try {
@@ -317,14 +370,16 @@ test("run detail exposes the run ledger budget and the average cost per attempte
       const { store, publications, run, draft } = fixture(root, runnerScopes(), { explained: ["system"] });
       const workflow = new OperatorWorkflow({ store, publications, enqueue() {} });
       const empty = workflow.runDetail(run.runId)!;
-      assert.equal(empty.avgCostPerScopeUsd, undefined); assert.deepEqual({ ...empty.budget }, { maxDollars: 5, spentDollars: 0, maxRequests: 100, requests: 0, remainingRequests: 100, maxTokens: empty.budget.maxTokens, tokens: 0 });
+      assert.equal(empty.avgCostPerScopeUsd, undefined); assert.deepEqual({ ...empty.budget }, { maxDollars: 5, spentDollars: 0, maxRequests: 100, requests: 0, remainingRequests: 100, maxTokens: empty.budget.maxTokens, tokens: 0, remainingTokens: empty.budget.maxTokens, maxConcurrent: empty.budget.maxConcurrent }); assert.ok(empty.budget.maxConcurrent >= 1); assert.equal(empty.budget.avgTokenReservation, undefined); assert.equal(empty.avgTokensPerScope, undefined);
       const ledger = createOperatorBudgetLedger({ maxRequests: 100, maxTokens: 1_000_000, maxDollars: 5 }, { store, runId: run.runId });
       ledger.settle(ledger.reserve(10)!, { inputTokens: 3, outputTokens: 2, measuredCostUsd: 0.25 });
       store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: "c1", kind: "retry", state: "accepted", usage: { inputTokens: 3, outputTokens: 2, measuredCostUsd: 0.25 } });
       store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: "c2", kind: "retry", state: "accepted", usage: { inputTokens: 3, outputTokens: 2, estimatedCostUsd: 0.05 } });
       store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: "c3", kind: "retry", state: "failed" });
       const detail = workflow.runDetail(run.runId)!;
-      assert.deepEqual({ ...detail.budget, maxTokens: 0 }, { maxDollars: 5, spentDollars: 0.25, maxRequests: 100, requests: 1, remainingRequests: 99, maxTokens: 0, tokens: 5 });
+      assert.deepEqual({ ...detail.budget, maxTokens: 0, remainingTokens: 0, maxConcurrent: 0 }, { maxDollars: 5, spentDollars: 0.25, maxRequests: 100, requests: 1, remainingRequests: 99, maxTokens: 0, tokens: 5, remainingTokens: 0, maxConcurrent: 0, avgTokenReservation: 10 });
+      assert.equal(detail.budget.remainingTokens, detail.budget.maxTokens - 5, "CLA-264: the token cap's remainder, for fit-to-budget");
+      assert.equal(detail.avgTokensPerScope, 5, "(5 + 5) / 2 attempts that reported tokens; the failed attempt reported none");
       assert.equal(detail.avgCostPerScopeUsd, 0.15, "(0.25 + 0.05) / 2 attempts that reported a cost");
       assert.deepEqual(detail.progress, { accepted: 2, failed: 1, inFlight: 0 });
       assert.equal(detail.budget.globalRemainingDollars, undefined, "no global cap configured");
@@ -334,6 +389,11 @@ test("run detail exposes the run ledger budget and the average cost per attempte
       assert.equal(withGlobal.budget.globalRemainingDollars, 0.5); assert.equal(withGlobal.budget.globalRemainingRequests, undefined, "no global request cap");
       const withGlobalRequests = new OperatorWorkflow({ store, publications, enqueue() {}, globalBudget: { maxDollars: 2, maxRequests: 3, ledger: global } }).runDetail(run.runId)!;
       assert.equal(withGlobalRequests.budget.globalRemainingRequests, 2);
+      assert.equal(withGlobalRequests.budget.globalRemainingTokens, undefined, "no global token cap");
+      global.settle(global.reserve(10)!, { inputTokens: 300, outputTokens: 100, measuredCostUsd: 0 });
+      const withGlobalTokens = new OperatorWorkflow({ store, publications, enqueue() {}, globalBudget: { maxTokens: 1000, ledger: global } }).runDetail(run.runId)!;
+      assert.equal(withGlobalTokens.budget.globalRemainingTokens, 590, "1000 − 400 reported − 10 still reserved by the cost-only settle");
+      assert.equal(withGlobalTokens.budget.globalRemainingDollars, undefined, "a token-only global cap reports no dollar remainder");
     });
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -377,10 +437,23 @@ test("batch retry API answers 409 for a running action and for a non-current rev
     const { store, publications, run, draft, artifact } = fixture(root, runnerScopes(), { maxKind: "component" });
     const call = api(store, publications); const path = `/api/operator/drafts/${draft.draftRevisionId}/retry`;
     store.updateRun(run.runId, { state: "queued" });
-    const running = await call(path, { scopeIds: ["c1"] }); assert.equal(running?.status, 409); assert.deepEqual(running?.body, { error: "operator action already running" });
+    const running = await call(path, { scopeIds: ["c1"] }); assert.equal(running?.status, 409); assert.deepEqual(running?.body, { error: "operator action already running", code: "run_active" });
     store.updateRun(run.runId, { state: "awaiting_review" });
     const newer = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
-    const stale = await call(path, { scopeIds: ["c1"] }); assert.equal(stale?.status, 409); assert.deepEqual(stale?.body, { error: "draft is no longer current", currentDraftRevisionId: newer.draftRevisionId });
+    const stale = await call(path, { scopeIds: ["c1"] }); assert.equal(stale?.status, 409); assert.deepEqual(stale?.body, { error: "draft is no longer current", code: "draft_superseded", currentDraftRevisionId: newer.draftRevisionId });
+    const staleRefresh = await call(`/api/operator/drafts/${draft.draftRevisionId}/refresh`, { scopeIds: ["c1"] }); assert.equal(staleRefresh?.status, 409); assert.equal((staleRefresh?.body as { code?: string }).code, "draft_superseded", "refresh shares the structured 409s (CLA-264)");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("a stale publication answers 409 with a structured code (CLA-264)", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-publish-409-"));
+  try {
+    const { store, publications, run, artifact, draft } = fixture(root, [row("system", "softwareSystem", undefined, "accepted")], { explained: ["system"], maxKind: "component", publishable: true });
+    const publish = (draftId: string, body: Record<string, unknown>) => api(store, publications)(`/api/operator/drafts/${draftId}/publish`, body);
+    assert.equal((await publish(draft.draftRevisionId, { acknowledgeCoverage: true }))?.status, 200);
+    const next = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
+    const stale = await publish(next.draftRevisionId, { acknowledgeCoverage: true });
+    assert.equal(stale?.status, 409); assert.equal((stale?.body as { code?: string; reason?: string }).code, "publication_stale"); assert.equal((stale?.body as { reason?: string }).reason, "stale_publication");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 

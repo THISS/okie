@@ -30,10 +30,13 @@ test('operator HTTP gates, deduplicates, and serves only private portable draft 
   const root = mkdtempSync(join(tmpdir(), 'okie-operator-http-')); const store = new OperatorStore(root); const publications = new OperatorPublicationService(store); const enqueued: string[] = [];
   const handler = createScanHttpHandler({ queue: {} as never, allowSubmit: () => true, auth: auth(), scanRoot: root, llm: { baseUrl: '', modelId: 'fake', keySource: 'none' }, enrich: 'off', bind: '127.0.0.1', operator: { auth: auth(), allowedGithubIds: new Set(['42']), publicOrigin: 'http://fixture.test', store, publications, enqueue: job => { enqueued.push(job.runId); } } });
   try { await serve(handler, async origin => {
-    assert.equal((await fetch(`${origin}/api/operator/runs`)).status, 401);
-    assert.equal((await fetch(`${origin}/api/operator/runs`, { headers: { 'x-test-user': 'member' } })).status, 403);
+    // CLA-264: structured denial codes distinguish a lost session from a signed-in account that is not (or no longer) an operator.
+    const denied = async (response: Response, status: number, code: string) => { assert.equal(response.status, status); assert.deepEqual(await response.json(), { error: 'operator access required', code }); };
+    await denied(await fetch(`${origin}/api/operator/runs`), 401, 'session_expired');
+    await denied(await fetch(`${origin}/api/operator/runs`, { headers: { 'x-test-user': 'member' } }), 403, 'not_operator');
     const headers = { 'content-type': 'application/json', origin: 'http://fixture.test', 'x-test-user': 'operator' };
-    assert.equal((await fetch(`${origin}/api/operator/runs`, { method: 'POST', headers: { ...headers, origin: 'http://evil.test' }, body: JSON.stringify({ url: 'https://github.com/acme/demo', idempotencyKey: 'same-key' }) })).status, 403);
+    await denied(await fetch(`${origin}/api/operator/runs`, { method: 'POST', headers: { ...headers, 'x-test-user': 'member' }, body: '{}' }), 403, 'not_operator');
+    await denied(await fetch(`${origin}/api/operator/runs`, { method: 'POST', headers: { ...headers, origin: 'http://evil.test' }, body: JSON.stringify({ url: 'https://github.com/acme/demo', idempotencyKey: 'same-key' }) }), 403, 'csrf_rejected');
     const first = await fetch(`${origin}/api/operator/runs`, { method: 'POST', headers, body: JSON.stringify({ url: 'https://github.com/acme/demo', idempotencyKey: 'same-key' }) }); assert.equal(first.status, 202); const run = (await first.json() as { run: { runId: string; source: { repositoryId: string } } }).run;
     const second = await fetch(`${origin}/api/operator/runs`, { method: 'POST', headers, body: JSON.stringify({ url: 'https://github.com/acme/demo', idempotencyKey: 'same-key' }) }); assert.equal((await second.json() as { deduped: boolean }).deduped, true); assert.equal(enqueued.length, 1);
     const artifact = store.writeArtifactRevision({ repositoryId: run.source.repositoryId, sourceCommitSha: commit, files: { 'atlas.okie.json': portable() } }); const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });

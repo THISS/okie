@@ -1,7 +1,7 @@
 import type { ScanGithubAccess } from "./githubAccess.js";
 import { belowEnrichmentCap, coverageFor, legacyEnrichmentCap, type OperatorScopeAttempt, type OperatorUsage } from "./operatorContracts.js";
 import { createOperatorBudgetLedger, type OperatorBudgetLedger } from "./operatorBudget.js";
-import { resolveOperatorEnrichmentBudget } from "./llmGateway.js";
+import { resolveLlmRateLimitConfig, resolveOperatorEnrichmentBudget } from "./llmGateway.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
 import { OperatorStore } from "./operatorStore.js";
 
@@ -10,7 +10,7 @@ import { OperatorStore } from "./operatorStore.js";
  * `path`: the scope's primary source path (first source ref), for list search and tooltips (CLA-259).
  * `metrics`: operator-only cost/tokens/last-updated summary of the attempts behind the scope's current state (CLA-259).
  */
-export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; path?: string; depth: number; state: string; stale: boolean; explanation?: unknown; explanationVersionId?: string; diagramError?: string; attempts?: OperatorScopeAttempt[]; metrics?: OperatorScopeMetrics; }
+export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; path?: string; depth: number; state: string; stale: boolean; explanation?: unknown; explanationVersionId?: string; diagramError?: string; /** `inherited`: borrowed from an earlier revision of the run (lineage, CLA-264); display only, never counted in metrics. */ attempts?: Array<OperatorScopeAttempt & { inherited?: true }>; metrics?: OperatorScopeMetrics; }
 /** Every field optional; `metrics` is omitted when none is known. */
 export interface OperatorScopeMetrics { costUsd?: number; totalTokens?: number; updatedAt?: number; }
 
@@ -36,9 +36,9 @@ export function scopeMetricsFor(draftAttempts: readonly OperatorScopeAttempt[], 
 /** `batch`: the retry came in the API's `scopeIds` form and re-reduces affected ancestors in one pass. */
 export interface OperatorWorkflowJob { kind: "run" | "retry" | "refresh"; runId: string; draftRevisionId?: string; scopeIds?: string[]; batch?: boolean; githubAccess: ScanGithubAccess; }
 /** The run ledger as the operator sees it: spend so far against the configured per-run limits. */
-export interface OperatorRunBudget { maxDollars: number; spentDollars: number; maxRequests: number; requests: number; maxTokens: number; tokens: number; /** Present only when a global operator dollar cap is configured. */ globalRemainingDollars?: number; /** Run requests left (maxRequests − requests). */ remainingRequests: number; /** Present only when a global request cap is configured. */ globalRemainingRequests?: number; }
+export interface OperatorRunBudget { maxDollars: number; spentDollars: number; maxRequests: number; requests: number; maxTokens: number; tokens: number; /** Present only when a global operator dollar cap is configured. */ globalRemainingDollars?: number; /** Run requests left (maxRequests − requests). */ remainingRequests: number; /** Present only when a global request cap is configured. */ globalRemainingRequests?: number; /** Run tokens left (maxTokens − tokens, reservations included; CLA-264). */ remainingTokens: number; /** Present only when a global token cap is configured. */ globalRemainingTokens?: number; /** Requests the pass keeps in flight at once; each holds a token reservation until it settles. */ maxConcurrent: number; /** Average tokens one admission reserved (request bytes + max output tokens) in this run; absent before any. */ avgTokenReservation?: number; }
 /** The process-wide operator ledger and its dollar cap (OKIE_LLM_GLOBAL_*). */
-export interface OperatorGlobalBudget { maxDollars: number; /** Only when a global request cap is configured. */ maxRequests?: number; ledger: Pick<OperatorBudgetLedger, "snapshot">; }
+export interface OperatorGlobalBudget { /** Only when a global dollar cap is configured. */ maxDollars?: number; /** Only when a global request cap is configured. */ maxRequests?: number; /** Only when a global token cap is configured (OKIE_LLM_GLOBAL_MAX_TOKENS). */ maxTokens?: number; ledger: Pick<OperatorBudgetLedger, "snapshot">; }
 export interface OperatorWorkflowOptions { store: OperatorStore; publications: OperatorPublicationService; enqueue: (job: OperatorWorkflowJob) => void | Promise<void>; globalBudget?: OperatorGlobalBudget; }
 
 /** Safe controller façade: draft data stays here, never under public /scan routes. */
@@ -60,7 +60,7 @@ export class OperatorWorkflow {
       // Live progress of the current pass only: its attempts land on the current draft (until a new one installs)
       // and were created since the run last entered "running" (earlier passes on the same draft are not counted).
       progress: progressOf(attempts.filter(value => value.draftRevisionId === run.draftRevisionId && value.createdAt >= passStartedAt(state.events.filter(event => event.runId === runId)))),
-      ...avgCost(attempts),
+      ...avgCost(attempts), ...avgTokens(attempts),
     };
   }
   draftDetail(draftRevisionId: string) {
@@ -72,7 +72,12 @@ export class OperatorWorkflow {
     const attempts = state.attempts.filter(value => value.draftRevisionId === draftRevisionId);
     // A pass is writing to this draft: settled attempts that are not installed yet read as pending ("running").
     const live = run.draftRevisionId === draftRevisionId && (run.state === "running" || run.state === "queued");
-    const scopes = readArtifactScopes(this.options.store, draft.artifactRevisionId, attempts, { live, metrics: true });
+    // Lineage (CLA-264): a full run's attempts live on its pre-enrichment draft and a retry's on the draft it started from,
+    // while the revision it installs has none. Scopes with no attempt here show the run's latest attempt from an earlier
+    // revision, so its error stays visible; it never changes the scope's state or metrics.
+    const earlier = new Set(state.drafts.filter(value => value.runId === draft.runId && value.revision < draft.revision).map(value => value.draftRevisionId));
+    const lineage = new Map<string, OperatorScopeAttempt>(); for (const attempt of state.attempts) if (earlier.has(attempt.draftRevisionId)) lineage.set(attempt.scopeId, attempt);
+    const scopes = readArtifactScopes(this.options.store, draft.artifactRevisionId, attempts, { live, metrics: true, lineage });
     const current = this.options.publications.currentPublication(draft.repositoryId);
     const artifact = state.artifacts.find(value => value.artifactRevisionId === draft.artifactRevisionId);
     // Coverage is re-derived from the immutable sidecar (+ this draft's attempts) so legacy drafts count "below cap" correctly.
@@ -93,7 +98,9 @@ const sidecarState = (value: unknown): string | undefined => value === "accepted
 export function runBudget(store: OperatorStore, runId: string): OperatorRunBudget {
   const limits = resolveOperatorEnrichmentBudget();
   const snapshot = createOperatorBudgetLedger({ maxRequests: limits.maxScopes, maxTokens: limits.maxTokens, maxDollars: limits.maxDollars }, { store, runId }).snapshot();
-  return { maxDollars: limits.maxDollars, spentDollars: (snapshot.measuredCostUsd ?? 0) + (snapshot.estimatedCostUsd ?? 0), maxRequests: limits.maxScopes, requests: snapshot.requests, remainingRequests: Math.max(0, limits.maxScopes - snapshot.requests), maxTokens: limits.maxTokens, tokens: snapshot.inputTokens + snapshot.outputTokens + snapshot.reservedTokens };
+  const tokens = snapshot.inputTokens + snapshot.outputTokens + snapshot.reservedTokens;
+  const reservations = store.snapshot().events.filter(event => event.runId === runId && event.type === "budget.reserved" && event.detail?.kind !== "judgment" && typeof event.detail?.tokens === "number").map(event => event.detail!.tokens as number);
+  return { maxConcurrent: Math.max(1, Math.floor(resolveLlmRateLimitConfig().maxConcurrent)), ...(reservations.length ? { avgTokenReservation: reservations.reduce((total, value) => total + value, 0) / reservations.length } : {}), maxDollars: limits.maxDollars, spentDollars: (snapshot.measuredCostUsd ?? 0) + (snapshot.estimatedCostUsd ?? 0), maxRequests: limits.maxScopes, requests: snapshot.requests, remainingRequests: Math.max(0, limits.maxScopes - snapshot.requests), maxTokens: limits.maxTokens, tokens, remainingTokens: Math.max(0, limits.maxTokens - tokens) };
 }
 
 /** When the current pass started: the latest run.state → running transition (0 when none is recorded). */
@@ -106,11 +113,11 @@ export function progressOf(attempts: readonly OperatorScopeAttempt[]): { accepte
   return { accepted: attempts.filter(value => value.state === "accepted").length, failed: attempts.filter(value => value.state === "failed").length, inFlight: attempts.filter(value => value.state === "running" || value.state === "queued").length };
 }
 
-/** Global dollars left (settled spend plus reservations still holding dollars), when a global cap is configured. */
-export function globalRemaining(global?: OperatorGlobalBudget): { globalRemainingDollars?: number; globalRemainingRequests?: number } {
+/** Global dollars/requests/tokens left (settled spend plus reservations still holding them), per configured global cap. */
+export function globalRemaining(global?: OperatorGlobalBudget): { globalRemainingDollars?: number; globalRemainingRequests?: number; globalRemainingTokens?: number } {
   if (!global) return {};
   const snapshot = global.ledger.snapshot();
-  return { globalRemainingDollars: Math.max(0, global.maxDollars - (snapshot.measuredCostUsd ?? 0) - (snapshot.estimatedCostUsd ?? 0) - snapshot.reservedCostUsd), ...(global.maxRequests !== undefined ? { globalRemainingRequests: Math.max(0, global.maxRequests - snapshot.requests) } : {}) };
+  return { ...(global.maxDollars !== undefined ? { globalRemainingDollars: Math.max(0, global.maxDollars - (snapshot.measuredCostUsd ?? 0) - (snapshot.estimatedCostUsd ?? 0) - snapshot.reservedCostUsd) } : {}), ...(global.maxRequests !== undefined ? { globalRemainingRequests: Math.max(0, global.maxRequests - snapshot.requests) } : {}), ...(global.maxTokens !== undefined ? { globalRemainingTokens: Math.max(0, global.maxTokens - snapshot.inputTokens - snapshot.outputTokens - snapshot.reservedTokens) } : {}) };
 }
 
 /** Average cost of the run's attempts that reported one (measured, else estimated); absent when none did. */
@@ -119,9 +126,19 @@ export function avgCost(attempts: readonly OperatorScopeAttempt[]): { avgCostPer
   return costs.length ? { avgCostPerScopeUsd: costs.reduce((total, value) => total + value, 0) / costs.length } : {};
 }
 
+/**
+ * Average reported tokens (input + output) per attempt that reported usage, estimated like {@link avgCost} (CLA-264): the
+ * web's fit-to-budget checks the token cap with it. Absent when no attempt reported tokens.
+ */
+export function avgTokens(attempts: readonly OperatorScopeAttempt[]): { avgTokensPerScope?: number } {
+  const totals = attempts.flatMap(attempt => attempt.usage?.inputTokens !== undefined || attempt.usage?.outputTokens !== undefined ? [(attempt.usage.inputTokens ?? 0) + (attempt.usage.outputTokens ?? 0)] : []);
+  return totals.length ? { avgTokensPerScope: totals.reduce((total, value) => total + value, 0) / totals.length } : {};
+}
+
 /** Artifact content is authoritative, so later attempts cannot rewrite a frozen preview. */
 /** `metrics` adds the operator-only per-scope cost/tokens/updated summary (never on public routes). */
-export function readArtifactScopes(store: OperatorStore, artifactRevisionId: string, attempts: OperatorScopeAttempt[] = [], options: { live?: boolean; metrics?: boolean } = {}): OperatorScopeDto[] {
+/** `lineage`: per scope, the run's latest attempt on an earlier revision; listed only when this draft has none for the scope. */
+export function readArtifactScopes(store: OperatorStore, artifactRevisionId: string, attempts: OperatorScopeAttempt[] = [], options: { live?: boolean; metrics?: boolean; lineage?: ReadonlyMap<string, OperatorScopeAttempt> } = {}): OperatorScopeDto[] {
   const bytes = store.readArtifactFile(artifactRevisionId, "operator-explanations.json");
   if (!bytes) return [];
   const sidecar = object(JSON.parse(bytes.toString("utf8")));
@@ -172,7 +189,7 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
       ...(typeof explanation.summary === "string" ? { explanation } : {}),
       ...(typeof row?.explanationVersionId === "string" ? { explanationVersionId: row.explanationVersionId } : {}),
       ...(typeof explanation.diagramError === "string" ? { diagramError: explanation.diagramError } : {}),
-      ...(rows.length ? { attempts: rows } : {}),
+      ...(rows.length ? { attempts: rows } : options.lineage?.has(scope.scopeId) ? { attempts: [{ ...options.lineage.get(scope.scopeId)!, inherited: true as const }] } : {}),
       ...(metrics ? { metrics } : {}),
     }];
   });
