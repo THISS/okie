@@ -99,8 +99,33 @@ describe('Mermaid diagram renderer boundary', () => {
     'flowchart LR\n  linkStyle 0 stroke:red\n',
     '%%{init: {"securityLevel": "loose"}}%%\nflowchart LR\n  a --> b\n',
     'flowchart LR\n  a["javascript:alert(1)"]\n',
+    // CLA-260: shape data fetches resources before DOMPurify; URLs of any kind; directives after `;`.
+    'flowchart LR\n  a@{ img: "https://attacker.example/p.png" }\n',
+    'flowchart LR\n  a@ { shape: rect }\n',
+    'flowchart LR\n  a["see https://attacker.example"] --> b\n',
+    'flowchart LR\n  a["see http://x"] --> b\n',
+    'flowchart LR\n  a["//attacker.example/p.png"] --> b\n',
+    'flowchart LR\n  a["data:image/png;base64,AAAA"] --> b\n',
+    'flowchart LR\n  a["ftp://x"] --> b\n',
+    'flowchart LR\n  a["file:///etc/passwd"] --> b\n',
+    'flowchart LR\n  a --> b; style a fill:red\n',
+    'flowchart LR\n  a --> b;click a call(x)\n',
+    'flowchart LR\n  a --> b ; classDef evil fill:red\n',
+    'flowchart LR\n  a --> b; class a evil\n',
+    'flowchart LR\n  class a evil\n',
+    'flowchart LR\n  a --> b; linkStyle 0 stroke:red\n',
   ])('rejects unsupported active Mermaid source: %s', source => {
     expect(() => assertSafeMermaidSource(source)).toThrow(/unsupported active directive/u);
+  });
+
+  it.each([
+    // Words that merely contain a scheme or keyword, quoted `;`-text, entity-escaped labels and `%%` metadata stay renderable.
+    'flowchart LR\n  a["reads metadata: rows"] --> b["profile: user"]\n',
+    'flowchart LR\n  a["A &#91;style x&#93;"] -->|"x; style y"| b["classic stylesheet"]\n',
+    '%% okie-entity {"semanticEntityId":"https://example.com/x"}\nflowchart TB\n  a["A"] --> b["B"]\n',
+    'flowchart TB\n  a["src/a.ts"] -->|"uses"| b["class Foo"]\n',
+  ])('accepts legitimate source: %s', source => {
+    expect(() => assertSafeMermaidSource(source)).not.toThrow();
   });
 
   it('accepts inert SVG with local marker references', () => {

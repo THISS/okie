@@ -12,7 +12,25 @@ export type OperatorExplanationState = "queued" | "running" | "accepted" | "fail
 export type OperatorChildState = OperatorExplanationState | "not run";
 
 export interface OperatorEvidenceRef { entityId?: string; path?: string; startLine?: number; endLine?: number; }
-export interface OperatorExplanation {
+export interface OperatorExplanationTable { caption?: string; columns: string[]; rows: string[][]; }
+/**
+ * CLA-260 content (prompt `operator-enrichment/v3`): an area owner's short note for a new
+ * teammate. `format` is stamped by the validator, never by the model; markdown-lite text only.
+ */
+export interface OperatorExplanationV3 {
+  format: "v3";
+  summary: string;
+  keyPoints: string[];
+  /** Mermaid source (flowchart LR/TB only), already checked by the server-side safety gate. */
+  diagram?: string;
+  table?: OperatorExplanationTable;
+  evidence: OperatorEvidenceRef[];
+  /** Why an invalid optional diagram and/or table was dropped; the prose is kept. */
+  diagramError?: string;
+}
+/** v1/v2 content already stored in sidecars and publications; loaded and published unchanged. */
+export interface LegacyOperatorExplanation {
+  format?: undefined;
   summary: string;
   roleWithinParent?: string;
   interactions?: string[];
@@ -21,6 +39,7 @@ export interface OperatorExplanation {
   diagram?: { nodes: string[]; edges: Array<{ from: string; to: string; label?: string }> };
   diagramError?: string;
 }
+export type OperatorExplanation = OperatorExplanationV3 | LegacyOperatorExplanation;
 
 export interface OperatorEnrichmentScope {
   scopeId: string;
@@ -146,70 +165,223 @@ function usageCost(usage?: GatewayUsage): number { return usage?.costUsd ?? 0; }
 function isObject(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function isEvidence(value: unknown): value is OperatorEvidenceRef {
   return isObject(value) && (typeof value.entityId === "string" || typeof value.path === "string")
-    && (value.startLine === undefined || typeof value.startLine === "number") && (value.endLine === undefined || typeof value.endLine === "number");
+    && (value.startLine === undefined || value.startLine === null || typeof value.startLine === "number") && (value.endLine === undefined || value.endLine === null || typeof value.endLine === "number");
 }
 function evidenceKey(ref: OperatorEvidenceRef): string { return `${ref.entityId ?? ""}|${ref.path ?? ""}|${ref.startLine ?? ""}|${ref.endLine ?? ""}`; }
 function canonical(value: unknown): string { if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`; if (isObject(value)) return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",")}}`; return JSON.stringify(value); }
 function inputHash(value: unknown): string { return createHash("sha256").update(canonical(value)).digest("hex"); }
 
-const INTERACTION_TEXT_KEYS = ["description", "summary", "text", "note", "detail", "label"] as const;
+/** Contract limits (CLA-260, docs/architecture/operator-enrichment-prompt.md). Over-limit prose rejects; optional extras drop. */
+export const OPERATOR_EXPLANATION_LIMITS = {
+  summaryChars: 600, summaryBullets: 6, keyPointsMin: 2, keyPointsMax: 5, keyPointChars: 220,
+  diagramNodes: 12, diagramLines: 40, diagramChars: 2000,
+  tableCaptionChars: 120, tableColumnsMin: 2, tableColumnsMax: 4, tableColumnChars: 40, tableRowsMin: 1, tableRowsMax: 8, tableCellChars: 160,
+} as const;
+const L = OPERATOR_EXPLANATION_LIMITS;
 /**
- * Live MiMo runs (CLA-254) returned interactions as relation objects such as
- * {from, to, kind, relationId?, direction?, note?} instead of sentences. Those are
- * rendered to plain text from the model's own fields; nothing is invented. null
- * means absent. Anything else that is not a string or a plain object still rejects.
+ * Raw HTML policy for markdown-lite text. The web renders every field as React text nodes, so this
+ * is contract honesty rather than the XSS boundary. A false positive fails a whole paid scope,
+ * so the rule is narrow:
+ * - REJECT anything a browser would treat as active markup: comments; any tag carrying attributes
+ *   (`name=value`, or a bare attribute on a known element such as `<dialog open>`; `/` separates
+ *   attributes as it does in HTML, so `<svg/onload=…>` counts); and dangerous elements even when
+ *   bare or closing (`<ScRiPt>`, `</SCRIPT >`, `<math>`, `<marquee>`, `<noscript>`). Case-insensitive.
+ * - KEEP a bare mention of a benign element (`the <summary> field`, `uses <p> elements`): it is
+ *   wrapped in backticks so it renders as code, instead of failing the scope.
+ * - LEAVE generics and glued text alone (`Vec<Node>`, `Array<a>`, `x<em>y`), and ignore code spans.
  */
-export function normalizeInteractions(value: unknown): string[] | undefined {
-  if (value === undefined || value === null) return undefined;
-  if (!Array.isArray(value)) throw new Error("malformed explanation: interactions");
-  const text = (item: unknown): string => {
-    if (typeof item === "string") return item.trim();
-    if (!isObject(item)) throw new Error("malformed explanation: interactions");
-    const field = (...keys: string[]) => keys.map(key => item[key]).find((candidate): candidate is string => typeof candidate === "string" && candidate.trim() !== "")?.trim();
-    const edge = [field("from", "source"), field("kind", "type", "relation"), field("to", "target", "peerName", "peerId")].filter(Boolean).join(" ");
-    const prose = field(...INTERACTION_TEXT_KEYS);
-    return [edge, prose].filter(Boolean).join(": ");
-  };
-  const items = value.map(text).filter(item => item !== "");
-  return items.length ? items : undefined;
+const HTML_KNOWN = new Set("a abbr address area article aside audio b base bdi bdo blockquote body br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure font footer form frame frameset h1 h2 h3 h4 h5 h6 head header hgroup hr html i iframe img input ins kbd label legend li link main map mark marquee math menu meta meter nav noscript object ol optgroup option output p param picture portal pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup svg table tbody td template textarea tfoot th thead time title tr track u ul var video wbr xmp plaintext applet".split(" "));
+/** Elements that execute, load, restyle or re-parse content even with no attributes; other bare mentions (`<button>`, `<img>`) are just words. */
+const HTML_DANGEROUS = new Set("script style iframe frame frameset object embed applet svg math noscript marquee template base meta portal xmp plaintext".split(" "));
+const TAG = /<!--|<(\/?)([a-z][a-z0-9-]*)((?:[\s/][^<>]*)?)>/gi;
+const HAS_VALUE_ATTRIBUTE = /[\s/][a-z_:][-\w:.]*\s*=/i;
+/** Classifies text outside code spans: "reject", or the text with bare benign element mentions code-wrapped. */
+function screenHtml(text: string): { reject: true } | { reject: false; text: string } {
+  let rejected = false;
+  const out = text.split(/(`[^`\n]*`)/).map((segment, index) => index % 2 === 1 ? segment : segment.replace(TAG, (match: string, _slash: string | undefined, rawName: string | undefined, attributes: string | undefined, offset: number, whole: string) => {
+    if (match === "<!--") { rejected = true; return match; }
+    const name = rawName!.toLowerCase(); const attrs = (attributes ?? "").replace(/\//g, " ").trim();
+    if (HTML_DANGEROUS.has(name) || HAS_VALUE_ATTRIBUTE.test(` ${attributes ?? ""}`) || (HTML_KNOWN.has(name) && attrs !== "")) { rejected = true; return match; }
+    const glued = offset > 0 && /\w/.test(whole[offset - 1]!);
+    return HTML_KNOWN.has(name) && !glued ? `\`${match}\`` : match;
+  })).join("");
+  return rejected ? { reject: true } : { reject: false, text: out };
+}
+/** True when text (outside inline code spans) contains active HTML that the validator rejects. */
+export function containsHtmlTag(text: string): boolean { return screenHtml(text).reject; }
+/** Stricter, for Mermaid (whose labels can render HTML): any known element tag at all. */
+function mentionsHtml(text: string): boolean { return containsHtmlTag(text) || [...text.matchAll(TAG)].some(match => match[0] === "<!--" || HTML_KNOWN.has(match[2]!.toLowerCase())); }
+const collapse = (text: string) => text.replace(/\s+/g, " ").trim();
+
+function validText(raw: string, field: string, maxChars: number): string {
+  const screened = screenHtml(raw);
+  if (screened.reject) throw new Error(`rejected explanation: raw HTML in ${field}`);
+  const value = screened.text;
+  if (value.length > maxChars) throw new Error(`rejected explanation: ${field} is ${value.length} characters (limit ${maxChars})`);
+  return value;
+}
+/** Leading list markers the model sometimes adds are removed (the renderer draws its own bullets); newlines collapse. */
+function keyPointText(item: unknown): string {
+  if (typeof item !== "string") throw new Error("malformed explanation: keyPoints must be strings");
+  return collapse(item).replace(/^(?:[-*•]|\d+[.)])\s+/, "");
 }
 
-/** Strictly accepts explanation-shaped output; it cannot alter scanner facts. */
-export function validateOperatorExplanation(value: unknown, allowedEvidence: readonly OperatorEvidenceRef[]): OperatorExplanation {
-  if (!isObject(value) || typeof value.summary !== "string" || !value.summary.trim()) throw new Error("malformed explanation: summary is required");
-  if (!Array.isArray(value.evidence) || !value.evidence.every(isEvidence)) throw new Error("malformed explanation: evidence is required");
-  const allowed = new Set(allowedEvidence.map(evidenceKey));
-  // Canonical fields only: models decorate refs with note/quote/confidence, which must not be stored as evidence.
-  const evidence = (value.evidence as OperatorEvidenceRef[]).map(ref => ({ ...(ref.entityId !== undefined ? { entityId: ref.entityId } : {}), ...(ref.path !== undefined ? { path: ref.path } : {}), ...(ref.startLine !== undefined ? { startLine: ref.startLine } : {}), ...(ref.endLine !== undefined ? { endLine: ref.endLine } : {}) }));
-  if (evidence.some(ref => !allowed.has(evidenceKey(ref)))) throw new Error("rejected explanation: unknown evidence reference");
-  if (value.roleWithinParent !== undefined && value.roleWithinParent !== null && typeof value.roleWithinParent !== "string") throw new Error("malformed explanation: roleWithinParent");
-  const interactions = normalizeInteractions(value.interactions);
-  let diagram: OperatorExplanation["diagram"]; let diagramError: string | undefined;
-  if (value.diagram !== undefined && value.diagram !== null) {
-    const entityIds = new Set(allowedEvidence.map(ref => ref.entityId).filter((id): id is string => id !== undefined));
-    const candidate = value.diagram;
-    if (!isObject(candidate) || !Array.isArray(candidate.nodes) || !candidate.nodes.every(id => typeof id === "string" && entityIds.has(id)) || !Array.isArray(candidate.edges) || !candidate.edges.every(edge => isObject(edge) && typeof edge.from === "string" && typeof edge.to === "string" && entityIds.has(edge.from) && entityIds.has(edge.to) && (edge.label === undefined || typeof edge.label === "string"))) diagramError = "rejected diagram: unknown or malformed entity reference";
-    else diagram = { nodes: candidate.nodes as string[], edges: candidate.edges as Array<{ from: string; to: string; label?: string }> };
+const ENTITY_ID_LIKE = /\b(?:system|container|component|code|external|softwareSystem|externalSystem|relation):[\w./-]+/;
+/** Statements are split on newlines and `;`, so `a-->b; style a …` is caught like a line-start `style`. */
+const MERMAID_FORBIDDEN: Array<[RegExp, string]> = [
+  [/%%/, "comments or %%{ directives"], [/@\{/, "shape data (@{ … })"],
+  [/(?:^|;)\s*click\b/im, "click"], [/(?:^|;)\s*style\b/im, "style"], [/(?:^|;)\s*classDef\b/im, "classDef"], [/(?:^|;)\s*class\b/im, "class"], [/:::/, "class shorthand"], [/(?:^|;)\s*linkStyle\b/im, "linkStyle"],
+  [/javascript\s*:/i, "javascript: URL"], [/\b(?:https?|ftp|file|data)\s*:|\/\//i, "a URL"],
+];
+/**
+ * Server-side Mermaid gate: flowchart LR/TB only (TD, its synonym, becomes TB; one ```mermaid fence
+ * is unwrapped), no directives/interaction/styling/URLs/HTML, human-readable labels and bounded size.
+ * Returns the cleaned source or the reason it was dropped.
+ */
+export function checkMermaidDiagram(value: unknown, entityIds: ReadonlySet<string> = new Set()): { diagram: string } | { error: string } {
+  if (typeof value !== "string") return { error: "rejected diagram: not Mermaid source text" };
+  let source = value.replace(/\r\n?/g, "\n").trim();
+  const fenced = /^```(?:mermaid)?\s*\n([\s\S]*?)\n```$/.exec(source); if (fenced) source = fenced[1]!.trim();
+  const lines = source.split("\n").map(line => line.replace(/\s+$/, "")).filter(line => line.trim() !== "");
+  const header = /^flowchart\s+(LR|TB|TD)\s*;?$/.exec(lines[0]?.trim() ?? "");
+  if (!header) return { error: "rejected diagram: must start with flowchart LR or flowchart TB" };
+  lines[0] = `flowchart ${header[1] === "LR" ? "LR" : "TB"}`; source = lines.join("\n");
+  if (source.length > L.diagramChars) return { error: `rejected diagram: ${source.length} characters (limit ${L.diagramChars})` };
+  if (lines.length > L.diagramLines) return { error: `rejected diagram: ${lines.length} lines (limit ${L.diagramLines})` };
+  for (const [pattern, name] of MERMAID_FORBIDDEN) if (pattern.test(source)) return { error: `rejected diagram: ${name} is not allowed` };
+  if (lines.slice(1).some(line => /(?:^|;)\s*(?:flowchart|graph)\b/i.test(line))) return { error: "rejected diagram: only one flowchart header is allowed" };
+  if (mentionsHtml(source)) return { error: "rejected diagram: raw HTML is not allowed" };
+  if (ENTITY_ID_LIKE.test(source) || [...entityIds].some(id => source.includes(id))) return { error: "rejected diagram: labels must be human-readable, not entity ids" };
+  const nodes = new Set<string>();
+  for (const line of lines.slice(1)) {
+    const statement = line.trim();
+    if (/^(?:subgraph|end|direction)\b/.test(statement)) continue;
+    // Labels, edge texts and shapes go first; what is left between edge operators are node ids.
+    const bare = statement.replace(/"[^"]*"/g, "").replace(/\|[^|]*\|/g, " ").replace(/\[[^\]]*\]|\([^)]*\)|\{[^}]*\}/g, " ").replace(/--[^->]*?-->/g, " ").replace(/<?[-=.]{2,}>?/g, " ").replace(/[&;]/g, " ");
+    for (const match of bare.matchAll(/[A-Za-z_][\w-]*/g)) nodes.add(match[0]);
   }
-  return { summary: value.summary.trim(), evidence, ...(typeof value.roleWithinParent === "string" && value.roleWithinParent.trim() ? { roleWithinParent: value.roleWithinParent.trim() } : {}), ...(interactions ? { interactions } : {}), ...(diagram ? { diagram } : {}), ...(diagramError ? { diagramError } : {}) };
+  if (nodes.size > L.diagramNodes) return { error: `rejected diagram: ${nodes.size} nodes (limit ${L.diagramNodes})` };
+  return { diagram: source };
+}
+
+/** Optional small table: dropped (with a reason) rather than failing the scope. */
+export function checkExplanationTable(value: unknown): { table: OperatorExplanationTable } | { error: string } {
+  const fail = (why: string) => ({ error: `rejected table: ${why}` });
+  if (!isObject(value) || !Array.isArray(value.columns) || !Array.isArray(value.rows)) return fail("needs columns and rows");
+  const caption = value.caption === undefined || value.caption === null ? undefined : typeof value.caption === "string" ? collapse(value.caption) : null;
+  if (caption === null) return fail("caption must be text");
+  if (caption && caption.length > L.tableCaptionChars) return fail(`caption over ${L.tableCaptionChars} characters`);
+  const columns = value.columns.map(cell => typeof cell === "string" ? collapse(cell) : null);
+  if (columns.length < L.tableColumnsMin || columns.length > L.tableColumnsMax) return fail(`${columns.length} columns (allowed ${L.tableColumnsMin}-${L.tableColumnsMax})`);
+  if (columns.some(cell => cell === null || !cell || cell.length > L.tableColumnChars)) return fail(`column headings must be non-empty text of at most ${L.tableColumnChars} characters`);
+  if (value.rows.length < L.tableRowsMin || value.rows.length > L.tableRowsMax) return fail(`${value.rows.length} rows (allowed ${L.tableRowsMin}-${L.tableRowsMax})`);
+  const rows: string[][] = [];
+  for (const row of value.rows) {
+    if (!Array.isArray(row) || row.length !== columns.length) return fail("every row needs one cell per column");
+    const cells = row.map(cell => typeof cell === "string" ? collapse(cell) : typeof cell === "number" ? String(cell) : null);
+    if (cells.some(cell => cell === null || cell.length > L.tableCellChars)) return fail(`cells must be text of at most ${L.tableCellChars} characters`);
+    rows.push(cells as string[]);
+  }
+  if ([caption ?? "", ...(columns as string[]), ...rows.flat()].some(containsHtmlTag)) return fail("raw HTML is not allowed");
+  const clean = (text: string) => (screenHtml(text) as { text: string }).text;
+  return { table: { ...(caption ? { caption: clean(caption) } : {}), columns: (columns as string[]).map(clean), rows: rows.map(row => row.map(clean)) } };
+}
+
+/**
+ * Strictly accepts v3 explanation-shaped output; it cannot alter scanner facts. Required prose
+ * (summary, keyPoints) over the contract limits or containing raw HTML rejects the attempt, so
+ * it is reported as a failed scope and can be retried. An invalid optional diagram or table is
+ * dropped with a `diagramError` note instead. Evidence must be copied from `allowedEvidence`.
+ * `null` optionals are absent (a live MiMo habit); v2-only fields (interactions, roleWithinParent)
+ * are ignored, never stored.
+ */
+export function validateOperatorExplanation(value: unknown, allowedEvidence: readonly OperatorEvidenceRef[]): OperatorExplanationV3 {
+  if (!isObject(value) || typeof value.summary !== "string" || !value.summary.trim()) throw new Error("malformed explanation: summary is required");
+  const summary = validText(value.summary.replace(/\r\n?/g, "\n").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim(), "summary", L.summaryChars);
+  if (summary.split("\n").filter(line => /^\s*[-*]\s+/.test(line)).length > L.summaryBullets) throw new Error(`rejected explanation: summary has more than ${L.summaryBullets} bullets`);
+  if (!Array.isArray(value.keyPoints)) throw new Error("malformed explanation: keyPoints is required");
+  const keyPoints = value.keyPoints.map(keyPointText).filter(item => item !== "").map((item, index) => validText(item, `keyPoints[${index}]`, L.keyPointChars));
+  if (keyPoints.length < L.keyPointsMin || keyPoints.length > L.keyPointsMax) throw new Error(`rejected explanation: ${keyPoints.length} keyPoints (allowed ${L.keyPointsMin}-${L.keyPointsMax})`);
+  if (!Array.isArray(value.evidence) || !value.evidence.length || !value.evidence.every(isEvidence)) throw new Error("malformed explanation: evidence is required");
+  const allowed = new Set(allowedEvidence.map(evidenceKey));
+  // Canonical fields only: models decorate refs with note/quote/confidence, which must not be stored as evidence; null line numbers (a MiMo habit) are absent.
+  const evidence = (value.evidence as OperatorEvidenceRef[]).map(ref => ({ ...(ref.entityId !== undefined ? { entityId: ref.entityId } : {}), ...(ref.path !== undefined ? { path: ref.path } : {}), ...(typeof ref.startLine === "number" ? { startLine: ref.startLine } : {}), ...(typeof ref.endLine === "number" ? { endLine: ref.endLine } : {}) }));
+  if (evidence.some(ref => !allowed.has(evidenceKey(ref)))) throw new Error("rejected explanation: unknown evidence reference");
+  const dropped: string[] = []; let diagram: string | undefined; let table: OperatorExplanationTable | undefined;
+  if (value.diagram !== undefined && value.diagram !== null && value.diagram !== "") {
+    const checked = checkMermaidDiagram(value.diagram, new Set(allowedEvidence.map(ref => ref.entityId).filter((id): id is string => id !== undefined)));
+    if ("diagram" in checked) diagram = checked.diagram; else dropped.push(checked.error);
+  }
+  if (value.table !== undefined && value.table !== null) {
+    const checked = checkExplanationTable(value.table);
+    if ("table" in checked) table = checked.table; else dropped.push(checked.error);
+  }
+  return { format: "v3", summary, keyPoints, ...(diagram ? { diagram } : {}), ...(table ? { table } : {}), evidence, ...(dropped.length ? { diagramError: dropped.join("; ") } : {}) };
+}
+
+/**
+ * A sidecar explanation row as judgments and section profiles embed it (both within the inherited
+ * 24 KB judgment body limit). A v3 row leaves out its optional diagram and table: they can add
+ * ~9 KB at the contract caps, and a judgment needs the claims (summary, key points, evidence),
+ * not presentation. Legacy rows pass unchanged, so their cached judgment input hashes stay valid.
+ */
+export function explanationRowForJudgment(row: unknown): unknown {
+  if (!isObject(row) || !isObject(row.content) || row.content.format !== "v3") return row;
+  const { diagram: _diagram, table: _table, ...content } = row.content;
+  return { ...row, content };
 }
 
 function completionText(result: LlmChatCompletionResult): unknown { return parseChatCompletionDocument(result.json); }
-const PROMPT_VERSION = "operator-enrichment/v2";
-/** Output schema spelled out verbatim: live probes showed object-shaped interactions, null roles and invented refs without it. */
-export const OPERATOR_OUTPUT_SCHEMA_PROMPT = "Use only supplied deterministic facts and evidence. Return one JSON object only, exactly this shape: {\"summary\": string (2-4 sentences, specific to this code), \"roleWithinParent\": string (optional; omit rather than null), \"interactions\": string[] (optional; each a short plain-text sentence, not an object), \"evidence\": [{\"entityId\": string, \"path\": string, \"startLine\"?: number, \"endLine\"?: number}] (copy entries verbatim from allowedEvidence; no other fields; at least one), \"diagram\": {\"nodes\": string[], \"edges\": [{\"from\": string, \"to\": string, \"label\"?: string}]} (optional; node ids must be entityIds from allowedEvidence)}.";
-const PARENT_PROMPT = " This scope has child explanations: synthesise how the children fit together to serve this scope rather than restating each child.";
+export const OPERATOR_PROMPT_VERSION = "operator-enrichment/v3";
+const PROMPT_VERSION = OPERATOR_PROMPT_VERSION;
+/**
+ * v3 voice (CLA-260): the owner of this area briefing a new teammate. The output shape and the
+ * limits are spelled out verbatim (live probes showed invented shapes and refs without it). Lengths
+ * are asked for in words and well under the validator's character limits: in the CLA-260 variant
+ * experiment MiMo overshot character-only limits in 5 of 15 replies. The worked example is about an
+ * unrelated service so its facts cannot leak into a real explanation.
+ */
+export const OPERATOR_OUTPUT_SCHEMA_PROMPT = [
+  "You own this part of the codebase. A new teammate is about to open it for the first time: write the short note you would give them. Plain, short sentences. Say what it is and why it matters first. No filler, no marketing, no hedging.",
+  "Use only the supplied deterministic facts and evidence; do not guess beyond them. Never mention enrichment or documentation status, failures or coverage; describe the code only. Never list or restate dependencies, dependents, imports or relationships (the atlas already draws those edges). Name specific files, symbols and behaviours instead of generic descriptions.",
+  "Return one JSON object only, exactly this shape (omit an optional field rather than returning null):",
+  "{\"summary\": string (2-3 short sentences, at most 60 words: what it is and why it matters),",
+  " \"keyPoints\": string[] (2-4 items, each ONE idea in at most 20 words; each points at something worth looking into: a file or symbol to open first, a gotcha, or a design decision and why; never a dependency list),",
+  " \"evidence\": [{\"entityId\": string, \"path\": string, \"startLine\"?: number, \"endLine\"?: number}] (copy entries verbatim from allowedEvidence; no other fields; at least one),",
+  " \"diagram\"?: string (Mermaid source, only when a picture explains a flow better than words; most scopes omit it),",
+  " \"table\"?: {\"caption\"?: string, \"columns\": string[] (2-4 short headings), \"rows\": string[][] (1-8 rows, one cell per column)} (only when a side-by-side comparison genuinely helps; usually omit)}",
+  "Text uses inline markdown only: **bold** for one or two key terms, `code` for paths and symbols, *italics* sparingly. No headings, links, images, HTML or code blocks.",
+  "Diagram rules: first line `flowchart LR` or `flowchart TB`; at most 10 nodes; short human-readable labels in quotes, e.g. scan[\"Repository scan\"] --> model[\"C4 model\"]; never raw entity ids such as component:foo; no style, classDef, class, linkStyle, click or %% lines.",
+  "Example of the tone wanted (about an unrelated billing service, not this scope):",
+  "{\"summary\": \"**Webhook intake** turns Stripe events into ledger entries. It is the only place money state changes, so it is small and very defensive.\", \"keyPoints\": [\"Start with `handleEvent()` in `webhooks/stripe.ts`; every event type fans out from its switch.\", \"Gotcha: events can arrive twice. `seen_events` makes replays a no-op, so never bypass it.\", \"Amounts stay in integer cents end to end; formatting happens only in the UI.\"], \"evidence\": [...]}",
+].join("\n");
+const PARENT_PROMPT = "\nThis scope has children; children[] carries each child's name, kind, summary (and keyPoints when present); refer to children by name, never by scopeId. Explain how the pieces fit together: what this scope does as a whole, which child to read first, and where the interesting seams and hand-offs are. Do not walk through the children one by one.";
+/** System message for one scope: the v3 schema prompt, plus the synthesis instruction for a parent. */
+export function operatorSystemPrompt(isParent: boolean): string { return OPERATOR_OUTPUT_SCHEMA_PROMPT + (isParent ? PARENT_PROMPT : ""); }
 /** JSON-character budget for a component's below-cap symbol digest. */
 export const SYMBOL_DIGEST_BUDGET = 6000;
 /** Per-line cap on digest heads, so one minified line cannot consume the budget. */
 export const DIGEST_LINE_CHARS = 160;
-/** Parents cannot cite child evidence or reuse child diagrams, so only the prose travels up (live probe: evidence+diagram were ~61% of a 354KB container prompt). */
-export function childPromptInput(child: { scopeId: string; explanation?: OperatorExplanation; state: OperatorChildState }): Record<string, unknown> {
+/** One child as its parent sees it: the human name and C4 kind let the parent name it the way the code does, not by scope id. */
+export interface OperatorChildInput { scopeId: string; name?: string; kind?: OperatorEnrichmentScope["kind"]; explanation?: OperatorExplanation; state: OperatorChildState; }
+/**
+ * Parents cannot cite child evidence or reuse child diagrams/tables, so only the prose travels up
+ * (live probe: evidence+diagram were ~61% of a 354KB container prompt). v3 children carry
+ * name, kind, summary + keyPoints; a legacy (v1/v2) child carries its summary only.
+ * Enrichment state never reaches the prompt: a child without an explanation (failed, not run) is
+ * left out and no `state` is sent, because a parent that reads "failed" writes it into its prose
+ * and that line goes stale on the next retry (CLA-260 live run). The input hash still covers every
+ * child with its state, so stale and re-reduce behaviour is unchanged.
+ */
+export function childPromptInput(child: OperatorChildInput): Record<string, unknown> | undefined {
   const explanation = child.explanation;
-  return { scopeId: child.scopeId, state: child.state, ...(explanation ? { summary: explanation.summary, ...(explanation.roleWithinParent ? { roleWithinParent: explanation.roleWithinParent } : {}), ...(explanation.interactions?.length ? { interactions: explanation.interactions } : {}) } : {}) };
+  if (!explanation) return undefined;
+  return { scopeId: child.scopeId, ...(child.name ? { name: child.name } : {}), ...(child.kind ? { kind: child.kind } : {}), summary: explanation.summary, ...(explanation.format === "v3" ? { keyPoints: explanation.keyPoints } : {}) };
 }
-function bodyFor(model: string, scope: OperatorEnrichmentScope, children: readonly { scopeId: string; explanation?: OperatorExplanation; state: OperatorChildState }[], reasoningOff = false): Record<string, unknown> {
-  return { model, max_tokens: MAX_OUTPUT_TOKENS, ...(reasoningOff ? { reasoning: { enabled: false } } : {}), messages: [{ role: "system", content: OPERATOR_OUTPUT_SCHEMA_PROMPT + (children.length ? PARENT_PROMPT : "") }, { role: "user", content: scrubGithubTokens(JSON.stringify({ promptVersion: PROMPT_VERSION, scope: { scopeId: scope.scopeId, name: scope.name, kind: scope.kind, facts: scope.facts, allowedEvidence: scope.allowedEvidence }, children: children.map(childPromptInput) })) }], response_format: { type: "json_object" } };
+/** The exact chat-completions body the operator sends for one scope (exported for prompt experiments and tests). */
+export function operatorRequestBody(model: string, scope: OperatorEnrichmentScope, children: readonly OperatorChildInput[], reasoningOff = false): Record<string, unknown> {
+  const promptChildren = children.map(childPromptInput).filter((child): child is Record<string, unknown> => child !== undefined);
+  return { model, max_tokens: MAX_OUTPUT_TOKENS, ...(reasoningOff ? { reasoning: { enabled: false } } : {}), messages: [{ role: "system", content: operatorSystemPrompt(promptChildren.length > 0) }, { role: "user", content: scrubGithubTokens(JSON.stringify({ promptVersion: PROMPT_VERSION, scope: { scopeId: scope.scopeId, name: scope.name, kind: scope.kind, facts: scope.facts, allowedEvidence: scope.allowedEvidence }, children: promptChildren })) }], response_format: { type: "json_object" } };
 }
 function firstExcerpt(facts: unknown): { sourceStartLine?: unknown; sourceEndLine?: unknown; startLine?: unknown; endLine?: unknown; text?: unknown; lines?: unknown } | undefined {
   const excerpts = isObject(facts) ? facts.sourceExcerpts : undefined;
@@ -305,12 +477,12 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
     const belowCap = (children.get(definition.scopeId) ?? []).map(scopeId => byId.get(scopeId)!).filter(child => !inCap(child));
     const digest = belowCap.length ? symbolDigest(belowCap) : undefined;
     const scope: OperatorEnrichmentScope = digest ? { ...definition, facts: { ...(isObject(definition.facts) ? definition.facts : { observed: definition.facts }), symbols: digest.symbols, symbolCount: digest.symbolCount }, allowedEvidence: [...definition.allowedEvidence, ...digest.evidence] } : definition;
-    const childInputs = (await Promise.all((children.get(scope.scopeId) ?? []).map(async scopeId => { const latest = await options.store.latestAttempt(scopeId); const explanation = await options.store.getAcceptedExplanation(scopeId); if (!latest && !explanation && !inCap(byId.get(scopeId)!)) return undefined; const state: OperatorChildState = latest?.state ?? (explanation ? "accepted" : "not run"); return { scopeId, state, ...(explanation ? { explanation } : {}) }; }))).filter((input): input is NonNullable<typeof input> => input !== undefined);
+    const childInputs = (await Promise.all((children.get(scope.scopeId) ?? []).map(async scopeId => { const latest = await options.store.latestAttempt(scopeId); const explanation = await options.store.getAcceptedExplanation(scopeId); if (!latest && !explanation && !inCap(byId.get(scopeId)!)) return undefined; const state: OperatorChildState = latest?.state ?? (explanation ? "accepted" : "not run"); const child = byId.get(scopeId)!; return { scopeId, name: child.name, kind: child.kind, state, ...(explanation ? { explanation } : {}) }; }))).filter((input): input is NonNullable<typeof input> => input !== undefined);
     // Incomplete-parent policy also holds for a re-reduce: a parent with a not-run child is not re-run.
     if (reReduceOnly && childInputs.some(input => input.state === "not run")) { skippedScopes.push(definition.scopeId); return "skipped"; }
     const reasoning = options.leafReasoning === "off" && childInputs.length === 0 ? "off" : "provider-default";
-    const hash = inputHash({ promptVersion: PROMPT_VERSION, modelId, reasoning, facts: scope.facts, allowedEvidence: scope.allowedEvidence, children: childInputs.map(input => ({ scopeId: input.scopeId, state: input.state, explanation: input.explanation })) });
-    const body = bodyFor(modelId, scope, childInputs, reasoning === "off");
+    const hash = inputHash({ promptVersion: PROMPT_VERSION, modelId, reasoning, facts: scope.facts, allowedEvidence: scope.allowedEvidence, children: childInputs.map(input => ({ scopeId: input.scopeId, name: input.name, kind: input.kind, state: input.state, explanation: input.explanation })) });
+    const body = operatorRequestBody(modelId, scope, childInputs, reasoning === "off");
     // Admission before the attempt row: the run-level check and increment are synchronous so concurrent scopes cannot over-admit.
     // Admission errors propagate (the runner records a run error); only an explicit refusal is a limit stop.
     const admit = async (): Promise<OperatorAdmission | boolean> => {

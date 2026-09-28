@@ -16,7 +16,7 @@ const questions = { relation: choice("Does the supplied evidence support the cla
 const answer = { type: "choice", choice: "contradicts", probabilities: { supports: 0.15, contradicts: 0.8, unknown: 0.05 }, confidence: 0.62 };
 const json = { model: JEV_MODEL, answers: { relation: answer } };
 const provider: JudgmentProvider = { modelId: JEV_MODEL, async evaluate() { return { json, usage: { inputTokens: 17, outputTokens: 9 } }; } };
-function setup(t: { after(fn: () => void): void }) {
+function setup(t: { after(fn: () => void): void }, sidecar = JSON.stringify({ scopes: [{ scopeId: "component:a", name: "A" }], explanations: [] })) {
   const root = mkdtempSync(join(tmpdir(), "okie-judgments-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const store = new OperatorStore(root);
@@ -25,7 +25,7 @@ function setup(t: { after(fn: () => void): void }) {
   const artifact = store.writeArtifactRevision({ repositoryId: run.source.repositoryId, sourceCommitSha: "pinned-source", files: {
     "atlas.okie.json": "unchanged atlas bytes",
     "snapshot.json": JSON.stringify({ entities: [{ id: "component:a", name: "A", sourceExcerpts: [{ path: "a.ts", lines: ["return null;"] }] }], relations: [] }),
-    "operator-explanations.json": JSON.stringify({ scopes: [{ scopeId: "component:a", name: "A" }], explanations: [] }),
+    "operator-explanations.json": sidecar,
   } });
   const draft = publication.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
   store.updateRun(run.runId, { state: "awaiting_review" });
@@ -318,4 +318,25 @@ test("unknown scopes and corrupted cached data become durable failures without e
   assert.deepEqual(await runOperatorJudgments({ ...ctx, provider, request: { ...ctx.request, draftRevisionId: draft.draftRevisionId } }), { state: "failed" });
   assert.equal(ctx.store.snapshot().attempts.at(-1)!.error, "judgment invalid data");
   assert.ok(!JSON.stringify(ctx.store.snapshot()).includes("private-corrupt-payload"));
+});
+
+test("a v3 explanation's diagram and table stay out of the judgment body, so a max-size row cannot push it past 24 KB; legacy rows are unchanged", async t => {
+  const content = { format: "v3", summary: "A returns null.", keyPoints: ["Start at `a.ts`.", "Gotcha: null, not a number."], evidence: [{ entityId: "component:a", path: "a.ts" }],
+    diagram: ["flowchart LR", ...Array.from({ length: 38 }, (_, index) => `  n${index % 12} --> n${(index + 1) % 12}["${"label ".repeat(7)}"]`)].join("\n").slice(0, 2000),
+    table: { caption: "c".repeat(120), columns: ["a".repeat(40), "b".repeat(40), "c".repeat(40), "d".repeat(40)], rows: Array.from({ length: 8 }, () => Array.from({ length: 4 }, () => "x".repeat(160))) } };
+  const sidecar = JSON.stringify({ scopes: [{ scopeId: "component:a", name: "A" }], explanations: [{ scopeId: "component:a", explanationVersionId: "e1", content }] });
+  const ctx = setup(t, sidecar); const seen: string[] = [];
+  const capture: JudgmentProvider = { modelId: JEV_MODEL, async evaluate(request) { seen.push(JSON.stringify(request)); return { json, usage: { inputTokens: 1, outputTokens: 1 } }; } };
+  const claim = "y".repeat(17_000);
+  assert.ok(Buffer.byteLength(JSON.stringify({ content, claim })) > 24_000, "with diagram and table the body would exceed the limit");
+  const result = await runOperatorJudgments({ store: ctx.store, publication: ctx.publication, provider: capture, request: { ...ctx.request, inputs: { claim } } });
+  assert.equal(result.state, "accepted");
+  const body = JSON.parse(seen[0]!) as { state: { evidence: { explanation: { content: Record<string, unknown>; explanationVersionId: string } } } };
+  assert.deepEqual(Object.keys(body.state.evidence.explanation.content).sort(), ["evidence", "format", "keyPoints", "summary"]);
+  assert.equal(body.state.evidence.explanation.explanationVersionId, "e1");
+
+  const legacy = { summary: "old", interactions: ["x"], evidence: [{ entityId: "component:a" }], diagram: { nodes: ["component:a"], edges: [] } };
+  const legacyCtx = setup(t, JSON.stringify({ scopes: [{ scopeId: "component:a", name: "A" }], explanations: [{ scopeId: "component:a", content: legacy }] })); seen.length = 0;
+  await runOperatorJudgments({ store: legacyCtx.store, publication: legacyCtx.publication, provider: capture, request: legacyCtx.request });
+  assert.deepEqual((JSON.parse(seen[0]!) as { state: { evidence: { explanation: { content: unknown } } } }).state.evidence.explanation.content, legacy, "legacy rows pass unchanged (cached judgment hashes stay valid)");
 });

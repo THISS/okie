@@ -32,13 +32,17 @@ still depends on provider latency. A component whose code children are below the
 depth cap gets a bounded, deterministic digest of those symbols (name, export,
 line range, first lines; about 6,000 characters, plus the total symbol count), and
 the included symbols' source refs become allowed evidence for it. Prompts use
-`operator-enrichment/v2`, which spells out the exact JSON output shape.
-A parent receives only its children's prose (state, summary, role, interactions),
-not their evidence or diagrams, which it could not cite anyway.
-Validation stays strict about grounding (a missing evidence list or a ref outside
-`allowedEvidence` rejects the explanation) but tolerates two observed model habits:
-`interactions` returned as relation objects are rendered to text from the object's
-own fields, and `null` optional fields are treated as absent. Stored evidence
+`operator-enrichment/v3` (CLA-260): an area owner's short note for a new teammate,
+with a summary, 2-5 key points, evidence, and an optional Mermaid diagram or small
+table. See [operator-enrichment-prompt.md](../../architecture/operator-enrichment-prompt.md).
+A parent receives only its explained children's name, kind and prose: summary and key
+points (a legacy v1/v2 child sends its summary only). Enrichment state and unexplained
+(failed or not run) children are left out of the prompt, but stay in its input hash. It never receives their evidence,
+diagrams or tables, which it could not cite anyway.
+Validation stays strict about grounding: a missing evidence list or a ref outside
+`allowedEvidence` rejects the explanation. Over-limit or HTML-bearing summaries and
+key points also reject. An invalid optional diagram or table is dropped with a
+`diagramError` note, `null` optional fields count as absent, and stored evidence
 keeps only `entityId`/`path`/`startLine`/`endLine`.
 
 Incomplete-parent policy is **not run**. A child that failed still counts as

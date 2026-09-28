@@ -4,6 +4,7 @@ import { sourceExcerptMatchesRef, type SourceExcerpt, type ArchitectureSnapshot 
 import { runOperatorJudgments, validateJudgmentAnswers, type JudgmentLimits, type JudgmentProvider } from "./operatorJudgments.js";
 import { canonicalOperatorRepositoryId, type OperatorStore } from "./operatorStore.js";
 import type { OperatorPublicationService } from "./operatorPublication.js";
+import { explanationRowForJudgment } from "./operatorEnrichment.js";
 
 export const SECTION_PROFILE_VERSION = "section-capabilities/v2";
 const FILE = "section-profiles.json";
@@ -198,7 +199,7 @@ export async function runSectionProfile(options: { store: OperatorStore; publica
   const findScope = (value: unknown) => Array.isArray(value) ? value.find(row => object(row) && row.scopeId === options.scopeId) ?? null : null;
   // Conservative pre-redaction sizing of the unchanged foundation body. This is
   // not a cap override or batch-specific bypass; the foundation still enforces it.
-  const evidence = { sourceCommitSha: artifact.sourceCommitSha ?? null, entity: snapshot.entities.find(row => row.id === options.scopeId), scope: findScope(explanations.scopes), explanation: findScope(explanations.explanations), relations: snapshot.relations.filter(row => row.from === options.scopeId || row.to === options.scopeId) };
+  const evidence = { sourceCommitSha: artifact.sourceCommitSha ?? null, entity: snapshot.entities.find(row => row.id === options.scopeId), scope: findScope(explanations.scopes), explanation: explanationRowForJudgment(findScope(explanations.explanations)), relations: snapshot.relations.filter(row => row.from === options.scopeId || row.to === options.scopeId) };
   const requestBytes = Buffer.byteLength(JSON.stringify({ state: { evidence, inputs }, questions }));
   const maxRequestBytes = 24_000;
   if (requestBytes > maxRequestBytes) return { state: "oversized" as const, requestBytes, maxRequestBytes, observed: { ...section, coverage: { ...section.coverage, limitations: [...section.coverage.limitations, "Full judgment body exceeds the inherited 24KB limit; no provider request made."] } } };

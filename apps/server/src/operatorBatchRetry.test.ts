@@ -31,7 +31,7 @@ class MemoryStore implements OperatorEnrichmentStore {
 }
 const scope = (scopeId: string, kind: OperatorEnrichmentScope["kind"], parentScopeId?: string): OperatorEnrichmentScope => ({ scopeId, ...(parentScopeId ? { parentScopeId } : {}), name: scopeId, kind, facts: {}, allowedEvidence: [{ entityId: scopeId }] });
 const promptScope = (body: Record<string, unknown>) => (JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string } }).scope.scopeId;
-const reply = (scopeId: string) => ({ json: { choices: [{ message: { content: JSON.stringify({ summary: `${scopeId} new`, evidence: [{ entityId: scopeId }] }) } }] }, usage: { totalTokens: 3, costUsd: 0.01 } });
+const reply = (scopeId: string) => ({ json: { choices: [{ message: { content: JSON.stringify({ keyPoints: ["Start at the entry point.", "Watch the cache."], summary: `${scopeId} new`, evidence: [{ entityId: scopeId }] }) } }] }, usage: { totalTokens: 3, costUsd: 0.01 } });
 const malformed = { json: { choices: [{ message: { content: "not json" } }] }, usage: { totalTokens: 1 } };
 /** system → area-a → {a1, a2}; system → area-b → {b1}; every scope starts with an accepted explanation. */
 const tree = [scope("system", "softwareSystem"), scope("area-a", "container", "system"), scope("area-b", "container", "system"), scope("a1", "component", "area-a"), scope("a2", "component", "area-a"), scope("b1", "component", "area-b")];
@@ -138,7 +138,7 @@ function fixture(root: string, scopes: SidecarScope[], options: { explained?: st
 const summaryGateway = (calls: string[], fail: ReadonlySet<string> = new Set(), cost = 0.002): OperatorEnrichmentGateway => ({ modelId: "fake/model", async chatCompletions(body) {
   const message = JSON.parse(String((body.messages as Array<{ content: string }>)[1]!.content)) as { scope: { scopeId: string; allowedEvidence: unknown[] } };
   calls.push(message.scope.scopeId);
-  return { json: { choices: [{ message: { content: fail.has(message.scope.scopeId) ? "{}" : JSON.stringify({ summary: `new ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence.slice(0, 1) }) } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5, costUsd: cost } };
+  return { json: { choices: [{ message: { content: fail.has(message.scope.scopeId) ? "{}" : JSON.stringify({ keyPoints: ["Start at the entry point.", "Watch the cache."], summary: `new ${message.scope.scopeId}`, evidence: message.scope.allowedEvidence.slice(0, 1) }) } }] }, usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5, costUsd: cost } };
 } });
 const envKeys = ["OKIE_LLM_OPERATOR_MAX_REQUESTS", "OKIE_LLM_OPERATOR_MAX_DOLLARS", "OKIE_LLM_MAX_CONCURRENT", "OKIE_LLM_ENRICH_DEPTH"] as const;
 async function withEnv(values: Partial<Record<(typeof envKeys)[number], string>>, work: () => Promise<void>): Promise<void> {

@@ -146,9 +146,17 @@ export function assertSafeMermaidSource(source: string): void {
   if (semanticLines.slice(1).some(line => /^flowchart\b/u.test(line))) {
     throw new Error('Mermaid source contains more than one diagram');
   }
+  // `%%` comment lines are ignored by Mermaid (Okie embeds entity metadata there); every other line is checked.
+  const statements = semanticLines.join('\n');
+  // Quoted label text cannot start a statement, so `;`-separated directive checks skip it.
+  const unquoted = statements.replace(/"[^"\n]*"/gu, '""');
   if (/^[ \t]*%%\s*\{/imu.test(source)
-    || /^[ \t]*(?:click|classDef|linkStyle|style)\s+/imu.test(source)
-    || /javascript\s*:|data\s*:\s*text\/html/iu.test(source)) {
+    || /(?:^|;)[ \t]*(?:click|classDef|class|linkStyle|style)\s+/imu.test(unquoted)
+    // Shape data (`a@{ img: "…" }`) makes Mermaid fetch resources before DOMPurify runs.
+    || /@\s*\{/u.test(statements)
+    || /javascript\s*:|data\s*:\s*text\/html/iu.test(source)
+    // No URLs of any kind (mirrors the server validator): schemes and protocol-relative `//host`.
+    || /\b(?:https?|ftp|file|data)\s*:|\/\//iu.test(statements)) {
     throw new Error('Mermaid source contains an unsupported active directive');
   }
 }
@@ -289,9 +297,11 @@ type MermaidDiagramProps = {
   title: string;
   /** Inspector architecture brief: smaller chrome, no derived-diagram outline note. */
   compact?: boolean;
+  /** Error-state copy naming what the reader still has; defaults describe the host surface. */
+  fallbackNote?: string;
 };
 
-export function MermaidDiagram({ source, title, compact = false }: MermaidDiagramProps) {
+export function MermaidDiagram({ source, title, compact = false, fallbackNote }: MermaidDiagramProps) {
   const headingId = useId();
   const hostRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(0);
@@ -368,7 +378,7 @@ export function MermaidDiagram({ source, title, compact = false }: MermaidDiagra
       <div aria-hidden="true" className="semantic-mermaid-svg" data-render-state={state} ref={hostRef}/>
       {state === 'ready' && <button className="semantic-mermaid-expand" ref={expandButtonRef} type="button" aria-label={`Expand diagram: ${title}`} onClick={() => { setZoom(1); setExpanded(true); }}><span>Expand diagram ↗</span></button>}
       {state === 'loading' && <div className="semantic-mermaid-status" role="status"><span/>Rendering diagram…</div>}
-      {state === 'error' && <div className="semantic-mermaid-error" role="alert"><strong>Diagram preview unavailable</strong><span>{compact ? 'The system and container names in this architecture brief are still available.' : 'The structured participants and interactions below are still available.'}</span><button onClick={() => setRetry(value => value + 1)} type="button">Retry render</button></div>}
+      {state === 'error' && <div className="semantic-mermaid-error" role="alert"><strong>Diagram preview unavailable</strong><span>{fallbackNote ?? (compact ? 'The system and container names in this architecture brief are still available.' : 'The structured participants and interactions below are still available.')}</span><button onClick={() => setRetry(value => value + 1)} type="button">Retry render</button></div>}
     </div>
     <dialog className="semantic-mermaid-viewer" ref={dialogRef} aria-label={title} onKeyDown={event => event.stopPropagation()} onClose={() => setExpanded(false)} onClick={event => { if (event.target === event.currentTarget) setExpanded(false); }}>
       <header>
