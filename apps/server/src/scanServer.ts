@@ -28,6 +28,7 @@ import {
 import { resolvePublishedScanFile, resolvePublicationScanFile } from "./scanObjects.js";
 import { handleOperatorApi, type OperatorApiOptions } from "./operatorApi.js";
 import { readArtifactScopes } from "./operatorWorkflow.js";
+import { MAX_BLOCK_PLAN_REQUEST_BYTES, type BlockPlanService } from "./blockPlans.js";
 
 export interface ScanHttpOptions {
   queue: ScanJobQueue;
@@ -40,7 +41,12 @@ export interface ScanHttpOptions {
   threads?: AskThreadStore;
   sourceFetch?: typeof fetch;
   operator?: OperatorApiOptions;
+  /** CLA-149 Jev block planner (`POST /api/block-plan`); absent → the route answers `unavailable`. */
+  blockPlans?: BlockPlanService;
 }
+
+/** CLA-149 Jev block planner: public, bounded, off unless OKIE_JEV_BLOCK_PLANNER=on. */
+export const BLOCK_PLAN_PATH = "/api/block-plan";
 
 function sendJson(response: ServerResponse, status: number, body: unknown, pretty = true): void {
   const text = `${pretty ? JSON.stringify(body, null, 2) : JSON.stringify(body)}\n`;
@@ -184,6 +190,15 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
         return;
       }
       sendJson(response, 200, result);
+      return;
+    }
+
+    if (request.method === "POST" && pathname === BLOCK_PLAN_PATH) {
+      if (!options.blockPlans?.config.enabled) { sendJson(response, 200, { state: "unavailable", reason: "disabled" }, false); return; }
+      let body: unknown;
+      try { body = await readJsonBody(request, MAX_BLOCK_PLAN_REQUEST_BYTES); } catch { sendJson(response, 400, { error: "Expected a JSON block plan request." }, false); return; }
+      const result = await options.blockPlans.handle(body, request.socket.remoteAddress ?? "unknown");
+      sendJson(response, result.status, result.body, false);
       return;
     }
 

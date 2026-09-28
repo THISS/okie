@@ -23,9 +23,11 @@ import { WEBMCP_HOST_HEADERS, webMcpHostHeadersForFetchDest } from './src/webmcp
 // /scan (published trio objects + manifest). Dev and preview proxy both there
 // so the app's runtime-fetch loader sees the same paths. Target 127.0.0.1 to
 // match the server's loopback bind (CLA-17); this process is not a public API.
+// OKIE_SCAN_SERVER_PORT points the proxy at a scratch server (e.g. QA on a spare port); default 4180.
+const scanServicePort = /^\d{2,5}$/.test(process.env.OKIE_SCAN_SERVER_PORT ?? '') ? process.env.OKIE_SCAN_SERVER_PORT : '4180';
 const scanServiceProxy = {
-  '/api': 'http://127.0.0.1:4180',
-  '/scan': 'http://127.0.0.1:4180',
+  '/api': `http://127.0.0.1:${scanServicePort}`,
+  '/scan': `http://127.0.0.1:${scanServicePort}`,
 };
 const SCAN_ORIGIN = LOCAL_SCAN_ORIGIN;
 

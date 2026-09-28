@@ -226,3 +226,48 @@ To evaluate claim checks, run `node scripts/evaluate-claim-checks.mjs --live --o
 `fixtures/judgments/cla145/replay.json`, which holds raw jev-1.13.0 answers recorded by the live
 run. CI replays them through the real pipeline and asserts the recorded numbers: 33 claims,
 32 correct, 0 false acceptances, 0 false alarms, and one miss (`finished-detail-cost`).
+
+## Jev block planner (CLA-149)
+
+The Jev block planner orders a published node's Overview blocks. It is **off by default** on both
+the server and the client. See `docs/roadmap/overview-blocks.md` ("Jev planner") for the design.
+The route is `POST /api/block-plan` on the scan server. It is public and needs no sign-in, so every
+cap below applies to all callers together.
+
+| Variable | Default | Controls |
+| --- | --- | --- |
+| `OKIE_JEV_BLOCK_PLANNER` | off | `on`/`true`/`1`/`yes` enables the route; otherwise it answers `{ state: "unavailable", reason: "disabled" }` |
+| `OKIE_JEV_PLANNER_MAX_REQUESTS` | 100 | Jev requests per server process |
+| `OKIE_JEV_PLANNER_MAX_DOLLARS` | 0.30 | dollars per server process ($0.003 reserved per request) |
+| `OKIE_JEV_PLANNER_TIMEOUT_MS` | 10,000 | deadline per request |
+| `OKIE_JEV_PLANNER_PER_IP` | 30 | Jev-bound requests per IP per 10 minutes (cache hits are free) |
+| `OKIE_LLM_GLOBAL_MAX_DOLLARS` | none | **required**: without it the route answers `{ state: "unavailable", reason: "no-global-cap" }`. The global ledger is durable lifetime spend shared with operator enrichment, judgments and claim checks, so size it above spend already recorded in the store or every plan answers `global-budget` |
+
+**Guard order.** The kill switch, the global-cap check and a fixed per-IP window of 240 requests per
+10 minutes (all requests, cache hits included) run before the request is validated, before operator
+state is read and before any snapshot is read. The per-IP limits use the socket address only;
+`X-Forwarded-For` is never trusted. Behind the Vite dev proxy or any loopback reverse proxy every
+caller shares one address, so both per-IP limits are effectively **global** there.
+
+**Fallback logs.** Every fallback except `disabled` logs one key-free, counted line, for example
+`block-plan fallback reason=invalid-response count=3`. No request body, key or model text is logged.
+
+**Scan root.** The planner writes `<OKIE_SCAN_ROOT>/block-plans/<versionId>.json`. Never point `OKIE_SCAN_ROOT` at another checkout's scan root, such as a sibling worktree's `fixtures/scan`. For local QA, clone the fixtures into a scratch root and point the server there:
+
+```sh
+SCRATCH=$(mktemp -d)/scan && mkdir -p "$SCRATCH"
+cp -cR <other checkout>/fixtures/scan/operator-v1 "$SCRATCH/"   # APFS clone: instant, copy-on-write
+OKIE_SCAN_ROOT="$SCRATCH" OKIE_SERVER_PORT=<spare port, not 4180> OKIE_JEV_BLOCK_PLANNER=on JEV_API=… pnpm --filter @okie/server dev
+OKIE_SCAN_SERVER_PORT=<same port> pnpm --filter @okie/web exec vite --port <spare port, not 4173>
+```
+
+The evaluation script's `--capture` reads only `snapshot.json` and `operator-explanations.json`. Copy those two files out of the artifact into a scratch directory, and pass that directory as `--artifact`.
+
+Each request also needs `JEV_API`. At most 4 requests are in flight at once. Identical concurrent
+requests share one call. Every request goes through the process-wide ledger (`OKIE_LLM_GLOBAL_*`)
+first, then through the planner ledger. The planner ledger is in memory, so a restart resets it.
+Only each slug's current publication is planned. Plans are cached in memory (LRU) and in
+`<scan root>/block-plans/<versionId>.json`, keyed by publication version, node, sorted candidate
+`id:type` set, question version and model. Each version's file is loaded into memory once and
+written atomically (temp file + rename). A cached plan never spends. To evaluate, run `node scripts/evaluate-block-planner.mjs --live --output=<path>`, or use
+`--replay`. The replay reads `fixtures/judgments/block-planner/replay.json`.

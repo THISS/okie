@@ -10,3 +10,4 @@
 .overview-node-ref:focus-visible { border-color: var(--atlas-line-strong); background: rgba(255,255,255,.045); }
 
 .overview-blocks-note { margin: 16px 0 0; color: var(--atlas-quiet); font-size: 12px; }
+.overview-planner-note { margin: 0 0 8px; color: var(--atlas-quiet); font-size: 11px; cursor: help; }

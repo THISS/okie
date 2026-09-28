@@ -1,0 +1,662 @@
+{
+  "origin": "Captured by scripts/evaluate-block-planner.mjs --capture from a local thiss/okie operator artifact (snapshot commit 2d19ce39e6c8bc9790bbd90166d5d529e21198e7) with the web composer (which blocks render) and the server's derivation (previews, size). Previews are exactly what the route forwards to Jev.",
+  "scan": {
+    "slug": "thiss__okie",
+    "versionId": "publication-aaa7ff3b-087c-47d2-a404-e6f04947bc26"
+  },
+  "nodes": [
+    {
+      "nodeId": "system:okie",
+      "name": "okie",
+      "kind": "softwareSystem",
+      "size": {
+        "children": 10,
+        "dependencies": 0,
+        "dependents": 0
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**okie** is the architecture-atlas system: `@okie/scan` turns a repository into portable artifacts, the Rust crates compile and render them into frames and pixels, and `@okie/web` and `@okie/server` display and publish the result. Read the…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start with `@okie/architecture`'s `src/model.ts`; `ArchitectureSnapshot` is the vocabulary the scan, scene, and inspector stages share. | Gotcha: `@okie/scan` caps (`MAX_EVIDENCE_PER_RELATION`, `DEPENDENCY_FACT_LIMITS`) truncate output silently, so large scans lose facts without an error. | Wire shape is pinned by `atlas-protocol` `PROTOCOL_VERSION` 1 and `@okie/scene-compiler` `tim…"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 10 nodes — @okie/architecture (container); @okie/scan (container); @okie/scene-compiler (container); +7 more"
+        },
+        {
+          "id": "enrichment:diagram",
+          "type": "mermaid",
+          "provenance": "enrichment",
+          "preview": "Diagram: okie at a glance"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:apps-server",
+      "name": "@okie/server",
+      "kind": "container",
+      "size": {
+        "children": 28,
+        "dependencies": 4,
+        "dependents": 1
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**@okie/server** is the TypeScript scan server: it queues repository scans, runs LLM enrichment, and serves published atlas output over HTTP. `src/main.ts` is the composition root wiring auth, budgets, and the job queue. Operator runs, ask…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Read `src/main.ts` first: it decides `scanRoot`, the `enrich` mode, and what reaches `createScanHttpServer`. | Seam: `src/llmGateway.ts` failure kinds (`timeout`/`rate_limit`/`server`) drive retry and abort policy everywhere. | Operator hand-off: `src/operatorEnrichment.ts` writes attempts into `src/operatorStore.ts`, then `src/operatorPublication.ts` swaps the `Pointer`. | Trust bo…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 5 related nodes — @anthropic-ai/sdk (depends on · dependsOn); @okie/architecture (depends on · dependsOn); @okie/scan (depends on · dependsOn); +2 more"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 4 nodes — @anthropic-ai/sdk (dependsOn); @okie/architecture (dependsOn); @okie/scan (dependsOn); +1 more"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 1 node — Build & fixture tooling (dependsOn)"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 28 nodes — src/ask.ts (component); src/askThreads.ts (component); src/enrichment.ts (component); +25 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:apps-web",
+      "name": "@okie/web",
+      "kind": "container",
+      "size": {
+        "children": 108,
+        "dependencies": 3,
+        "dependents": 0
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**@okie/web** is the React/TypeScript atlas app: canvas rendering, diagram surfaces, inspector, operator review, and share endpoints. It holds nearly all user-facing behavior plus the diagram security boundary, so most feature work passes …"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start with `src/App.tsx`; `App` spans lines 1333–5884 and owns camera, story, and diagram state in one function. | Read `src/renderer/types.ts` next: `AtlasScene`, `Camera`, and `AtlasRenderer` are the vocabulary every surface and backend speaks. | Untrusted Mermaid reaches the DOM only via `MermaidDiagram.tsx`; keep its source, CSS, and SVG sanitization layers intact. | Gotcha: `sr…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 3 related nodes — @okie/architecture (depends on · dependsOn); @okie/scene-compiler (depends on · dependsOn); atlas-wasm (depends on · dependsOn)"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 3 nodes — @okie/architecture (dependsOn); @okie/scene-compiler (dependsOn); atlas-wasm (dependsOn)"
+        },
+        {
+          "id": "enrichment:diagram",
+          "type": "mermaid",
+          "provenance": "enrichment",
+          "preview": "Diagram: @okie/web at a glance"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 108 nodes — api/oembed.ts (component); api/og.ts (component); api/share.ts (component); +105 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:crates-atlas-engine",
+      "name": "atlas-engine",
+      "kind": "container",
+      "size": {
+        "children": 10,
+        "dependencies": 1,
+        "dependents": 2
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**atlas-engine** is the Rust rendering and interaction core: scene model, camera math, LOD, hit testing, story playback, and per-frame draw preparation. Most behaviour changes land in `src/lib.rs`, which orchestrates the rest into a `Prepa…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Read `src/lib.rs` first; `AtlasEngine::prepare_frame` is the seam where `src/lod.rs`, `src/scene.rs`, `src/camera.rs`, and `src/protocol_runtime.rs` converge into one frame. | `src/protocol_runtime.rs` owns per-frame LOD, opacity, and picking decisions; `ResolvedProjectionOverride::resolve` maps string IDs onto snapshot indices. | User navigation cancels playback: `pan_screen`, `zoo…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 3 related nodes — atlas-gpu (used by · dependsOn); atlas-protocol (depends on · dependsOn); atlas-wasm (used by · dependsOn)"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 1 node — atlas-protocol (dependsOn)"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 2 nodes — atlas-gpu (dependsOn); atlas-wasm (dependsOn)"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 10 nodes — src/camera.rs (component); src/diagnostics.rs (component); src/geometry.rs (component); +7 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:crates-atlas-gpu",
+      "name": "atlas-gpu",
+      "kind": "container",
+      "size": {
+        "children": 4,
+        "dependencies": 2,
+        "dependents": 1
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**atlas-gpu** turns scene state into pixels: it bakes a fixed glyph atlas, packs scene geometry into a single vertex buffer, and drives the wgpu surface pipeline. Start in `src/surface.rs`, then read `src/mesh.rs` and `src/glyph.rs` to see…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start at `GpuRenderer::from_surface` in `src/surface.rs` (lines 318-587); adapter, surface, pipeline, and per-frame state all configure there. | Gotcha: `GpuMesh.vertices` packs paths into `[0, path_vertex_count)` before objects — that ordering drives the deterministic two-pass draw, so never reorder it. | Seam: `build_active_mesh_stream` in `src/mesh.rs` turns a `ProtocolFrame` int…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 3 related nodes — atlas-engine (depends on · dependsOn); atlas-protocol (depends on · dependsOn); atlas-wasm (used by · dependsOn)"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 2 nodes — atlas-engine (dependsOn); atlas-protocol (dependsOn)"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 1 node — atlas-wasm (dependsOn)"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 4 nodes — src/glyph.rs (component); src/lib.rs (component); src/mesh.rs (component); +1 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:crates-atlas-protocol",
+      "name": "atlas-protocol",
+      "kind": "container",
+      "size": {
+        "children": 5,
+        "dependencies": 0,
+        "dependents": 3
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**atlas-protocol** is the Rust crate defining the shared scene wire contract: geometry primitives, scene snapshots, patches, and timelines. All validation lives in these types, so it decides what any producer may emit and what counts as a …"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start with `src/lib.rs`: `PROTOCOL_VERSION` is `u16` fixed at 1; `ProtocolError` is the protocol's failure vocabulary, including `UnsupportedVersion`. | `src/patch.rs` `validate_against` / `apply_to` re-check the version and copy `scene.objects` into a `BTreeMap`; the input snapshot is never mutated. | Gotcha: deserialized `LodRange` silently gets `default_fade_width` (0.08) and `de…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 3 related nodes — atlas-engine (used by · dependsOn); atlas-gpu (used by · dependsOn); atlas-wasm (used by · dependsOn)"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 3 nodes — atlas-engine (dependsOn); atlas-gpu (dependsOn); atlas-wasm (dependsOn)"
+        },
+        {
+          "id": "enrichment:diagram",
+          "type": "mermaid",
+          "provenance": "enrichment",
+          "preview": "Diagram: atlas-protocol at a glance"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 5 nodes — src/geometry.rs (component); src/lib.rs (component); src/patch.rs (component); +2 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:crates-atlas-wasm",
+      "name": "atlas-wasm",
+      "kind": "container",
+      "size": {
+        "children": 2,
+        "dependencies": 3,
+        "dependents": 1
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**atlas-wasm** is the browser boundary for the atlas renderer. Every host call crosses `src/browser.rs`, which owns renderer state; `src/lib.rs` defines the payloads and helpers for frame timing, picking, and camera updates. Read it before…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start at `create_atlas_renderer` (46-85): it selects the backend and fills `WasmAtlasRenderer`'s `Option` fields. | Gotcha: `dispose()` drops `engine` and `gpu`, so a renderer is single-use after it runs. | `FrameTimeWindow` silently drops non-finite samples; trust `percentile` only once `includes_first_sample` holds. | `PickPayload::from` fixes the hit-pick contract: `HitTarget` ma…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 4 related nodes — @okie/web (used by · dependsOn); atlas-engine (depends on · dependsOn); atlas-gpu (depends on · dependsOn); +1 more"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 3 nodes — atlas-engine (dependsOn); atlas-gpu (dependsOn); atlas-protocol (dependsOn)"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 1 node — @okie/web (dependsOn)"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 2 nodes — src/browser.rs (component); src/lib.rs (component)"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:packages-architecture",
+      "name": "@okie/architecture",
+      "kind": "container",
+      "size": {
+        "children": 18,
+        "dependencies": 0,
+        "dependents": 5
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "`@okie/architecture` is the shared TypeScript contract layer: it defines the architecture model, validation, extraction schemas, layout and routing geometry, and the portable bundle format. Read `src/model.ts` first; every scanner, rendere…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start with `src/model.ts`; `ArchitectureSnapshot`, `ArchitectureEntity`, and `ArchitectureRelation` anchor every other module in the package. | Untrusted JSON enters through `parsePortableAtlas` in `src/portable.ts`: shape, commit format, and a 128 MiB UTF-8 cap are enforced first. | Geometry hand-off runs `computeContainmentLayout` → `findGridPath` in `src/orthogonal-router.ts` → `…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 5 related nodes — @okie/scan (used by · dependsOn); @okie/scene-compiler (used by · dependsOn); @okie/server (used by · dependsOn); +2 more"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 5 nodes — @okie/scan (dependsOn); @okie/scene-compiler (dependsOn); @okie/server (dependsOn); +2 more"
+        },
+        {
+          "id": "enrichment:diagram",
+          "type": "mermaid",
+          "provenance": "enrichment",
+          "preview": "Diagram: @okie/architecture at a glance"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 18 nodes — src/authoring.ts (component); src/c4-completeness.ts (component); src/c4.ts (component); +15 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:packages-scan",
+      "name": "@okie/scan",
+      "kind": "container",
+      "size": {
+        "children": 33,
+        "dependencies": 2,
+        "dependents": 2
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**@okie/scan** turns a repository into a deterministic architecture atlas: discover source files, extract per-language structure, pin to a commit, and emit bounded portable artifacts. Start at `buildScanArtifacts()` in `src/scan.ts`; `src/…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start with `buildScanArtifacts()` in `src/scan.ts` (lines 210-353); it assembles discovery, pin, analysis and view into `ScanArtifacts`. | Seam: `src/language-analysis.ts` fixes the `LanguageAnalysis` shapes that `analyze-typescript.ts` and `analyze-rust.ts` emit and everything downstream reads. | Gotcha: `MAX_EVIDENCE_PER_RELATION` and `DEPENDENCY_FACT_LIMITS` in `src/extract.ts` a…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 4 related nodes — @okie/architecture (depends on · dependsOn); @okie/scene-compiler (depends on · dependsOn); @okie/server (used by · dependsOn); +1 more"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 2 nodes — @okie/architecture (dependsOn); @okie/scene-compiler (dependsOn)"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 2 nodes — @okie/server (dependsOn); Build & fixture tooling (dependsOn)"
+        },
+        {
+          "id": "enrichment:diagram",
+          "type": "mermaid",
+          "provenance": "enrichment",
+          "preview": "Diagram: @okie/scan at a glance"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 33 nodes — src/analyze-rust.ts (component); src/analyze-typescript.ts (component); src/cli.ts (component); +30 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:packages-scene-compiler",
+      "name": "@okie/scene-compiler",
+      "kind": "container",
+      "size": {
+        "children": 16,
+        "dependencies": 1,
+        "dependents": 3
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**@okie/scene-compiler** turns architecture models into scene snapshots, patches, and timelines. It owns the zoom-band camera policy, theme, and the wire contract, so visual and shape changes start here. Read `src/index.ts` first, then `sr…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: `src/index.ts` is the single public entry; export edits are a package-wide contract change. | `src/protocol.ts` pins `RENDERER_PROTOCOL_VERSION` and `timelineVersion: 2`; shape changes ripple through every compile stage. | Zoom behaviour lives in `src/compile-c4.ts` (`C4_ZOOM_BANDS`, `lodFor`); `src/compile-scene.ts` builds per-entity representations over that. | Golden output is re…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 4 related nodes — @okie/architecture (depends on · dependsOn); @okie/scan (used by · dependsOn); @okie/web (used by · dependsOn); +1 more"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 1 node — @okie/architecture (dependsOn)"
+        },
+        {
+          "id": "relations:dependents",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependents: 3 nodes — @okie/scan (dependsOn); @okie/web (dependsOn); Build & fixture tooling (dependsOn)"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 16 nodes — scripts/generate-golden-source-excerpts… (component); src/band-cost-curve.ts (component); src/code-card-copy.ts (component); +13 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    },
+    {
+      "nodeId": "container:tooling",
+      "name": "Build & fixture tooling",
+      "kind": "container",
+      "size": {
+        "children": 18,
+        "dependencies": 4,
+        "dependents": 0
+      },
+      "maxBlocks": 16,
+      "candidates": [
+        {
+          "id": "enrichment:summary",
+          "type": "markdown",
+          "provenance": "enrichment",
+          "preview": "**Build & fixture tooling** holds the standalone Node and TypeScript scripts that build artifacts, generate deterministic fixtures, and run cost and performance measurements. It also contains three single-file API handlers. Everything here…"
+        },
+        {
+          "id": "enrichment:keyPoints",
+          "type": "keyPoints",
+          "provenance": "enrichment",
+          "preview": "Worth a look: Start with `scripts/build-wasm.mjs`; `args` holds the canonical `wasm-pack build` command line and its `--profiling` default. | Reproducibility seam: `scripts/evaluate-scan-profiles.mjs` and `scripts/evaluate-section-profiles.mjs` both pin commit `c9c0306d…` in `base`; change it only deliberately. | Spend caps matter: `scripts/spikes/grouping-probe.mjs` throws `Probe call limit reac…"
+        },
+        {
+          "id": "nodeRefs:related",
+          "type": "nodeRefs",
+          "provenance": "observed",
+          "preview": "Related: 4 related nodes — @okie/architecture (depends on · dependsOn); @okie/scan (depends on · dependsOn); @okie/scene-compiler (depends on · dependsOn); +1 more"
+        },
+        {
+          "id": "relations:parent",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Parent: 1 node — okie (softwareSystem)"
+        },
+        {
+          "id": "relations:dependencies",
+          "type": "relations",
+          "provenance": "observed",
+          "preview": "Direct dependencies: 4 nodes — @okie/architecture (dependsOn); @okie/scan (dependsOn); @okie/scene-compiler (dependsOn); +1 more"
+        },
+        {
+          "id": "children",
+          "type": "children",
+          "provenance": "observed",
+          "preview": "Children: 18 nodes — api/oembed.ts (component); api/og.ts (component); api/share.ts (component); +15 more"
+        },
+        {
+          "id": "enrichment:evidence",
+          "type": "evidence",
+          "provenance": "enrichment",
+          "preview": "Evidence: 1 source citation"
+        }
+      ]
+    }
+  ]
+}

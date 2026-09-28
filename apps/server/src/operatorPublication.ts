@@ -57,6 +57,23 @@ export class OperatorPublicationService {
   currentPublication(repositoryId: string): OperatorPublication | undefined { const canonical = canonicalOperatorRepositoryId(repositoryId); const pointer = this.pointer(canonical); return pointer ? this.store.snapshot().publications.find(value => canonicalOperatorRepositoryId(value.repositoryId) === canonical && value.versionId === pointer.versionId && value.artifactRevisionId === pointer.artifactRevisionId) : undefined; }
   resolveCurrent(repositoryId: string, legacySlug?: string): PublishedArtifactRef | undefined { const current = this.currentPublication(repositoryId); if (current) return { kind: "publication", versionId: current.versionId, artifactRevisionId: current.artifactRevisionId }; if (this.legacyScanRoot && legacySlug && /^[A-Za-z0-9][A-Za-z0-9_-]{0,180}$/.test(legacySlug) && existsSync(join(this.legacyScanRoot, legacySlug))) return { kind: "legacy", legacyDirectory: join(this.legacyScanRoot, legacySlug) }; return undefined; }
   artifactForVersion(repositoryId: string, versionId: string): OperatorArtifactRevision | undefined { const canonical = canonicalOperatorRepositoryId(repositoryId); const state = this.store.snapshot(); const publication = state.publications.find(value => canonicalOperatorRepositoryId(value.repositoryId) === canonical && value.versionId === versionId); return publication ? state.artifacts.find(value => value.artifactRevisionId === publication.artifactRevisionId) : undefined; }
+  /**
+   * CLA-149 block planner: the CURRENT publication for a public slug, with one operator-state read
+   * (plus the small pointer file). Same resolution order as repositoryIdForSlug + currentPublication.
+   */
+  currentForSlug(slug: string): OperatorPublication | undefined {
+    const state = this.store.snapshot();
+    const seen = new Set<string>();
+    for (const run of [...state.runs].filter(value => value.source.slug === slug).sort((a, b) => b.updatedAt - a.updatedAt)) {
+      const repositoryId = canonicalOperatorRepositoryId(run.source.repositoryId);
+      if (seen.has(repositoryId)) continue;
+      seen.add(repositoryId);
+      const pointer = this.pointer(repositoryId);
+      const publication = pointer && state.publications.find(value => canonicalOperatorRepositoryId(value.repositoryId) === repositoryId && value.versionId === pointer.versionId && value.artifactRevisionId === pointer.artifactRevisionId);
+      if (publication) return publication;
+    }
+    return undefined;
+  }
   /** Resolve a public scan slug without depending on insertion order of durable runs. */
   repositoryIdForSlug(slug: string): string | undefined {
     const candidates = this.store.snapshot().runs
