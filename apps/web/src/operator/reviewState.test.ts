@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OperatorApiError, type OperatorEvent } from './api';
-import { acceptsReviewResponse, ACTION_RUNNING_MESSAGE, attemptLabel, classifyOperatorFailure, coverageChips, coverageIncomplete, currentRevisionTarget, draftBelongsToRun, humanizeEventType, money, runStateLabel, staleRevisionAfterFailure, staleRevisionFor, usageDiffers, operatorEventLabel, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, scopeStateLabel, selectedDraftForRun, STALE_REVISION_MESSAGE } from './reviewState';
+import { acceptsReviewResponse, ACTION_RUNNING_MESSAGE, attemptLabel, belowCapChip, classifyOperatorFailure, usageSummary, coverageChips, coverageIncomplete, currentRevisionTarget, draftBelongsToRun, humanizeEventType, money, runStateLabel, staleRevisionAfterFailure, staleRevisionFor, usageDiffers, operatorEventLabel, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, scopeStateLabel, selectedDraftForRun, STALE_REVISION_MESSAGE } from './reviewState';
 
 describe('operator review flow state', () => {
   it('keeps a selected draft pinned while polling discovers a newer run revision', () => {
@@ -16,21 +16,40 @@ describe('operator review flow state', () => {
     expect(publicationAcknowledgementAfterConflict()).toBe(false);
   });
   it('shows accepted / failed / not run / stale coverage chips that match the scope list', () => {
-    expect(coverageChips({ total: 10, accepted: 3, failed: 1, notRun: 6, stale: 1 })).toEqual(['3/10 accepted', '1 failed', '6 not run', '1 stale']);
-    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 })).toEqual(['3/4 accepted', '1 failed', '0 not run', '0 stale']);
-    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 }, [{ state: 'accepted' }, { state: 'failed' }, { state: 'not run' }, { state: 'accepted', stale: true }])).toEqual(['1/4 accepted', '1 failed', '1 not run', '1 stale']);
+    expect(coverageChips({ total: 10, accepted: 3, failed: 1, notRun: 6, stale: 1 })).toEqual(['3/10 in scope accepted', '1 failed', '6 not run', '1 stale']);
+    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 })).toEqual(['3/4 in scope accepted', '1 failed', '0 not run', '0 stale']);
+    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 }, [{ state: 'accepted' }, { state: 'failed' }, { state: 'not run' }, { state: 'accepted', stale: true }])).toEqual(['1/4 in scope accepted', '1 failed', '1 not run', '1 stale']);
     expect(scopeStateLabel({ state: 'not run' })).toBe('not run');
     expect(scopeStateLabel({ state: 'accepted', stale: true })).toBe('stale');
   });
   it('counts chips from the visible scope-list labels so every chip equals the labels shown', () => {
     const scopes = [{ state: 'accepted' as const }, { state: 'accepted' as const, stale: true }, { state: 'failed' as const }, { state: 'failed' as const, stale: true }, { state: 'not run' as const }, { state: 'running' as const }, { state: 'interrupted' as const }];
     const chips = coverageChips({ total: 7, accepted: 2, failed: 2, notRun: 1, stale: 2 }, scopes);
-    expect(chips).toEqual(['1/7 accepted', '1 failed', '1 not run', '2 stale', '1 running', '1 interrupted']);
+    expect(chips).toEqual(['1/7 in scope accepted', '1 failed', '1 not run', '2 stale', '1 running', '1 interrupted']);
     const labels = scopes.map(scopeStateLabel);
     for (const chip of chips.slice(1)) { const [count, ...rest] = chip.split(' '); expect(labels.filter(label => label === rest.join(' ')).length).toBe(Number(count)); }
     expect(chips.reduce((sum, chip) => sum + Number(chip.split(/[ /]/)[0]), 0)).toBe(scopes.length);
-    expect(coverageChips({ total: 2, accepted: 2, failed: 0, notRun: 0, stale: 0 }, [{ state: 'accepted' }, { state: 'accepted' }])).toEqual(['2/2 accepted', '0 failed', '0 not run', '0 stale']);
-    expect(coverageChips({ total: 1, accepted: 0, failed: 0, notRun: 0, stale: 0 }, [{ state: 'cancelled' }])).toEqual(['0/1 accepted', '0 failed', '0 not run', '0 stale', '1 cancelled']);
+    expect(coverageChips({ total: 2, accepted: 2, failed: 0, notRun: 0, stale: 0 }, [{ state: 'accepted' }, { state: 'accepted' }])).toEqual(['2/2 in scope accepted', '0 failed', '0 not run', '0 stale']);
+    expect(coverageChips({ total: 1, accepted: 0, failed: 0, notRun: 0, stale: 0 }, [{ state: 'cancelled' }])).toEqual(['0/1 in scope accepted', '0 failed', '0 not run', '0 stale', '1 cancelled']);
+  });
+  it('counts in-scope chips only and gives below-cap scopes a separate chip (CLA-258)', () => {
+    const scopes = [{ state: 'accepted' as const }, { state: 'accepted' as const }, ...Array.from({ length: 3793 }, () => ({ state: 'below cap' as const }))];
+    expect(coverageChips({ total: 3795, accepted: 2, failed: 0, notRun: 0, stale: 0, belowCap: 3793 }, scopes)).toEqual(['2/2 in scope accepted', '0 failed', '0 not run', '0 stale']);
+    expect(belowCapChip(scopes)).toBe('3,793 below depth cap'); expect(belowCapChip([{ state: 'accepted' }])).toBeUndefined();
+    expect(coverageChips({ total: 10, accepted: 2, failed: 0, notRun: 0, stale: 0, belowCap: 8 })).toEqual(['2/2 in scope accepted', '0 failed', '0 not run', '0 stale']);
+    expect(coverageIncomplete({ total: 10, accepted: 2, failed: 0, notRun: 0, stale: 0, belowCap: 8 })).toBe(false);
+    expect(coverageIncomplete({ total: 10, accepted: 1, failed: 0, notRun: 1, stale: 0, belowCap: 8 })).toBe(true);
+  });
+  it('keeps sub-cent money precise instead of rounding to $0.00', () => {
+    expect(money(0.00076)).toBe('$0.0008'); expect(money(0.0039)).toBe('$0.0039'); expect(money(0.33)).toBe('$0.33'); expect(money(0)).toBe('$0.00'); expect(money(12.5)).toBe('$12.50');
+  });
+  it('hides zero usage and summarises reported usage', () => {
+    expect(usageSummary(undefined)).toBeUndefined();
+    expect(usageSummary({ inputTokens: 0, outputTokens: 0 })).toBeUndefined();
+    expect(usageSummary({ inputTokens: 1200, outputTokens: 30, measuredCostUsd: 0.33 })).toBe(`1,200 in / 30 out tokens · measured ${money(0.33)}`);
+    expect(usageSummary({ inputTokens: 5, outputTokens: 1 })).toBe('5 in / 1 out tokens · cost not reported');
+    expect(operatorEventLabel({ type: 'enrichment.finished', detail: { kind: 'run', stopped: 'complete', accepted: 255, inScope: 255 } })).toBe('Enrichment finished · 255/255 in scope accepted');
+    expect(operatorEventLabel({ type: 'enrichment.finished', detail: { kind: 'retry', stopped: 'limit', accepted: 3, inScope: 5 } })).toBe('Retry pass stopped at the budget limit · 3/5 in scope accepted');
   });
   it('keeps requiring acknowledgement for any not-run, failed or stale coverage', () => {
     expect(coverageIncomplete({ total: 2, accepted: 2, failed: 0, notRun: 0, stale: 0 })).toBe(false);

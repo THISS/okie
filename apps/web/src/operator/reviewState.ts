@@ -1,27 +1,45 @@
 import { OperatorApiError, type DraftDetail, type OperatorAttempt, type OperatorDraft, type OperatorEvent, type OperatorRun, type OperatorScope, type OperatorUsage } from './api';
 
-export function money(value?: number): string { return value === undefined ? 'unknown' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(value); }
+/** Sub-cent amounts keep four decimals ($0.0008), so a small real cost never reads as $0.00. */
+export function money(value?: number): string { return value === undefined ? 'unknown' : new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: value !== 0 && Math.abs(value) < 0.01 ? 4 : 2 }).format(value); }
 /** "awaiting_review" → "Awaiting review" for the run list and run header. */
 export function runStateLabel(state: string): string { const text = state.replace(/_/g, ' ').trim(); return text ? text[0]!.toUpperCase() + text.slice(1) : 'Unknown'; }
 /** The selected revision's usage is shown only when it differs from the run total (multi-revision runs). */
 export function usageDiffers(run: OperatorUsage | undefined, revision: OperatorUsage | undefined): boolean { const keys = ['inputTokens', 'outputTokens', 'measuredCostUsd', 'estimatedCostUsd'] as const; return !!revision && keys.some(key => run?.[key] !== revision[key]); }
 
+/** Provider usage as one line, or undefined when nothing was reported (zero tokens and no cost): callers show nothing. */
+export function usageSummary(usage?: OperatorUsage): string | undefined {
+  if (!usage) return undefined;
+  const tokens = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0); const cost = usage.measuredCostUsd ?? usage.estimatedCostUsd;
+  if (!tokens && !cost) return undefined;
+  const parts = [`${(usage.inputTokens ?? 0).toLocaleString('en-US')} in / ${(usage.outputTokens ?? 0).toLocaleString('en-US')} out tokens`];
+  if (usage.measuredCostUsd !== undefined) parts.push(`measured ${money(usage.measuredCostUsd)}`);
+  if (usage.estimatedCostUsd !== undefined) parts.push(`estimated ${money(usage.estimatedCostUsd)}`);
+  if (usage.measuredCostUsd === undefined && usage.estimatedCostUsd === undefined) parts.push('cost not reported');
+  return parts.join(' · ');
+}
+
 /** Scope-list label vocabulary, in chip order. The first four always show; the rest only when non-zero. */
 const CHIP_LABELS = ['accepted', 'failed', 'not run', 'stale', 'queued', 'running', 'cancelled', 'interrupted'] as const;
+const fmt = (value: number) => value.toLocaleString('en-US');
 /**
  * Coverage chips count exactly the labels the scope list shows (`scopeStateLabel` is the single source of truth),
- * so a stale accepted scope counts as `stale`, not `accepted`, and the chips partition the total.
+ * so a stale accepted scope counts as `stale`, not `accepted`, and the chips partition the in-scope total.
+ * Below-cap scopes are out of scope: they get their own quieter chip (`belowCapChip`), never a partition chip.
  * Without a scope list (never the case in the workspace) the stored coverage counts are shown as-is.
  */
 export function coverageChips(coverage: OperatorDraft['coverage'], scopes?: readonly Pick<OperatorScope, 'state' | 'stale'>[]): string[] {
-  if (!scopes) return [`${coverage.accepted}/${coverage.total} accepted`, `${coverage.failed} failed`, `${coverage.notRun ?? Math.max(0, coverage.total - coverage.accepted - coverage.failed)} not run`, `${coverage.stale} stale`];
-  const counts = new Map<string, number>(); for (const scope of scopes) { const label = scopeStateLabel(scope); counts.set(label, (counts.get(label) ?? 0) + 1); }
+  if (!scopes) { const inScope = coverage.total - (coverage.belowCap ?? 0); return [`${fmt(coverage.accepted)}/${fmt(inScope)} in scope accepted`, `${fmt(coverage.failed)} failed`, `${fmt(coverage.notRun ?? Math.max(0, inScope - coverage.accepted - coverage.failed))} not run`, `${fmt(coverage.stale)} stale`]; }
+  const counts = new Map<string, number>(); let inScope = 0;
+  for (const scope of scopes) { if (scope.state === 'below cap') continue; inScope += 1; const label = scopeStateLabel(scope); counts.set(label, (counts.get(label) ?? 0) + 1); }
   const labels = [...CHIP_LABELS, ...[...counts.keys()].filter(label => !(CHIP_LABELS as readonly string[]).includes(label)).sort()];
-  return labels.flatMap((label, index) => { const count = counts.get(label) ?? 0; if (label === 'accepted') return [`${count}/${scopes.length} accepted`]; return index < 4 || count > 0 ? [`${count} ${label}`] : []; });
+  return labels.flatMap((label, index) => { const count = counts.get(label) ?? 0; if (label === 'accepted') return [`${fmt(count)}/${fmt(inScope)} in scope accepted`]; return index < 4 || count > 0 ? [`${fmt(count)} ${label}`] : []; });
 }
-/** Any non-accepted or stale coverage still requires publish acknowledgement. */
+/** "3,793 below depth cap", or undefined when no scope is below the cap. */
+export function belowCapChip(scopes: readonly Pick<OperatorScope, 'state'>[]): string | undefined { const count = scopes.filter(scope => scope.state === 'below cap').length; return count ? `${fmt(count)} below depth cap` : undefined; }
+/** Any failed, not-run or stale scope, or any in-scope scope not accepted, still requires publish acknowledgement. Below cap never does. */
 export function coverageIncomplete(coverage: OperatorDraft['coverage']): boolean {
-  return coverage.failed > 0 || (coverage.notRun ?? 0) > 0 || coverage.stale > 0 || coverage.accepted < coverage.total;
+  return coverage.failed > 0 || (coverage.notRun ?? 0) > 0 || coverage.stale > 0 || coverage.accepted < coverage.total - (coverage.belowCap ?? 0);
 }
 export function scopeStateLabel(scope: Pick<OperatorScope, 'state' | 'stale'>): string { return scope.stale ? 'stale' : scope.state; }
 
@@ -81,6 +99,7 @@ export function operatorEventLabel(event: Pick<OperatorEvent, 'type' | 'detail'>
     case 'enrichment.retry_failed': return `Retry failed${scope}`;
     case 'enrichment.budget_refused': return `Enrichment refused by the ${typeof detail.ledger === 'string' ? `${detail.ledger} ` : ''}budget${scope}`;
     case 'enrichment.unavailable': return `Enrichment unavailable${scope || (typeof detail.reason === 'string' ? `: ${detail.reason}` : '')}`;
+    case 'enrichment.finished': { const stopped = detail.stopped; const accepted = num('accepted'); const inScope = num('inScope'); const what = detail.kind === 'retry' ? 'Retry pass' : 'Enrichment'; const outcome = stopped === 'limit' ? 'stopped at the budget limit' : stopped === 'cancelled' ? 'cancelled' : stopped === 'unavailable' ? 'finished without a gateway' : 'finished'; return `${what} ${outcome}${accepted !== undefined && inScope !== undefined ? ` · ${fmt(accepted)}/${fmt(inScope)} in scope accepted` : ''}`; }
     case 'enrichment.budget_reached': { const accepted = num('accepted'); const attempted = num('attempted'); return `Enrichment stopped at the budget limit${accepted !== undefined && attempted !== undefined ? ` · ${accepted} accepted of ${attempted} attempted` : ''}`; }
     default: return humanizeEventType(event.type);
   }

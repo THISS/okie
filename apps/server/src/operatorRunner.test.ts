@@ -33,9 +33,12 @@ test("runner writes parseable deterministic and immutable enriched drafts", asyn
     assert.deepEqual(deterministic, store.readArtifactFile(drafts[0]!.artifactRevisionId, "atlas.okie.json"));
     assert.equal(store.snapshot().publications.length, 0);
     const enriched = JSON.parse(store.readArtifactFile(drafts[1]!.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ kind: string; state: string }> };
-    assert.ok(enriched.scopes.filter(scope => scope.kind === "code").every(scope => scope.state === "not run"), "code symbols are below the default depth cap");
+    assert.ok(enriched.scopes.filter(scope => scope.kind === "code").every(scope => scope.state === "below cap"), "code symbols are below the default depth cap");
     assert.ok(enriched.scopes.filter(scope => scope.kind !== "code").every(scope => scope.state === "accepted"));
-    assert.equal(drafts[1]!.coverage.accepted + drafts[1]!.coverage.failed + drafts[1]!.coverage.notRun, drafts[1]!.coverage.total);
+    assert.equal(drafts[1]!.coverage.accepted + drafts[1]!.coverage.failed + drafts[1]!.coverage.notRun + drafts[1]!.coverage.belowCap!, drafts[1]!.coverage.total);
+    assert.equal(drafts[1]!.coverage.notRun, 0, "nothing in scope was left unrun");
+    assert.equal(drafts[1]!.coverage.belowCap, enriched.scopes.filter(scope => scope.kind === "code").length);
+    assert.equal(drafts[1]!.coverage.accepted, drafts[1]!.coverage.total - drafts[1]!.coverage.belowCap!, "every in-scope scope accepted");
     assert.ok(store.snapshot().attempts.every(attempt => attempt.state === "accepted"));
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -162,7 +165,7 @@ test("runner reserves its durable budget before gateway calls and a refusal crea
       assert.equal(store.snapshot().events.filter(event => event.type === "budget.settled").length, 1);
       assert.equal(store.snapshot().attempts.length, 1, "the ledger refusal does not leave a failed attempt row");
       const draft = store.snapshot().drafts.at(-1)!;
-      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 0, failed: 1, notRun: draft.coverage.total - 1 });
+      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 0, failed: 1, notRun: draft.coverage.total - draft.coverage.belowCap! - 1 });
     });
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -182,8 +185,9 @@ test("runner keeps finished explanations when the budget stops the run", async (
       const sidecar = JSON.parse(store.readArtifactFile(draft.artifactRevisionId, "operator-explanations.json")!.toString()) as { scopes: Array<{ scopeId: string; state: string }>; explanations: Array<{ scopeId: string }> };
       assert.equal(sidecar.explanations.length, 3);
       assert.deepEqual(sidecar.scopes.filter(scope => scope.state === "accepted").map(scope => scope.scopeId).sort(), sidecar.explanations.map(value => value.scopeId).sort());
-      assert.equal(sidecar.scopes.filter(scope => scope.state === "not run").length, sidecar.scopes.length - 3);
-      assert.deepEqual(draft.coverage, { total: sidecar.scopes.length, accepted: 3, failed: 0, notRun: sidecar.scopes.length - 3, stale: 0 });
+      const belowCap = sidecar.scopes.filter(scope => scope.state === "below cap").length; assert.ok(belowCap > 0);
+      assert.equal(sidecar.scopes.filter(scope => scope.state === "not run").length, sidecar.scopes.length - belowCap - 3, "in-scope scopes left by the budget stop are not run; code scopes are below cap");
+      assert.deepEqual(draft.coverage, { total: sidecar.scopes.length, accepted: 3, failed: 0, notRun: sidecar.scopes.length - belowCap - 3, stale: 0, belowCap });
       const detail = new OperatorWorkflow({ store, publications: new OperatorPublicationService(store), enqueue() {} }).draftDetail(draft.draftRevisionId)!;
       assert.equal(detail.scopes.filter(scope => scope.state === "accepted").length, draft.coverage.accepted);
       assert.equal(detail.scopes.filter(scope => scope.state === "not run").length, draft.coverage.notRun);
@@ -221,7 +225,7 @@ test("a global-ledger refusal creates no attempt row, leaves scopes not run, and
       assert.equal(state.events.filter(event => event.runId === run.runId && event.type.startsWith("budget.")).length, 0);
       assert.deepEqual(state.events.filter(event => event.type === "enrichment.budget_reached").map(event => event.detail?.ledger), ["global"], "the stop names the ledger that refused");
       assert.equal(state.runs.find(value => value.runId === run.runId)?.state, "awaiting_review");
-      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 0, failed: 0, notRun: draft.coverage.total });
+      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 0, failed: 0, notRun: draft.coverage.total - draft.coverage.belowCap! });
     });
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -260,7 +264,7 @@ test("the durable run ledger can refuse while the run-level cap would still admi
       assert.equal(global.filter(event => event.type === "budget.reserved").length - global.filter(event => event.type === "budget.released").length, 1);
       assert.equal(globalLedger.snapshot().requests, 1); assert.equal(global.filter(event => event.type === "budget.settled").length, 1);
       assert.equal(state.attempts.length, 1); assert.equal(state.explanations.length, 1);
-      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 1, failed: 0, notRun: draft.coverage.total - 1 });
+      assert.deepEqual({ accepted: draft.coverage.accepted, failed: draft.coverage.failed, notRun: draft.coverage.notRun }, { accepted: 1, failed: 0, notRun: draft.coverage.total - draft.coverage.belowCap! - 1 });
     });
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -271,7 +275,7 @@ test("without a gateway the run records an unavailable event, no attempt rows, a
     const store = new OperatorStore(root); const run = store.createRun({ idempotencyKey: "unavailable", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
     await createOperatorRunner({ store, publication: new OperatorPublicationService(store), gatewayConfig: { baseUrl: "https://gateway.invalid/v1", modelId: "m", keySource: "none" }, githubClient: publicClient, scan: async () => ({ commitSha: "abc", artifacts: scanned() }) }).enqueue({ kind: "run", runId: run.runId, githubAccess: access });
     const state = store.snapshot(); const draft = state.drafts.at(-1)!;
-    assert.equal(state.attempts.length, 0); assert.equal(draft.coverage.notRun, draft.coverage.total);
+    assert.equal(state.attempts.length, 0); assert.equal(draft.coverage.notRun, draft.coverage.total - draft.coverage.belowCap!, "every in-scope scope is not run; code scopes stay below cap");
     assert.equal(state.events.filter(event => event.type === "enrichment.unavailable").length, 1);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
@@ -336,7 +340,7 @@ test("a retry leaves a not-run ancestor not run and unstale, and coverage matche
       const next = store.snapshot().drafts.at(-1)!; assert.notEqual(next.draftRevisionId, draft.draftRevisionId);
       const detail = new OperatorWorkflow({ store, publications: new OperatorPublicationService(store), enqueue() {} }).draftDetail(next.draftRevisionId)!;
       assert.deepEqual(detail.scopes.map(scope => [scope.scopeId, scope.state, scope.stale]), [["system", "not run", false], ["container", "accepted", true], ["leaf", "accepted", false]]);
-      assert.deepEqual(next.coverage, { total: 3, accepted: 2, failed: 0, notRun: 1, stale: 1 });
+      assert.deepEqual(next.coverage, { total: 3, accepted: 2, failed: 0, notRun: 1, stale: 1, belowCap: 0 });
     });
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
