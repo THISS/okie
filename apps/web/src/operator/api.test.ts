@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { operatorApi } from './api';
+import { OperatorApiError, operatorApi } from './api';
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; vi.restoreAllMocks(); });
@@ -25,5 +25,15 @@ describe('operator API client', () => {
     globalThis.fetch = fetch;
     await operatorApi.bundle('draft/revision');
     expect(fetch).toHaveBeenCalledWith('/api/operator/drafts/draft%2Frevision/bundle', expect.objectContaining({ credentials: 'same-origin' }));
+  });
+
+  it('carries the parsed error body on failures and stays constructible without one', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'draft is no longer current', currentDraftRevisionId: 'draft-2' }), { status: 409 }));
+    const failure = await operatorApi.retry('draft-1', 'component:api').catch((cause: unknown) => cause);
+    expect(failure).toBeInstanceOf(OperatorApiError);
+    expect(failure).toMatchObject({ status: 409, message: 'draft is no longer current', body: { currentDraftRevisionId: 'draft-2' } });
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('not json', { status: 502 }));
+    expect(await operatorApi.runs().catch((cause: unknown) => cause)).toMatchObject({ status: 502, message: 'Request failed (502)', body: undefined });
+    expect(new OperatorApiError(403, 'operator access required').body).toBeUndefined();
   });
 });

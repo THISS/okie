@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { acceptsReviewResponse, coverageChips, coverageIncomplete, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, scopeStateLabel, selectedDraftForRun } from './reviewState';
+import { OperatorApiError, type OperatorEvent } from './api';
+import { acceptsReviewResponse, ACTION_RUNNING_MESSAGE, attemptLabel, classifyOperatorFailure, coverageChips, coverageIncomplete, currentRevisionTarget, draftBelongsToRun, humanizeEventType, money, runStateLabel, staleRevisionAfterFailure, staleRevisionFor, usageDiffers, operatorEventLabel, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, scopeStateLabel, selectedDraftForRun, STALE_REVISION_MESSAGE } from './reviewState';
 
 describe('operator review flow state', () => {
   it('keeps a selected draft pinned while polling discovers a newer run revision', () => {
@@ -17,9 +18,19 @@ describe('operator review flow state', () => {
   it('shows accepted / failed / not run / stale coverage chips that match the scope list', () => {
     expect(coverageChips({ total: 10, accepted: 3, failed: 1, notRun: 6, stale: 1 })).toEqual(['3/10 accepted', '1 failed', '6 not run', '1 stale']);
     expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 })).toEqual(['3/4 accepted', '1 failed', '0 not run', '0 stale']);
-    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 }, [{ state: 'accepted' }, { state: 'failed' }, { state: 'not run' }, { state: 'accepted', stale: true }])).toEqual(['2/4 accepted', '1 failed', '1 not run', '1 stale']);
+    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 }, [{ state: 'accepted' }, { state: 'failed' }, { state: 'not run' }, { state: 'accepted', stale: true }])).toEqual(['1/4 accepted', '1 failed', '1 not run', '1 stale']);
     expect(scopeStateLabel({ state: 'not run' })).toBe('not run');
     expect(scopeStateLabel({ state: 'accepted', stale: true })).toBe('stale');
+  });
+  it('counts chips from the visible scope-list labels so every chip equals the labels shown', () => {
+    const scopes = [{ state: 'accepted' as const }, { state: 'accepted' as const, stale: true }, { state: 'failed' as const }, { state: 'failed' as const, stale: true }, { state: 'not run' as const }, { state: 'running' as const }, { state: 'interrupted' as const }];
+    const chips = coverageChips({ total: 7, accepted: 2, failed: 2, notRun: 1, stale: 2 }, scopes);
+    expect(chips).toEqual(['1/7 accepted', '1 failed', '1 not run', '2 stale', '1 running', '1 interrupted']);
+    const labels = scopes.map(scopeStateLabel);
+    for (const chip of chips.slice(1)) { const [count, ...rest] = chip.split(' '); expect(labels.filter(label => label === rest.join(' ')).length).toBe(Number(count)); }
+    expect(chips.reduce((sum, chip) => sum + Number(chip.split(/[ /]/)[0]), 0)).toBe(scopes.length);
+    expect(coverageChips({ total: 2, accepted: 2, failed: 0, notRun: 0, stale: 0 }, [{ state: 'accepted' }, { state: 'accepted' }])).toEqual(['2/2 accepted', '0 failed', '0 not run', '0 stale']);
+    expect(coverageChips({ total: 1, accepted: 0, failed: 0, notRun: 0, stale: 0 }, [{ state: 'cancelled' }])).toEqual(['0/1 accepted', '0 failed', '0 not run', '0 stale', '1 cancelled']);
   });
   it('keeps requiring acknowledgement for any not-run, failed or stale coverage', () => {
     expect(coverageIncomplete({ total: 2, accepted: 2, failed: 0, notRun: 0, stale: 0 })).toBe(false);
@@ -47,5 +58,89 @@ describe('operator review flow state', () => {
     resolveFirst(payload);
     expect(await late).toBeUndefined();
     expect((await newer)?.detail?.draft.draftRevisionId).toBe('draft-1');
+  });
+});
+
+describe('operator run activity labels', () => {
+  const names = (id: string) => ({ 'component:api': 'API' } as Record<string, string>)[id];
+  it('labels every server-emitted event type without raw dotted strings', () => {
+    const events: Pick<OperatorEvent, 'type' | 'detail'>[] = [
+      { type: 'run.state', detail: { previous: 'queued', state: 'running' } },
+      { type: 'run.state', detail: { previous: 'running', state: 'awaiting_review' } },
+      { type: 'budget.reserved', detail: { requestId: 'r1', tokens: 4000, dollars: 0.05 } },
+      { type: 'budget.reserved', detail: { requestId: 'r2', tokens: 100, dollars: 0.01, kind: 'judgment' } },
+      { type: 'budget.settled', detail: { requestId: 'r1', inputTokens: 1200, outputTokens: 300, measuredCostUsd: 0.01 } },
+      { type: 'budget.released', detail: { requestId: 'r1' } },
+      { type: 'draft.conflict', detail: { reason: 'stale_retry_base', draftRevisionId: 'd1' } },
+      { type: 'draft.conflict', detail: { reason: 'retry_compare_and_swap' } },
+      { type: 'enrichment.retry_failed', detail: { scopeId: 'component:api' } },
+      { type: 'enrichment.budget_refused', detail: { scopeId: 'component:api', ledger: 'global' } },
+      { type: 'enrichment.unavailable', detail: { reason: 'no enrichment gateway configured' } },
+      { type: 'enrichment.budget_reached', detail: { accepted: 3, attempted: 5, ledger: 'run' } },
+      { type: 'something.new_kind' },
+    ];
+    const labels = events.map(event => operatorEventLabel(event, names));
+    expect(labels).toEqual([
+      'Run running', 'Run awaiting review', `Budget reserved · up to 4000 tokens / ${money(0.05)}`, `Judgment budget reserved · up to 100 tokens / ${money(0.01)}`,
+      `Budget settled · 1200 in / 300 out tokens · ${money(0.01)}`, 'Budget released (request not sent)',
+      'Draft conflict: action started from an older revision', 'Draft conflict: a newer revision was installed first',
+      'Retry failed · API', 'Enrichment refused by the global budget · API', 'Enrichment unavailable: no enrichment gateway configured',
+      'Enrichment stopped at the budget limit · 3 accepted of 5 attempted', 'Something new kind',
+    ]);
+    for (const [index, label] of labels.entries()) expect(label).not.toContain(events[index]!.type);
+  });
+  it('humanizes unknown event types and labels attempts', () => {
+    expect(humanizeEventType('foo.bar_baz')).toBe('Foo bar baz');
+    expect(humanizeEventType('')).toBe('Event');
+    expect(attemptLabel({ kind: 'enrichment', state: 'failed', scopeId: 'component:api' }, names)).toBe('API: enrichment failed');
+    expect(attemptLabel({ kind: 'retry', state: 'accepted', scopeId: 'component:unknown' }, names)).toBe('component:unknown: retry accepted');
+    expect(runStateLabel('awaiting_review')).toBe('Awaiting review');
+    expect(runStateLabel('running')).toBe('Running');
+  });
+});
+
+describe('operator failure classification', () => {
+  const operator = async () => ({ operator: true });
+  const notOperator = async () => ({ operator: false });
+  it('treats 401/403 after access was allowed as an expired session when the re-check says not operator', async () => {
+    expect(await classifyOperatorFailure(new OperatorApiError(401, 'operator access required'), true, notOperator)).toEqual({ kind: 'expired' });
+    expect(await classifyOperatorFailure(new OperatorApiError(403, 'operator access required'), true, notOperator)).toEqual({ kind: 'expired' });
+  });
+  it('keeps the original error when the session is still valid, the re-check fails, or access was never allowed', async () => {
+    expect(await classifyOperatorFailure(new OperatorApiError(403, 'operator access required'), true, operator)).toEqual({ kind: 'error', message: 'operator access required' });
+    expect(await classifyOperatorFailure(new OperatorApiError(401, 'operator access required'), true, async () => { throw new Error('offline'); })).toEqual({ kind: 'error', message: 'operator access required' });
+    let checks = 0;
+    expect(await classifyOperatorFailure(new OperatorApiError(401, 'operator access required'), false, async () => { checks += 1; return { operator: false }; })).toEqual({ kind: 'error', message: 'operator access required' });
+    expect(checks).toBe(0);
+    expect(await classifyOperatorFailure(new Error('boom'), true, notOperator)).toEqual({ kind: 'error', message: 'boom' });
+  });
+  it('distinguishes a stale revision 409 from an action already running', async () => {
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'draft is no longer current', { error: 'draft is no longer current', currentDraftRevisionId: 'draft-2' }), true, operator)).toEqual({ kind: 'stale-revision', message: STALE_REVISION_MESSAGE, currentDraftRevisionId: 'draft-2' });
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'draft is no longer current', { error: 'draft is no longer current' }), true, operator)).toEqual({ kind: 'stale-revision', message: STALE_REVISION_MESSAGE });
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'operator action already running', { error: 'operator action already running' }), true, operator)).toEqual({ kind: 'action-running', message: ACTION_RUNNING_MESSAGE });
+    expect(await classifyOperatorFailure(new OperatorApiError(409, 'Request failed (409)'), true, operator)).toEqual({ kind: 'error', message: 'Request failed (409)' });
+  });
+  it('opens the freshly refreshed run revision, falling back to the 409-reported one', () => {
+    expect(currentRevisionTarget('draft-3', 'draft-2')).toBe('draft-3');
+    expect(currentRevisionTarget(undefined, 'draft-2')).toBe('draft-2');
+    expect(currentRevisionTarget(undefined, undefined)).toBeUndefined();
+  });
+  it('scopes stale-revision context to the run whose action failed', () => {
+    const stale = { kind: 'stale-revision' as const, message: STALE_REVISION_MESSAGE, currentDraftRevisionId: 'draft-2' };
+    expect(staleRevisionAfterFailure(stale, 'run-a', 'run-a', undefined)).toEqual({ apply: true, stale: { runId: 'run-a', currentDraftRevisionId: 'draft-2' } });
+    expect(staleRevisionAfterFailure(stale, 'run-a', 'run-b', undefined)).toEqual({ apply: false, stale: undefined });
+    const previous = { runId: 'run-a', currentDraftRevisionId: 'draft-2' };
+    expect(staleRevisionAfterFailure({ kind: 'error', message: 'boom' }, 'run-a', 'run-a', previous)).toEqual({ apply: true, stale: undefined });
+    expect(staleRevisionAfterFailure({ kind: 'error', message: 'boom' }, 'run-a', 'run-a', previous, true)).toEqual({ apply: true, stale: previous });
+    expect(staleRevisionFor(previous, 'run-a')).toBe(previous);
+    expect(staleRevisionFor(previous, 'run-b')).toBeUndefined();
+    expect(staleRevisionFor(previous, undefined)).toBeUndefined();
+    expect(draftBelongsToRun({ draft: { draftRevisionId: 'draft-2', runId: 'run-a', revision: 2, state: 'open', coverage: { total: 0, accepted: 0, failed: 0, stale: 0 } } }, 'run-b')).toBe(false);
+    expect(draftBelongsToRun({ draft: { draftRevisionId: 'draft-2', runId: 'run-a', revision: 2, state: 'open', coverage: { total: 0, accepted: 0, failed: 0, stale: 0 } } }, 'run-a')).toBe(true);
+  });
+  it('shows revision usage only when it differs from the run total', () => {
+    expect(usageDiffers({ inputTokens: 10, outputTokens: 2, measuredCostUsd: 0.1 }, { inputTokens: 10, outputTokens: 2, measuredCostUsd: 0.1 })).toBe(false);
+    expect(usageDiffers({ inputTokens: 20, outputTokens: 4 }, { inputTokens: 10, outputTokens: 2 })).toBe(true);
+    expect(usageDiffers({ inputTokens: 1 }, undefined)).toBe(false);
   });
 });

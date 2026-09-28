@@ -24,6 +24,7 @@ import { readPortableFile, rememberPortableSession, forgetPortableSession } from
 import { OperatorWorkspace } from './operator/OperatorWorkspace';
 import { clearDraftPreviewContext, setDraftPreviewContext, setPublishedPreviewContext } from './operator/previewContext';
 import { loadPublishedExplanations } from './operator/publishedExplanations';
+import { documentPageFor, setDocumentPage } from './pageScroll';
 import {
   availableScanRepoSlugs,
   fetchScanNeighborhoodHost,
@@ -103,6 +104,7 @@ async function tryBootNeighborhoodFixture(
 async function bootScanFixture(load: ScanTrioLoader | undefined, slug: string | undefined): Promise<boolean> {
   const result = await tryBootScanFixture(load, slug);
   if (!result.ok) {
+    setDocumentPage(documentPageFor('error'));
     root.render(<StrictMode><ScanErrorScreen error={result.error} /></StrictMode>);
     return false;
   }
@@ -141,6 +143,7 @@ async function mountPortableAtlas(bundle: PortableAtlas, fixture: ScanFixture, n
     window.history.replaceState(null, '', portableReloadPath({ pathname: window.location.pathname, hash: '' }));
   }
   portableMountSequence += 1;
+  setDocumentPage(documentPageFor('portable'));
   root.render(<StrictMode key={portableMountSequence}>
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
     <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}><App /></div>
@@ -175,12 +178,14 @@ async function mountOperatorDraftPreview(draftRevisionId: string, scopes: import
   setDraftPreviewContext(draftRevisionId, scopes);
   setActiveScanFixture(prepared.fixture);
   refreshAppScanFixture();
+  setDocumentPage(documentPageFor('preview'));
   root.render(<StrictMode><div className="operator-preview-shell"><header><span>Operator draft preview · pinned revision {draftRevisionId}</span><button onClick={() => { setActivePortableAtlas(undefined); clearDraftPreviewContext(); setActiveScanFixture(undefined); refreshAppScanFixture(); void mountOperatorWorkspace(); }}>Return to review</button></header><div><App /></div></div></StrictMode>);
 }
 
 async function mountOperatorWorkspace(): Promise<void> {
   flushSync(() => root.render(null));
   clearDraftPreviewContext();
+  setDocumentPage(documentPageFor('operator'));
   root.render(<StrictMode><OperatorWorkspace initialDraftRevisionId={operatorReviewSelection.draftRevisionId} initialRunId={operatorReviewSelection.runId} onPreview={async (runId, draftRevisionId, scopes) => { operatorReviewSelection = { runId, draftRevisionId }; await mountOperatorDraftPreview(draftRevisionId, scopes); }}/></StrictMode>);
 }
 
@@ -195,6 +200,7 @@ async function openPortableFile(file: File): Promise<{ ok: true } | { ok: false;
 }
 
 function showPortablePicker(error?: string): void {
+  setDocumentPage(documentPageFor('picker'));
   root.render(<StrictMode><PortableAtlasOpenScreen error={error} onOpen={openPortableFile} /></StrictMode>);
 }
 
@@ -271,6 +277,7 @@ async function boot() {
   const route = parseAppRoute(window.location.pathname);
   if (route.kind === 'landing') {
     const { ScanLandingScreen } = await import('./scanLanding');
+    setDocumentPage(documentPageFor('landing'));
     root.render(<StrictMode><ScanLandingScreen /></StrictMode>);
     return;
   }
@@ -302,6 +309,7 @@ async function boot() {
       lastError = result.error;
     }
     if (!atlasReady) {
+      setDocumentPage(documentPageFor('error'));
       root.render(<StrictMode><ScanErrorScreen error={lastError} /></StrictMode>);
       return;
     }
@@ -317,6 +325,7 @@ async function boot() {
     }
   }
   const { App } = await import('./App');
+  setDocumentPage(documentPageFor('atlas'));
   root.render(<StrictMode><App /></StrictMode>);
 }
 

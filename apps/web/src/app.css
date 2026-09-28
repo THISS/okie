@@ -19,6 +19,9 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Document-style pages (operator workspace, landing, pickers) scroll the viewport; the atlas keeps it fixed. See pageScroll.ts. */
+body.document-page { overflow: auto; }
+
 button,
 input,
 textarea { font: inherit; }
