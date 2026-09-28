@@ -139,6 +139,57 @@ export function resolveEnrichmentBudget(env: NodeJS.Dict<string> = process.env):
   };
 }
 
+/** Operator-run request cap (CLA-254). Isolated so the product default can be swapped. */
+export const DEFAULT_OPERATOR_MAX_REQUESTS = 512;
+export const DEFAULT_OPERATOR_MAX_TOKENS = 4_000_000;
+export const DEFAULT_OPERATOR_MAX_DOLLARS = 5;
+/** Operator per-request deadline; long component/container prompts routinely exceed the public 60s. */
+export const DEFAULT_OPERATOR_REQUEST_TIMEOUT_MS = 120_000;
+
+/**
+ * Operator enrichment budget: `OKIE_LLM_OPERATOR_MAX_{REQUESTS,TOKENS,DOLLARS}`
+ * and `OKIE_LLM_OPERATOR_TIMEOUT_MS` (default 120s). Public scan enrichment keeps
+ * {@link resolveEnrichmentBudget}; the two must not share defaults.
+ */
+export function resolveOperatorEnrichmentBudget(env: NodeJS.Dict<string> = process.env): EnrichmentBudget {
+  return {
+    requestTimeoutMs: Math.floor(parsePositiveNumber(env.OKIE_LLM_OPERATOR_TIMEOUT_MS, DEFAULT_OPERATOR_REQUEST_TIMEOUT_MS)),
+    maxScopes: Math.floor(parsePositiveNumber(env.OKIE_LLM_OPERATOR_MAX_REQUESTS, DEFAULT_OPERATOR_MAX_REQUESTS)),
+    maxTokens: Math.floor(parsePositiveNumber(env.OKIE_LLM_OPERATOR_MAX_TOKENS, DEFAULT_OPERATOR_MAX_TOKENS)),
+    maxDollars: parsePositiveNumber(env.OKIE_LLM_OPERATOR_MAX_DOLLARS, DEFAULT_OPERATOR_MAX_DOLLARS),
+  };
+}
+
+/** Deepest C4 kind operator enrichment explains; `code` symbols are opt-in. */
+export type OperatorEnrichmentDepth = "component" | "code";
+export function resolveOperatorEnrichmentDepth(env: NodeJS.Dict<string> = process.env): OperatorEnrichmentDepth {
+  return env.OKIE_LLM_ENRICH_DEPTH?.trim().toLowerCase() === "code" ? "code" : "component";
+}
+
+/** Leaf reasoning control: `on` (default) leaves request bodies untouched; `off` asks OpenRouter to skip reasoning on leaves. */
+export type OperatorLeafReasoningSetting = "on" | "off";
+export function resolveOperatorLeafReasoning(env: NodeJS.Dict<string> = process.env): OperatorLeafReasoningSetting {
+  return env.OKIE_LLM_REASONING_LEAVES?.trim().toLowerCase() === "off" ? "off" : "on";
+}
+/** True for OpenRouter's API host (the only gateway that understands `reasoning: { enabled }`). */
+export function isOpenRouterProvider(provider: string | undefined): boolean {
+  return provider === "openrouter.ai" || Boolean(provider?.endsWith(".openrouter.ai"));
+}
+
+export const DEFAULT_LLM_MAX_CONCURRENT = 64;
+export const DEFAULT_LLM_RATE_LIMIT_RETRIES = 4;
+export const DEFAULT_LLM_RATE_LIMIT_BACKOFF_MS = 1000;
+export interface LlmRateLimitConfig { maxConcurrent: number; retries: number; backoffMs: number; }
+/** `OKIE_LLM_MAX_CONCURRENT` / `OKIE_LLM_RATE_LIMIT_RETRIES` / `OKIE_LLM_RATE_LIMIT_BACKOFF_MS`. */
+export function resolveLlmRateLimitConfig(env: NodeJS.Dict<string> = process.env): LlmRateLimitConfig {
+  const retries = optionalFiniteNumber(env.OKIE_LLM_RATE_LIMIT_RETRIES);
+  return {
+    maxConcurrent: Math.max(1, Math.floor(parsePositiveNumber(env.OKIE_LLM_MAX_CONCURRENT, DEFAULT_LLM_MAX_CONCURRENT))),
+    retries: retries !== undefined && retries >= 0 ? Math.floor(retries) : DEFAULT_LLM_RATE_LIMIT_RETRIES,
+    backoffMs: parsePositiveNumber(env.OKIE_LLM_RATE_LIMIT_BACKOFF_MS, DEFAULT_LLM_RATE_LIMIT_BACKOFF_MS),
+  };
+}
+
 export function llmGatewayErrorFromHttp(status: number, body: string, apiKey?: string): LlmGatewayError {
   const kind: LlmGatewayFailureKind = status === 429
     ? "rate_limit"

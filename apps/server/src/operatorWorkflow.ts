@@ -44,6 +44,8 @@ function object(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+const sidecarState = (value: unknown): string | undefined => value === "accepted" || value === "failed" || value === "not run" ? value : undefined;
+
 /** Artifact content is authoritative, so later attempts cannot rewrite a frozen preview. */
 export function readArtifactScopes(store: OperatorStore, artifactRevisionId: string, attempts: OperatorScopeAttempt[] = []): OperatorScopeDto[] {
   const bytes = store.readArtifactFile(artifactRevisionId, "operator-explanations.json");
@@ -68,7 +70,9 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
     return [{
       scopeId: scope.scopeId, entityId: scope.scopeId, name: scope.name,
       ...(typeof scope.parentScopeId === "string" ? { parentScopeId: scope.parentScopeId } : {}),
-      state: latest?.state ?? (typeof scope.state === "string" ? scope.state : row ? "accepted" : "failed"),
+      // The enriched sidecar's recorded state wins (its attempts live under the pre-enrichment
+      // draft id) unless this draft has live or cancelled work in progress.
+      state: (latest && ["running", "queued", "cancelled"].includes(latest.state) ? latest.state : undefined) ?? sidecarState(scope.state) ?? latest?.state ?? (row ? "accepted" : "not run"),
       stale: Boolean(scope.stale || row?.stale || staleScopes.has(scope.scopeId) || latest?.stale),
       ...(typeof explanation.summary === "string" ? { explanation } : {}),
       ...(typeof row?.explanationVersionId === "string" ? { explanationVersionId: row.explanationVersionId } : {}),

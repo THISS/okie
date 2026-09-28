@@ -26,7 +26,7 @@ function setup(t: { after(fn: () => void): void }) {
   const publication = new OperatorPublicationService(store);
   const run = store.createRun({ idempotencyKey: "profile", source: { repositoryId: "repo:o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
   const artifact = store.writeArtifactRevision({ repositoryId: run.source.repositoryId, sourceCommitSha: commit, files: { "snapshot.json": JSON.stringify(snapshot()), "atlas.okie.json": "original" } });
-  const draft = publication.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 3, accepted: 1, failed: 1, stale: 1 } });
+  const draft = publication.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: { total: 3, accepted: 1, failed: 1, notRun: 1, stale: 1 } });
   store.updateRun(run.runId, { state: "awaiting_review" });
   let calls = 0;
   const provider: JudgmentProvider = { modelId: JEV_MODEL, async evaluate(request) {
@@ -88,7 +88,7 @@ test("immutable pinned read, provider-free reuse, child retry stales ancestors o
   assert.equal(replayed.state, "accepted");
   assert.ok("replayed" in replayed && replayed.replayed);
   assert.equal(ctx.calls(), 2);
-  assert.deepEqual(ctx.store.snapshot().drafts.at(-1)!.coverage, { total: 3, accepted: 1, failed: 1, stale: 1 });
+  assert.deepEqual(ctx.store.snapshot().drafts.at(-1)!.coverage, { total: 3, accepted: 1, failed: 1, notRun: 1, stale: 1 });
   assert.equal(ctx.store.readArtifactFile(ctx.artifact.artifactRevisionId, "atlas.okie.json")!.toString(), "original");
   assert.throws(() => readSectionProfile(ctx.store, { repositoryId: "repo:other/repo", draftRevisionId: child.draftRevisionId }, "component:a"));
 });

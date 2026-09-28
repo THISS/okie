@@ -1,4 +1,18 @@
-import type { DraftDetail, OperatorDraft, OperatorRun } from './api';
+import type { DraftDetail, OperatorDraft, OperatorRun, OperatorScope } from './api';
+
+/**
+ * Coverage chips mirror the scope list: accepted / failed / not run partition the total; stale overlays.
+ * Legacy drafts (no `notRun`) derive every count from the scope list states so chips always match it.
+ */
+export function coverageChips(coverage: OperatorDraft['coverage'], scopes?: readonly Pick<OperatorScope, 'state' | 'stale'>[]): string[] {
+  const counts = coverage.notRun === undefined && scopes ? { total: scopes.length, accepted: scopes.filter(scope => scope.state === 'accepted').length, failed: scopes.filter(scope => scope.state === 'failed').length, notRun: scopes.filter(scope => scope.state === 'not run').length, stale: scopes.filter(scope => scope.stale).length } : { ...coverage, notRun: coverage.notRun ?? Math.max(0, coverage.total - coverage.accepted - coverage.failed) };
+  return [`${counts.accepted}/${counts.total} accepted`, `${counts.failed} failed`, `${counts.notRun} not run`, `${counts.stale} stale`];
+}
+/** Any non-accepted or stale coverage still requires publish acknowledgement. */
+export function coverageIncomplete(coverage: OperatorDraft['coverage']): boolean {
+  return coverage.failed > 0 || (coverage.notRun ?? 0) > 0 || coverage.stale > 0 || coverage.accepted < coverage.total;
+}
+export function scopeStateLabel(scope: Pick<OperatorScope, 'state' | 'stale'>): string { return scope.stale ? 'stale' : scope.state; }
 
 /** Keeps review on an explicitly selected revision while background status changes. */
 export function selectedDraftForRun(selectedDraftRevisionId: string | undefined, run: Pick<OperatorRun, 'draftRevisionId'>, loaded?: OperatorDraft): string | undefined {

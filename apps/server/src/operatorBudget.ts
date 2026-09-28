@@ -46,6 +46,7 @@ export function createOperatorBudgetLedger(
     for (const event of events()) {
       const id = event.detail?.requestId;
       if (typeof id !== "string") continue;
+      if (event.type === "budget.released") { reservations.delete(id); continue; }
       if (event.type === "budget.reserved") reservations.set(id, { tokens: amount(event.detail?.tokens) ?? 0, dollars: amount(event.detail?.dollars) ?? 0, ...(typeof event.detail?.attemptId === "string" ? { attemptId: event.detail.attemptId } : {}) });
       if (event.type === "budget.settled") {
         const row = reservations.get(id);
@@ -108,6 +109,16 @@ export function createOperatorBudgetLedger(
         append({ type: "budget.settled", detail });
       });
     },
+    /** Drops an unused reservation (no request was sent), e.g. when a later ledger in an admission chain refuses. */
+    release(requestId: string): void {
+      locked(() => {
+        const row = read().reservations.get(requestId);
+        if (!row) throw new Error("unknown budget reservation");
+        if (row.usage) throw new Error("settled budget reservation cannot be released");
+        append({ type: "budget.released", detail: { requestId } });
+      });
+    },
     snapshot: (): OperatorBudgetSnapshot => read().snapshot,
   };
 }
+export type OperatorBudgetLedger = ReturnType<typeof createOperatorBudgetLedger>;

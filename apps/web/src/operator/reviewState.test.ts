@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acceptsReviewResponse, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, selectedDraftForRun } from './reviewState';
+import { acceptsReviewResponse, coverageChips, coverageIncomplete, OperatorReviewLoader, publicationAcknowledgementAfterConflict, resetReviewForRun, scopeStateLabel, selectedDraftForRun } from './reviewState';
 
 describe('operator review flow state', () => {
   it('keeps a selected draft pinned while polling discovers a newer run revision', () => {
@@ -13,6 +13,19 @@ describe('operator review flow state', () => {
   });
   it('requires a fresh coverage acknowledgement after a publish conflict refresh', () => {
     expect(publicationAcknowledgementAfterConflict()).toBe(false);
+  });
+  it('shows accepted / failed / not run / stale coverage chips that match the scope list', () => {
+    expect(coverageChips({ total: 10, accepted: 3, failed: 1, notRun: 6, stale: 1 })).toEqual(['3/10 accepted', '1 failed', '6 not run', '1 stale']);
+    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 })).toEqual(['3/4 accepted', '1 failed', '0 not run', '0 stale']);
+    expect(coverageChips({ total: 4, accepted: 3, failed: 1, stale: 0 }, [{ state: 'accepted' }, { state: 'failed' }, { state: 'not run' }, { state: 'accepted', stale: true }])).toEqual(['2/4 accepted', '1 failed', '1 not run', '1 stale']);
+    expect(scopeStateLabel({ state: 'not run' })).toBe('not run');
+    expect(scopeStateLabel({ state: 'accepted', stale: true })).toBe('stale');
+  });
+  it('keeps requiring acknowledgement for any not-run, failed or stale coverage', () => {
+    expect(coverageIncomplete({ total: 2, accepted: 2, failed: 0, notRun: 0, stale: 0 })).toBe(false);
+    expect(coverageIncomplete({ total: 2, accepted: 1, failed: 0, notRun: 1, stale: 0 })).toBe(true);
+    expect(coverageIncomplete({ total: 2, accepted: 2, failed: 0, stale: 1 })).toBe(true);
+    expect(coverageIncomplete({ total: 2, accepted: 1, failed: 1, stale: 0 })).toBe(true);
   });
   it('clears draft-local state when switching runs', () => {
     expect(resetReviewForRun()).toEqual({ draftRevisionId: undefined, acknowledged: false });
