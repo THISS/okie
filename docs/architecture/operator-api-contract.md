@@ -17,7 +17,7 @@ Implementation contract for CLA-133/CLA-135. These routes are not yet wired. All
 | POST `/api/operator/drafts/:draftRevisionId/refresh` | `{ scopeIds }` | 202 `{ run, draftRevisionId }`; explicit stale ancestors only |
 | POST `/api/operator/drafts/:draftRevisionId/publish` | `{ expectedCurrentVersionId?, acknowledgeCoverage }` | `{ publication }`; 409 on stale current pointer/revision |
 
-Scope rows include identity/parent/name, latest attempt state, accepted explanation/version/evidence, stale flag and validation diagnostics. Usage distinguishes measured cost, estimated cost and unknown cost. Events have stable IDs and can be paginated; an unbounded complete log should not be returned by default.
+Scope rows include identity/parent/name, C4 `kind` and `depth`, an optional `path` (the scope's primary repository-relative source path, from its first source ref; used for operator list search and tooltips, never a server filesystem path; absent when the scope has no source ref or on older servers), an optional operator-only `metrics: { costUsd?, totalTokens?, updatedAt? }` summary of the attempts behind the scope's current state (this draft's attempts for the scope when it has any, else the attempt an enriched sidecar's explanation row names — those live under the pre-enrichment draft — plus the row's install time; cost is measured, else estimated; omitted when nothing is known, and never included on public read routes), latest attempt state, accepted explanation/version/evidence, stale flag and validation diagnostics. Usage distinguishes measured cost, estimated cost and unknown cost. Events have stable IDs and can be paginated; an unbounded complete log should not be returned by default.
 
 ## Access and publication rules
 

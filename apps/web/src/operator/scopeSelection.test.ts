@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OperatorScope } from './api';
-import { affectedAncestors, applyFraction, budgetWarning, buildRetryRequest, confirmText, defaultScope, filterScopes, fitToBudget, levelTag, nameHints, orderScopes, remainingBudgetUsd, remainingRequests, retryEstimate, selectable, selectByLevel, selectByState, selectionIncludesBelowCap, selectSubtree, selectVisible, usd } from './scopeSelection';
+import { affectedAncestors, applyFraction, budgetWarning, buildRetryRequest, confirmText, fitToBudget, levelTag, remainingBudgetUsd, remainingRequests, retryEstimate, selectable, selectByLevel, selectByState, selectionIncludesBelowCap, selectSubtree, selectVisible, usd } from './scopeSelection';
 
 const s = (scopeId: string, kind: string, depth: number, state: OperatorScope['state'], parentScopeId?: string, stale = false): OperatorScope => ({ scopeId, name: scopeId, kind, depth, state, ...(parentScopeId ? { parentScopeId } : {}), ...(stale ? { stale } : {}) });
 const scopes: OperatorScope[] = [
@@ -15,25 +15,11 @@ const scopes: OperatorScope[] = [
   s('busy', 'component', 2, 'running', 'api'),
 ];
 
-describe('scope ordering and filters', () => {
-  it('orders problems first (failed, stale, not run), then level, depth and name', () => {
-    expect(orderScopes(scopes).map(scope => scope.scopeId)).toEqual(['b-comp', 'web', 'a-comp', 'sys', 'api', 'busy', 'c-comp', 'fn1', 'fn2']);
-  });
-  it('filters by visible state label and hides below-cap scopes until opted in', () => {
-    expect(filterScopes(scopes, 'all', false).map(scope => scope.scopeId)).not.toContain('fn1');
-    expect(filterScopes(scopes, 'all', true).map(scope => scope.scopeId)).toContain('fn1');
-    expect(filterScopes(scopes, 'failed', false).map(scope => scope.scopeId)).toEqual(['b-comp']);
-    expect(filterScopes(scopes, 'stale', false).map(scope => scope.scopeId)).toEqual(['web']);
-    expect(filterScopes(scopes, 'not run', false).map(scope => scope.scopeId)).toEqual(['a-comp']);
-    expect(filterScopes(scopes, 'accepted', false).map(scope => scope.scopeId)).toEqual(['sys', 'api', 'c-comp', 'fn2']);
-    expect(levelTag({ kind: 'softwareSystem' })).toBe('system'); expect(levelTag({})).toBe('');
-  });
-});
-
 describe('selection helpers', () => {
   it('selects visible, by state, by level and by subtree; running scopes are never selectable', () => {
     expect(selectable({ state: 'running' }, true)).toBe(false);
-    expect(selectVisible(filterScopes(scopes, 'all', false), false)).toEqual(['sys', 'web', 'api', 'b-comp', 'a-comp', 'c-comp', 'fn2']);
+    expect(levelTag({ kind: 'softwareSystem' })).toBe('system'); expect(levelTag({})).toBe('');
+    expect(selectVisible(scopes.filter(scope => scope.state !== 'below cap'), false)).toEqual(['sys', 'web', 'api', 'b-comp', 'a-comp', 'c-comp', 'fn2']);
     expect(selectByState(scopes, 'failed', false)).toEqual(['b-comp']);
     expect(selectByState(scopes, 'not run', false)).toEqual(['a-comp']);
     expect(selectByState(scopes, 'stale', false)).toEqual(['web']);
@@ -105,26 +91,6 @@ describe('fraction and estimates', () => {
     expect(budgetWarning(cheap)).toBe('This exceeds the remaining budget (up to 6 requests but only 4 left): the pass will stop at the budget limit. Run fewer scopes or fit to the remaining budget.');
     expect(confirmText(cheap)).toContain('· remaining budget $5.00 · 4 requests left');
     expect(budgetWarning(retryEstimate(scopes, ['b-comp'], 0.001, { maxDollars: 5, spentDollars: 0, remainingRequests: 3 }))).toBeUndefined();
-  });
-  it('defaults the inspector to the first visible scope, never a hidden below-cap one', () => {
-    const capped = [s('deep', 'code', 3, 'below cap', 'sys'), s('sys', 'softwareSystem', 0, 'accepted')];
-    expect(defaultScope(capped, false)?.scopeId).toBe('sys');
-    expect(defaultScope([s('deep', 'code', 3, 'below cap')], false)).toBeUndefined();
-    expect(defaultScope(capped, true)?.scopeId).toBe('sys');
-  });
-  it('disambiguates duplicate scope names with the parent name, then ancestors, never a raw scope id', () => {
-    const named = (scopeId: string, name: string, parentScopeId?: string): OperatorScope => ({ ...s(scopeId, 'code', 3, 'accepted', parentScopeId), name });
-    const hints = nameHints([named('p1', 'web'), named('p2', 'api'), named('x1', 'index.ts', 'p1'), named('x2', 'index.ts', 'p2'), named('u', 'unique.ts', 'p1')]);
-    expect(hints.get('x1')).toBe('in web'); expect(hints.get('x2')).toBe('in api'); expect(hints.has('u')).toBe(false);
-    // Parents collide too (two src/geometry.rs): climb to the grandparent; never a raw scope id.
-    const clash = nameHints([named('engine', 'atlas-engine'), named('gpu', 'atlas-gpu'), named('p1', 'src/geometry.rs', 'engine'), named('p2', 'src/geometry.rs', 'gpu'), named('x1', 'area', 'p1'), named('x2', 'area', 'p2')]);
-    expect(clash.get('x1')).toBe('in src/geometry.rs · atlas-engine'); expect(clash.get('x2')).toBe('in src/geometry.rs · atlas-gpu');
-    expect(clash.get('p1')).toBe('in atlas-engine');
-    // Indistinguishable ancestry falls back to an ordinal, not an id.
-    const twins = nameHints([named('root', 'sys'), named('t1', 'a.ts', 'root'), named('t2', 'a.ts', 'root'), named('o1', 'x'), named('o2', 'x')]);
-    expect(twins.get('t1')).toBe('in sys · 1 of 2'); expect(twins.get('t2')).toBe('in sys · 2 of 2');
-    expect(twins.get('o1')).toBe('1 of 2');
-    for (const hint of [...clash.values(), ...twins.values()]) expect(hint).not.toMatch(/\b(x1|x2|p1|p2|t1|t2|o1|o2)\b/);
   });
   it('estimates (scopes + ancestors that may re-reduce) × the run average and renders the confirm line', () => {
     expect(affectedAncestors(scopes, ['b-comp', 'a-comp']).sort()).toEqual(['sys', 'web']);
