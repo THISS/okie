@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { OperatorStore } from "./operatorStore.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
-import { OperatorWorkflow } from "./operatorWorkflow.js";
+import { OperatorWorkflow, readArtifactScopes } from "./operatorWorkflow.js";
 
 test("draft scope metadata preserves full immutable explanations and untouched scopes", () => {
   const root = mkdtempSync(join(tmpdir(), "okie-workflow-"));
@@ -59,5 +59,47 @@ test("the enriched sidecar's per-scope state is authoritative for a draft with n
     assert.deepEqual(live.scopes.map(scope => [scope.scopeId, scope.state]), [["a", "accepted"], ["b", "running"], ["c", "cancelled"], ["d", "accepted"]], "running/queued/cancelled attempts win; a settled attempt does not override the sidecar");
     store.updateAttempt(running.attemptId, { state: "queued" });
     assert.equal(new OperatorWorkflow({ store, publications, enqueue() {} }).draftDetail(enriched.draftRevisionId)!.scopes[1]?.state, "queued");
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("scope DTOs carry the primary source path for list search and tooltips (CLA-259)", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-workflow-path-"));
+  try {
+    const store = new OperatorStore(root);
+    const artifact = store.writeArtifactRevision({ repositoryId: "o/r", files: { "operator-explanations.json": JSON.stringify({ scopes: [{ scopeId: "container:web", name: "@okie/web", kind: "container", sourceRefs: [{ path: "apps/web" }] }, { scopeId: "component:share", name: "api/share.ts", kind: "component", parentScopeId: "container:web", sourceRefs: [{ path: "apps/web/api/share.ts", startLine: 1 }, { path: "other.ts" }] }, { scopeId: "component:bare", name: "bare", kind: "component", sourceRefs: [] }], explanations: [] }) } });
+    const scopes = readArtifactScopes(store, artifact.artifactRevisionId);
+    assert.deepEqual(scopes.map(scope => scope.path), ["apps/web", "apps/web/api/share.ts", undefined]);
+    assert.equal("path" in scopes[2]!, false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("operator draft detail summarizes per-scope metrics, including an enriched sidecar whose attempts live on the pre-enrichment draft (CLA-259)", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-workflow-metrics-"));
+  try {
+    const store = new OperatorStore(root);
+    const publications = new OperatorPublicationService(store);
+    const run = store.createRun({ idempotencyKey: "metrics", source: { repositoryId: "o/r", owner: "o", repo: "r", slug: "o-r" } }).run;
+    const scan = store.writeArtifactRevision({ repositoryId: "o/r", files: { "operator-explanations.json": JSON.stringify({ scopes: [{ scopeId: "component:a", name: "a.ts", kind: "component" }], explanations: [] }) } });
+    const pre = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: scan.artifactRevisionId });
+    const produced = store.createAttempt({ draftRevisionId: pre.draftRevisionId, scopeId: "component:a", kind: "enrichment", state: "accepted", usage: { inputTokens: 277, outputTokens: 260, measuredCostUsd: 0.0003 } });
+    // The enriched sidecar names the producing attempt (on the pre-enrichment draft) and its install time.
+    const enriched = store.writeArtifactRevision({ repositoryId: "o/r", files: { "operator-explanations.json": JSON.stringify({ scopes: [{ scopeId: "component:a", name: "a.ts", kind: "component" }, { scopeId: "component:b", name: "b.ts", kind: "component" }, { scopeId: "component:c", name: "c.ts", kind: "component" }], explanations: [
+      { scopeId: "component:a", attemptId: produced.attemptId, explanationVersionId: "explanation-a", createdAt: produced.updatedAt + 5, content: { summary: "A", evidence: [] } },
+      { scopeId: "component:b", attemptId: "attempt-missing", explanationVersionId: "explanation-b", createdAt: 42, content: { summary: "B", evidence: [] } },
+    ] }) } });
+    const draft = publications.createDraftRevision({ runId: run.runId, artifactRevisionId: enriched.artifactRevisionId });
+    const workflow = new OperatorWorkflow({ store, publications, enqueue() {} });
+    const scopes = workflow.draftDetail(draft.draftRevisionId)!.scopes;
+    assert.equal(scopes[0]!.attempts, undefined, "enriched scopes carry no attempts on this draft");
+    assert.deepEqual(scopes[0]!.metrics, { costUsd: 0.0003, totalTokens: 537, updatedAt: produced.updatedAt + 5 });
+    assert.deepEqual(scopes[1]!.metrics, { updatedAt: 42 }, "an unknown attempt still reports the install time");
+    assert.equal("metrics" in scopes[2]!, false, "no attempt and no explanation: no metrics");
+
+    // A retry on this draft replaces the sidecar attempt as the source of the scope's current state.
+    store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: "component:a", kind: "retry", state: "failed", usage: { inputTokens: 10, outputTokens: 0, estimatedCostUsd: 0.01 } });
+    const retried = workflow.draftDetail(draft.draftRevisionId)!.scopes[0]!;
+    assert.equal(retried.metrics?.costUsd, 0.01); assert.equal(retried.metrics?.totalTokens, 10);
+    // Public reads (published explanations) never include operator metrics.
+    assert.equal(readArtifactScopes(store, enriched.artifactRevisionId).some(scope => "metrics" in scope), false);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

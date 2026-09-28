@@ -6,7 +6,33 @@ import { OperatorPublicationService } from "./operatorPublication.js";
 import { OperatorStore } from "./operatorStore.js";
 
 /** `kind` is the C4 kind recorded in the sidecar (absent on hand-written legacy rows); `depth` counts ancestors. */
-export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; depth: number; state: string; stale: boolean; explanation?: unknown; explanationVersionId?: string; diagramError?: string; attempts?: OperatorScopeAttempt[]; }
+/**
+ * `path`: the scope's primary source path (first source ref), for list search and tooltips (CLA-259).
+ * `metrics`: operator-only cost/tokens/last-updated summary of the attempts behind the scope's current state (CLA-259).
+ */
+export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; path?: string; depth: number; state: string; stale: boolean; explanation?: unknown; explanationVersionId?: string; diagramError?: string; attempts?: OperatorScopeAttempt[]; metrics?: OperatorScopeMetrics; }
+/** Every field optional; `metrics` is omitted when none is known. */
+export interface OperatorScopeMetrics { costUsd?: number; totalTokens?: number; updatedAt?: number; }
+
+/**
+ * Metrics for the attempts that produced a scope's current state: this draft's attempts for the scope when it has any
+ * (a retry or a live pass), else the attempt the artifact's explanation row names — an enriched sidecar's attempts live
+ * under the pre-enrichment draft — with the row's install time. Cost is measured, else estimated.
+ */
+export function scopeMetricsFor(draftAttempts: readonly OperatorScopeAttempt[], row: Record<string, unknown> | undefined, attemptById: ReadonlyMap<string, OperatorScopeAttempt>): OperatorScopeMetrics | undefined {
+  const linked = typeof row?.attemptId === "string" ? attemptById.get(row.attemptId) : undefined;
+  const sources = draftAttempts.length ? draftAttempts : linked ? [linked] : [];
+  let costUsd: number | undefined; let totalTokens: number | undefined; let updatedAt: number | undefined;
+  const later = (at: unknown) => { if (typeof at === "number" && Number.isFinite(at) && (updatedAt === undefined || at > updatedAt)) updatedAt = at; };
+  for (const attempt of sources) {
+    const cost = attempt.usage?.measuredCostUsd ?? attempt.usage?.estimatedCostUsd;
+    if (cost !== undefined) costUsd = (costUsd ?? 0) + cost;
+    if (attempt.usage?.inputTokens !== undefined || attempt.usage?.outputTokens !== undefined) totalTokens = (totalTokens ?? 0) + (attempt.usage.inputTokens ?? 0) + (attempt.usage.outputTokens ?? 0);
+    later(attempt.updatedAt);
+  }
+  if (!draftAttempts.length) later(row?.createdAt);
+  return costUsd === undefined && totalTokens === undefined && updatedAt === undefined ? undefined : { ...(costUsd !== undefined ? { costUsd } : {}), ...(totalTokens !== undefined ? { totalTokens } : {}), ...(updatedAt !== undefined ? { updatedAt } : {}) };
+}
 /** `batch`: the retry came in the API's `scopeIds` form and re-reduces affected ancestors in one pass. */
 export interface OperatorWorkflowJob { kind: "run" | "retry" | "refresh"; runId: string; draftRevisionId?: string; scopeIds?: string[]; batch?: boolean; githubAccess: ScanGithubAccess; }
 /** The run ledger as the operator sees it: spend so far against the configured per-run limits. */
@@ -46,7 +72,7 @@ export class OperatorWorkflow {
     const attempts = state.attempts.filter(value => value.draftRevisionId === draftRevisionId);
     // A pass is writing to this draft: settled attempts that are not installed yet read as pending ("running").
     const live = run.draftRevisionId === draftRevisionId && (run.state === "running" || run.state === "queued");
-    const scopes = readArtifactScopes(this.options.store, draft.artifactRevisionId, attempts, { live });
+    const scopes = readArtifactScopes(this.options.store, draft.artifactRevisionId, attempts, { live, metrics: true });
     const current = this.options.publications.currentPublication(draft.repositoryId);
     const artifact = state.artifacts.find(value => value.artifactRevisionId === draft.artifactRevisionId);
     // Coverage is re-derived from the immutable sidecar (+ this draft's attempts) so legacy drafts count "below cap" correctly.
@@ -94,7 +120,8 @@ export function avgCost(attempts: readonly OperatorScopeAttempt[]): { avgCostPer
 }
 
 /** Artifact content is authoritative, so later attempts cannot rewrite a frozen preview. */
-export function readArtifactScopes(store: OperatorStore, artifactRevisionId: string, attempts: OperatorScopeAttempt[] = [], options: { live?: boolean } = {}): OperatorScopeDto[] {
+/** `metrics` adds the operator-only per-scope cost/tokens/updated summary (never on public routes). */
+export function readArtifactScopes(store: OperatorStore, artifactRevisionId: string, attempts: OperatorScopeAttempt[] = [], options: { live?: boolean; metrics?: boolean } = {}): OperatorScopeDto[] {
   const bytes = store.readArtifactFile(artifactRevisionId, "operator-explanations.json");
   if (!bytes) return [];
   const sidecar = object(JSON.parse(bytes.toString("utf8")));
@@ -112,6 +139,8 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
   const legacyCap = recordedCap ? undefined : legacyEnrichmentCap(definitions.map(object).map(scope => ({ scopeId: String(scope.scopeId), kind: scope.kind, state: scope.state })), new Set(byScope.keys()));
   const parents = new Map<string, string>();
   for (const value of definitions) { const scope = object(value); if (typeof scope.scopeId === "string" && typeof scope.parentScopeId === "string") parents.set(scope.scopeId, scope.parentScopeId); }
+  const attemptById = options.metrics ? new Map(store.snapshot().attempts.map(attempt => [attempt.attemptId, attempt])) : undefined;
+  const attemptsByScope = new Map<string, OperatorScopeAttempt[]>(); for (const attempt of attempts) { const list = attemptsByScope.get(attempt.scopeId); if (list) list.push(attempt); else attemptsByScope.set(attempt.scopeId, [attempt]); }
   const depthOf = (scopeId: string): number => { let depth = 0; const seen = new Set([scopeId]); let cursor = parents.get(scopeId); while (cursor && !seen.has(cursor)) { seen.add(cursor); depth += 1; cursor = parents.get(cursor); } return depth; };
   return definitions.flatMap(value => {
     const scope = object(value);
@@ -119,7 +148,8 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
     const row = byScope.get(scope.scopeId);
     const content = row?.content ?? row?.explanation;
     const explanation = object(content);
-    const rows = attempts.filter(attempt => attempt.scopeId === scope.scopeId);
+    const rows = attemptsByScope.get(scope.scopeId) ?? [];
+    const metrics = attemptById ? scopeMetricsFor(rows, row, attemptById) : undefined;
     const latest = rows.at(-1);
     const recorded = sidecarState(scope.state);
     // Sidecar-only inference; an in-flight attempt still shows as running/queued because live states win below.
@@ -131,7 +161,7 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
     const attemptedBelowCap = settled === "below cap" && latest ? (latest.state === "accepted" ? (row ? "accepted" : options.live ? "running" : "not run") : latest.state === "interrupted" ? "failed" : latest.state) : undefined;
     return [{
       scopeId: scope.scopeId, entityId: scope.scopeId, name: scope.name,
-      ...(typeof scope.kind === "string" ? { kind: scope.kind } : {}), depth: depthOf(scope.scopeId),
+      ...(typeof scope.kind === "string" ? { kind: scope.kind } : {}), ...(primaryPath(scope.sourceRefs) ? { path: primaryPath(scope.sourceRefs)! } : {}), depth: depthOf(scope.scopeId),
       ...(typeof scope.parentScopeId === "string" ? { parentScopeId: scope.parentScopeId } : {}),
       // The enriched sidecar's recorded state wins (its attempts live under the pre-enrichment
       // draft id) unless this draft has live or cancelled work in progress.
@@ -143,9 +173,13 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
       ...(typeof row?.explanationVersionId === "string" ? { explanationVersionId: row.explanationVersionId } : {}),
       ...(typeof explanation.diagramError === "string" ? { diagramError: explanation.diagramError } : {}),
       ...(rows.length ? { attempts: rows } : {}),
+      ...(metrics ? { metrics } : {}),
     }];
   });
 }
+
+/** First source ref's path, when the sidecar recorded one. */
+function primaryPath(refs: unknown): string | undefined { const first = Array.isArray(refs) ? object(refs[0]) : {}; return typeof first.path === "string" && first.path ? first.path : undefined; }
 
 export function usage(attempts: OperatorScopeAttempt[]): OperatorUsage & { costStatus: "measured" | "estimated" | "unknown"; unknownCostAttempts: number } {
   const rows = attempts.map(value => value.usage);
