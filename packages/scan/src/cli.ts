@@ -193,6 +193,7 @@ function writeArtifacts(out: string, artifacts: ScanArtifacts, repositoryUrl?: s
   writeFileSync(`${out}/scene.json`, stableJson(artifacts.scene));
   writeFileSync(`${out}/timeline.json`, stableJson(artifacts.timeline));
   writeFileSync(`${out}/dependencies.json`, stableJson(artifacts.dependencies));
+  writeFileSync(`${out}/membership-report.json`, stableJson(artifacts.membership));
   if (artifacts.enrichmentReport) {
     writeFileSync(`${out}/enrichment-report.json`, stableJson(artifacts.enrichmentReport));
   }
@@ -200,6 +201,12 @@ function writeArtifacts(out: string, artifacts: ScanArtifacts, repositoryUrl?: s
     writeFileSync(`${out}/component-map-report.json`, stableJson(artifacts.componentMapReport));
     if (!artifacts.componentMapReport.accepted) process.exitCode = 1;
   }
+}
+
+/** CLA-263 membership warnings, capped like the folded-shim list (full list in membership-report.json). */
+function membershipWarningLines(diagnostics: ScanArtifacts["membership"]["diagnostics"]): string {
+  const shown = diagnostics.slice(0, 5).map(diagnostic => `  warning [${diagnostic.code}]: ${diagnostic.message}\n`).join("");
+  return diagnostics.length > 5 ? `${shown}  ... ${diagnostics.length - 5} more membership warning(s) (see membership-report.json)\n` : shown;
 }
 
 function summaryLines(artifacts: ScanArtifacts): string {
@@ -220,6 +227,10 @@ function summaryLines(artifacts: ScanArtifacts): string {
   const membersNote = discoverySummary.skippedMembers.length > 0
     ? `  skipped ${discoverySummary.skippedMembers.length} fixture/example member(s): ${discoverySummary.skippedMembers.slice(0, 5).join(", ")}${discoverySummary.skippedMembers.length > 5 ? " ..." : ""} (--include-members to scan)\n`
     : "";
+  const aliases = artifacts.membership.reexportAliases;
+  const aliasNote = (aliases.length > 0
+    ? `  folded ${aliases.length} re-export shim(s) into their target's container: ${aliases.slice(0, 5).map(alias => `${alias.path} -> ${alias.target}`).join(", ")}${aliases.length > 5 ? " ..." : ""} (see membership-report.json)\n`
+    : "") + membershipWarningLines(artifacts.membership.diagnostics);
   const coverageCount = snapshot.entities.filter(entity => entity.coverageFileHitRate !== undefined).length;
   const coverageNote = coverageCount > 0
     ? `  lcov sidecar: ${coverageCount} code entit${coverageCount === 1 ? "y" : "ies"} with file hit rate / untested ranges\n`
@@ -233,7 +244,7 @@ function summaryLines(artifacts: ScanArtifacts): string {
     : `  component map: REJECTED; retained original file graph (see component-map-report.json)\n${mapping.reasons.map(reason => `    ${reason}\n`).join('')}`;
   return `okie-scan: ${snapshot.entities.length} entities, ${snapshot.relations.length} relations\n` +
     `  commit ${pin.commitSha}\n  tree   ${pin.treeHash}\n` +
-    modeNote + jsNote + membersNote + coverageNote + flowNote + enrichedNote + systemScopeNote + mappingNote;
+    modeNote + jsNote + membersNote + aliasNote + coverageNote + flowNote + enrichedNote + systemScopeNote + mappingNote;
 }
 
 /** Rewrites <scanRoot>/index.json to index every per-repo scan slot deterministically. */

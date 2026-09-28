@@ -117,3 +117,35 @@ test('portable analyzer enums must be strings without coercion', () => {
   Object.assign(coverage.analysis.adapters[0]!, { coverage: ['syntax'] });
   assert.throws(() => parsePortableAtlas(JSON.stringify(coverage)), /coverage entry/);
 });
+
+test('portable container-membership report (CLA-263) round-trips and rejects malformed entries', () => {
+  const alias = { path: 'api/share.ts', target: 'apps/web/api/share.ts', unit: 'apps/web' };
+  const diagnostic = { code: 'reexport-across-containers', severity: 'warning' as const, path: 'api/share.ts', target: 'apps/web/api/share.ts',
+    containerIds: ['container:apps-web', 'container:tooling'], entityIds: ['component:api-share-ts'], message: 'm' };
+  const withMembership = (membership: unknown): PortableAtlas => {
+    const bundle = fixture();
+    (bundle.analysis as Record<string, unknown>).membership = membership;
+    return bundle;
+  };
+  const valid = withMembership({ reexportAliases: [alias], diagnostics: [diagnostic] });
+  assert.deepEqual(parsePortableAtlas(serializePortableAtlas(valid)), valid);
+  // Forward compatible: an unknown future code still parses.
+  const future = withMembership({ reexportAliases: [], diagnostics: [{ ...diagnostic, code: 'some-future-code' }] });
+  assert.deepEqual(parsePortableAtlas(JSON.stringify(future)).analysis.membership?.diagnostics[0]?.code, 'some-future-code');
+  const malformed: unknown[] = [
+    [], 'x', { reexportAliases: [] }, { diagnostics: [] },
+    { reexportAliases: [{ ...alias, path: '../escape.ts' }], diagnostics: [] },
+    { reexportAliases: [{ ...alias, target: '/abs.ts' }], diagnostics: [] },
+    { reexportAliases: [{ ...alias, unit: '' }], diagnostics: [] },
+    { reexportAliases: [], diagnostics: [{ ...diagnostic, code: '' }] },
+    { reexportAliases: [], diagnostics: [{ ...diagnostic, severity: 'error' }] },
+    { reexportAliases: [], diagnostics: [{ ...diagnostic, path: 'src/../x.ts' }] },
+    { reexportAliases: [], diagnostics: [{ ...diagnostic, target: 'https://example.com/x.ts' }] },
+    { reexportAliases: [], diagnostics: [{ ...diagnostic, containerIds: [1] }] },
+    { reexportAliases: [], diagnostics: [{ ...diagnostic, entityIds: 'x' }] },
+    { reexportAliases: [], diagnostics: [{ ...diagnostic, message: 3 }] },
+  ];
+  for (const membership of malformed) {
+    assert.throws(() => parsePortableAtlas(JSON.stringify(withMembership(membership))), /container-membership/, JSON.stringify(membership));
+  }
+});

@@ -17,6 +17,17 @@ okie-scan --source <path> --component-map <path>
 Defaults: `--source` = cwd, `--out` = `<source>/fixtures/scan` (gitignored). Outputs
 `extraction.json`, `snapshot.json`, `view.json`, `story.json`, `stories.json`, `scene.json`, `timeline.json`.
 
+Container membership is exclusive: each source file belongs to at most one container,
+and with nested workspace members the most specific package root wins. A file outside
+every member whose statements are only relative re-exports of one file owned by a
+member or crate (e.g. a root Vercel `api/share.ts` =
+`export { default } from '../apps/web/api/share.ts'`) is folded into its target instead
+of becoming a second "tooling" component; importers of the shim resolve to the target.
+Folded shims are not evidence (never `sourceRefs`). They are listed, with any
+container-membership warnings (`file-in-multiple-containers`,
+`reexport-across-containers`), in `membership-report.json` and, when non-empty, in the
+portable atlas's `analysis.membership`. Warnings never fail a scan.
+
 ## Pipeline
 
 1. **Pin** — `git rev-parse HEAD` + `HEAD^{tree}`; `generatedAt` is the commit's own

@@ -4,6 +4,33 @@ import { validatePortableGraphShape } from './portable-shape.js';
 import { portableSourcePath } from './portable-path.js';
 import { validateDependencyFacts, type DependencyFacts } from './dependency-consumers.js';
 
+/**
+ * CLA-263 container-membership warning. Never fatal: `file-in-multiple-containers`
+ * (one path cited from two containers) or `reexport-across-containers` (a component
+ * whose file only re-exports a file owned by another container).
+ */
+export interface PortableMembershipDiagnostic {
+  /** Known codes today; any non-empty code parses so a newer scanner never breaks an older viewer. */
+  code: 'file-in-multiple-containers' | 'reexport-across-containers' | (string & {});
+  severity: 'warning';
+  path: string;
+  /** The re-exported file (reexport-across-containers only). */
+  target?: string;
+  containerIds: string[];
+  entityIds: string[];
+  message: string;
+}
+
+/**
+ * How scan discovery assigned files to containers, beyond the evidence graph:
+ * re-export shims folded into their target's container (not sourceRefs — the
+ * shim is not evidence for the target component) plus membership diagnostics.
+ */
+export interface PortableMembershipReport {
+  reexportAliases: { path: string; target: string; unit: string }[];
+  diagnostics: PortableMembershipDiagnostic[];
+}
+
 /** A portable semantic artifact. Renderer scenes are compiled by the matching viewer. */
 export interface PortableAtlas {
   format: 'okie-atlas';
@@ -16,6 +43,8 @@ export interface PortableAtlas {
   analysis: {
     mode: 'full' | 'quick';
     adapters: { language: string; tool: string; version: string; coverage: 'semantic' | 'syntax' | 'unavailable'; limitations: string[] }[];
+    /** Present only when discovery folded a shim or found a membership warning (CLA-263). */
+    membership?: PortableMembershipReport;
   };
   /** Optional full files at repository.commitSha; snippets remain in snapshot entities. */
   sources?: { path: string; text: string }[];
@@ -49,6 +78,15 @@ export function parsePortableAtlas(text: string): PortableAtlas {
   for (const adapter of raw.analysis.adapters) {
     if (!record(adapter) || ![adapter.language, adapter.tool, adapter.version].every(value => typeof value === 'string' && value.length > 0)
       || typeof adapter.coverage !== 'string' || !['semantic', 'syntax', 'unavailable'].includes(adapter.coverage) || !strings(adapter.limitations)) throw new Error('Invalid analyzer coverage entry.');
+  }
+  if (raw.analysis.membership !== undefined) {
+    const membership = raw.analysis.membership;
+    const nonEmpty = (value: unknown): boolean => typeof value === 'string' && value.length > 0;
+    if (!record(membership) || !Array.isArray(membership.reexportAliases) || !Array.isArray(membership.diagnostics)
+      || !membership.reexportAliases.every(alias => record(alias) && portableSourcePath(alias.path) && portableSourcePath(alias.target) && nonEmpty(alias.unit))
+      || !membership.diagnostics.every(item => record(item) && nonEmpty(item.code) && item.severity === 'warning'
+        && portableSourcePath(item.path) && (item.target === undefined || portableSourcePath(item.target))
+        && strings(item.containerIds) && strings(item.entityIds) && typeof item.message === 'string')) throw new Error('Invalid container-membership report.');
   }
   const bundle = raw as unknown as PortableAtlas;
   try {

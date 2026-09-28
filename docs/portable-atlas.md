@@ -29,6 +29,8 @@ Open `/path/to/scan/atlas.okie.json` in the portable viewer. Existing snapshot/v
 
 `--full` requests TypeScript/JavaScript semantic resolution and Rust SCIP indexing. Missing package dependencies, configuration, inactive Rust targets or unavailable tooling can leave gaps. The isolated committed tree does not borrow potentially dirty workspace dependencies. Inspect `analysis.adapters[].limitations`, also available from the viewer's Analysis coverage disclosure. `--quick` explicitly uses syntax-only extraction. A reference is not automatically classified as a call; absent edges do not establish that code is unused. Python and Go semantic adapters are deferred.
 
+`analysis.membership` is present only when discovery folded a re-export shim or found a container-membership warning. It lists `reexportAliases` (`{ path, target, unit }`: a file outside every workspace member that only re-exports `target`, counted in `target`'s container and never cited as evidence) and `diagnostics` (non-fatal `severity: "warning"` rows, currently `file-in-multiple-containers` and `reexport-across-containers`). Viewers accept any non-empty diagnostic code. The CLI writes the same report to `membership-report.json`.
+
 ## Optional enrichment
 
 Load the `okie-enrich` skill with the original artifact, emitted prompts and matching repository. It guides the agent to add grounded descriptions in packet-named extraction documents. Merge those documents without rescanning:
