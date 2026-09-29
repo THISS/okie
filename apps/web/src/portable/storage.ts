@@ -36,7 +36,7 @@ function openDatabase(factory: IDBFactory | undefined): Promise<IDBDatabase> {
     request.onupgradeneeded = () => request.result.createObjectStore(STORE);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? unavailable());
-    request.onblocked = () => reject(new Error('Browser storage is blocked by another open Okie viewer.'));
+    request.onblocked = () => reject(new Error('Browser storage is blocked by another open Atlas viewer.'));
   });
 }
 

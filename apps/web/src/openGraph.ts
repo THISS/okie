@@ -17,12 +17,25 @@ import {
   type PublicAtlasOembedTarget,
 } from './oembed';
 import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, renderAtlasCardPng } from './atlasCard';
+import {
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_PATH,
+  DEFAULT_OG_IMAGE_WIDTH,
+  CANONICAL_ORIGIN,
+  SITE_NAME,
+  canonicalHref,
+  landingPageMeta,
+  repoCanonicalPath,
+  repoPageDescription,
+  repoPageTitle,
+} from './siteMeta';
 
 /**
  * Open Graph for public `/r/<owner>/<repo>` share URLs (CLA-39).
  *
  * Crawlers do not run the SPA, so the Vite dev/preview plugin and the Cloudflare
- * edge Worker (apps/edge) inject these tags into the HTML response. The image is a generated Okie atlas card (not the site favicon).
+ * edge Worker (apps/edge) inject these tags into the HTML response. The image is a generated atlas card (not the site favicon).
  * Unpublished and private trees 404 with the same generic body — no GitHub
  * lookup, no existence leak, no secrets in meta or PNG bytes.
  */
@@ -60,7 +73,10 @@ export type OpenGraphTags = {
   imageWidth: number;
   imageHeight: number;
   siteName: string;
-  oembedHref: string;
+  /** `<link rel="canonical">`: always the production origin (staging canonicalizes to sourcefor.dev). */
+  canonical: string;
+  /** oEmbed discovery link; share pages only. */
+  oembedHref?: string;
 };
 
 export type ShareHtmlInput = {
@@ -100,7 +116,7 @@ function escapeAttribute(value: string): string {
 }
 
 export function publicAtlasDescription(target: PublicAtlasOembedTarget): string {
-  return `Public architecture atlas for ${target.owner}/${target.repo}.`;
+  return repoPageDescription(target.owner, target.repo);
 }
 
 export function defaultIsPublicAtlas(owner: string, repo: string): boolean {
@@ -234,7 +250,7 @@ export function parseSharePath(
 
 export function buildOpenGraphTags(target: PublicAtlasOembedTarget): OpenGraphTags {
   const canonical = { ...target, search: '' };
-  const title = publicAtlasTitle(canonical);
+  const title = repoPageTitle(canonical.owner, canonical.repo);
   const description = publicAtlasDescription(canonical);
   const pageHref = publicAtlasHref(canonical);
   const image = publicAtlasOgImageHref(canonical);
@@ -243,11 +259,33 @@ export function buildOpenGraphTags(target: PublicAtlasOembedTarget): OpenGraphTa
     description,
     url: pageHref,
     image,
-    imageAlt: title,
+    imageAlt: publicAtlasTitle(canonical),
     imageWidth: OG_IMAGE_WIDTH,
     imageHeight: OG_IMAGE_HEIGHT,
     siteName: OEMBED_PROVIDER_NAME,
+    canonical: canonicalHref(repoCanonicalPath(canonical.owner, canonical.repo)),
     oembedHref: publicAtlasOembedHref(pageHref),
+  };
+}
+
+/**
+ * `/new` (the published-atlas list) for crawlers: branded title/description, the static default card
+ * (`/og-default.png`) and og:url on the trusted request origin — production when the origin is not
+ * allowlisted, so a forged Host never lands in meta.
+ */
+export function buildLandingOpenGraphTags(origin: string | undefined): OpenGraphTags {
+  const base = origin ?? CANONICAL_ORIGIN;
+  const meta = landingPageMeta();
+  return {
+    title: meta.title,
+    description: meta.description,
+    url: new URL(meta.canonicalPath, base).href,
+    image: new URL(DEFAULT_OG_IMAGE_PATH, base).href,
+    imageAlt: DEFAULT_OG_IMAGE_ALT,
+    imageWidth: DEFAULT_OG_IMAGE_WIDTH,
+    imageHeight: DEFAULT_OG_IMAGE_HEIGHT,
+    siteName: SITE_NAME,
+    canonical: canonicalHref(meta.canonicalPath),
   };
 }
 
@@ -269,7 +307,10 @@ export function renderOpenGraphHead(tags: OpenGraphTags): string {
     `<meta name="twitter:title" content="${t(tags.title)}" />`,
     `<meta name="twitter:description" content="${t(tags.description)}" />`,
     `<meta name="twitter:image" content="${t(tags.image)}" />`,
-    `<link rel="alternate" type="${OEMBED_JSON_TYPE}" href="${t(tags.oembedHref)}" title="${t(OEMBED_PROVIDER_NAME)} oEmbed" />`,
+    `<link rel="canonical" href="${t(tags.canonical)}" />`,
+    ...(tags.oembedHref
+      ? [`<link rel="alternate" type="${OEMBED_JSON_TYPE}" href="${t(tags.oembedHref)}" title="${t(OEMBED_PROVIDER_NAME)} oEmbed" />`]
+      : []),
   ].join('\n    ');
 }
 
@@ -277,7 +318,8 @@ export function injectPublicAtlasOpenGraph(html: string, tags: OpenGraphTags): s
   const stripped = html
     .replace(/<title>[\s\S]*?<\/title>/i, '')
     .replace(/<meta\s+name=["']description["'][^>]*>/gi, '')
-    .replace(/<meta\s+(?:property|name)=["'](?:og|twitter):[^"']*["'][^>]*>/gi, '');
+    .replace(/<meta\s+(?:property|name)=["'](?:og|twitter):[^"']*["'][^>]*>/gi, '')
+    .replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '');
   const block = `    ${renderOpenGraphHead(tags)}`;
   if (stripped.includes('</head>')) return stripped.replace('</head>', `${block}\n  </head>`);
   return `${block}\n${stripped}`;
@@ -342,6 +384,31 @@ export async function handleShareHtmlRequest(input: ShareHtmlInput): Promise<Pub
     headers: {
       ...CORS,
       'cache-control': `public, max-age=${OEMBED_CACHE_AGE_SECONDS}`,
+      'content-type': 'text/html; charset=utf-8',
+    },
+    body: method === 'HEAD' ? '' : html,
+  };
+}
+
+export type LandingHtmlInput = {
+  method: string;
+  requestOrigin: string;
+  indexHtml: string;
+  allowedOrigins?: readonly string[];
+};
+
+/** `/new` HTML with landing meta injected. Always 200: the list is public and names nothing private. */
+export function handleLandingHtmlRequest(input: LandingHtmlInput): PublicAtlasHttpOutput {
+  const method = input.method.toUpperCase();
+  if (method === 'OPTIONS') return { status: 204, headers: { ...CORS }, body: '' };
+  if (method !== 'GET' && method !== 'HEAD') return methodNotAllowed();
+  const origin = sanitizeOembedOrigin(input.requestOrigin);
+  const trusted = origin && isAllowedOembedRequestOrigin(origin, input.allowedOrigins ?? []) ? origin : undefined;
+  const html = injectPublicAtlasOpenGraph(input.indexHtml, buildLandingOpenGraphTags(trusted));
+  return {
+    status: 200,
+    headers: {
+      'cache-control': 'public, max-age=0, must-revalidate',
       'content-type': 'text/html; charset=utf-8',
     },
     body: method === 'HEAD' ? '' : html,

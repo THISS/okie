@@ -1,6 +1,8 @@
 # Cloudflare Workers Static Assets headers (CLA-266). Mirrors the retired vercel.json header table:
 # every asset keeps WebMCP to this origin; the top-level shells are origin-keyed (Origin-Agent-Cluster).
-# Worker-owned routes (/r/*, /og/*, /oembed, /scan/*, /api/*) set their own headers in apps/edge.
+# Worker-owned routes (/r/*, /og/*, /oembed, /new, /scan/*, /api/*) set their own headers in apps/edge.
+# /new is normally rendered by the Worker (landing meta); its block below stays as the fallback for when
+# the Worker falls through to Static Assets (e.g. it could not read index.html).
 /*
   Permissions-Policy: tools=(self)
 

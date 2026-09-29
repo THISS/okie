@@ -12,7 +12,7 @@ import {
 describe('atlas Open Graph card (CLA-39)', () => {
   it('is a 1200×630 PNG card labeled with owner/repo, not a favicon size', () => {
     const layout = atlasCardLayout({ owner: 'THISS', repo: 'okie' });
-    expect(layout.brand).toBe('OKIE');
+    expect(layout.brand).toBe('SOURCE FOR');
     expect(layout.title).toBe('THISS/okie');
     expect(layout.subtitle).toMatch(/atlas/i);
     expect(layout.width).toBe(OG_IMAGE_WIDTH);

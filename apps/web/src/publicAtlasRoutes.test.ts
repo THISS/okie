@@ -12,13 +12,14 @@ const base = {
 };
 
 describe('public atlas route dispatcher (CLA-266)', () => {
-  it('claims only /r, /og and /oembed', () => {
+  it('claims only /r, /og, /oembed and the /new landing', () => {
     expect(isPublicAtlasRoutePath('/r/acme/app')).toBe(true);
     expect(isPublicAtlasRoutePath('/og/acme/app')).toBe(true);
     expect(isPublicAtlasRoutePath('/oembed')).toBe(true);
     expect(isPublicAtlasRoutePath('/oembed/')).toBe(true);
     expect(isPublicAtlasRoutePath('/')).toBe(false);
-    expect(isPublicAtlasRoutePath('/new')).toBe(false);
+    expect(isPublicAtlasRoutePath('/new')).toBe(true);
+    expect(isPublicAtlasRoutePath('/new/extra')).toBe(false);
     expect(isPublicAtlasRoutePath('/scan/index.json')).toBe(false);
     expect(isPublicAtlasRoutePath('/r/%E0%A4%A/x')).toBe(false);
   });
@@ -37,6 +38,11 @@ describe('public atlas route dispatcher (CLA-266)', () => {
     expect(JSON.parse(String(oembed?.body))).toMatchObject({ type: 'rich', thumbnail_url: 'http://localhost:4173/og/acme/app' });
     expect(seen).toEqual(['acme/app', 'acme/app', 'acme/app']);
     expect((await handlePublicAtlasRoute({ ...base, pathname: '/r/other/app', isPublicAtlas }))?.status).toBe(404);
-    expect(await handlePublicAtlasRoute({ ...base, pathname: '/new', isPublicAtlas })).toBeUndefined();
+    const landing = await handlePublicAtlasRoute({ ...base, pathname: '/new', isPublicAtlas });
+    expect(landing?.status).toBe(200);
+    expect(String(landing?.body)).toContain('<title>Published atlases · Source For Atlas</title>');
+    // No shell to inject into: the landing falls through to the static SPA answer.
+    expect(await handlePublicAtlasRoute({ ...base, pathname: '/new', isPublicAtlas, indexHtml: async () => '' })).toBeUndefined();
+    expect(seen).toEqual(['acme/app', 'acme/app', 'acme/app', 'other/app']);
   });
 });

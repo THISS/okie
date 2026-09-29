@@ -5,11 +5,11 @@ import type { AtlasScene, Camera, RenderState } from './types';
 describe('screenshotFilename', () => {
   it('slugifies the view title and stamps a deterministic timestamp', () => {
     const stamp = Date.UTC(2026, 6, 17, 3, 4, 5);
-    expect(screenshotFilename('Dynamic Flow · Okie', stamp)).toBe('okie-dynamic-flow-okie-2026-07-17-03-04-05.png');
+    expect(screenshotFilename('Dynamic Flow · Okie', stamp)).toBe('atlas-dynamic-flow-okie-2026-07-17-03-04-05.png');
   });
 
   it('falls back to a generic slug for an empty title', () => {
-    expect(screenshotFilename('', 0)).toBe('okie-view-1970-01-01-00-00-00.png');
+    expect(screenshotFilename('', 0)).toBe('atlas-view-1970-01-01-00-00-00.png');
   });
 });
 

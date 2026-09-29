@@ -6,7 +6,7 @@ describe('scan landing hosted public mode (CLA-266)', () => {
     const chrome = scanLandingChrome({ mode: 'public' }, false);
     expect(chrome).toEqual({
       publicMode: true,
-      heading: 'Source For Atlas',
+      heading: 'Explore how open-source software is built',
       showScanCard: false,
       showAuthStatus: false,
       publishedHeading: 'Published atlases',

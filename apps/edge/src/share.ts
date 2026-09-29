@@ -9,7 +9,7 @@ import { isPublishedAtlas } from './scan';
 
 /**
  * Share pages at the edge (CLA-266): `/r/<owner>/<repo>` Open Graph HTML (injected into the static
- * assets' index.html), `/og/<owner>/<repo>` PNG cards and `/oembed` JSON — the same runtime-agnostic
+ * assets' index.html), `/og/<owner>/<repo>` PNG cards, `/oembed` JSON and `/new` landing meta (CLA-318) — the same runtime-agnostic
  * handlers the Vite dev server uses (apps/web/src/publicAtlasRoutes.ts). "Public" here = the slug has a
  * `latest.json` in R2, plus the THISS/okie dogfood rule.
  */

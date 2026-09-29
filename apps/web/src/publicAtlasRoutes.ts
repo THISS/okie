@@ -1,6 +1,7 @@
 import { isPublicAtlasViewPath } from './hostedAtlas';
 import { handleOembedRequest, OEMBED_PATH, parsePublicAtlasOembedUrl } from './oembed';
 import {
+  handleLandingHtmlRequest,
   handleOgImageRequest,
   handleShareHtmlRequest,
   isOgImagePath,
@@ -10,7 +11,7 @@ import {
 
 /**
  * Runtime-agnostic dispatcher for the public share surface (CLA-266): `/r/<owner>/<repo>` Open Graph
- * HTML, `/og/<owner>/<repo>` PNG cards and `/oembed` JSON. Plain inputs in, `{status, headers, body}`
+ * HTML, `/og/<owner>/<repo>` PNG cards, `/oembed` JSON and the `/new` landing's meta (CLA-318). Plain inputs in, `{status, headers, body}`
  * out — the Vite dev/preview plugin (Node) and the Cloudflare edge Worker (workerd) both call this,
  * each supplying its own "is this atlas public" lookup and index.html source.
  */
@@ -31,6 +32,11 @@ export function isOembedPath(pathname: string): boolean {
   return pathname === OEMBED_PATH || pathname === `${OEMBED_PATH}/`;
 }
 
+/** `/new`, the published-atlas list: its own title, description and default card for crawlers. */
+export function isLandingPath(pathname: string): boolean {
+  return pathname === '/new' || pathname === '/new/';
+}
+
 /** `/r/<owner>/<repo>[/<ref>]`; a malformed percent-escape is simply not a share path. */
 function isSharePath(pathname: string): boolean {
   try {
@@ -42,7 +48,7 @@ function isSharePath(pathname: string): boolean {
 
 /** True for the paths {@link handlePublicAtlasRoute} answers. */
 export function isPublicAtlasRoutePath(pathname: string): boolean {
-  return isOembedPath(pathname) || isOgImagePath(pathname) || isSharePath(pathname);
+  return isOembedPath(pathname) || isOgImagePath(pathname) || isSharePath(pathname) || isLandingPath(pathname);
 }
 
 /** Answers a public share route, or `undefined` when the path is not one of them. */
@@ -78,6 +84,18 @@ export async function handlePublicAtlasRoute(input: PublicAtlasRouteInput): Prom
       indexHtml,
       allowedOrigins: input.allowedOrigins,
       isPublicAtlas: input.isPublicAtlas,
+    });
+  }
+  if (isLandingPath(pathname)) {
+    const method = input.method.toUpperCase();
+    const indexHtml = method === 'GET' || method === 'HEAD' ? await input.indexHtml() : '';
+    // No shell to inject into (e.g. a failed asset fetch): fall through to the SPA/static answer.
+    if ((method === 'GET' || method === 'HEAD') && !indexHtml) return undefined;
+    return handleLandingHtmlRequest({
+      method: input.method,
+      requestOrigin: input.requestOrigin,
+      indexHtml,
+      allowedOrigins: input.allowedOrigins,
     });
   }
   return undefined;

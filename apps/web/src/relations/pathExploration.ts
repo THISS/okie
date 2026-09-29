@@ -139,7 +139,7 @@ const UNAVAILABLE_TITLE: Record<PathUnavailableReason, string> = {
 
 const UNAVAILABLE_HINT: Partial<Record<PathUnavailableReason, string>> = {
   endpointNotLoaded: 'It may appear as more of the map loads; if this link is old, the entity may no longer exist.',
-  partialGraph: 'More of the map must be loaded before Okie can say whether a path exists.',
+  partialGraph: 'More of the map must be loaded before Atlas can say whether a path exists.',
   nestedEndpoints: 'Turn off “Match parts inside endpoints” or choose endpoints that are not nested.',
 };
 
@@ -337,7 +337,7 @@ export function explorePathView(
     return {
       ...base,
       state: 'unknownKinds',
-      title: "This path names relation kinds Okie doesn't recognise.",
+      title: "This path names relation kinds Atlas doesn't recognise.",
       message: `Unrecognised: ${unknownKinds.join(', ')}. The path was not run, so it isn't silently answered with different kinds. Untick them to explore with the rest.`,
     };
   }

@@ -26,3 +26,12 @@ export function LayersIcon(props: IconProps) { return <IconBase {...props}><path
 export function ArrowIcon(props: IconProps) { return <IconBase {...props}><path d="M5 12h14M14 7l5 5-5 5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7"/></IconBase>; }
 export function InfoIcon(props: IconProps) { return <IconBase {...props}><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6"/><path d="M12 11v6M12 7.2v.1" stroke="currentColor" strokeLinecap="round" strokeWidth="2"/></IconBase>; }
 export function PanelIcon(props: IconProps) { return <IconBase {...props}><rect height="16" rx="2" stroke="currentColor" strokeWidth="1.6" width="18" x="3" y="4"/><path d="M15 4v16" stroke="currentColor" strokeWidth="1.6"/></IconBase>; }
+
+/**
+ * The Source For mark (CLA-318; docs/brand/logo/06-source-route/mark-dark.svg): an origin ring, a
+ * route that draws an S, and the lime source cell. Drawn for the dark ground; decorative (the
+ * wordmark beside it carries the name).
+ */
+export function SourceForMark({ size = 28, ...props }: IconProps) {
+  return <svg aria-hidden="true" fill="none" height={size} viewBox="0 0 64 64" width={size} {...props}><path d="M45 12H25a10 10 0 0 0 0 20h14a10 10 0 0 1 0 20H20" stroke="#f1f7f4" strokeWidth="8"/><circle cx="52" cy="12" r="6" stroke="#f1f7f4" strokeWidth="4"/><rect fill="#d9ff70" height="16" rx="3" stroke="#070a0b" strokeWidth="3" width="16" x="6" y="44"/></svg>;
+}

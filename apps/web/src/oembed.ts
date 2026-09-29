@@ -1,5 +1,6 @@
 import { isDogfoodAtlas } from './hostedAtlas';
 import { parseAppRoute } from './renderer/route';
+import { SITE_NAME } from './siteMeta';
 
 /**
  * oEmbed 1.0 for public `/r/<owner>/<repo>` atlas views (CLA-30).
@@ -24,7 +25,7 @@ export const OEMBED_DEFAULT_WIDTH = 800;
 export const OEMBED_DEFAULT_HEIGHT = 560;
 export const OEMBED_MIN_WIDTH = 200;
 export const OEMBED_MIN_HEIGHT = 140;
-export const OEMBED_PROVIDER_NAME = 'Okie';
+export const OEMBED_PROVIDER_NAME = SITE_NAME;
 export const OEMBED_CACHE_AGE_SECONDS = 300;
 export const OEMBED_JSON_TYPE = 'application/json+oembed';
 export const OEMBED_THUMBNAIL_WIDTH = 1200;
@@ -33,7 +34,7 @@ export const OEMBED_THUMBNAIL_HEIGHT = 630;
 export const OEMBED_IFRAME_ALLOW = 'fullscreen; gpu';
 export const OEMBED_EMBED_PARAM = 'embed';
 export const OEMBED_SNIPPET_CHROME_NOTE =
-  'Okie embed chrome: inspector Overview architecture brief starts collapsed so the L1 map stays visible at 800×560. Open the panel toggle for the brief. Overview tour stays on the map. Ask Atlas is hidden in the iframe.';
+  'Source For Atlas embed chrome: inspector Overview architecture brief starts collapsed so the L1 map stays visible at 800×560. Open the panel toggle for the brief. Overview tour stays on the map. Ask Atlas is hidden in the iframe.';
 export const OG_IMAGE_PATH_PREFIX = '/og';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;

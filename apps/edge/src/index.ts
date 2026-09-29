@@ -21,6 +21,7 @@ export { ContainerProxy } from '@cloudflare/containers';
  *   /assets/*                 Static Assets, but a missing hashed asset is 404 no-store, never the SPA shell
  *   /scan/*                   published atlases from R2 (scan.ts), source.json via GitHub raw (source.ts)
  *   /r/*, /og/*, /oembed      share pages (share.ts)
+ *   /new                      the published-atlas list, with its own <title>/Open Graph meta (share.ts)
  *   /api/*                    auth/me + Ask status answered here; with ASK_ENABLED=1, Ask + block-plan →
  *                             container behind guards (api.ts), else 404
  *   /__store/*                DEV_STORE_ROUTE=1 only (local mirror for a locally run apps/server)

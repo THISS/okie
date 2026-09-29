@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { SourceForMark } from './icons';
 import { enrichmentStageDetail, scanEntityCountCopy, type PublicEnrichment } from './scanJobEnrichment';
 import {
   bindScanLandingActions,
@@ -38,6 +39,16 @@ const page: React.CSSProperties = {
   padding: '4.5rem 1.5rem',
   color: '#eef4f2',
   fontFamily: 'IBM Plex Sans, ui-sans-serif, system-ui, sans-serif',
+};
+const brandStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.6rem',
+  marginBottom: '2rem',
+  color: '#f1f7f4',
+  fontSize: '1rem',
+  letterSpacing: '-0.02em',
+  textDecoration: 'none',
 };
 const mutedStyle: React.CSSProperties = { color: '#b7c3c0', lineHeight: 1.6 };
 const cardStyle: React.CSSProperties = {
@@ -88,7 +99,7 @@ export function scanLandingChrome(auth: Pick<AuthView, 'mode'> | undefined, oper
   const publicMode = auth?.mode === 'public';
   return {
     publicMode,
-    heading: publicMode ? 'Source For Atlas' : 'Map a repository',
+    heading: publicMode ? 'Explore how open-source software is built' : 'Map a repository',
     showScanCard: !publicMode,
     showAuthStatus: !publicMode && auth !== undefined && operator !== true,
     publishedHeading: publicMode ? 'Published atlases' : 'Already mapped',
@@ -216,6 +227,10 @@ export function ScanLandingScreen() {
 
   return (
     <main data-auth-state={auth ? (signedIn ? 'signed-in' : 'signed-out') : 'unknown'} data-public-mode={chrome.publicMode ? 'true' : undefined} style={page}>
+      <a aria-label="Source For Atlas home" data-testid="site-brand" href="/" style={brandStyle}>
+        <SourceForMark size={30}/>
+        <span><strong style={{ fontWeight: 600 }}>Source For</strong> <span style={{ color: '#97a5a0' }}>Atlas</span></span>
+      </a>
       <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>{chrome.heading}</h1>
       {chrome.publicMode
         ? <p style={mutedStyle}>Browse the published architecture atlases below. Viewing an atlas at <code>/r/owner/repo</code> needs no sign-in.</p>

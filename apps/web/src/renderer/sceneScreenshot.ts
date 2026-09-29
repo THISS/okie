@@ -16,13 +16,13 @@ export type CaptureRendererFactory = (canvas: HTMLCanvasElement) => CaptureRende
 const defaultRendererFactory: CaptureRendererFactory = canvas => new Canvas2DRenderer(canvas, 'canvas2d', 'screenshot');
 
 /**
- * Deterministic screenshot filename: `okie-<view-slug>-<timestamp>.png`. Pure; the timestamp
+ * Deterministic screenshot filename: `atlas-<view-slug>-<timestamp>.png`. Pure; the timestamp
  * is injected (never read from the clock here) so it is unit-testable.
  */
 export function screenshotFilename(viewTitle: string, timestamp: number): string {
   const slug = viewTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'view';
   const stamp = new Date(timestamp).toISOString().slice(0, 19).replace(/[:T]/g, '-');
-  return `okie-${slug}-${stamp}.png`;
+  return `atlas-${slug}-${stamp}.png`;
 }
 
 /**

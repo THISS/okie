@@ -341,7 +341,7 @@ export function atlasCardLayout(input: AtlasCardInput): {
 } {
   const title = `${input.owner}/${input.repo}`;
   return {
-    brand: 'OKIE',
+    brand: 'SOURCE FOR',
     title: title.length > 22 ? `${title.slice(0, 21)}…` : title,
     subtitle: 'Architecture atlas',
     width: OG_IMAGE_WIDTH,
