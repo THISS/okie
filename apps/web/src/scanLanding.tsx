@@ -14,7 +14,8 @@ import {
 /**
  * Public scan landing: published maps remain public, while hosted scan creation
  * and publication belong to the operator review workspace. Rendered before App
- * at /new so it stays a small standalone surface.
+ * at /new so it stays a small standalone surface. The hosted edge no longer serves it: since CLA-269
+ * `/new` 301s to the edge-rendered home at `/` (apps/web/src/homePage.ts).
  */
 
 type PublicJob = {
@@ -134,9 +135,13 @@ export async function loadLandingSession(fetchImpl: typeof fetch = fetch): Promi
 }
 
 /**
- * `/new#about` (the atlas attribution strip's "About" link, CLA-318): the browser's own fragment scroll
- * runs before the async list renders above the footer, so re-scroll to the fragment's element once the
- * landing mounts and again when the list arrives. No fragment, or no such element: nothing moves.
+ * A fragment on the landing (`/new#about`, the footer): the browser's own fragment scroll runs before the
+ * async list renders above the footer, so re-scroll to the fragment's element once the landing mounts and
+ * again when the list arrives. No fragment, or no such element: nothing moves. Since CLA-269 the atlas
+ * attribution strip's "About" link is `/#about` (the edge-rendered home, static HTML that needs no
+ * re-scroll), and the hosted edge 301s `/new` to `/` (browsers carry an old `/new#about` link's fragment
+ * across the redirect onto the home's footer), so this only matters where the landing is still served:
+ * the Vite dev/preview servers.
  */
 export function scrollToLocationHash(doc: Pick<Document, 'getElementById'>, hash: string): boolean {
   if (!hash || hash === '#') return false;

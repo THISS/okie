@@ -32,7 +32,7 @@ describe('branded 404 at the edge', () => {
     expect(response.headers.get('cache-control')).toBe(NOT_FOUND_CACHE_CONTROL);
     const html = await response.text();
     expect(html).toBe(notFoundPageHtml('atlas'));
-    expect(html).toContain('href="/new"');
+    expect(html).toContain('href="/"'); // CLA-269: the directory is the home page
     expect(html).toContain('hello@sourcefor.dev');
   });
 
@@ -40,17 +40,19 @@ describe('branded 404 at the edge', () => {
    * Every client-side URL shape the public app emits or accepts. From renderer/route.ts (parseAppRoute),
    * navigation/navigationState.ts (canonicalNavigationUrl rewrites only the query, keeping the pathname),
    * oembed.ts (the iframe target is /r/<o>/<r>[/<pin>]?embed=1), scanLanding.tsx (location.assign to
-   * /r/<o>/<r>, the /new#about footer link, /operator), main.tsx (?portable=1, ?fixture=) and the
+   * /r/<o>/<r>, /operator), main.tsx (?portable=1, ?fixture=) and the
    * CLA-266 case-variant 301. Story/selection/camera deep links are query state on these paths, and a
-   * hash never reaches the server. The documented /embed/r/… path was never shipped (parseAppRoute has
-   * no such route), so it is not a legacy link.
+   * hash never reaches the server. Since CLA-269 `/` and `/index.html` without a query (or with only
+   * search/sort/tracking params) are the server-rendered home page, `/new` 301s to `/` (home.test.ts), and
+   * the attribution strip's About link is `/#about` (the home's footer; a hash never reaches the server).
+   * The documented /embed/r/… path was never shipped (parseAppRoute has no such route), so it is not a
+   * legacy link.
    */
   it('serves every public client route, including deep links with query state', async () => {
     await seedAtlas({ slug: 'acme__known', versionId: 'v1', files: { 'snapshot.json': '{}' } });
     const deepNav = '?nav=1&repo=repo%3Aacme-known&snap=s1&view=v1&root=system%3Aacme&sel=container%3Aweb&cx=12.5&cy=-4&z=1.25';
     const routes = [
-      '/', '/index.html', '/?fixture=okie', '/?portable=1', `/${deepNav}`,
-      '/new', '/new/', '/new?ref=footer',
+      '/?fixture=okie', '/?portable=1', '/?embed=1', `/${deepNav}`, `/index.html${deepNav}`,
       '/operator', '/operator/', '/operator?run=abc',
       '/r/acme/known', '/r/acme/known/', '/r/ACME/Known', '/r/acme/known?embed=1',
       `/r/acme/known${deepNav}`, `/r/acme/known${deepNav}&embed=1`,
@@ -71,7 +73,7 @@ describe('branded 404 at the edge', () => {
 
   it('still serves the SPA routes, real static files and Worker-owned prefixes', async () => {
     await seedAtlas({ slug: 'acme__known', versionId: 'v1', files: { 'snapshot.json': '{}' } });
-    for (const path of ['/', '/new', '/new/', '/operator', '/operator/', '/r/acme/known', '/r/acme/known/main/src', '/?fixture=okie']) {
+    for (const path of ['/operator', '/operator/', '/r/acme/known', '/r/acme/known/main/src', '/?fixture=okie']) {
       const response = await edgeFetch(path);
       expect(response.status, path).toBe(200);
       expect(await response.text(), path).toContain('<div id="root"></div>');

@@ -104,8 +104,8 @@ describe('published atlas attribution (CLA-266)', () => {
       ['4f1c2a9', `https://github.com/pmndrs/zustand/commit/${SHA}`, 'noopener noreferrer'],
       ['MIT licence', `https://github.com/pmndrs/zustand/blob/${SHA}/LICENSE`, 'noopener noreferrer'],
       ['source on GitHub', `https://github.com/pmndrs/zustand/tree/${SHA}`, 'noopener noreferrer'],
-      // CLA-318: the one site link, to the landing footer (GitHub, contact, licence note), same tab.
-      ['About', '/new#about', 'undefined'], // no rel: same tab
+      // CLA-318: the one site link, to the home page's footer (GitHub, contact, licence note; CLA-269), same tab.
+      ['About', '/#about', 'undefined'], // no rel: same tab
     ]);
     expect(page.root.attrs['data-atlas-attribution']).toBe('');
 

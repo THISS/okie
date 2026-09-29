@@ -9,9 +9,9 @@ const SNIPPET = `<script defer src="https://static.cloudflareinsights.com/beacon
 const ON = { env: { WEB_ANALYTICS_TOKEN: TOKEN } };
 
 const HTML_PAGES: Array<[string, number]> = [
-  ['/', 200],
+  ['/', 200], // the home page (CLA-269)
   ['/index.html', 200],
-  ['/new', 200],
+  ['/?fixture=okie', 200], // the SPA shell
   ['/operator', 200],
   ['/r/acme/shared', 200],
   ['/r/acme/shared/main/src', 200],
@@ -78,7 +78,8 @@ describe('Cloudflare Web Analytics beacon', () => {
     }
     // The rest of the page is untouched (share pages keep their own meta, the shell its root).
     expect(await (await edgeFetch('/r/acme/shared', ON)).text()).toContain('<title>shared by acme · Source For Atlas</title>');
-    expect(await (await edgeFetch('/', ON)).text()).toContain('<div id="root"></div>');
+    expect(await (await edgeFetch('/?fixture=okie', ON)).text()).toContain('<div id="root"></div>');
+    expect(await (await edgeFetch('/', ON)).text()).toContain('data-home="true"');
   });
 
   it('counts oEmbed iframes (?embed=1) unless WEB_ANALYTICS_IN_EMBEDS is off', async () => {
@@ -121,7 +122,7 @@ describe('Cloudflare Web Analytics beacon', () => {
   it('keeps HEAD bodiless and drops the validators of the page without the beacon', async () => {
     await seed();
     // Static Assets' HEAD for the shell carries an ETag (and a length) of the un-injected file…
-    const plainHead = await edgeFetch('/', { init: { method: 'HEAD' } });
+    const plainHead = await edgeFetch('/?fixture=okie', { init: { method: 'HEAD' } });
     expect(plainHead.headers.get('etag')).toBeTruthy();
     // …which an injected HEAD must not repeat.
     for (const [path, status] of HTML_PAGES) {
@@ -136,13 +137,14 @@ describe('Cloudflare Web Analytics beacon', () => {
   });
 
   it('never answers the shell with a 304 while analytics is on', async () => {
-    const plain = await edgeFetch('/');
+    // The SPA shell (`/` with a non-home query; bare `/` is the edge-rendered home since CLA-269).
+    const plain = await edgeFetch('/?fixture=okie');
     const assetEtag = plain.headers.get('etag')!;
     expect(assetEtag).toBeTruthy();
     // Without analytics the asset ETag revalidates as before.
-    expect((await edgeFetch('/', { init: { headers: { 'if-none-match': assetEtag } } })).status).toBe(304);
+    expect((await edgeFetch('/?fixture=okie', { init: { headers: { 'if-none-match': assetEtag } } })).status).toBe(304);
     // A copy cached before analytics was turned on is refetched in full, with the beacon.
-    for (const path of ['/', '/index.html', '/operator']) {
+    for (const path of ['/?fixture=okie', '/index.html?portable=1', '/operator']) {
       const refreshed = await edgeFetch(path, { env: ON.env, init: { headers: { 'if-none-match': assetEtag, 'if-modified-since': 'Wed, 30 Sep 2026 00:00:00 GMT' } } });
       expect(refreshed.status, path).toBe(200);
       expect(refreshed.headers.get('etag'), path).toBeNull();

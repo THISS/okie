@@ -20,7 +20,7 @@ describe('CLA-318 route classification', () => {
 });
 
 describe('CLA-318 branded 404 page', () => {
-  it('is a self-contained, noindex, branded page with Home and /new links and the footer', () => {
+  it('is a self-contained, noindex, branded page linking the home directory, with the footer', () => {
     const html = notFoundPageHtml();
     expect(html).toMatch(/^<!doctype html>/);
     expect(html).toContain('<meta name="robots" content="noindex" />');
@@ -28,8 +28,9 @@ describe('CLA-318 branded 404 page', () => {
     expect(html).toContain('<h1>Page not found</h1>');
     expect(html).toContain('<strong>Source For</strong>');
     expect(html).toContain('<svg aria-hidden="true"');
-    expect(html).toContain('href="/new"');
-    expect(html).toContain('href="/"');
+    // CLA-269: the directory is the home page now (the edge 301s /new there).
+    expect(html).toContain('<a class="primary" href="/">Browse published atlases</a>');
+    expect(html).not.toContain('href="/new"');
     expect(html).toContain(`href="${GITHUB_REPO_URL}"`);
     expect(html).toContain(CONTACT_EMAIL);
     expect(html).toContain('under its own licence');
@@ -68,11 +69,11 @@ describe('CLA-318 site footer', () => {
     expect(html).toContain(ATLAS_LICENCE_NOTE);
   });
 
-  it('closes the in-app 404 screen, which links Home and /new', () => {
+  it('closes the in-app 404 screen, which links the home directory', () => {
     const html = renderToStaticMarkup(createElement(NotFoundScreen));
     expect(html).toContain('Page not found');
-    expect(html).toContain('href="/new"');
-    expect(html).toContain('href="/"');
+    expect(html).toMatch(/<a href="\/" [^>]*>Browse published atlases<\/a>/);
+    expect(html).not.toContain('href="/new"');
     expect(html).toContain('data-testid="site-footer"');
   });
 });

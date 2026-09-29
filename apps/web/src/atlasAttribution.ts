@@ -83,8 +83,8 @@ export function attributionText(attribution: PublishedAtlasAttribution): string 
 
 type Part = string | { text: string; href: string; code?: boolean; internal?: boolean };
 
-/** CLA-318: the strip's one site link: the landing's footer (GitHub, contact, licence note). Keeps the canvas uncluttered. */
-export const ATTRIBUTION_ABOUT_HREF = '/new#about';
+/** CLA-318: the strip's one site link: the home page's footer (GitHub, contact, licence note; CLA-269). Keeps the canvas uncluttered. */
+export const ATTRIBUTION_ABOUT_HREF = '/#about';
 
 function parts(attribution: PublishedAtlasAttribution): Part[] {
   return [

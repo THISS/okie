@@ -30,6 +30,7 @@ import {
   repoCanonicalPath,
   repoPageDescription,
   repoPageTitle,
+  type PageMeta,
 } from './siteMeta';
 import { notFoundHttpOutput, notFoundPageHtml } from './notFoundPage';
 
@@ -276,13 +277,12 @@ export function buildOpenGraphTags(target: PublicAtlasOembedTarget, displayNames
 }
 
 /**
- * `/new` (the published-atlas list) for crawlers: branded title/description, the static default card
- * (`/og-default.png`) and og:url on the trusted request origin — production when the origin is not
- * allowlisted, so a forged Host never lands in meta.
+ * Open Graph tags for a static site page (`/`, `/new`): its title/description, the static default
+ * card (`/og-default.png`) and og:url on the trusted request origin — production when the origin is
+ * not allowlisted, so a forged Host never lands in meta. The canonical link always names production.
  */
-export function buildLandingOpenGraphTags(origin: string | undefined): OpenGraphTags {
+export function buildSitePageOpenGraphTags(meta: PageMeta, origin: string | undefined): OpenGraphTags {
   const base = origin ?? CANONICAL_ORIGIN;
-  const meta = landingPageMeta();
   return {
     title: meta.title,
     description: meta.description,
@@ -294,6 +294,17 @@ export function buildLandingOpenGraphTags(origin: string | undefined): OpenGraph
     siteName: SITE_NAME,
     canonical: canonicalHref(meta.canonicalPath),
   };
+}
+
+/** `/new` (the SPA's published-atlas list; the hosted edge 301s it to `/`) for crawlers. */
+export function buildLandingOpenGraphTags(origin: string | undefined): OpenGraphTags {
+  return buildSitePageOpenGraphTags(landingPageMeta(), origin);
+}
+
+/** The request origin when it is sanitizable and allowlisted, else undefined (callers fall back to production). */
+export function trustedPageOrigin(requestOrigin: string, allowedOrigins: readonly string[] = []): string | undefined {
+  const origin = sanitizeOembedOrigin(requestOrigin);
+  return origin && isAllowedOembedRequestOrigin(origin, allowedOrigins) ? origin : undefined;
 }
 
 export function renderOpenGraphHead(tags: OpenGraphTags): string {
@@ -401,9 +412,7 @@ export function handleLandingHtmlRequest(input: LandingHtmlInput): PublicAtlasHt
   const method = input.method.toUpperCase();
   if (method === 'OPTIONS') return { status: 204, headers: { ...CORS }, body: '' };
   if (method !== 'GET' && method !== 'HEAD') return methodNotAllowed();
-  const origin = sanitizeOembedOrigin(input.requestOrigin);
-  const trusted = origin && isAllowedOembedRequestOrigin(origin, input.allowedOrigins ?? []) ? origin : undefined;
-  const html = injectPublicAtlasOpenGraph(input.indexHtml, buildLandingOpenGraphTags(trusted));
+  const html = injectPublicAtlasOpenGraph(input.indexHtml, buildLandingOpenGraphTags(trustedPageOrigin(input.requestOrigin, input.allowedOrigins)));
   return {
     status: 200,
     headers: {

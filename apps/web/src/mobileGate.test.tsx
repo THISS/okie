@@ -81,7 +81,8 @@ describe('CLA-318 small-screen notice', () => {
     expect(html).toContain(copy.description);
     expect(html).toContain('Best on a larger screen</h2>');
     expect(html).toContain('Continue anyway');
-    expect(html).toContain('href="/new"');
+    expect(html).toContain('<a href="/" ');
+    expect(html).not.toContain('href="/new"');
     expect(html).toContain(`href="${GITHUB_REPO_URL}"`);
     expect(html).toContain(CONTACT_EMAIL);
   });

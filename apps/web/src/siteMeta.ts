@@ -63,8 +63,17 @@ export function repoCanonicalPath(owner: string, repo: string): string {
   return `/r/${scanSlug(owner)}/${scanSlug(repo)}`;
 }
 
+/**
+ * `/new`, the SPA's published-atlas list. Since CLA-269 the hosted home page `/` is the directory and
+ * the edge 301s `/new` there, so `/new` canonicalizes to `/`.
+ */
 export function landingPageMeta(): PageMeta {
-  return { title: LANDING_TITLE, description: LANDING_DESCRIPTION, canonicalPath: '/new' };
+  return { title: LANDING_TITLE, description: LANDING_DESCRIPTION, canonicalPath: '/' };
+}
+
+/** The hosted home page `/` (CLA-269): hero plus the directory of published atlases. */
+export function homePageMeta(): PageMeta {
+  return { title: HOME_TITLE, description: HOME_DESCRIPTION, canonicalPath: '/' };
 }
 
 /** Title, description and canonical path for a pathname (a malformed escape reads as the home page). */
@@ -84,7 +93,7 @@ export function pageMetaForPath(pathname: string): PageMeta {
       canonicalPath: repoCanonicalPath(route.owner, route.repo),
     };
   }
-  return { title: HOME_TITLE, description: HOME_DESCRIPTION, canonicalPath: '/' };
+  return homePageMeta();
 }
 
 export function canonicalHref(canonicalPath: string): string {

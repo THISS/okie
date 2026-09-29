@@ -1,11 +1,16 @@
+import { homeHttpOutput, homeSearchFrom, isHomeRequest } from '../../web/src/homePage';
 import { isKnownAppPath, notFoundHttpOutput } from '../../web/src/notFoundPage';
+import { oembedAllowedOriginsFromEnv } from '../../web/src/oembed';
+import { PUBLISHED_INDEX_SCHEMA } from '../../server/src/publishedStoreLayout';
 import { securityHeadersFor } from '../../web/src/securityHeaders';
+import { webMcpHostHeadersForFetchDest } from '../../web/src/webmcpHeaders';
 import { analyticsConditionalRequest, injectsInto, webAnalyticsToken, withWebAnalytics } from './analytics';
 import { handleApiRoute } from './api';
 import { selectBackend, type Backend } from './backend';
 import type { EdgeEnv } from './env';
 import { defaultGuards, type Guard } from './guards';
 import { NOINDEX_ROBOTS_TXT, notFoundJson, ROBOTS_TAG } from './http';
+import { readPublishedIndex } from './publishedIndexCache';
 import { handleScanRoute } from './scan';
 import { handleShareRoute, isPublicAtlasRoutePath } from './share';
 import { handleSitemapRequest, SITEMAP_PATH } from './sitemap';
@@ -22,15 +27,22 @@ export { ContainerProxy } from '@cloudflare/containers';
  *
  *   www.*                     301 to the canonical origin
  *   /robots.txt               disallow-all when ROBOTS_NOINDEX=1 (staging; also X-Robots-Tag on everything)
- *   /sitemap.xml              `/`, `/new` and every published atlas from index.json (sitemap.ts)
+ *   /sitemap.xml              `/` and every published atlas from index.json (sitemap.ts)
  *   /assets/*                 Static Assets, but a missing hashed asset is 404 no-store, never the SPA shell
  *   /scan/*                   published atlases from R2 (scan.ts), source.json via GitHub raw (source.ts)
  *   /r/*, /og/*, /oembed      share pages (share.ts)
- *   /new                      the published-atlas list, with its own <title>/Open Graph meta (share.ts)
+ *   /new, /new/               GET/HEAD: 301 to `/` keeping only the home's allowlisted query params
+ *                             (homeSearchFrom; the directory moved to the home, CLA-269);
+ *                             other methods as before (share.ts landing handler: 405, OPTIONS 204)
  *   /api/*                    auth/me + Ask status answered here; with ASK_ENABLED=1, Ask + block-plan →
  *                             container behind guards (api.ts), else 404
  *   /__store/*                DEV_STORE_ROUTE=1 only (local mirror for a locally run apps/server)
- *   /, /index.html, /operator the SPA shell (Static Assets)
+ *   /, /index.html            GET/HEAD with no query, or only `q`/`sort`/`utm_*`/`ref`/`fbclid`/`gclid`
+ *                             (isHomeRequest): the server-rendered home page, hero + directory of published
+ *                             atlases from index.json (apps/web/src/homePage.ts, CLA-269). Any other query
+ *                             (`?fixture=okie`, `?portable=1`, `?embed=1`, deep-nav state) or method: the SPA
+ *                             shell as before, so the golden demo stays at `/?fixture=okie`
+ *   /operator                 the SPA shell (Static Assets)
  *   anything else             a real static file (favicons, robots.txt, og-default.png) from Static
  *                             Assets; otherwise the branded 404 page with a real 404 (CLA-318)
  *
@@ -156,12 +168,39 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     const key = storeKeyFromPath(pathname, DEV_STORE_PREFIX);
     return key === undefined ? notFoundJson() : handleStoreRead(request, env.ATLAS_BUCKET, key);
   }
+  const method = request.method.toUpperCase();
+  const readOnly = method === 'GET' || method === 'HEAD';
+  if (readOnly && (pathname === '/new' || pathname === '/new/')) {
+    // Only the home's allowlisted params survive, so an old `/new?<other>` link still lands on the home, not the SPA.
+    return new Response(null, { status: 301, headers: { location: `/${homeSearchFrom(url)}`, 'cache-control': 'public, max-age=3600' } });
+  }
+  if (readOnly && isHomeRequest(url)) return serveHome(request, url, env);
   if (isPublicAtlasRoutePath(pathname)) {
     const shared = await handleShareRoute(request, env);
     if (shared) return shared;
   }
   if (isKnownAppPath(pathname)) return env.ASSETS.fetch(analyticsConditionalRequest(request, env));
   return serveStaticFileOr404(request, env);
+}
+
+/**
+ * The home page (CLA-269), rendered here from the published index (per-isolate cache). A missing,
+ * unreadable or foreign-schema index still answers 200 with the hero and an empty-directory note.
+ */
+async function serveHome(request: Request, url: URL, env: EdgeEnv): Promise<Response> {
+  const index = await readPublishedIndex(env.ATLAS_BUCKET) as { schema?: unknown } | undefined;
+  const page = homeHttpOutput(request.method, {
+    index: index?.schema === PUBLISHED_INDEX_SCHEMA ? index : undefined,
+    requestOrigin: url.origin,
+    allowedOrigins: oembedAllowedOriginsFromEnv({ OKIE_PUBLIC_ORIGIN: env.OKIE_PUBLIC_ORIGIN }),
+  });
+  const headers = new Headers(page.headers);
+  // WebMCP host headers, as share.ts gives its HTML (and `_headers` gave the static `/`): Permissions-Policy
+  // always, Origin-Agent-Cluster unless the page is framed.
+  for (const [name, value] of Object.entries(webMcpHostHeadersForFetchDest(request.headers.get('sec-fetch-dest') ?? undefined))) {
+    headers.set(name, value);
+  }
+  return new Response(page.body === '' ? null : page.body, { status: page.status, headers });
 }
 
 /**

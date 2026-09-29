@@ -38,9 +38,11 @@ describe('CLA-266 Cloudflare static hosting', () => {
 
   it('applies the WebMCP host headers to static assets like the old vercel.json table', () => {
     expect(headersFile.get('/*')).toEqual({ 'Permissions-Policy': WEBMCP_HOST_HEADERS['Permissions-Policy'] });
-    for (const shell of ['/', '/new', '/index.html']) {
+    for (const shell of ['/', '/index.html']) {
       expect(headersFile.get(shell), shell).toEqual({ 'Origin-Agent-Cluster': WEBMCP_HOST_HEADERS['Origin-Agent-Cluster'] });
     }
+    // CLA-269: /new never reaches Static Assets (the Worker 301s GET/HEAD to `/` and answers the rest).
+    expect(headersFile.has('/new')).toBe(false);
     for (const [pattern, headers] of headersFile) {
       expect(headers['Permissions-Policy'] ?? 'tools=(self)', pattern).toBe('tools=(self)');
       expect(headers['Origin-Agent-Cluster'] ?? '?1', pattern).toBe('?1');
@@ -51,7 +53,7 @@ describe('CLA-266 Cloudflare static hosting', () => {
     expect(headersFile.get('/assets/*')).toEqual({ 'Cache-Control': 'public, max-age=31536000, immutable' });
   });
 
-  it('serves /r and /new as the SPA shell and hands share routes to the Worker', () => {
+  it('serves /r as the SPA shell and hands share routes to the Worker', () => {
     expect(wrangler).toMatch(/"not_found_handling":\s*"single-page-application"/);
     // Every path runs the Worker first (share routes, /scan, /api, the www → apex redirect, and the
     // 404 for a missing /assets/* chunk instead of the SPA shell; run_worker_first cannot be host-specific).
