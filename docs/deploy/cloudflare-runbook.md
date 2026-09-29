@@ -94,11 +94,29 @@ print a one-line note if they found one.
    Last-Modified, and the Worker drops conditional headers on the shell, so the shell (`max-age=0,
    must-revalidate`) is refetched in full rather than 304'd to a copy without the beacon. Staging and local dev stay unset. The web build (and the portable
    viewer) never contain the beacon. To turn analytics off, remove the var and redeploy.
-9. **First-deploy lessons (fresh account):**
-   - Error **10063**: the account has no workers.dev subdomain yet. Open Workers & Pages in the dashboard once to
-     create it, then deploy again.
-   - Error **100117**: a custom-domain hostname already has DNS records. Delete them in the dashboard (DNS → Records)
-     first, then deploy again.
+9. **Staging behind Cloudflare Access:** staging.sourcefor.dev requires an Access login. Production stays public.
+   Set it up once in the dashboard (the wrangler OAuth login has no Access scope):
+   - **Zero Trust:** Zero Trust → pick a team name (the login lives at `<team>.cloudflareaccess.com`) → the Free
+     plan. Settings → Authentication → Login methods must list **One-time PIN**.
+   - **Service token:** Access → Service auth → Service Tokens → create `atlas-staging-smoke`. Copy its Client ID
+     and Client Secret; the secret is shown once.
+   - **Application:** Access → Applications → Add → Self-hosted, hostname `staging.sourcefor.dev` (no path),
+     login method One-time PIN. It has two policies: **Allow** with Include → Emails → the owner's address, and
+     **Service Auth** with Include → Service Token → `atlas-staging-smoke`. A Service Auth policy is needed because
+     an Allow policy doesn't accept service tokens.
+   - **Local keys:** put the token in the gitignored repo-root `.env` as `STAGING_ACCESS_CLIENT_ID` and
+     `STAGING_ACCESS_CLIENT_SECRET`. `smoke:staging` sends them as `CF-Access-Client-Id` / `CF-Access-Client-Secret`.
+     Nothing else reads them, and nothing prints them.
+
+   Everything on staging is behind the login, including `/og`, `/oembed`, share pages and `robots.txt`. So link
+   unfurlers and embeds can't reach staging; test those on production or the local edge. Deploys are unaffected:
+   `deploy:staging` talks to the Cloudflare API, not to the hostname. To rotate the token, create a new one, add it to
+   the Service Auth policy, update `.env`, then delete the old one.
+10. **First-deploy lessons (fresh account):**
+    - Error **10063**: the account has no workers.dev subdomain yet. Open Workers & Pages in the dashboard once to
+      create it, then deploy again.
+    - Error **100117**: a custom-domain hostname already has DNS records. Delete them in the dashboard (DNS → Records)
+      first, then deploy again.
 
 ## 2. Publish an atlas
 
@@ -199,6 +217,23 @@ To validate the config without deploying (no account calls, no Docker):
 that the top-level `containers` and `ATLAS_API` binding aren't in the env; that is intended.
 
 Then run the smoke checks against staging:
+
+```sh
+pnpm --filter @okie/edge smoke:staging       # needs STAGING_ACCESS_CLIENT_ID / _SECRET in .env (staging is behind Access)
+pnpm --filter @okie/edge smoke:production    # after deploy:production; never sends the Access headers
+```
+
+The script (`apps/edge/scripts/smoke.mjs`) checks these routes: the home, the SPA shell, the 404 and `/new` 301,
+`robots.txt`, the sitemap, `/api/auth/me`, the missing-asset 404, `/scan/index.json`, and the first published
+atlas's `/r` page and `/og` card. On every HTML page it checks the status, the CSP, `nosniff`, and the beacon count:
+1 on production, 0 on staging. It follows no redirects. If staging answers with the Access login (a redirect to
+`*.cloudflareaccess.com`), the run stops with an error: without the keys, it names them; with them, the token was
+rejected (it is expired or missing from the Service Auth policy). If only one of the two keys is set, it refuses to
+run. `curl` against staging needs the same two headers, e.g.
+`curl -sI -H "CF-Access-Client-Id: $STAGING_ACCESS_CLIENT_ID" -H "CF-Access-Client-Secret: $STAGING_ACCESS_CLIENT_SECRET" https://staging.sourcefor.dev/`.
+The list below is the full set, including the manual and browser checks. A browser on staging needs the One-time PIN
+login first.
+
 
 - `/` (the edge-rendered home: hero, "Explore an atlas" CTA, the search form and a card per published atlas; no SPA
   `<div id="root">`); `/?q=<part of a name>` shows only the matching cards with an `N of M atlases` count, `/?sort=az`
