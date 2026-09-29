@@ -68,7 +68,7 @@ export function ImportMermaidDialog({
             <CloseIcon size={14}/>
           </button>
         </header>
-        <p>Paste a flowchart, sequence, or C4 diagram — or open a <code>.mmd</code> / Markdown file. It is laid out on the atlas as Okie nodes and edges, not as a Mermaid SVG.</p>
+        <p>Paste a flowchart, sequence, or C4 diagram — or open a <code>.mmd</code> / Markdown file. It is laid out on the atlas as nodes and edges, not as a Mermaid SVG.</p>
         <label className="import-mermaid-field">
           <span className="sr-only">Mermaid source</span>
           <textarea

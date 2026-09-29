@@ -124,7 +124,7 @@ function AskThreadForm(props: AskPanelProps) {
           onChange={event => props.onQuestionChange(event.target.value)}
           onKeyDown={onKeyDown}
           onKeyPress={event => event.stopPropagation()}
-          placeholder="How does Okie turn architecture into a rendered map?"
+          placeholder="How does this system work, end to end?"
           ref={props.inputRef}
           rows={2}
           value={props.question}

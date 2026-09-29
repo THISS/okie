@@ -45,13 +45,13 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     expect(result.status).toBe(200);
     expect(result.headers['content-type']).toBe('text/html; charset=utf-8');
     const html = result.body as string;
-    expect(html).toContain('<meta property="og:title" content="THISS/okie architecture atlas" />');
-    expect(html).toContain('<meta property="og:description" content="Public architecture atlas for THISS/okie." />');
+    expect(html).toContain('<meta property="og:title" content="okie by THISS · Source For Atlas" />');
+    expect(html).toContain('<meta property="og:description" content="Explore how THISS/okie is built: an architecture atlas from system context down to source, on Source For Atlas." />');
     expect(html).toContain(`<meta property="og:image" content="${ORIGIN}/og/THISS/okie" />`);
     expect(html).not.toMatch(/property="og:image" content="[^"]*favicon\.ico"/);
     expect(html).toContain('<meta name="twitter:card" content="summary_large_image" />');
-    expect(html).toContain('<meta name="twitter:title" content="THISS/okie architecture atlas" />');
-    expect(html).toContain('<meta name="twitter:description" content="Public architecture atlas for THISS/okie." />');
+    expect(html).toContain('<meta name="twitter:title" content="okie by THISS · Source For Atlas" />');
+    expect(html).toContain('<meta name="twitter:description" content="Explore how THISS/okie is built: an architecture atlas from system context down to source, on Source For Atlas." />');
     expect(html).toContain(`<meta name="twitter:image" content="${ORIGIN}/og/THISS/okie" />`);
     expect(html).not.toMatch(/login|signin|oauth|authorize/i);
     expect(openGraphLeaksSecrets(html)).toBe(false);
@@ -65,7 +65,10 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
       search: '',
       origin: ORIGIN,
     });
-    expect(tags.title).toBe('THISS/okie architecture atlas');
+    expect(tags.title).toBe('okie by THISS · Source For Atlas');
+    expect(tags.imageAlt).toBe('THISS/okie architecture atlas');
+    expect(tags.siteName).toBe('Source For Atlas');
+    expect(tags.canonical).toBe('https://sourcefor.dev/r/thiss/okie');
     expect(tags.image).toBe(publicAtlasOgImageHref({
       owner: 'THISS',
       repo: 'okie',
@@ -81,7 +84,7 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
       repo: 'okie',
       search: '',
       origin: ORIGIN,
-    })).toBe('Public architecture atlas for THISS/okie.');
+    })).toBe('Explore how THISS/okie is built: an architecture atlas from system context down to source, on Source For Atlas.');
   });
 
   it('returns a PNG atlas card for /og/THISS/okie, not a logo file', async () => {
@@ -182,6 +185,11 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     const html = injectPublicAtlasOpenGraph(INDEX, tags);
     expect(html).not.toContain('Atlas · Okie architecture');
     expect(html.match(/<title>/g)).toHaveLength(1);
+    expect(html).toContain('<title>okie by THISS · Source For Atlas</title>');
+    // The shell's own canonical (the home page's) is replaced, never duplicated.
+    const withCanonical = injectPublicAtlasOpenGraph(INDEX.replace('</head>', '<link rel="canonical" href="https://sourcefor.dev/" />\n</head>'), tags);
+    expect(withCanonical.match(/rel="canonical"/g)).toHaveLength(1);
+    expect(withCanonical).toContain('<link rel="canonical" href="https://sourcefor.dev/r/thiss/okie" />');
   });
 
   it('wires Vite and the edge Worker to the same runtime-agnostic share dispatcher', () => {

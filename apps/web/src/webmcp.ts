@@ -1,6 +1,6 @@
 /**
  * WebMCP (CLA-40 + CLA-41 + CLA-42 + CLA-43): progressive enhancement so Chrome
- * (and later other browsers) can see Okie as a WebMCP provider.
+ * (and later other browsers) can see Source For Atlas as a WebMCP provider.
  *
  * This is the in-page browser API (`document.modelContext`, with a fallback to
  * the Chrome origin-trial `navigator.modelContext`) — not a remote or stdio
@@ -48,9 +48,9 @@ import { parseAppRoute } from './renderer/route';
 export { WEBMCP_HOST_HEADERS, webMcpHostHeadersForFetchDest } from './webmcpHeaders';
 
 export const OKIE_PROBE_TOOL_NAME = 'okie_probe';
-export const OKIE_PROBE_TOOL_TITLE = 'Okie probe';
+export const OKIE_PROBE_TOOL_TITLE = 'Source For Atlas probe';
 export const OKIE_PROBE_TOOL_DESCRIPTION =
-  'Confirms this Okie page is a WebMCP provider. Returns only public product facts. Does not start a scan, open an atlas, or change the page.';
+  'Confirms this Source For Atlas page is a WebMCP provider. Returns only public product facts. Does not start a scan, open an atlas, or change the page.';
 
 export const OKIE_PROBE_INPUT_SCHEMA = {
   type: 'object',
@@ -221,7 +221,7 @@ export type AtlasSourceKind = 'golden' | 'scan' | 'stress' | 'imported-mermaid';
 
 export type OkieProbeResult = {
   ok: true;
-  product: 'Okie';
+  product: 'Source For Atlas';
   provider: 'webmcp';
   tool: typeof OKIE_PROBE_TOOL_NAME;
 };
@@ -678,7 +678,7 @@ export function atlasPageContext(input: AtlasPageContextInput): GetAtlasContextS
 export function okieProbeResult(): OkieProbeResult {
   return {
     ok: true,
-    product: 'Okie',
+    product: 'Source For Atlas',
     provider: 'webmcp',
     tool: OKIE_PROBE_TOOL_NAME,
   };

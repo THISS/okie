@@ -21,6 +21,7 @@ import { PortableAtlasOpenScreen } from './portable/PortableAtlasOpenScreen';
 import { isPortableMode, portableNavigationDiffers, portableReloadPath, setActivePortableAtlas } from './portable/runtime';
 import { createIndexedDbPortableStore, createPortablePersistence, portableStorageKey } from './portable/storage';
 import { registerWebMcpFoundation } from './webmcp';
+import { applyPageMeta, SITE_NAME } from './siteMeta';
 import { readPortableFile, rememberPortableSession, forgetPortableSession } from './portable/session';
 import { OperatorWorkspace } from './operator/OperatorWorkspace';
 import { previewReturnSelection } from './operator/workspaceController';
@@ -267,9 +268,14 @@ async function boot() {
   // WebMCP is progressive enhancement (CLA-40). Missing APIs are a silent no-op.
   void registerWebMcpFoundation();
   if (isPortableMode(window.location.search, portableMarkerEnabled())) {
+    // A self-hosted portable viewer is not a sourcefor.dev page: brand the tab only. applyPageMeta (and
+    // its canonical) never runs here, and build-portable-viewer.mjs strips the shell's canonical/og/twitter tags.
+    document.title = SITE_NAME;
     await bootPortableAtlas();
     return;
   }
+  // CLA-318: per-route <title>, description and canonical (every route change is a full page load).
+  applyPageMeta(document, window.location.pathname);
   if (window.location.pathname === '/operator') {
     await mountOperatorWorkspace();
     return;

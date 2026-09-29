@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!--
+    Default Open Graph / Twitter card for sourcefor.dev `/` and `/new` (CLA-318). Live text is IBM Plex Sans.
+    Rebuild apps/web/public/og-default.png with `node scripts/generate-brand-assets.mjs` (handles the font).
+    Per-atlas cards (/og/<owner>/<repo>) are generated at runtime by apps/web/src/atlasCard.ts.
+  -->
+  <rect width="1200" height="630" fill="#070a0b"/>
+  <g stroke="#f1f7f4" stroke-opacity="0.05" stroke-width="1">
+    <path d="M0 90H1200M0 180H1200M0 270H1200M0 360H1200M0 450H1200M0 540H1200"/>
+    <path d="M100 0V630M200 0V630M300 0V630M400 0V630M500 0V630M600 0V630M700 0V630M800 0V630M900 0V630M1000 0V630M1100 0V630"/>
+  </g>
+  <g transform="translate(96 172) scale(2.5)">
+    <path d="M45 12H25a10 10 0 0 0 0 20h14a10 10 0 0 1 0 20H20" fill="none" stroke="#f1f7f4" stroke-width="8"/>
+    <circle cx="52" cy="12" r="6" fill="none" stroke="#f1f7f4" stroke-width="4"/>
+    <rect x="6" y="44" width="16" height="16" rx="3" fill="#d9ff70" stroke="#070a0b" stroke-width="3"/>
+  </g>
+  <text x="300" y="262" font-family="IBM Plex Sans" font-size="84" letter-spacing="-2"><tspan fill="#f1f7f4" font-family="IBM Plex Sans SemiBold, IBM Plex Sans" font-weight="600">Source For</tspan><tspan fill="#97a5a0" font-weight="400" dx="26">Atlas</tspan></text>
+  <text x="300" y="326" font-family="IBM Plex Sans" font-size="34" font-weight="400" fill="#c9d4d0">Explore how open-source software is built.</text>
+  <text x="96" y="540" font-family="IBM Plex Sans" font-size="26" font-weight="400" fill="#97a5a0">Architecture atlases, from system context down to source.</text>
+  <text x="1104" y="540" text-anchor="end" font-size="26" font-family="IBM Plex Sans SemiBold, IBM Plex Sans" font-weight="600" fill="#d9ff70">sourcefor.dev</text>
+</svg>

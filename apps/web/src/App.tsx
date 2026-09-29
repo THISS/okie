@@ -24,7 +24,7 @@ import {
 import {
   ActivityIcon, ArrowIcon, CheckIcon, ChevronIcon, CloseIcon, CodeIcon, FileIcon, FitIcon,
   ImageIcon, InfoIcon, LayersIcon, PanelIcon, PauseIcon, PlayIcon, RestartIcon, SearchIcon, ShareIcon,
-  SparkIcon, ZoomInIcon, ZoomOutIcon,
+  SourceForMark, SparkIcon, ZoomInIcon, ZoomOutIcon,
 } from './icons';
 import { captureSceneBlob, downloadBlob, screenshotFilename } from './renderer/sceneScreenshot';
 import { Minimap } from './minimap';
@@ -1534,7 +1534,7 @@ export function App() {
   const [storyInterruption, setStoryInterruption] = useState<string>();
   const [storySelectionOverride, setStorySelectionOverride] = useState(false);
   const [visibilityMode, setVisibilityMode] = useState<'all' | 'dim' | 'isolate'>('all');
-  const [liveMessage, setLiveMessage] = useState('Okie architecture atlas loaded. Okie selected.');
+  const [liveMessage, setLiveMessage] = useState('Architecture atlas loaded.');
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [askConnected, setAskConnected] = useState(false);
@@ -5528,10 +5528,10 @@ export function App() {
     <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-atlas-source={importedAtlas ? 'imported-mermaid' : scanFixture ? 'scan' : 'golden'} data-embed={isEmbedChrome({ framed: isFramedBrowsingContext(), embedQuery: isEmbedQueryFlag(window.location.search) }) ? 'true' : 'false'} data-atlas-enrichment-why={scanFixture?.enrichmentHonesty?.why ?? ''} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-dev-mode={devMode ? 'true' : 'false'} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-scan-boot={scanFixture?.boot ?? ''} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
       <a className="skip-link" href={mainDiagramActive ? '#entity-explorer' : '#derived-diagram-content'}>{mainDiagramActive ? 'Skip to entity explorer' : 'Skip to active diagram'}</a>
       <header className="topbar">
-        <div className="brand-block" aria-label="Atlas home">
-          <div className="brand-mark"><span /><span /><span /></div>
+        <div className="brand-block" aria-label="Source For Atlas">
+          <SourceForMark className="brand-mark" size={30}/>
           <div>
-            <div className="brand-line"><strong>Atlas</strong><span className="brand-product">PREVIEW</span></div>
+            <div className="brand-line"><strong>Source For</strong><span className="brand-name">Atlas</span><span className="brand-product">PREVIEW</span></div>
           </div>
         </div>
 

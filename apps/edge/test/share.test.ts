@@ -12,18 +12,37 @@ describe('share pages at the edge', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
     const html = await response.text();
-    expect(html).toContain('<title>acme/shared architecture atlas</title>');
+    expect(html).toContain('<title>shared by acme · Source For Atlas</title>');
+    expect(html).toContain('<link rel="canonical" href="https://sourcefor.dev/r/acme/shared" />');
     expect(html).toContain(`<meta property="og:image" content="${ORIGIN}/og/acme/shared" />`);
     expect(html).toContain(`<meta property="og:url" content="${ORIGIN}/r/acme/shared" />`);
     expect(html).toContain('application/json+oembed');
     expect(html).toContain('/assets/index-abc123.js'); // the real shell, scripts intact
-    expect(html).not.toContain('Atlas · Okie architecture');
+    expect(html).not.toContain('explore how open-source software is built</title>'); // the home shell's title is replaced
+    expect(html.match(/rel="canonical"/g)).toHaveLength(1);
     // WebMCP host headers on the HTML the Worker renders; framed views drop origin-keying.
     expect(response.headers.get('permissions-policy')).toBe('tools=(self)');
     expect(response.headers.get('origin-agent-cluster')).toBe('?1');
     const framed = await edgeFetch('/r/acme/shared', { init: { headers: { 'sec-fetch-dest': 'iframe' } } });
     expect(framed.headers.get('permissions-policy')).toBe('tools=(self)');
     expect(framed.headers.get('origin-agent-cluster')).toBeNull();
+  });
+
+  it('serves /new with landing meta and the default card; staging canonicalizes to production', async () => {
+    const response = await edgeFetch('https://staging.sourcefor.dev/new', { env: { OKIE_PUBLIC_ORIGIN: 'https://staging.sourcefor.dev' } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('permissions-policy')).toBe('tools=(self)');
+    expect(response.headers.get('origin-agent-cluster')).toBe('?1');
+    const html = await response.text();
+    expect(html).toContain('<title>Published atlases · Source For Atlas</title>');
+    expect(html).toContain('<meta property="og:image" content="https://staging.sourcefor.dev/og-default.png" />');
+    expect(html).toContain('<link rel="canonical" href="https://sourcefor.dev/new" />');
+    expect(html.match(/<title>/g)).toHaveLength(1);
+    expect(html).toContain('/assets/index-abc123.js');
+    // `/` stays the static shell (its home-page meta is baked into index.html).
+    const home = await (await edgeFetch('/')).text();
+    expect(home).toContain('<link rel="canonical" href="https://sourcefor.dev/" />');
   });
 
   it('404s an unpublished slug with the generic body (dogfood THISS/okie is always public)', async () => {
@@ -52,6 +71,10 @@ describe('share pages at the edge', () => {
     // Paths that already resolve are served, not redirected.
     expect((await edgeFetch('/r/BurntSushi/ripgrep')).status).toBe(200);
     expect((await edgeFetch('/r/burnt-sushi/ripgrep')).status).toBe(200);
+    // Both name the redirect target as their canonical (CLA-318).
+    for (const path of ['/r/BurntSushi/ripgrep', '/r/burnt-sushi/ripgrep']) {
+      expect(await (await edgeFetch(path)).text(), path).toContain('<link rel="canonical" href="https://sourcefor.dev/r/burnt-sushi/ripgrep" />');
+    }
     // No loose match, a different repo, or a non-GET: the usual 404.
     expect((await edgeFetch('/r/burntsushi/ripgrep-extra')).status).toBe(404);
     expect((await edgeFetch('/r/someone/ripgrep')).status).toBe(404);

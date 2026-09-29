@@ -62,7 +62,7 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     const body = JSON.parse(result.body) as ReturnType<typeof buildOembedRichResponse>;
     expect(body.version).toBe('1.0');
     expect(body.type).toBe('rich');
-    expect(body.provider_name).toBe('Okie');
+    expect(body.provider_name).toBe('Source For Atlas');
     expect(body.title).toBe('THISS/okie architecture atlas');
     expect(body.thumbnail_url).toBe(`${ORIGIN}/og/THISS/okie`);
     expect(body.thumbnail_width).toBe(OEMBED_THUMBNAIL_WIDTH);
@@ -70,7 +70,7 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     expect(body.width).toBe(OEMBED_DEFAULT_WIDTH);
     expect(body.height).toBe(OEMBED_DEFAULT_HEIGHT);
     expect(body.html).toContain(`src="${DOGFOOD}?embed=1"`);
-    expect(body.html).toContain('<!-- Okie embed chrome:');
+    expect(body.html).toContain('<!-- Source For Atlas embed chrome:');
     expect(body.html).toContain('inspector Overview architecture brief starts collapsed');
     expect(body.html).toContain('allow="fullscreen; gpu"');
     expect(body.html).toContain('allowfullscreen');

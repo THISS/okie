@@ -26,7 +26,7 @@ export function readDemoQuery(search: string): DemoQuery {
   }
 
   const fixture = ['okie', 'stress', 'scan'].includes(normalizedFixture) ? normalizedFixture : 'okie';
-  if (fixture !== normalizedFixture) warnings.push(`Unknown fixture “${requestedFixture}”; using Okie.`);
+  if (fixture !== normalizedFixture) warnings.push(`Unknown fixture “${requestedFixture}”; using the demo atlas.`);
 
   const rawSeed = params.get('seed') ?? '42';
   const parsedSeed = Number.parseInt(rawSeed, 10);

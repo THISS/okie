@@ -94,25 +94,11 @@ a:focus-visible {
 
 .brand-block { gap: 11px; min-width: 0; }
 
-.brand-mark {
-  position: relative;
-  width: 35px;
-  height: 35px;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border: 1px solid rgba(217, 255, 112, 0.35);
-  border-radius: 10px;
-  background: linear-gradient(145deg, rgba(217, 255, 112, 0.15), rgba(217, 255, 112, 0.025));
-  box-shadow: inset 0 0 18px rgba(217, 255, 112, 0.04), 0 0 26px rgba(217, 255, 112, 0.05);
-}
-
-.brand-mark span { position: absolute; width: 11px; height: 11px; border: 1.5px solid var(--atlas-accent); transform: rotate(45deg); }
-.brand-mark span:nth-child(1) { top: 6px; left: 7px; }
-.brand-mark span:nth-child(2) { top: 6px; right: 5px; opacity: .62; }
-.brand-mark span:nth-child(3) { bottom: 4px; left: 12px; opacity: .8; }
+.brand-mark { display: block; width: 30px; height: 30px; flex: 0 0 auto; }
 
 .brand-line { gap: 8px; line-height: 1; }
-.brand-line strong { font-size: 14px; letter-spacing: -.02em; }
+.brand-line strong { font-size: 14px; font-weight: 600; letter-spacing: -.02em; }
+.brand-name { margin-left: -3px; color: var(--atlas-muted); font-size: 14px; letter-spacing: -.02em; }
 .brand-product { padding: 2px 5px; border: 1px solid rgba(217, 255, 112, .22); border-radius: 4px; color: var(--atlas-accent); font-family: var(--atlas-font-mono); font-size: 10px; font-weight: 700; letter-spacing: .1em; }
 
 .search-zone { position: relative; }
@@ -955,7 +941,7 @@ a.icon-button { text-decoration: none; }
 @media (max-width: 780px) {
   .app-shell { --topbar-height: 60px; }
   .topbar { grid-template-columns: auto 1fr auto; gap: 10px; padding: 0 10px; }
-  .brand-mark { width: 33px; height: 33px; }
+  .brand-mark { width: 28px; height: 28px; }
   .brand-block > div:last-child { display: none; }
   .top-actions .icon-button { display: none; }
   .top-actions .share-view-button { display: grid; }
