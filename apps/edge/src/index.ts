@@ -1,4 +1,4 @@
-import { homeHttpOutput, homeSearchFrom, isHomeRequest } from '../../web/src/homePage';
+import { homeHttpOutput, homeSearchFrom, homeViewFrom, isHomeRequest } from '../../web/src/homePage';
 import { isKnownAppPath, notFoundHttpOutput } from '../../web/src/notFoundPage';
 import { oembedAllowedOriginsFromEnv } from '../../web/src/oembed';
 import { PUBLISHED_INDEX_SCHEMA } from '../../server/src/publishedStoreLayout';
@@ -39,7 +39,8 @@ export { ContainerProxy } from '@cloudflare/containers';
  *   /__store/*                DEV_STORE_ROUTE=1 only (local mirror for a locally run apps/server)
  *   /, /index.html            GET/HEAD with no query, or only `q`/`sort`/`utm_*`/`ref`/`fbclid`/`gclid`
  *                             (isHomeRequest): the server-rendered home page, hero + directory of published
- *                             atlases from index.json (apps/web/src/homePage.ts, CLA-269). Any other query
+ *                             atlases from index.json, searched/sorted by `q`/`sort` (apps/web/src/homePage.ts,
+ *                             CLA-269; /home.js, a Static Asset, filters in place). Any other query
  *                             (`?fixture=okie`, `?portable=1`, `?embed=1`, deep-nav state) or method: the SPA
  *                             shell as before, so the golden demo stays at `/?fixture=okie`
  *   /operator                 the SPA shell (Static Assets)
@@ -184,16 +185,35 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
 }
 
 /**
- * The home page (CLA-269), rendered here from the published index (per-isolate cache). A missing,
- * unreadable or foreign-schema index still answers 200 with the hero and an empty-directory note.
+ * The parsed indexes whose skipped rows were already logged. readPublishedIndex hands back the same object while it
+ * is cached, so each index read (at most one a minute per isolate) is reported once.
+ */
+const warnedHomeIndexes = new WeakSet<object>();
+
+/**
+ * The home page (CLA-269), rendered here from the published index (per-isolate cache), filtered and
+ * sorted by `?q=` / `?sort=` (every card is rendered; non-matches are `hidden`, so /home.js can widen the
+ * view). A missing, unreadable or foreign-schema index still answers 200 with the hero and an
+ * empty-directory note. An index row the directory cannot show (its slug has no canonical path) is logged
+ * with console.warn, so a published atlas never drops off the home silently: once per cached index per isolate
+ * ({@link warnedHomeIndexes}), not on every request.
  */
 async function serveHome(request: Request, url: URL, env: EdgeEnv): Promise<Response> {
   const index = await readPublishedIndex(env.ATLAS_BUCKET) as { schema?: unknown } | undefined;
+  const view = homeViewFrom(url);
   const page = homeHttpOutput(request.method, {
     index: index?.schema === PUBLISHED_INDEX_SCHEMA ? index : undefined,
+    q: view.q,
+    sort: view.sort,
     requestOrigin: url.origin,
     allowedOrigins: oembedAllowedOriginsFromEnv({ OKIE_PUBLIC_ORIGIN: env.OKIE_PUBLIC_ORIGIN }),
   });
+  if (page.skipped.length && index && typeof index === 'object' && !warnedHomeIndexes.has(index)) {
+    warnedHomeIndexes.add(index);
+    for (const row of page.skipped) {
+      console.warn(`home: index row ${JSON.stringify(row.slug)} not listed (${row.reason})`);
+    }
+  }
   const headers = new Headers(page.headers);
   // WebMCP host headers, as share.ts gives its HTML (and `_headers` gave the static `/`): Permissions-Policy
   // always, Origin-Agent-Cluster unless the page is framed.

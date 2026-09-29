@@ -7,8 +7,16 @@ import {
   HOME_EXPLORE_HREF,
   formatEntityCount,
   formatHomeDate,
+  HOME_QUERY_MAX,
   homeAtlasCards,
+  homeCardMatches,
+  homeCountText,
+  homeDirectory,
   homeHttpOutput,
+  homeSortFrom,
+  homeViewFrom,
+  normalizeHomeQuery,
+  sortHomeCards,
   homeExploreHref,
   homePageHtml,
   homeSearchFrom,
@@ -86,25 +94,71 @@ describe('CLA-269 home: directory cards', () => {
     ]);
   });
 
-  it('skips rows whose names do not slug back to their slug (accepting the verified GitHub casing)', () => {
-    const cards = homeAtlasCards(index(
-      // Shows "evil/thing" but would link /r/acme/app.
-      row('acme__app', { owner: 'evil', repo: 'thing' }),
-      { ...row('acme__lib'), repo: 'other' },
+  it('shows a row whose names do not slug back under its slug\'s names (never one repo linking another), accepting the verified GitHub casing', () => {
+    const { cards, skipped } = homeDirectory(index(
+      // Would show "evil/thing" but links /r/acme/app: shown as acme/app.
+      row('acme__app', { owner: 'evil', repo: 'thing', generatedAt: '2026-09-05T00:00:00Z' }),
+      { ...row('acme__lib', { generatedAt: '2026-09-04T00:00:00Z' }), repo: 'other' },
       // Stored `burntsushi` slugs to burntsushi__…, but the verified GitHub casing `BurntSushi` slugs to burnt-sushi__….
       RIPGREP,
-      // Without the GitHub casing nothing reproduces the slug.
-      row('burnt-sushi__fd', { owner: 'burntsushi', repo: 'fd' }),
-      row('pmndrs__zustand'),
+      // Without the GitHub casing nothing reproduces the slug, but the stored names match it once case and
+      // punctuation are ignored (burntsushi ≈ burnt-sushi): shown under the stored names, linked to the slug's path.
+      row('burnt-sushi__fd', { owner: 'burntsushi', repo: 'fd', generatedAt: '2026-09-03T00:00:00Z' }),
+      // Loosely matching but not valid GitHub names: the slug's names.
+      { ...row('dot-net__x', { generatedAt: '2026-09-02T12:00:00Z' }), owner: 'dot net' },
+      row('pmndrs__zustand', { generatedAt: '2026-09-02T00:00:00Z' }),
+      // Unusable stored names (not GitHub names at all) fall back to the slug's too.
+      { ...row('evil__repo', { generatedAt: '2026-09-01T00:00:00Z' }), owner: '<script>alert(1)</script>' },
     ));
-    expect(cards.map(card => card.href)).toEqual(['/r/burnt-sushi/ripgrep', '/r/pmndrs/zustand']);
+    expect(skipped).toEqual([]);
+    expect(cards.map(card => [card.href, `${card.owner}/${card.repo}`])).toEqual([
+      ['/r/acme/app', 'acme/app'],
+      ['/r/acme/lib', 'acme/lib'],
+      ['/r/burnt-sushi/fd', 'burntsushi/fd'],
+      ['/r/dot-net/x', 'dot-net/x'],
+      ['/r/pmndrs/zustand', 'pmndrs/zustand'],
+      ['/r/evil/repo', 'evil/repo'],
+      ['/r/burnt-sushi/ripgrep', 'BurntSushi/ripgrep'],
+    ]);
+    // Names a card does not show are not searchable either.
+    expect(cards.find(card => card.href === '/r/dot-net/x')!.search).toEqual(['dot-net/x']);
+    // The loosely matching stored names are the card's own, so they are searchable.
+    expect(cards.find(card => card.repo === 'fd')!.search).toEqual(['burntsushi/fd']);
+    expect(homePageHtml({ index: index(row('burnt-sushi__fd', { owner: 'burntsushi', repo: 'fd' })) }))
+      .toContain('<a class="card" href="/r/burnt-sushi/fd">');
+    expect(cards.find(card => card.href === '/r/acme/app')!.search).toEqual(['acme/app']);
+    const html = homePageHtml({ index: index(row('acme__app', { owner: 'evil', repo: 'thing' })) });
+    expect(html).toContain('<a class="card" href="/r/acme/app">');
+    expect(html).toContain('<span class="name"><span class="owner">acme/</span><strong>app</strong></span>');
+    expect(html).not.toContain('<strong>thing</strong>');
   });
 
-  it('strips bidi and zero-width characters from row text', () => {
+  it('skips only rows whose slug has no canonical path (and repeats), and reports them', () => {
+    const { cards, skipped } = homeDirectory(index(
+      row('pmndrs__zustand'),
+      row('bad__slug__extra'),
+      row('Upper__Case'),
+      { ...row('x__y'), slug: 42 },
+      null,
+      row('pmndrs__zustand'),
+    ));
+    expect(cards.map(card => card.href)).toEqual(['/r/pmndrs/zustand']);
+    expect(skipped).toEqual([
+      { slug: 'bad__slug__extra', reason: 'the slug has no canonical /r/ path' },
+      { slug: 'Upper__Case', reason: 'the slug has no canonical /r/ path' },
+      { slug: '(no slug)', reason: 'the slug has no canonical /r/ path' },
+      { slug: '(no slug)', reason: 'not an object' },
+      { slug: 'pmndrs__zustand', reason: 'a repeat of a row already shown' },
+    ]);
+    expect(homeHttpOutput('GET', { index: index(row('bad__slug__extra')) }).skipped).toEqual([{ slug: 'bad__slug__extra', reason: 'the slug has no canonical /r/ path' }]);
+    expect(homeHttpOutput('HEAD', { index: index(row('bad__slug__extra')) }).skipped).toHaveLength(1);
+  });
+
+  it('strips bidi and invisible characters from row text, but keeps the joiners inside emoji', () => {
     const [card] = homeAtlasCards(index(row('acme__app', {
       description: 'safe \u202Etxt.exe\u202C and \u200Bhidden\uFEFF\u2066iso\u2069 \u200Ejoin',
       language: '\u202ETypeScript',
-      license: { spdxId: 'MIT\u200D' },
+      license: { spdxId: 'MIT\u200F' },
     })));
     expect(card!.description).toBe('safe txt.exe and hiddeniso join');
     expect(card!.language).toBe('TypeScript');
@@ -112,14 +166,21 @@ describe('CLA-269 home: directory cards', () => {
     expect(homeAtlasCards(index(row('acme__app', { description: '\u202E\u200B' })))[0]!.description).toBeUndefined();
     const html = homePageHtml({ index: index(row('acme__app', { description: 'a\u202Eb' })) });
     expect(html).not.toMatch(/[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/);
+    // U+200D (ZWJ) and U+200C (ZWNJ) are kept: stripping them splits the woman mage into a mage and a ♀ sign.
+    const mage = '\u{1F9D9}\u200D\u2640\uFE0F';
+    const [emoji] = homeAtlasCards(index(row('trpc__trpc', { description: `${mage} Move fast and break nothing`, language: 'Type\u200CScript' })));
+    expect(emoji!.description).toBe(`${mage} Move fast and break nothing`);
+    expect(emoji!.language).toBe('Type\u200CScript');
+    expect(homePageHtml({ index: index(row('trpc__trpc', { description: `${mage} tRPC` })) })).toContain(`<span class="description">${mage} tRPC</span>`);
+    expect(normalizeHomeQuery(` ${mage}\u200B `)).toBe(mage);
+    expect(homeCardMatchesFor(emoji!, mage)).toBe(true);
   });
 
-  it('uses GitHub casing, links the canonical path and thumbnails the /og card; skips unusable rows and duplicates', () => {
+  it('uses GitHub casing, links the canonical path and thumbnails the /og card; skips unusable slugs and duplicates', () => {
     const cards = homeAtlasCards(index(
       RIPGREP,
       row('bad__slug__extra'),
       row('Upper__Case'),
-      { ...row('acme__app'), owner: undefined },
       null,
       'nope',
       row('burnt-sushi__ripgrep', { owner: 'burntsushi', repo: 'ripgrep' }),
@@ -134,7 +195,11 @@ describe('CLA-269 home: directory cards', () => {
       commitDate: '2026-08-04T14:00:08.000Z',
       publishedAt: '2026-09-29T18:02:19.030Z',
       entityCount: 2831,
+      search: ['burntsushi/ripgrep'],
+      searchWords: [],
     }]);
+    // A row without usable stored names is still listed, under its slug's names.
+    expect(homeAtlasCards(index({ ...row('acme__app'), owner: undefined })).map(card => `${card.owner}/${card.repo}`)).toEqual(['acme/app']);
     expect(homeAtlasCards(undefined)).toEqual([]);
     expect(homeAtlasCards({ repos: 'x' })).toEqual([]);
   });
@@ -167,10 +232,11 @@ describe('CLA-269 home: directory cards', () => {
 });
 
 describe('CLA-269 home page HTML', () => {
-  it('renders the hero, CTA, contact link, cards and footer, with no script', () => {
+  it('renders the hero, CTA, contact link, cards and footer, with only the deferred /home.js script', () => {
     const html = homePageHtml({ index: index(row('acme__app', { publishedAt: '2026-09-01T00:00:00Z', description: 'A small app', language: 'TypeScript' }), RIPGREP) });
     expect(html).toMatch(/^<!doctype html>/);
-    expect(html).not.toMatch(/<script/i);
+    expect(html.match(/<script\b[^>]*>/gi)).toEqual(['<script src="/home.js" defer>']);
+    expect(html).toContain('<script src="/home.js" defer></script>\n  </head>');
     expect(html).not.toMatch(/rel="stylesheet"|\/assets\//);
     expect(html).toContain(SOURCE_FOR_MARK_SVG);
     expect(html).toContain(`<p class="lede">${HOME_DESCRIPTION}</p>`);
@@ -183,7 +249,8 @@ describe('CLA-269 home page HTML', () => {
     // Same commit date (4 Aug), so the later publish comes first: ripgrep (29 Sep) before acme/app (1 Sep).
     expect(html.indexOf('href="/r/burnt-sushi/ripgrep"')).toBeLessThan(html.indexOf('href="/r/acme/app"'));
     expect(html).toContain('data-atlas-count="2"');
-    expect(html).toContain('<li class="atlas" data-name="burntsushi/ripgrep" data-committed="2026-08-04T14:00:08.000Z" data-published="2026-09-29T18:02:19.030Z" data-entities="2831">');
+    expect(html).toContain('<li class="atlas" data-name="burntsushi/ripgrep" data-committed="2026-08-04T14:00:08.000Z" data-published="2026-09-29T18:02:19.030Z" data-entities="2831" data-search="burntsushi/ripgrep" data-rank-recent="0" data-rank-az="1">');
+    expect(html).toContain('data-search="acme/app" data-search-words="a small app&#10;typescript" data-rank-recent="1" data-rank-az="0">');
     expect(html).toContain('<span class="name"><span class="owner">BurntSushi/</span><strong>ripgrep</strong></span>');
     expect(html).toContain('<img src="/og/burnt-sushi/ripgrep" alt="" width="1200" height="630" loading="eager" decoding="async" />');
     expect(html).toContain('<span class="fact" data-field="licence">Unlicense OR MIT</span>');
@@ -208,9 +275,14 @@ describe('CLA-269 home page HTML', () => {
     expect(homeExploreHref(unlisted)).toBe('/r/pmndrs/zustand');
     expect(homePageHtml({ index: index(row('acme__app', { generatedAt: '2026-01-01T00:00:00Z' }), newer) }))
       .toContain('<a class="cta" href="/r/pmndrs/zustand">Explore an atlas</a>');
-    // A row for the product atlas that is skipped (names do not slug back) does not count as listed.
+    // A product-atlas row whose names do not slug back is still listed (under its slug's names), so it is the CTA.
     expect(homePageHtml({ index: index({ ...atlas, owner: 'someone' }, newer) }))
+      .toContain(`<a class="cta" href="${HOME_EXPLORE_HREF}">Explore an atlas</a>`);
+    // One whose slug is unusable is not listed: the CTA falls back to the first card.
+    expect(homePageHtml({ index: index({ ...atlas, slug: 'source-for__atlas__x' }, newer) }))
       .toContain('<a class="cta" href="/r/pmndrs/zustand">Explore an atlas</a>');
+    // A search never moves the CTA, even when it hides the CTA's card.
+    expect(homePageHtml({ index: index(newer, atlas), q: 'zust' })).toContain(`<a class="cta" href="${HOME_EXPLORE_HREF}">Explore an atlas</a>`);
 
     expect(homeExploreHref([])).toBeUndefined();
     const empty = homePageHtml({ index: index() });
@@ -239,15 +311,15 @@ describe('CLA-269 home page HTML', () => {
       language: '<img src=x onerror=alert(1)>',
       license: { spdxId: '<b>MIT</b>' },
     }), { ...row('evil__repo'), owner: '<script>alert(1)</script>' }) });
-    expect(html).not.toMatch(/<script/i);
+    expect(html.replace('<script src="/home.js" defer></script>', '')).not.toMatch(/<script/i);
     expect(html).not.toContain('<img src=x');
     expect(html).not.toContain('<b>MIT');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;quotes&quot;');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
     expect(html).toContain('&lt;b&gt;MIT&lt;/b&gt;');
-    // The row with an invalid owner name is skipped entirely.
-    expect(html).not.toContain('/r/evil/repo');
-    expect(html).toContain('data-atlas-count="1"');
+    // The row with an invalid owner name is listed under its slug's names; the bad name appears nowhere.
+    expect(html).toContain('<a class="card" href="/r/evil/repo">');
+    expect(html).toContain('data-atlas-count="2"');
   });
 
   it('shows the hero and an empty note without an index or with no rows', () => {
@@ -257,6 +329,9 @@ describe('CLA-269 home page HTML', () => {
       expect(html).not.toContain('Explore an atlas');
       expect(html).toContain('Want your repo mapped?');
       expect(html).not.toContain('<ul class="atlases"');
+      // Nothing to search: no form, no script.
+      expect(html).not.toContain('role="search"');
+      expect(html).not.toMatch(/<script/i);
     }
   });
 
@@ -289,6 +364,7 @@ describe('CLA-269 home page HTML', () => {
   it('answers GET with the page and HEAD with headers only', () => {
     const get = homeHttpOutput('GET', { index: undefined });
     expect(get.status).toBe(200);
+    expect(get.skipped).toEqual([]);
     expect(get.headers).toEqual({ 'cache-control': HOME_CACHE_CONTROL, 'content-type': 'text/html; charset=utf-8' });
     expect(HOME_CACHE_CONTROL).toBe('public, max-age=60');
     expect(get.body).toContain('<!doctype html>');
@@ -297,3 +373,135 @@ describe('CLA-269 home page HTML', () => {
     expect(head.body).toBe('');
   });
 });
+
+describe('CLA-269 home: search and sort (no JavaScript)', () => {
+  const ROWS = index(
+    row('pmndrs__zustand', { generatedAt: '2026-09-20T00:00:00Z', description: '🐻 Bear necessities for state management in React', language: 'TypeScript' }),
+    RIPGREP,
+    row('source-for__atlas', { generatedAt: '2026-09-25T00:00:00Z', description: 'Maps a repository <from> C4 context down to code', language: 'TypeScript' }),
+    row('excalidraw__excalidraw', { generatedAt: '2026-09-10T00:00:00Z', description: 'Virtual whiteboard for sketching hand-drawn like diagrams', language: 'TypeScript' }),
+    row('ziglang__zig', { generatedAt: '2026-09-01T00:00:00Z', language: 'Zig' }),
+  );
+  /** hrefs of the cards in page order, `hidden` ones marked. */
+  const shown = (html: string) => [...html.matchAll(/<li class="atlas"[^>]*?( hidden)?>\s*<a class="card" href="([^"]+)"/g)].map(([, hidden, href]) => `${href}${hidden ? ' (hidden)' : ''}`);
+
+  it('renders a labelled GET search form with the sort select above the grid', () => {
+    const html = homePageHtml({ index: ROWS });
+    expect(html).toContain('<form class="search" action="/" method="get" role="search" aria-label="Search published atlases" data-home-search>');
+    expect(html).toContain('<label class="sr-only" for="home-q">Search atlases</label>');
+    expect(html).toMatch(/<input id="home-q" class="search-input" type="search" name="q" value="" maxlength="100" /);
+    expect(html).toContain('<label class="sr-only" for="home-sort">Sort</label>');
+    expect(html).toContain('<option value="recent" selected>Most recent</option>');
+    expect(html).toContain('<option value="az">A–Z</option>');
+    expect(html).toContain('<button type="submit">Search</button>');
+    expect(html.indexOf('role="search"')).toBeLessThan(html.indexOf('<ul class="atlases"'));
+    expect(html).toContain('<p class="count" aria-live="polite" data-home-count>5 atlases</p>');
+    expect(html).toContain('<p class="no-match" data-home-no-match hidden>');
+    expect(shown(html)).toEqual(['/r/source-for/atlas', '/r/pmndrs/zustand', '/r/excalidraw/excalidraw', '/r/ziglang/zig', '/r/burnt-sushi/ripgrep']);
+  });
+
+  it('filters on owner/repo (GitHub casing and stored), description and language, case-insensitively; hides the rest', () => {
+    const html = homePageHtml({ index: ROWS, q: 'ZUST' });
+    expect(shown(html)).toEqual(['/r/source-for/atlas (hidden)', '/r/pmndrs/zustand', '/r/excalidraw/excalidraw (hidden)', '/r/ziglang/zig (hidden)', '/r/burnt-sushi/ripgrep (hidden)']);
+    expect(html).toContain('<p class="count" aria-live="polite" data-home-count>1 of 5 atlases</p>');
+    expect(html).toContain('value="ZUST"');
+    const hits = (q: string) => homeAtlasCards(ROWS).filter(card => homeCardMatchesFor(card, q)).map(card => card.href);
+    expect(hits('BurntSushi')).toEqual(['/r/burnt-sushi/ripgrep']);
+    expect(hits('burntsushi/rip')).toEqual(['/r/burnt-sushi/ripgrep']);
+    expect(hits('whiteboard')).toEqual(['/r/excalidraw/excalidraw']);
+    expect(hits('zig')).toEqual(['/r/ziglang/zig']);
+    expect(hits('typescript')).toEqual(['/r/source-for/atlas', '/r/pmndrs/zustand', '/r/excalidraw/excalidraw']);
+    // Description and language match at word starts only: "TypeScript" contains "rip" and "script", but not at a
+    // word start (camelCase is not a boundary), so `rip` finds ripgrep by name alone.
+    expect(hits('rip')).toEqual(['/r/burnt-sushi/ripgrep']);
+    expect(hits('script')).toEqual([]);
+    expect(hits('type')).toEqual(['/r/source-for/atlas', '/r/pmndrs/zustand', '/r/excalidraw/excalidraw']);
+    expect(hits('hand-drawn')).toEqual(['/r/excalidraw/excalidraw']);
+    expect(hits('drawn')).toEqual(['/r/excalidraw/excalidraw']);
+    expect(hits('rawn')).toEqual([]);
+    expect(hits('state man')).toEqual(['/r/pmndrs/zustand']);
+    expect(hits('bear')).toEqual(['/r/pmndrs/zustand']);
+    // Names still match anywhere.
+    expect(hits('calid')).toEqual(['/r/excalidraw/excalidraw']);
+    const rip = homePageHtml({ index: ROWS, q: 'rip' });
+    expect(shown(rip)).toEqual(['/r/source-for/atlas (hidden)', '/r/pmndrs/zustand (hidden)', '/r/excalidraw/excalidraw (hidden)', '/r/ziglang/zig (hidden)', '/r/burnt-sushi/ripgrep']);
+    expect(rip).toContain('<p class="count" aria-live="polite" data-home-count>1 of 5 atlases</p>');
+    expect(hits('🐻')).toEqual(['/r/pmndrs/zustand']);
+    expect(hits('<from>')).toEqual(['/r/source-for/atlas']);
+    // Fields are matched one at a time: text spanning two fields is not a hit.
+    expect(hits('zig zig')).toEqual([]);
+    // The first three SHOWN thumbnails load eagerly.
+    expect(html).toMatch(/href="\/r\/pmndrs\/zustand">\s*<img [^>]*loading="eager"/);
+    expect(html).toMatch(/href="\/r\/source-for\/atlas">\s*<img [^>]*loading="lazy"/);
+  });
+
+  it('sorts A–Z by owner/repo ignoring case, and falls back to recent for an unknown sort', () => {
+    const az = homePageHtml({ index: ROWS, sort: 'az' });
+    expect(shown(az)).toEqual(['/r/burnt-sushi/ripgrep', '/r/excalidraw/excalidraw', '/r/pmndrs/zustand', '/r/source-for/atlas', '/r/ziglang/zig']);
+    expect(az).toContain('<option value="az" selected>A–Z</option>');
+    expect(az).toContain('<option value="recent">Most recent</option>');
+    // Ranks let home.js re-sort without the server: recent order and A–Z order.
+    expect(az).toMatch(/data-rank-recent="4" data-rank-az="0">\s*<a class="card" href="\/r\/burnt-sushi\/ripgrep"/);
+    expect(sortHomeCards(homeAtlasCards(ROWS), 'az').map(card => `${card.owner}/${card.repo}`)).toEqual(['BurntSushi/ripgrep', 'excalidraw/excalidraw', 'pmndrs/zustand', 'source-for/atlas', 'ziglang/zig']);
+    for (const sort of ['popular', 'AZ', '', undefined]) {
+      const html = homePageHtml({ index: ROWS, ...(sort === undefined ? {} : { sort }) });
+      expect(shown(html)[0], String(sort)).toBe('/r/source-for/atlas');
+      expect(html, String(sort)).toContain('<option value="recent" selected>');
+      expect(homeSortFrom(sort)).toBe('recent');
+    }
+    expect(homeSortFrom('az')).toBe('az');
+    const both = homePageHtml({ index: ROWS, q: 'typescript', sort: 'az' });
+    expect(shown(both)).toEqual(['/r/burnt-sushi/ripgrep (hidden)', '/r/excalidraw/excalidraw', '/r/pmndrs/zustand', '/r/source-for/atlas', '/r/ziglang/zig (hidden)']);
+    expect(both).toContain('3 of 5 atlases');
+  });
+
+  it('escapes the search in the input value and in the no-match message, which links back to /', () => {
+    const q = '"><script>alert(1)</script>&\'';
+    const html = homePageHtml({ index: ROWS, q });
+    expect(html.replace('<script src="/home.js" defer></script>', '')).not.toMatch(/<script/i);
+    const escaped = '&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&amp;&#39;';
+    expect(html).toContain(`name="q" value="${escaped}"`);
+    expect(html).toContain(`<p class="no-match" data-home-no-match>No atlases match “<span data-home-query>${escaped}</span>”. <a href="/">Clear the search</a></p>`);
+    expect(html).toContain('<p class="count" aria-live="polite" data-home-count>0 of 5 atlases</p>');
+    expect(shown(html).every(entry => entry.endsWith('(hidden)'))).toBe(true);
+  });
+
+  it('trims the search, drops control/bidi characters and caps it at 100 code points', () => {
+    expect(HOME_QUERY_MAX).toBe(100);
+    expect(normalizeHomeQuery('  zu\tst \n')).toBe('zu st');
+    expect(normalizeHomeQuery('‮zu​st')).toBe('zust');
+    expect(normalizeHomeQuery(undefined)).toBe('');
+    expect(Array.from(normalizeHomeQuery('🐻'.repeat(150)))).toHaveLength(100);
+    const html = homePageHtml({ index: ROWS, q: `  ${'x'.repeat(150)}  ` });
+    expect(html).toContain(`value="${'x'.repeat(100)}"`);
+    expect(homeViewFrom(new URL('https://sourcefor.dev/?q=%20zust%20&sort=az&q=other'))).toEqual({ q: 'zust', sort: 'az' });
+    expect(homeViewFrom(new URL('https://sourcefor.dev/?sort=nope'))).toEqual({ q: '', sort: 'recent' });
+    // A whitespace-only search is no search.
+    expect(homePageHtml({ index: ROWS, q: '   ' })).toContain('data-home-count>5 atlases</p>');
+  });
+
+  it('counts in words', () => {
+    expect(homeCountText(3, 7, true)).toBe('3 of 7 atlases');
+    expect(homeCountText(7, 7, false)).toBe('7 atlases');
+    expect(homeCountText(1, 1, false)).toBe('1 atlas');
+    expect(homeCountText(0, 1, true)).toBe('0 of 1 atlas');
+  });
+
+  it('renders realistic GitHub descriptions: long ones capped, emoji kept, markup escaped', () => {
+    const long = `A cross-platform, GPU-accelerated terminal emulator and multiplexer written by @wez and implemented in Rust. ${'Lots more detail. '.repeat(20)}`;
+    const html = homePageHtml({ index: index(
+      row('wez__wezterm', { description: long, language: 'Rust' }),
+      row('pmndrs__zustand', { description: '🐻 Bear necessities for state management in React' }),
+      row('acme__app', { description: 'Renders <div> & "quotes" in 1 < 2 cases' }),
+    ) });
+    expect(html).toContain('<span class="description">🐻 Bear necessities for state management in React</span>');
+    expect(html).toContain('<span class="description">Renders &lt;div&gt; &amp; &quot;quotes&quot; in 1 &lt; 2 cases</span>');
+    const description = /<span class="description">(A cross-platform[^<]*)<\/span>/.exec(html)![1]!;
+    expect(Array.from(description)).toHaveLength(280);
+    expect(description.endsWith('…')).toBe(true);
+  });
+});
+
+function homeCardMatchesFor(card: { search: string[]; searchWords: string[] }, q: string): boolean {
+  return homeCardMatches(card, normalizeHomeQuery(q));
+}

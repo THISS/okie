@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,8 +15,12 @@ import {
   publishFixtureVersion,
 } from "./publishedAtlas.fixture.js";
 import {
+  backfillBackupPath,
+  backfillPublishedMeta,
   backfillPublishedNames,
   buildPublishedVersion,
+  fileIndexBackup,
+  readOnlyStoreClient,
   createDirectoryStoreClient,
   createWranglerStoreClient,
   gzipMember,
@@ -26,6 +30,7 @@ import {
   publishBuiltVersion,
   resolveGithubRepositoryNames,
   resolvePublishedLicense,
+  sanitizeGithubText,
   setPublishedLatest,
   wranglerChildEnv,
   type PublishStoreClient,
@@ -515,4 +520,374 @@ test("CLA-318 publish: --backfill-names re-reads index.json before writing, so a
   assert.equal(after.repos[3]!.versionId, "v9", "a row that gained names meanwhile is kept as is");
   assert.ok(result.lines.includes("sharkdp__bat: skipped (the row changed or gained names during the backfill)"));
   assert.ok(result.lines.includes("sharkdp__fd: skipped (the row changed or gained names during the backfill)"));
+});
+
+const repoJsonWith = (login: string, name: string, extra: Record<string, unknown>) => () => new Response(JSON.stringify({ name, owner: { login }, ...extra }), { status: 200 });
+
+test("CLA-269 publish: GitHub's description and language are sanitised onto the index row, refreshed on re-publish, kept on a failed lookup", async () => {
+  // Sanitising: trimmed, one line, no control/bidi/zero-width characters, capped with an ellipsis; empty → absent.
+  assert.equal(sanitizeGithubText("  A fast\n\tgrep \u202Etool\u200B\u0007 ", 280), "A fast grep tool");
+  assert.equal(sanitizeGithubText("\u0085x\u009f", 280), "x");
+  assert.equal(sanitizeGithubText("   ", 280), undefined);
+  assert.equal(sanitizeGithubText(null, 280), undefined);
+  assert.equal(sanitizeGithubText(42, 280), undefined);
+  const long = sanitizeGithubText(`🐻 ${"word ".repeat(100)}`, 280)!;
+  assert.equal(Array.from(long).length, 280);
+  assert.ok(long.endsWith("…"));
+  assert.equal(sanitizeGithubText(long, 280), long, "idempotent");
+  assert.equal(Array.from(sanitizeGithubText("L".repeat(60), 40)!).length, 40);
+
+  assert.deepEqual(
+    await resolveGithubRepositoryNames({ owner: "pmndrs", repo: "zustand", fetch: githubApi(repoJsonWith("pmndrs", "zustand", { description: " 🐻 Bear necessities for state management in React ", language: "TypeScript" })) }),
+    { ok: true, ownerLogin: "pmndrs", repoName: "zustand", description: "🐻 Bear necessities for state management in React", language: "TypeScript" },
+  );
+  assert.deepEqual(
+    await resolveGithubRepositoryNames({ owner: "pmndrs", repo: "zustand", fetch: githubApi(repoJsonWith("pmndrs", "zustand", { description: null, language: "" })) }),
+    { ok: true, ownerLogin: "pmndrs", repoName: "zustand", description: null, language: null },
+    "null and empty are reported as null (GitHub has none)",
+  );
+  assert.deepEqual(
+    await resolveGithubRepositoryNames({ owner: "pmndrs", repo: "zustand", fetch: githubApi(repoJsonWith("pmndrs", "zustand", {})) }),
+    { ok: true, ownerLogin: "pmndrs", repoName: "zustand" },
+    "keys the response lacks are left out (the stored values are kept)",
+  );
+
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-meta-"));
+  try {
+    createPublishedOperatorFixture(scanRoot);
+    const rowOf = (client: ReturnType<typeof memoryStoreClient>) => (JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> }).repos[0]!;
+    const client = memoryStoreClient();
+    const built = await preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: githubApi(repoJsonWith("Acme", "Demo", { description: "Demo <app> for\ntests", language: "Rust" })) });
+    assert.equal(built.indexEntry.description, "Demo <app> for tests");
+    assert.equal(built.indexEntry.language, "Rust");
+    assert.equal("description" in built.manifest, false, "the immutable manifest is unchanged");
+    await publishBuiltVersion(built, client);
+    assert.deepEqual([rowOf(client).description, rowOf(client).language], ["Demo <app> for tests", "Rust"]);
+
+    // A failed lookup keeps the recorded description/language with the names; so does --set-latest.
+    const failed = await preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: githubApi(() => new Response("{}", { status: 500 })) });
+    await publishBuiltVersion(failed, client);
+    assert.deepEqual([rowOf(client).ownerLogin, rowOf(client).description, rowOf(client).language], ["Acme", "Demo <app> for tests", "Rust"]);
+    await setPublishedLatest({ repo: "acme/demo", versionId: built.versionId, client });
+    assert.deepEqual([rowOf(client).description, rowOf(client).language], ["Demo <app> for tests", "Rust"]);
+
+    // A successful lookup refreshes them: a new description replaces the old; a language GitHub no longer reports goes.
+    const refreshed = await preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: githubApi(repoJsonWith("Acme", "Demo", { description: "Now with docs", language: null })) });
+    await publishBuiltVersion(refreshed, client);
+    assert.equal(rowOf(client).description, "Now with docs");
+    assert.equal("language" in rowOf(client), false);
+  } finally { rmSync(scanRoot, { recursive: true, force: true }); }
+});
+
+test("CLA-269 publish: --backfill-meta fills and refreshes description/language (and names) in index.json only, with a backup before the write", async () => {
+  const row = (slug: string, owner: string, repo: string, extra: Record<string, unknown> = {}) => ({ slug, owner, repo, repositoryId: `repo:${slug}`, versionId: "v1", commitSha: FIXTURE_COMMIT, generatedAt: "g", entityCount: 1, publishedAt: "2026-09-30T00:00:00.000Z", license: FIXTURE_LICENSE, ...extra });
+  const original = {
+    schema: "okie.published-index/v1",
+    schemaVersion: 1,
+    extra: "kept",
+    repos: [
+      // No names, no meta: gets all four.
+      row("burnt-sushi__ripgrep", "burntsushi", "ripgrep"),
+      // Lookup fails: untouched.
+      row("gone__repo", "gone", "repo"),
+      // Names already, stale description, language GitHub no longer reports.
+      row("pmndrs__zustand", "pmndrs", "zustand", { ownerLogin: "pmndrs", repoName: "zustand", description: "old", language: "JavaScript" }),
+      // Already matches GitHub: no change.
+      row("sharkdp__bat", "sharkdp", "bat", { ownerLogin: "sharkdp", repoName: "bat", description: "A cat(1) clone with wings.", language: "Rust" }),
+    ],
+  };
+  const answers: Record<string, () => Response> = {
+    "/burntsushi/ripgrep": repoJsonWith("BurntSushi", "ripgrep", { description: "ripgrep recursively searches directories for a regex pattern\u202E ", language: "Rust" }),
+    "/pmndrs/zustand": repoJsonWith("pmndrs", "zustand", { description: "🐻 Bear necessities", language: null }),
+    "/sharkdp/bat": repoJsonWith("sharkdp", "bat", { description: "A cat(1) clone with wings.", language: "Rust" }),
+  };
+  const urls: string[] = [];
+  const fetchImpl = githubApi(url => answers[url.slice(url.indexOf("/repos") + "/repos".length)]?.() ?? new Response("{}", { status: 404 }), urls);
+  const client = memoryStoreClient();
+  const originalBytes = Buffer.from(`${JSON.stringify(original, null, 2)}\n`);
+  client.objects.set(publishedIndexKey(), originalBytes);
+  const backups: Buffer[] = [];
+  const backup = (bytes: Buffer) => { backups.push(Buffer.from(bytes)); return `/backups/${backups.length}.json`; };
+
+  const dry = await backfillPublishedMeta({ client, write: false, fetch: fetchImpl, backup });
+  assert.deepEqual(dry.lines, [
+    "gone__repo: unchanged (GitHub answered HTTP 404)",
+    "sharkdp__bat: up to date",
+    "burnt-sushi__ripgrep: names → BurntSushi/ripgrep, description added (60 chars), language → Rust (dry run)",
+    "pmndrs__zustand: description refreshed (18 chars), language removed (dry run)",
+  ]);
+  assert.deepEqual([dry.updated, dry.upToDate, dry.failed, dry.skipped, dry.wrote], [2, 1, 1, 0, false]);
+  assert.deepEqual(client.order, [], "a dry run writes nothing");
+  assert.equal(backups.length, 0, "and backs nothing up");
+  assert.equal(urls.length, 4, "every row is looked up (refresh), names or not");
+
+  const first = await backfillPublishedMeta({ client, write: true, fetch: fetchImpl, backup });
+  assert.deepEqual([first.updated, first.upToDate, first.failed, first.skipped, first.wrote], [2, 1, 1, 0, true]);
+  assert.deepEqual(client.order, [publishedIndexKey()], "only index.json is written: no version, pointer or manifest");
+  assert.equal(backups.length, 1);
+  assert.ok(backups[0]!.equals(originalBytes), "the backup holds the exact bytes that were overwritten");
+  assert.equal(first.backupPath, "/backups/1.json");
+  assert.ok(first.lines.includes("backup of the current index.json (" + originalBytes.byteLength + " bytes) saved to /backups/1.json"));
+  const after = JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as typeof original & { repos: Array<Record<string, unknown>> };
+  assert.equal(after.extra, "kept");
+  assert.deepEqual(after.repos[0], { ...original.repos[0], ownerLogin: "BurntSushi", repoName: "ripgrep", description: "ripgrep recursively searches directories for a regex pattern", language: "Rust" });
+  assert.deepEqual(after.repos[1], original.repos[1], "a failed lookup leaves its row untouched");
+  assert.deepEqual(after.repos[2], { ...row("pmndrs__zustand", "pmndrs", "zustand"), ownerLogin: "pmndrs", repoName: "zustand", description: "🐻 Bear necessities" });
+  assert.deepEqual(after.repos[3], original.repos[3]);
+
+  // Idempotent: a second run looks everything up again but, with nothing new, neither backs up nor writes.
+  client.order.length = 0;
+  const second = await backfillPublishedMeta({ client, write: true, fetch: fetchImpl, backup });
+  assert.deepEqual([second.updated, second.upToDate, second.failed, second.wrote], [0, 3, 1, false]);
+  assert.deepEqual(client.order, []);
+  assert.equal(backups.length, 1);
+
+  // A failing backup stops the write.
+  const blocked = memoryStoreClient();
+  blocked.objects.set(publishedIndexKey(), originalBytes);
+  await assert.rejects(backfillPublishedMeta({ client: blocked, write: true, fetch: fetchImpl, backup: () => { throw new Error("disk full"); } }), /disk full/);
+  assert.deepEqual(blocked.order, []);
+
+  // No index: nothing to do; a foreign index.json is refused, never rewritten.
+  assert.deepEqual((await backfillPublishedMeta({ client: memoryStoreClient(), write: true, fetch: fetchImpl })).lines, ["no index.json in this store; nothing to backfill"]);
+  const foreign = memoryStoreClient();
+  foreign.objects.set(publishedIndexKey(), Buffer.from("{\"repos\":[]}"));
+  await assert.rejects(backfillPublishedMeta({ client: foreign, write: true, fetch: fetchImpl }), /not a published index/);
+  assert.deepEqual(foreign.order, []);
+});
+
+test("CLA-269 publish: --backfill-meta re-reads index.json before writing and skips any row that changed during the lookups", async () => {
+  const row = (slug: string, owner: string, repo: string, extra: Record<string, unknown> = {}) => ({ slug, owner, repo, repositoryId: `repo:${slug}`, versionId: "v1", commitSha: FIXTURE_COMMIT, generatedAt: "g", entityCount: 1, publishedAt: "2026-09-30T00:00:00.000Z", license: FIXTURE_LICENSE, ...extra });
+  const indexOf = (repos: unknown[]) => Buffer.from(`${JSON.stringify({ schema: "okie.published-index/v1", schemaVersion: 1, repos }, null, 2)}\n`);
+  const client = memoryStoreClient();
+  client.objects.set(publishedIndexKey(), indexOf([
+    row("burnt-sushi__ripgrep", "burntsushi", "ripgrep"),
+    row("sharkdp__bat", "sharkdp", "bat"),
+    row("sharkdp__fd", "sharkdp", "fd"),
+  ]));
+  // During the lookups a publish lands: ripgrep gets a new version, a brand-new atlas appears, fd gains a description.
+  let lookups = 0;
+  const concurrent = indexOf([
+    row("burnt-sushi__ripgrep", "burntsushi", "ripgrep", { versionId: "v2" }),
+    row("new__atlas", "new", "atlas"),
+    row("sharkdp__bat", "sharkdp", "bat"),
+    row("sharkdp__fd", "sharkdp", "fd", { ownerLogin: "sharkdp", repoName: "fd", description: "newer", versionId: "v9" }),
+  ]);
+  const fetchImpl = githubApi(url => {
+    lookups += 1;
+    if (lookups === 1) client.objects.set(publishedIndexKey(), concurrent);
+    const [, owner, repo] = /repos\/([^/]+)\/([^/]+)$/.exec(url)!;
+    return repoJsonWith(owner === "burntsushi" ? "BurntSushi" : owner!, repo!, { description: `about ${repo}`, language: "Rust" })();
+  });
+  const backups: Buffer[] = [];
+  const result = await backfillPublishedMeta({ client, write: true, fetch: fetchImpl, backup: bytes => { backups.push(Buffer.from(bytes)); return "/b.json"; } });
+  assert.equal(result.wrote, true);
+  assert.deepEqual([result.updated, result.skipped], [1, 2]);
+  assert.ok(backups[0]!.equals(concurrent), "the backup is of the index as re-read for the write");
+  const after = JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> };
+  assert.deepEqual(after.repos.map(value => value.slug), ["burnt-sushi__ripgrep", "new__atlas", "sharkdp__bat", "sharkdp__fd"], "the concurrently published row is kept");
+  assert.equal(after.repos[0]!.versionId, "v2");
+  assert.equal("description" in after.repos[0]!, false, "a row that changed is not given stale data");
+  assert.equal("description" in after.repos[1]!, false, "a row that was never looked up is untouched");
+  assert.deepEqual([after.repos[2]!.description, after.repos[2]!.language, after.repos[2]!.ownerLogin], ["about bat", "Rust", "sharkdp"]);
+  assert.equal(after.repos[3]!.description, "newer");
+  assert.ok(result.lines.includes("burnt-sushi__ripgrep: skipped (the row changed during the backfill)"));
+  assert.ok(result.lines.includes("sharkdp__fd: skipped (the row changed during the backfill)"));
+});
+
+test("CLA-269 publish: --backfill-names backs up index.json before its write too, and records the meta from the same response", async () => {
+  const row = { slug: "pmndrs__zustand", owner: "pmndrs", repo: "zustand", repositoryId: "repo:x", versionId: "v1", commitSha: FIXTURE_COMMIT, generatedAt: "g", entityCount: 1, publishedAt: "2026-09-30T00:00:00.000Z", license: FIXTURE_LICENSE };
+  const bytes = Buffer.from(`${JSON.stringify({ schema: "okie.published-index/v1", schemaVersion: 1, repos: [row] }, null, 2)}\n`);
+  const client = memoryStoreClient();
+  client.objects.set(publishedIndexKey(), bytes);
+  const backups: Buffer[] = [];
+  const result = await backfillPublishedNames({ client, write: true, fetch: githubApi(repoJsonWith("pmndrs", "zustand", { description: "Bears", language: "TypeScript" })), backup: value => { backups.push(Buffer.from(value)); return "/n.json"; } });
+  assert.equal(result.backupPath, "/n.json");
+  assert.ok(backups[0]!.equals(bytes));
+  const after = (JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> }).repos[0]!;
+  assert.deepEqual(after, { ...row, ownerLogin: "pmndrs", repoName: "zustand", description: "Bears", language: "TypeScript" });
+});
+
+const MAGE = "\u{1F9D9}\u200D♀️";
+const metaRow = (slug: string, owner: string, repo: string, extra: Record<string, unknown> = {}) => ({ slug, owner, repo, repositoryId: `repo:${slug}`, versionId: "v1", commitSha: FIXTURE_COMMIT, generatedAt: "g", entityCount: 1, publishedAt: "2026-09-30T00:00:00.000Z", license: FIXTURE_LICENSE, ...extra });
+const indexBytes = (repos: unknown[]) => Buffer.from(`${JSON.stringify({ schema: "okie.published-index/v1", schemaVersion: 1, repos }, null, 2)}\n`);
+const reposOf = (client: ReturnType<typeof memoryStoreClient>) => (JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> }).repos;
+
+test("CLA-269 publish: zero-width joiners survive sanitising, so ZWJ emoji stay whole; other invisible characters go", () => {
+  assert.equal(sanitizeGithubText(`${MAGE} Move fast and break nothing`, 280), `${MAGE} Move fast and break nothing`);
+  assert.equal(sanitizeGithubText("a\u200Cb", 280), "a\u200Cb");
+  assert.equal(sanitizeGithubText("\u200Bx\u200Ey\u200F\u202Az\u202E\u2066w\u2069\uFEFF", 280), "xyzw");
+});
+
+test("CLA-269 publish: --backfill-meta keeps a stored description/language the GitHub response does not mention", async () => {
+  const client = memoryStoreClient();
+  client.objects.set(publishedIndexKey(), indexBytes([
+    metaRow("pmndrs__zustand", "pmndrs", "zustand", { ownerLogin: "pmndrs", repoName: "zustand", description: "Bears", language: "TypeScript" }),
+    metaRow("sharkdp__bat", "sharkdp", "bat", { ownerLogin: "sharkdp", repoName: "bat", description: "old", language: "Rust" }),
+  ]));
+  const answers: Record<string, () => Response> = {
+    // No description/language keys at all: both kept.
+    "zustand": repoJsonWith("pmndrs", "zustand", {}),
+    // Description null (removed), language key missing (kept).
+    "bat": repoJsonWith("sharkdp", "bat", { description: null }),
+  };
+  const result = await backfillPublishedMeta({ client, write: true, fetch: githubApi(url => answers[url.slice(url.lastIndexOf("/") + 1)]!()) });
+  assert.deepEqual([result.updated, result.upToDate], [1, 1]);
+  const [zustand, bat] = reposOf(client);
+  assert.deepEqual([zustand!.description, zustand!.language], ["Bears", "TypeScript"]);
+  assert.equal("description" in bat!, false);
+  assert.equal(bat!.language, "Rust");
+});
+
+test("CLA-269 publish: --backfill-meta treats a key-order difference as up to date (no rewrite, no empty line)", async () => {
+  const client = memoryStoreClient();
+  // Meta keys before the names: stringified differently, but nothing to change.
+  const row = { description: "Bears", language: "TypeScript", ...metaRow("pmndrs__zustand", "pmndrs", "zustand", { ownerLogin: "pmndrs", repoName: "zustand" }) };
+  client.objects.set(publishedIndexKey(), indexBytes([row]));
+  const result = await backfillPublishedMeta({ client, write: true, fetch: githubApi(repoJsonWith("pmndrs", "zustand", { description: "Bears", language: "TypeScript" })), backup: () => { throw new Error("no backup expected"); } });
+  assert.deepEqual(result.lines, ["pmndrs__zustand: up to date"]);
+  assert.deepEqual([result.updated, result.upToDate, result.wrote], [0, 1, false]);
+  assert.deepEqual(client.order, []);
+});
+
+test("CLA-269 publish: backfills stop at GitHub's rate limit, write only what was resolved, and look up the gaps first", async () => {
+  const rows = [
+    // Complete rows (names + description + language) come last in the lookup order.
+    metaRow("aa__complete", "aa", "complete", { ownerLogin: "aa", repoName: "complete", description: "old", language: "Go" }),
+    metaRow("bb__gap", "bb", "gap"),
+    metaRow("cc__nolang", "cc", "nolang", { ownerLogin: "cc", repoName: "nolang", description: "d" }),
+    metaRow("dd__gap", "dd", "gap"),
+  ];
+  const limited = (status: number, remaining: string) => () => new Response("{}", { status, headers: { "x-ratelimit-remaining": remaining } });
+  const run = async (answer: (repo: string, n: number) => Response) => {
+    const client = memoryStoreClient();
+    client.objects.set(publishedIndexKey(), indexBytes(rows));
+    const urls: string[] = [];
+    let n = 0;
+    const result = await backfillPublishedMeta({ client, write: true, fetch: githubApi(url => answer(url.slice(url.indexOf("/repos/") + 7), ++n), urls) });
+    return { client, result, looked: urls.map(url => url.slice(url.indexOf("/repos/") + 7)) };
+  };
+  const ok = (repo: string, headers: Record<string, string> = {}) => {
+    const [owner, name] = repo.split("/") as [string, string];
+    return new Response(JSON.stringify({ name, owner: { login: owner }, description: `about ${name}`, language: "Rust" }), { status: 200, headers });
+  };
+
+  // HTTP 403 on the second lookup: the first (resolved) row is written, the 403 row and the rest are not reached.
+  const forbidden = await run((repo, n) => (n === 2 ? limited(403, "0")() : ok(repo)));
+  assert.deepEqual(forbidden.looked, ["bb/gap", "cc/nolang"], "gaps first, then stop at the 403");
+  assert.deepEqual([forbidden.result.updated, forbidden.result.failed, forbidden.result.notReached, forbidden.result.wrote], [1, 0, 3, true]);
+  assert.ok(forbidden.result.lines.includes("stopped looking up at GitHub's rate limit (GitHub answered HTTP 403): 3 rows not reached, left as they are; re-run after the limit resets"));
+  const afterForbidden = reposOf(forbidden.client);
+  assert.equal(afterForbidden.find(row => row.slug === "bb__gap")!.description, "about gap");
+  assert.equal(afterForbidden.find(row => row.slug === "cc__nolang")!.language, undefined);
+  assert.equal(afterForbidden.find(row => row.slug === "aa__complete")!.description, "old");
+
+  // HTTP 429 on the first lookup: nothing resolved, nothing written.
+  const tooMany = await run(() => limited(429, "10")());
+  assert.deepEqual(tooMany.looked, ["bb/gap"]);
+  assert.deepEqual([tooMany.result.notReached, tooMany.result.wrote], [4, false]);
+  assert.deepEqual(tooMany.client.order, []);
+
+  // A success with `x-ratelimit-remaining: 0` is used, then the lookups stop.
+  const lastOne = await run(repo => ok(repo, { "x-ratelimit-remaining": "0" }));
+  assert.deepEqual(lastOne.looked, ["bb/gap"]);
+  assert.deepEqual([lastOne.result.updated, lastOne.result.notReached, lastOne.result.wrote], [1, 3, true]);
+  assert.ok(lastOne.result.lines.includes("stopped looking up at GitHub's rate limit (x-ratelimit-remaining is 0): 3 rows not reached, left as they are; re-run after the limit resets"));
+
+  // Other failures (404) do not stop the run.
+  const notFound = await run((repo, n) => (n === 1 ? new Response("{}", { status: 404 }) : ok(repo)));
+  assert.equal(notFound.looked.length, 4);
+  assert.deepEqual([notFound.result.failed, notFound.result.notReached], [1, 0]);
+
+  // --backfill-names stops the same way.
+  const client = memoryStoreClient();
+  client.objects.set(publishedIndexKey(), indexBytes(rows));
+  const names = await backfillPublishedNames({ client, write: true, fetch: githubApi(url => (url.endsWith("/bb/gap") ? ok("bb/gap") : limited(403, "0")())) });
+  assert.deepEqual([names.filled, names.alreadySet, names.notReached, names.failed, names.wrote], [1, 2, 1, 0, true]);
+  assert.equal(reposOf(client).find(row => row.slug === "bb__gap")!.ownerLogin, "bb");
+  assert.equal(reposOf(client).find(row => row.slug === "dd__gap")!.ownerLogin, undefined);
+});
+
+test("CLA-269 publish: after the write a backfill reads index.json back and warns loudly, naming the backup, when it differs", async () => {
+  const bytes = indexBytes([metaRow("pmndrs__zustand", "pmndrs", "zustand")]);
+  const store = memoryStoreClient();
+  store.objects.set(publishedIndexKey(), bytes);
+  // A publish lands right after the backfill's put.
+  const racing: PublishStoreClient = {
+    get: key => store.get(key),
+    async put(key, value, type) {
+      await store.put(key, value, type);
+      store.objects.set(publishedIndexKey(), indexBytes([metaRow("new__atlas", "new", "atlas")]));
+    },
+  };
+  const result = await backfillPublishedMeta({ client: racing, write: true, fetch: githubApi(repoJsonWith("pmndrs", "zustand", { description: "Bears", language: "TypeScript" })), backup: () => "/tmp/backup.json" });
+  assert.equal(result.wrote, true);
+  assert.equal(result.verified, false);
+  const warning = result.lines.find(line => line.startsWith("WARNING:"));
+  assert.ok(warning, "a WARNING line");
+  assert.match(warning!, /may have been overwritten/);
+  assert.match(warning!, /\/tmp\/backup\.json/);
+
+  // Without a race the read-back matches.
+  const calm = memoryStoreClient();
+  calm.objects.set(publishedIndexKey(), bytes);
+  const ok = await backfillPublishedNames({ client: calm, write: true, fetch: githubApi(repoJsonWith("pmndrs", "zustand", {})) });
+  assert.deepEqual([ok.wrote, ok.verified], [true, true]);
+  assert.equal(ok.lines.some(line => line.startsWith("WARNING:")), false);
+});
+
+test("CLA-269 publish: a dry-run backfill runs on a read-only client, which refuses every write", async () => {
+  const store = memoryStoreClient();
+  store.objects.set(publishedIndexKey(), indexBytes([metaRow("pmndrs__zustand", "pmndrs", "zustand")]));
+  const readOnly = readOnlyStoreClient(store);
+  assert.deepEqual(await readOnly.get(publishedIndexKey()), store.objects.get(publishedIndexKey()));
+  await assert.rejects(readOnly.put(publishedIndexKey(), Buffer.from("{}"), "application/json"), /dry run: refusing to put atlas\/v1\/index\.json/);
+  await assert.rejects(readOnly.delete(publishedIndexKey()), /dry run: refusing to delete/);
+  assert.deepEqual(store.order, []);
+
+  // The backfill wraps the client itself on a dry run: a client that would write never sees a put, and a backup is never made.
+  const puts: string[] = [];
+  const writable: PublishStoreClient = { get: key => store.get(key), async put(key) { puts.push(key); } };
+  const fetchImpl = githubApi(repoJsonWith("pmndrs", "zustand", { description: "Bears", language: "TypeScript" }));
+  const noBackup = () => { throw new Error("a dry run backs nothing up"); };
+  const meta = await backfillPublishedMeta({ client: writable, write: false, fetch: fetchImpl, backup: noBackup });
+  const names = await backfillPublishedNames({ client: writable, write: false, fetch: fetchImpl, backup: noBackup });
+  assert.deepEqual([meta.updated, meta.wrote, names.filled, names.wrote], [1, false, 1, false]);
+  assert.deepEqual(puts, []);
+});
+
+test("CLA-269 publish: backfill backups resolve against the invoking directory, sit beside --out, never overwrite, and are read back", () => {
+  const now = new Date("2026-09-30T01:02:03.456Z");
+  assert.equal(backfillBackupPath({ env: "staging", base: "/home/me/work", now }), "/home/me/work/backfill-backup-staging-2026-09-30T01-02-03-456Z.json");
+  assert.equal(backfillBackupPath({ env: "staging", base: "/home/me/work", backup: "b/x.json", now }), "/home/me/work/b/x.json");
+  assert.equal(backfillBackupPath({ env: "staging", base: "/home/me/work", backup: "/abs/x.json", now }), "/abs/x.json");
+  // Beside the --out directory store, not inside it.
+  assert.equal(backfillBackupPath({ env: "local", base: "/home/me/work", out: "/tmp/store", now }), "/tmp/backfill-backup-local-2026-09-30T01-02-03-456Z.json");
+  assert.equal(backfillBackupPath({ env: "local", base: "/home/me/work", out: "dry/store", now }), "/home/me/work/dry/backfill-backup-local-2026-09-30T01-02-03-456Z.json");
+
+  const dir = mkdtempSync(join(tmpdir(), "okie-backfill-backup-"));
+  try {
+    const bytes = Buffer.from("{\"schema\":\"okie.published-index/v1\"}\n");
+    const backup = fileIndexBackup({ env: "local", base: dir, backup: "nested/one.json" });
+    const path = backup(bytes) as string;
+    assert.equal(path, join(dir, "nested/one.json"));
+    assert.ok(readFileSync(path).equals(bytes));
+    assert.throws(() => backup(bytes), /EEXIST/, "never overwrites an existing backup");
+    const byDefault = fileIndexBackup({ env: "local", base: dir, out: join(dir, "store"), now: () => now });
+    assert.equal(byDefault(bytes), join(dir, "backfill-backup-local-2026-09-30T01-02-03-456Z.json"));
+    // A backup that does not read back identically throws, so the backfill aborts before its write.
+    const corrupt = fileIndexBackup({ env: "local", base: dir, backup: "two.json", readBack: () => Buffer.from("{}") });
+    assert.throws(() => corrupt(bytes), /does not read back as written/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("CLA-269 publish: a backup that does not read back aborts the backfill before any write", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "okie-backfill-abort-"));
+  try {
+    const client = memoryStoreClient();
+    client.objects.set(publishedIndexKey(), indexBytes([metaRow("pmndrs__zustand", "pmndrs", "zustand")]));
+    const backup = fileIndexBackup({ env: "local", base: dir, backup: "b.json", readBack: path => { writeFileSync(path, "truncated"); return readFileSync(path); } });
+    await assert.rejects(backfillPublishedMeta({ client, write: true, fetch: githubApi(repoJsonWith("pmndrs", "zustand", { description: "Bears" })), backup }), /does not read back as written/);
+    assert.deepEqual(client.order, []);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { contentSecurityPolicy } from '../../web/src/securityHeaders';
 import { publishedIndexKey } from '../../server/src/publishedStoreLayout';
 import { edgeEnv, edgeFetch } from './helpers';
@@ -27,7 +27,8 @@ describe('home page at the edge', () => {
     const html = await response.text();
     expect(html).toContain('data-home="true"');
     expect(html).not.toContain('<div id="root">');
-    expect(html).not.toMatch(/<script/i);
+    // The only script is the self-hosted, deferred search enhancement.
+    expect(html.match(/<script\b[^>]*>/gi)).toEqual(['<script src="/home.js" defer>']);
     expect(html).toContain('data-atlas-count="3"');
     // By the commit date each card shows (generatedAt), then publishedAt: source-for and zustand share
     // 1 Sep (source-for published later), ripgrep's commit is 4 Aug.
@@ -157,7 +158,7 @@ describe('home page at the edge', () => {
   it('escapes row text from the index', async () => {
     await seedHomeIndex([{ ...ROWS[0], description: '<script>alert(1)</script>', language: '"><img src=x>' }]);
     const html = await (await edgeFetch('/')).text();
-    expect(html).not.toMatch(/<script/i);
+    expect(html.replace('<script src="/home.js" defer></script>', '')).not.toMatch(/<script/i);
     expect(html).not.toContain('<img src=x');
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
@@ -166,6 +167,87 @@ describe('home page at the edge', () => {
     await seedHomeIndex(ROWS.filter(row => row.slug !== 'source-for__atlas'));
     const html = await (await edgeFetch('/')).text();
     expect(html).toContain('<a class="cta" href="/r/pmndrs/zustand">Explore an atlas</a>');
+  });
+});
+
+/** CLA-269 increment 2: search and sort. */
+describe('home page search and sort at the edge', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  /** Card hrefs in page order; `hidden` ones marked. */
+  const cards = (html: string) => [...html.matchAll(/<li class="atlas"[^>]*?( hidden)?>\s*<a class="card" href="([^"]+)"/g)].map(([, hidden, href]) => `${href}${hidden ? ' (hidden)' : ''}`);
+
+  it('/?q=zust shows only zustand, keeps every card in the page, echoes the search and counts', async () => {
+    await seedHomeIndex();
+    const response = await edgeFetch('/?q=zust');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('public, max-age=60');
+    const html = await response.text();
+    expect(cards(html)).toEqual(['/r/source-for/atlas (hidden)', '/r/pmndrs/zustand', '/r/burnt-sushi/ripgrep (hidden)']);
+    expect(html).toContain('name="q" value="zust"');
+    expect(html).toContain('<p class="count" aria-live="polite" data-home-count>1 of 3 atlases</p>');
+    expect(html).toContain('<p class="no-match" data-home-no-match hidden>');
+  });
+
+  it('matches GitHub casing, description and language; sorts A–Z; falls back to recent for an unknown sort', async () => {
+    await seedHomeIndex([{ ...ROWS[0], language: 'Rust' }, { ...ROWS[1], description: 'Maps a repo from C4 context to code' }, ROWS[2]]);
+    expect(cards(await (await edgeFetch('/?q=BurntSushi')).text())).toEqual(['/r/source-for/atlas (hidden)', '/r/pmndrs/zustand (hidden)', '/r/burnt-sushi/ripgrep']);
+    expect(cards(await (await edgeFetch('/?q=rust')).text())).toEqual(['/r/source-for/atlas (hidden)', '/r/pmndrs/zustand (hidden)', '/r/burnt-sushi/ripgrep']);
+    expect(cards(await (await edgeFetch('/?q=C4+CONTEXT')).text())).toEqual(['/r/source-for/atlas', '/r/pmndrs/zustand (hidden)', '/r/burnt-sushi/ripgrep (hidden)']);
+    const az = await (await edgeFetch('/?sort=az')).text();
+    expect(cards(az)).toEqual(['/r/burnt-sushi/ripgrep', '/r/pmndrs/zustand', '/r/source-for/atlas']);
+    expect(az).toContain('<option value="az" selected>');
+    const unknown = await (await edgeFetch('/?sort=popular&utm_source=x')).text();
+    expect(cards(unknown)).toEqual(['/r/source-for/atlas', '/r/pmndrs/zustand', '/r/burnt-sushi/ripgrep']);
+    expect(unknown).toContain('<option value="recent" selected>');
+  });
+
+  it('says so when nothing matches, with the search escaped and a link back to /', async () => {
+    await seedHomeIndex();
+    const html = await (await edgeFetch(`/?q=${encodeURIComponent('<b>"x"</b>')}`)).text();
+    expect(html).toContain('<p class="no-match" data-home-no-match>No atlases match “<span data-home-query>&lt;b&gt;&quot;x&quot;&lt;/b&gt;</span>”. <a href="/">Clear the search</a></p>');
+    expect(html).toContain('0 of 3 atlases');
+    expect(html).not.toContain('<b>"x"');
+  });
+
+  it('serves /home.js from Static Assets as JavaScript with a short cache and the security headers', async () => {
+    const response = await edgeFetch('/home.js');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toMatch(/^(text|application)\/javascript\b/);
+    expect(response.headers.get('cache-control')).toBe('public, max-age=300');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    const body = await response.text();
+    expect(body).toContain('data-home-search');
+    // A same-origin script: the home's CSP (`script-src 'self'`) allows it.
+    expect(contentSecurityPolicy({ framable: false })).toMatch(/script-src 'self'/);
+    expect((await edgeFetch('/home.js', { init: { method: 'HEAD' } })).status).toBe(200);
+  });
+
+  it('lists a row whose names do not slug back under its slug, and warns about a row whose slug is unusable', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await seedHomeIndex([
+      ...ROWS,
+      // Names that do not slug back: still listed, under the slug's names.
+      { ...ROWS[2], slug: 'acme__app', owner: 'evil', repo: 'thing' },
+      // No canonical path: skipped, and logged.
+      { ...ROWS[2], slug: 'Bad__Slug' },
+    ]);
+    const html = await (await edgeFetch('/')).text();
+    expect(html).toContain('<a class="card" href="/r/acme/app">');
+    expect(html).toContain('<span class="owner">acme/</span><strong>app</strong>');
+    expect(html).not.toContain('evil');
+    expect(html).not.toContain('<strong>thing</strong>');
+    expect(html).toContain('data-atlas-count="4"');
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith('home: index row "Bad__Slug" not listed (the slug has no canonical /r/ path)');
+    // Once per cached index per isolate: more requests served from the same cached index log nothing more.
+    for (const path of ['/', '/?q=zust', '/?sort=az']) {
+      expect((await edgeFetch(path, { keepIndexCache: true })).status).toBe(200);
+    }
+    expect(warn).toHaveBeenCalledTimes(1);
+    // A fresh read of the index (the cache expired) reports again.
+    await edgeFetch('/');
+    expect(warn).toHaveBeenCalledTimes(2);
   });
 });
 

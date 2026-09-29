@@ -5,7 +5,7 @@
 # search/sort/tracking params, CLA-269) set their own headers in apps/edge, WebMCP ones included. The blocks
 # for `/` and `/index.html` still cover the SPA shell those paths serve for any other query (`/?fixture=okie`).
 # /new never reaches Static Assets any more (GET/HEAD 301 to `/`; other methods are answered by the Worker),
-# so it has no block.
+# so it has no block. /home.js is a plain file served by Static Assets (short cache, below).
 /*
   Permissions-Policy: tools=(self)
 
@@ -18,3 +18,8 @@
 # Vite content-hashes everything under /assets/, so it never changes in place.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The home page's enhancement script (CLA-269) keeps a fixed name (the edge-rendered home links it
+# directly, not through Vite), so it gets a short cache: a deploy reaches browsers within 5 minutes.
+/home.js
+  Cache-Control: public, max-age=300
