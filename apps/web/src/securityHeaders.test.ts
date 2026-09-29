@@ -33,7 +33,22 @@ describe('security headers (CLA-318)', () => {
       expect(script).toMatch(/^<script\b[^>]*\bsrc=/);
       expect(script).toMatch(/>\s*<\/script>$/);
     }
-    expect(contentSecurityPolicy({ framable: false })).toMatch(/script-src 'self' 'wasm-unsafe-eval' https:\/\/static\.cloudflareinsights\.com;/);
+    expect(contentSecurityPolicy({ framable: false })).toMatch(/script-src 'self' 'wasm-unsafe-eval';/);
+  });
+
+  it('allows Cloudflare Web Analytics only when the edge injects it', () => {
+    for (const framable of [false, true]) {
+      const off = contentSecurityPolicy({ framable });
+      const on = contentSecurityPolicy({ framable, webAnalytics: true });
+      expect(off).not.toContain('cloudflareinsights');
+      expect(on).toContain("script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com;");
+      expect(on).toContain("connect-src 'self' https://raw.githubusercontent.com https://cloudflareinsights.com;");
+      expect(on.replace(' https://static.cloudflareinsights.com', '').replace(' https://cloudflareinsights.com', '')).toBe(off);
+    }
+    expect(securityHeadersFor('/', 'text/html')['content-security-policy']).not.toContain('cloudflareinsights');
+    expect(securityHeadersFor('/', 'text/html', { webAnalytics: true })['content-security-policy']).toBe(contentSecurityPolicy({ framable: false, webAnalytics: true }));
+    expect(securityHeadersFor('/r/acme/app', 'text/html', { webAnalytics: true })['content-security-policy']).toBe(contentSecurityPolicy({ framable: true, webAnalytics: true }));
+    expect(securityHeadersFor('/', 'application/json', { webAnalytics: true })).not.toHaveProperty('content-security-policy');
   });
 
   it('vite preview mirrors the headers; vite dev never gets the CSP (HMR uses inline scripts)', () => {

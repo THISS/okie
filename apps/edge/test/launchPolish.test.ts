@@ -12,8 +12,10 @@ const SELF_ONLY = contentSecurityPolicy({ framable: false });
 /** CLA-318: security headers on every response, a CSP on HTML only. */
 describe('security headers at the edge', () => {
   it('the CSP allows what the app loads and nothing broader', () => {
-    expect(SELF_ONLY).toContain("script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com");
-    expect(SELF_ONLY).toContain("connect-src 'self' https://raw.githubusercontent.com https://cloudflareinsights.com");
+    // Web Analytics sources only with a token (analytics.test.ts); this suite runs without one.
+    expect(SELF_ONLY).toContain("script-src 'self' 'wasm-unsafe-eval';");
+    expect(SELF_ONLY).toContain("connect-src 'self' https://raw.githubusercontent.com;");
+    expect(SELF_ONLY).not.toContain('cloudflareinsights');
     expect(SELF_ONLY).toContain("object-src 'none'");
     expect(SELF_ONLY).toContain("base-uri 'self'");
     expect(SELF_ONLY).toContain("form-action 'self'");

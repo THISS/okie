@@ -31,6 +31,13 @@ export interface EdgeEnv {
   /** https://staging.sourcefor.dev / https://sourcefor.dev — the only non-loopback share origin. */
   OKIE_PUBLIC_ORIGIN?: string;
 
+  /**
+   * Cloudflare Web Analytics site token (public: it ships in page HTML). Set → the beacon is added to
+   * every HTML document the Worker serves (analytics.ts); unset, blank or not /^[A-Za-z0-9]{16,64}$/ → no
+   * analytics. Production only; staging stays without.
+   */
+  WEB_ANALYTICS_TOKEN?: string;
+
   // Forwarded into the container (see containerEnvVars).
   OKIE_LLM_API_KEY?: string;
   JEV_API?: string;

@@ -157,6 +157,9 @@ describe('portable viewer shell (CLA-318)', () => {
     const html = portableIndexHtml(indexHtml);
     expect(html).not.toMatch(/rel="canonical"|property="og:|name="twitter:|sourcefor\.dev/);
     expect(html).toContain('<meta name="okie-portable" content="true">');
+    // Web Analytics is injected by the sourcefor.dev edge only: the shell (and so the portable viewer) never carries it.
+    expect(indexHtml).not.toMatch(/cloudflareinsights|data-cf-beacon/);
+    expect(html).not.toMatch(/cloudflareinsights|data-cf-beacon/);
     expect(html).toContain(`<title>${HOME_TITLE}</title>`);
     expect(html).toContain('<link rel="icon" href="/favicon.svg"');
     expect(html).toContain('<script type="module" src="/src/main.tsx"></script>');
