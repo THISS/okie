@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  ASK_SYSTEM_PROMPT,
+  citationsNamedInAnswer,
   HOSTED_ASK_AUTH_ERROR,
   MAX_ASK_PACKETS,
   answerAskQuestion,
@@ -16,6 +19,8 @@ import {
   sanitizeAskPackets,
 } from "./ask.js";
 import { createAskThreadStore } from "./askThreads.js";
+import { buildAskEvalIndex, legacyAskContext, loadAskEvalFixture } from "./askEval.js";
+import { buildAskIndex, type AskCorpus } from "./askRetrieval.js";
 import { createGithubAuthService, SESSION_COOKIE, TEST_LOGIN_PATH } from "./githubOAuth.js";
 import { createScanJobQueue, createSubmitLimiter } from "./jobs.js";
 import { createLlmGatewayClient, resolveLlmGatewayConfig } from "./llmGateway.js";
@@ -124,12 +129,26 @@ test("Ask posts only the supplied packets and drops out-of-scope citations", asy
   assert.deepEqual(result.citations, ["container:web-app", "component:web-shell"]);
   assert.equal(result.citations.includes(OUT_OF_SCOPE_ID), false);
   assert.deepEqual(result.scopeIds, ["container:web-app", "component:web-shell"]);
+  assert.deepEqual(result.retrieval, {
+    mode: "scope-only",
+    searchedWholeAtlas: false,
+    selectedScopeIds: ["container:web-app", "component:web-shell"],
+    retrievedScopeIds: [],
+    sectionCount: 0,
+    bytes: 0,
+  });
+  assert.deepEqual(result.citationDetails, [
+    { id: "container:web-app", name: "Web app", kind: "container", path: "apps/web/src/App.tsx" },
+    { id: "component:web-shell", name: "Application shell", kind: "component" },
+  ]);
 
   const serialized = JSON.stringify(posted[0]);
   assert.match(serialized, /container:web-app/);
   assert.doesNotMatch(serialized, new RegExp(OUT_OF_SCOPE_ID));
   assert.doesNotMatch(serialized, new RegExp(FAKE_GATEWAY_KEY));
-  assert.match(serialized, /ONLY the packets and accepted summaries/);
+  assert.match(serialized, /No whole-atlas search was possible/);
+  assert.match(serialized, /ONLY the selected-scope packets/);
+  assert.doesNotMatch(serialized, /"sections"/);
 });
 
 test("Ask never silently posts a whole-repo dump of extra packets", () => {
@@ -552,4 +571,277 @@ test("loopback test-login can Ask and reload the same user's thread for owner/re
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     await fake.close();
   }
+});
+
+// ---------------------------------------------------------------------------
+// CLA-265: whole-atlas retrieval
+
+const SMALL_SHA = "0123456789abcdef0123456789abcdef01234567";
+const SMALL_SNAPSHOT = {
+  schemaVersion: 1,
+  id: "snapshot:small",
+  repositoryId: "repo:thiss-okie",
+  commitSha: SMALL_SHA,
+  generatedAt: "2026-09-29T00:00:00.000Z",
+  entities: [
+    { id: "system:okie", kind: "softwareSystem", name: "Okie", sourceRefs: [{ path: "README.md", commitSha: SMALL_SHA }] },
+    { id: "container:apps-web", kind: "container", parentId: "system:okie", name: "@okie/web", sourceRefs: [{ path: "apps/web/package.json", commitSha: SMALL_SHA }] },
+    { id: "component:create-renderer", kind: "component", parentId: "container:apps-web", name: "src/renderer/createRenderer.ts", sourceRefs: [{ path: "apps/web/src/renderer/createRenderer.ts", commitSha: SMALL_SHA }] },
+    {
+      id: "code:create-renderer", kind: "code", parentId: "component:create-renderer", name: "createRenderer",
+      sourceRefs: [{ path: "apps/web/src/renderer/createRenderer.ts", commitSha: SMALL_SHA, symbol: "createRenderer", startLine: 27, endLine: 60 }],
+      sourceExcerpts: [{ path: "apps/web/src/renderer/createRenderer.ts", symbol: "createRenderer", language: "typescript", startLine: 27, endLine: 29, highlightLine: 27, frozenRevision: SMALL_SHA, text: `export async function createRenderer() {\n  // WebGPU, then WebGL2, then Canvas2D. token=${PLANTED_SOURCE_SECRET}\n}` }],
+    },
+  ],
+  relations: [],
+};
+
+function atlasGateway(posted: Record<string, unknown>[], citations: string[]) {
+  return {
+    modelId: "acme/fast",
+    chatCompletions: async (body: Record<string, unknown>) => {
+      posted.push(body);
+      return { json: JSON.parse(completion(JSON.stringify({ answer: "**createRenderer** tries WebGPU, then WebGL2, then Canvas2D.", citations }))) };
+    },
+  };
+}
+
+function userPayload(body: Record<string, unknown>): Record<string, unknown> {
+  const content = (body.messages as Array<{ content: string }>)[1]!.content;
+  return JSON.parse(content.slice(content.indexOf("{"))) as Record<string, unknown>;
+}
+
+const liveConfig = () => resolveLlmGatewayConfig({ OPENROUTER_API_KEY: FAKE_GATEWAY_KEY, OPENROUTER_MODEL: "acme/fast" });
+
+test("whole-atlas Ask from the L1 selection sends createRenderer.ts and WasmRendererAdapter.ts as evidence", async () => {
+  const fixture = loadAskEvalFixture();
+  const corpus: AskCorpus = { index: buildAskEvalIndex(fixture), source: "scan" };
+  const { packets: l1Packets, relations } = legacyAskContext(fixture.snapshot, "system:okie");
+  const posted: Record<string, unknown>[] = [];
+  const result = await answerAskQuestion(
+    liveConfig(),
+    { question: "How does Oki choose what renderer to use?", packets: l1Packets, relations },
+    { corpus, gateway: atlasGateway(posted, ["component:apps-web-src-renderer-create-renderer-ts", OUT_OF_SCOPE_ID, "system:okie"]) },
+  );
+  if (!result.connected || !("answer" in result)) throw new Error("expected an answer");
+  const body = posted[0]!;
+  assert.equal((body.messages as Array<{ content: string }>)[0]!.content, ASK_SYSTEM_PROMPT);
+  const payload = userPayload(body);
+  const sections = payload.sections as Array<{ id: string; path?: string; score?: number }>;
+  const paths = new Set(sections.map(section => section.path));
+  assert.ok(paths.has("apps/web/src/renderer/createRenderer.ts"));
+  assert.ok(paths.has("apps/web/src/renderer/WasmRendererAdapter.ts"));
+  assert.equal(sections.some(section => "score" in section), false, "scores stay server-side");
+  assert.deepEqual((payload.search as { wholeAtlasSearched: boolean }).wholeAtlasSearched, true);
+  assert.ok((payload.search as { scopesSearched: string[] }).scopesSearched.includes("@okie/web"));
+  assert.equal((payload.selectedScopePackets as unknown[]).length, l1Packets.length);
+  // Citations: retrieved + selected ids only, never out-of-scope ones.
+  assert.deepEqual(result.citations, ["component:apps-web-src-renderer-create-renderer-ts", "system:okie"]);
+  assert.deepEqual(result.citationDetails[0], { id: "component:apps-web-src-renderer-create-renderer-ts", name: "src/renderer/createRenderer.ts", kind: "component", path: "apps/web/src/renderer/createRenderer.ts" });
+  assert.equal(result.citationDetails[1]?.id, "system:okie");
+  assert.equal(result.retrieval.mode, "atlas");
+  assert.equal(result.retrieval.searchedWholeAtlas, true);
+  assert.deepEqual(result.retrieval.selectedScopeIds, l1Packets.map(packet => packet.id));
+  assert.equal(result.retrieval.sectionCount, sections.length);
+  assert.ok(result.retrieval.bytes > 0 && result.retrieval.bytes <= 24_000);
+  // Folded declarations are citable and listed too.
+  const sectionSymbols = sections as Array<{ id: string; symbols?: Array<{ id: string }> }>;
+  assert.deepEqual(result.retrieval.retrievedScopeIds, [...new Set(sectionSymbols.flatMap(section => [section.id, ...(section.symbols ?? []).map(symbol => symbol.id)]))]);
+  assert.ok((payload.allowedCitationIds as string[]).includes("code:apps-web-src-renderer-create-renderer-ts:create-renderer"));
+  assert.ok(Buffer.byteLength(JSON.stringify(body)) < 48 * 1024, "the gateway body stays bounded");
+  assert.doesNotMatch(JSON.stringify(body), new RegExp(FAKE_GATEWAY_KEY));
+});
+
+test("the model is told to say 'not in the evidence' only when the whole-atlas search found nothing", async () => {
+  assert.match(ASK_SYSTEM_PROMPT, /"not in the evidence" ONLY when search\.sectionCount is 0/);
+  assert.match(ASK_SYSTEM_PROMPT, /WHOLE atlas/);
+  const corpus: AskCorpus = { index: buildAskIndex(SMALL_SNAPSHOT), source: "scan" };
+  const posted: Record<string, unknown>[] = [];
+  const nothing = await answerAskQuestion(liveConfig(), { question: "zyxwvut qqqqqq?", packets }, { corpus, gateway: atlasGateway(posted, []) });
+  assert.equal(nothing.connected && "retrieval" in nothing ? nothing.retrieval.sectionCount : -1, 0);
+  assert.equal((userPayload(posted[0]!).search as { sectionCount: number }).sectionCount, 0);
+  const found = await answerAskQuestion(liveConfig(), { question: "How is the renderer created?", packets }, { corpus, gateway: atlasGateway(posted, []) });
+  assert.ok(found.connected && "retrieval" in found && found.retrieval.sectionCount > 0);
+  assert.ok((userPayload(posted[1]!).search as { sectionCount: number }).sectionCount > 0);
+});
+
+test("with a corpus, Ask searches the whole atlas even without selected packets", async () => {
+  const corpus: AskCorpus = { index: buildAskIndex(SMALL_SNAPSHOT), source: "scan" };
+  const posted: Record<string, unknown>[] = [];
+  const result = await answerAskQuestion(liveConfig(), { question: "Where does WebGPU fall back?", packets: [] }, { corpus, gateway: atlasGateway(posted, ["code:create-renderer"]) });
+  if (!result.connected || !("answer" in result)) throw new Error("expected an answer");
+  assert.deepEqual(result.citations, ["code:create-renderer"]);
+  assert.deepEqual(result.citationDetails, [{ id: "code:create-renderer", name: "createRenderer", kind: "code", path: "apps/web/src/renderer/createRenderer.ts", startLine: 27, endLine: 60 }]);
+  assert.deepEqual(result.retrieval.selectedScopeIds, []);
+  // Retrieved source excerpts are scrubbed before they reach the gateway.
+  const serialized = JSON.stringify(posted[0]);
+  assert.match(serialized, /WebGPU, then WebGL2/);
+  assert.doesNotMatch(serialized, new RegExp(PLANTED_SOURCE_SECRET));
+});
+
+test("POST /api/ask resolves the published corpus, verifies commitSha, and persists citation details", async () => {
+  const fake = await listenFakeGateway((_request, response) => {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(completion(JSON.stringify({ answer: "It tries **WebGPU** first.", citations: ["code:create-renderer", "container:web-app"] })));
+  });
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-ask-http-"));
+  writeFileSync(join(scanRoot, "snapshot.json"), JSON.stringify(SMALL_SNAPSHOT));
+  const auth = createGithubAuthService({ bind: "127.0.0.1", env: { OKIE_GITHUB_TEST_DOUBLE: "1", OKIE_PUBLIC_ORIGIN: "http://localhost:4173" } });
+  const handler = createScanHttpHandler({
+    queue: createScanJobQueue(async () => {}),
+    allowSubmit: createSubmitLimiter(),
+    auth,
+    scanRoot,
+    llm: resolveLlmGatewayConfig({ OPENAI_BASE_URL: fake.baseUrl, OPENROUTER_API_KEY: FAKE_GATEWAY_KEY, OPENROUTER_MODEL: "acme/fast" }),
+    enrich: "off",
+    bind: "127.0.0.1",
+    threads: createAskThreadStore(),
+  });
+  const server = createServer((request, response) => { void handler(request, response); });
+  await new Promise<void>(resolve => { server.listen(0, "127.0.0.1", () => resolve()); });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("expected tcp address");
+  const origin = `http://127.0.0.1:${address.port}`;
+  try {
+    const login = await fetch(`${origin}${TEST_LOGIN_PATH}`, { redirect: "manual" });
+    const cookie = `${SESSION_COOKIE}=${cookieFromSetCookie(login.headers.getSetCookie(), SESSION_COOKIE)}`;
+    const ask = (atlas: Record<string, unknown>, extra: Record<string, unknown> = {}) => fetch(`${origin}/api/ask`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({ question: "How is the renderer created?", packets, atlas, ...extra }),
+    });
+
+    const atlas = { owner: "THISS", repo: "okie", commitSha: SMALL_SHA, slug: "" };
+    const posted = await ask(atlas);
+    assert.equal(posted.status, 200);
+    const body = await posted.json() as {
+      citations: string[];
+      citationDetails: Array<{ id: string; path?: string; startLine?: number }>;
+      retrieval: { mode: string; searchedWholeAtlas: boolean; retrievedScopeIds: string[] };
+      thread: { turns: Array<{ citationDetails?: unknown[]; retrieval?: { mode: string; sectionCount: number } }> };
+    };
+    assert.equal(body.retrieval.mode, "atlas");
+    assert.equal(body.retrieval.searchedWholeAtlas, true);
+    assert.ok(body.retrieval.retrievedScopeIds.includes("component:create-renderer"));
+    assert.deepEqual(body.citations, ["code:create-renderer", "container:web-app"]);
+    assert.equal(body.citationDetails[0]?.path, "apps/web/src/renderer/createRenderer.ts");
+    assert.equal(body.citationDetails[0]?.startLine, 27);
+    assert.equal(body.thread.turns[0]?.retrieval?.mode, "atlas");
+    assert.equal(body.thread.turns[0]?.citationDetails?.length, 2);
+    assert.equal(JSON.stringify(body).includes(FAKE_GATEWAY_KEY), false);
+
+    const reloaded = await fetch(`${origin}/api/ask/thread?owner=THISS&repo=okie&commitSha=${SMALL_SHA}`, { headers: { cookie } });
+    const thread = await reloaded.json() as { thread: { turns: Array<{ citationDetails?: Array<{ path?: string }>; retrieval?: { sectionCount: number } }> } };
+    assert.equal(thread.thread.turns[0]?.citationDetails?.[0]?.path, "apps/web/src/renderer/createRenderer.ts");
+    assert.ok((thread.thread.turns[0]?.retrieval?.sectionCount ?? 0) > 0);
+
+    // A commit the published snapshot does not match never borrows its corpus.
+    const stale = await (await ask({ ...atlas, commitSha: "0000000deadbeef" })).json() as { retrieval: { mode: string }; citations: string[] };
+    assert.equal(stale.retrieval.mode, "scope-only");
+    assert.deepEqual(stale.citations, ["container:web-app"]);
+    // A malformed slug is ignored (owner__repo, then the scan root), never used as a path.
+    const traversal = await (await ask({ ...atlas, slug: "../../etc" })).json() as { retrieval: { mode: string } };
+    assert.equal(traversal.retrieval.mode, "atlas");
+
+    // The 48 KB request cap still holds.
+    const tooBig = await ask(atlas, { padding: "x".repeat(49 * 1024) });
+    assert.equal(tooBig.status, 400);
+    const nearCap = await ask(atlas, { padding: "x".repeat(40 * 1024) });
+    assert.equal(nearCap.status, 200);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await fake.close();
+    rmSync(scanRoot, { recursive: true, force: true });
+  }
+});
+
+test("POST /api/ask checks the gateway, question and rate limit before touching the corpus; retrieval failures fall back to scope-only", async () => {
+  const fake = await listenFakeGateway((_request, response) => {
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(completion(JSON.stringify({ answer: "Scope answer.", citations: ["container:web-app"] })));
+  });
+  let resolves = 0;
+  const broken: AskCorpus = { index: { ...buildAskIndex(SMALL_SNAPSHOT), postings: undefined as never }, source: "scan" };
+  const start = (llm: ReturnType<typeof resolveLlmGatewayConfig>, allowAsk?: (key: string) => boolean) => {
+    const auth = createGithubAuthService({ bind: "127.0.0.1", env: { OKIE_GITHUB_TEST_DOUBLE: "1", OKIE_PUBLIC_ORIGIN: "http://localhost:4173" } });
+    return createScanHttpHandler({
+      queue: createScanJobQueue(async () => {}),
+      allowSubmit: createSubmitLimiter(),
+      auth,
+      scanRoot: tmpdir(),
+      llm,
+      enrich: "off",
+      bind: "127.0.0.1",
+      threads: createAskThreadStore(),
+      askCorpus: { resolve: () => { resolves += 1; return broken; }, stats: () => ({ indexBuilds: 0 }) },
+      ...(allowAsk ? { allowAsk } : {}),
+    });
+  };
+  const serve = async (handler: ReturnType<typeof createScanHttpHandler>) => {
+    const server = createServer((request, response) => { void handler(request, response); });
+    await new Promise<void>(resolve => { server.listen(0, "127.0.0.1", () => resolve()); });
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("expected tcp address");
+    const origin = `http://127.0.0.1:${address.port}`;
+    const login = await fetch(`${origin}${TEST_LOGIN_PATH}`, { redirect: "manual" });
+    const cookie = `${SESSION_COOKIE}=${cookieFromSetCookie(login.headers.getSetCookie(), SESSION_COOKIE)}`;
+    const ask = (question: string) => fetch(`${origin}/api/ask`, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify({ question, packets, atlas: { owner: "THISS", repo: "okie", commitSha: SMALL_SHA, slug: "" } }) });
+    return { ask, close: () => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())) };
+  };
+  const connected = resolveLlmGatewayConfig({ OPENAI_BASE_URL: fake.baseUrl, OPENROUTER_API_KEY: FAKE_GATEWAY_KEY, OPENROUTER_MODEL: "acme/fast" });
+  const disconnected = await serve(start(resolveLlmGatewayConfig({})));
+  let allowed = 2;
+  const live = await serve(start(connected, () => allowed-- > 0));
+  try {
+    assert.deepEqual(await (await disconnected.ask("How is the renderer created?")).json(), { connected: false });
+    assert.deepEqual(await (await live.ask("   ")).json(), { connected: true, error: "Ask needs a question." });
+    assert.equal(resolves, 0, "no corpus work for unanswerable requests");
+    const fellBack = await (await live.ask("How is the renderer created?")).json() as { retrieval: { mode: string; searchedWholeAtlas: boolean }; citations: string[] };
+    assert.equal(resolves, 1);
+    assert.equal(fellBack.retrieval.mode, "scope-only");
+    assert.equal(fellBack.retrieval.searchedWholeAtlas, false);
+    assert.deepEqual(fellBack.citations, ["container:web-app"]);
+    assert.equal((await live.ask("Again?")).status, 200);
+    const limited = await live.ask("And again?");
+    assert.equal(limited.status, 429);
+    assert.equal(resolves, 2, "a rate-limited request never resolves the corpus");
+  } finally {
+    await disconnected.close();
+    await live.close();
+    await fake.close();
+  }
+});
+
+test("files the answer names are cited even when the model leaves them out of citations", () => {
+  const sections = [
+    { id: "component:create", name: "src/renderer/createRenderer.ts", kind: "component", path: "apps/web/src/renderer/createRenderer.ts", score: 3 },
+    { id: "component:adapter", name: "src/renderer/WasmRendererAdapter.ts", kind: "component", path: "apps/web/src/renderer/WasmRendererAdapter.ts", symbols: [{ id: "code:adapter", name: "WasmRendererAdapter" }], score: 2 },
+    { id: "component:policy", name: "src/embedCanvas.ts", kind: "component", path: "apps/web/src/embedCanvas.ts", symbols: [{ id: "code:order", name: "autoGpuAttemptOrder" }], score: 1 },
+    { id: "component:types", name: "src/renderer/types.ts", kind: "component", path: "apps/web/src/renderer/types.ts", score: 1 },
+  ];
+  const answer = "Each attempt runs `WasmRendererAdapter.create(canvas)`; `autoGpuAttemptOrder` orders them. See apps/web/src/renderer/createRenderer.ts. Types live elsewhere (types).";
+  assert.deepEqual(citationsNamedInAnswer(answer, ["component:create"], sections), ["component:create", "code:adapter", "code:order"]);
+  // Plain prose words never cite, and nothing is duplicated.
+  assert.deepEqual(citationsNamedInAnswer("It renders types.", ["code:adapter"], sections), ["code:adapter"]);
+});
+
+test("named-file citation never over-matches: containers, path prefixes, and words split out of paths", () => {
+  const sections = [
+    { id: "container:apps-web", name: "apps/web", kind: "container", path: "apps/web", score: 5 },
+    { id: "container:crates-atlas-gpu", name: "atlas-gpu", kind: "container", path: "crates/atlas-gpu", score: 5 },
+    { id: "component:scan", name: "src/scan.ts", kind: "component", path: "packages/scan/src/scan.ts", score: 4 },
+    { id: "component:scene", name: "src/scene.rs", kind: "component", path: "crates/atlas-engine/src/scene.rs", score: 3 },
+    { id: "component:types", name: "src/renderer/types.ts", kind: "component", path: "apps/web/src/renderer/types.ts", score: 2 },
+  ];
+  const none = (answer: string) => assert.deepEqual(citationsNamedInAnswer(answer, [], sections), [], answer);
+  // A container path inside a file path, or a container named in a span, is never cited.
+  none("See `apps/web/src/minimap/minimapGeometry.ts` and apps/web/src/minimap/Minimap.tsx; `crates/atlas-gpu` draws.");
+  none("The GPU (`atlas-gpu`) and wasm bridge (`crates/atlas-wasm/src/browser.rs`) report the backend.");
+  // A stem that is only a path segment or part of a longer name is not the file.
+  none("Scrubbing lives in `packages/scan/src/scanService.ts` and `scan/redact`.");
+  none("LOD uses `packages/scene-compiler/src/compile-scene.ts` and `scene_graph`.");
+  // A path must end at a boundary: types.tsx or types.ts.bak are different files.
+  none("Compare apps/web/src/renderer/types.tsx and apps/web/src/renderer/types.ts.bak.");
+  // Whole matches still cite: exact path (sentence period ok), whole basename or stem span.
+  assert.deepEqual(citationsNamedInAnswer("Read apps/web/src/renderer/types.ts. Then `scan.ts` and `scene`.", [], sections), ["component:scan", "component:scene", "component:types"]);
 });

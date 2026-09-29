@@ -4,6 +4,8 @@ import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 
 const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+const askPanel = readFileSync(new URL('./ask/AskPanel.tsx', import.meta.url), 'utf8');
+const askCss = readFileSync(new URL('./ask/ask.css', import.meta.url), 'utf8');
 const diagramView = readFileSync(new URL('./diagram/SemanticDiagramSurface.tsx', import.meta.url), 'utf8');
 const briefView = readFileSync(new URL('./inspector/ArchitectureBriefView.tsx', import.meta.url), 'utf8');
 
@@ -342,11 +344,13 @@ describe('compact inspector presentation', () => {
   });
 
   it('grounds Ask Atlas in selected or isolated packets and keeps an honest disconnected path', () => {
-    expect(app).toContain("data-ask-connected={askConnected ? 'true' : 'false'}");
-    expect(app).toContain('data-ask-state={askState}');
-    expect(app).toContain('data-ask-auth="signed-out"');
-    expect(app).toContain('data-ask-state="signin"');
-    expect(app).toContain('ASK_SIGNIN_COPY');
+    expect(askPanel).toContain("data-ask-connected={props.connected ? 'true' : 'false'}");
+    expect(askPanel).toContain('data-ask-state={props.state}');
+    expect(app).toContain('connected={askConnected}');
+    expect(app).toContain('state={askState}');
+    expect(askPanel).toContain('data-ask-auth="signed-out"');
+    expect(askPanel).toContain('data-ask-state="signin"');
+    expect(askPanel).toContain('ASK_SIGNIN_COPY');
     expect(app).toContain('fetchAskAuth');
     expect(app).toContain('loadAskThread');
     expect(app).toContain('isAskUnauthorized(result)');
@@ -355,12 +359,14 @@ describe('compact inspector presentation', () => {
     expect(app).toContain("isolateActive: visibilityMode === 'isolate'");
     expect(app).toContain('showDisconnectedAsk()');
     expect(app).toContain('ASK_NOT_CONNECTED_LIVE_MESSAGE');
-    expect(app).toContain('ASK_NOT_CONNECTED_COPY');
-    expect(app).toContain('ASK_CONNECTED_COPY');
-    expect(app).toContain('ASK_CONNECTED_SUBMIT_LABEL');
-    expect(app).toContain('ASK_DISCONNECTED_SUBMIT_LABEL');
-    expect(app).toContain('shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)');
-    expect(app).toContain('currentAskScopeKey');
+    expect(askPanel).toContain('ASK_NOT_CONNECTED_COPY');
+    expect(askPanel).toContain('ASK_CONNECTED_COPY');
+    expect(askPanel).toContain('ASK_CONNECTED_SUBMIT_LABEL');
+    expect(askPanel).toContain('ASK_DISCONNECTED_SUBMIT_LABEL');
+    // CLA-265: scope is only a starting point — a scope change never discards an answered turn.
+    expect(app).not.toContain('shouldCommitAskAnswer');
+    expect(app).not.toMatch(/\[askOpen, currentAskScopeKey\]/);
+    expect(app).not.toContain('currentAskScopeKey');
     expect(app).toContain('if (!askSignedIn) return');
     expect(app).toContain('if (!askConnected)');
     expect(app).toContain('askAtlasIdentity');
@@ -577,22 +583,60 @@ describe('story launcher chrome (CLA-98)', () => {
     expect(compact).not.toMatch(/\.story-catalog-menu\s*\{[^}]*display:\s*none/);
   });
 
-  it('anchors Ask Atlas to its button so the popover does not cover tours or minimap (CLA-100)', () => {
+  it('docks the Ask panel beside the map, clear of the canvas card, tours and minimap (CLA-100, CLA-265)', () => {
     expect(app).toContain('className="ask-anchor"');
     expect(app.indexOf('className="ask-anchor"')).toBeLessThan(app.indexOf('className="ask-button"'));
-    expect(app.indexOf('className="ask-popover"')).toBeGreaterThan(app.indexOf('className="ask-anchor"'));
-    expect(app.indexOf('className="ask-popover"')).toBeLessThan(app.indexOf('storyCatalog.length === 1'));
+    // The panel is a map-stage sibling of the launcher (not inside its transformed box).
+    expect(app.indexOf('<AskPanel')).toBeGreaterThan(app.indexOf('storyCatalog.length === 1'));
+    expect(app.indexOf('<AskPanel')).toBeLessThan(app.indexOf('className="canvas-hint"'));
+    expect(askPanel).toContain('className="ask-popover"');
     expect(declarations(css, '.ask-anchor')).toContain('position: relative');
-    expect(declarations(css, '.ask-popover')).toContain('left: 0');
-    expect(declarations(css, '.ask-popover')).toContain('right: auto');
-    expect(declarations(css, '.ask-popover')).toContain('bottom: calc(100% + 8px)');
-    expect(declarations(css, '.ask-popover')).toContain('width: min(360px, 92vw)');
-    const mobile = css.slice(css.indexOf('@media (max-width: 780px)'), css.indexOf('@media (max-width: 390px)'));
-    expect(declarations(mobile, '.ask-popover')).toContain('left: auto');
-    expect(declarations(mobile, '.ask-popover')).toContain('right: 0');
-    expect(css).not.toContain('.ask-popover { position: absolute; right: 0; bottom: 59px; left: 0;');
-    const phone = css.slice(css.indexOf('@media (max-width: 470px)'));
-    expect(phone).not.toMatch(/\.ask-popover \{ position: fixed/);
+    const panel = declarations(askCss, '.ask-popover');
+    expect(panel).toContain('position: absolute');
+    expect(panel).toContain('left: 76px');
+    expect(panel).toContain('bottom: var(--ask-bottom-clearance)');
+    expect(panel).toContain('max-height: calc(100% - var(--ask-top-clearance) - var(--ask-bottom-clearance))');
+    expect(panel).toContain('--ask-bottom-clearance: 124px');
+    expect(panel).toContain('--ask-top-clearance: 132px');
+    // Bottom clearance keeps it above the launcher (bottom 62px + 51px tall chips).
+    expect(pixels(declarations(css, '.story-launcher'), 'bottom') + 51).toBeLessThan(124);
+    const sheet = declarations(askCss.slice(askCss.indexOf('@container (max-width: 800px)')), '.ask-popover');
+    expect(sheet).toContain('left: 12px');
+    expect(sheet).toContain('right: 12px');
+    expect(sheet).toContain('width: auto');
+    expect(sheet).toContain('max-height: min(45%,');
+    expect(askCss).not.toMatch(/\.ask-popover \{[^}]*position: fixed/);
+    // Citation chips drill like inspector links (scan neighborhoods, canonical band, L4 owner) — never a
+    // bare select+frame that can land on an undrawn band (CLA-265 QA: empty map on a code chip).
+    const askPanelJsx = app.slice(app.indexOf('<AskPanel'), app.indexOf('/>', app.indexOf('turns={askThread?.turns')));
+    expect(askPanelJsx).toMatch(/onFocusCitation=\{id => \{[^}]*void openInspectorChild\(id\)/);
+    expect(askPanelJsx).not.toContain("focusEntity(entity, 'push', 'frame')");
+    // Show on map picks its level from the cited parts (L3 in one container, else L2) and drills there
+    // through the same inspector-link path; Restore goes back to the saved pre-Show view.
+    expect(askPanelJsx).toContain('void showAskTurnOnMap(citedIds, turn.id)');
+    expect(askPanelJsx).toContain('onRestoreMap={restoreAskMapView}');
+    expect(app).toContain('const plan = askShowOnMapPlan(citedIds,');
+    expect(app).toMatch(/function showAskPlanOnMap[\s\S]*?void openInspectorChild\(target\)/);
+    expect(app).toContain('cluster.smallestPx < ASK_MAP_MIN_CARD_PX');
+    expect(app).toMatch(/function restoreAskMapView[\s\S]*?commitNavigation\(saved\.navigation, 'replace'\)/);
+    // Wiring guards for the pure decisions in ask/askMapSession.ts (unit tested there).
+    for (const site of ['function focusEntity(', 'function handlePick(', 'async restore(next, source) {', 'function changeVisibility(', 'function toggleDetails(']) {
+      const body = app.slice(app.indexOf(site), app.indexOf(site) + 400);
+      expect(body, site).toContain('cancelAskMapShow();');
+    }
+    const showTurn = app.slice(app.indexOf('async function showAskTurnOnMap'), app.indexOf('function restoreAskMapView'));
+    expect(showTurn.indexOf('cancelAskMapShow();')).toBeLessThan(showTurn.indexOf('await Promise.all'));
+    expect(showTurn).toContain('if (!askMapStepCurrent(generation)) return;');
+    expect(app).toContain('if (!askMapStepCurrent(generation, target)) return;');
+    expect(app).toContain('if (!askMapViewShouldReset(previous, visibilityMode)) return;');
+    expect(app).toContain('if (!askPanelReframeDue(askPanelLayout, askReframeRequest, askReframeHandledRef.current)) return;');
+    expect(askPanelJsx).toContain("if (inspectorSelectionRef.current === id) selectInspectorTab('source', false);");
+    // The panel is a left overlay for framing, so a framed citation lands beside it.
+    expect(app).toContain("{ rect: rect('.ask-popover'), edge: askPanelOverlayEdge(rect('.ask-popover'), canvasRect) }");
+    // Exactly one scroll container: the thread. Nothing inside a turn scrolls.
+    expect(askCss.match(/overflow-y: auto|overflow: auto/g)).toHaveLength(1);
+    expect(declarations(askCss, '.ask-scroll')).toContain('overflow-y: auto');
+    expect(css).not.toContain('.ask-popover');
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
   });
 });
@@ -644,7 +688,8 @@ describe('header Open source and account chrome (CLA-101)', () => {
     expect(app).toContain('className="diagram-add-menu screenshot-menu account-menu"');
     expect(app).toContain('data-testid="account-menu"');
     expect(app).toContain('data-testid="account-signin"');
-    expect(app).toContain("askSignInHref(askAuth?.loginPath ?? \"/api/auth/github\", askReturnPath)");
+    expect(askPanel).toContain('askSignInHref(loginPath, props.returnPath)');
+    expect(app).toContain('returnPath={askReturnPath}');
     expect(app).toContain("askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)");
     expect(app).toContain('Sign in with GitHub');
     expect(app).toContain('Sign out');
@@ -699,7 +744,9 @@ describe('selected relationship focus wiring', () => {
     expect(app).toContain("currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pickedRelationId : undefined");
     expect(app).toContain('relationFocusIds={relationFocus.endpointIds}');
     expect(app).toContain('projectionOverride={relationFocus.projectionOverride}');
+    // Ask "Show on map" isolates the cited set AND keeps the current selection visible (CLA-265).
     expect(app).toContain('new Set([...storyFocus.requiredIds, ...relationFocus.endpointIds])');
+    expect(app).toContain("(askMapFocus && visibilityMode === 'isolate' ? askMapFocus : pathFocus)");
   });
 
   it('lifts isolate from a code story step to the file-component neighborhood', () => {
