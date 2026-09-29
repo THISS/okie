@@ -3,21 +3,19 @@
   "slug": "trpc__trpc",
   "repository": "trpc/trpc",
   "commitSha": "fa78a1be7c276e48d806f33ad8352b007fe5cc1e",
-  "preparedCommitSha": "4b6f43863ef06a3ef0c3f1eadec4a4299ebd1cef",
-  "evalPrepare": { "dropPaths": ["packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi"], "why": "As-is scan fails validation: 5 relation ids exceed 192 characters, all between generated heyapi client files under packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi (the longest router name). Dropping only that generated test client dir lets the rest of the monorepo scan.", "droppedPaths": 16 },
   "scan": {
-    "asIs": { "revision": "fa78a1be7c276e48d806f33ad8352b007fe5cc1e", "ok": false, "ms": 25035, "error": "Invalid architecture extraction:\nrelations[3968].id: must not exceed 192 characters\nrelations[3982].id: must not exceed 192 characters\nrelations[3987].id: must not exceed 192 characters" },
-    "prepared": {
-      "revision": "4b6f43863ef06a3ef0c3f1eadec4a4299ebd1cef",
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
+    "asIs": {
+      "revision": "fa78a1be7c276e48d806f33ad8352b007fe5cc1e",
       "ok": true,
-      "ms": 24791,
-      "entities": 3897,
-      "relations": 9841,
-      "kinds": { "code": 3400, "component": 485, "container": 11, "softwareSystem": 1 },
+      "ms": 23582,
+      "entities": 4031,
+      "relations": 10420,
+      "kinds": { "code": 3518, "component": 501, "container": 11, "softwareSystem": 1 },
       "containers": [
         { "id": "container:packages-client", "name": "@trpc/client", "components": 40 },
         { "id": "container:packages-next", "name": "@trpc/next", "components": 13 },
-        { "id": "container:packages-openapi", "name": "@trpc/openapi", "components": 184 },
+        { "id": "container:packages-openapi", "name": "@trpc/openapi", "components": 200 },
         { "id": "container:packages-react-query", "name": "@trpc/react-query", "components": 36 },
         { "id": "container:packages-server", "name": "@trpc/server", "components": 85 },
         { "id": "container:packages-tanstack-react-query", "name": "@trpc/tanstack-react-query", "components": 14 },
@@ -27,7 +25,7 @@
         { "id": "container:www", "name": "www", "components": 42 },
         { "id": "container:www-og-image", "name": "@www/og-image", "components": 15 }
       ],
-      "signals": { "entities": 3897, "containers": 11, "components": 485, "files": 497, "maxDepth": 6, "medianDepth": 5, "language": "TypeScript" }
+      "signals": { "entities": 4031, "containers": 11, "components": 501, "files": 513, "maxDepth": 6, "medianDepth": 5, "language": "TypeScript" }
     }
   },
   "ask": {
@@ -2238,5 +2236,11 @@
     ],
     "rateLimited": 0
   },
-  "stageMs": { "claims": 11681, "ask": 32065, "blocks": 1812 }
+  "stageMs": { "claims": 11681, "ask": 32065, "blocks": 1812, "fetch": 18, "scan": 23667 },
+  "paidStagesCorpus": {
+    "preparedCommitSha": "4b6f43863ef06a3ef0c3f1eadec4a4299ebd1cef",
+    "evalPrepare": { "dropPaths": ["packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi"], "why": "As-is scan fails validation: 5 relation ids exceed 192 characters, all between generated heyapi client files under packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi (the longest router name). Dropping only that generated test client dir lets the rest of the monorepo scan.", "droppedPaths": 16 },
+    "stages": ["enrich", "claims", "ask", "blocks"],
+    "note": "Recorded over the CLA-289 eval-prepared commit, before its evalPrepare was retired; re-running a listed stage drops it here."
+  }
 }

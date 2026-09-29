@@ -3,14 +3,12 @@
   "slug": "BurntSushi__ripgrep",
   "repository": "BurntSushi/ripgrep",
   "commitSha": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
-  "preparedCommitSha": "fa7b8f13b610f5b90ed5e0ecbd5824cb69d90f47",
-  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (HomebrewFormula): \"Committed source requires materialized files; symlink/submodule is unsupported\".", "droppedPaths": 1 },
   "scan": {
-    "asIs": { "revision": "3fce3b5bb0236da2df6d99672afb8a719642eca7", "ok": false, "ms": 30, "error": "Committed source requires materialized files; symlink/submodule is unsupported: HomebrewFormula" },
-    "prepared": {
-      "revision": "fa7b8f13b610f5b90ed5e0ecbd5824cb69d90f47",
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
+    "asIs": {
+      "revision": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
       "ok": true,
-      "ms": 20155,
+      "ms": 22038,
       "entities": 2831,
       "relations": 5332,
       "kinds": { "code": 2731, "component": 88, "container": 11, "softwareSystem": 1 },
@@ -27,7 +25,8 @@
         { "id": "container:crates-regex", "name": "regex", "components": 9 },
         { "id": "container:crates-searcher", "name": "searcher", "components": 10 }
       ],
-      "signals": { "entities": 2831, "containers": 11, "components": 88, "files": 100, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
+      "signals": { "entities": 2831, "containers": 11, "components": 88, "files": 100, "maxDepth": 4, "medianDepth": 3, "language": "Rust" },
+      "limitations": ["1 committed symlink(s) were not scanned as source: 1 resolve inside the repository (followed only for config/imports; not listed as separate source files)."]
     }
   },
   "ask": {
@@ -1720,5 +1719,11 @@
     ],
     "rateLimited": 0
   },
-  "stageMs": { "claims": 27184, "ask": 26599, "blocks": 1558 }
+  "stageMs": { "claims": 27184, "ask": 26599, "blocks": 1558, "fetch": 887, "scan": 22087 },
+  "paidStagesCorpus": {
+    "preparedCommitSha": "fa7b8f13b610f5b90ed5e0ecbd5824cb69d90f47",
+    "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (HomebrewFormula): \"Committed source requires materialized files; symlink/submodule is unsupported\".", "droppedPaths": 1 },
+    "stages": ["enrich", "claims", "ask", "blocks"],
+    "note": "Recorded over the CLA-289 eval-prepared commit, before its evalPrepare was retired; re-running a listed stage drops it here."
+  }
 }

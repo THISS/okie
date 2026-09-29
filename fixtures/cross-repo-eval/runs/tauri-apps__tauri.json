@@ -4,10 +4,11 @@
   "repository": "tauri-apps/tauri",
   "commitSha": "d15cf9b1e481035a248227c791fde5740fcfe0ba",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "d15cf9b1e481035a248227c791fde5740fcfe0ba",
       "ok": true,
-      "ms": 96155,
+      "ms": 99768,
       "entities": 5233,
       "relations": 10536,
       "kinds": { "code": 4897, "component": 316, "container": 19, "softwareSystem": 1 },
@@ -2055,5 +2056,5 @@
     ],
     "rateLimited": 0
   },
-  "stageMs": { "claims": 39187, "ask": 34038, "blocks": 1648 }
+  "stageMs": { "claims": 39187, "ask": 34038, "blocks": 1648, "fetch": 2277, "scan": 99851 }
 }

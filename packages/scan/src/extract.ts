@@ -12,7 +12,7 @@ import {
 } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
 import type { AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
-import { pathSlug, resolveCollisions, slug, typedId } from "./ids.js";
+import { pathSlug, resolveCollisions, slug, typedId, unboundedTypedId } from "./ids.js";
 import { rustTopLevelItems } from "./extract-rust.js";
 
 /** Max import sites retained as evidence on one aggregated relation. */
@@ -1620,7 +1620,9 @@ export function attachDuplicateRelations(
       .filter((source): source is NonNullable<typeof source> => Boolean(source))
       .map(source => ({ source }));
     if (evidence.length === 0) continue;
-    const id = typedId("relation", "dup", left.id, right.id);
+    // Snapshot-only overlay (never gate-validated): deliberately unbounded so ids already
+    // published for long-path clone pairs do not move (CLA-299).
+    const id = unboundedTypedId("relation", "dup", left.id, right.id);
     added.push({
       id,
       from: left.id,

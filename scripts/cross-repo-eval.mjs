@@ -270,7 +270,10 @@ function scanAt(repo, revision) {
   const started = performance.now();
   try {
     const artifacts = scanRepository(repoDir(repo), { revision, analysisMode: 'full', codeSurface: 'all' });
-    return { artifacts, outcome: core.scanOutcome(revision, Math.round(performance.now() - started), artifacts.snapshot, repo.language) };
+    const outcome = core.scanOutcome(revision, Math.round(performance.now() - started), artifacts.snapshot, repo.language);
+    // Acquisition/discovery limitations (skipped symlinks/submodules, testdata/ exclusion): CLA-299.
+    if (artifacts.analysis?.limitations?.length) outcome.limitations = artifacts.analysis.limitations;
+    return { artifacts, outcome };
   } catch (error) {
     const message = scrubPaths(error instanceof Error ? error.message : String(error)).split('\n').slice(0, 4).join('\n').slice(0, 600);
     return { outcome: { revision, ok: false, ms: Math.round(performance.now() - started), error: message } };
@@ -728,6 +731,25 @@ async function pool(items, limit, worker) {
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => { while (next < items.length) { const at = next; next += 1; await worker(items[at], at); } }));
 }
 
+const PAID_RECORDS = { enrich: 'enrichment', claims: 'claims', ask: 'ask', blocks: 'blocks' };
+
+/**
+ * When a repo's evalPrepare is retired from the manifest (CLA-299: the scanner now handles the tree as-is), paid
+ * records made over the old prepared commit are kept, not re-bought; `paidStagesCorpus` says which commit they saw.
+ */
+function retirePreparedCorpus(repo, run) {
+  if (repo.evalPrepare || !run.preparedCommitSha || run.paidStagesCorpus) return;
+  const stages = Object.keys(PAID_RECORDS).filter(name => run[PAID_RECORDS[name]] !== undefined);
+  if (!stages.length) return;
+  run.paidStagesCorpus = { preparedCommitSha: run.preparedCommitSha, evalPrepare: run.evalPrepare, stages, note: 'Recorded over the CLA-289 eval-prepared commit, before its evalPrepare was retired; re-running a listed stage drops it here.' };
+}
+
+function clearRetiredStage(run, name) {
+  if (!run.paidStagesCorpus) return;
+  run.paidStagesCorpus.stages = run.paidStagesCorpus.stages.filter(stage => stage !== name);
+  if (!run.paidStagesCorpus.stages.length) delete run.paidStagesCorpus;
+}
+
 const SYNC_STAGES = new Set(['fetch', 'scan']);
 
 async function main() {
@@ -745,7 +767,12 @@ async function main() {
     for (const name of stages.filter(item => SYNC_STAGES.has(item) || item === 'enrich')) {
       const started = performance.now();
       try {
-        if (name === 'fetch') { const prepared = fetchRepo(repo); if (prepared.preparedCommitSha) run.preparedCommitSha = prepared.preparedCommitSha; else delete run.preparedCommitSha; if (repo.evalPrepare) run.evalPrepare = { ...repo.evalPrepare, droppedPaths: prepared.droppedPaths }; else delete run.evalPrepare; }
+        if (name === 'fetch') {
+          const prepared = fetchRepo(repo);
+          retirePreparedCorpus(repo, run);
+          if (prepared.preparedCommitSha) run.preparedCommitSha = prepared.preparedCommitSha; else delete run.preparedCommitSha;
+          if (repo.evalPrepare) run.evalPrepare = { ...repo.evalPrepare, droppedPaths: prepared.droppedPaths }; else delete run.evalPrepare;
+        }
         if (name === 'scan') scanStage(repo, run);
         if (name === 'enrich') prepareEnrich(repo);
         if (SYNC_STAGES.has(name)) record(repo, name, Math.round(performance.now() - started));
@@ -772,6 +799,7 @@ async function main() {
         if (name === 'ask') outcome = await askStage(repo, run);
         if (name === 'blocks') outcome = await blocksStage(repo, run);
         // Fake passes stay in --work, so their timing does too. Enrichment includes its scan-phase preparation.
+        if (outcome !== 'skipped' && !fake && !replay) clearRetiredStage(run, name);
         if (outcome !== 'skipped' && !(fake && (name === 'enrich' || name === 'claims'))) record(repo, name, Math.round(performance.now() - started) + (name === 'enrich' ? enrichPrepared.get(repo.slug)?.ms ?? 0 : 0));
       } catch (error) {
         console.error(`${repo.slug}: ${name} failed: ${redact(error instanceof Error ? error.message : String(error))}`);

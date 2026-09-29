@@ -4,10 +4,11 @@
   "repository": "spring-projects/spring-petclinic",
   "commitSha": "818c4136ea971c21674525f9053de0d9c7ad8cfe",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "818c4136ea971c21674525f9053de0d9c7ad8cfe",
       "ok": true,
-      "ms": 81,
+      "ms": 76,
       "entities": 2,
       "relations": 0,
       "kinds": { "container": 1, "softwareSystem": 1 },
@@ -293,5 +294,5 @@
     ]
   },
   "enrichmentSkipped": { "reason": "skipped: scanner-blind (Java; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)" },
-  "stageMs": { "ask": 10282, "blocks": 482 }
+  "stageMs": { "ask": 10282, "blocks": 482, "fetch": 818, "scan": 85 }
 }

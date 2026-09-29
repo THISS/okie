@@ -3,21 +3,20 @@
   "slug": "tokio-rs__axum",
   "repository": "tokio-rs/axum",
   "commitSha": "d775cb202bea5f86d7b5f5cd3b36717944635858",
-  "preparedCommitSha": "fff69c5fb826c3d44f83d820560d26a80d648d65",
-  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on committed symlinks (README.md and others): \"symlink/submodule is unsupported\".", "droppedPaths": 5 },
   "scan": {
-    "asIs": { "revision": "d775cb202bea5f86d7b5f5cd3b36717944635858", "ok": false, "ms": 35, "error": "Committed source requires materialized files; symlink/submodule is unsupported: README.md" },
-    "prepared": {
-      "revision": "fff69c5fb826c3d44f83d820560d26a80d648d65",
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
+    "asIs": {
+      "revision": "d775cb202bea5f86d7b5f5cd3b36717944635858",
       "ok": true,
-      "ms": 141738,
+      "ms": 131488,
       "entities": 1428,
       "relations": 1902,
       "kinds": { "code": 1310, "component": 116, "container": 1, "softwareSystem": 1 },
       "containers": [
         { "id": "container:tokio-rs-axum", "name": "tokio-rs_axum", "components": 116 }
       ],
-      "signals": { "entities": 1428, "containers": 1, "components": 116, "files": 117, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
+      "signals": { "entities": 1428, "containers": 1, "components": 116, "files": 118, "maxDepth": 4, "medianDepth": 3, "language": "Rust" },
+      "limitations": ["5 committed symlink(s) were not scanned as source: 5 resolve inside the repository (followed only for config/imports; not listed as separate source files)."]
     }
   },
   "ask": {
@@ -1658,7 +1657,7 @@
       { "scopeId": "system:tokio-rs-axum", "kind": "softwareSystem", "class": "rejected-by-validator", "error": "malformed explanation: evidence is required" }
     ]
   },
-  "stageMs": { "blocks": 529, "claims": 27677, "ask": 26067 },
+  "stageMs": { "blocks": 529, "claims": 27677, "ask": 26067, "fetch": 930, "scan": 131512 },
   "claims": {
     "mode": "live",
     "modelId": "jev-1.13.0",
@@ -1812,5 +1811,11 @@
       { "scopeId": "component:axum-src-test-helpers-test-client-rs", "claimId": "c78630c04a04352a0d991", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.95 }
     ],
     "rateLimited": 0
+  },
+  "paidStagesCorpus": {
+    "preparedCommitSha": "fff69c5fb826c3d44f83d820560d26a80d648d65",
+    "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on committed symlinks (README.md and others): \"symlink/submodule is unsupported\".", "droppedPaths": 5 },
+    "stages": ["enrich", "claims", "ask", "blocks"],
+    "note": "Recorded over the CLA-289 eval-prepared commit, before its evalPrepare was retired; re-running a listed stage drops it here."
   }
 }

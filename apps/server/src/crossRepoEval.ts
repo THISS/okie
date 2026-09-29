@@ -132,6 +132,8 @@ export interface RepoSignals {
 export interface ScanOutcome {
   revision: string; ok: boolean; ms: number;
   error?: string;
+  /** Scan-level limitations (skipped symlinks/submodules, excluded test data) — CLA-299. */
+  limitations?: string[];
   entities?: number; relations?: number;
   kinds?: Record<string, number>;
   containers?: Array<{ id: string; name: string; components: number }>;
@@ -252,6 +254,8 @@ export interface CrossRepoRun {
   slug: string; repository: string; commitSha: string;
   preparedCommitSha?: string;
   evalPrepare?: EvalPrepare & { droppedPaths?: number };
+  /** Paid stages still recorded over a retired evalPrepare commit (CLA-299). */
+  paidStagesCorpus?: { preparedCommitSha: string; evalPrepare?: EvalPrepare & { droppedPaths?: number }; stages: string[]; note: string };
   scan?: { provenance?: Provenance; asIs: ScanOutcome; prepared?: ScanOutcome };
   enrichment?: EnrichmentRecord;
   /** Enrichment deliberately not run (e.g. the scanner cannot see the repo's language). */

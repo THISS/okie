@@ -2,6 +2,21 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
+import {
+  classifyTreeSymlinkTargets,
+  countSymlink,
+  detachSymlinks,
+  emptySkippedEntries,
+  foldCollidingPaths,
+  placeSymlinkSafely,
+  isBufferOverflow,
+  MAX_SYMLINK_TARGET_BYTES,
+  planBlobChunks,
+  SCAN_SIZE_LIMITS,
+  ScanSizeLimitError,
+  type ScanSizeLimits,
+  type SkippedTreeEntries,
+} from "./source-tree.js";
 
 /**
  * An immutable pin of the scanned source. `commitSha` is the REAL commit (unlike
@@ -34,43 +49,138 @@ export interface AcquiredCommittedTree {
   installationRoot?: string;
   pin: RepositoryPin;
   sourceName: string;
+  /** Symlinks not kept (escaping / dangling / loop) and submodules; kept in-repo links are counted by discovery. */
+  skipped: SkippedTreeEntries;
   cleanup(): void;
+}
+
+/** Test seam: override {@link SCAN_SIZE_LIMITS} (e.g. a tiny `batchBytes` to exercise chunking). */
+export interface AcquireCommittedTreeOptions {
+  limits?: Partial<ScanSizeLimits>;
+  /** Directory the temporary tree is created in (default `os.tmpdir()`). */
+  tempRoot?: string;
+}
+
+interface TreeEntry { mode: string; kind: string; hash: string; size: number; path: string }
+
+/** Lists the committed tree with sizes, bounded by `maxListingBytes`. */
+function listCommittedTree(sourceRoot: string, commitSha: string, maxListingBytes: number): TreeEntry[] {
+  let listing: string;
+  try {
+    listing = execFileSync("git", ["--no-replace-objects", "ls-tree", "-rlz", "--full-tree", commitSha], { cwd: sourceRoot, encoding: "utf8", maxBuffer: maxListingBytes });
+  } catch (error) {
+    if (isBufferOverflow(error)) throw new ScanSizeLimitError("listing", maxListingBytes, maxListingBytes);
+    throw error;
+  }
+  return listing.split("\0").filter(Boolean).map(entry => {
+    const tab = entry.indexOf("\t");
+    // `<mode> SP <type> SP <object> SP+ <size>\t<path>`; size is `-` for gitlinks.
+    const [mode = "", kind = "", hash = "", sizeText = ""] = tab < 0 ? [] : entry.slice(0, tab).split(/ +/);
+    const path = entry.slice(tab + 1);
+    if (tab < 0 || !hash || path.split("/").some(part => !part || part === ".." || part === ".") || path.includes("\\")) throw new Error("Unsupported committed source path.");
+    const size = kind === "blob" ? Number(sizeText) : 0;
+    if (!Number.isSafeInteger(size) || size < 0) throw new Error(`Unsupported committed source entry size: ${path}`);
+    return { mode, kind, hash, size, path };
+  });
+}
+
+/**
+ * Reads blobs with `git cat-file --batch` in chunks whose summed size stays under
+ * `batchBytes` (a single larger blob gets a call of its own sized to it), handing each
+ * blob to `onBlob` as its chunk returns — the repository is never buffered whole.
+ */
+export function readBlobsInChunks(sourceRoot: string, entries: readonly { hash: string; size: number }[], batchBytes: number, onBlob: (index: number, bytes: Buffer) => void): void {
+  for (const [start, end] of planBlobChunks(entries.map(entry => entry.size), batchBytes)) {
+    const chunk = entries.slice(start, end);
+    const bytes = chunk.reduce((sum, entry) => sum + entry.size, 0);
+    // Each record is `<hash> blob <size>\n<bytes>\n`; 128 bytes covers any header.
+    const maxBuffer = bytes + chunk.length * 128 + 1024;
+    const output = execFileSync("git", ["--no-replace-objects", "cat-file", "--batch"], { cwd: sourceRoot, input: chunk.map(entry => entry.hash + "\n").join(""), maxBuffer });
+    let offset = 0;
+    chunk.forEach((entry, position) => {
+      const newline = output.indexOf(10, offset);
+      const [hash, kind, sizeText] = output.subarray(offset, newline).toString("utf8").split(" ");
+      const size = Number(sizeText);
+      if (newline < offset || hash !== entry.hash || kind !== "blob" || !Number.isSafeInteger(size) || size !== entry.size || newline + 1 + size >= output.length) throw new Error("Incomplete committed source blob.");
+      onBlob(start + position, output.subarray(newline + 1, newline + 1 + size));
+      offset = newline + 1 + size + 1;
+    });
+  }
 }
 
 /**
  * Materializes a committed tree without reading, changing, or checking out the
  * caller's working tree. Dirty and untracked files are absent by construction.
+ * A symlink whose target lexically resolves inside the tree is materialized as the same
+ * relative link (config reads and import resolution may follow it; discovery never
+ * lists it as a source file); escaping, absolute, dangling and looping links are never
+ * written, and the same filesystem pass the tarball path uses then removes any written
+ * link that really escapes. Submodules are skipped. `skipped` counts what was NOT kept
+ * (internal links are counted by the discovery walk). A tree over
+ * {@link SCAN_SIZE_LIMITS} fails with {@link ScanSizeLimitError} before any blob is read.
  */
-export function acquireCommittedTree(sourceRoot: string, revision = "HEAD"): AcquiredCommittedTree {
+export function acquireCommittedTree(sourceRoot: string, revision = "HEAD", options: AcquireCommittedTreeOptions = {}): AcquiredCommittedTree {
+  const limits = { ...SCAN_SIZE_LIMITS, ...options.limits };
   const pin = pinRepository(sourceRoot, revision);
   const sourceName = basename(git(sourceRoot, ['rev-parse', '--show-toplevel']));
-  const temporary = mkdtempSync(join(tmpdir(), "okie-committed-"));
+  // Read raw blobs: git archive applies export-ignore/export-subst attributes,
+  // and checkout can run filters. Neither is an exact view of committed bytes.
+  const entries = listCommittedTree(sourceRoot, pin.commitSha, limits.maxListingBytes);
+  const files: TreeEntry[] = [];
+  const links: TreeEntry[] = [];
+  let submodules = 0;
+  for (const entry of entries) {
+    if (entry.kind === "commit" && entry.mode === "160000") submodules += 1;
+    else if (entry.kind === "blob" && entry.mode === "120000") links.push(entry);
+    else if (entry.kind === "blob" && (entry.mode === "100644" || entry.mode === "100755")) files.push(entry);
+    else throw new Error(`Unsupported committed source entry (mode ${entry.mode}, ${entry.kind}): ${entry.path}`);
+  }
+  if (files.length + links.length > limits.maxFiles) throw new ScanSizeLimitError("files", limits.maxFiles, files.length + links.length);
+  const totalBytes = files.reduce((sum, entry) => sum + entry.size, 0);
+  if (totalBytes > limits.maxBytes) throw new ScanSizeLimitError("bytes", limits.maxBytes, totalBytes);
+
+  // Symlink targets are tiny blobs; read them only to classify. A "target" longer than
+  // PATH_MAX cannot resolve and is never read.
+  const readableLinks = links.filter(entry => entry.size <= MAX_SYMLINK_TARGET_BYTES);
+  const linkTargets = new Map<string, string>();
+  readBlobsInChunks(sourceRoot, readableLinks, limits.batchBytes, (index, bytes) => { linkTargets.set(readableLinks[index]!.path, bytes.toString("utf8")); });
+  const linkClasses = classifyTreeSymlinkTargets(linkTargets, files.map(entry => entry.path));
+  const skipped: SkippedTreeEntries = { ...emptySkippedEntries(), symlinksUnresolved: links.length - readableLinks.length, submodules };
+  for (const kind of linkClasses.values()) if (kind !== "internal") countSymlink(skipped, kind);
+
+  const temporary = mkdtempSync(join(options.tempRoot ?? tmpdir(), "okie-committed-"));
   const root = join(temporary, sourceName);
   try {
     mkdirSync(root);
-    // Read raw blobs: git archive applies export-ignore/export-subst attributes,
-    // and checkout can run filters. Neither is an exact view of committed bytes.
-    const listing = execFileSync('git', ['--no-replace-objects', 'ls-tree', '-rz', '--full-tree', pin.commitSha], { cwd: sourceRoot, encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
-    const entries = listing.split('\0').filter(Boolean).map(entry => {
-      const tab = entry.indexOf('\t');
-      const [mode, kind, hash] = entry.slice(0, tab).split(' ');
-      const path = entry.slice(tab + 1);
-      if (tab < 0 || !hash || path.split('/').some(part => !part || part === '..' || part === '.') || path.includes('\\')) throw new Error('Unsupported committed source path.');
-      if (kind !== 'blob' || mode === '120000') throw new Error(`Committed source requires materialized files; symlink/submodule is unsupported: ${path}`);
-      return { hash, path, mode };
-    });
-    const blobs = execFileSync('git', ['--no-replace-objects', 'cat-file', '--batch'], { cwd: sourceRoot, input: entries.map(entry => entry.hash + '\n').join(''), maxBuffer: 128 * 1024 * 1024 });
-    let offset = 0;
-    for (const entry of entries) {
-      const newline = blobs.indexOf(10, offset);
-      const [hash, kind, sizeText] = blobs.subarray(offset, newline).toString('utf8').split(' ');
-      const size = Number(sizeText);
-      if (newline < offset || hash !== entry.hash || kind !== 'blob' || !Number.isSafeInteger(size) || size < 0 || newline + 1 + size >= blobs.length) throw new Error('Incomplete committed source blob.');
+    // Regular files first (no link exists yet, so no write can pass through one), in
+    // ls-tree byte order. On a case-insensitive filesystem two case-aliased files land in
+    // one file (first spelling, last content) — deterministic for a given filesystem; a
+    // file/directory conflict (`D` vs `d/x`) skips the file and is counted, never crashes.
+    let pathCollisions = 0;
+    readBlobsInChunks(sourceRoot, files, limits.batchBytes, (index, bytes) => {
+      const entry = files[index]!;
       const target = join(root, entry.path);
-      mkdirSync(dirname(target), { recursive: true });
-      writeFileSync(target, blobs.subarray(newline + 1, newline + 1 + size), { mode: entry.mode === '100755' ? 0o755 : 0o644 });
-      offset = newline + 1 + size + 1;
+      try {
+        mkdirSync(dirname(target), { recursive: true });
+        writeFileSync(target, bytes, { mode: entry.mode === '100755' ? 0o755 : 0o644 });
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== "EEXIST" && code !== "ENOTDIR" && code !== "EISDIR") throw error;
+        pathCollisions += 1;
+      }
+    });
+    if (pathCollisions) skipped.pathCollisions = pathCollisions;
+    // In-root links, only where provably safe: a link whose path (or a parent) folds onto
+    // another entry's spelling is skipped outright, and each placement re-checks its parents
+    // component by component. Every skipped link counts as unresolved (not followed).
+    const colliding = foldCollidingPaths(entries.map(entry => entry.path), links.map(entry => entry.path));
+    for (const [path, kind] of linkClasses) {
+      if (kind !== "internal") continue;
+      if (colliding.has(path) || !placeSymlinkSafely(root, path, linkTargets.get(path)!)) countSymlink(skipped, "unresolved");
     }
+    const removed = detachSymlinks(root);
+    skipped.symlinksEscaping += removed.symlinksEscaping;
+    skipped.symlinksUnresolved += removed.symlinksUnresolved;
   } catch (error) {
     rmSync(temporary, { recursive: true, force: true });
     throw error;
@@ -81,6 +191,7 @@ export function acquireCommittedTree(sourceRoot: string, revision = "HEAD"): Acq
     installationRoot: sourceRoot,
     pin,
     sourceName,
+    skipped,
     cleanup: () => {
       if (!cleaned) rmSync(temporary, { recursive: true, force: true });
       cleaned = true;

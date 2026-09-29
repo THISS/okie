@@ -216,3 +216,28 @@ test("tarball walk supports a single-package (non-workspace) repo", () => {
     assert.deepEqual(discovery.sourceFiles, ["index.ts"]);
   });
 });
+
+test("conventional testdata/ directories are excluded and counted (CLA-299)", () => {
+  const files = {
+    "package.json": JSON.stringify({ name: "compiler" }),
+    "tsconfig.json": "{}",
+    "src/checker.ts": "export const check = 1;\n",
+    "tsc/testdata/tests/cases/await-using.ts": "await using x = y;\n",
+    "tsc/testdata/baselines/reference/a.js": "1;\n",
+    "testdata/fixture.tsx": "export {};\n",
+    // Already excluded by the per-file rules: never counted as a testdata exclusion.
+    "tsc/testdata/lib.d.ts": "export {};\n",
+    "tsc/testdata/runner.test.ts": "1;\n",
+    "src/testdata-helpers.ts": "export const helper = 1;\n",
+  };
+  withRepo(files, dir => {
+    const discovery = discoverRepository(dir);
+    assert.deepEqual(discovery.sourceFiles, ["src/checker.ts", "src/testdata-helpers.ts"], "only a testdata/ DIRECTORY is excluded");
+    assert.equal(discovery.summary.excludedTestDataFiles, 2, "only files newly excluded by the testdata rule are counted (.d.ts / *.test.ts were already out; .js is not scanned in a TS repo)");
+  });
+  withTree(files, dir => assert.equal(discoverExtractedTree(dir).summary.excludedTestDataFiles, 2));
+  withRepo({ "package.json": JSON.stringify({ name: "plain" }), "index.ts": "export {};\n" }, dir => {
+    assert.equal("excludedTestDataFiles" in discoverRepository(dir).summary, false, "absent when nothing was excluded");
+    assert.equal("skippedEntries" in discoverRepository(dir).summary, false);
+  });
+});

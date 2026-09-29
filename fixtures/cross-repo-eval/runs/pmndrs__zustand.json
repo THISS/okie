@@ -4,10 +4,11 @@
   "repository": "pmndrs/zustand",
   "commitSha": "b57db4f86ef179285da216eeb291266da82c361c",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "b57db4f86ef179285da216eeb291266da82c361c",
       "ok": true,
-      "ms": 10049,
+      "ms": 7350,
       "entities": 173,
       "relations": 219,
       "kinds": { "code": 141, "component": 30, "container": 1, "softwareSystem": 1 },
@@ -1344,5 +1345,5 @@
       { "scopeId": "component:tests-test-utils-ts", "claimId": "cd1ae2beaa3f327a5373a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.64 }
     ]
   },
-  "stageMs": { "blocks": 741 }
+  "stageMs": { "blocks": 741, "fetch": 897, "scan": 7359 }
 }

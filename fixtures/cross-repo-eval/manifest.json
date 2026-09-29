@@ -1,6 +1,6 @@
 {
   "schema": "cross-repo-eval-manifest/v1",
-  "note": "Public repos pinned to one commit each. Sources are fetched by scripts/cross-repo-eval.mjs into a scratch dir and never committed. evalPrepare lists eval-only tree edits (a local derivative commit) applied only after the as-is scan outcome is recorded, so downstream rules can still be measured on repos the scanner rejects as-is.",
+  "note": "Public repos pinned to one commit each. Sources are fetched by scripts/cross-repo-eval.mjs into a scratch dir and never committed. evalPrepare lists eval-only tree edits (a local derivative commit) applied only after the as-is scan outcome is recorded, so downstream rules can still be measured on repos the scanner rejects as-is. CLA-299 retired every evalPrepare: the scanner now skips committed symlinks/submodules (counted in limitations), reads blobs in bounded chunks, excludes testdata/ trees and bounds ids past 192 chars, so all repos scan as-is.",
   "repos": [
     {
       "slug": "vercel__commerce",
@@ -56,12 +56,6 @@
       "size": {
         "trackedFiles": 1647,
         "checkoutMB": 11.4
-      },
-      "evalPrepare": {
-        "dropPaths": [
-          "packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi"
-        ],
-        "why": "As-is scan fails validation: 5 relation ids exceed 192 characters, all between generated heyapi client files under packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi (the longest router name). Dropping only that generated test client dir lets the rest of the monorepo scan."
       }
     },
     {
@@ -118,10 +112,6 @@
       "size": {
         "trackedFiles": 237,
         "checkoutMB": 3.7
-      },
-      "evalPrepare": {
-        "dropSymlinks": true,
-        "why": "As-is scan aborts on a committed symlink (HomebrewFormula): \"Committed source requires materialized files; symlink/submodule is unsupported\"."
       }
     },
     {
@@ -136,10 +126,6 @@
       "size": {
         "trackedFiles": 503,
         "checkoutMB": 3.3
-      },
-      "evalPrepare": {
-        "dropSymlinks": true,
-        "why": "As-is scan aborts on committed symlinks (README.md and others): \"symlink/submodule is unsupported\"."
       }
     },
     {
@@ -154,12 +140,6 @@
       "size": {
         "trackedFiles": 66763,
         "checkoutMB": 412.5
-      },
-      "evalPrepare": {
-        "dropPaths": [
-          "tsc/testdata"
-        ],
-        "why": "As-is scan fails with \"spawnSync git ENOBUFS\": every blob is read through one 128 MB git buffer; tsc/testdata holds ~61k generated baselines."
       }
     },
     {
@@ -202,10 +182,6 @@
       "size": {
         "trackedFiles": 4675,
         "checkoutMB": 67.3
-      },
-      "evalPrepare": {
-        "dropSymlinks": true,
-        "why": "As-is scan aborts on a committed symlink (CLAUDE.md): \"symlink/submodule is unsupported\"."
       }
     },
     {
@@ -220,10 +196,6 @@
       "size": {
         "trackedFiles": 1861,
         "checkoutMB": 10.6
-      },
-      "evalPrepare": {
-        "dropSymlinks": true,
-        "why": "As-is scan aborts on a committed symlink (.claude/skills): \"symlink/submodule is unsupported\"."
       }
     },
     {

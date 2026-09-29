@@ -3,21 +3,20 @@
   "slug": "microsoft__TypeScript",
   "repository": "microsoft/TypeScript",
   "commitSha": "21b3aeb3bd376eb1c3ea89963dc8fd7ee341988a",
-  "preparedCommitSha": "196af54533af040e998d56f8901175f7d8182d7d",
-  "evalPrepare": { "dropPaths": ["tsc/testdata"], "why": "As-is scan fails with \"spawnSync git ENOBUFS\": every blob is read through one 128 MB git buffer; tsc/testdata holds ~61k generated baselines.", "droppedPaths": 61117 },
   "scan": {
-    "asIs": { "revision": "21b3aeb3bd376eb1c3ea89963dc8fd7ee341988a", "ok": false, "ms": 858, "error": "spawnSync git ENOBUFS" },
-    "prepared": {
-      "revision": "196af54533af040e998d56f8901175f7d8182d7d",
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
+    "asIs": {
+      "revision": "21b3aeb3bd376eb1c3ea89963dc8fd7ee341988a",
       "ok": true,
-      "ms": 39119,
+      "ms": 42029,
       "entities": 3267,
       "relations": 39301,
       "kinds": { "code": 3107, "component": 158, "container": 1, "softwareSystem": 1 },
       "containers": [
         { "id": "container:typescript-repo", "name": "@typescript/repo", "components": 158 }
       ],
-      "signals": { "entities": 3267, "containers": 1, "components": 158, "files": 160, "maxDepth": 5, "medianDepth": 4, "language": "Go+TypeScript" }
+      "signals": { "entities": 3267, "containers": 1, "components": 158, "files": 160, "maxDepth": 5, "medianDepth": 4, "language": "Go+TypeScript" },
+      "limitations": ["12814 source file(s) under testdata/ directories were excluded as test data."]
     }
   },
   "ask": {
@@ -1571,5 +1570,11 @@
     ],
     "rateLimited": 0
   },
-  "stageMs": { "claims": 18530, "ask": 25042, "blocks": 707 }
+  "stageMs": { "claims": 18530, "ask": 25042, "blocks": 707, "fetch": 21, "scan": 42214 },
+  "paidStagesCorpus": {
+    "preparedCommitSha": "196af54533af040e998d56f8901175f7d8182d7d",
+    "evalPrepare": { "dropPaths": ["tsc/testdata"], "why": "As-is scan fails with \"spawnSync git ENOBUFS\": every blob is read through one 128 MB git buffer; tsc/testdata holds ~61k generated baselines.", "droppedPaths": 61117 },
+    "stages": ["enrich", "claims", "ask", "blocks"],
+    "note": "Recorded over the CLA-289 eval-prepared commit, before its evalPrepare was retired; re-running a listed stage drops it here."
+  }
 }

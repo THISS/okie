@@ -149,3 +149,15 @@ test('portable container-membership report (CLA-263) round-trips and rejects mal
     assert.throws(() => parsePortableAtlas(JSON.stringify(withMembership(membership))), /container-membership/, JSON.stringify(membership));
   }
 });
+
+test('portable scan-level limitations (CLA-299) round-trip and must be strings', () => {
+  const bundle = fixture();
+  bundle.analysis.limitations = ['1 Git submodule(s) were not scanned (their content is another repository).'];
+  assert.deepEqual(parsePortableAtlas(serializePortableAtlas(bundle)), bundle);
+  assert.equal(parsePortableAtlas(JSON.stringify(fixture())).analysis.limitations, undefined, 'optional');
+  for (const invalid of ['x', [1], {}]) {
+    const bad = fixture();
+    (bad.analysis as Record<string, unknown>).limitations = invalid;
+    assert.throws(() => parsePortableAtlas(JSON.stringify(bad)), /limitations list/);
+  }
+});

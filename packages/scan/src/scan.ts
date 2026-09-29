@@ -33,6 +33,7 @@ import { mergeEnrichment, type EnrichmentReport } from "./enrich.js";
 import { applyComponentMembership, type ComponentMapInput, type ComponentMapReport } from './component-map.js';
 import { buildEnrichmentPackets, type EmittedPackets } from "./packet.js";
 import { acquireCommittedTree, type AcquiredCommittedTree, type RepositoryPin } from "./pin.js";
+import { skippedEntryLimitations, type SkippedTreeEntries } from "./source-tree.js";
 import {
   acquireGithubTree,
   createDefaultGithubClient,
@@ -259,6 +260,7 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   const nonMemberPaths = new Set(discovery.sourceFiles.filter(path => discovery.unitByFile.get(path) === TOOLING_UNIT_KEY));
   const membership = membershipReport(discovery.summary.reexportAliases, membershipDiagnostics(extraction, readFile, nonMemberPaths));
   const hasMembershipFacts = membership.reexportAliases.length > 0 || membership.diagnostics.length > 0;
+  const acquisitionLimitations = discoveryLimitations(discovery.summary);
 
   const metadata: ArchitectureExtractionSnapshotMetadata = {
     snapshotId: typedId("snapshot", repositorySlug, pin.commitSha.slice(0, 12)),
@@ -354,6 +356,7 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
       adapters: params.languageAnalysis?.coverage.map(({ indexedFiles: _files, ...coverage }) => coverage) ??
         [...new Set(discovery.sourceFiles.map(path => path.endsWith('.rs') ? 'rust' : 'typescript/javascript'))].map(language => ({ language, tool: language === 'rust' ? 'tree-sitter-rust' : 'typescript', version: 'syntax-v1', coverage: 'syntax' as const, limitations: ['Quick scan: project-wide semantic resolution was not requested.'] })),
       ...(hasMembershipFacts ? { membership } : {}),
+      ...(acquisitionLimitations.length > 0 ? { limitations: acquisitionLimitations } : {}),
     },
     dependencies: buildDependencyFacts({
       commitSha: pin.commitSha,
@@ -370,6 +373,19 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
   };
 }
 
+/**
+ * Scan-level (not per-analyzer) limitations from source acquisition and discovery:
+ * skipped symlinks/submodules and built-in test-data exclusions. Deterministic and
+ * empty unless something was actually left out, so a repo without such entries keeps
+ * a byte-identical bundle.
+ */
+export function discoveryLimitations(summary: DiscoverySummary): string[] {
+  return [
+    ...skippedEntryLimitations(summary.skippedEntries),
+    ...(summary.excludedTestDataFiles ? [`${summary.excludedTestDataFiles} source file(s) under testdata/ directories were excluded as test data.`] : []),
+  ];
+}
+
 /** Runs the local scan pipeline against an already-acquired committed tree. */
 function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode'], installationRoot?: string, rustIndexCacheDir?: string): LanguageAnalysis | undefined {
   if (mode !== 'full') return undefined;
@@ -377,13 +393,16 @@ function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions[
   return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), externalReferences: analyses.flatMap(item => item.externalReferences ?? []), coverage: analyses.flatMap(item => item.coverage) };
 }
 
-export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "root" | "pin" | "sourceName" | "installationRoot">, options: ScanOptions = {}): ScanArtifacts {
+export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "root" | "pin" | "sourceName" | "installationRoot"> & { skipped?: SkippedTreeEntries }, options: ScanOptions = {}): ScanArtifacts {
   const sourceRoot = acquired.root;
   const packageName = rootPackageName(sourceRoot);
   const fallbackName = acquired.sourceName;
   const repositorySlug = options.repositorySlug ?? slug(packageName ?? fallbackName);
   const systemName = options.systemName ?? packageName ?? (fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1));
-  const discovery = discoverExtractedTree(sourceRoot, options.includeAllMembers ? { includeAllMembers: true } : {});
+  const discovery = discoverExtractedTree(sourceRoot, {
+    ...(options.includeAllMembers ? { includeAllMembers: true } : {}),
+    ...(acquired.skipped ? { skippedEntries: acquired.skipped } : {}),
+  });
   const readFile = (repoRelativePath: string): string => readFileSync(`${sourceRoot}/${repoRelativePath}`, "utf8");
   // Read manifests/lockfiles BEFORE analyzers run: cargo/rust-analyzer may write a
   // Cargo.lock into the acquired tree, which must never be cited as committed evidence.
@@ -441,7 +460,10 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     const repositorySlug = options.repositorySlug ?? slug(`${source.owner}-${source.repo}`);
     const systemName = options.systemName ?? packageName ?? source.repo;
     const pin: RepositoryPin = { commitSha: commit.sha, treeHash: commit.treeSha, generatedAt: commit.generatedAt };
-    const discovery = discoverExtractedTree(acquired.root, options.includeAllMembers ? { includeAllMembers: true } : {});
+    const discovery = discoverExtractedTree(acquired.root, {
+      ...(options.includeAllMembers ? { includeAllMembers: true } : {}),
+      skippedEntries: acquired.skipped,
+    });
     const dependencyInputs = collectDependencyInputs(discovery.sourceFiles, readFile);
     const languageAnalysis = analyzeLanguages(acquired.root, discovery, options.analysisMode, undefined, options.rustIndexCacheDir);
     if (discovery.sourceFiles.length === 0) {

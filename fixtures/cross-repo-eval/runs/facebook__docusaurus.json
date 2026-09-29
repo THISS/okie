@@ -4,10 +4,11 @@
   "repository": "facebook/docusaurus",
   "commitSha": "baaa9069324a8dbff1ff8e3ffcd4598d5242332a",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "baaa9069324a8dbff1ff8e3ffcd4598d5242332a",
       "ok": true,
-      "ms": 39401,
+      "ms": 35649,
       "entities": 3681,
       "relations": 6522,
       "kinds": { "code": 2867, "component": 770, "container": 42, "externalSystem": 1, "softwareSystem": 1 },
@@ -1936,7 +1937,7 @@
       { "scopeId": "component:packages-docusaurus-utils-validation-src-validation-schemas-ts", "kind": "component", "class": "rejected-by-validator", "error": "rejected explanation: unknown evidence reference(s): code:packages-docusaurus-utils-validation-src-validation-schemas-ts:remark-plugins-schema packages/docusaurus-utils-validation/src/validationSchema" }
     ]
   },
-  "stageMs": { "enrich": 385676, "claims": 27254, "ask": 33558, "blocks": 1367 },
+  "stageMs": { "enrich": 385676, "claims": 27254, "ask": 33558, "blocks": 1367, "fetch": 5138, "scan": 35706 },
   "claims": {
     "mode": "live",
     "modelId": "jev-1.13.0",

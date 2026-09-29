@@ -1,4 +1,5 @@
 export * from "./pin.js";
+export * from "./source-tree.js";
 export * from "./redact.js";
 export * from "./discover.js";
 export * from "./container-membership.js";

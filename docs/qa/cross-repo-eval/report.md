@@ -18,7 +18,7 @@ node scripts/cross-repo-eval.mjs all --work <scratch> [--live --max-dollars 3]  
 ```
 
 **Checked-in inputs and outputs:**
-- `fixtures/cross-repo-eval/manifest.json`: repo URL, pinned SHA, licence, size, and eval-only `evalPrepare` edits with the reason for each.
+- `fixtures/cross-repo-eval/manifest.json`: repo URL, pinned SHA, licence and size. The CLA-289 baseline also carried eval-only `evalPrepare` edits for six repos; CLA-299 retired them (see finding 2).
 - `labels/*.json`: the draft labels.
 - `runs/*.json`: compact recorded results.
 - `metrics.json`: the numbers in this report.
@@ -59,7 +59,7 @@ All 15 repos are permissively licensed. Sources are fetched into a scratch dir a
 
 | Metric | Value |
 |---|---|
-| Scans that succeed as-is | **9 / 15** (all 15 after eval-only tree edits) |
+| Scans that succeed as-is | **15 / 15** since CLA-299 (baseline: 9 / 15, all 15 after eval-only tree edits) |
 | Expected files present in the atlas at all | **0.52** |
 | Retrieval recall@5 / @10 / @full budget | **0.18 / 0.26 / 0.35** |
 | Ask: cited-file recall | 0.34 |
@@ -94,18 +94,18 @@ All 15 repos are permissively licensed. Sources are fetched into a scratch dir a
 | commerce | enriched | .25/.38/.75 | .94 | .63 | .18 | 0 | .75 | .23 | 1.00 / 1.00 |
 | zustand | enriched | .25/.50/.63 | .63 | .63 | .31 | 0 | .88 | .41 | 1.00 / 1.00 |
 | node-express | enriched | .61/.72/.83 | .89 | .83 | .21 | 0 | .89 | .11 | 1.00 / 0.90 |
-| trpc | sampled | .22/.22/.43 | .85 | .43 | .12 | .22 | .44 | .38 | 0.48 / 0.60 |
-| docusaurus | sampled | .17/.22/.33 | .67 | .33 | .11 | .22 | .67 | .29 | 0.82 / 0.72 |
-| excalidraw | sampled | .11/.22/.33 | .78 | .33 | .17 | .11 | .44 | .35 | 0.83 / 0.83 |
-| tauri | sampled | .21/.27/.31 | .83 | .31 | .11 | 0 | .38 | .31 | 0.49 / 0.47 |
-| ripgrep | sampled | .35/.58/.65 | .88 | .65 | .24 | 0 | .38 | .20 | 0.77 / 0.67 |
-| axum | sampled | .25/.38/.50 | .75 | .50 | .21 | .13 | .38 | .07 | 1.00 / 0.80 |
-| TypeScript | sampled | .06/.06/.06 | .10 | .06 | .03 | .38 | 0 | .41 | 0.67 / −0.17 |
-| microservices-demo | scan only | .17/.17/.17 | .17 | .17 | .05 | .67 | .22 | – | −1.00 / 1.00 |
-| gitea | sampled | .06/.11/.11 | .17 | .11 | .08 | .56 | .11 | .23 | 0.73 / 0.47 |
-| saleor | scan only | 0/0/0 | 0 | 0 | 0 | 1.0 | 0 | – | – |
-| rubygems.org | sampled | 0/0/0 | 0 | 0 | 0 | .75 | 0 | **.87** | 1.00 / 0.83 |
-| spring-petclinic | scan only | 0/0/.06 | .06 | .06 | .06 | 1.0 | 0 | – | – |
+| trpc | sampled; **23.6 s** | .22/.22/.43 | .85 | .43 | .12 | .22 | .44 | .38 | 0.48 / 0.60 |
+| docusaurus | sampled; **35.6 s** | .17/.22/.33 | .67 | .33 | .11 | .22 | .67 | .29 | 0.82 / 0.72 |
+| excalidraw | sampled; **74.1 s** | .11/.22/.33 | .78 | .33 | .17 | .11 | .44 | .35 | 0.83 / 0.83 |
+| tauri | sampled; **99.8 s** | .21/.27/.31 | .83 | .31 | .11 | 0 | .38 | .31 | 0.49 / 0.47 |
+| ripgrep | sampled; **22.0 s** | .35/.58/.65 | .88 | .65 | .24 | 0 | .38 | .20 | 0.77 / 0.67 |
+| axum | sampled; **131.5 s** | .25/.38/.50 | .75 | .50 | .21 | .13 | .38 | .07 | 1.00 / 0.80 |
+| TypeScript | sampled; **42.0 s** | .06/.06/.06 | .10 | .06 | .03 | .38 | 0 | .41 | 0.67 / −0.17 |
+| microservices-demo | scan only; **1.3 s** | .17/.17/.17 | .17 | .17 | .05 | .67 | .22 | – | −1.00 / 1.00 |
+| gitea | sampled; **3.5 s** | .06/.11/.11 | .17 | .11 | .08 | .56 | .11 | .23 | 0.73 / 0.47 |
+| saleor | scan only; **1.1 s** | 0/0/0 | 0 | 0 | 0 | 1.0 | 0 | – | – |
+| rubygems.org | sampled; **14.4 s** | 0/0/0 | 0 | 0 | 0 | .75 | 0 | **.87** | 1.00 / 0.83 |
+| spring-petclinic | scan only; **0.1 s** | 0/0/.06 | .06 | .06 | .06 | 1.0 | 0 | – | – |
 
 **Column definitions:**
 - **Recall@k:** the share of expected files among the first k distinct files in Ask's ranked retrieval sections. "@full" is everything that fits the 24 KB budget, plus the selected scope's packets.
@@ -170,7 +170,7 @@ Ask mostly declines here: the declined rate is 0.33 overall and 1.0 on saleor an
 **What we saw:**
 - **Committed symlinks (4 repos: ripgrep, axum, saleor, rubygems.org).** Any committed symlink aborts the whole scan: "symlink/submodule is unsupported". The symlinks include `HomebrewFormula` (ripgrep), `README.md` (axum), `CLAUDE.md` (saleor), and `.claude/skills` and `config/deploy/*` (rubygems.org).
 - **Scale (microsoft/TypeScript).** `git cat-file --batch` of every blob hits the 128 MB `maxBuffer` (ENOBUFS). The checkout is ~410 MB, mostly test baselines.
-- **Long ids (trpc).** Duplicate-code relation ids longer than 192 characters fail validation (`relation:dup:<long-id>:<long-id>` between generated files), and the whole scan is rejected.
+- **Long ids (trpc).** Five relation ids longer than 192 characters fail validation. They are file-to-file relations between generated heyapi client files under `packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi`, and the whole scan is rejected. (An earlier draft blamed `relation:dup:` ids; those are attached after the extraction gate and were never limited.)
 - **Eval workaround.** For eval only, the harness applies one local derivative commit per repo that drops the offending paths (`evalPrepare`, reason recorded in the manifest).
 - **Knock-on effect.** axum's README is itself a symlink, so once it is dropped the system scope has no source ref to cite, and its explanation failed in this run.
 
@@ -179,6 +179,14 @@ Ask mostly declines here: the declined rate is 0.33 overall and 1.0 on saleor an
 - Stream blobs with a total byte cap and exclude generated/test-baseline trees by signal: file count, and `testdata`/`baselines` paths.
 - Hash-truncate over-long relation ids.
 - These are deterministic bugs, not rule choices.
+
+**Fixed in CLA-299.** All 15 repos now scan as-is and the `evalPrepare` workarounds are gone from the manifest.
+- **Symlinks:** they are never scanned as source files. A link whose target resolves inside the repo is kept for config and import resolution. A link that escapes, dangles, loops or collides with another path is never written or followed. Submodules are skipped. Every case is counted in the scan's limitations.
+- **Scale:** blobs are read in bounded `cat-file` batches of 32 MiB. A typed `ScanSizeLimitError` stops a repo over 250k files, 2 GiB or a 256 MiB listing before anything is read. Conventional `testdata/` trees are excluded as test data and counted: 12,814 files in TypeScript. Without that exclusion, the TypeScript compiler's own parser asserts on the deliberately malformed cases in `tsc/testdata`.
+- **Long ids:** an id over 192 characters becomes a readable prefix plus 16 hex characters of sha256 of the full id. Ids of 192 characters or fewer are unchanged; trpc has exactly 5 bounded ids.
+- **Id stability.** Nine repos scanned as-is before this change, and their snapshots are byte-identical before and after. For the six that needed `evalPrepare`, every entity and relation id from the prepared scan is still present in the as-is scan. trpc's as-is scan adds the dropped heyapi tree: 134 entities and 579 relations.
+- **Paid stages not re-run.** Enrichment, claims, Ask and blocks for those six repos are still the CLA-289 records made over the prepared commit. Each run file records that in `paidStagesCorpus`.
+- **axum:** its README symlink is now kept, but enrichment was not re-run, so the knock-on failure above is still what's recorded.
 
 ### 3. Docs, config and env files are invisible
 
@@ -334,23 +342,23 @@ Ask mostly declines here: the declined rate is 0.33 overall and 1.0 on saleor an
 - Of the sampled runs, docusaurus used concurrency 32; the other eight used concurrency 8.
 - Most of the sampled runs came from an earlier harness revision. Runs don't yet record the harness SHA; the harness now does.
 
-| Repo | Scan (as-is → prepared) | Enrichment | Claims (Jev) | Ask | Blocks (Jev) | Total $ |
+| Repo | Scan: CLA-289 as-is → prepared; CLA-299 as-is | Enrichment | Claims (Jev) | Ask | Blocks (Jev) | Total $ |
 |---|---|---|---|---|---|---|
-| commerce | 2.6 s | full 68 scopes, $0.071, 508 s | $0.004 | $0.031 | <$0.001 | 0.107 |
-| zustand | 10.0 s | full 32, $0.038, 233 s | $0.001 | $0.032 | <$0.001 | 0.072 |
-| node-express | 17.9 s | full 45, $0.061, 472 s | $0.003 | $0.035 | <$0.001 | 0.099 |
-| trpc | FAIL → 24.8 s | K=5, 55/485 comps, $0.122, 326 s | $0.004 | $0.049 | <$0.001 | 0.175 |
-| docusaurus | 39.4 s | K=3, 115/770, $0.243, 333 s | $0.008 | $0.060 | <$0.001 | 0.312 |
-| excalidraw | 85.3 s | K=5, 30/523, $0.088, 197 s | $0.003 | $0.043 | <$0.001 | 0.134 |
-| tauri | 96.2 s | K=5, 77/316, $0.193, 389 s | $0.006 | $0.047 | <$0.001 | 0.247 |
-| ripgrep | FAIL → 20.2 s | K=5, 44/88, $0.138, 397 s | $0.005 | $0.045 | <$0.001 | 0.188 |
-| axum | FAIL → 141.7 s | K=5, 30/116, $0.069, 235 s | $0.003 | $0.040 | <$0.001 | 0.112 |
-| TypeScript | FAIL (ENOBUFS) → 39.1 s | K=5, 30/158, $0.077, 167 s | $0.002 | $0.035 | <$0.001 | 0.115 |
-| microservices-demo | 1.8 s | skipped (scanner-blind) | – | $0.011 | <$0.001 | 0.011 |
-| gitea | 4.9 s | K=5, 30/182, $0.063, 194 s | $0.003 | $0.039 | <$0.001 | 0.105 |
-| saleor | FAIL → 1.5 s | skipped (scanner-blind) | – | $0.003 | <$0.001 | 0.003 |
-| rubygems.org | FAIL → 17.6 s | K=5, 30/38, $0.034, 267 s | $0.000 | $0.015 | <$0.001 | 0.049 |
-| spring-petclinic | 0.1 s | skipped (scanner-blind) | – | $0.002 | <$0.001 | 0.002 |
+| commerce | 2.6 s; **1.8 s** | full 68 scopes, $0.071, 508 s | $0.004 | $0.031 | <$0.001 | 0.107 |
+| zustand | 10.0 s; **7.3 s** | full 32, $0.038, 233 s | $0.001 | $0.032 | <$0.001 | 0.072 |
+| node-express | 17.9 s; **14.4 s** | full 45, $0.061, 472 s | $0.003 | $0.035 | <$0.001 | 0.099 |
+| trpc | FAIL → 24.8 s; **23.6 s** | K=5, 55/485 comps, $0.122, 326 s | $0.004 | $0.049 | <$0.001 | 0.175 |
+| docusaurus | 39.4 s; **35.6 s** | K=3, 115/770, $0.243, 333 s | $0.008 | $0.060 | <$0.001 | 0.312 |
+| excalidraw | 85.3 s; **74.1 s** | K=5, 30/523, $0.088, 197 s | $0.003 | $0.043 | <$0.001 | 0.134 |
+| tauri | 96.2 s; **99.8 s** | K=5, 77/316, $0.193, 389 s | $0.006 | $0.047 | <$0.001 | 0.247 |
+| ripgrep | FAIL → 20.2 s; **22.0 s** | K=5, 44/88, $0.138, 397 s | $0.005 | $0.045 | <$0.001 | 0.188 |
+| axum | FAIL → 141.7 s; **131.5 s** | K=5, 30/116, $0.069, 235 s | $0.003 | $0.040 | <$0.001 | 0.112 |
+| TypeScript | FAIL (ENOBUFS) → 39.1 s; **42.0 s** | K=5, 30/158, $0.077, 167 s | $0.002 | $0.035 | <$0.001 | 0.115 |
+| microservices-demo | 1.8 s; **1.3 s** | skipped (scanner-blind) | – | $0.011 | <$0.001 | 0.011 |
+| gitea | 4.9 s; **3.5 s** | K=5, 30/182, $0.063, 194 s | $0.003 | $0.039 | <$0.001 | 0.105 |
+| saleor | FAIL → 1.5 s; **1.1 s** | skipped (scanner-blind) | – | $0.003 | <$0.001 | 0.003 |
+| rubygems.org | FAIL → 17.6 s; **14.4 s** | K=5, 30/38, $0.034, 267 s | $0.000 | $0.015 | <$0.001 | 0.049 |
+| spring-petclinic | 0.1 s; **0.1 s** | skipped (scanner-blind) | – | $0.002 | <$0.001 | 0.002 |
 | **Total** | | **$1.196** | **$0.043** | **$0.487** | **$0.003** | **$1.730** |
 
 **Unit costs:**
@@ -363,7 +371,7 @@ Ask mostly declines here: the declined rate is 0.33 overall and 1.0 on saleor an
 ## Next steps (not run here)
 
 1. **Jev/LLM reranking of retrieval** on trpc, docusaurus, excalidraw and tauri. This is where ranking, not coverage, is the gap. Rerank the top ~40 sections and measure recall@5 on the same labels. About 35 questions × one rerank call ≈ $0.10–0.15.
-2. **Re-run after fixes 1–3.** Once the scanner covers docs and config, handles symlinks and has a file-level fallback, re-run with `node scripts/cross-repo-eval.mjs all --live` to separate scanner fixes from ranking fixes.
+2. **Re-run after fixes 1–3.** Once the scanner covers docs and config and has a file-level fallback (symlinks, scale and long ids are fixed in CLA-299), re-run with `node scripts/cross-repo-eval.mjs all --live` to separate scanner fixes from ranking fixes.
 3. **Label spot-check.** After Brenton's spot-check, re-score with `report` (free). Questions and overviews marked `rejected` are skipped by scoring.
 4. **Harder block-order labels.** More multi-container nodes are needed. Most current nodes are trivial.
 
