@@ -1,3 +1,5 @@
 # Staging overrides this in the edge Worker (ROBOTS_NOINDEX=1: disallow all).
 User-agent: *
 Allow: /
+
+Sitemap: https://sourcefor.dev/sitemap.xml

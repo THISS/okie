@@ -5,6 +5,8 @@ import {
   handleOgImageRequest,
   handleShareHtmlRequest,
   isOgImagePath,
+  resolveDisplayNames,
+  type PublicAtlasDisplayLookup,
   type PublicAtlasHttpOutput,
   type PublicAtlasLookup,
 } from './openGraph';
@@ -24,6 +26,8 @@ export type PublicAtlasRouteInput = {
   requestOrigin: string;
   allowedOrigins: readonly string[];
   isPublicAtlas: PublicAtlasLookup;
+  /** CLA-318: GitHub's casing for a public atlas (titles, oEmbed, card text); omitted → the URL's names. */
+  displayNames?: PublicAtlasDisplayLookup;
   /** index.html to inject Open Graph tags into; only read for share HTML. */
   indexHtml: () => Promise<string>;
 };
@@ -61,16 +65,18 @@ export async function handlePublicAtlasRoute(input: PublicAtlasRouteInput): Prom
       ? parsePublicAtlasOembedUrl(rawUrl, input.requestOrigin, input.allowedOrigins)
       : undefined;
     const publicOk = target ? Boolean(await input.isPublicAtlas(target.owner, target.repo)) : false;
+    const displayNames = target && publicOk ? await resolveDisplayNames(target, input.displayNames) : undefined;
     return handleOembedRequest({
       method: input.method,
       requestOrigin: input.requestOrigin,
       searchParams,
       allowedOrigins: input.allowedOrigins,
       isPublicAtlas: () => publicOk,
+      ...(displayNames ? { displayNames } : {}),
     });
   }
   if (isOgImagePath(pathname)) {
-    return handleOgImageRequest({ method: input.method, pathname, isPublicAtlas: input.isPublicAtlas });
+    return handleOgImageRequest({ method: input.method, pathname, isPublicAtlas: input.isPublicAtlas, ...(input.displayNames ? { displayNames: input.displayNames } : {}) });
   }
   if (isSharePath(pathname)) {
     const method = input.method.toUpperCase();
@@ -84,6 +90,7 @@ export async function handlePublicAtlasRoute(input: PublicAtlasRouteInput): Prom
       indexHtml,
       allowedOrigins: input.allowedOrigins,
       isPublicAtlas: input.isPublicAtlas,
+      ...(input.displayNames ? { displayNames: input.displayNames } : {}),
     });
   }
   if (isLandingPath(pathname)) {

@@ -14,7 +14,7 @@ export type NotFoundKind = 'page' | 'atlas';
 
 /**
  * Paths main.tsx renders: `/` (and `/index.html`), the `/new` landing, `/operator` (each with or without a trailing slash), and
- * `/r/<owner>/<repo>[/<ref>]`. Worker-owned prefixes (/assets, /scan, /api, /og, /oembed, /__store) and
+ * `/r/<owner>/<repo>[/<ref>]`. Worker-owned paths (/assets, /scan, /api, /og, /oembed, /sitemap.xml, /__store) and
  * real files (favicons, robots.txt, og-default.png) are answered before this is consulted.
  */
 export function isKnownAppPath(pathname: string): boolean {

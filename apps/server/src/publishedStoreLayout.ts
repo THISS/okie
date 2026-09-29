@@ -105,6 +105,14 @@ export interface PublishedIndexEntry {
   entityCount: number;
   publishedAt: string;
   license: PublishedLicense;
+  /**
+   * CLA-318: GitHub's own casing of the owner login and repository name (`BurntSushi` where `owner` is
+   * `burntsushi`), from `GET api.github.com/repos/<owner>/<repo>` at publish time or
+   * `publish:atlas --backfill-names`. Optional: absent when the lookup failed; readers fall back to
+   * `owner`/`repo`. Display only: slugs and canonical URLs never use them.
+   */
+  ownerLogin?: string;
+  repoName?: string;
 }
 
 /** Superset of the scan `ScanManifest` (`schemaVersion: 1`, `repos`) so the landing list reads it unchanged. */

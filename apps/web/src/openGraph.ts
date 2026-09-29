@@ -14,6 +14,7 @@ import {
   publicAtlasTitle,
   sanitizeOembedOrigin,
   type OembedHeaderBag,
+  type PublicAtlasDisplayNames,
   type PublicAtlasOembedTarget,
 } from './oembed';
 import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, renderAtlasCardPng } from './atlasCard';
@@ -52,6 +53,11 @@ export const ATLAS_NOT_FOUND_BODY = notFoundPageHtml('atlas');
 const SECRET_LEAK = /apiKey|OPENROUTER|GITHUB_TOKEN|GH_TOKEN|gho_|ghp_|sk-|Bearer /i;
 
 export type PublicAtlasLookup = (owner: string, repo: string) => boolean | Promise<boolean>;
+/**
+ * CLA-318: owner/repo as shown for a public atlas (GitHub's casing from the published index row), or
+ * undefined to show the URL's names. Only consulted after the atlas is known to be public.
+ */
+export type PublicAtlasDisplayLookup = (owner: string, repo: string) => Promise<PublicAtlasDisplayNames | undefined>;
 
 export type OpenGraphTags = {
   title: string;
@@ -76,13 +82,25 @@ export type ShareHtmlInput = {
   indexHtml: string;
   allowedOrigins?: readonly string[];
   isPublicAtlas?: PublicAtlasLookup;
+  displayNames?: PublicAtlasDisplayLookup;
 };
 
 export type OgImageHttpInput = {
   method: string;
   pathname: string;
   isPublicAtlas?: PublicAtlasLookup;
+  displayNames?: PublicAtlasDisplayLookup;
 };
+
+/** The display names for a public target (never throws: a failed lookup shows the URL's names). */
+export async function resolveDisplayNames(target: { owner: string; repo: string }, lookup: PublicAtlasDisplayLookup | undefined): Promise<PublicAtlasDisplayNames> {
+  if (!lookup) return { owner: target.owner, repo: target.repo };
+  try {
+    return (await lookup(target.owner, target.repo)) ?? { owner: target.owner, repo: target.repo };
+  } catch {
+    return { owner: target.owner, repo: target.repo };
+  }
+}
 
 export type PublicAtlasHttpOutput = {
   status: number;
@@ -237,10 +255,10 @@ export function parseSharePath(
   return parsePublicAtlasOembedUrl(href, requestOrigin, allowedOrigins);
 }
 
-export function buildOpenGraphTags(target: PublicAtlasOembedTarget): OpenGraphTags {
+export function buildOpenGraphTags(target: PublicAtlasOembedTarget, displayNames: PublicAtlasDisplayNames = target): OpenGraphTags {
   const canonical = { ...target, search: '' };
-  const title = repoPageTitle(canonical.owner, canonical.repo);
-  const description = publicAtlasDescription(canonical);
+  const title = repoPageTitle(displayNames.owner, displayNames.repo);
+  const description = repoPageDescription(displayNames.owner, displayNames.repo);
   const pageHref = publicAtlasHref(canonical);
   const image = publicAtlasOgImageHref(canonical);
   return {
@@ -248,7 +266,7 @@ export function buildOpenGraphTags(target: PublicAtlasOembedTarget): OpenGraphTa
     description,
     url: pageHref,
     image,
-    imageAlt: publicAtlasTitle(canonical),
+    imageAlt: publicAtlasTitle(displayNames),
     imageWidth: OG_IMAGE_WIDTH,
     imageHeight: OG_IMAGE_HEIGHT,
     siteName: OEMBED_PROVIDER_NAME,
@@ -357,7 +375,7 @@ export async function handleShareHtmlRequest(input: ShareHtmlInput): Promise<Pub
   if (!origin || !isAllowedOembedRequestOrigin(origin, input.allowedOrigins ?? [])) return notFound(method);
   const target = parseSharePath(input.pathname, origin, input.search ?? '', input.allowedOrigins);
   if (!target || !(await isAllowedAtlas(target, input.isPublicAtlas))) return notFound(method);
-  const tags = buildOpenGraphTags(target);
+  const tags = buildOpenGraphTags(target, await resolveDisplayNames(target, input.displayNames));
   const html = injectPublicAtlasOpenGraph(input.indexHtml, tags);
   if (openGraphLeaksSecrets(html) || openGraphLeaksSecrets(tags.image)) return notFound(method);
   return {
@@ -414,7 +432,8 @@ export async function handleOgImageRequest(input: OgImageHttpInput): Promise<Pub
       body: 'not found',
     };
   }
-  const png = renderAtlasCardPng(parsed);
+  const label = await resolveDisplayNames(parsed, input.displayNames);
+  const png = renderAtlasCardPng({ ...parsed, label });
   const asText = latin1(png);
   if (openGraphLeaksSecrets(asText)) {
     return {

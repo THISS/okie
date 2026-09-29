@@ -7,6 +7,7 @@ import { localScanOriginFromEnv, resolvePublicAtlasShare, trustedShareOrigin } f
 import { isKnownAppPath, notFoundHttpOutput } from './src/notFoundPage';
 import { handlePublicAtlasRoute, isPublicAtlasRoutePath } from './src/publicAtlasRoutes';
 import { WEBMCP_HOST_HEADERS, webMcpHostHeadersForFetchDest } from './src/webmcpHeaders';
+import { BASE_SECURITY_HEADERS, contentSecurityPolicy, isFramableAtlasPath } from './src/securityHeaders';
 
 // The local scan process (apps/server) owns /api (submit + job status) and
 // /scan (published trio objects + manifest). Dev and preview proxy both there
@@ -58,6 +59,27 @@ function okieWebMcpHeadersPlugin(): Plugin {
     name: 'okie-webmcp-headers',
     configureServer: attach,
     configurePreviewServer: attach,
+  };
+}
+
+/**
+ * CLA-318: the edge Worker's security headers, mirrored in `vite preview` only. `vite dev` never gets the
+ * CSP: its HMR client relies on inline scripts. Page navigations (HTML accept or a document/iframe fetch)
+ * get the CSP; everything gets nosniff + Referrer-Policy.
+ */
+function okieSecurityHeadersPlugin(): Plugin {
+  return {
+    name: 'okie-security-headers',
+    configurePreviewServer(server) {
+      server.middlewares.use((request, response, next) => {
+        for (const [name, value] of Object.entries(BASE_SECURITY_HEADERS)) response.setHeader(name, value);
+        const dest = String(request.headers['sec-fetch-dest'] ?? '');
+        if (dest === 'document' || dest === 'iframe' || String(request.headers.accept ?? '').includes('text/html')) {
+          response.setHeader('content-security-policy', contentSecurityPolicy({ framable: isFramableAtlasPath(requestPathname(request.url ?? '/')) }));
+        }
+        next();
+      });
+    },
   };
 }
 
@@ -168,7 +190,7 @@ function okieNotFoundPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), okieWebMcpHeadersPlugin(), okieOpenGraphPlugin(), okieNotFoundPlugin()],
+  plugins: [react(), okieWebMcpHeadersPlugin(), okieSecurityHeadersPlugin(), okieOpenGraphPlugin(), okieNotFoundPlugin()],
   // SPA so `/new` and `/r/<owner>/<repo>` are public share/view URLs (CLA-30).
   appType: 'spa',
   server: {

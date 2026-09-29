@@ -71,7 +71,12 @@ export type OembedHttpInput = {
   allowedOrigins?: readonly string[];
   /** Fail closed: unpublished / private trees 404 like an unknown URL. */
   isPublicAtlas?: (owner: string, repo: string) => boolean;
+  /** CLA-318: names to show in the title (GitHub's casing from the published row); the URL's otherwise. */
+  displayNames?: PublicAtlasDisplayNames;
 };
+
+/** Owner/repo as shown to people (titles, card text); URLs keep the route's own slug form. */
+export type PublicAtlasDisplayNames = { owner: string; repo: string };
 
 export type OembedHttpOutput = {
   status: number;
@@ -288,7 +293,7 @@ export function publicAtlasEmbedHref(target: PublicAtlasOembedTarget): string {
   return href.href;
 }
 
-export function publicAtlasTitle(target: PublicAtlasOembedTarget): string {
+export function publicAtlasTitle(target: PublicAtlasDisplayNames): string {
   return `${target.owner}/${target.repo} architecture atlas`;
 }
 
@@ -303,9 +308,10 @@ export function publicAtlasOgImageHref(target: PublicAtlasOembedTarget): string 
 export function buildOembedIframeHtml(
   target: PublicAtlasOembedTarget,
   size: { width: number; height: number },
+  displayNames: PublicAtlasDisplayNames = target,
 ): string {
   const src = publicAtlasEmbedHref(target);
-  const title = publicAtlasTitle(target);
+  const title = publicAtlasTitle(displayNames);
   return `<!-- ${OEMBED_SNIPPET_CHROME_NOTE} --><iframe src="${escapeAttribute(src)}" width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px" title="${escapeAttribute(title)}" allow="${OEMBED_IFRAME_ALLOW}" allowfullscreen></iframe>`;
 }
 
@@ -313,6 +319,7 @@ export function buildOembedRichResponse(
   target: PublicAtlasOembedTarget,
   maxWidth = OEMBED_DEFAULT_WIDTH,
   maxHeight = OEMBED_DEFAULT_HEIGHT,
+  displayNames: PublicAtlasDisplayNames = target,
 ): OembedRichResponse {
   const size = fitEmbedSize(maxWidth, maxHeight);
   return {
@@ -320,8 +327,8 @@ export function buildOembedRichResponse(
     type: 'rich',
     provider_name: OEMBED_PROVIDER_NAME,
     provider_url: target.origin,
-    title: publicAtlasTitle(target),
-    html: buildOembedIframeHtml(target, size),
+    title: publicAtlasTitle(displayNames),
+    html: buildOembedIframeHtml(target, size, displayNames),
     width: size.width,
     height: size.height,
     cache_age: OEMBED_CACHE_AGE_SECONDS,
@@ -412,6 +419,7 @@ export function handleOembedRequest(input: OembedHttpInput): OembedHttpOutput {
     target,
     parseMaxDimension(input.searchParams.get('maxwidth'), OEMBED_DEFAULT_WIDTH),
     parseMaxDimension(input.searchParams.get('maxheight'), OEMBED_DEFAULT_HEIGHT),
+    input.displayNames ?? target,
   );
   return jsonBody(200, body);
 }

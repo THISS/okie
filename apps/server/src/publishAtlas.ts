@@ -70,6 +70,8 @@ export interface BuiltPublishedVersion {
   manifestBytes: Buffer;
   latestBytes: Buffer;
   indexEntry: PublishedIndexEntry;
+  /** CLA-318: GitHub's casing lookup (what landed in the index row, or why nothing did); set by preparePublishedVersion. */
+  githubNames?: GithubNamesLookup;
   /** Immutable version objects (public/, private/, packs/), manifest excluded: it is written after all of them. */
   objects: PublishObject[];
   stats: {
@@ -258,7 +260,7 @@ export function currentPublicationSource(input: { scanRoot: string; repo: string
   return { owner, repo, commitSha };
 }
 
-export function buildPublishedVersion(input: { scanRoot: string; repo: string; license: PublishedLicense; now?: () => number; maxPackBytes?: number }): BuiltPublishedVersion {
+export function buildPublishedVersion(input: { scanRoot: string; repo: string; license: PublishedLicense; names?: GithubRepositoryNames; now?: () => number; maxPackBytes?: number }): BuiltPublishedVersion {
   const now = input.now ?? (() => performance.now());
   const started = now();
   const store = new ReadonlyOperatorStore(input.scanRoot);
@@ -331,7 +333,7 @@ export function buildPublishedVersion(input: { scanRoot: string; repo: string; l
     manifest,
     manifestBytes: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`),
     latestBytes: publishedLatestBytes(slug, versionId, publishedAt),
-    indexEntry: publishedIndexEntryFor(manifest),
+    indexEntry: withGithubNames(publishedIndexEntryFor(manifest), input.names),
     objects,
     stats: {
       buildMs: now() - started,
@@ -435,11 +437,65 @@ export async function resolvePublishedLicense(input: { owner: string; repo: stri
   };
 }
 
-/** Resolves the licence, then builds the version (what `pnpm publish:atlas` runs). */
+/** GitHub's own casing of a repository's owner login and name (CLA-318), recorded in the index row. */
+export interface GithubRepositoryNames { ownerLogin: string; repoName: string }
+export type GithubNamesLookup = ({ ok: true } & GithubRepositoryNames) | { ok: false; reason: string };
+
+const GITHUB_NAME = /^[A-Za-z0-9._-]{1,100}$/;
+
+/**
+ * `GET api.github.com/repos/<owner>/<repo>` → `owner.login` and `name`, unauthenticated (never an operator token), like the
+ * licence lookup. Never throws: any failure is `{ ok: false, reason }` and the caller simply records nothing. GitHub
+ * follows renames and transfers, so names that are not `owner`/`repo` ignoring case are refused rather than recorded.
+ */
+export async function resolveGithubRepositoryNames(input: { owner: string; repo: string; fetch?: typeof fetch; timeoutMs?: number }): Promise<GithubNamesLookup> {
+  const fail = (reason: string): GithubNamesLookup => ({ ok: false, reason });
+  if (!GITHUB_NAME.test(input.owner) || !GITHUB_NAME.test(input.repo)) return fail("owner/repo cannot be looked up on GitHub");
+  let response: Response;
+  try {
+    response = await (input.fetch ?? fetch)(`${GITHUB_LICENSE_API}/repos/${input.owner}/${input.repo}`, {
+      headers: { accept: "application/vnd.github+json", "user-agent": "sourcefor-publish", "x-github-api-version": "2022-11-28" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(input.timeoutMs ?? 15_000),
+    });
+  } catch (cause) {
+    return fail(`lookup failed (${cause instanceof Error ? cause.message : String(cause)})`);
+  }
+  if (!response.ok) { await response.body?.cancel().catch(() => undefined); return fail(`GitHub answered HTTP ${response.status}`); }
+  let body: { name?: unknown; owner?: { login?: unknown } | null };
+  try { body = await response.json() as typeof body; } catch { return fail("GitHub returned invalid JSON"); }
+  const ownerLogin = body.owner?.login;
+  const repoName = body.name;
+  if (typeof ownerLogin !== "string" || typeof repoName !== "string" || !GITHUB_NAME.test(ownerLogin) || !GITHUB_NAME.test(repoName)) return fail("GitHub returned no usable owner.login / name");
+  if (ownerLogin.toLowerCase() !== input.owner.toLowerCase() || repoName.toLowerCase() !== input.repo.toLowerCase()) {
+    return fail(`GitHub names it ${ownerLogin}/${repoName} (renamed or transferred?)`);
+  }
+  return { ok: true, ownerLogin, repoName };
+}
+
+/** The row with GitHub's casing added (unchanged without names). */
+function withGithubNames(entry: PublishedIndexEntry, names: GithubRepositoryNames | undefined): PublishedIndexEntry {
+  return names ? { ...entry, ownerLogin: names.ownerLogin, repoName: names.repoName } : entry;
+}
+
+/** Names already recorded on a row that still match its owner/repo ignoring case. */
+function recordedGithubNames(row: Partial<PublishedIndexEntry> | undefined): GithubRepositoryNames | undefined {
+  const { owner, repo, ownerLogin, repoName } = row ?? {};
+  if (typeof owner !== "string" || typeof repo !== "string" || typeof ownerLogin !== "string" || typeof repoName !== "string") return undefined;
+  if (!GITHUB_NAME.test(ownerLogin) || !GITHUB_NAME.test(repoName)) return undefined;
+  return ownerLogin.toLowerCase() === owner.toLowerCase() && repoName.toLowerCase() === repo.toLowerCase() ? { ownerLogin, repoName } : undefined;
+}
+
+/**
+ * Resolves the licence (a failure refuses the publish), then GitHub's casing of owner/repo (a failure only leaves the
+ * row without it), then builds the version (what `pnpm publish:atlas` runs).
+ */
 export async function preparePublishedVersion(input: { scanRoot: string; repo: string; licenseOverride?: string; fetch?: typeof fetch }): Promise<BuiltPublishedVersion> {
   const source = currentPublicationSource(input);
   const license = await resolvePublishedLicense({ ...source, ...(input.licenseOverride !== undefined ? { override: input.licenseOverride } : {}), ...(input.fetch ? { fetch: input.fetch } : {}) });
-  return buildPublishedVersion({ scanRoot: input.scanRoot, repo: input.repo, license });
+  const githubNames = await resolveGithubRepositoryNames({ owner: source.owner, repo: source.repo, ...(input.fetch ? { fetch: input.fetch } : {}) });
+  const built = buildPublishedVersion({ scanRoot: input.scanRoot, repo: input.repo, license, ...(githubNames.ok ? { names: githubNames } : {}) });
+  return { ...built, githubNames };
 }
 
 /** Where a publish reads existing objects from and writes new ones to. */
@@ -449,15 +505,23 @@ export interface PublishStoreClient {
   put(key: string, bytes: Buffer, contentType: string): Promise<void>;
 }
 
-/** Merges one entry into the remote index (same slug replaced; sorted by slug). */
+/**
+ * Merges one entry into the remote index (same slug replaced; sorted by slug). An entry without GitHub's casing keeps the
+ * names the replaced row already had (a failed lookup, or a `--set-latest` row rebuilt from a manifest, never loses them).
+ */
 export function mergePublishedIndex(existing: Buffer | undefined, entry: PublishedIndexEntry): PublishedIndex {
   let repos: PublishedIndexEntry[] = [];
+  let merged = entry;
   if (existing) {
     const parsed = JSON.parse(existing.toString("utf8")) as Partial<PublishedIndex>;
     if (parsed.schema !== PUBLISHED_INDEX_SCHEMA || !Array.isArray(parsed.repos)) throw new Error("the remote index.json is not a published index; refusing to overwrite it");
+    if (!recordedGithubNames(entry)) {
+      const previous = recordedGithubNames(parsed.repos.find(value => value?.slug === entry.slug));
+      if (previous && recordedGithubNames({ ...entry, ...previous })) merged = withGithubNames(entry, previous);
+    }
     repos = parsed.repos.filter(value => value && value.slug !== entry.slug);
   }
-  repos.push(entry);
+  repos.push(merged);
   repos.sort((a, b) => (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0));
   return { schema: PUBLISHED_INDEX_SCHEMA, schemaVersion: 1, repos };
 }
@@ -546,6 +610,91 @@ export async function setPublishedLatest(input: { repo: string; versionId: strin
   const index = mergePublishedIndex(await input.client.get(publishedIndexKey()), publishedIndexEntryFor(manifest));
   await put(publishedIndexKey(), Buffer.from(`${JSON.stringify(index, null, 2)}\n`));
   return { slug, versionId: manifest.versionId, objects: written };
+}
+
+export interface BackfillNamesResult {
+  /** One line per row: `<slug>: <what happened>`. */
+  lines: string[];
+  filled: number;
+  alreadySet: number;
+  failed: number;
+  /** True when index.json was rewritten (never on a dry run, never when nothing changed). */
+  wrote: boolean;
+}
+
+/**
+ * One-off backfill (CLA-318, `publish:atlas --backfill-names`): fills `ownerLogin`/`repoName` on the rows of index.json that
+ * lack them, from the GitHub API, and rewrites index.json only (no version, pointer or manifest is touched). Rows that
+ * already have both are skipped without a lookup (idempotent); a failed lookup leaves its row unchanged. `write: false`
+ * (dry run) reads and reports only. Sequential lookups: unauthenticated GitHub allows 60 an hour.
+ */
+export async function backfillPublishedNames(input: { client: PublishStoreClient; write: boolean; fetch?: typeof fetch; log?: (line: string) => void }): Promise<BackfillNamesResult> {
+  const log = input.log ?? (() => undefined);
+  const result: BackfillNamesResult = { lines: [], filled: 0, alreadySet: 0, failed: 0, wrote: false };
+  const line = (text: string) => { result.lines.push(text); log(text); };
+  const readIndex = async (): Promise<PublishedIndex | undefined> => {
+    const bytes = await input.client.get(publishedIndexKey());
+    if (!bytes) return undefined;
+    let index: PublishedIndex;
+    try { index = JSON.parse(bytes.toString("utf8")) as PublishedIndex; } catch { throw new Error("the remote index.json is not JSON; refusing to rewrite it"); }
+    if (index.schema !== PUBLISHED_INDEX_SCHEMA || !Array.isArray(index.repos)) throw new Error("the remote index.json is not a published index; refusing to rewrite it");
+    return index;
+  };
+  const first = await readIndex();
+  if (!first) { line("no index.json in this store; nothing to backfill"); return result; }
+  // 1. Every lookup first (slow: network), keyed by the row's slug + owner + repo as read.
+  const found = new Map<string, { owner: string; repo: string; names: GithubRepositoryNames }>();
+  for (const row of first.repos) {
+    const slug = typeof row?.slug === "string" ? row.slug : "(no slug)";
+    const recorded = recordedGithubNames(row);
+    if (recorded) {
+      result.alreadySet += 1;
+      line(`${slug}: already ${recorded.ownerLogin}/${recorded.repoName}`);
+      continue;
+    }
+    const lookup = typeof row?.owner === "string" && typeof row.repo === "string"
+      ? await resolveGithubRepositoryNames({ owner: row.owner, repo: row.repo, ...(input.fetch ? { fetch: input.fetch } : {}) })
+      : { ok: false as const, reason: "row has no owner/repo" };
+    if (!lookup.ok) {
+      result.failed += 1;
+      line(`${slug}: unchanged (${lookup.reason})`);
+      continue;
+    }
+    found.set(slug, { owner: row.owner, repo: row.repo, names: { ownerLogin: lookup.ownerLogin, repoName: lookup.repoName } });
+  }
+  if (!input.write) {
+    for (const [slug, hit] of found) {
+      result.filled += 1;
+      line(`${slug}: ${hit.owner}/${hit.repo} → ${hit.names.ownerLogin}/${hit.names.repoName} (dry run)`);
+    }
+    return result;
+  }
+  if (found.size === 0) return result;
+  // 2. Re-read right before the write, so a publish that landed during the lookups is never dropped: names go only on
+  //    rows whose slug, owner and repo still match what was looked up and that still lack names. Everything else in the
+  //    fresh index (other rows, field order, other keys) is written back as read.
+  const latest = await readIndex();
+  if (!latest) { line("index.json disappeared during the backfill; nothing written"); return result; }
+  const applied = new Set<string>();
+  const repos = latest.repos.map(row => {
+    const hit = typeof row?.slug === "string" ? found.get(row.slug) : undefined;
+    if (!hit || row.owner !== hit.owner || row.repo !== hit.repo || recordedGithubNames(row)) return row;
+    applied.add(row.slug);
+    return withGithubNames(row, hit.names);
+  });
+  for (const [slug, hit] of found) {
+    if (applied.has(slug)) {
+      result.filled += 1;
+      line(`${slug}: ${hit.owner}/${hit.repo} → ${hit.names.ownerLogin}/${hit.names.repoName}`);
+    } else {
+      line(`${slug}: skipped (the row changed or gained names during the backfill)`);
+    }
+  }
+  if (applied.size > 0) {
+    await input.client.put(publishedIndexKey(), Buffer.from(`${JSON.stringify({ ...latest, repos }, null, 2)}\n`), JSON_TYPE);
+    result.wrote = true;
+  }
+  return result;
 }
 
 /** Dry run: objects land in `<outDir>/<key>` (a store the published mirror can serve from over HTTP). */

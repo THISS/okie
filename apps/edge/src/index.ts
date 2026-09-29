@@ -1,4 +1,5 @@
 import { isKnownAppPath, notFoundHttpOutput } from '../../web/src/notFoundPage';
+import { securityHeadersFor } from '../../web/src/securityHeaders';
 import { handleApiRoute } from './api';
 import { selectBackend, type Backend } from './backend';
 import type { EdgeEnv } from './env';
@@ -6,6 +7,7 @@ import { defaultGuards, type Guard } from './guards';
 import { NOINDEX_ROBOTS_TXT, notFoundJson, ROBOTS_TAG } from './http';
 import { handleScanRoute } from './scan';
 import { handleShareRoute, isPublicAtlasRoutePath } from './share';
+import { handleSitemapRequest, SITEMAP_PATH } from './sitemap';
 import { DEV_STORE_PREFIX, handleStoreRead, storeKeyFromPath } from './store';
 
 export { AtlasBudget } from './budget';
@@ -19,6 +21,7 @@ export { ContainerProxy } from '@cloudflare/containers';
  *
  *   www.*                     301 to the canonical origin
  *   /robots.txt               disallow-all when ROBOTS_NOINDEX=1 (staging; also X-Robots-Tag on everything)
+ *   /sitemap.xml              `/`, `/new` and every published atlas from index.json (sitemap.ts)
  *   /assets/*                 Static Assets, but a missing hashed asset is 404 no-store, never the SPA shell
  *   /scan/*                   published atlases from R2 (scan.ts), source.json via GitHub raw (source.ts)
  *   /r/*, /og/*, /oembed      share pages (share.ts)
@@ -29,6 +32,10 @@ export { ContainerProxy } from '@cloudflare/containers';
  *   /, /index.html, /operator the SPA shell (Static Assets)
  *   anything else             a real static file (favicons, robots.txt, og-default.png) from Static
  *                             Assets; otherwise the branded 404 page with a real 404 (CLA-318)
+ *
+ * Every response leaves through {@link withEdgeHeaders}: nosniff + Referrer-Policy everywhere, a CSP on
+ * HTML (frame-ancestors `*` on /r/... for oEmbed, 'self' elsewhere; securityHeaders.ts), and staging's
+ * X-Robots-Tag.
  */
 
 export type EdgeDeps = {
@@ -89,12 +96,26 @@ async function serveHashedAsset(request: Request, env: EdgeEnv): Promise<Respons
 }
 
 export async function handleEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionContext, deps: EdgeDeps = defaultDeps(env)): Promise<Response> {
-  const response = await routeEdgeRequest(request, env, ctx, deps);
-  if (!noindex(env)) return response;
-  // Staging: every response carries the crawler opt-out (a copy, since fetched responses are immutable).
-  const tagged = new Response(response.body, response);
-  tagged.headers.set('x-robots-tag', ROBOTS_TAG);
-  return tagged;
+  return withEdgeHeaders(request, await routeEdgeRequest(request, env, ctx, deps), env);
+}
+
+/**
+ * Security headers on every response (CLA-318) and, on staging, the crawler opt-out. Always a copy:
+ * responses fetched from Static Assets, R2 or upstream have immutable headers. A copy keeps the status,
+ * statusText, headers (`_headers` rules included) and body stream as-is, so redirects, 204/304 (no
+ * body) and HEAD answers pass through unchanged. A 101 WebSocket upgrade is returned untouched (a copy
+ * would drop its socket).
+ */
+function withEdgeHeaders(request: Request, response: Response, env: Pick<EdgeEnv, 'ROBOTS_NOINDEX'>): Response {
+  if (response.status === 101 || response.webSocket) return response;
+  const out = new Response(response.body, response);
+  const { pathname } = new URL(request.url);
+  for (const [name, value] of Object.entries(securityHeadersFor(pathname, out.headers.get('content-type')))) {
+    // A route that chose its own policy keeps it.
+    if (!out.headers.has(name)) out.headers.set(name, value);
+  }
+  if (noindex(env)) out.headers.set('x-robots-tag', ROBOTS_TAG);
+  return out;
 }
 
 async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionContext, deps: EdgeDeps): Promise<Response> {
@@ -110,6 +131,7 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
       headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=300' },
     });
   }
+  if (pathname === SITEMAP_PATH) return handleSitemapRequest(request, env);
   if (pathname.startsWith('/assets/')) return serveHashedAsset(request, env);
   if (pathname.startsWith('/scan/')) {
     return handleScanRoute(request, {

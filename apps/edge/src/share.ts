@@ -3,8 +3,11 @@ import { oembedAllowedOriginsFromEnv, sanitizeOembedOrigin } from '../../web/src
 import { handlePublicAtlasRoute, isPublicAtlasRoutePath } from '../../web/src/publicAtlasRoutes';
 import { parseAppRoute, repoSlugFor } from '../../web/src/renderer/route';
 import { PUBLISHED_INDEX_SCHEMA, publishedIndexKey } from '../../server/src/publishedStoreLayout';
+import type { PublicAtlasDisplayNames } from '../../web/src/oembed';
+import { publishedNamesFor, publishedRowForSlug } from '../../web/src/publishedNames';
 import { webMcpHostHeadersForFetchDest } from '../../web/src/webmcpHeaders';
 import type { EdgeEnv } from './env';
+import { readPublishedIndex } from './publishedIndexCache';
 import { isPublishedAtlas } from './scan';
 
 /**
@@ -25,6 +28,7 @@ export async function handleShareRoute(request: Request, env: EdgeEnv): Promise<
     requestOrigin: sanitizeOembedOrigin(url.origin) ?? '',
     allowedOrigins: oembedAllowedOriginsFromEnv({ OKIE_PUBLIC_ORIGIN: env.OKIE_PUBLIC_ORIGIN }),
     isPublicAtlas: async (owner, repo) => isDogfoodAtlas(owner, repo) || isPublishedAtlas(bucket, repoSlugFor(owner, repo)),
+    displayNames: (owner, repo) => publishedDisplayNames(bucket, repoSlugFor(owner, repo)),
     indexHtml: async () => {
       const shell = await env.ASSETS.fetch(new Request(new URL('/', url), { headers: { accept: 'text/html' } }));
       return shell.ok ? shell.text() : '';
@@ -42,6 +46,19 @@ export async function handleShareRoute(request: Request, env: EdgeEnv): Promise<
     }
   }
   return new Response(result.body === '' ? null : result.body, { status: result.status, headers });
+}
+
+/**
+ * CLA-318: owner/repo as the published index row names them — GitHub's casing (`ownerLogin`/`repoName`)
+ * when recorded, else the stored names. Reads index.json through the per-isolate cache (at most one R2
+ * read a minute), only for a public share route (title, oEmbed, card text); no GitHub call. Undefined
+ * (show the URL's names) without a row.
+ */
+export async function publishedDisplayNames(bucket: R2Bucket, slug: string): Promise<PublicAtlasDisplayNames | undefined> {
+  const index = await readPublishedIndex(bucket) as { schema?: unknown } | undefined;
+  if (index?.schema !== PUBLISHED_INDEX_SCHEMA) return undefined;
+  const names = publishedNamesFor(publishedRowForSlug(index, slug));
+  return names ? { owner: names.owner, repo: names.repo } : undefined;
 }
 
 /** Owner/repo compared the way people mistype them: case and punctuation ignored (BurntSushi = burntsushi = burnt-sushi). */
