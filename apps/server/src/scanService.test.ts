@@ -162,7 +162,7 @@ function makeTarball(topDir: string, files: Record<string, string>): { tgz: stri
     writeFileSync(full, content);
   }
   const tgz = join(work, "archive.tar.gz");
-  execFileSync("tar", ["-czf", tgz, "-C", work, topDir]);
+  execFileSync("tar", ["-czf", tgz, "-C", work, topDir], { env: { ...process.env, COPYFILE_DISABLE: "1" } }); // no macOS AppleDouble `._*` entries (never in a GitHub tarball)
   return { tgz, cleanup: () => rmSync(work, { recursive: true, force: true }) };
 }
 

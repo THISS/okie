@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { analyzeRust } from "./analyze-rust.js";
+import { analyzeRust, RUST_LOCKDOWN_LIMITATION } from "./analyze-rust.js";
 
 function fixture(files: Record<string, string>): { root: string; cleanup: () => void } {
   const root = mkdtempSync(join(tmpdir(), "okie-rust-semantic-"));
@@ -116,12 +116,21 @@ test("atlas-protocol records every resolved is_valid_color call without leaking 
   );
 });
 
-test("rust analyzer adds the declared wasm target when source is cfg-gated", { timeout: 120_000 }, () => {
+test("rust analyzer adds the declared wasm target when source is cfg-gated", { timeout: 120_000 }, t => {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-  const analysis = analyzeRust(root, [
-    "crates/atlas-wasm/src/lib.rs",
-    "crates/atlas-wasm/src/browser.rs",
-  ]);
+  // CLA-305: the default scratch CARGO_HOME is offline and empty, so crates.io dependencies (and with them external
+  // references) are only resolved when the operator opts in with OKIE_SCAN_CARGO_HOME. Use the host's cargo home here.
+  const hostCargoHome = process.env.CARGO_HOME ?? join(homedir(), ".cargo");
+  if (!existsSync(join(hostCargoHome, "registry"))) { t.skip(`skipped: external wasm-bindgen references need a crates.io registry cache, and ${join(hostCargoHome, "registry")} does not exist (the default scratch CARGO_HOME resolves no dependencies; see OKIE_SCAN_CARGO_HOME)`); return; }
+  const previous = process.env.OKIE_SCAN_CARGO_HOME;
+  process.env.OKIE_SCAN_CARGO_HOME = hostCargoHome;
+  let analysis: ReturnType<typeof analyzeRust>;
+  try {
+    analysis = analyzeRust(root, [
+      "crates/atlas-wasm/src/lib.rs",
+      "crates/atlas-wasm/src/browser.rs",
+    ]);
+  } finally { if (previous === undefined) delete process.env.OKIE_SCAN_CARGO_HOME; else process.env.OKIE_SCAN_CARGO_HOME = previous; }
   const coverage = analysis.coverage[0];
   assert.ok(coverage, JSON.stringify(analysis));
   assert.ok(coverage.indexedFiles.includes("crates/atlas-wasm/src/browser.rs"), JSON.stringify(coverage));
@@ -131,4 +140,14 @@ test("rust analyzer adds the declared wasm target when source is cfg-gated", { t
   const external = analysis.externalReferences ?? [];
   assert.ok(external.some(item => item.package.startsWith("wasm-bindgen") && item.symbol.startsWith("wasm_bindgen")), JSON.stringify(external.slice(0, 5)));
   assert.ok(external.every(item => !["std", "core", "alloc"].includes(item.package) && !item.package.startsWith("atlas-") && item.analyzer.startsWith("rust-analyzer@") && item.version), JSON.stringify(external.filter(item => !item.version || item.package.startsWith("atlas-")).slice(0, 5)));
+});
+
+test("rust analyzer: the okie worktree itself is indexed semantically under the default lockdown (pinned toolchain, scratch CARGO_HOME)", { timeout: 120_000 }, () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const analysis = analyzeRust(root, ["crates/atlas-protocol/src/lib.rs", "crates/atlas-protocol/src/scene.rs"]);
+  const coverage = analysis.coverage[0];
+  // A toolchain without rust-analyzer must say so, never pass silently as zero facts.
+  assert.equal(coverage?.coverage, "semantic", JSON.stringify(analysis.coverage));
+  assert.ok(coverage.limitations.includes(RUST_LOCKDOWN_LIMITATION));
+  assert.ok(analysis.definitions.length > 0 && analysis.references.length > 0);
 });

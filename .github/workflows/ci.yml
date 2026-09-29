@@ -74,6 +74,10 @@ jobs:
         run: pnpm check
 
       - name: Test TypeScript packages
+        # CLA-305: Rust analysis refuses to run under a world-writable ancestor such as /tmp, so tests' temp trees live
+        # in the runner's private temp dir.
+        env:
+          TMPDIR: ${{ runner.temp }}
         run: pnpm test
 
       - name: Test Rust workspace

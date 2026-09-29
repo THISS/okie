@@ -19,6 +19,7 @@ import { resolveOperatorGithubIds } from "./operatorAccess.js";
 import { OperatorStore } from "./operatorStore.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
 import { createOperatorRunner } from "./operatorRunner.js";
+import { killScanChildren } from "./scanWorker.js";
 import { createOperatorBudgetLedger } from "./operatorBudget.js";
 import { createBlockPlanReplayStore, createBlockPlanService, publicationBlockPlanSource, resolveBlockPlannerConfig } from "./blockPlans.js";
 import { createJevProvider } from "./operatorJudgments.js";
@@ -155,3 +156,11 @@ server.listen(port, bind, () => {
   log(`enrichment: ${describeEnrichmentMode(enrich, llm)}`);
   log(`incremental: cron ${incrementalAutomation.config.cronToken ? "on" : "off"}, webhook ${incrementalAutomation.config.webhookSecret ? "on" : "off"}, auto-publish ${incrementalAutomation.config.autoPublish ? "on" : "off"}`);
 });
+
+// CLA-305: scan children run in their own process groups; never let one outlive the server. The scanWorker module
+// also kills them on 'exit'; a signal would otherwise end the server without running exit handlers. After cleanup the
+// handler is gone and the signal is re-raised, so the process still dies of it (default action, correct exit status).
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  const onSignal = () => { killScanChildren(); process.removeListener(signal, onSignal); process.kill(process.pid, signal); };
+  process.once(signal, onSignal);
+}

@@ -1,12 +1,14 @@
-import { execFileSync } from "node:child_process";
-import { createWriteStream, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { createWriteStream, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { slug } from "./ids.js";
 import { scrubGithubTokens } from "./redact.js";
-import { detachSymlinks, type SkippedTreeEntries } from "./source-tree.js";
+import { scanExecFileSync, scanWorkDir } from "./scan-env.js";
+import { detachSymlinks, ScanSizeLimitError, type SkippedTreeEntries } from "./source-tree.js";
+import { extractTarball, TarExtractError, type TarExtractLimits, type TarRejectionReason } from "./tar-extract.js";
+
+export { TAR_EXTRACT_LIMITS, TarExtractError, type TarExtractLimits, type TarRejectionReason } from "./tar-extract.js";
 
 /**
  * A parsed `gh:owner/repo[@ref]` source. `ref` may be a branch, tag, or SHA and can
@@ -140,7 +142,7 @@ export function authenticatedTarballUrl(owner: string, repo: string, sha: string
 
 function ghAvailable(): boolean {
   try {
-    execFileSync("gh", ["--version"], { stdio: "ignore" });
+    scanExecFileSync("gh", "gh", ["--version"], { stdio: "ignore" });
     return true;
   } catch {
     return false;
@@ -149,12 +151,12 @@ function ghAvailable(): boolean {
 
 function ghApiJson(apiPath: string): unknown {
   const endpoint = apiPath.replace(/^\//, "");
-  const out = execFileSync("gh", ["api", endpoint], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const out = scanExecFileSync("gh", "gh", ["api", endpoint], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   return JSON.parse(out);
 }
 
 function ghDownloadTarball(owner: string, repo: string, sha: string, maxBytes: number): Buffer {
-  return execFileSync("gh", ["api", `repos/${owner}/${repo}/tarball/${sha}`], {
+  return scanExecFileSync("gh", "gh", ["api", `repos/${owner}/${repo}/tarball/${sha}`], {
     encoding: "buffer",
     maxBuffer: maxBytes + 1,
   });
@@ -379,31 +381,51 @@ export interface AcquiredTree {
 }
 
 /**
+ * A tarball was refused as a whole by the hardened extractor (unsafe path, link or
+ * special entry, collision, write-through-symlink, or malformed archive). Nothing
+ * from it is used; the temp dir is discarded. `reason` is the extractor's code.
+ */
+export class TarballRejectedError extends GithubAcquisitionError {
+  readonly reason: TarRejectionReason;
+  constructor(cause: TarExtractError) {
+    super(`Refused the GitHub tarball: ${cause.message}.`);
+    this.name = "TarballRejectedError";
+    this.reason = cause.reason;
+  }
+}
+
+/**
  * Downloads the tarball at `sha` into a fresh temp dir, extracts it, and returns the
  * repository root. Ephemeral by contract: the caller scans then calls `cleanup()`;
  * nothing long-lived is kept (the pin's commit/tree SHA is the identity). Extraction
- * shells out to `tar` (present on macOS/Linux, as this repo already assumes for git).
+ * uses the in-process {@link extractTarball} (never the host `tar`): the whole archive
+ * is validated before anything is written, into a private (0700) temp dir that is
+ * removed on any error. Over-limit archives throw {@link ScanSizeLimitError}
+ * (bounds: {@link TAR_EXTRACT_LIMITS}, overridable via `extractLimits`).
  */
-export async function acquireGithubTree(src: GithubSourceRef, sha: string, client: GithubClient, maxBytes = DEFAULT_MAX_TARBALL_BYTES): Promise<AcquiredTree> {
-  const workDir = mkdtempSync(join(tmpdir(), "okie-scan-gh-"));
+export async function acquireGithubTree(
+  src: GithubSourceRef,
+  sha: string,
+  client: GithubClient,
+  maxBytes = DEFAULT_MAX_TARBALL_BYTES,
+  extractLimits: Partial<TarExtractLimits> = {},
+): Promise<AcquiredTree> {
+  const workDir = mkdtempSync(join(scanWorkDir(), "okie-scan-gh-"));
   const cleanup = () => rmSync(workDir, { recursive: true, force: true });
   try {
     const tarPath = join(workDir, "repo.tar.gz");
     await client.downloadTarball(src.owner, src.repo, sha, tarPath, maxBytes);
     const extractDir = join(workDir, "tree");
-    mkdirSync(extractDir, { recursive: true });
+    mkdirSync(extractDir, { mode: 0o700 });
+    let root: string;
     try {
-      execFileSync("tar", ["-xzf", tarPath, "-C", extractDir], { stdio: "ignore" });
+      // GitHub archives contain a single top-level dir (`{owner}-{repo}-{sha}`); the extractor enforces it.
+      root = (await extractTarball(tarPath, extractDir, extractLimits)).root;
     } catch (error) {
-      throw new GithubAcquisitionError(`Failed to extract tarball (is it a gzip archive?): ${scrubGithubTokens(String(error))}`);
+      if (error instanceof TarExtractError) throw new TarballRejectedError(error);
+      if (error instanceof ScanSizeLimitError) throw error;
+      throw new GithubAcquisitionError(`Failed to extract tarball: ${scrubGithubTokens(String(error))}`);
     }
-    // GitHub archives contain a single top-level dir: `{repo}-{sha}` (or similar).
-    const entries = readdirSync(extractDir, { withFileTypes: true }).filter(entry => entry.isDirectory());
-    if (entries.length !== 1) {
-      throw new GithubAcquisitionError(`Unexpected tarball layout: expected one top-level directory, found ${entries.length}.`);
-    }
-    const root = join(extractDir, entries[0]!.name);
-    if (!statSync(root).isDirectory()) throw new GithubAcquisitionError("Extracted tarball root is not a directory.");
     const skipped = detachSymlinks(root);
     return { root, skipped, cleanup };
   } catch (error) {
