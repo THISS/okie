@@ -84,6 +84,9 @@ describe('published atlas attribution (CLA-266)', () => {
     expect(variant({ license: { spdxId: 'MIT', name: 'MIT License', url: 'javascript:alert(1)' } })).not.toHaveProperty('licenceUrl');
     expect(variant({ license: { spdxId: 'NOASSERTION', name: 'Other' } })?.licenceLabel).toBe('Other');
     expect(variant({ license: { spdxId: 'Apache-2.0', name: 'Apache License 2.0' } })?.licenceLabel).toBe('Apache-2.0 licence');
+    // SPDX expressions (operator overrides) read as a list.
+    expect(variant({ license: { spdxId: 'MIT AND CC-BY-4.0', name: 'MIT AND CC-BY-4.0' } })?.licenceLabel).toBe('licence: MIT AND CC-BY-4.0');
+    expect(variant({ license: { spdxId: 'Unlicense OR MIT', name: 'Unlicense OR MIT' } })?.licenceLabel).toBe('licence: Unlicense OR MIT');
   });
 
   it('installs a labelled footer with GitHub links, and skips embeds', async () => {

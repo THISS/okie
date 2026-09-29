@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pngDimensions, pngSignatureOk } from '../../web/src/atlasCard';
 import { NOINDEX_ROBOTS_TXT, canonicalHostRedirect } from '../src/index';
-import { edgeFetch, seedAtlas } from './helpers';
+import { edgeFetch, seedAtlas, seedIndex } from './helpers';
 
 const ORIGIN = 'http://127.0.0.1:4196';
 
@@ -34,6 +34,28 @@ describe('share pages at the edge', () => {
     // A version written but not yet pointed to by latest.json is not public.
     await seedAtlas({ slug: 'acme__pending', versionId: 'v1', files: { 'snapshot.json': '{}' }, latest: false });
     expect((await edgeFetch('/r/acme/pending')).status).toBe(404);
+  });
+
+  it('301s a GitHub-cased or lower-cased owner to the canonical published slug path', async () => {
+    // The operator lower-cases BurntSushi/ripgrep; the scan slugger turns BurntSushi into burnt-sushi.
+    await seedAtlas({ slug: 'burnt-sushi__ripgrep', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'burnt-sushi__ripgrep', versionId: 'v1', owner: 'burntsushi', repo: 'ripgrep' }]);
+    for (const [path, location] of [
+      ['/r/burntsushi/ripgrep', '/r/burnt-sushi/ripgrep'],
+      ['/r/BURNTSUSHI/RipGrep?sel=x&z=2', '/r/burnt-sushi/ripgrep?sel=x&z=2'],
+      ['/r/burntsushi/ripgrep/src/main.rs', '/r/burnt-sushi/ripgrep/src/main.rs'],
+    ] as const) {
+      const response = await edgeFetch(path);
+      expect(response.status, path).toBe(301);
+      expect(response.headers.get('location'), path).toBe(location);
+    }
+    // Paths that already resolve are served, not redirected.
+    expect((await edgeFetch('/r/BurntSushi/ripgrep')).status).toBe(200);
+    expect((await edgeFetch('/r/burnt-sushi/ripgrep')).status).toBe(200);
+    // No loose match, a different repo, or a non-GET: the usual 404.
+    expect((await edgeFetch('/r/burntsushi/ripgrep-extra')).status).toBe(404);
+    expect((await edgeFetch('/r/someone/ripgrep')).status).toBe(404);
+    expect((await edgeFetch('/r/burntsushi/ripgrep', { init: { method: 'POST', body: '' } })).status).not.toBe(301);
   });
 
   it('only trusts the configured public origin (plus loopback)', async () => {

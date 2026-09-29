@@ -94,13 +94,13 @@ The global token/$ cap is a **process-wide** ceiling across GitHub users (CLA-38
 Publishing (operator machine; build `@okie/server` first):
 
 ```sh
-pnpm publish:atlas --repo owner/name --env staging|production|local [--scan-root <dir>] [--dry-run [--out <dir>]] [--persist-to <dir>] [--license-override <SPDX>] [--yes]
+pnpm publish:atlas --repo owner/name --env staging|production|local [--scan-root <dir>] [--dry-run [--out <dir>]] [--persist-to <dir>] [--license-override <SPDX id or expression>] [--yes]
 pnpm publish:atlas --repo owner/name --env <env> --set-latest <versionId> [--yes]     # rollback
 ```
 
 - Reads the operator store read-only. Uploads the version's public files, the private raw sidecar, the `neighborhood` pack (default view + every entity) and `excerpt` pack, and `packs/source-paths.json`, then `manifest.json`, `latest.json` and the merged `index.json`.
 - Packs: every entry is its own gzip member of the exact route body (`index.encoding: "gzip"`, `[offset, length]` of the compressed member). One object per pack; a pack over 300 MB fails the publish (wrangler's per-object limit is 315 MB).
-- Licence: `GET api.github.com/repos/<o>/<r>/license?ref=<commit>`, unauthenticated. No licence, `NOASSERTION` or a failed lookup refuses the publish unless `--license-override <SPDX>` (no lookup, no URL).
+- Licence: `GET api.github.com/repos/<o>/<r>/license?ref=<commit>`, unauthenticated. No licence, `NOASSERTION` or a failed lookup refuses the publish unless `--license-override <SPDX id or expression>` (no lookup, no URL; e.g. `"MIT AND CC-BY-4.0"`, `"Unlicense OR MIT"`).
 - `--set-latest <versionId>` checks that version's manifest exists in the target store, then rewrites `latest.json` and `index.json` from it; nothing else is uploaded.
 - Remote envs use the `wrangler login` OAuth session and take the account from `apps/edge/wrangler.jsonc` `account_id` (`CLOUDFLARE_ACCOUNT_ID` overrides it). `CLOUDFLARE_API_TOKEN` (and `CF_API_TOKEN` / API keys) are stripped from the wrangler child, with a one-line note. Production needs `--yes`.
 - A `wrangler r2 object get` counts as "missing" only on wrangler's exact `The specified key does not exist.` error; anything else fails the publish before any upload.

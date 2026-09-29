@@ -349,20 +349,63 @@ export function buildPublishedVersion(input: { scanRoot: string; repo: string; l
 /** Upstream licence lookup: `GET api.github.com/repos/<o>/<r>/license?ref=<sha>`, unauthenticated only (never an operator token). */
 export const GITHUB_LICENSE_API = "https://api.github.com";
 const SPDX_ID = /^[A-Za-z0-9][A-Za-z0-9.+-]{0,63}$/;
+const SPDX_EXPRESSION_MAX = 200;
+
+/**
+ * An operator licence override: one SPDX id (`MIT`, `NOASSERTION`) or an SPDX licence expression
+ * (`MIT AND CC-BY-4.0`, `Unlicense OR MIT`, `(MIT OR Apache-2.0) AND CC-BY-4.0`, `GPL-2.0-only WITH
+ * Classpath-exception-2.0`). Operators are upper-case AND / OR / WITH, as SPDX requires; NOASSERTION only
+ * stands alone. Returns the expression with normalised spacing, or undefined when it does not parse.
+ */
+export function normalizeSpdxLicenseOverride(raw: string): string | undefined {
+  const value = raw.trim();
+  if (!value || value.length > SPDX_EXPRESSION_MAX) return undefined;
+  const tokens = value.replace(/[()]/g, paren => ` ${paren} `).trim().split(/\s+/);
+  if (tokens.length === 1) return SPDX_ID.test(tokens[0]!) ? tokens[0] : undefined;
+  let at = 0;
+  const operator = (token: string | undefined) => token === "AND" || token === "OR" || token === "WITH";
+  const id = (): boolean => {
+    const token = tokens[at];
+    if (token === undefined || operator(token) || token === "(" || token === ")" || token === "NOASSERTION" || !SPDX_ID.test(token)) return false;
+    at += 1;
+    return true;
+  };
+  const term = (): boolean => {
+    if (tokens[at] === "(") {
+      at += 1;
+      if (!expression() || tokens[at] !== ")") return false;
+      at += 1;
+      return true;
+    }
+    if (!id()) return false;
+    if (tokens[at] === "WITH") { at += 1; return id(); }
+    return true;
+  };
+  const expression = (): boolean => {
+    if (!term()) return false;
+    while (tokens[at] === "AND" || tokens[at] === "OR") {
+      at += 1;
+      if (!term()) return false;
+    }
+    return true;
+  };
+  if (!expression() || at !== tokens.length) return undefined;
+  return tokens.join(" ").replace(/\( /g, "(").replace(/ \)/g, ")");
+}
 
 /**
  * The licence recorded for a published version. No licence file, GitHub's `NOASSERTION`, or a failed lookup refuses the
- * publish unless the operator passes `override` (an SPDX id, after checking the repository's terms by hand); an
- * override skips the lookup and records no URL.
+ * publish unless the operator passes `override` (an SPDX id or expression, after checking the repository's terms by
+ * hand); an override skips the lookup and records no URL.
  */
 export async function resolvePublishedLicense(input: { owner: string; repo: string; commitSha: string; override?: string; fetch?: typeof fetch; timeoutMs?: number }): Promise<PublishedLicense> {
   if (input.override !== undefined) {
-    const spdxId = input.override.trim();
-    if (!SPDX_ID.test(spdxId)) throw new Error("--license-override must be an SPDX id such as MIT, Apache-2.0 or NOASSERTION");
+    const spdxId = normalizeSpdxLicenseOverride(input.override);
+    if (spdxId === undefined) throw new Error('--license-override must be an SPDX id (MIT, Apache-2.0, NOASSERTION) or an SPDX expression ("MIT AND CC-BY-4.0", "Unlicense OR MIT")');
     return { spdxId, name: spdxId };
   }
   const refuse = (why: string): never => {
-    throw new Error(`${why}; refusing to publish without a known licence (check the repository's terms, then pass --license-override <SPDX id>)`);
+    throw new Error(`${why}; refusing to publish without a known licence (check the repository's terms, then pass --license-override <SPDX id or expression>)`);
   };
   if (!/^[A-Za-z0-9._-]+$/.test(input.owner) || !/^[A-Za-z0-9._-]+$/.test(input.repo) || !/^[a-f0-9]{40}$/.test(input.commitSha)) refuse("the publication's owner/repo/commit cannot be looked up on GitHub");
   const url = `${GITHUB_LICENSE_API}/repos/${input.owner}/${input.repo}/license?ref=${input.commitSha}`;

@@ -121,11 +121,11 @@ export async function seedAtlas(options: SeedOptions): Promise<void> {
   }
 }
 
-export async function seedIndex(repos: Array<{ slug: string; versionId: string }>): Promise<string> {
+export async function seedIndex(repos: Array<{ slug: string; versionId: string; owner?: string; repo?: string }>): Promise<string> {
   const text = `${JSON.stringify({
     schema: PUBLISHED_INDEX_SCHEMA,
     schemaVersion: 1,
-    repos: repos.map(repo => ({ ...repo, owner: repo.slug.split('__')[0], repo: repo.slug.split('__')[1], repositoryId: repo.slug, commitSha: 'abc123', generatedAt: '2026-09-30T00:00:00Z', entityCount: 3, publishedAt: '2026-09-30T00:00:00Z' })),
+    repos: repos.map(repo => ({ ...repo, owner: repo.owner ?? repo.slug.split('__')[0], repo: repo.repo ?? repo.slug.split('__')[1], repositoryId: repo.slug, commitSha: 'abc123', generatedAt: '2026-09-30T00:00:00Z', entityCount: 3, publishedAt: '2026-09-30T00:00:00Z' })),
   }, null, 2)}\n`;
   await edgeEnv.ATLAS_BUCKET.put(publishedIndexKey(), text);
   return text;
