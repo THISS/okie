@@ -13,7 +13,8 @@ import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, GITHUB_REPO_URL, PRODUCT
 export type NotFoundKind = 'page' | 'atlas';
 
 /**
- * Paths main.tsx renders: `/` (and `/index.html`), the `/new` landing, `/operator` (each with or without a trailing slash), and
+ * Paths main.tsx renders: `/` (and `/index.html`; the hosted edge answers most of those with the home
+ * page, homePage.ts), the `/new` landing (the hosted edge 301s it to `/`), `/operator` (each with or without a trailing slash), and
  * `/r/<owner>/<repo>[/<ref>]`. Worker-owned paths (/assets, /scan, /api, /og, /oembed, /sitemap.xml, /__store) and
  * real files (favicons, robots.txt, og-default.png) are answered before this is consulted.
  */
@@ -89,8 +90,7 @@ export function notFoundPageHtml(kind: NotFoundKind = 'page'): string {
       <h1>${copy.heading}</h1>
       <p>${copy.body}</p>
       <nav aria-label="Where to next">
-        <a class="primary" href="/new">Browse published atlases</a>
-        <a href="/">Home</a>
+        <a class="primary" href="/">Browse published atlases</a>
       </nav>
     </main>
     ${siteFooterHtml()}

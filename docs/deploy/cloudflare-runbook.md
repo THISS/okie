@@ -74,11 +74,13 @@ print a one-line note if they found one.
    CSP also allow Cloudflare Web Analytics (`static.cloudflareinsights.com` script, `cloudflareinsights.com`
    reports); without it, no `cloudflareinsights` source appears. `vite preview` mirrors the headers (without analytics);
    `vite dev` never gets the CSP, because Vite's HMR uses inline scripts.
-   `/sitemap.xml` lists `/`, `/new` and every published atlas's canonical `/r/<slug owner>/<slug repo>` on
-   `OKIE_PUBLIC_ORIGIN`, with `lastmod` from `publishedAt`. It is served with `cache-control: public, max-age=300`.
+   `/sitemap.xml` lists `/` (the home, with the newest `publishedAt` as its `lastmod`) and every published atlas's
+   canonical `/r/<slug owner>/<slug repo>` on `OKIE_PUBLIC_ORIGIN`, with `lastmod` from `publishedAt`. It does not
+   list `/new`, which 301s to `/` (CLA-269). It is served with `cache-control: public, max-age=300`.
    The Worker builds it from `index.json`, which each Worker isolate reads from R2 at most once a minute (the same
-   cache serves the `/r` titles). A new publish can therefore take about a minute to appear in the sitemap, and up to
-   5 more minutes in shared caches. Production's `robots.txt` points to it.
+   cache serves the `/r` titles and the home's directory). A new publish can therefore take about a minute to appear in
+   the sitemap and on the home (which shared caches keep for up to 1 more minute), and up to 5 more minutes in shared
+   caches for the sitemap. Production's `robots.txt` points to it.
 8. **Web Analytics (production only):** Cloudflare Web Analytics is cookieless, so there is no consent banner and no
    other tracker. In the dashboard (Analytics & Logs → Web Analytics → Add a site → `sourcefor.dev`), choose the
    **manual JS snippet install** and leave **automatic setup / JS snippet injection off** for the zone: the Worker
@@ -86,7 +88,7 @@ print a one-line note if they found one.
    the site token from the snippet's `data-cf-beacon` (it is public; it ships in every page). Add
    `"WEB_ANALYTICS_TOKEN": "<token>"` to `env.production.vars` in `apps/edge/wrangler.jsonc`, then run `pnpm build`
    and `deploy:production`. The Worker then adds the beacon just before `</body>` of every HTML page it serves: the
-   SPA shell, `/new`, `/r/...` (oEmbed embeds included; `WEB_ANALYTICS_IN_EMBEDS` in `apps/edge/src/analytics.ts`
+   home page `/`, the SPA shell, `/r/...` (oEmbed embeds included; `WEB_ANALYTICS_IN_EMBEDS` in `apps/edge/src/analytics.ts`
    turns that off) and the 404 pages. JSON, PNG, assets and the sitemap are never touched. A token that is not 16-64
    letters or digits is ignored (no beacon, and no `cloudflareinsights` in the CSP). Injected pages carry no ETag or
    Last-Modified, and the Worker drops conditional headers on the shell, so the shell (`max-age=0,
@@ -118,7 +120,7 @@ pnpm publish:atlas --repo thiss/okie --env production --scan-root ~/sites/okie/f
   immutable, so changing the licence of a published atlas needs a new operator publication (a new version id).
 - GitHub's casing: the publish also asks `GET api.github.com/repos/<owner>/<repo>` (unauthenticated) and records
   `ownerLogin` / `repoName` in the index row (`BurntSushi` where `owner` is `burntsushi`). The attribution strip, the
-  `/new` list, and the `/r` title, oEmbed title and card text show that casing. Without it they show the stored names.
+  home page's directory cards, and the `/r` title, oEmbed title and card text show that casing. Without it they show the stored names.
   URLs keep the slug form. A failed lookup doesn't stop the publish: the row keeps the names it already had, or goes
   without. To fill rows published before CLA-318, run the one-off backfill. It rewrites `index.json` only: no new
   versions, pointers or manifests. Rows that already have both names are skipped, and a failed lookup leaves its
@@ -163,18 +165,21 @@ that the top-level `containers` and `ATLAS_API` binding aren't in the env; that 
 
 Then run the smoke checks against staging:
 
-- `/`, `/new` (published list), `/r/<owner>/<repo>` (atlas renders, OG tags in the HTML), `/og/<owner>/<repo>` (PNG),
-  `/oembed?url=https://staging.sourcefor.dev/r/<owner>/<repo>`.
+- `/` (the edge-rendered home: hero, "Explore an atlas" CTA and a card per published atlas; no SPA `<div id="root">`),
+  `/?fixture=okie` (the SPA golden demo), `/r/<owner>/<repo>` (atlas renders, OG tags in the HTML), `/og/<owner>/<repo>`
+  (PNG), `/oembed?url=https://staging.sourcefor.dev/r/<owner>/<repo>`.
+- `curl -sI <origin>/new` answers `301` with `location: /` (`/new?utm_source=x&a=1` → `/?utm_source=x`: only the
+  home's query params survive).
 - On `/r/<owner>/<repo>`: no Ask button, panel or ⌘↵ shortcut; no account menu; the attribution strip at the bottom
   shows the repository, commit and licence, linking to GitHub (it is hidden in embeds).
-- Headers: `curl -sI <origin>/ | grep -iE 'content-security|x-content-type|referrer-policy'` shows all three
-  with `frame-ancestors 'self'`. `curl -sI <origin>/r/<owner>/<repo>` shows a CSP without `frame-ancestors`. A JSON or asset
-  response has `nosniff` and no CSP. In a browser, the console on `/`, `/new` and `/r/<owner>/<repo>` (and in an embed)
+- Headers: `curl -sI <origin>/ | grep -iE 'content-security|x-content-type|referrer-policy|permissions-policy|origin-agent-cluster'`
+  shows all five, with `frame-ancestors 'self'`, `Permissions-Policy: tools=(self)` and `Origin-Agent-Cluster: ?1`. `curl -sI <origin>/r/<owner>/<repo>` shows a CSP without `frame-ancestors`. A JSON or asset
+  response has `nosniff` and no CSP. In a browser, the console on `/`, `/?fixture=okie` and `/r/<owner>/<repo>` (and in an embed)
   shows no `Refused to …` CSP errors.
-- `curl -s <origin>/sitemap.xml` lists `/`, `/new` and each published atlas (`content-type: application/xml`).
+- `curl -s <origin>/sitemap.xml` lists `/` and each published atlas, and no `/new` (`content-type: application/xml`).
   Production's `/robots.txt` ends with `Sitemap: https://sourcefor.dev/sitemap.xml`.
 - Production with `WEB_ANALYTICS_TOKEN` set: `curl -s https://sourcefor.dev/ | grep -o cloudflareinsights.com/beacon | wc -l`
-  prints exactly `1` (same for `/new` and `/r/<owner>/<repo>`). `2` means Cloudflare's automatic injection is also on:
+  prints exactly `1` (the home; same for `/?fixture=okie` and `/r/<owner>/<repo>`; `/new` is a 301 with no body). `2` means Cloudflare's automatic injection is also on:
   turn it off (step 8). Staging prints `0`. In a browser, the Network tab
   shows `beacon.min.js` and a `cdn-cgi/rum` POST with no CSP errors, and page views appear in Web Analytics within
   a few minutes.

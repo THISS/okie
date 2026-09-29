@@ -29,21 +29,23 @@ describe('share pages at the edge', () => {
     expect(framed.headers.get('origin-agent-cluster')).toBeNull();
   });
 
-  it('serves /new with landing meta and the default card; staging canonicalizes to production', async () => {
-    const response = await edgeFetch('https://staging.sourcefor.dev/new', { env: { OKIE_PUBLIC_ORIGIN: 'https://staging.sourcefor.dev' } });
+  it('301s /new to the home page, whose meta and default card follow staging but canonicalize to production (CLA-269)', async () => {
+    const env = { OKIE_PUBLIC_ORIGIN: 'https://staging.sourcefor.dev' };
+    const moved = await edgeFetch('https://staging.sourcefor.dev/new', { env });
+    expect(moved.status).toBe(301);
+    expect(moved.headers.get('location')).toBe('/');
+    const response = await edgeFetch('https://staging.sourcefor.dev/', { env });
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
-    expect(response.headers.get('permissions-policy')).toBe('tools=(self)');
-    expect(response.headers.get('origin-agent-cluster')).toBe('?1');
     const html = await response.text();
-    expect(html).toContain('<title>Published atlases · Source For Atlas</title>');
+    expect(html).toContain('<title>Source For Atlas: explore how open-source software is built</title>');
     expect(html).toContain('<meta property="og:image" content="https://staging.sourcefor.dev/og-default.png" />');
-    expect(html).toContain('<link rel="canonical" href="https://sourcefor.dev/new" />');
+    expect(html).toContain('<link rel="canonical" href="https://sourcefor.dev/" />');
     expect(html.match(/<title>/g)).toHaveLength(1);
-    expect(html).toContain('/assets/index-abc123.js');
-    // `/` stays the static shell (its home-page meta is baked into index.html).
-    const home = await (await edgeFetch('/')).text();
-    expect(home).toContain('<link rel="canonical" href="https://sourcefor.dev/" />');
+    // The SPA shell (`/` with a non-home query) keeps the home meta baked into index.html.
+    const shell = await (await edgeFetch('/?fixture=okie')).text();
+    expect(shell).toContain('<link rel="canonical" href="https://sourcefor.dev/" />');
+    expect(shell).toContain('<div id="root"></div>');
   });
 
   it('404s an unpublished slug with the generic body (dogfood THISS/okie is always public)', async () => {
@@ -114,10 +116,10 @@ describe('share pages at the edge', () => {
     expect(miss.status).toBe(404);
   });
 
-  it('leaves everything else to static assets (SPA fallback for /new)', async () => {
-    const landing = await edgeFetch('/new');
-    expect(landing.status).toBe(200);
-    expect(await landing.text()).toContain('<div id="root"></div>');
+  it('leaves everything else to static assets (SPA fallback for / with a non-home query)', async () => {
+    const shell = await edgeFetch('/?portable=1');
+    expect(shell.status).toBe(200);
+    expect(await shell.text()).toContain('<div id="root"></div>');
     const wasm = await edgeFetch('/assets/atlas_wasm_bg-abc123.wasm');
     expect(wasm.headers.get('content-type')).toBe('application/wasm');
   });
@@ -137,7 +139,7 @@ describe('share pages at the edge', () => {
     const head = await edgeFetch('/assets/App-previousBuild.js', { init: { method: 'HEAD' } });
     expect(head.status).toBe(404);
     // A browser revalidating a shell it cached before the fix (index.html's ETag) gets a 404, not a 304.
-    const shellEtag = (await edgeFetch('/')).headers.get('etag');
+    const shellEtag = (await edgeFetch('/?fixture=okie')).headers.get('etag');
     expect(shellEtag).toBeTruthy();
     const revalidate = await edgeFetch('/assets/App-previousBuild.js', { init: { headers: { 'if-none-match': shellEtag! } } });
     expect(revalidate.status).toBe(404);

@@ -126,7 +126,7 @@ export function MobileNotice({ heading, description, onContinue }: { heading: st
         >
           Continue anyway
         </button>
-        <a href="/new" style={{ padding: '0.6rem 1.1rem', borderRadius: '8px', border: '1px solid #2a3a37', color: '#eef4f2', fontWeight: 600, textDecoration: 'none' }}>Browse published atlases</a>
+        <a href="/" style={{ padding: '0.6rem 1.1rem', borderRadius: '8px', border: '1px solid #2a3a37', color: '#eef4f2', fontWeight: 600, textDecoration: 'none' }}>Browse published atlases</a>
       </div>
     </main>
     <SiteFooter/>

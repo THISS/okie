@@ -45,7 +45,8 @@ describe('site meta (CLA-318)', () => {
     expect(SITE_NAME).toBe('Source For Atlas');
     expect(pageMetaForPath('/')).toEqual({ title: HOME_TITLE, description: HOME_DESCRIPTION, canonicalPath: '/' });
     expect(HOME_TITLE).toBe('Source For Atlas: explore how open-source software is built');
-    expect(pageMetaForPath('/new')).toEqual({ title: LANDING_TITLE, description: LANDING_DESCRIPTION, canonicalPath: '/new' });
+    // CLA-269: the directory moved to the home page; /new canonicalizes there.
+    expect(pageMetaForPath('/new')).toEqual({ title: LANDING_TITLE, description: LANDING_DESCRIPTION, canonicalPath: '/' });
     expect(pageMetaForPath('/new/').title).toBe('Published atlases · Source For Atlas');
     expect(pageMetaForPath('/r/BurntSushi/ripgrep')).toEqual({
       title: 'ripgrep by BurntSushi · Source For Atlas',
@@ -81,7 +82,7 @@ describe('site meta (CLA-318)', () => {
     applyPageMeta(doc, '/new');
     expect(doc.title).toBe(LANDING_TITLE);
     expect(children).toHaveLength(2);
-    expect(children.find(el => el.attrs.rel === 'canonical')?.attrs.href).toBe('https://sourcefor.dev/new');
+    expect(children.find(el => el.attrs.rel === 'canonical')?.attrs.href).toBe('https://sourcefor.dev/');
   });
 
   it('ships home-page meta, Open Graph and icons in the static index.html', () => {
@@ -129,10 +130,10 @@ describe('site meta (CLA-318)', () => {
     expect(html).toContain(`<title>${LANDING_TITLE}</title>`);
     expect(html).toContain(`<meta name="description" content="${LANDING_DESCRIPTION}" />`);
     expect(html).toContain('<meta property="og:image" content="https://staging.sourcefor.dev/og-default.png" />');
-    expect(html).toContain('<meta property="og:url" content="https://staging.sourcefor.dev/new" />');
+    expect(html).toContain('<meta property="og:url" content="https://staging.sourcefor.dev/" />');
     // Staging canonicalizes to production; the home page's canonical is replaced, not duplicated.
     expect(html.match(/rel="canonical"/g)).toHaveLength(1);
-    expect(html).toContain('<link rel="canonical" href="https://sourcefor.dev/new" />');
+    expect(html).toContain('<link rel="canonical" href="https://sourcefor.dev/" />');
     expect(html).not.toContain(`<title>${HOME_TITLE}`);
     expect(html).not.toContain(HOME_DESCRIPTION);
     expect(html).not.toContain('oembed');

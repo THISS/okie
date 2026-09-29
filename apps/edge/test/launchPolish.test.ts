@@ -29,9 +29,9 @@ describe('security headers at the edge', () => {
   it('HTML documents get the CSP; atlas pages may be framed by any site, other pages only by this origin', async () => {
     await seedAtlas({ slug: 'acme__shared', versionId: 'v1', files: { 'snapshot.json': '{}' } });
     const cases: Array<[string, number, string]> = [
-      ['/', 200, SELF_ONLY],
+      ['/', 200, SELF_ONLY], // the home page (CLA-269)
       ['/index.html', 200, SELF_ONLY],
-      ['/new', 200, SELF_ONLY],
+      ['/?fixture=okie', 200, SELF_ONLY], // the SPA shell
       ['/operator', 200, SELF_ONLY],
       ['/zzz', 404, SELF_ONLY], // branded 404
       ['/r/acme/shared', 200, FRAMABLE],
@@ -109,7 +109,7 @@ describe('security headers at the edge', () => {
 });
 
 describe('sitemap.xml at the edge', () => {
-  it('lists /, /new and each published atlas on the canonical origin, with lastmod', async () => {
+  it('lists / (lastmod = newest publish) and each published atlas on the canonical origin, never /new', async () => {
     await edgeEnv.ATLAS_BUCKET.put(publishedIndexKey(), JSON.stringify({
       schema: 'okie.published-index/v1',
       schemaVersion: 1,
@@ -130,9 +130,6 @@ describe('sitemap.xml at the edge', () => {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://sourcefor.dev/</loc>
-  </url>
-  <url>
-    <loc>https://sourcefor.dev/new</loc>
     <lastmod>2026-09-20T08:30:00.000Z</lastmod>
   </url>
   <url>
@@ -155,20 +152,20 @@ describe('sitemap.xml at the edge', () => {
     expect((await edgeFetch('/sitemap.xml', { init: { method: 'POST' } })).status).toBe(405);
   });
 
-  it('uses OKIE_PUBLIC_ORIGIN (staging) and falls back to production; a missing or broken index still lists / and /new', async () => {
+  it('uses OKIE_PUBLIC_ORIGIN (staging) and falls back to production; a missing or broken index still lists /', async () => {
     await edgeEnv.ATLAS_BUCKET.delete(publishedIndexKey());
     const staging = await (await edgeFetch('/sitemap.xml', { env: { OKIE_PUBLIC_ORIGIN: 'https://staging.sourcefor.dev/' } })).text();
     expect(staging).toContain('<loc>https://staging.sourcefor.dev/</loc>');
-    expect(staging).toContain('<loc>https://staging.sourcefor.dev/new</loc>');
+    expect(staging).not.toContain('/new');
     const fallback = await (await edgeFetch('/sitemap.xml', { env: { OKIE_PUBLIC_ORIGIN: '' } })).text();
-    expect(fallback.match(/<url>/g)).toHaveLength(2);
-    expect(fallback).toContain('<loc>https://sourcefor.dev/</loc>');
+    expect(fallback.match(/<url>/g)).toHaveLength(1);
+    expect(fallback).toContain('<loc>https://sourcefor.dev/</loc>\n  </url>'); // no lastmod without a publish
     await edgeEnv.ATLAS_BUCKET.put(publishedIndexKey(), 'not json');
     const broken = await edgeFetch('/sitemap.xml', { env: { OKIE_PUBLIC_ORIGIN: 'https://sourcefor.dev' } });
     expect(broken.status).toBe(200);
-    expect((await broken.text()).match(/<url>/g)).toHaveLength(2);
+    expect((await broken.text()).match(/<url>/g)).toHaveLength(1);
     await seedIndex([]);
-    expect((await (await edgeFetch('/sitemap.xml')).text()).match(/<url>/g)).toHaveLength(2);
+    expect((await (await edgeFetch('/sitemap.xml')).text()).match(/<url>/g)).toHaveLength(1);
   });
 
   it('escapes XML', () => {
@@ -176,7 +173,7 @@ describe('sitemap.xml at the edge', () => {
     const xml = renderSitemap([{ loc: 'https://x.test/?a=1&b=<2>', lastmod: '2026-09-30T00:00:00.000Z' }]);
     expect(xml).toContain('<loc>https://x.test/?a=1&amp;b=&lt;2&gt;</loc>');
     // Only slugs that map straight back to themselves are listed, so a row can't inject path text.
-    expect(sitemapUrls({ schema: 'okie.published-index/v1', repos: [{ slug: 'a&b__c' }, { slug: '../x__y' }] }, 'https://sourcefor.dev')).toHaveLength(2);
+    expect(sitemapUrls({ schema: 'okie.published-index/v1', repos: [{ slug: 'a&b__c' }, { slug: '../x__y' }] }, 'https://sourcefor.dev')).toHaveLength(1);
   });
 });
 

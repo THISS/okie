@@ -1,15 +1,17 @@
-import { repoSlugFor } from '../../web/src/renderer/route';
+import { canonicalAtlasPathForSlug, isoDate } from '../../web/src/publishedNames';
 import { CANONICAL_ORIGIN } from '../../web/src/siteMeta';
 import { PUBLISHED_INDEX_SCHEMA } from '../../server/src/publishedStoreLayout';
 import type { EdgeEnv } from './env';
 import { readPublishedIndex } from './publishedIndexCache';
 
 /**
- * `GET /sitemap.xml` (CLA-318): `/`, `/new` and every published atlas's canonical
+ * `GET /sitemap.xml` (CLA-318): the home page `/` (the published-atlas directory since CLA-269;
+ * `<lastmod>` = the newest publishedAt) and every published atlas's canonical
  * `/r/<slug owner>/<slug repo>` (the same target the case/punctuation 301 and the page's
  * `<link rel="canonical">` use), on `OKIE_PUBLIC_ORIGIN` (fallback https://sourcefor.dev), with
- * `<lastmod>` from the row's publishedAt. Built from the published index.json in R2 (through the
- * per-isolate cache, publishedIndexCache.ts); a missing or unreadable index still answers the two static pages.
+ * `<lastmod>` from the row's publishedAt. `/new` is not listed: it 301s to `/`. Built from the
+ * published index.json in R2 (through the per-isolate cache, publishedIndexCache.ts); a missing or
+ * unreadable index still answers `/`.
  */
 export const SITEMAP_PATH = '/sitemap.xml';
 export const SITEMAP_CACHE_CONTROL = 'public, max-age=300';
@@ -39,20 +41,6 @@ export function sitemapOrigin(env: Pick<EdgeEnv, 'OKIE_PUBLIC_ORIGIN'>): string 
   return CANONICAL_ORIGIN;
 }
 
-function isoDate(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const time = Date.parse(value);
-  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
-}
-
-/** `/r/<slug owner>/<slug repo>` for a row whose slug maps straight back to itself; otherwise undefined. */
-export function canonicalAtlasPathForSlug(slug: unknown): string | undefined {
-  if (typeof slug !== 'string') return undefined;
-  const [owner, repo, ...extra] = slug.split('__');
-  if (!owner || !repo || extra.length > 0 || repoSlugFor(owner, repo) !== slug) return undefined;
-  return `/r/${owner}/${repo}`;
-}
-
 /** Sitemap URLs from a parsed index.json (anything unexpected contributes nothing). */
 export function sitemapUrls(index: unknown, origin: string): SitemapUrl[] {
   const repos = (index as { schema?: unknown; repos?: unknown } | null)?.schema === PUBLISHED_INDEX_SCHEMA
@@ -70,11 +58,7 @@ export function sitemapUrls(index: unknown, origin: string): SitemapUrl[] {
     atlases.push({ loc: new URL(path, origin).href, ...(lastmod ? { lastmod } : {}) });
   }
   atlases.sort((a, b) => (a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : 0));
-  return [
-    { loc: new URL('/', origin).href },
-    { loc: new URL('/new', origin).href, ...(newest ? { lastmod: newest } : {}) },
-    ...atlases,
-  ];
+  return [{ loc: new URL('/', origin).href, ...(newest ? { lastmod: newest } : {}) }, ...atlases];
 }
 
 export function renderSitemap(urls: readonly SitemapUrl[]): string {

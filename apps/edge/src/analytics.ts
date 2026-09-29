@@ -4,7 +4,7 @@ import type { EdgeEnv } from './env';
 /**
  * Cloudflare Web Analytics (CLA-318): cookieless, no consent banner, no other trackers. Off unless
  * `WEB_ANALYTICS_TOKEN` is set; then the Worker adds Cloudflare's beacon script (the dashboard's
- * manual-install snippet) just before `</body>` of every HTML document it serves: the SPA shell, `/new`,
+ * manual-install snippet) just before `</body>` of every HTML document it serves: the SPA shell, the home page,
  * `/r/...` share pages and both 404 pages, and the CSP allows the beacon (securityHeaders.ts
  * `webAnalytics`). Nothing in apps/web ships the beacon, so local dev, `vite preview` and the portable
  * viewer never load it. The beacon reports to `https://cloudflareinsights.com/cdn-cgi/rum`.

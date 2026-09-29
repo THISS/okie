@@ -65,8 +65,7 @@ export function NotFoundScreen({ kind = 'page' }: { kind?: NotFoundKind }) {
       <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.5rem' }}>{copy.heading}</h1>
       <p style={{ color: '#b7c3c0', lineHeight: 1.6, margin: 0 }}>{copy.body}</p>
       <nav aria-label="Where to next" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1.75rem' }}>
-        <a href="/new" style={{ ...buttonLink, background: '#d9ff70', borderColor: '#d9ff70', color: '#0d1a17' }}>Browse published atlases</a>
-        <a href="/" style={buttonLink}>Home</a>
+        <a href="/" style={{ ...buttonLink, background: '#d9ff70', borderColor: '#d9ff70', color: '#0d1a17' }}>Browse published atlases</a>
       </nav>
     </main>
     <SiteFooter/>

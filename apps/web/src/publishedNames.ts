@@ -5,6 +5,7 @@
  * `pnpm publish:atlas --backfill-names`. Shown text and GitHub links prefer GitHub's casing; canonical
  * URLs stay in slug form. Runtime-agnostic: the web app, the edge Worker and the Vite plugin share it.
  */
+import { repoSlugFor } from './renderer/route';
 
 export type PublishedNames = {
   owner: string;
@@ -42,4 +43,26 @@ export function publishedRowForSlug(index: unknown, slug: string): Record<string
   const repos = (index as { repos?: unknown } | null | undefined)?.repos;
   if (!Array.isArray(repos)) return undefined;
   return repos.find(candidate => (candidate as { slug?: unknown } | null)?.slug === slug) as Record<string, unknown> | undefined;
+}
+
+/**
+ * `/r/<slug owner>/<slug repo>` for an index row's slug when that slug maps straight back to itself
+ * (the canonical share path the sitemap and the home directory link to); otherwise undefined, so a
+ * malformed or hand-edited slug can never inject path text.
+ */
+export function canonicalAtlasPathForSlug(slug: unknown): string | undefined {
+  if (typeof slug !== 'string') return undefined;
+  const [owner, repo, ...extra] = slug.split('__');
+  if (!owner || !repo || extra.length > 0 || repoSlugFor(owner, repo) !== slug) return undefined;
+  return `/r/${owner}/${repo}`;
+}
+
+/**
+ * An index row's timestamp field (`publishedAt`, `generatedAt`) as a normalized ISO string, or undefined
+ * when it is not a parseable date string. Shared by the edge sitemap and the home directory.
+ */
+export function isoDate(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
 }

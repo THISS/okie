@@ -209,8 +209,10 @@ describe('WebMCP foundation (CLA-40)', () => {
     for (const line of staticHeaders.split('\n').filter(row => row.includes('Permissions-Policy'))) {
       expect(line.trim()).toBe('Permissions-Policy: tools=(self)');
     }
-    const edge = readFileSync(new URL('../../edge/src/share.ts', import.meta.url), 'utf8');
-    expect(edge).toContain('webMcpHostHeadersForFetchDest');
+    for (const file of ['share.ts', 'index.ts']) {
+      const edge = readFileSync(new URL(`../../edge/src/${file}`, import.meta.url), 'utf8');
+      expect(edge, file).toContain('webMcpHostHeadersForFetchDest');
+    }
   });
 });
 
