@@ -7,14 +7,15 @@ import test from "node:test";
 import type { ChoiceQuestion, ChoiceResponse } from "@typesafe-ai/sdk";
 import {
   BLOCK_PLAN_OMIT_THRESHOLD, blockPlanCacheKey, blockPlanJob, blockPlanQuestions, blockPlanState, buildBlockPlanIndex, createBlockPlanReplayStore, createBlockPlanService, deriveBlockPlan,
-  derivedBlockCandidates, JEV_PLANNER_REQUESTS_PER_IP, leadSummaryId, parseBlockPlanRequest, publicationBlockPlanSource, resolveBlockPlannerConfig,
+  derivedBlockCandidates, JEV_PLANNER_IP_WINDOW_MS, JEV_PLANNER_REQUESTS_PER_ACCOUNT, JEV_PLANNER_REQUESTS_PER_IP, JEV_PLANNER_WINDOW_KEYS, leadSummaryId, parseBlockPlanRequest, publicationBlockPlanSource, resolveBlockPlannerConfig,
   type BlockPlanCandidate, type BlockPlanJob, type BlockPlannerConfig, type BlockPlanPublicationSource, type BlockPlanServiceOptions,
 } from "./blockPlans.js";
 import { runBlockPlanEvaluation, type EvaluationNodesFixture } from "./blockPlanEvaluation.js";
-import { createGithubAuthService } from "./githubOAuth.js";
+import { createGithubAuthService, SESSION_COOKIE, TEST_LOGIN_PATH } from "./githubOAuth.js";
 import { createScanJobQueue, createSubmitLimiter } from "./jobs.js";
 import { createOperatorBudgetLedger, type OperatorBudgetLedger } from "./operatorBudget.js";
 import { createJevProvider, JEV_MODEL, type JudgmentProvider } from "./operatorJudgments.js";
+import { OperatorStore } from "./operatorStore.js";
 import { createScanHttpHandler } from "./scanServer.js";
 
 type Level = "lead" | "early" | "later" | "omit";
@@ -81,8 +82,8 @@ function fakeProvider(pick: (index: number, question: ChoiceQuestion) => ChoiceR
   return { provider, calls };
 }
 function service(overrides: Partial<BlockPlanServiceOptions> = {}) {
-  const global = spyLedger();
-  return { global, service: createBlockPlanService({ config: CONFIG, source: fakeSource().source, globalLedger: global.ledger, globalCapDollars: 1, ...overrides }) };
+  const planner = spyLedger();
+  return { planner, service: createBlockPlanService({ config: CONFIG, source: fakeSource().source, plannerLedger: planner.ledger, ...overrides }) };
 }
 function requestOf(value: unknown) { const parsed = parseBlockPlanRequest(value); if ("error" in parsed) throw new Error(parsed.error); return parsed.request; }
 const state = (value: { body: unknown }) => (value.body as { state: string }).state;
@@ -177,15 +178,15 @@ test("the cache key is (version, node, sorted id+type set, question version, mod
   assert.deepEqual(Object.keys(stateBody.node), ["kind", "name", "children", "dependencies", "dependents"]);
 });
 
-test("cheap guards (kill switch, global cap, per-IP window) run before any publication state is read", async () => {
+test("cheap guards (kill switch, planner ledger, per-IP window) run before any publication state is read", async () => {
   const { provider } = fakeProvider(() => answer("lead"));
   const off = fakeSource();
-  assert.deepEqual((await createBlockPlanService({ config: { ...CONFIG, enabled: false }, provider, source: off.source, globalLedger: spyLedger().ledger, globalCapDollars: 1 }).handle(body(), "ip")).body, { state: "unavailable", reason: "disabled" });
-  assert.deepEqual((await createBlockPlanService({ config: CONFIG, provider, source: off.source, globalLedger: spyLedger().ledger }).handle(body(), "ip")).body, { state: "unavailable", reason: "no-global-cap" });
-  assert.deepEqual((await createBlockPlanService({ config: CONFIG, provider, source: off.source, globalCapDollars: 1 }).handle(body(), "ip")).body, { state: "unavailable", reason: "no-global-cap" });
+  assert.deepEqual((await createBlockPlanService({ config: { ...CONFIG, enabled: false }, provider, source: off.source, plannerLedger: spyLedger().ledger }).handle(body(), "ip")).body, { state: "unavailable", reason: "disabled" });
+  // CLA-304: no planner ledger, no planning (the server always supplies a durable one).
+  assert.deepEqual((await createBlockPlanService({ config: CONFIG, provider, source: off.source }).handle(body(), "ip")).body, { state: "unavailable", reason: "no-planner-ledger" });
   assert.deepEqual(off.counts, { current: 0, facts: 0 });
   const limited = fakeSource();
-  const guarded = createBlockPlanService({ config: CONFIG, provider, source: limited.source, globalLedger: spyLedger().ledger, globalCapDollars: 1 });
+  const guarded = createBlockPlanService({ config: CONFIG, provider, source: limited.source, plannerLedger: spyLedger().ledger });
   for (let index = 0; index < JEV_PLANNER_REQUESTS_PER_IP; index += 1) await guarded.handle({ bad: true }, "1.2.3.4");
   assert.deepEqual((await guarded.handle(body(), "1.2.3.4")).body, { state: "unavailable", reason: "rate-limited" });
   assert.deepEqual(limited.counts, { current: 0, facts: 0 });
@@ -193,9 +194,9 @@ test("cheap guards (kill switch, global cap, per-IP window) run before any publi
 
 test("only the current publication and a real node with derivable blocks are accepted, before any spend", async () => {
   const { provider, calls } = fakeProvider(() => answer("lead"));
-  const stale = createBlockPlanService({ config: CONFIG, provider, source: fakeSource({ versionId: "publication-2", artifactRevisionId: "artifact-2" }).source, globalLedger: spyLedger().ledger, globalCapDollars: 1 });
+  const stale = createBlockPlanService({ config: CONFIG, provider, source: fakeSource({ versionId: "publication-2", artifactRevisionId: "artifact-2" }).source, plannerLedger: spyLedger().ledger });
   assert.equal((await stale.handle(body(), "ip")).status, 404);
-  const none = createBlockPlanService({ config: CONFIG, provider, source: fakeSource(null).source, globalLedger: spyLedger().ledger, globalCapDollars: 1 });
+  const none = createBlockPlanService({ config: CONFIG, provider, source: fakeSource(null).source, plannerLedger: spyLedger().ledger });
   assert.equal((await none.handle(body(), "ip")).status, 404);
   const { service: live } = service({ provider });
   assert.equal((await live.handle(body({ nodeId: "container:ghost" }), "ip")).status, 404);
@@ -266,7 +267,7 @@ test("probability rounding drift up to 0.02 is renormalised; larger drift is inv
   assert.deepEqual((await service({ provider: drift(0.95).provider }).service.handle(body(), "ip")).body, { state: "unavailable", reason: "invalid-response" });
 });
 
-test("failures fall back, settle both ledgers and log a counted, key-free line", async () => {
+test("failures fall back, settle the planner ledger and log a counted, key-free line", async () => {
   const lines: string[] = [];
   const cases: Array<[string, ReturnType<typeof fakeProvider>]> = [
     ["invalid-response", fakeProvider(() => answer("lead"), { json: answers => ({ model: JEV_MODEL, answers: { ...answers, b0: { type: "choice", choice: "first", confidence: 1, probabilities: { first: 1 } } } }) })],
@@ -276,37 +277,69 @@ test("failures fall back, settle both ledgers and log a counted, key-free line",
     ["timeout", fakeProvider(() => answer("lead"), { delayMs: 200 })],
   ];
   for (const [reason, fake] of cases) {
-    const global = spyLedger(); const planner = spyLedger();
-    const svc = createBlockPlanService({ config: { ...CONFIG, timeoutMs: 30 }, provider: fake.provider, source: fakeSource().source, globalLedger: global.ledger, plannerLedger: planner.ledger, globalCapDollars: 1, log: line => lines.push(line) });
+    const planner = spyLedger();
+    const svc = createBlockPlanService({ config: { ...CONFIG, timeoutMs: 30 }, provider: fake.provider, source: fakeSource().source, plannerLedger: planner.ledger, log: line => lines.push(line) });
     assert.deepEqual((await svc.handle(body(), "ip")).body, { state: "unavailable", reason });
-    assert.equal(global.reserved(), 1, reason); assert.equal(planner.reserved(), 1, reason);
-    assert.equal(global.open.size, 0, `${reason}: global ledger settled`);
+    assert.equal(planner.reserved(), 1, reason);
     assert.equal(planner.open.size, 0, `${reason}: planner ledger settled`);
     assert.equal(svc.fallbacks()[reason], 1);
   }
   assert.deepEqual(lines, ["block-plan fallback reason=invalid-response count=1", "block-plan fallback reason=invalid-response count=1", "block-plan fallback reason=invalid-response count=1", "block-plan fallback reason=provider-failure count=1", "block-plan fallback reason=timeout count=1"]);
   assert.ok(lines.every(line => !/JEV|key|container:/i.test(line)));
-  const noProvider = createBlockPlanService({ config: CONFIG, source: fakeSource().source, globalLedger: spyLedger().ledger, globalCapDollars: 1, log: line => lines.push(line) });
+  const noProvider = createBlockPlanService({ config: CONFIG, source: fakeSource().source, plannerLedger: spyLedger().ledger, log: line => lines.push(line) });
   assert.deepEqual((await noProvider.handle(body(), "ip")).body, { state: "unavailable", reason: "no-provider" });
   assert.equal(lines.at(-1), "block-plan fallback reason=no-provider count=1");
 });
 
-test("the planner budget and the global ledger both gate spend; refused reservations are released", async () => {
-  const global = spyLedger();
+test("the planner budget gates spend; a refused request reserves nothing", async () => {
+  const planner = spyLedger({ maxRequests: 1, maxTokens: Number.MAX_SAFE_INTEGER, maxDollars: 1 });
   const { provider, calls } = fakeProvider(() => answer("early", 1));
-  const svc = createBlockPlanService({ config: { ...CONFIG, maxRequests: 1 }, provider, source: fakeSource().source, globalLedger: global.ledger, globalCapDollars: 1 });
+  const svc = createBlockPlanService({ config: CONFIG, provider, source: fakeSource().source, plannerLedger: planner.ledger });
   assert.equal(state(await svc.handle(body(), "ip")), "planned");
-  assert.equal(global.ledger.snapshot().requests, 1);
-  assert.equal(global.ledger.snapshot().inputTokens, 900);
+  assert.equal(planner.ledger.snapshot().requests, 1);
+  assert.equal(planner.ledger.snapshot().inputTokens, 900);
   assert.deepEqual((await svc.handle(body({}, WEB_IDS.slice(1)), "ip")).body, { state: "unavailable", reason: "planner-budget" });
-  assert.equal(global.open.size, 0);
-  assert.equal(global.ledger.snapshot().requests, 1);
+  assert.equal(planner.open.size, 0);
+  assert.equal(planner.ledger.snapshot().requests, 1);
   assert.equal(state(await svc.handle(body(), "ip")), "planned"); // cached plans still answer
-  const exhausted = spyLedger({ maxRequests: 100, maxTokens: Number.MAX_SAFE_INTEGER, maxDollars: 0.001 });
-  const refused = createBlockPlanService({ config: CONFIG, provider, source: fakeSource().source, globalLedger: exhausted.ledger, globalCapDollars: 0.001 });
-  assert.deepEqual((await refused.handle(body(), "ip")).body, { state: "unavailable", reason: "global-budget" });
-  assert.equal(refused.ledger().requests, 0);
   assert.equal(calls.length, 1);
+});
+
+test("CLA-304: the planner spends only its own durable ledger, never the operator global ledger, and a restart does not reset it", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-block-plan-ledger-"));
+  try {
+    const store = new OperatorStore(root);
+    const global = createOperatorBudgetLedger({ maxRequests: 100, maxTokens: Number.MAX_SAFE_INTEGER, maxDollars: 100 }, { store, runId: "global-operator-enrichment" });
+    const durable = () => createOperatorBudgetLedger({ maxRequests: 1, maxTokens: Number.MAX_SAFE_INTEGER, maxDollars: CONFIG.maxDollars }, { store, runId: "jev-block-planner" });
+    const { provider, calls } = fakeProvider(() => answer("early", 1));
+    const first = createBlockPlanService({ config: CONFIG, provider, source: fakeSource().source, plannerLedger: durable() });
+    assert.equal(state(await first.handle(body(), "ip")), "planned");
+    assert.equal(global.snapshot().requests, 0, "the operator global ledger is never reserved");
+    assert.equal(store.snapshot().events.filter(event => event.runId === "global-operator-enrichment").length, 0);
+    assert.equal(first.ledger()?.requests, 1);
+    // A restarted process reads the same durable ledger: the cap still binds.
+    const restarted = createBlockPlanService({ config: CONFIG, provider, source: fakeSource().source, plannerLedger: durable() });
+    assert.equal(restarted.ledger()?.requests, 1);
+    assert.deepEqual((await restarted.handle(body({}, WEB_IDS.slice(1)), "ip")).body, { state: "unavailable", reason: "planner-budget" });
+    assert.equal(calls.length, 1);
+    assert.equal(global.snapshot().requests, 0);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("CLA-304: planner request windows are bounded and fail closed (a new key is refused, live windows are never evicted)", async () => {
+  let clock = 0;
+  const { service: svc } = service({ now: () => clock });
+  for (let index = 0; index < JEV_PLANNER_WINDOW_KEYS; index += 1) assert.equal(svc.admit(`10.0.${index >> 8}.${index & 255}`), undefined);
+  assert.deepEqual(svc.admit("192.0.2.1")?.body, { state: "unavailable", reason: "rate-limited" }, "a new key is refused while every window is live");
+  // A known key keeps its own count (it was not reset by the flood).
+  for (let count = 1; count < JEV_PLANNER_REQUESTS_PER_IP; count += 1) assert.equal(svc.admit("10.0.0.0"), undefined);
+  assert.deepEqual(svc.admit("10.0.0.0")?.body, { state: "unavailable", reason: "rate-limited" });
+  clock = JEV_PLANNER_IP_WINDOW_MS;
+  assert.equal(svc.admit("192.0.2.1"), undefined, "expired windows are swept, then new keys are admitted");
+  // A signed-in caller is also counted per account.
+  const { service: accounts } = service();
+  for (let count = 0; count < JEV_PLANNER_REQUESTS_PER_ACCOUNT; count += 1) assert.equal(accounts.admit(`198.51.100.${count % 200}`, "user-1"), undefined);
+  assert.deepEqual(accounts.admit("203.0.113.9", "user-1")?.body, { state: "unavailable", reason: "rate-limited" });
 });
 
 test("a per-IP window limits Jev-bound requests (cache hits are free)", async () => {
@@ -324,34 +357,75 @@ test("env config is off by default and parses caps", () => {
   assert.deepEqual(resolveBlockPlannerConfig({ OKIE_JEV_BLOCK_PLANNER: "on", OKIE_JEV_PLANNER_MAX_REQUESTS: "5", OKIE_JEV_PLANNER_MAX_DOLLARS: "0.02", OKIE_JEV_PLANNER_TIMEOUT_MS: "abc", OKIE_JEV_PLANNER_PER_IP: "-1" }), { enabled: true, maxRequests: 5, maxDollars: 0.02, timeoutMs: 10_000, perIp: 30 });
 });
 
-test("POST /api/block-plan: off without a service, typed plan with one, 16 KB body cap", async () => {
+test("CLA-304 review: planner windows normalise IP keys and check the account (own map) before the IP", () => {
+  const { service: svc } = service();
+  // 5,000 addresses in one IPv6 /64 are ONE key: they cannot fill the bounded map with junk.
+  let admitted = 0;
+  for (let index = 0; index < 5_000; index += 1) if (!svc.admit(`2001:db8:0:1::${index.toString(16)}`)) admitted += 1;
+  assert.equal(admitted, JEV_PLANNER_REQUESTS_PER_IP);
+  assert.equal(svc.admit("::ffff:192.0.2.10"), undefined);
+  for (let count = 1; count < JEV_PLANNER_REQUESTS_PER_IP; count += 1) svc.admit("192.0.2.10");
+  assert.deepEqual(svc.admit("::ffff:192.0.2.10")?.body, { state: "unavailable", reason: "rate-limited" }, "IPv4-mapped shares the IPv4 window");
+  // An account over its window is refused without spending the IP window.
+  const { service: accounts } = service();
+  for (let count = 0; count < JEV_PLANNER_REQUESTS_PER_ACCOUNT; count += 1) assert.equal(accounts.admit(`198.51.100.${count % 100}`, "heavy"), undefined);
+  for (let count = 0; count < 50; count += 1) assert.deepEqual(accounts.admit("203.0.113.1", "heavy")?.body, { state: "unavailable", reason: "rate-limited" });
+  for (let count = 0; count < JEV_PLANNER_REQUESTS_PER_IP; count += 1) assert.equal(accounts.admit("203.0.113.1", `light-${count}`), undefined, "the IP window was untouched by the refused account");
+  // Behind the loopback proxy (one shared, effectively global IP window) one account alone cannot exhaust it.
+  const { service: proxied } = service();
+  for (let count = 0; count < JEV_PLANNER_REQUESTS_PER_IP; count += 1) proxied.admit("127.0.0.1", "greedy");
+  assert.equal(proxied.admit("127.0.0.1", "someone-else"), undefined, "another account is still admitted");
+  assert.ok(JEV_PLANNER_REQUESTS_PER_ACCOUNT * 2 <= JEV_PLANNER_REQUESTS_PER_IP);
+});
+
+test("POST /api/block-plan: off without a service, sign-in required, per-IP window before the body, typed plan, 16 KB body cap", async () => {
   const scanRoot = mkdtempSync(join(tmpdir(), "okie-block-plan-route-"));
   const base = {
     queue: createScanJobQueue(async () => {}), allowSubmit: createSubmitLimiter(),
-    auth: createGithubAuthService({ bind: "127.0.0.1", env: { OKIE_GITHUB_TEST_DOUBLE: "0", OKIE_PUBLIC_ORIGIN: "http://localhost:4173" } }),
+    auth: createGithubAuthService({ bind: "127.0.0.1", env: { OKIE_GITHUB_TEST_DOUBLE: "1", OKIE_PUBLIC_ORIGIN: "http://localhost:4173" } }),
     scanRoot, llm: { baseUrl: "https://openrouter.ai/api/v1", modelId: "m", keySource: "none" as const }, enrich: "off" as const, bind: "127.0.0.1",
   };
-  const { provider } = fakeProvider(index => answer(index === 0 ? "lead" : "later", 1));
-  const post = async (handler: ReturnType<typeof createScanHttpHandler>, payload: string) => {
+  const { provider, calls } = fakeProvider(index => answer(index === 0 ? "lead" : "later", 1));
+  const serve = async (handler: ReturnType<typeof createScanHttpHandler>, work: (post: (payload: string, signedIn?: boolean) => Promise<{ status: number; body: Record<string, unknown> }>) => Promise<void>) => {
     const server = createServer((req, res) => { void handler(req, res); });
     await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
-    const address = server.address() as { port: number };
-    try { const response = await fetch(`http://127.0.0.1:${address.port}/api/block-plan`, { method: "POST", headers: { "content-type": "application/json" }, body: payload }); return { status: response.status, body: await response.json() as Record<string, unknown> }; }
-    finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+    const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+    try {
+      const login = await fetch(`${origin}${TEST_LOGIN_PATH}`, { redirect: "manual" });
+      const cookie = login.headers.getSetCookie().map(header => header.split(";")[0]!).find(pair => pair.startsWith(`${SESSION_COOKIE}=`)) ?? "";
+      await work(async (payload, signedIn = true) => {
+        const response = await fetch(`${origin}/api/block-plan`, { method: "POST", headers: { "content-type": "application/json", ...(signedIn ? { cookie } : {}) }, body: payload });
+        return { status: response.status, body: await response.json() as Record<string, unknown> };
+      });
+    } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
   };
   try {
-    assert.deepEqual(await post(createScanHttpHandler(base), JSON.stringify(body())), { status: 200, body: { state: "unavailable", reason: "disabled" } });
-    const handler = createScanHttpHandler({ ...base, blockPlans: service({ provider }).service });
-    const valid = JSON.stringify(body());
-    const planned = await post(handler, valid);
-    assert.equal(planned.status, 200);
-    assert.equal(planned.body.state, "planned");
-    assert.equal((planned.body.order as string[])[0], "enrichment:summary");
-    assert.equal((await post(handler, "{not json")).status, 400);
-    // The same valid body padded past 16 KB with whitespace is refused by the size cap alone.
-    const padded = `${valid}${" ".repeat(16 * 1024)}`;
-    assert.ok(JSON.parse(padded));
-    assert.deepEqual(await post(handler, padded), { status: 400, body: { error: "Expected a JSON block plan request." } });
+    await serve(createScanHttpHandler(base), async post => assert.deepEqual(await post(JSON.stringify(body())), { status: 200, body: { state: "unavailable", reason: "disabled" } }));
+    const planner = service({ provider }).service;
+    await serve(createScanHttpHandler({ ...base, blockPlans: planner }), async post => {
+      const valid = JSON.stringify(body());
+      // CLA-304: anonymous callers get the Ask-style sign-in answer and never reach the planner.
+      const anonymous = await post(valid, false);
+      assert.equal(anonymous.status, 401);
+      assert.match(String(anonymous.body.error), /Sign in with GitHub/);
+      assert.deepEqual(anonymous.body.auth, { required: true, loginPath: "/api/auth/github" });
+      assert.equal(calls.length, 0);
+      const planned = await post(valid);
+      assert.equal(planned.status, 200);
+      assert.equal(planned.body.state, "planned");
+      assert.equal((planned.body.order as string[])[0], "enrichment:summary");
+      assert.equal((await post("{not json")).status, 400);
+      // The same valid body padded past 16 KB with whitespace is refused by the size cap alone.
+      const padded = `${valid}${" ".repeat(16 * 1024)}`;
+      assert.ok(JSON.parse(padded));
+      assert.deepEqual(await post(padded), { status: 400, body: { error: "Expected a JSON block plan request." } });
+    });
+    // The per-IP window is decided before the body is read: once it is spent, even a malformed body is `rate-limited`, not 400.
+    const limited = service({ provider }).service;
+    for (let count = 0; count < JEV_PLANNER_REQUESTS_PER_IP; count += 1) limited.admit("127.0.0.1");
+    await serve(createScanHttpHandler({ ...base, blockPlans: limited }), async post => {
+      assert.deepEqual(await post("{not json"), { status: 200, body: { state: "unavailable", reason: "rate-limited" } });
+    });
   } finally { rmSync(scanRoot, { recursive: true, force: true }); }
 });
 

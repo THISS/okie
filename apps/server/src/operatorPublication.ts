@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { OperatorArtifactRevision, OperatorPublication, PublishDraftOptions, PublishResult } from "./operatorContracts.js";
-import { canonicalOperatorRepositoryId, type CreateDraftInput, OperatorStore } from "./operatorStore.js";
+import { canonicalOperatorRepositoryId, type CreateDraftInput, OperatorStore, type OperatorStoreState } from "./operatorStore.js";
 
 interface Pointer { versionId: string; artifactRevisionId: string; updatedAt: number; }
 export interface PublishedArtifactRef { kind: "publication" | "legacy"; versionId?: string; artifactRevisionId?: string; legacyDirectory?: string; }
@@ -62,7 +62,17 @@ export class OperatorPublicationService {
    * (plus the small pointer file). Same resolution order as repositoryIdForSlug + currentPublication.
    */
   currentForSlug(slug: string): OperatorPublication | undefined {
+    return this.currentForSlugIn(this.store.snapshot(), slug);
+  }
+  /** CLA-304 Ask: the current publication for a public slug AND its artifact revision, from one operator-state read. */
+  currentWithArtifactForSlug(slug: string): { publication: OperatorPublication; artifact?: OperatorArtifactRevision } | undefined {
     const state = this.store.snapshot();
+    const publication = this.currentForSlugIn(state, slug);
+    if (!publication) return undefined;
+    const artifact = state.artifacts.find(value => value.artifactRevisionId === publication.artifactRevisionId);
+    return { publication, ...(artifact ? { artifact } : {}) };
+  }
+  private currentForSlugIn(state: Readonly<OperatorStoreState>, slug: string): OperatorPublication | undefined {
     const seen = new Set<string>();
     for (const run of [...state.runs].filter(value => value.source.slug === slug).sort((a, b) => b.updatedAt - a.updatedAt)) {
       const repositoryId = canonicalOperatorRepositoryId(run.source.repositoryId);

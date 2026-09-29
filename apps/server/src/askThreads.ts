@@ -234,7 +234,8 @@ export function persistAskTurn(
   });
 }
 
-function sanitizeCitationDetails(details: readonly AskTurnCitationDetail[], apiKey: string | undefined): AskTurnCitationDetail[] {
+/** Bounded, token-scrubbed citation details: what a persisted turn stores and what POST /api/ask returns. */
+export function sanitizeCitationDetails(details: readonly AskTurnCitationDetail[], apiKey: string | undefined): AskTurnCitationDetail[] {
   const out: AskTurnCitationDetail[] = [];
   const seen = new Set<string>();
   for (const detail of details) {

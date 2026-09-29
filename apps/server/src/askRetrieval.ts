@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readFileSync, statSync } from "node:fs";
 import { parseGithubSource, scrubGithubTokens } from "@okie/scan";
 import { DOGFOOD_SCAN_SLUG, resolvePublishedScanFile } from "./scanObjects.js";
 import type { OperatorPublicationService } from "./operatorPublication.js";
@@ -88,8 +88,11 @@ export interface AskIndex {
   dependents: Map<number, number[]>;
   /** term → postings of [docIndex, BM25F-normalised weighted tf]. */
   postings: Map<string, Array<[number, number]>>;
-  /** Stemmed vocabulary bucketed by length for typo tolerance. */
-  vocabByLength: Map<number, string[]>;
+  /**
+   * Every indexed term, sorted (`[...postings.keys()].sort()`): an implicit trie for typo tolerance.
+   * A prefix is a contiguous block, so fuzzy and prefix expansion walk only the blocks that can match.
+   */
+  vocab: string[];
   /** Whole system names (joined, stemmed); a query token naming one refers to the whole atlas. */
   systemTokens: Set<string>;
   containerNames: string[];
@@ -412,11 +415,7 @@ export function buildAskIndex(snapshot: unknown, explanationsSidecar?: unknown):
       if (list) list.push([docIndex, value]); else postings.set(token, [[docIndex, value]]);
     }
   });
-  const vocabByLength = new Map<number, string[]>();
-  for (const term of [...postings.keys()].sort()) {
-    const list = vocabByLength.get(term.length);
-    if (list) list.push(term); else vocabByLength.set(term.length, [term]);
-  }
+  const vocab = [...postings.keys()].sort();
   const containerNames = documents.filter(doc => doc.kind === "container").map(doc => doc.name).sort((left, right) => left.localeCompare(right));
   return {
     commitSha: typeof root.commitSha === "string" ? root.commitSha : "",
@@ -427,7 +426,7 @@ export function buildAskIndex(snapshot: unknown, explanationsSidecar?: unknown):
     dependencies,
     dependents,
     postings,
-    vocabByLength,
+    vocab,
     systemTokens: systemNameKeys(entities.filter(entity => entity.kind === "softwareSystem" && typeof entity.name === "string").map(entity => entity.name as string)),
     containerNames,
   };
@@ -436,7 +435,7 @@ export function buildAskIndex(snapshot: unknown, explanationsSidecar?: unknown):
 // ---------------------------------------------------------------------------
 // Query
 
-interface QueryTerm { token: string; expansions: Array<{ term: string; weight: number }> }
+interface QueryTerm { token: string; expansions: readonly { term: string; weight: number }[] }
 
 /**
  * A deliberately small software-vocabulary bridge (stemmed forms) for words people ask with that
@@ -468,27 +467,137 @@ const ASK_SYNONYMS: ReadonlyMap<string, readonly string[]> = new Map(
 );
 const SYNONYM_DISCOUNT = 0.5;
 
-function expandToken(index: AskIndex, token: string): Array<{ term: string; weight: number }> {
+/** At most this many distinct query tokens are searched (first ones in question order); the rest are ignored. */
+export const MAX_ASK_QUERY_TOKENS = 32;
+/** Longer query tokens match exactly only (no typo or prefix expansion). */
+export const MAX_ASK_FUZZY_TOKEN_CHARS = 40;
+/** Expansions kept per query token. */
+const MAX_TOKEN_EXPANSIONS = 24;
+/** Memoised expansions per index (LRU). */
+const EXPANSION_CACHE_ENTRIES = 4_096;
+type Expansion = { term: string; weight: number };
+const expansionCache = new WeakMap<AskIndex, Map<string, readonly Expansion[]>>();
+
+/**
+ * A query token's expansions: an exact hit is `[token, ...synonyms]`; otherwise typo matches (edit
+ * distance ≤ fuzzyLimit, weight 0.6) ∪ prefix matches (tokens of 4+ chars, terms longer than
+ * token + limit that start with it, weight 0.7) ∪ synonyms, deduped by the best weight, sorted by term,
+ * first MAX_TOKEN_EXPANSIONS. Memoised per index, so repeated or hostile tokens cost one walk each.
+ */
+function expandToken(index: AskIndex, token: string): readonly Expansion[] {
+  let cache = expansionCache.get(index);
+  if (!cache) { cache = new Map(); expansionCache.set(index, cache); }
+  const hit = cache.get(token);
+  if (hit) { cache.delete(token); cache.set(token, hit); return hit; }
+  const value = expandTokenUncached(index, token);
+  cache.set(token, value);
+  while (cache.size > EXPANSION_CACHE_ENTRIES) cache.delete(cache.keys().next().value!);
+  return value;
+}
+
+function expandTokenUncached(index: AskIndex, token: string): readonly Expansion[] {
   const synonyms = (ASK_SYNONYMS.get(token) ?? []).filter(term => term !== token && index.postings.has(term)).map(term => ({ term, weight: SYNONYM_DISCOUNT }));
   if (index.postings.has(token)) return [{ term: token, weight: 1 }, ...synonyms];
   const limit = fuzzyLimit(token.length);
-  if (limit === 0) return synonyms;
-  const out: Array<{ term: string; weight: number }> = [];
-  for (let length = token.length - limit; length <= token.length + limit; length += 1) {
-    for (const term of index.vocabByLength.get(length) ?? []) {
-      if (boundedEditDistance(token, term, limit) <= limit) out.push({ term, weight: FUZZY_EDIT_DISCOUNT });
-    }
-  }
-  if (token.length >= 4) {
-    for (const [length, terms] of index.vocabByLength) {
-      if (length <= token.length + limit) continue;
-      for (const term of terms) if (term.startsWith(token)) out.push({ term, weight: FUZZY_PREFIX_DISCOUNT });
-    }
-  }
+  if (limit === 0 || token.length > MAX_ASK_FUZZY_TOKEN_CHARS) return synonyms;
+  // The result is the MAX_TOKEN_EXPANSIONS smallest terms of the union, and fuzzy terms (length ≤
+  // token + limit) and prefix terms (length > token + limit) are disjoint, so the first
+  // MAX_TOKEN_EXPANSIONS of each source in sorted order are all that can survive the final slice.
+  const out: Expansion[] = fuzzyVocabTerms(index.vocab, token, limit, MAX_TOKEN_EXPANSIONS).map(term => ({ term, weight: FUZZY_EDIT_DISCOUNT }));
+  if (token.length >= 4) for (const term of prefixVocabTerms(index.vocab, token, token.length + limit, MAX_TOKEN_EXPANSIONS)) out.push({ term, weight: FUZZY_PREFIX_DISCOUNT });
   const best = new Map<string, number>();
   for (const { term, weight } of out) best.set(term, Math.max(best.get(term) ?? 0, weight));
   for (const { term, weight } of synonyms) best.set(term, Math.max(best.get(term) ?? 0, weight));
-  return [...best].map(([term, weight]) => ({ term, weight })).sort((left, right) => left.term.localeCompare(right.term)).slice(0, 24);
+  // Code-unit order, the vocabulary's own order (identical to the old localeCompare on these [a-z0-9] terms).
+  return [...best].map(([term, weight]) => ({ term, weight })).sort((left, right) => left.term < right.term ? -1 : left.term > right.term ? 1 : 0).slice(0, MAX_TOKEN_EXPANSIONS);
+}
+
+/**
+ * Test seam: vocabulary work done by uncached expansions since load (trie nodes visited plus prefix-block
+ * terms scanned; each node also costs one O(log vocab) child split). The pre-CLA-304 scan touched every
+ * term of the vocabulary per token.
+ */
+let expansionWork = 0;
+export function askExpansionWork(): number { return expansionWork; }
+
+/** Test seam: the memoised expansion of one (stemmed) query token. */
+export { expandToken as expandAskToken, tokenizeAskQuery as askQueryTokens };
+
+/** First index in sorted `vocab[lo, hi)` whose term is ≥ `prefix`. */
+function lowerBound(vocab: readonly string[], prefix: string, lo = 0, hi = vocab.length): number {
+  while (lo < hi) { const mid = (lo + hi) >>> 1; if (vocab[mid]! < prefix) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
+/**
+ * Hard bound on terms skipped by the prefix walk. Skipped terms start with the token and are at most
+ * `limit` (≤ 2) chars longer, so with a 36-char alphabet there are at most 1 + 36 + 36² = 1,333 of
+ * them: the cap never binds, it only makes the bound explicit.
+ */
+const PREFIX_SCAN_CAP = 4_096;
+
+/** Terms that start with `token` and are longer than `minExclusiveLength`, in sorted order, at most `max`. */
+function prefixVocabTerms(vocab: readonly string[], token: string, minExclusiveLength: number, max: number): string[] {
+  const out: string[] = [];
+  let scanned = 0;
+  for (let at = lowerBound(vocab, token); at < vocab.length && out.length < max && scanned < PREFIX_SCAN_CAP; at += 1) {
+    const term = vocab[at]!;
+    expansionWork += 1;
+    if (!term.startsWith(token)) break;
+    if (term.length > minExclusiveLength) out.push(term); else scanned += 1;
+  }
+  return out;
+}
+
+/**
+ * Terms within Levenshtein distance `limit` of `token`, in sorted order, at most `max`: a walk over the
+ * sorted vocabulary as an implicit trie. A node is the block of terms sharing a prefix of length
+ * `depth`; its children are split by the character at `depth` (binary search). Each node carries only
+ * the Ukkonen band of its DP row (columns |column − depth| ≤ limit; the rest are > limit anyway), so a
+ * node costs O(limit), and a subtree is pruned once every band cell exceeds `limit`.
+ */
+function fuzzyVocabTerms(vocab: readonly string[], token: string, limit: number, max: number): string[] {
+  const out: string[] = [];
+  const width = 2 * limit + 1;
+  const n = token.length;
+  const far = limit + 1;
+  // band[k] = distance(prefix of length depth, token[0, depth − limit + k)).
+  const initial = new Array<number>(width);
+  for (let k = 0; k < width; k += 1) { const column = k - limit; initial[k] = column >= 0 && column <= n ? column : far; }
+  const walk = (lo: number, hi: number, depth: number, band: readonly number[]): void => {
+    expansionWork += 1;
+    let start = lo;
+    if (vocab[lo]!.length === depth) {
+      // The block's first term is the prefix itself.
+      const k = n - depth + limit;
+      if (k >= 0 && k < width && band[k]! <= limit) out.push(vocab[lo]!);
+      start += 1;
+    }
+    if (depth >= n + limit) return;
+    while (start < hi && out.length < max) {
+      const char = vocab[start]![depth]!;
+      const end = lowerBound(vocab, vocab[start]!.slice(0, depth) + String.fromCharCode(char.charCodeAt(0) + 1), start, hi);
+      const next = new Array<number>(width);
+      let best = far;
+      for (let k = 0; k < width; k += 1) {
+        const column = depth + 1 - limit + k;
+        let value = far;
+        if (column === 0) value = depth + 1;
+        else if (column > 0 && column <= n) {
+          const diagonal = band[k]! + (token[column - 1] === char ? 0 : 1);
+          const up = k + 1 < width ? band[k + 1]! + 1 : far;
+          const left = k > 0 ? next[k - 1]! + 1 : far;
+          value = Math.min(diagonal, up, left, far);
+        }
+        next[k] = value;
+        if (value < best) best = value;
+      }
+      if (best <= limit) walk(start, end, depth + 1, next);
+      start = end;
+    }
+  };
+  if (vocab.length) walk(0, vocab.length, 0, initial);
+  return out;
 }
 
 /**
@@ -546,7 +655,8 @@ export interface AskRetrieveOptions {
 /** Ranks the whole atlas for `question` and packs the top sections into `byteBudget`. Deterministic. */
 export function retrieveAskSections(index: AskIndex, question: string, options: AskRetrieveOptions = {}): AskRetrieval {
   const byteBudget = Math.max(0, options.byteBudget ?? DEFAULT_ASK_BYTE_BUDGET);
-  const rawTokens = tokenizeAskQuery(index, question);
+  // A hostile question cannot multiply work: at most MAX_ASK_QUERY_TOKENS distinct tokens are searched.
+  const rawTokens = tokenizeAskQuery(index, question).slice(0, MAX_ASK_QUERY_TOKENS);
   const systemNames = new Set([...index.systemTokens, ...systemNameKeys(options.systemNames ?? [])]);
   const systemNamed = rawTokens.filter(token => namesSystem(index, systemNames, token));
   const contentTokens = rawTokens.filter(token => !systemNamed.includes(token));
@@ -809,8 +919,10 @@ export function askCitationDetail(index: AskIndex | undefined, id: string): { id
 // Corpus resolution
 
 const SLUG = /^[A-Za-z0-9._-]{0,200}$/;
-/** ~3x this repo's 22 MB self-scan; bigger snapshots are not parsed synchronously on the request path. */
+/** ~3x this repo's 22 MB self-scan; bigger snapshots are never read (Ask answers scope-only). */
 export const MAX_ASK_SNAPSHOT_BYTES = 64 * 1024 * 1024;
+/** A larger `operator-explanations.json` sidecar is skipped (the index is built without explanations). */
+export const MAX_ASK_SIDECAR_BYTES = 16 * 1024 * 1024;
 
 /** Route slug / `scanRepo` (owner__repo) / "" for the scan root. `undefined` when malformed. */
 export function sanitizeAskSlug(raw: unknown): string | undefined {
@@ -826,12 +938,30 @@ export interface AskCorpus {
   source: "publication" | "scan";
 }
 
-export interface AskCorpusSource {
-  resolve(input: { slug?: string; owner: string; repo: string; commitSha: string }): AskCorpus | undefined;
-  stats(): { indexBuilds: number };
+/** A published snapshot Ask may search, located without reading it. */
+export interface AskCorpusLocation {
+  /** Cache key: the artifact revision, or the legacy file + mtime + size. */
+  key: string;
+  source: "publication" | "scan";
+  snapshotPath: string;
+  sidecarPath?: string;
+  /** Snapshot bytes at locate time (always ≤ the snapshot cap). */
+  size: number;
 }
 
-function commitMatches(snapshotSha: string, requested: string): boolean {
+export interface AskCorpusLookup { slug?: string; owner: string; repo: string; commitSha: string }
+
+export interface AskCorpusSource {
+  /**
+   * Candidate snapshots for an Ask atlas, in resolution order, deduplicated by key. Cheap and safe on the
+   * request thread: publication metadata and `stat` only, never a snapshot read or parse. The commit is
+   * verified where the snapshot is parsed (the Ask retrieval worker).
+   */
+  locate(input: AskCorpusLookup): AskCorpusLocation[];
+}
+
+/** The snapshot's commit equals the requested one, or one is a (7+ char) prefix of the other. */
+export function commitMatches(snapshotSha: string, requested: string): boolean {
   if (!snapshotSha || !requested) return false;
   if (snapshotSha === requested) return true;
   const shorter = snapshotSha.length < requested.length ? snapshotSha : requested;
@@ -839,79 +969,115 @@ function commitMatches(snapshotSha: string, requested: string): boolean {
   return shorter.length >= 7 && longer.startsWith(shorter);
 }
 
+const boundedSize = (path: string, max: number): number | undefined => {
+  const stat = statSync(path);
+  return stat.isFile() && stat.size <= max ? stat.size : undefined;
+};
+
 /**
- * Resolves the published snapshot for an Ask atlas the same way `/scan/*` does: the current operator
- * publication for the slug (plus its `operator-explanations.json`), else the legacy scan-root slot.
- * Built indexes are cached (small LRU keyed by artifact revision or file + mtime).
+ * Locates the published snapshot for an Ask atlas the same way `/scan/*` resolves it: the current
+ * operator publication for the slug (plus its `operator-explanations.json`), else the legacy scan-root
+ * slot. Stat before read: an oversized snapshot is never located, so it is never read. A known
+ * publication never falls back to mutable legacy bytes.
  */
 export function createAskCorpusSource(options: {
   scanRoot: string;
   publications?: OperatorPublicationService;
   store?: OperatorStore;
-  maxIndexes?: number;
-  /** Larger snapshots are not parsed on the request path; Ask answers scope-only instead. */
   maxSnapshotBytes?: number;
+  maxSidecarBytes?: number;
 }): AskCorpusSource {
-  const maxIndexes = options.maxIndexes ?? 4;
   const maxSnapshotBytes = options.maxSnapshotBytes ?? MAX_ASK_SNAPSHOT_BYTES;
-  const cache = new Map<string, AskIndex | null>();
-  let indexBuilds = 0;
-  const cached = (key: string, build: () => AskIndex | undefined): AskIndex | undefined => {
-    if (cache.has(key)) {
-      const hit = cache.get(key)!;
-      cache.delete(key);
-      cache.set(key, hit);
-      return hit ?? undefined;
-    }
-    let built: AskIndex | undefined;
-    try { built = build(); } catch { built = undefined; }
-    if (built) indexBuilds += 1;
-    cache.set(key, built ?? null);
-    while (cache.size > maxIndexes) cache.delete(cache.keys().next().value!);
-    return built;
-  };
-  const fromSlug = (slug: string): AskCorpus | undefined => {
+  const maxSidecarBytes = options.maxSidecarBytes ?? MAX_ASK_SIDECAR_BYTES;
+  const fromSlug = (slug: string, commitSha: string): AskCorpusLocation | undefined => {
     if (slug && options.publications && options.store) {
-      const repositoryId = options.publications.repositoryIdForSlug(slug);
-      const publication = repositoryId ? options.publications.currentPublication(repositoryId) : undefined;
-      if (repositoryId && publication) {
-        const store = options.store;
-        const index = cached(`artifact:${publication.artifactRevisionId}`, () => {
-          const bytes = store.readArtifactFile(publication.artifactRevisionId, "snapshot.json");
-          if (!bytes || bytes.length > maxSnapshotBytes) return undefined;
-          const explanations = store.readArtifactFile(publication.artifactRevisionId, "operator-explanations.json");
-          let sidecar: unknown;
-          try { sidecar = explanations ? JSON.parse(explanations.toString("utf8")) : undefined; } catch { sidecar = undefined; }
-          return buildAskIndex(JSON.parse(bytes.toString("utf8")), sidecar);
-        });
-        // A known publication never falls back to mutable legacy bytes.
-        return index ? { index, source: "publication" } : undefined;
+      // One operator-state read resolves the slug's current publication and its artifact revision.
+      const current = options.publications.currentWithArtifactForSlug(slug);
+      if (current) {
+        const { publication, artifact } = current;
+        // A publication whose artifact records its commit is only a candidate for that commit: a
+        // wrong-commit request never reaches the worker, so it can never trigger a build.
+        if (artifact?.sourceCommitSha && !commitMatches(artifact.sourceCommitSha, commitSha)) return undefined;
+        const snapshotPath = options.store.artifactFilePath(publication.artifactRevisionId, "snapshot.json");
+        const size = snapshotPath ? boundedSize(snapshotPath, maxSnapshotBytes) : undefined;
+        if (!snapshotPath || size === undefined) return undefined;
+        const sidecar = options.store.artifactFilePath(publication.artifactRevisionId, "operator-explanations.json");
+        let sidecarPath: string | undefined;
+        try { sidecarPath = sidecar && boundedSize(sidecar, maxSidecarBytes) !== undefined ? sidecar : undefined; } catch { sidecarPath = undefined; }
+        return { key: `artifact:${publication.artifactRevisionId}`, source: "publication", snapshotPath, ...(sidecarPath ? { sidecarPath } : {}), size };
       }
     }
     const file = resolvePublishedScanFile(options.scanRoot, slug ? `/scan/${slug}/snapshot.json` : "/scan/snapshot.json");
     if (!file) return undefined;
     const stat = statSync(file);
-    const index = cached(`file:${file}:${stat.mtimeMs}:${stat.size}`, () => stat.size > maxSnapshotBytes ? undefined : buildAskIndex(JSON.parse(readFileSync(file, "utf8"))));
-    return index ? { index, source: "scan" } : undefined;
+    if (!stat.isFile() || stat.size > maxSnapshotBytes) return undefined;
+    return { key: `file:${file}:${stat.mtimeMs}:${stat.size}`, source: "scan", snapshotPath: file, size: stat.size };
   };
   return {
-    resolve(input) {
+    locate(input) {
       // A slug must belong to the atlas identity: owner__repo (as the scanner slugs it), or the
       // scan-root slot ("") only for the THISS/okie self-scan stand-in.
       const ownSlug = parseGithubSource(`gh:${input.owner}/${input.repo}`)?.dirSlug.toLowerCase();
       const dogfood = `${input.owner}__${input.repo}`.toLowerCase() === DOGFOOD_SCAN_SLUG;
       const allowed = (slug: string) => slug === "" ? dogfood : slug.toLowerCase() === ownSlug;
       const candidates = input.slug !== undefined ? [input.slug] : [...new Set([ownSlug ?? "", ""])];
+      const out: AskCorpusLocation[] = [];
       for (const slug of candidates) {
         if (sanitizeAskSlug(slug) === undefined || !allowed(slug)) continue;
-        // Any read/parse/build failure (corrupt, oversized, vanished file) means "no corpus": Ask
-        // answers scope-only rather than failing the request. Failures are cached per key too.
-        let corpus: AskCorpus | undefined;
-        try { corpus = fromSlug(slug.toLowerCase()); } catch { corpus = undefined; }
-        if (corpus && commitMatches(corpus.index.commitSha, input.commitSha)) return corpus;
+        // A vanished or unreadable file means "no corpus" for this slug: Ask answers scope-only.
+        let location: AskCorpusLocation | undefined;
+        try { location = fromSlug(slug.toLowerCase(), input.commitSha); } catch { location = undefined; }
+        if (location && !out.some(row => row.key === location.key)) out.push(location);
       }
-      return undefined;
+      return out;
     },
+  };
+}
+
+/** Reads a file only when it is at most `max` bytes (checked on the open descriptor). */
+function readBoundedFile(path: string, max: number): Buffer {
+  const fd = openSync(path, "r");
+  try {
+    const size = fstatSync(fd).size;
+    if (size > max) throw new Error("file exceeds the Ask size cap");
+    return readFileSync(fd);
+  } finally { closeSync(fd); }
+}
+
+/** Parses a located snapshot (+ sidecar) and builds its index. Throws on any read/parse failure. */
+export function loadAskIndex(location: Pick<AskCorpusLocation, "snapshotPath" | "sidecarPath">, limits: { maxSnapshotBytes?: number; maxSidecarBytes?: number } = {}): AskIndex {
+  const snapshot = JSON.parse(readBoundedFile(location.snapshotPath, limits.maxSnapshotBytes ?? MAX_ASK_SNAPSHOT_BYTES).toString("utf8")) as unknown;
+  let sidecar: unknown;
+  // An unreadable or malformed sidecar only drops the explanations (same as before CLA-304).
+  try { sidecar = location.sidecarPath ? JSON.parse(readBoundedFile(location.sidecarPath, limits.maxSidecarBytes ?? MAX_ASK_SIDECAR_BYTES).toString("utf8")) : undefined; } catch { sidecar = undefined; }
+  return buildAskIndex(snapshot, sidecar);
+}
+
+/**
+ * Built indexes, a small LRU keyed by location key (default 4). Lives in the Ask retrieval worker; the
+ * request thread never holds one. Failures are not cached here: the coordinator keeps the negative cache.
+ */
+export function createAskIndexCache(options: { maxIndexes?: number; maxSnapshotBytes?: number; maxSidecarBytes?: number } = {}) {
+  const maxIndexes = options.maxIndexes ?? 4;
+  const cache = new Map<string, AskIndex>();
+  let indexBuilds = 0;
+  return {
+    /** True when `key` is built (no LRU touch). */
+    has: (key: string): boolean => cache.has(key),
+    /** The cached index for `location.key`, else a fresh build (which throws on failure); `beforeBuild` runs just before one. */
+    load(location: Pick<AskCorpusLocation, "key" | "snapshotPath" | "sidecarPath">, beforeBuild?: () => void): { index: AskIndex; built: boolean } {
+      const hit = cache.get(location.key);
+      if (hit) { cache.delete(location.key); cache.set(location.key, hit); return { index: hit, built: false }; }
+      // Evict first so at most `maxIndexes` indexes are ever alive, even while the next one builds.
+      while (cache.size >= maxIndexes) cache.delete(cache.keys().next().value!);
+      beforeBuild?.();
+      const index = loadAskIndex(location, options);
+      indexBuilds += 1;
+      cache.set(location.key, index);
+      return { index, built: true };
+    },
+    keys: (): string[] => [...cache.keys()],
     stats: () => ({ indexBuilds }),
   };
 }
+export type AskIndexCache = ReturnType<typeof createAskIndexCache>;

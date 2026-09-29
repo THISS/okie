@@ -37,8 +37,8 @@ export async function runBlockPlanEvaluation(options: { fixture: EvaluationNodes
   const service = createBlockPlanService({
     config: { enabled: true, maxRequests: fixture.nodes.length, maxDollars, timeoutMs: options.timeoutMs ?? 30_000, perIp: fixture.nodes.length },
     provider,
-    globalLedger: createOperatorBudgetLedger({ maxRequests: fixture.nodes.length, maxTokens: Number.MAX_SAFE_INTEGER, maxDollars }),
-    globalCapDollars: maxDollars,
+    // Offline evaluation: an in-memory planner ledger capped at this run's dollars.
+    plannerLedger: createOperatorBudgetLedger({ maxRequests: fixture.nodes.length, maxTokens: Number.MAX_SAFE_INTEGER, maxDollars }),
   });
   const results: EvaluationNodeResult[] = [];
   for (const node of fixture.nodes) {

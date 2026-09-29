@@ -231,21 +231,33 @@ run. CI replays them through the real pipeline and asserts the recorded numbers:
 
 The Jev block planner orders a published node's Overview blocks. It is **off by default** on both
 the server and the client. See `docs/roadmap/overview-blocks.md` ("Jev planner") for the design.
-The route is `POST /api/block-plan` on the scan server. It is public and needs no sign-in, so every
-cap below applies to all callers together.
+The route is `POST /api/block-plan` on the scan server. Since CLA-304 it needs a GitHub session: an
+anonymous caller gets `401 { error, auth: { required: true, loginPath } }` (like Ask) and the web client
+keeps the default order. Every cap below applies to all signed-in callers together.
 
 | Variable | Default | Controls |
 | --- | --- | --- |
 | `OKIE_JEV_BLOCK_PLANNER` | off | `on`/`true`/`1`/`yes` enables the route; otherwise it answers `{ state: "unavailable", reason: "disabled" }` |
-| `OKIE_JEV_PLANNER_MAX_REQUESTS` | 100 | Jev requests per server process |
-| `OKIE_JEV_PLANNER_MAX_DOLLARS` | 0.30 | dollars per server process ($0.003 reserved per request) |
+| `OKIE_JEV_PLANNER_MAX_REQUESTS` | 100 | Jev requests, lifetime of the operator store (durable ledger) |
+| `OKIE_JEV_PLANNER_MAX_DOLLARS` | 0.30 | dollars, lifetime of the operator store ($0.003 reserved per request) |
 | `OKIE_JEV_PLANNER_TIMEOUT_MS` | 10,000 | deadline per request |
 | `OKIE_JEV_PLANNER_PER_IP` | 30 | Jev-bound requests per IP per 10 minutes (cache hits are free) |
-| `OKIE_LLM_GLOBAL_MAX_DOLLARS` | none | **required**: without it the route answers `{ state: "unavailable", reason: "no-global-cap" }`. The global ledger is durable lifetime spend shared with operator enrichment, judgments and claim checks, so size it above spend already recorded in the store or every plan answers `global-budget` |
 
-**Guard order.** The kill switch, the global-cap check and a fixed per-IP window of 240 requests per
-10 minutes (all requests, cache hits included) run before the request is validated, before operator
-state is read and before any snapshot is read. The per-IP limits use the socket address only;
+**Planner ledger (CLA-304).** The planner never reserves on the operator global ledger
+(`OKIE_LLM_GLOBAL_*`), so no caller can drain operator enrichment, judgment or claim-check budget, and
+`OKIE_LLM_GLOBAL_MAX_DOLLARS` is no longer required. Instead every Jev request is admitted by the
+planner's own **durable** ledger (`OKIE_JEV_PLANNER_MAX_*`, run id `jev-block-planner` in the operator
+store), so restarting the server never resets planner spend. To lift the cap, raise
+`OKIE_JEV_PLANNER_MAX_*`. A service built without a planner ledger answers `no-planner-ledger`.
+
+**Guard order.** Kill switch → session (401) → planner-ledger present → a fixed window of 60 requests
+per 10 minutes per account, then 240 per 10 minutes per IP (all requests, cache hits included). The
+per-account window sits well below the per-IP one so a single account cannot drain the shared IP
+window on its own. All of these run before
+the request body is read, before operator state is read and before any snapshot is read; the ledger
+itself is only reserved later, for a Jev-bound request. Account and IP windows live in separate
+bounded maps (4,096 keys each) that fail closed: when every tracked window is live, a new key is
+refused. IP keys are normalised (IPv4-mapped IPv6 → IPv4, IPv6 grouped by /64). The per-IP limits use the socket address only;
 `X-Forwarded-For` is never trusted. Behind the Vite dev proxy or any loopback reverse proxy every
 caller shares one address, so both per-IP limits are effectively **global** there.
 
@@ -264,13 +276,27 @@ OKIE_SCAN_SERVER_PORT=<same port> pnpm --filter @okie/web exec vite --port <spar
 The evaluation script's `--capture` reads only `snapshot.json` and `operator-explanations.json`. Copy those two files out of the artifact into a scratch directory, and pass that directory as `--artifact`.
 
 Each request also needs `JEV_API`. At most 4 requests are in flight at once. Identical concurrent
-requests share one call. Every request goes through the process-wide ledger (`OKIE_LLM_GLOBAL_*`)
-first, then through the planner ledger. The planner ledger is in memory, so a restart resets it.
+requests share one call. Every request goes through the durable planner ledger only (see above).
 Only each slug's current publication is planned. Plans are cached in memory (LRU) and in
 `<scan root>/block-plans/<versionId>.json`, keyed by publication version, node, sorted candidate
 `id:type` set, question version and model. Each version's file is loaded into memory once and
 written atomically (temp file + rename). A cached plan never spends. To evaluate, run `node scripts/evaluate-block-planner.mjs --live --output=<path>`, or use
 `--replay`. The replay reads `fixtures/judgments/block-planner/replay.json`.
+
+## Ask Atlas limits (CLA-304)
+
+`POST /api/ask` needs a GitHub session. Before the 48 KB body is read it checks, in order:
+
+| Limit | Default | Notes |
+| --- | --- | --- |
+| Per account | 30 requests / 10 min | Every signed-in request counts, including malformed or unanswerable ones (the caller's own quota). |
+| Per IP | 60 requests / 10 min (`OKIE_ASK_PER_IP_WINDOW`) | Only requests the account window admitted. Socket address only (never `X-Forwarded-For`), IPv6 grouped by /64. **Loopback addresses (127.0.0.0/8, `::1`, `::ffff:127.*`) are exempt**: behind the Vite dev proxy or a loopback reverse proxy every caller shares one address, so there the account window and the retrieval worker's admission are the controls. |
+
+Retrieval then runs on a dedicated worker thread (`apps/server/src/askWorker.ts`): at most 8 requests
+wait on it and at most one cold index build is admitted at a time; beyond that Ask answers
+`429 { error: "Ask is busy; try again shortly." }` with `retry-after: 5`. Snapshots over 64 MB are never
+read (Ask answers scope-only). A retrieval gets 5 s of worker time (20 s when it builds an index); on a
+deadline the worker is restarted and the request answers scope-only.
 
 ## Incremental re-scans (CLA-271)
 

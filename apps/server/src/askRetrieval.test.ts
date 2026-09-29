@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
   acceptedAskExplanations,
+  askExpansionWork,
+  askQueryTokens,
   boundedEditDistance,
   buildAskIndex,
   createAskCorpusSource,
+  createAskIndexCache,
+  expandAskToken,
+  loadAskIndex,
+  MAX_ASK_FUZZY_TOKEN_CHARS,
+  MAX_ASK_QUERY_TOKENS,
   FULL_EXCERPT_SECTIONS,
   MAX_ASK_SECTION_BYTES,
   MAX_LEAD_SECTION_BYTES,
@@ -15,7 +22,10 @@ import {
   sanitizeAskSlug,
   stemAskToken,
   tokenizeAskText,
+  type AskCorpusLookup,
+  type AskIndex,
 } from "./askRetrieval.js";
+import { handleAskWorkerRequest } from "./askWorker.js";
 
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 const ref = (path: string, extra: Record<string, unknown> = {}) => ({ path, commitSha: SHA, ...extra });
@@ -203,32 +213,68 @@ test("slug sanitisation allows route slugs and scanRepo ids only", () => {
   assert.equal(sanitizeAskSlug(42), undefined);
 });
 
-test("corpus source resolves the scan-root and per-slug snapshots, verifies commitSha, and caches", () => {
+test("corpus source locates the scan-root and per-slug snapshots (stat only); the worker verifies commitSha and caches", () => {
   const root = mkdtempSync(join(tmpdir(), "okie-ask-corpus-"));
   try {
     writeFileSync(join(root, "snapshot.json"), JSON.stringify(SNAPSHOT));
     mkdirSync(join(root, "acme__widgets"));
     writeFileSync(join(root, "acme__widgets", "snapshot.json"), JSON.stringify({ ...SNAPSHOT, commitSha: "feedfacefeedface" }));
     const source = createAskCorpusSource({ scanRoot: root });
-    assert.equal(source.resolve({ slug: "", owner: "THISS", repo: "okie", commitSha: SHA })?.index.commitSha, SHA);
+    const cache = createAskIndexCache();
+    let id = 0;
+    const resolve = (input: AskCorpusLookup) => { const candidates = source.locate(input); return handleAskWorkerRequest(cache, { id: id += 1, commitSha: input.commitSha, candidates, buildKeys: candidates.map(candidate => candidate.key), question: "renderer", selectedIds: [], byteBudget: 24_000 }).evidence; };
+    assert.equal(resolve({ slug: "", owner: "THISS", repo: "okie", commitSha: SHA })?.entityCount, SNAPSHOT.entities.length);
     // The dogfood slug aliases onto the scan-root trio like `/scan/thiss__okie/*`.
-    assert.equal(source.resolve({ slug: "thiss__okie", owner: "THISS", repo: "okie", commitSha: SHA.slice(0, 12) })?.source, "scan");
+    assert.equal(resolve({ slug: "thiss__okie", owner: "THISS", repo: "okie", commitSha: SHA.slice(0, 12) })?.source, "scan");
     // No slug: owner__repo, then the scan root.
-    assert.equal(source.resolve({ owner: "acme", repo: "widgets", commitSha: "feedfacefeedface" })?.index.commitSha, "feedfacefeedface");
-    assert.equal(source.resolve({ slug: "", owner: "THISS", repo: "okie", commitSha: "0000000000" }), undefined);
-    assert.equal(source.resolve({ slug: "missing", owner: "THISS", repo: "okie", commitSha: SHA }), undefined);
+    assert.deepEqual(source.locate({ owner: "acme", repo: "widgets", commitSha: "feedfacefeedface" }).map(location => location.snapshotPath), [join(root, "acme__widgets", "snapshot.json")]);
+    assert.ok(resolve({ owner: "acme", repo: "widgets", commitSha: "feedfacefeedface" }));
+    assert.equal(resolve({ slug: "", owner: "THISS", repo: "okie", commitSha: "0000000000" }), undefined);
+    assert.deepEqual(source.locate({ slug: "missing", owner: "THISS", repo: "okie", commitSha: SHA }), []);
     // A slug must belong to the atlas identity: no borrowing another repo's corpus or the scan root.
-    assert.equal(source.resolve({ slug: "acme__widgets", owner: "THISS", repo: "okie", commitSha: "feedfacefeedface" }), undefined);
-    assert.equal(source.resolve({ slug: "", owner: "acme", repo: "widgets", commitSha: SHA }), undefined);
-    assert.equal(source.resolve({ slug: "ACME__Widgets", owner: "acme", repo: "widgets", commitSha: "feedfacefeedface" })?.index.commitSha, "feedfacefeedface");
-    assert.equal(source.stats().indexBuilds, 2);
+    assert.deepEqual(source.locate({ slug: "acme__widgets", owner: "THISS", repo: "okie", commitSha: "feedfacefeedface" }), []);
+    assert.deepEqual(source.locate({ slug: "", owner: "acme", repo: "widgets", commitSha: SHA }), []);
+    assert.ok(resolve({ slug: "ACME__Widgets", owner: "acme", repo: "widgets", commitSha: "feedfacefeedface" }));
+    assert.equal(cache.stats().indexBuilds, 2);
 
-    // Corrupt or oversized snapshots never throw: no corpus (Ask then answers scope-only).
+    // A corrupt snapshot never throws: the worker reports the key failed (no corpus: Ask answers scope-only).
     writeFileSync(join(root, "acme__widgets", "snapshot.json"), "{ not json");
-    assert.equal(source.resolve({ slug: "acme__widgets", owner: "acme", repo: "widgets", commitSha: "feedfacefeedface" }), undefined);
-    const tiny = createAskCorpusSource({ scanRoot: root, maxSnapshotBytes: 64 });
-    assert.equal(tiny.resolve({ slug: "", owner: "THISS", repo: "okie", commitSha: SHA }), undefined);
-    assert.equal(tiny.stats().indexBuilds, 0);
+    const candidates = source.locate({ slug: "acme__widgets", owner: "acme", repo: "widgets", commitSha: "feedfacefeedface" });
+    const reply = handleAskWorkerRequest(cache, { id: 99, commitSha: "feedfacefeedface", candidates, buildKeys: [candidates[0]!.key], question: "renderer", selectedIds: [], byteBudget: 24_000 });
+    assert.deepEqual([reply.ok, reply.evidence, reply.failedKeys], [true, undefined, [candidates[0]!.key]]);
+    // Oversized snapshots are never located, so never read.
+    assert.deepEqual(createAskCorpusSource({ scanRoot: root, maxSnapshotBytes: 64 }).locate({ slug: "", owner: "THISS", repo: "okie", commitSha: SHA }), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("CLA-304: a publication snapshot is stat'ed before it is read; oversized ones are never read and never fall back to legacy bytes", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-ask-publication-"));
+  try {
+    writeFileSync(join(root, "snapshot.json"), JSON.stringify(SNAPSHOT));
+    mkdirSync(join(root, "thiss__okie"));
+    writeFileSync(join(root, "thiss__okie", "snapshot.json"), JSON.stringify(SNAPSHOT));
+    const artifact = join(root, "artifact");
+    mkdirSync(artifact);
+    writeFileSync(join(artifact, "snapshot.json"), JSON.stringify(SNAPSHOT));
+    writeFileSync(join(artifact, "operator-explanations.json"), JSON.stringify({ explanations: [] }));
+    const store = {
+      artifactFilePath: (_revision: string, file: string) => join(artifact, file),
+      readArtifactFile: () => { throw new Error("the locator must never read an artifact"); },
+    };
+    let stateReads = 0;
+    const publications = { currentWithArtifactForSlug: () => { stateReads += 1; return { publication: { artifactRevisionId: "artifact-1", versionId: "v1" }, artifact: { artifactRevisionId: "artifact-1", sourceCommitSha: SHA } }; } };
+    const locate = (limits: { maxSnapshotBytes?: number; maxSidecarBytes?: number } = {}, commitSha = SHA) => createAskCorpusSource({ scanRoot: root, publications: publications as never, store: store as never, ...limits }).locate({ slug: "thiss__okie", owner: "THISS", repo: "okie", commitSha });
+    assert.deepEqual(locate(), [{ key: "artifact:artifact-1", source: "publication", snapshotPath: join(artifact, "snapshot.json"), sidecarPath: join(artifact, "operator-explanations.json"), size: statSync(join(artifact, "snapshot.json")).size }]);
+    assert.equal(stateReads, 1, "one operator-state read per located slug");
+    assert.deepEqual(locate({ maxSnapshotBytes: 64 }), [], "oversized publication: no corpus, and no legacy fallback");
+    // A request for another commit is refused from the artifact's recorded commit: never located, so never built.
+    assert.deepEqual(locate({}, "feedfacefeedface"), []);
+    assert.equal(locate({}, SHA.slice(0, 10)).length, 1, "a 7+ char prefix still matches");
+    assert.equal(locate({ maxSidecarBytes: 4 })[0]?.sidecarPath, undefined, "an oversized sidecar is skipped");
+    // The worker re-checks the cap on the open file (it may have grown since it was located).
+    assert.throws(() => loadAskIndex({ snapshotPath: join(artifact, "snapshot.json") }, { maxSnapshotBytes: 64 }), /size cap/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -299,4 +345,172 @@ test("a section never exceeds the per-section cap, even without an excerpt", () 
   const [section] = retrieveAskSections(buildAskIndex(huge, sidecar), "quokka").sections;
   assert.equal(section?.id, "component:huge");
   assert.ok(Buffer.byteLength(JSON.stringify(section)) <= MAX_LEAD_SECTION_BYTES);
+});
+
+// ---------------------------------------------------------------------------
+// CLA-304: index-backed token expansion (exact equivalence with the old O(vocab) scan) and hostile-query bounds.
+
+/** The pre-CLA-304 expandToken, verbatim except that it reads a locally bucketed vocabulary. */
+const REFERENCE_SYNONYMS: ReadonlyMap<string, readonly string[]> = new Map(([
+  ["sign", ["auth", "oauth", "login", "session"]], ["signin", ["auth", "oauth", "login", "session"]], ["login", ["auth", "oauth", "session", "signin"]],
+  ["auth", ["oauth", "login", "session"]], ["authenticate", ["auth", "oauth", "login"]], ["authorize", ["auth", "access", "permission"]], ["permission", ["access", "authorize"]],
+  ["choose", ["select", "pick"]], ["pick", ["select", "choose"]], ["select", ["choose", "pick"]],
+  ["spend", ["cost", "budget"]], ["cost", ["spend", "budget"]], ["money", ["cost", "budget", "spend"]],
+  ["repo", ["repository"]], ["repository", ["repo"]],
+] as const).map(([word, synonyms]) => [stemAskToken(word), synonyms.map(stemAskToken)] as const));
+function referenceExpandToken(postings: ReadonlyMap<string, unknown>, token: string): Array<{ term: string; weight: number }> {
+  const vocabByLength = new Map<number, string[]>();
+  for (const term of [...postings.keys()].sort()) { const list = vocabByLength.get(term.length); if (list) list.push(term); else vocabByLength.set(term.length, [term]); }
+  const synonyms = (REFERENCE_SYNONYMS.get(token) ?? []).filter(term => term !== token && postings.has(term)).map(term => ({ term, weight: 0.5 }));
+  if (postings.has(token)) return [{ term: token, weight: 1 }, ...synonyms];
+  const limit = token.length >= 7 ? 2 : token.length >= 3 ? 1 : 0;
+  if (limit === 0) return synonyms;
+  // CLA-304's only intended change: tokens longer than MAX_ASK_FUZZY_TOKEN_CHARS match exactly only.
+  if (token.length > MAX_ASK_FUZZY_TOKEN_CHARS) return synonyms;
+  const out: Array<{ term: string; weight: number }> = [];
+  for (let length = token.length - limit; length <= token.length + limit; length += 1) {
+    for (const term of vocabByLength.get(length) ?? []) {
+      if (boundedEditDistance(token, term, limit) <= limit) out.push({ term, weight: 0.6 });
+    }
+  }
+  if (token.length >= 4) {
+    for (const [length, terms] of vocabByLength) {
+      if (length <= token.length + limit) continue;
+      for (const term of terms) if (term.startsWith(token)) out.push({ term, weight: 0.7 });
+    }
+  }
+  const best = new Map<string, number>();
+  for (const { term, weight } of out) best.set(term, Math.max(best.get(term) ?? 0, weight));
+  for (const { term, weight } of synonyms) best.set(term, Math.max(best.get(term) ?? 0, weight));
+  return [...best].map(([term, weight]) => ({ term, weight })).sort((left, right) => left.term.localeCompare(right.term)).slice(0, 24);
+}
+
+/** Deterministic PRNG (mulberry32). */
+function prng(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => { state = (state + 0x6d2b79f5) >>> 0; let value = state; value = Math.imul(value ^ (value >>> 15), value | 1); value ^= value + Math.imul(value ^ (value >>> 7), value | 61); return ((value ^ (value >>> 14)) >>> 0) / 4294967296; };
+}
+const vocabIndex = (terms: Iterable<string>): AskIndex => {
+  const postings = new Map([...terms].map(term => [term, [[0, 1]] as Array<[number, number]>]));
+  return { postings, vocab: [...postings.keys()].sort() } as unknown as AskIndex;
+};
+
+test("CLA-304: index-backed expansion equals the brute-force scan on random vocabularies and tokens", () => {
+  const random = prng(304);
+  const pick = <T>(items: readonly T[]) => items[Math.floor(random() * items.length)]!;
+  const word = (alphabet: string, min: number, max: number) => Array.from({ length: min + Math.floor(random() * (max - min + 1)) }, () => pick([...alphabet])).join("");
+  const typo = (source: string, alphabet: string) => {
+    const at = Math.floor(random() * (source.length + 1));
+    switch (Math.floor(random() * 4)) {
+      case 0: return source.slice(0, at) + pick([...alphabet]) + source.slice(at);
+      case 1: return source.slice(0, at) + source.slice(at + 1);
+      case 2: return source.slice(0, at) + pick([...alphabet]) + source.slice(at + 1);
+      default: return at + 1 < source.length ? source.slice(0, at) + source[at + 1] + source[at] + source.slice(at + 2) : source;
+    }
+  };
+  let compared = 0; let nonTrivial = 0; let truncated = 0;
+  for (let round = 0; round < 80; round += 1) {
+    // Small alphabets make dense tries (many near neighbours); the full one is realistic.
+    const alphabet = pick(["ab", "abc", "abcde", "abcdefghijklmnopqrstuvwxyz0123456789", "aeiorstn"]);
+    const size = pick([1, 5, 40, 300, 2_000]);
+    const terms = new Set<string>();
+    while (terms.size < size) {
+      const roll = random();
+      if (roll < 0.05) terms.add(stemAskToken(pick(["sign", "auth", "oauth", "login", "session", "select", "cost", "budget", "repo", "repository", "access"])));
+      else if (roll < 0.35 && terms.size) terms.add(typo(pick([...terms]), alphabet) || "zz");
+      else if (roll < 0.5 && terms.size) terms.add(pick([...terms]) + word(alphabet, 1, 6));
+      else terms.add(word(alphabet, 2, roll < 0.52 ? 45 : 14));
+    }
+    for (const term of [...terms]) if (term.length < 2) terms.delete(term);
+    const index = vocabIndex(terms);
+    const known = [...terms];
+    for (let draw = 0; draw < 60; draw += 1) {
+      const roll = random();
+      const token = roll < 0.25 ? typo(typo(pick(known), alphabet), alphabet)
+        : roll < 0.45 ? typo(pick(known), alphabet)
+        : roll < 0.6 ? pick(known).slice(0, 2 + Math.floor(random() * 10))
+        : roll < 0.65 ? pick(known)
+        : roll < 0.7 ? stemAskToken(pick(["sign", "login", "auth", "choose", "spend", "money", "repo", "signin", "authorize"]))
+        : roll < 0.75 ? word(alphabet, 38, 50)
+        : word(alphabet, 2, 12);
+      if (token.length < 2) continue;
+      const expected = referenceExpandToken(index.postings, token);
+      assert.deepEqual(expandAskToken(index, token), expected, `vocab ${terms.size} (${alphabet}), token ${token}`);
+      assert.deepEqual(expandAskToken(index, token), expected, "memoised answer is identical");
+      compared += 1;
+      if (expected.length > 1) nonTrivial += 1;
+      if (expected.length === 24) truncated += 1;
+    }
+  }
+  assert.ok(compared > 4_000 && nonTrivial > 500 && truncated > 50, `${compared} compared, ${nonTrivial} with several expansions, ${truncated} cut to 24`);
+});
+
+test("CLA-304: a hostile question is capped to MAX_ASK_QUERY_TOKENS tokens and stays cheap on a large index", () => {
+  const random = prng(7);
+  const letters = "abcdefghijklmnopqrstuvwxyz";
+  const word = (length: number) => Array.from({ length }, () => letters[Math.floor(random() * 26)]).join("");
+  // ~25k distinct terms: 5,000 files with five random identifier words each.
+  const entities: Array<Record<string, unknown>> = [{ id: "system:x", kind: "softwareSystem", name: "Hostile", sourceRefs: [] }];
+  for (let file = 0; file < 5_000; file += 1) {
+    const words = Array.from({ length: 5 }, () => word(5 + Math.floor(random() * 8)));
+    entities.push({ id: `component:f${file}`, kind: "component", parentId: "system:x", name: `src/${words.join("_")}.ts`, sourceRefs: [ref(`src/${words.join("_")}.ts`)] });
+  }
+  const index = buildAskIndex({ commitSha: SHA, entities, relations: [] });
+  assert.ok(index.vocab.length > 20_000, `${index.vocab.length} terms`);
+  // ≈2,000 chars: 300+ distinct out-of-vocabulary tokens, 60-char tokens, and repeats.
+  const hostile = [
+    ...Array.from({ length: 320 }, () => `q${word(4)}`),
+    ...Array.from({ length: 6 }, () => word(60)),
+    ...Array.from({ length: 20 }, () => "qqqq"),
+  ].join(" ").slice(0, 2_000);
+  const tokens = askQueryTokens(index, hostile);
+  assert.ok(tokens.length > 250, `${tokens.length} distinct tokens`);
+  const workBefore = askExpansionWork();
+  const started = performance.now();
+  const result = retrieveAskSections(index, hostile);
+  const elapsed = performance.now() - started;
+  const work = askExpansionWork() - workBefore;
+  // The old scan touched every term of the vocabulary for EACH token (32 × 25k = 800k terms here); the
+  // index-backed walk must stay below ONE such scan for the whole question (measured: ~6.6k).
+  assert.ok(work > 0 && work < index.vocab.length, `${work} vocabulary steps for ${index.vocab.length} terms`);
+  assert.ok(result.matchedTerms.length <= MAX_ASK_QUERY_TOKENS);
+  assert.ok(result.matchedTerms.every(term => tokens.slice(0, MAX_ASK_QUERY_TOKENS).includes(term)), "only the first tokens in question order are searched");
+  assert.ok(elapsed < 1_500, `hostile retrieval took ${Math.round(elapsed)} ms (secondary, generous wall-clock check)`);
+  // A long token is exact-only: a one-letter typo of a 41+ char term does not expand.
+  const long = "a".repeat(MAX_ASK_FUZZY_TOKEN_CHARS + 1);
+  const withLong = vocabIndex([long, `${long}b`]);
+  assert.deepEqual(expandAskToken(withLong, long), [{ term: long, weight: 1 }]);
+  assert.deepEqual(expandAskToken(withLong, `${long.slice(1)}c`), []);
+});
+
+test("CLA-304: the worker handler builds only authorised keys, and the index cache never holds more than maxIndexes", () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-ask-build-keys-"));
+  try {
+    const paths = ["a", "b", "c"].map(name => { const path = join(root, `${name}.json`); writeFileSync(path, JSON.stringify(SNAPSHOT)); return { key: name, source: "scan" as const, snapshotPath: path }; });
+    const cache = createAskIndexCache({ maxIndexes: 2 });
+    const building: string[] = [];
+    const ask = (candidate: typeof paths[number], buildKeys: string[]) => handleAskWorkerRequest(cache, { id: 1, commitSha: SHA, candidates: [candidate], buildKeys, question: "renderer", selectedIds: [], byteBudget: 24_000 }, { onBuilding: key => { building.push(key); assert.ok(cache.keys().length < 2, "evicted before the build"); } });
+    assert.deepEqual([ask(paths[0]!, []).ok, ask(paths[0]!, []).error], [false, "Ask index not warm"]);
+    assert.equal(cache.stats().indexBuilds, 0, "an unauthorised miss never builds");
+    for (const candidate of paths) assert.ok(ask(candidate, [candidate.key]).evidence);
+    assert.deepEqual(building, ["a", "b", "c"]);
+    assert.deepEqual(cache.keys(), ["b", "c"]);
+    assert.ok(ask(paths[2]!, []).evidence, "a warm key needs no authorisation");
+    // An unauthorised first candidate is skipped, not fatal: a warm second candidate (the dogfood slot) still answers.
+    const skip = handleAskWorkerRequest(cache, { id: 2, commitSha: SHA, candidates: [paths[0]!, paths[2]!], buildKeys: [], question: "renderer", selectedIds: [], byteBudget: 24_000 });
+    assert.equal(skip.ok, true);
+    assert.ok(skip.evidence, "the warm second candidate was searched");
+    assert.ok(!cache.keys().includes("a"), "the skipped key was not built");
+    // A joined key is built when still missing, unless its build already failed in this worker.
+    const failedBuilds = new Set<string>();
+    let attempts = 0;
+    const broken = join(root, "broken.json");
+    writeFileSync(broken, "{not json");
+    const join1 = (candidate: { key: string; source: "scan"; snapshotPath: string }) => handleAskWorkerRequest(cache, { id: 3, commitSha: SHA, candidates: [candidate], buildKeys: [], joinKeys: [candidate.key], question: "renderer", selectedIds: [], byteBudget: 24_000 }, { failedBuilds, onBuilding: () => { attempts += 1; } });
+    assert.ok(join1(paths[0]!).evidence, "a joiner builds the key when the builder never ran");
+    assert.equal(attempts, 1);
+    assert.deepEqual(join1({ key: "broken", source: "scan", snapshotPath: broken }).failedKeys, ["broken"]);
+    assert.deepEqual(join1({ key: "broken", source: "scan", snapshotPath: broken }).error, "Ask index not warm", "a failed joined key is not rebuilt");
+    assert.equal(attempts, 2, "one build attempt for the broken key, not two");
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
