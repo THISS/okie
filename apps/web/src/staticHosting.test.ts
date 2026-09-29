@@ -53,6 +53,11 @@ describe('CLA-266 Cloudflare static hosting', () => {
     expect(headersFile.get('/assets/*')).toEqual({ 'Cache-Control': 'public, max-age=31536000, immutable' });
   });
 
+  it('gives the home page\'s un-hashed /home.js a short cache (CLA-269)', () => {
+    expect(headersFile.get('/home.js')).toEqual({ 'Cache-Control': 'public, max-age=300' });
+    expect(existsSync(new URL('../public/home.js', import.meta.url))).toBe(true);
+  });
+
   it('serves /r as the SPA shell and hands share routes to the Worker', () => {
     expect(wrangler).toMatch(/"not_found_handling":\s*"single-page-application"/);
     // Every path runs the Worker first (share routes, /scan, /api, the www → apex redirect, and the

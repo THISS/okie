@@ -134,6 +134,41 @@ pnpm publish:atlas --repo thiss/okie --env production --scan-root ~/sites/okie/f
 
   `--env local [--persist-to <dir>]` runs against the local bucket, and `--dry-run --out <dir>` runs against a
   directory store. Don't publish while it runs: it reads, then rewrites `index.json`.
+- Description and language (CLA-269): the same GitHub response gives the repository's `description` and `language`.
+  The publish records them in the index row, sanitised (trimmed, one line, no control, bidi or invisible characters,
+  description capped at 280 characters and language at 40), and leaves them out when GitHub has none. The zero-width
+  joiner and non-joiner (U+200D, U+200C) are kept, because emoji sequences such as the woman mage (U+1F9D9 U+200D U+2640 U+FE0F) need them. They show on the
+  home page's cards and are searchable there. A re-publish refreshes them, and a failed lookup keeps the ones the row
+  already had (as with the names). A renamed or transferred repository is refused, so it records neither names nor meta.
+  To fill rows published before this, or to refresh them all, run `--backfill-meta`. It looks up **every** row, one
+  request each (unauthenticated GitHub allows 60 an hour). It fills or refreshes `description` / `language`, and fills
+  `ownerLogin` / `repoName` from the same response, so it covers `--backfill-names` too. It rewrites `index.json`
+  only. A failed lookup leaves its row unchanged. A description or language that GitHub reports as null or empty is
+  removed, and one missing from the response is kept. Rows missing names, a description or a language are looked up
+  first. The first 403 or 429 from GitHub, or `x-ratelimit-remaining: 0`, stops the lookups. The run logs how many rows
+  it didn't reach and writes only the rows it resolved, so re-run it after the limit resets. It re-reads `index.json`
+  before writing and skips any row that changed meanwhile, and a run with nothing new writes nothing. A plain
+  `--dry-run` reads through a read-only client, so it can't write:
+
+  ```sh
+  pnpm publish:atlas --env staging --backfill-meta --dry-run   # reads the env's index.json, prints one line per row, writes nothing
+  pnpm publish:atlas --env staging --backfill-meta
+  pnpm publish:atlas --env production --backfill-meta --dry-run
+  pnpm publish:atlas --env production --backfill-meta --yes
+  ```
+
+- Backups: before either backfill writes, it saves the current `index.json` bytes to a local file, reads the file back
+  to check the bytes, and logs the path. Pass `--backup <file>` to choose it; a relative path is resolved against the
+  directory you ran `pnpm` from. By default it is `backfill-backup-<env>-<UTC timestamp>.json` in that directory, or
+  beside the `--out` directory (not inside the store) with `--dry-run --out`. These files are gitignored. It never
+  overwrites an existing file. If the backup can't be written, or doesn't read back identically, nothing is written to
+  the bucket.
+- After the write, the backfill reads `index.json` back. If the bytes are not what it wrote, it prints a `WARNING`:
+  a publish that ran at the same time may have been overwritten. The warning names the backup path. **Don't publish
+  during a backfill, or between a backfill and a restore from its backup.** A restore puts back the whole file, so it
+  drops any row published after the backup was taken. To roll back, put the file back into the bucket the run logged
+  (`sourcefor-atlas-staging` for staging, `sourcefor-atlas` for production):
+  `pnpm --filter @okie/edge exec wrangler r2 object put <bucket>/atlas/v1/index.json --file <backup> --content-type application/json --remote`.
 - Share URLs: `/r/<owner>/<repo>` resolves through the scan slugger (`BurntSushi` → `burnt-sushi`). A URL that misses
   but matches a published row once case and punctuation are ignored (`/r/burntsushi/ripgrep`) 301s to the canonical
   `/r/<slug owner>/<slug repo>`.
@@ -165,7 +200,9 @@ that the top-level `containers` and `ATLAS_API` binding aren't in the env; that 
 
 Then run the smoke checks against staging:
 
-- `/` (the edge-rendered home: hero, "Explore an atlas" CTA and a card per published atlas; no SPA `<div id="root">`),
+- `/` (the edge-rendered home: hero, "Explore an atlas" CTA, the search form and a card per published atlas; no SPA
+  `<div id="root">`); `/?q=<part of a name>` shows only the matching cards with an `N of M atlases` count, `/?sort=az`
+  orders them A–Z, and `curl -sI <origin>/home.js` answers `200` JavaScript with `cache-control: public, max-age=300`,
   `/?fixture=okie` (the SPA golden demo), `/r/<owner>/<repo>` (atlas renders, OG tags in the HTML), `/og/<owner>/<repo>`
   (PNG), `/oembed?url=https://staging.sourcefor.dev/r/<owner>/<repo>`.
 - `curl -sI <origin>/new` answers `301` with `location: /` (`/new?utm_source=x&a=1` → `/?utm_source=x`: only the

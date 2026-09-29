@@ -47,3 +47,32 @@ A `securitypolicyviolation` listener was installed before each page load. It rec
   - The CTA falls back to the first card when source-for/atlas isn't published.
   - The first 3 thumbnails load eagerly.
   - Bidi and zero-width characters are stripped from card text.
+
+# Increment 2 (search and sort): QA
+
+Commit `5b78b63`, after `pnpm build`. Same local edge and local R2 as above. `/scan/index.json` carries a `description` and `language` for all 7 rows after the local `--backfill-meta`.
+
+A `securitypolicyviolation` listener was installed before each page load. It recorded **0 violations on every page**: home (JS, 1440 and 390), `?q=`, `?sort=az`, the escaping probes, `/?fixture=okie` and `/r/pmndrs/zustand`. The no-JS context can't run a listener, and its console showed no CSP errors. The only console entry anywhere is the existing `Permissions-Policy: tools=(self)` origin-trial warning.
+
+| Check | Result | Screenshot |
+|---|---|---|
+| `/` at 1440 | Pass. The search input (844×44), sort select and Search button sit on one row under "Published atlases (7)", with the count "7 atlases" below. All 7 cards show a description and language chips (TypeScript or Rust) next to the licence and entity count. No horizontal overflow. | `inc2-home-1440.png`, `inc2-home-1440-full.png` |
+| Typing | Pass. Typing "zu" leaves only pmndrs/zustand, the count reads "1 of 7 atlases" and the URL becomes `/?q=zu`. Clearing the field shows all 7, "7 atlases" and `/`. Typing "qwxyzzy" shows "0 of 7" and the message "No atlases match “qwxyzzy”. Clear the search". The clear link goes to `/` with all 7 cards. Enter in the input filters without a reload. | `inc2-filter-zu-1440.png`, `inc2-nomatch-1440.png` |
+| Sort | Pass. A–Z reorders the cards (ripgrep, excalidraw, docusaurus, zustand, atlas, axum, trpc) and the URL becomes `/?sort=az`. A reload keeps it, and so does a reload of `?q=ts&sort=az`. Switching back to "Most recent" drops `sort` from the URL. | `inc2-sort-az-1440.png` |
+| Server-side widening | Pass. The raw HTML for `/?q=zu` has 6 `hidden` cards and "1 of 7 atlases". Deleting the query in the input shows all 7 and the URL returns to `/`. | — |
+| No JS (`javaScriptEnabled: false`) | Pass. Submitting "rust" with A–Z goes to `/?q=rust&sort=az` and shows ripgrep and axum, in that order, with "2 of 7" and both controls pre-filled. `/?q=rip&sort=az` is filtered and in A–Z order (see issues for the match count). `/?q=zzqq` shows the no-match message. | `inc2-nojs-rip-az-1440.png`, `inc2-nojs-nomatch-1440.png` |
+| 390×844 touch (`isMobile`, coarse pointer) | Pass. `scrollWidth` equals 390, and no element overflows. The input (358×44) is on its own row, with the select (271×44) and button (79×44) below. The input font is 16px, so iOS won't zoom. Tapping the input and typing "rust", then choosing A–Z, filters and sorts to `?q=rust&sort=az`. | `inc2-home-390.png`, `inc2-filter-390.png` |
+| Escaping | Pass. `?q=<script>alert(1)</script>` and `?q="><img src=x onerror=alert(1)>` open no dialog, inject no element and trigger no CSP event. The server escapes the input `value` and the no-match echo (`&lt;…&gt;`, `&quot;`), and both show the text literally. | `inc2-escape-1440.png` |
+| Keyboard | Pass. Tab order is CTA, mailto, input, select, Search button, then the first card. Each shows a 2 px teal `:focus-visible` outline. | `inc2-focus-select-1440.png`, `inc2-focus-button-1440.png` |
+| Regressions | Pass. `/?fixture=okie` serves the SPA golden demo (canvas, no search form). `/r/pmndrs/zustand` renders a canvas. `/zzz` returns 404, `/new` returns 301 to `/`, and `/home.js` returns 200 `text/javascript` with `max-age=300` and `nosniff`. | `inc2-fixture-1440.png`, `inc2-zustand-1440.png` |
+
+## Issues (increment 2)
+
+- **Low: a substring match on the language field gives noisy results.** `rip` matches 6 of 7 atlases: ripgrep, plus every TypeScript card, because "Type**Script**" contains "rip". Likewise `ts` matches burntsushi/ripgrep through its stored name. The behaviour is correct as written, but it looks broken for short queries. Consider matching the language as a whole word or prefix, or matching at word starts.
+- **Low: the ZWJ in emoji descriptions is stripped.** trpc's description is stored as `🧙♀️` (U+1F9D9 U+2640 U+FE0F, with no U+200D), so it renders as a mage followed by a separate ♀ sign. The zero-width stripping in the backfill or the index drops U+200D inside emoji sequences. A fix is to keep U+200D between emoji, or to strip only the bidi controls and U+200B/U+FEFF.
+- **Note:** "Clear the search" links to `/`, so it also resets `sort=az` to Most recent. This is arguably intended.
+
+### Increment 2: resolved before the PR
+
+- **Search:** description and language match only at word starts, so `?q=rip` now shows ripgrep only.
+- **Emoji:** zero-width joiners are kept, so ZWJ emoji such as 🧙‍♀️ render whole.

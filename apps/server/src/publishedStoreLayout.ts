@@ -113,6 +113,14 @@ export interface PublishedIndexEntry {
    */
   ownerLogin?: string;
   repoName?: string;
+  /**
+   * CLA-269: the repository's GitHub description (at most 280 code points) and primary language (at most 40), from the same
+   * `GET api.github.com/repos/<owner>/<repo>` at publish time or `publish:atlas --backfill-meta`. Sanitised when written
+   * (trimmed, single line, no control/bidi/zero-width characters); absent when GitHub has none or the lookup failed. Additive:
+   * the schema version is unchanged and every index reader ignores fields it does not know. Display/search only.
+   */
+  description?: string;
+  language?: string;
 }
 
 /** Superset of the scan `ScanManifest` (`schemaVersion: 1`, `repos`) so the landing list reads it unchanged. */

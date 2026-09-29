@@ -260,7 +260,7 @@ export function currentPublicationSource(input: { scanRoot: string; repo: string
   return { owner, repo, commitSha };
 }
 
-export function buildPublishedVersion(input: { scanRoot: string; repo: string; license: PublishedLicense; names?: GithubRepositoryNames; now?: () => number; maxPackBytes?: number }): BuiltPublishedVersion {
+export function buildPublishedVersion(input: { scanRoot: string; repo: string; license: PublishedLicense; names?: GithubRepositoryInfo; now?: () => number; maxPackBytes?: number }): BuiltPublishedVersion {
   const now = input.now ?? (() => performance.now());
   const started = now();
   const store = new ReadonlyOperatorStore(input.scanRoot);
@@ -439,13 +439,68 @@ export async function resolvePublishedLicense(input: { owner: string; repo: stri
 
 /** GitHub's own casing of a repository's owner login and name (CLA-318), recorded in the index row. */
 export interface GithubRepositoryNames { ownerLogin: string; repoName: string }
-export type GithubNamesLookup = ({ ok: true } & GithubRepositoryNames) | { ok: false; reason: string };
+/**
+ * The repository's GitHub description and primary language (CLA-269), from the same response as the names,
+ * sanitised ({@link sanitizeGithubText}). `null`: the response has the key and it is null or empty (GitHub has none, so a
+ * stored one is removed). Absent: the response lacks the key (a stored one is kept).
+ */
+export interface GithubRepositoryMeta { description?: string | null; language?: string | null }
+export type GithubRepositoryInfo = GithubRepositoryNames & GithubRepositoryMeta;
+/**
+ * A GitHub repository lookup. `rateLimited`: GitHub refused it (HTTP 403 or 429) or said no requests are left
+ * (`x-ratelimit-remaining: 0`), so a batch of lookups should stop here. Set only when true.
+ */
+export type GithubNamesLookup = ({ ok: true; rateLimited?: true } & GithubRepositoryInfo) | { ok: false; reason: string; rateLimited?: true };
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]{1,100}$/;
+export const GITHUB_DESCRIPTION_MAX = 280;
+export const GITHUB_LANGUAGE_MAX = 40;
+/**
+ * Bidi controls and invisible characters: they can reorder or hide the text around them. U+200C/U+200D (zero-width
+ * non-joiner/joiner) are kept: they hold emoji sequences (the woman mage, U+1F9D9 U+200D U+2640 U+FE0F) and some scripts
+ * together. apps/web homePage.ts and home.js strip the same set.
+ */
+const INVISIBLE = /[\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g;
 
 /**
- * `GET api.github.com/repos/<owner>/<repo>` → `owner.login` and `name`, unauthenticated (never an operator token), like the
- * licence lookup. Never throws: any failure is `{ ok: false, reason }` and the caller simply records nothing. GitHub
+ * Free text from GitHub made safe to store in the index: bidi and invisible characters ({@link INVISIBLE}) removed, control
+ * characters (C0, DEL, C1) and runs of whitespace collapsed to one space, trimmed, and at most `max` code
+ * points (a cut ends in `…`). Undefined for a non-string or when nothing is left. Idempotent.
+ */
+export function sanitizeGithubText(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value.replace(INVISIBLE, "").replace(/[\u0000-\u001f\u007f-\u009f\s]+/g, " ").trim();
+  if (!text) return undefined;
+  const chars = Array.from(text);
+  return chars.length <= max ? text : `${chars.slice(0, max - 1).join("").trimEnd()}…`;
+}
+
+const META_FIELDS = [["description", GITHUB_DESCRIPTION_MAX], ["language", GITHUB_LANGUAGE_MAX]] as const;
+
+/**
+ * Description and language from a GitHub repository body (or an index row), sanitised: a string, `null` when the key is
+ * there but null or empty (nothing left after sanitising), and left out when the key is missing (or not a string or null).
+ */
+function githubMetaFrom(value: { description?: unknown; language?: unknown } | null | undefined): GithubRepositoryMeta {
+  const meta: GithubRepositoryMeta = {};
+  if (!value || typeof value !== "object") return meta;
+  for (const [field, max] of META_FIELDS) {
+    if (!Object.hasOwn(value, field)) continue;
+    const raw = value[field];
+    if (raw === null || typeof raw === "string") meta[field] = sanitizeGithubText(raw, max) ?? null;
+  }
+  return meta;
+}
+
+/** Whether a GitHub response says to stop making requests: HTTP 403/429, or `x-ratelimit-remaining: 0`. */
+function githubRateLimited(response: Response): boolean {
+  return response.status === 403 || response.status === 429 || response.headers.get("x-ratelimit-remaining")?.trim() === "0";
+}
+
+/**
+ * `GET api.github.com/repos/<owner>/<repo>` → `owner.login` and `name`, plus `description` and `language` (CLA-269, sanitised;
+ * `null` when GitHub has none, left out when the response lacks the key; see {@link GithubRepositoryMeta}), with `rateLimited`
+ * when GitHub refused (403/429) or has no requests left (see {@link GithubNamesLookup}), unauthenticated (never an operator token), like the licence lookup. Never throws: any failure is `{ ok: false, reason }` and the caller simply records nothing. GitHub
  * follows renames and transfers, so names that are not `owner`/`repo` ignoring case are refused rather than recorded.
  */
 export async function resolveGithubRepositoryNames(input: { owner: string; repo: string; fetch?: typeof fetch; timeoutMs?: number }): Promise<GithubNamesLookup> {
@@ -461,21 +516,42 @@ export async function resolveGithubRepositoryNames(input: { owner: string; repo:
   } catch (cause) {
     return fail(`lookup failed (${cause instanceof Error ? cause.message : String(cause)})`);
   }
-  if (!response.ok) { await response.body?.cancel().catch(() => undefined); return fail(`GitHub answered HTTP ${response.status}`); }
-  let body: { name?: unknown; owner?: { login?: unknown } | null };
-  try { body = await response.json() as typeof body; } catch { return fail("GitHub returned invalid JSON"); }
-  const ownerLogin = body.owner?.login;
-  const repoName = body.name;
-  if (typeof ownerLogin !== "string" || typeof repoName !== "string" || !GITHUB_NAME.test(ownerLogin) || !GITHUB_NAME.test(repoName)) return fail("GitHub returned no usable owner.login / name");
+  const limit = githubRateLimited(response) ? { rateLimited: true as const } : {};
+  const refuse = (reason: string): GithubNamesLookup => ({ ok: false, reason, ...limit });
+  if (!response.ok) { await response.body?.cancel().catch(() => undefined); return refuse(`GitHub answered HTTP ${response.status}`); }
+  let body: { name?: unknown; owner?: { login?: unknown } | null; description?: unknown; language?: unknown };
+  try { body = await response.json() as typeof body; } catch { return refuse("GitHub returned invalid JSON"); }
+  const ownerLogin = body?.owner?.login;
+  const repoName = body?.name;
+  if (typeof ownerLogin !== "string" || typeof repoName !== "string" || !GITHUB_NAME.test(ownerLogin) || !GITHUB_NAME.test(repoName)) return refuse("GitHub returned no usable owner.login / name");
   if (ownerLogin.toLowerCase() !== input.owner.toLowerCase() || repoName.toLowerCase() !== input.repo.toLowerCase()) {
-    return fail(`GitHub names it ${ownerLogin}/${repoName} (renamed or transferred?)`);
+    return refuse(`GitHub names it ${ownerLogin}/${repoName} (renamed or transferred?)`);
   }
-  return { ok: true, ownerLogin, repoName };
+  return { ok: true, ownerLogin, repoName, ...githubMetaFrom(body), ...limit };
 }
 
-/** The row with GitHub's casing added (unchanged without names). */
-function withGithubNames(entry: PublishedIndexEntry, names: GithubRepositoryNames | undefined): PublishedIndexEntry {
-  return names ? { ...entry, ownerLogin: names.ownerLogin, repoName: names.repoName } : entry;
+/**
+ * The row with GitHub's casing, description and language from one lookup (unchanged without one). A description or language
+ * the lookup reports is set; one it reports as null or empty is removed; one it does not mention at all (the response
+ * lacked the key) keeps the stored value, so a partial response never erases what the row already has.
+ */
+function withGithubNames(entry: PublishedIndexEntry, info: GithubRepositoryInfo | undefined): PublishedIndexEntry {
+  if (!info) return entry;
+  const next: PublishedIndexEntry = { ...entry, ownerLogin: info.ownerLogin, repoName: info.repoName };
+  const meta = githubMetaFrom(info);
+  for (const [field] of META_FIELDS) {
+    const value = meta[field];
+    if (value === undefined) continue;
+    if (value === null) delete next[field];
+    else next[field] = value;
+  }
+  return next;
+}
+
+/** Names already recorded on a row (see {@link recordedGithubNames}) with the description/language recorded beside them. */
+function recordedGithubInfo(row: Partial<PublishedIndexEntry> | undefined): GithubRepositoryInfo | undefined {
+  const names = recordedGithubNames(row);
+  return names ? { ...names, ...githubMetaFrom(row) } : undefined;
 }
 
 /** Names already recorded on a row that still match its owner/repo ignoring case. */
@@ -507,7 +583,8 @@ export interface PublishStoreClient {
 
 /**
  * Merges one entry into the remote index (same slug replaced; sorted by slug). An entry without GitHub's casing keeps the
- * names the replaced row already had (a failed lookup, or a `--set-latest` row rebuilt from a manifest, never loses them).
+ * names, description and language the replaced row already had (a failed lookup, or a `--set-latest` row rebuilt from a
+ * manifest, never loses them); an entry with them (a successful lookup) refreshes all four.
  */
 export function mergePublishedIndex(existing: Buffer | undefined, entry: PublishedIndexEntry): PublishedIndex {
   let repos: PublishedIndexEntry[] = [];
@@ -516,8 +593,8 @@ export function mergePublishedIndex(existing: Buffer | undefined, entry: Publish
     const parsed = JSON.parse(existing.toString("utf8")) as Partial<PublishedIndex>;
     if (parsed.schema !== PUBLISHED_INDEX_SCHEMA || !Array.isArray(parsed.repos)) throw new Error("the remote index.json is not a published index; refusing to overwrite it");
     if (!recordedGithubNames(entry)) {
-      const previous = recordedGithubNames(parsed.repos.find(value => value?.slug === entry.slug));
-      if (previous && recordedGithubNames({ ...entry, ...previous })) merged = withGithubNames(entry, previous);
+      const previous = recordedGithubInfo(parsed.repos.find(value => value?.slug === entry.slug));
+      if (previous && recordedGithubNames({ ...entry, ownerLogin: previous.ownerLogin, repoName: previous.repoName })) merged = withGithubNames(entry, previous);
     }
     repos = parsed.repos.filter(value => value && value.slug !== entry.slug);
   }
@@ -612,38 +689,140 @@ export async function setPublishedLatest(input: { repo: string; versionId: strin
   return { slug, versionId: manifest.versionId, objects: written };
 }
 
+/**
+ * Saves the index.json bytes a backfill is about to overwrite (a local file) and returns where they went. Called right before
+ * the one write, with the bytes of the index as re-read for that write; if it throws, nothing is written.
+ */
+export type IndexBackup = (bytes: Buffer) => string | Promise<string>;
+
+/**
+ * Where a backfill's backup goes: `backup` resolved against `base` (the directory the command was run from: pnpm's
+ * `INIT_CWD`, else the cwd) when given; else `backfill-backup-<env>-<UTC timestamp>.json` beside the `out` directory (a dry
+ * run into a directory store: next to it, never inside the store) or in `base`.
+ */
+export function backfillBackupPath(input: { backup?: string; out?: string; env: string; base: string; now?: Date }): string {
+  if (input.backup !== undefined) return resolve(input.base, input.backup);
+  const stamp = (input.now ?? new Date()).toISOString().replace(/[:.]/g, "-");
+  const dir = input.out !== undefined ? dirname(resolve(input.base, input.out)) : resolve(input.base);
+  return join(dir, `backfill-backup-${input.env}-${stamp}.json`);
+}
+
+/**
+ * An {@link IndexBackup} that writes a local file ({@link backfillBackupPath}; never overwrites one) and reads it back: bytes
+ * that do not read back identically throw, so the backfill aborts before its write.
+ */
+export function fileIndexBackup(input: { backup?: string; out?: string; env: string; base: string; now?: () => Date; readBack?: (path: string) => Buffer }): IndexBackup {
+  return bytes => {
+    const target = backfillBackupPath({
+      env: input.env,
+      base: input.base,
+      ...(input.backup !== undefined ? { backup: input.backup } : {}),
+      ...(input.out !== undefined ? { out: input.out } : {}),
+      ...(input.now ? { now: input.now() } : {}),
+    });
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, bytes, { flag: "wx" });
+    const back = (input.readBack ?? readFileSync)(target);
+    if (!back.equals(bytes)) throw new Error(`the backup ${target} does not read back as written (${back.byteLength} of ${bytes.byteLength} bytes); nothing was written to the bucket`);
+    return target;
+  };
+}
+
+/**
+ * A store client that can only read: `put` (and `delete`, should anything call one) throws. A dry-run backfill runs on this,
+ * so no code path can write to the store it reads.
+ */
+export function readOnlyStoreClient(client: PublishStoreClient): PublishStoreClient & { delete(key: string): Promise<void> } {
+  const refuse = (verb: string) => async (key: string): Promise<never> => { throw new Error(`dry run: refusing to ${verb} ${key} (the store client is read-only)`); };
+  return { get: key => client.get(key), put: refuse("put"), delete: refuse("delete") };
+}
+
+interface BackfillIndexInput { client: PublishStoreClient; write: boolean; fetch?: typeof fetch; log?: (line: string) => void; backup?: IndexBackup }
+
+/** Reads index.json for a backfill: undefined when missing; anything but a published index refuses the backfill. */
+async function readIndexForBackfill(client: PublishStoreClient): Promise<{ index: PublishedIndex; bytes: Buffer } | undefined> {
+  const bytes = await client.get(publishedIndexKey());
+  if (!bytes) return undefined;
+  let index: PublishedIndex;
+  try { index = JSON.parse(bytes.toString("utf8")) as PublishedIndex; } catch { throw new Error("the remote index.json is not JSON; refusing to rewrite it"); }
+  if (index.schema !== PUBLISHED_INDEX_SCHEMA || !Array.isArray(index.repos)) throw new Error("the remote index.json is not a published index; refusing to rewrite it");
+  return { index, bytes };
+}
+
+/**
+ * Backs up `previous` (when a backup is configured), writes the new index.json, then reads it back: bytes that differ from
+ * what was written mean something else wrote index.json in between (a concurrent publish, whose row this write may have
+ * dropped, or one that landed just after), which is reported loudly with the backup path. Returns the backup path and
+ * whether the read-back matched.
+ */
+async function writeBackfilledIndex(client: PublishStoreClient, input: BackfillIndexInput, previous: Buffer, next: PublishedIndex, line: (text: string) => void): Promise<{ backupPath?: string; verified: boolean }> {
+  let backupPath: string | undefined;
+  if (input.backup) {
+    backupPath = await input.backup(previous);
+    line(`backup of the current index.json (${previous.byteLength} bytes) saved to ${backupPath}`);
+  }
+  const written = Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
+  await client.put(publishedIndexKey(), written, JSON_TYPE);
+  const readBack = await client.get(publishedIndexKey());
+  const verified = readBack !== undefined && readBack.equals(written);
+  if (!verified) {
+    line(`WARNING: index.json read back after the write is ${readBack ? "not what this backfill wrote" : "missing"}. A publish that ran at the same time may have been overwritten (its row lost) or landed just after. Check index.json now; the index as it was before this write is in ${backupPath ?? "(no backup was configured)"}.`);
+  }
+  return { ...(backupPath ? { backupPath } : {}), verified };
+}
+
+/** Whether a row lacks GitHub's names, its description or its language (a backfill looks these up first). */
+function rowMissingGithubInfo(row: Partial<PublishedIndexEntry> | null | undefined): boolean {
+  return !recordedGithubNames(row ?? undefined) || typeof row?.description !== "string" || typeof row.language !== "string";
+}
+
+/** Rows in lookup order: those missing names or meta first, then the rest, each group in index order. */
+function backfillLookupOrder(rows: readonly PublishedIndexEntry[]): PublishedIndexEntry[] {
+  return [...rows.filter(row => rowMissingGithubInfo(row)), ...rows.filter(row => !rowMissingGithubInfo(row))];
+}
+
+/**
+ * The line for a backfill that stopped at GitHub's rate limit: how many rows it never looked up (their rows stay as they
+ * are; a later run picks them up first).
+ */
+function rateLimitLine(reason: string, notReached: number): string {
+  return `stopped looking up at GitHub's rate limit (${reason}): ${notReached} row${notReached === 1 ? "" : "s"} not reached, left as they are; re-run after the limit resets`;
+}
+
 export interface BackfillNamesResult {
   /** One line per row: `<slug>: <what happened>`. */
   lines: string[];
   filled: number;
   alreadySet: number;
   failed: number;
+  /** Rows never looked up because GitHub's rate limit stopped the lookups (left as they are). */
+  notReached: number;
   /** True when index.json was rewritten (never on a dry run, never when nothing changed). */
   wrote: boolean;
+  /** False when index.json, read back after the write, was not what was written (see the WARNING line). */
+  verified: boolean;
+  /** Where the overwritten index.json was saved (a write with a `backup` only). */
+  backupPath?: string;
 }
 
 /**
  * One-off backfill (CLA-318, `publish:atlas --backfill-names`): fills `ownerLogin`/`repoName` on the rows of index.json that
  * lack them, from the GitHub API, and rewrites index.json only (no version, pointer or manifest is touched). Rows that
- * already have both are skipped without a lookup (idempotent); a failed lookup leaves its row unchanged. `write: false`
- * (dry run) reads and reports only. Sequential lookups: unauthenticated GitHub allows 60 an hour.
+ * already have both are skipped without a lookup (idempotent); a failed lookup leaves its row unchanged. The same response's
+ * description and language (CLA-269) go on the rows it fills. `write: false` (dry run) reads and reports only, through a
+ * {@link readOnlyStoreClient}. Sequential lookups: unauthenticated GitHub allows 60 an hour; the first 403/429 or
+ * `x-ratelimit-remaining: 0` stops the lookups, and only the rows already resolved are written.
  */
-export async function backfillPublishedNames(input: { client: PublishStoreClient; write: boolean; fetch?: typeof fetch; log?: (line: string) => void }): Promise<BackfillNamesResult> {
+export async function backfillPublishedNames(input: BackfillIndexInput): Promise<BackfillNamesResult> {
   const log = input.log ?? (() => undefined);
-  const result: BackfillNamesResult = { lines: [], filled: 0, alreadySet: 0, failed: 0, wrote: false };
+  const client = input.write ? input.client : readOnlyStoreClient(input.client);
+  const result: BackfillNamesResult = { lines: [], filled: 0, alreadySet: 0, failed: 0, notReached: 0, wrote: false, verified: true };
   const line = (text: string) => { result.lines.push(text); log(text); };
-  const readIndex = async (): Promise<PublishedIndex | undefined> => {
-    const bytes = await input.client.get(publishedIndexKey());
-    if (!bytes) return undefined;
-    let index: PublishedIndex;
-    try { index = JSON.parse(bytes.toString("utf8")) as PublishedIndex; } catch { throw new Error("the remote index.json is not JSON; refusing to rewrite it"); }
-    if (index.schema !== PUBLISHED_INDEX_SCHEMA || !Array.isArray(index.repos)) throw new Error("the remote index.json is not a published index; refusing to rewrite it");
-    return index;
-  };
-  const first = await readIndex();
+  const first = (await readIndexForBackfill(client))?.index;
   if (!first) { line("no index.json in this store; nothing to backfill"); return result; }
   // 1. Every lookup first (slow: network), keyed by the row's slug + owner + repo as read.
-  const found = new Map<string, { owner: string; repo: string; names: GithubRepositoryNames }>();
+  const found = new Map<string, { owner: string; repo: string; names: GithubRepositoryInfo }>();
+  let stopped: string | undefined;
   for (const row of first.repos) {
     const slug = typeof row?.slug === "string" ? row.slug : "(no slug)";
     const recorded = recordedGithubNames(row);
@@ -652,16 +831,21 @@ export async function backfillPublishedNames(input: { client: PublishStoreClient
       line(`${slug}: already ${recorded.ownerLogin}/${recorded.repoName}`);
       continue;
     }
+    if (stopped) { result.notReached += 1; continue; }
     const lookup = typeof row?.owner === "string" && typeof row.repo === "string"
       ? await resolveGithubRepositoryNames({ owner: row.owner, repo: row.repo, ...(input.fetch ? { fetch: input.fetch } : {}) })
       : { ok: false as const, reason: "row has no owner/repo" };
+    if (lookup.rateLimited) stopped = lookup.ok ? "x-ratelimit-remaining is 0" : lookup.reason;
     if (!lookup.ok) {
+      if (lookup.rateLimited) { result.notReached += 1; continue; }
       result.failed += 1;
       line(`${slug}: unchanged (${lookup.reason})`);
       continue;
     }
-    found.set(slug, { owner: row.owner, repo: row.repo, names: { ownerLogin: lookup.ownerLogin, repoName: lookup.repoName } });
+    const { ok: _ok, rateLimited: _rateLimited, ...names } = lookup;
+    found.set(slug, { owner: row.owner, repo: row.repo, names });
   }
+  if (stopped) line(rateLimitLine(stopped, result.notReached));
   if (!input.write) {
     for (const [slug, hit] of found) {
       result.filled += 1;
@@ -673,8 +857,9 @@ export async function backfillPublishedNames(input: { client: PublishStoreClient
   // 2. Re-read right before the write, so a publish that landed during the lookups is never dropped: names go only on
   //    rows whose slug, owner and repo still match what was looked up and that still lack names. Everything else in the
   //    fresh index (other rows, field order, other keys) is written back as read.
-  const latest = await readIndex();
-  if (!latest) { line("index.json disappeared during the backfill; nothing written"); return result; }
+  const fresh = await readIndexForBackfill(client);
+  if (!fresh) { line("index.json disappeared during the backfill; nothing written"); return result; }
+  const latest = fresh.index;
   const applied = new Set<string>();
   const repos = latest.repos.map(row => {
     const hit = typeof row?.slug === "string" ? found.get(row.slug) : undefined;
@@ -691,7 +876,130 @@ export async function backfillPublishedNames(input: { client: PublishStoreClient
     }
   }
   if (applied.size > 0) {
-    await input.client.put(publishedIndexKey(), Buffer.from(`${JSON.stringify({ ...latest, repos }, null, 2)}\n`), JSON_TYPE);
+    const written = await writeBackfilledIndex(client, input, fresh.bytes, { ...latest, repos }, line);
+    if (written.backupPath) result.backupPath = written.backupPath;
+    result.verified = written.verified;
+    result.wrote = true;
+  }
+  return result;
+}
+
+export interface BackfillMetaResult {
+  /** One line per row: `<slug>: <what happened>`. */
+  lines: string[];
+  /** Rows given new or refreshed names/description/language. */
+  updated: number;
+  /** Rows already matching GitHub (nothing to write). */
+  upToDate: number;
+  failed: number;
+  /** Rows that changed in the store during the lookups (left as they are now). */
+  skipped: number;
+  /** Rows never looked up because GitHub's rate limit stopped the lookups (left as they are). */
+  notReached: number;
+  /** True when index.json was rewritten (never on a dry run, never when nothing changed). */
+  wrote: boolean;
+  /** False when index.json, read back after the write, was not what was written (see the WARNING line). */
+  verified: boolean;
+  /** Where the overwritten index.json was saved (a write with a `backup` only). */
+  backupPath?: string;
+}
+
+function describeMetaChange(before: Partial<PublishedIndexEntry>, after: PublishedIndexEntry): string[] {
+  const changes: string[] = [];
+  if (before.ownerLogin !== after.ownerLogin || before.repoName !== after.repoName) changes.push(`names → ${after.ownerLogin}/${after.repoName}`);
+  for (const field of ["description", "language"] as const) {
+    const was = before[field];
+    const now = after[field];
+    if (was === now) continue;
+    if (now === undefined) changes.push(`${field} removed`);
+    else if (field === "language") changes.push(`language ${was === undefined ? "" : `${was} `}→ ${now}`);
+    else changes.push(`description ${was === undefined ? "added" : "refreshed"} (${Array.from(now).length} chars)`);
+  }
+  return changes;
+}
+
+/**
+ * Backfill (CLA-269, `publish:atlas --backfill-meta`): looks up EVERY row of index.json on the GitHub API (one request per
+ * row, sequential: unauthenticated GitHub allows 60 an hour) and records its description and language, sanitised, filling
+ * or refreshing them (one GitHub reports as null or empty is removed; one the response does not mention is kept); the same
+ * response also fills or refreshes `ownerLogin`/`repoName`, so this is a superset of `--backfill-names`. Rewrites index.json
+ * only. Rows missing names, description or language are looked up first, then the rest, so a run that hits the rate limit
+ * (the first 403/429 or `x-ratelimit-remaining: 0` stops the lookups) still fills gaps; only rows already resolved are
+ * written. A failed lookup (including a renamed or transferred repository) leaves its row unchanged. Before the one write
+ * the index is re-read, and a row that changed in any way since it was looked up (a publish landed) is skipped. A run with
+ * nothing new writes nothing. `write: false` (dry run) reads through a {@link readOnlyStoreClient}.
+ */
+export async function backfillPublishedMeta(input: BackfillIndexInput): Promise<BackfillMetaResult> {
+  const log = input.log ?? (() => undefined);
+  const client = input.write ? input.client : readOnlyStoreClient(input.client);
+  const result: BackfillMetaResult = { lines: [], updated: 0, upToDate: 0, failed: 0, skipped: 0, notReached: 0, wrote: false, verified: true };
+  const line = (text: string) => { result.lines.push(text); log(text); };
+  const first = (await readIndexForBackfill(client))?.index;
+  if (!first) { line("no index.json in this store; nothing to backfill"); return result; }
+  // 1. Every lookup first (slow: network), gaps first, keyed by slug, remembering the row exactly as read.
+  const planned = new Map<string, { asRead: string; next: PublishedIndexEntry; changes: string[] }>();
+  let stopped: string | undefined;
+  for (const row of backfillLookupOrder(first.repos)) {
+    if (stopped) { result.notReached += 1; continue; }
+    const slug = typeof row?.slug === "string" ? row.slug : "(no slug)";
+    const lookup = typeof row?.slug === "string" && typeof row.owner === "string" && typeof row.repo === "string"
+      ? await resolveGithubRepositoryNames({ owner: row.owner, repo: row.repo, ...(input.fetch ? { fetch: input.fetch } : {}) })
+      : { ok: false as const, reason: "row has no slug/owner/repo" };
+    if (lookup.rateLimited) stopped = lookup.ok ? "x-ratelimit-remaining is 0" : lookup.reason;
+    if (!lookup.ok) {
+      if (lookup.rateLimited) { result.notReached += 1; continue; }
+      result.failed += 1;
+      line(`${slug}: unchanged (${lookup.reason})`);
+      continue;
+    }
+    const next = withGithubNames(row, lookup);
+    const changes = describeMetaChange(row, next);
+    // Nothing to change (at most a key-order difference): up to date, never an empty rewrite.
+    if (changes.length === 0) {
+      result.upToDate += 1;
+      line(`${slug}: up to date`);
+      continue;
+    }
+    if (planned.has(slug)) {
+      result.skipped += 1;
+      line(`${slug}: skipped (the slug is listed twice)`);
+      continue;
+    }
+    planned.set(slug, { asRead: JSON.stringify(row), next, changes });
+  }
+  if (stopped) line(rateLimitLine(stopped, result.notReached));
+  if (!input.write) {
+    for (const [slug, plan] of planned) {
+      result.updated += 1;
+      line(`${slug}: ${plan.changes.join(", ")} (dry run)`);
+    }
+    return result;
+  }
+  if (planned.size === 0) return result;
+  // 2. Re-read right before the write: a row is updated only if it is still exactly as it was looked up; everything else in
+  //    the fresh index (other rows, new rows, field order, other keys) is written back as read.
+  const fresh = await readIndexForBackfill(client);
+  if (!fresh) { line("index.json disappeared during the backfill; nothing written"); return result; }
+  const applied = new Set<string>();
+  const repos = fresh.index.repos.map(row => {
+    const plan = typeof row?.slug === "string" ? planned.get(row.slug) : undefined;
+    if (!plan || applied.has(row.slug) || JSON.stringify(row) !== plan.asRead) return row;
+    applied.add(row.slug);
+    return plan.next;
+  });
+  for (const [slug, plan] of planned) {
+    if (applied.has(slug)) {
+      result.updated += 1;
+      line(`${slug}: ${plan.changes.join(", ")}`);
+    } else {
+      result.skipped += 1;
+      line(`${slug}: skipped (the row changed during the backfill)`);
+    }
+  }
+  if (applied.size > 0) {
+    const written = await writeBackfilledIndex(client, input, fresh.bytes, { ...fresh.index, repos }, line);
+    if (written.backupPath) result.backupPath = written.backupPath;
+    result.verified = written.verified;
     result.wrote = true;
   }
   return result;

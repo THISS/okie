@@ -51,3 +51,6 @@ docs/qa/**/*.webp
 docs/qa/**/*.gif
 docs/qa/**/*.mp4
 docs/qa/**/*.webm
+
+# Local index.json backups written by `publish:atlas --backfill-names|--backfill-meta` (CLA-269).
+backfill-backup-*.json
