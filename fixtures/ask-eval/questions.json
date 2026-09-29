@@ -1,0 +1,439 @@
+{
+  "schema": "ask-eval/v1",
+  "corpus": {
+    "file": "snapshot.json.gz",
+    "repository": "THISS/okie",
+    "commitSha": "14c7ad6d9141c53af82a950ae57cfcbb4fb22830",
+    "howBuilt": "okie-scan --source . --system-name Okie --repo thiss__okie --enrich-from <fixtures/enrichment/thiss-okie container__/system__ docs>, then scripts/ask-eval-corpus.mjs (drops fields Ask retrieval does not read)"
+  },
+  "questions": [
+    {
+      "id": "renderer-typo-l1",
+      "family": "renderer-selection",
+      "question": "How does Oki choose what renderer to use?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:okie"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-typo-web",
+      "family": "renderer-selection",
+      "question": "How does Oki choose what renderer to use?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-web"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-typo-server",
+      "family": "renderer-selection",
+      "question": "How does Oki choose what renderer to use?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-server"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-typo-app-component",
+      "family": "renderer-selection",
+      "question": "How does Oki choose what renderer to use?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-app-tsx"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-typo-scan-code",
+      "family": "renderer-selection",
+      "question": "How does Oki choose what renderer to use?",
+      "selection": {
+        "level": "code",
+        "selectedId": "code:apps-server-src-scan-service-ts:create-scan-job-runner"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-typo-viewport-code",
+      "family": "renderer-selection",
+      "question": "How does Oki choose what renderer to use?",
+      "selection": {
+        "level": "code",
+        "selectedId": "code:apps-web-src-app-tsx:canvas-viewport"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-typo-canvas2d-component",
+      "family": "renderer-selection",
+      "question": "How does Oki choose what renderer to use?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-renderer-canvas2-d-renderer-ts"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-plain-l1",
+      "family": "renderer-selection",
+      "question": "How does Okie choose what renderer to use?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:okie"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-plain-web",
+      "family": "renderer-selection",
+      "question": "How does Okie choose what renderer to use?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-web"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-plain-server",
+      "family": "renderer-selection",
+      "question": "How does Okie choose what renderer to use?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-server"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-plain-app-component",
+      "family": "renderer-selection",
+      "question": "How does Okie choose what renderer to use?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-app-tsx"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-plain-scan-code",
+      "family": "renderer-selection",
+      "question": "How does Okie choose what renderer to use?",
+      "selection": {
+        "level": "code",
+        "selectedId": "code:apps-server-src-scan-service-ts:create-scan-job-runner"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-plain-viewport-code",
+      "family": "renderer-selection",
+      "question": "How does Okie choose what renderer to use?",
+      "selection": {
+        "level": "code",
+        "selectedId": "code:apps-web-src-app-tsx:canvas-viewport"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-plain-canvas2d-component",
+      "family": "renderer-selection",
+      "question": "How does Okie choose what renderer to use?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-renderer-canvas2-d-renderer-ts"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-fallback-l1",
+      "family": "renderer-selection",
+      "question": "When does the atlas fall back from WebGPU to WebGL2 or Canvas2D rendering?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:okie"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-fallback-web",
+      "family": "renderer-selection",
+      "question": "When does the atlas fall back from WebGPU to WebGL2 or Canvas2D rendering?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-web"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-fallback-server",
+      "family": "renderer-selection",
+      "question": "When does the atlas fall back from WebGPU to WebGL2 or Canvas2D rendering?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-server"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-fallback-app-component",
+      "family": "renderer-selection",
+      "question": "When does the atlas fall back from WebGPU to WebGL2 or Canvas2D rendering?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-app-tsx"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-fallback-scan-code",
+      "family": "renderer-selection",
+      "question": "When does the atlas fall back from WebGPU to WebGL2 or Canvas2D rendering?",
+      "selection": {
+        "level": "code",
+        "selectedId": "code:apps-server-src-scan-service-ts:create-scan-job-runner"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-fallback-viewport-code",
+      "family": "renderer-selection",
+      "question": "When does the atlas fall back from WebGPU to WebGL2 or Canvas2D rendering?",
+      "selection": {
+        "level": "code",
+        "selectedId": "code:apps-web-src-app-tsx:canvas-viewport"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "renderer-fallback-canvas2d-component",
+      "family": "renderer-selection",
+      "question": "When does the atlas fall back from WebGPU to WebGL2 or Canvas2D rendering?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-renderer-canvas2-d-renderer-ts"
+      },
+      "expectedFiles": [
+        "apps/web/src/renderer/createRenderer.ts",
+        "apps/web/src/renderer/WasmRendererAdapter.ts"
+      ]
+    },
+    {
+      "id": "budget-component",
+      "question": "How is LLM enrichment spend capped so a run cannot exceed its budget?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-app-tsx"
+      },
+      "expectedFiles": [
+        "apps/server/src/operatorBudget.ts",
+        "apps/server/src/globalSpend.ts"
+      ],
+      "family": "budget"
+    },
+    {
+      "id": "scan-to-scene-l1",
+      "question": "What happens between scanning a GitHub repository and compiling the scene the renderer draws?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:okie"
+      },
+      "expectedFiles": [
+        "apps/server/src/scanService.ts",
+        "packages/scan/src/scan.ts",
+        "packages/scene-compiler/src/compile-c4.ts"
+      ],
+      "family": "scan-to-scene"
+    },
+    {
+      "id": "auth-container",
+      "question": "How does GitHub sign-in work, and who is allowed to use the operator routes?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-web"
+      },
+      "expectedFiles": [
+        "apps/server/src/githubOAuth.ts",
+        "apps/server/src/operatorAccess.ts"
+      ],
+      "family": "auth"
+    },
+    {
+      "id": "held-out-story-playback",
+      "family": "held-out-story-playback",
+      "heldOut": true,
+      "question": "How are stories played back?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:okie"
+      },
+      "expectedFiles": [
+        "apps/web/src/storyPlayback.ts"
+      ]
+    },
+    {
+      "id": "held-out-minimap-geometry",
+      "family": "held-out-minimap-geometry",
+      "heldOut": true,
+      "question": "Where does the minimap geometry come from?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-server"
+      },
+      "expectedFiles": [
+        "apps/web/src/minimapGeometry.ts"
+      ]
+    },
+    {
+      "id": "held-out-excerpt-scrubbing",
+      "family": "held-out-excerpt-scrubbing",
+      "heldOut": true,
+      "question": "How does source excerpt scrubbing work?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:okie"
+      },
+      "expectedFiles": [
+        "packages/scan/src/redact.ts",
+        "packages/scan/src/excerpt.ts"
+      ]
+    },
+    {
+      "id": "held-out-level-of-detail",
+      "family": "held-out-level-of-detail",
+      "heldOut": true,
+      "question": "What decides the level of detail?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-app-tsx"
+      },
+      "expectedFiles": [
+        "crates/atlas-engine/src/lod.rs"
+      ]
+    },
+    {
+      "id": "held-out-v2-planted-token",
+      "family": "held-out-v2-planted-token",
+      "heldOut": true,
+      "heldOutSet": "v2-vocabulary-gap",
+      "question": "What stops a planted token leaking into prompts?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:okie"
+      },
+      "expectedFiles": [
+        "packages/scan/src/redact.ts",
+        "apps/server/src/enrichment.ts"
+      ]
+    },
+    {
+      "id": "held-out-v2-zoomed-out-cards",
+      "family": "held-out-v2-zoomed-out-cards",
+      "heldOut": true,
+      "heldOutSet": "v2-vocabulary-gap",
+      "question": "How does the map decide which cards to draw when zoomed out?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:apps-server"
+      },
+      "expectedFiles": [
+        "crates/atlas-engine/src/lod.rs"
+      ]
+    },
+    {
+      "id": "held-out-v2-share-preview",
+      "family": "held-out-v2-share-preview",
+      "heldOut": true,
+      "heldOutSet": "v2-vocabulary-gap",
+      "question": "Where are shareable preview images generated?",
+      "selection": {
+        "level": "container",
+        "selectedId": "container:packages-scan"
+      },
+      "expectedFiles": [
+        "apps/web/src/openGraph.ts",
+        "apps/web/src/atlasCard.ts"
+      ]
+    },
+    {
+      "id": "held-out-v2-concurrent-publish",
+      "family": "held-out-v2-concurrent-publish",
+      "heldOut": true,
+      "heldOutSet": "v2-vocabulary-gap",
+      "question": "What keeps two operators from overwriting each other when they publish?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:apps-web-src-app-tsx"
+      },
+      "expectedFiles": [
+        "apps/server/src/operatorPublication.ts",
+        "apps/server/src/operatorStore.ts"
+      ]
+    }
+  ],
+  "heldOutNote": "Questions with heldOut: true were written (CLA-265 review) before the final retrieval changes and were never used to tune retrieval; they are reported separately.",
+  "heldOutV2Note": "held-out-v2-* (heldOutSet v2-vocabulary-gap): written from reading the code at the corpus commit, with question words that differ from file names, and frozen in their own commit BEFORE retrieval was run on them; never tuned on. Failing is informative, not a bug. The suggested \"how do published versions get rolled back?\" was dropped: the corpus commit has no rollback path (publications only advance a pointer), so there is no true expected file.",
+  "heldOutV2FrozenIn": "190ccaf"
+}

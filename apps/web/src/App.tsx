@@ -122,27 +122,27 @@ import { explorerEntitiesForView } from './entityExplorer';
 import { defaultSearchSuggestions, searchArchitectureEntities } from './searchSuggestions';
 import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes, shouldOpenAskAtlas, shouldOpenSearch, shouldToggleDevMode } from './shortcuts';
 import {
-  ASK_CONNECTED_COPY,
-  ASK_CONNECTED_SUBMIT_LABEL,
-  ASK_DISCONNECTED_SUBMIT_LABEL,
-  ASK_NOT_CONNECTED_COPY,
   ASK_NOT_CONNECTED_LIVE_MESSAGE,
   ASK_PROBE_TIMEOUT_MS,
   ASK_REQUEST_TIMEOUT_MS,
-  ASK_SIGNIN_COPY,
-  accountInitials, askScopeKey,
-  askSignInHref, atlasSourceRepositoryUrl,
+  accountInitials,
+  ASK_MAP_MIN_CARD_PX, appendAskAnswer, askFramedCluster, askPanelOverlayEdge, askShowOnMapPlan, keepNewerAskThread, type AskMapPlan,
+  askCitationChips,
+  askSignInHref,
+  atlasSourceRepositoryUrl,
   buildAskContext,
   fetchAskAuth,
   isAskUnauthorized,
   loadAskThread,
   probeAskConnection,
   resolveAskAtlasIdentity,
-  shouldCommitAskAnswer,
   submitAskQuestion,
   type AskAuthView,
   type AskThreadView,
 } from './ask/askAtlas';
+import { askMapShouldCaptureReturn, askMapStepIsCurrent, askMapViewShouldReset, askPanelReframeDue } from './ask/askMapSession';
+// CLA-265: the Ask panel body; App owns its state and the map actions it triggers.
+import { AskPanel } from './ask/AskPanel';
 import { relationshipFlowPolicy } from './relations/relationshipFlow';
 import { canvasAnimationPolicy, type CanvasPointerInteraction } from './canvasAnimationPolicy';
 import { createCameraFlightController, easeCameraFlight, reconcileRenderedCamera, type CameraFlightController, type CameraFlightSample } from './cameraFlightController';
@@ -1401,7 +1401,6 @@ export function App() {
   const askButtonRef = useRef<HTMLButtonElement | null>(null);
   const askInputRef = useRef<HTMLTextAreaElement | null>(null);
   const askAbortRef = useRef<AbortController | undefined>(undefined);
-  const askScopeKeyRef = useRef('');
   const atlasChromeRef = useRef<AtlasChromeActions>({
     hasEntity: () => false,
     selectEntity: () => {},
@@ -1539,9 +1538,17 @@ export function App() {
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [askConnected, setAskConnected] = useState(false);
-  const [askPending, setAskPending] = useState(false);
-  const [askAnswer, setAskAnswer] = useState<string>();
-  const [askCitations, setAskCitations] = useState<string[]>([]);
+  const [askPending, setAskPending] = useState<string>(); // the question in flight, shown once in the thread
+  const [askLatestTurnId, setAskLatestTurnId] = useState<string>();
+  const [askMapFocus, setAskMapFocus] = useState<{ key: string; turnId: string; entityIds: string[]; relationIds: string[] }>();
+  // Ask "Show on map" is async (load → drill → settle → isolate); every user navigation bumps the
+  // generation so a superseded Show never acts (askMapStepIsCurrent). See the Show section below.
+  const askMapGenerationRef = useRef(0);
+  const askMapInFlightRef = useRef(false);
+  const cancelAskMapShow = () => { askMapGenerationRef.current += 1; askMapInFlightRef.current = false; };
+  // Gesture-only reframe for the Ask panel (askPanelReframeDue): open / submit bump the request.
+  const [askReframeRequest, setAskReframeRequest] = useState(0);
+  const requestAskReframe = () => setAskReframeRequest(request => request + 1);
   const [askError, setAskError] = useState<string>();
   const [askAuth, setAskAuth] = useState<AskAuthView>();
   const [askThread, setAskThread] = useState<AskThreadView>();
@@ -1886,7 +1893,7 @@ export function App() {
   const pathParentById = useMemo(() => new Map(activeSnapshot.entities.map(entity => [entity.id, entity.parentId])), [pathLoadEpoch, scene, activeSnapshot.entities.length]);
   const pathFocus = useMemo(() => pathView?.reveal && { key: pathView.reveal.relationIds.join('|') || pathView.reveal.entityIds.join('|'), ...pathView.reveal }, [pathView]);
   const focusPickedRelationId = currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pickedRelationId : undefined;
-  const focusPath = currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? pathFocus : undefined;
+  const focusPath = currentStory === undefined || storyPhase === 'idle' || storySelectionOverride ? (askMapFocus && visibilityMode === 'isolate' ? askMapFocus : pathFocus) : undefined;
   const relationFocus = useMemo(
     () => relationOrSetFocusPresentation(scene, focusPickedRelationId, focusPath, projectionOverride, activeDetail, pathParentById),
     [activeDetail, focusPath, focusPickedRelationId, pathParentById, projectionOverride, scene],
@@ -1994,12 +2001,6 @@ export function App() {
     }),
     [activeDetail, activeProjectionEntityIds, scene, selected, semanticLensSession.settled],
   );
-  const currentAskScopeKey = askScopeKey({
-    selectedId,
-    isolateActive: visibilityMode === 'isolate',
-    isolatedIds: isolatedEntityIds,
-  });
-  askScopeKeyRef.current = currentAskScopeKey;
   const askAtlasIdentity = resolveAskAtlasIdentity({
     pathname: window.location.pathname,
     search: window.location.search,
@@ -2333,6 +2334,7 @@ export function App() {
       defaults: navigationDefaults,
       urlOptions: navigationUrlOptions,
       async restore(next, source) {
+        cancelAskMapShow(); // back/forward supersedes an in-flight Ask "Show on map"
         abortInspectorCameraFlight();
         const restoreGeneration = navigationRestoreGenerationRef.current + 1;
         navigationRestoreGenerationRef.current = restoreGeneration;
@@ -3192,6 +3194,7 @@ export function App() {
     inspectorIntent: 'auto' | 'source' | 'details' = 'auto',
     inspectorNavigation: 'external' | 'panel' | 'history' | 'preserve' = 'external',
   ) {
+    cancelAskMapShow(); // a user selection supersedes an in-flight Ask "Show on map"
     const liveCamera = abortInspectorCameraFlight();
     setExplicitInspectorSelection(true);
     updateInspectorHistoryForNavigation(inspectorNavigation);
@@ -3295,6 +3298,9 @@ export function App() {
   }
 
   function changeVisibility(next: 'all' | 'dim' | 'isolate') {
+    setAskMapFocus(undefined); // an Ask "Show on map" set never outlives an explicit visibility change
+    askMapReturnRef.current = undefined;
+    cancelAskMapShow();
     if (next === visibilityMode) return;
     interruptStory(`Changed context visibility to ${next}`);
     if (next === 'isolate' && visibilityMode !== 'isolate') {
@@ -3919,6 +3925,7 @@ export function App() {
   }
 
   function handlePick(result: PickResult) {
+    cancelAskMapShow();
     if (result.kind === 'entity') {
       const entity = scene.entities.find(candidate => candidate.id === result.id);
       if (entity) focusEntity(entity, 'replace', 'preserve', 'auto');
@@ -3945,6 +3952,7 @@ export function App() {
   }
 
   function toggleDetails() {
+    cancelAskMapShow(); // never close an inspector the user just toggled
     if (detailsOpen) closeDetails();
     else {
       setDetailsOpen(true);
@@ -4275,7 +4283,7 @@ export function App() {
       { rect: rect('.details-toggle'), edge: 'right' as const },
       { rect: rect('.zoom-controls'), edge: 'bottom' as const },
       { rect: rect('.story-launcher'), edge: 'bottom' as const },
-      { rect: rect('.ask-popover'), edge: 'bottom' as const },
+      { rect: rect('.ask-popover'), edge: askPanelOverlayEdge(rect('.ask-popover'), canvasRect) },
       { rect: rect('.canvas-hint'), edge: 'bottom' as const },
       { rect: rect('.level-rail'), edge: 'left' as const },
     ].filter((overlay): overlay is { rect: DOMRect; edge: 'top' | 'right' | 'bottom' | 'left' } => overlay.rect !== undefined);
@@ -4500,6 +4508,7 @@ export function App() {
       if (storyStep >= 0) closeStory();
       if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
       setAskOpen(true);
+      requestAskReframe();
       setQuestion(question);
       window.setTimeout(() => askInputRef.current?.focus(), 0);
     },
@@ -4787,6 +4796,7 @@ export function App() {
         event.preventDefault();
         if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
         setAskOpen(true);
+        if (!askOpen) requestAskReframe();
         window.setTimeout(() => askInputRef.current?.focus(), 0);
       }
       if (event.key === 'Escape') {
@@ -4827,9 +4837,8 @@ export function App() {
     if (!askOpen || getActivePortableAtlas()) {
       askAbortRef.current?.abort();
       askAbortRef.current = undefined;
-      setAskPending(false);
-      setAskAnswer(undefined);
-      setAskCitations([]);
+      setAskPending(undefined);
+      setAskLatestTurnId(undefined);
       setAskError(undefined);
       return;
     }
@@ -4844,7 +4853,7 @@ export function App() {
       }
       if (askAtlasIdentity) {
         void loadAskThread(askAtlasIdentity, { signal: controller.signal }).then(thread => {
-          if (!controller.signal.aborted) setAskThread(thread);
+          if (!controller.signal.aborted) setAskThread(current => keepNewerAskThread(current, thread));
         });
       }
       void probeAskConnection({ signal: controller.signal, timeoutMs: ASK_PROBE_TIMEOUT_MS }).then(connected => {
@@ -4854,24 +4863,186 @@ export function App() {
     return () => controller.abort();
   }, [askOpen, askSignedIn, askAtlasIdentity?.owner, askAtlasIdentity?.repo, askAtlasIdentity?.commitSha]);
 
+  // Opening Ask (click / shortcut / tour hand-off) and submitting a question are gestures: if the
+  // panel now covers the selected card, pan it into the unobstructed area with the same safe-area
+  // reframe the inspector uses. An async thread load or the panel reappearing after a story never
+  // moves the camera, and closing Ask never moves it back (askPanelReframeDue).
+  const askPanelLayout = !askOpen || portableAtlas || currentStory || query.fixture === 'stress'
+    ? 'closed'
+    : (askThread?.turns.length ?? 0) > 0 || askPending || askError ? 'thread' : 'empty';
+  const askReframeHandledRef = useRef(0);
   useEffect(() => {
-    if (!askOpen) return;
+    if (!askPanelReframeDue(askPanelLayout, askReframeRequest, askReframeHandledRef.current)) return;
+    askReframeHandledRef.current = askReframeRequest;
+    reframeEntityAfterInspectorChange(selected);
+  }, [askPanelLayout, askReframeRequest]);
+
+  // A citation chip drills like an inspector link; once that flight settles, pan the cited entity
+  // itself clear of the Ask panel / inspector (the drill frames its owner, which can leave the cited
+  // declaration under the inspector). Latest-render reframe via a ref so the new scene is used.
+  const askReframeRef = useRef(reframeEntityAfterInspectorChange);
+  askReframeRef.current = reframeEntityAfterInspectorChange;
+  function frameAskCitationWhenSettled(id: string, framesLeft = 240) {
+    window.requestAnimationFrame(() => {
+      if (inspectorSelectionRef.current !== id) return; // the user moved on
+      if (framesLeft > 0 && inspectorCameraFlightControllerRef.current?.isActive()) { frameAskCitationWhenSettled(id, framesLeft - 1); return; }
+      const entity = sceneRef.current.entities.find(candidate => candidate.id === id);
+      if (entity) askReframeRef.current(entity);
+    });
+  }
+
+  // "Show on map" (CLA-265): pick the level from the cited parts (askShowOnMapPlan), drill there via
+  // the inspector-link path, then isolate + frame the cited cards. "Restore full view" goes back to
+  // the exact pre-Show view (scene, lens, camera, selection), not just un-isolate.
+  const askMapReturnRef = useRef<{
+    navigation: NavigationState;
+    scene: AtlasScene;
+    session: SemanticLensSession;
+    level: number;
+    identity: typeof navigationIdentity;
+    inspectorTab: InspectorTab;
+    detailsOpen: boolean;
+    pickedRelationId?: string;
+  } | undefined>(undefined);
+  const askMapApplyRef = useRef<(plan: AskMapPlan, turnId: string, generation: number, inspectorWasOpen: boolean) => void>(() => {});
+  const askMapStepCurrent = (generation: number, target?: string) => askMapStepIsCurrent(
+    { generation, ...(target ? { target } : {}) },
+    { generation: askMapGenerationRef.current, selectionId: inspectorSelectionRef.current },
+  );
+  askMapApplyRef.current = (plan, turnId, generation, inspectorWasOpen) => {
+    if (!askMapStepCurrent(generation, plan.focusIds[0])) return;
+    askMapInFlightRef.current = false;
+    const present = new Set(sceneRef.current.entities.map(entity => entity.id));
+    const ids = plan.focusIds.filter(id => present.has(id));
+    if (!ids.length) { setLiveMessage('The cited parts are not drawn at this level.'); return; }
+    // Frame the cards as the current lens draws them (semantic bounds), inside that level's band:
+    // the largest cluster (from the first citation) that fits on screen; the rest stay highlighted.
+    const detail = semanticLensSessionDetail(semanticLensSessionRef.current);
+    const safe = measureCurrentMapSafeArea();
+    const cluster = askFramedCluster(
+      ids,
+      id => semanticBounds(sceneRef.current, id, detail),
+      clusterIds => frameSemanticEntities(sceneRef.current, clusterIds, detail, viewport, safe),
+      viewport,
+      safe,
+    );
+    // Never leave file cards unreadably small (or undrawn) when L2 can show their container.
+    if (plan.level === 'component' && plan.containerId && (!cluster.camera || cluster.smallestPx < ASK_MAP_MIN_CARD_PX)) {
+      showAskPlanOnMap({ level: 'container', focusIds: [plan.containerId] }, turnId, inspectorWasOpen, generation);
+      return;
+    }
+    const framed = cluster.camera ?? frameEntities(sceneRef.current, ids, viewport, safe);
+    isolationOriginRef.current = undefined;
+    setPickedRelationId(undefined);
+    setAskMapFocus({ key: `ask:${turnId}:${plan.level}`, turnId, entityIds: ids, relationIds: [] });
+    setVisibilityMode('isolate');
+    if (framed) {
+      updateCamera(framed);
+      commitNavigation(canonicalNavigationState({ ...navigationRef.current, camera: framed }, navigationDefaults), 'replace');
+    }
+    const noun = `cited ${plan.level === 'component' ? 'file' : 'container'}${ids.length === 1 ? '' : 's'}`;
+    setLiveMessage(cluster.ids.length && cluster.ids.length < ids.length
+      ? `Showing ${ids.length} ${noun} from the answer; ${cluster.ids.length} in view, pan to see the rest.`
+      : `Showing ${ids.length} ${noun} from the answer on the map.`);
+  };
+  function showAskPlanOnMap(plan: AskMapPlan, turnId: string, inspectorWasOpen: boolean, generation: number) {
+    askMapInFlightRef.current = true;
+    // L3 inside the container: open the first cited file (lands at its canonical L3 within the
+    // container); L2: open the first container (system lens). Then isolate + frame once settled.
+    const target = plan.focusIds[0]!;
+    void openInspectorChild(target).then(() => {
+      const settle = (framesLeft: number) => window.requestAnimationFrame(() => {
+        // Bail if the user acted (generation) or the drill was dropped / superseded (selection).
+        if (!askMapStepCurrent(generation, target)) return;
+        if (framesLeft > 0 && inspectorCameraFlightControllerRef.current?.isActive()) { settle(framesLeft - 1); return; }
+        // The drill opens the inspector; Show on map is about the map, so a closed inspector (the
+        // phone sheet) stays closed. Measure the safe area only after it has closed.
+        if (!inspectorWasOpen) setDetailsOpen(false);
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => askMapApplyRef.current(plan, turnId, generation, inspectorWasOpen)));
+      });
+      settle(240);
+    }).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.'));
+  }
+  async function showAskTurnOnMap(citedIds: string[], turnId: string) {
+    // Take the generation before any await, so a user action during the load cancels this Show.
+    const askIsolateActive = visibilityMode === 'isolate' && askMapFocus !== undefined;
+    const showInFlight = askMapInFlightRef.current;
+    cancelAskMapShow();
+    const generation = askMapGenerationRef.current;
+    askMapInFlightRef.current = true;
+    // Scan snapshots grow lazily: load the cited neighborhoods so parentage is known.
+    const fixture = scanFixture;
+    if (fixture) await Promise.all(citedIds.slice(0, 24).map(id => fixture.ensureNeighborhood(id).catch(() => undefined)));
+    if (!askMapStepCurrent(generation)) return;
+    const byId = new Map(activeSnapshot.entities.map(entity => [entity.id, entity]));
+    const plan = askShowOnMapPlan(citedIds, id => byId.get(id) ?? sceneRef.current.entities.find(entity => entity.id === id));
+    if (!plan) { askMapInFlightRef.current = false; setLiveMessage('None of the cited parts can be placed on the map.'); return; }
+    if (askMapShouldCaptureReturn({ hasReturn: askMapReturnRef.current !== undefined, askIsolateActive, showInFlight })) {
+      askMapReturnRef.current = {
+        navigation: navigationRef.current,
+        scene: sceneRef.current,
+        session: semanticLensSessionRef.current,
+        level: activeLevelRef.current,
+        identity: navigationIdentity,
+        inspectorTab,
+        detailsOpen,
+        ...(pickedRelationId ? { pickedRelationId } : {}),
+      };
+    }
+    showAskPlanOnMap(plan, turnId, detailsOpen, generation);
+  }
+  function restoreAskMapView() {
+    const saved = askMapReturnRef.current;
+    askMapReturnRef.current = undefined;
+    cancelAskMapShow();
+    setAskMapFocus(undefined);
+    isolationOriginRef.current = undefined;
+    setVisibilityMode('all');
+    if (!saved) { setLiveMessage('Full architecture context restored.'); return; }
+    abortInspectorCameraFlight();
+    setScene(saved.scene);
+    installSemanticSession(saved.session);
+    activeLevelRef.current = saved.level;
+    setNavigationIdentity(saved.identity);
+    inspectorSelectionRef.current = saved.navigation.selectedId;
+    setSelectedId(saved.navigation.selectedId);
+    setPickedRelationId(saved.pickedRelationId);
+    setInspectorTab(saved.inspectorTab);
+    setDetailsOpen(saved.detailsOpen);
+    setInspectorHistory([]);
+    updateCamera(saved.navigation.camera);
+    commitNavigation(saved.navigation, 'replace');
+    setSafeAreaEpoch(epoch => epoch + 1);
+    setLiveMessage('Returned to the view before Show on map.');
+  }
+
+  // Whatever takes the map out of isolate (toolbar, history, story exit, relationship reframe,
+  // portable load) makes the Ask highlight and the saved pre-Show view stale.
+  const askVisibilityModeRef = useRef(visibilityMode);
+  useEffect(() => {
+    const previous = askVisibilityModeRef.current;
+    askVisibilityModeRef.current = visibilityMode;
+    if (!askMapViewShouldReset(previous, visibilityMode)) return;
+    cancelAskMapShow();
+    askMapReturnRef.current = undefined;
+    setAskMapFocus(undefined);
+  }, [visibilityMode]);
+
+  useEffect(() => () => {
+    // Close (effect above) and unmount abandon an in-flight question. Selection / Isolate changes
+    // do not (CLA-265): scope is only a starting point, and the server has already paid for and
+    // persisted the turn, so a chip click or Show on map while asking keeps the answer.
     askAbortRef.current?.abort();
     askAbortRef.current = undefined;
-    setAskPending(false);
-    setAskAnswer(undefined);
-    setAskCitations([]);
-    setAskError(undefined);
-  }, [askOpen, currentAskScopeKey]);
+  }, []);
 
   const askState = !askSignedIn && askAuth
     ? 'signin'
-    : askPending ? 'asking' : askError ? 'error' : askAnswer ? 'answered' : askConnected ? 'ready' : 'disconnected';
+    : askPending ? 'asking' : askError ? 'error' : askLatestTurnId ? 'answered' : askConnected ? 'ready' : 'disconnected';
 
   function showDisconnectedAsk() {
     setAskConnected(false);
-    setAskAnswer(undefined);
-    setAskCitations([]);
+    setAskLatestTurnId(undefined);
     setAskError(undefined);
     setLiveMessage(ASK_NOT_CONNECTED_LIVE_MESSAGE);
   }
@@ -4885,6 +5056,7 @@ export function App() {
       showDisconnectedAsk();
       return;
     }
+    requestAskReframe(); // submitting grows the panel into a thread: keep the selection clear of it
     const context = buildAskContext({
       entities: scene.entities.map(entity => ({
         id: entity.id,
@@ -4933,10 +5105,9 @@ export function App() {
     askAbortRef.current?.abort();
     const controller = new AbortController();
     askAbortRef.current = controller;
-    const submittedScopeKey = currentAskScopeKey;
-    setAskPending(true);
-    setAskAnswer(undefined);
-    setAskCitations([]);
+    // No scope gate on commit: the answered turn lands in the thread whatever is selected now.
+    setAskPending(text);
+    setAskLatestTurnId(undefined);
     setAskError(undefined);
     try {
       const result = await submitAskQuestion(text, context, {
@@ -4945,7 +5116,7 @@ export function App() {
         ...(askAtlasIdentity ? { atlas: askAtlasIdentity } : {}),
       });
       if (controller.signal.aborted) return;
-      if (!shouldCommitAskAnswer(submittedScopeKey, askScopeKeyRef.current)) return;
+      // (Scope changes no longer discard the answer; only close/unmount aborts it.)
       if (isAskUnauthorized(result)) {
         setAskAuth({
           authenticated: false,
@@ -4962,20 +5133,24 @@ export function App() {
       }
       if ('error' in result && result.error) {
         setAskError(result.error);
-        setAskAnswer(undefined);
-        setAskCitations([]);
         setLiveMessage(result.error);
         return;
       }
       if ('answer' in result) {
-        setAskAnswer(result.answer);
-        setAskCitations(result.citations);
+        const answered = {
+          question: text,
+          result,
+          ...(askAtlasIdentity ? { atlas: askAtlasIdentity } : {}),
+          now: Date.now(),
+        };
+        setAskThread(current => appendAskAnswer(current, answered).thread); // latest state: it may have loaded meanwhile
+        setAskLatestTurnId(appendAskAnswer(undefined, answered).latestTurnId);
+        setQuestion(current => current.trim() === text ? '' : current); // keep a follow-up typed while waiting
         setLiveMessage(result.answer);
-        if (result.thread) setAskThread(result.thread);
       }
     } finally {
       if (askAbortRef.current === controller) askAbortRef.current = undefined;
-      setAskPending(false);
+      setAskPending(undefined);
     }
   }
 
@@ -5637,8 +5812,7 @@ export function App() {
           ) : (
             <div className="story-launcher" data-story-catalog-count={storyCatalog.length}>
               <div className="ask-anchor">
-              {!portableAtlas && <button className="ask-button" onClick={() => setAskOpen(open => !open)} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>}
-              {!portableAtlas && askOpen && (!askSignedIn ? <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin"><p>{ASK_SIGNIN_COPY}</p><a className="ask-signin" data-testid="ask-signin" href={askSignInHref(askAuth?.loginPath ?? "/api/auth/github", askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</div> : <form className="ask-popover" data-ask-auth={askSignedIn ? 'signed-in' : 'unknown'} data-ask-connected={askConnected ? 'true' : 'false'} data-ask-state={askState} onSubmit={submitQuestion}><label htmlFor="atlas-question">Ask about this codebase</label>{askThread && askThread.turns.length > 0 ? <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={askThread.turns.length}>{askThread.turns.map(turn => <li data-ask-thread-turn={turn.id} key={turn.id}><p className="ask-thread-question">{turn.question}</p><div className="ask-answer">{turn.answer}</div>{turn.citations.length > 0 ? <ul className="ask-citations">{turn.citations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}</li>)}</ol> : null}<textarea autoFocus id="atlas-question" onChange={event => setQuestion(event.target.value)} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); } }} onKeyPress={event => event.stopPropagation()} placeholder="How does Okie turn architecture into a rendered map?" ref={askInputRef} rows={3} value={question}/><p>{askConnected ? ASK_CONNECTED_COPY : ASK_NOT_CONNECTED_COPY}</p>{askError ? <p className="ask-error" role="alert">{askError}</p> : null}{askAnswer ? <div className="ask-answer" data-ask-answer="" role="status">{askAnswer}</div> : null}{askCitations.length > 0 ? <ul className="ask-citations">{askCitations.map(id => <li data-ask-citation={id} key={id}>{id}</li>)}</ul> : null}<button disabled={!askConnected || !question.trim() || askPending} type="submit">{askPending ? 'Asking…' : askConnected ? ASK_CONNECTED_SUBMIT_LABEL : ASK_DISCONNECTED_SUBMIT_LABEL}{askPending || !askConnected ? null : <ArrowIcon size={15}/>}</button></form>)}
+              {!portableAtlas && <button className="ask-button" onClick={() => { if (!askOpen) requestAskReframe(); setAskOpen(!askOpen); }} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>}
               </div>
               {storyCatalog.length === 1 ? storyCatalog.map(plan => (
                 <button
@@ -5672,6 +5846,44 @@ export function App() {
               )}
             </div>
           )}
+          {!currentStory && query.fixture !== 'stress' && !portableAtlas && askOpen && (
+            <AskPanel
+              auth={askAuth}
+              citationsFor={turn => askCitationChips(turn, {
+                sceneEntity: id => scene.entities.find(entity => entity.id === id),
+                snapshotName: id => activeSnapshot.entities.find(entity => entity.id === id)?.name,
+              })}
+              connected={askConnected}
+              error={askError}
+              inputRef={askInputRef}
+              latestTurnId={askLatestTurnId}
+              mapTurnId={visibilityMode === 'isolate' ? askMapFocus?.turnId : undefined}
+              onClose={() => { setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); }}
+              onFocusCitation={id => {
+                // Same path as inspector Parent/Children/implementation links: load the neighborhood,
+                // land on the band that draws the cited entity (declarations enter their owner's L4),
+                // then frame it inside the map safe area (which accounts for this panel).
+                cancelAskMapShow();
+                void openInspectorChild(id).then(() => frameAskCitationWhenSettled(id)).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.'));
+              }}
+              onOpenCitationSource={id => {
+                cancelAskMapShow();
+                // Only switch to Source if the drill actually landed on the cited part.
+                void openInspectorChild(id).then(() => { if (inspectorSelectionRef.current === id) selectInspectorTab('source', false); }).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.'));
+              }}
+              onQuestionChange={setQuestion}
+              onRestoreMap={restoreAskMapView}
+              onShowOnMap={(citedIds, turn) => { void showAskTurnOnMap(citedIds, turn.id); }}
+              onSubmit={submitQuestion}
+              pendingQuestion={askPending}
+              question={question}
+              returnPath={askReturnPath}
+              signedIn={askSignedIn}
+              state={askState}
+              turns={askThread?.turns ?? []}
+            />
+          )}
+          {!currentStory && visibilityMode === 'isolate' && askMapFocus && !askOpen && <div className="ask-map-status" data-ask-map-status="" role="status">Showing {askMapFocus.entityIds.length} cited part{askMapFocus.entityIds.length === 1 ? '' : 's'} from Ask · <button onClick={restoreAskMapView} type="button">Restore full view</button></div>}
 
           <div className="canvas-hint"><span>Scroll to zoom</span><i/>drag to pan<i/>click to inspect<i/>double-click to open inside</div>
 

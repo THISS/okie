@@ -4,9 +4,9 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { HOSTED_SCAN_AUTH_ERROR, resolveScanGithubAccess, scanQuotaKey } from "./githubAccess.js";
 import type { GithubAuthService } from "./githubOAuth.js";
 import { LOGIN_PATH } from "./githubOAuth.js";
-import { toPublicJob, type ScanJob, type ScanJobQueue } from "./jobs.js";
+import { createSubmitLimiter, toPublicJob, type ScanJob, type ScanJobQueue } from "./jobs.js";
 import { healthzBody, type EnrichMode } from "./localDefaults.js";
-import { answerAskQuestion, HOSTED_ASK_AUTH_ERROR, publicAskStatus } from "./ask.js";
+import { answerAskQuestion, askGatewayConnected, HOSTED_ASK_AUTH_ERROR, publicAskStatus } from "./ask.js";
 import {
   ASK_THREAD_PATH,
   askAtlasIdentityFromSearch,
@@ -29,6 +29,7 @@ import { resolvePublishedScanFile, resolvePublicationScanFile } from "./scanObje
 import { handleOperatorApi, type OperatorApiOptions } from "./operatorApi.js";
 import { readArtifactScopes } from "./operatorWorkflow.js";
 import { MAX_BLOCK_PLAN_REQUEST_BYTES, type BlockPlanService } from "./blockPlans.js";
+import { createAskCorpusSource, sanitizeAskSlug, type AskCorpusSource } from "./askRetrieval.js";
 
 export interface ScanHttpOptions {
   queue: ScanJobQueue;
@@ -43,7 +44,14 @@ export interface ScanHttpOptions {
   operator?: OperatorApiOptions;
   /** CLA-149 Jev block planner (`POST /api/block-plan`); absent → the route answers `unavailable`. */
   blockPlans?: BlockPlanService;
+  /** CLA-265 whole-atlas Ask corpus; default resolves published snapshots like `/scan/*`. */
+  askCorpus?: AskCorpusSource;
+  /** Per-account Ask rate limit (CLA-265); default ASK_REQUESTS_PER_WINDOW per 10 minutes. */
+  allowAsk?: (key: string) => boolean;
 }
+
+/** Default POST /api/ask budget per signed-in account per 10 minutes. */
+export const ASK_REQUESTS_PER_WINDOW = 30;
 
 /** CLA-149 Jev block planner: public, bounded, off unless OKIE_JEV_BLOCK_PLANNER=on. */
 export const BLOCK_PLAN_PATH = "/api/block-plan";
@@ -114,6 +122,11 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     return repositoryId ? resolvePublicationScanFile({ ...input, repositoryId, publications: operator.publications, store: operator.store }) : undefined;
   } : undefined);
   const threads = options.threads ?? createAskThreadStore();
+  const allowAsk = options.allowAsk ?? createSubmitLimiter(ASK_REQUESTS_PER_WINDOW);
+  const askCorpus = options.askCorpus ?? createAskCorpusSource({
+    scanRoot,
+    ...(options.operator ? { publications: options.operator.publications, store: options.operator.store } : {}),
+  });
 
   function publicJob(job: ScanJob): Record<string, unknown> {
     return toPublicJob(job, text => redactGatewayErrorText(text, llm.apiKey));
@@ -176,7 +189,14 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
         sendJson(response, 400, { error: "Ask needs atlas identity {owner, repo, commitSha}." });
         return;
       }
-      const result = await answerAskQuestion(llm, body);
+      // Cheap checks first: never parse a snapshot / build an index for a request that cannot be answered.
+      if (!askGatewayConnected(llm)) { sendJson(response, 200, { connected: false }); return; }
+      if (typeof record.question !== "string" || !record.question.trim()) { sendJson(response, 200, { connected: true, error: "Ask needs a question." }); return; }
+      if (!allowAsk(`ask:${session.userId}`)) { sendJson(response, 429, { error: "Too many questions from this account; try again in a few minutes." }); return; }
+      const slug = sanitizeAskSlug((record.atlas as Record<string, unknown>).slug);
+      let corpus;
+      try { corpus = askCorpus.resolve({ ...(slug !== undefined ? { slug } : {}), owner: atlas.owner, repo: atlas.repo, commitSha: atlas.commitSha }); } catch { corpus = undefined; }
+      const result = await answerAskQuestion(llm, body, { ...(corpus ? { corpus } : {}), systemNames: [atlas.repo] });
       if (result.connected && "answer" in result && result.answer) {
         const question = typeof record.question === "string" ? record.question : "";
         const answer = redactGatewayText(result.answer, llm.apiKey);
@@ -185,6 +205,8 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
           answer,
           citations: result.citations,
           scopeIds: result.scopeIds,
+          citationDetails: result.citationDetails,
+          retrieval: result.retrieval,
         }, llm.apiKey);
         sendJson(response, 200, { ...result, answer, thread: publicAskThread(thread) });
         return;

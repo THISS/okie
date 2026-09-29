@@ -205,12 +205,19 @@ export function createSubmitLimiter(
   maxPerWindow = 5,
   windowMs = 10 * 60 * 1000,
   now: () => number = () => Date.now(),
+  maxKeys = 10_000,
 ): (key: string) => boolean {
+  // Bounded: expired windows are swept when the map is full, then the oldest window is dropped.
   const windows = new Map<string, { startedAt: number; count: number }>();
   return key => {
     const current = windows.get(key);
     const at = now();
     if (!current || at - current.startedAt >= windowMs) {
+      windows.delete(key);
+      if (windows.size >= maxKeys) {
+        for (const [other, window] of windows) if (at - window.startedAt >= windowMs) windows.delete(other);
+        while (windows.size >= maxKeys) windows.delete(windows.keys().next().value!);
+      }
       windows.set(key, { startedAt: at, count: 1 });
       return true;
     }

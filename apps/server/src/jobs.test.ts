@@ -147,3 +147,20 @@ test("submit limiter allows a burst then blocks until the window rolls", () => {
   at = 1_000;
   assert.equal(allow("ip"), true);
 });
+
+test("submit limiter keeps at most maxKeys windows, sweeping expired ones first", () => {
+  let at = 0;
+  const allow = createSubmitLimiter(1, 1_000, () => at, 2);
+  assert.equal(allow("a"), true);
+  assert.equal(allow("b"), true);
+  assert.equal(allow("a"), false);
+  // A third key evicts the oldest window (a), so the map never grows past two entries.
+  assert.equal(allow("c"), true);
+  assert.equal(allow("a"), true);
+  assert.equal(allow("c"), false);
+  at = 1_500;
+  // Expired windows are swept before anything live is dropped: c and a restart fresh.
+  assert.equal(allow("d"), true);
+  assert.equal(allow("e"), true);
+  assert.equal(allow("d"), false);
+});

@@ -22,12 +22,36 @@ export interface AskAtlasIdentity {
   commitSha: string;
 }
 
+export const MAX_ASK_TURN_CITATION_DETAILS = 32;
+
+export interface AskTurnCitationDetail {
+  id: string;
+  name: string;
+  kind: string;
+  path?: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+/** Compact CLA-265 retrieval summary kept on a turn (no section bodies). */
+export interface AskTurnRetrieval {
+  mode: "atlas" | "scope-only";
+  searchedWholeAtlas: boolean;
+  selectedScopeIds: string[];
+  sectionCount: number;
+  bytes: number;
+  retrievedScopeIds: string[];
+}
+
 export interface AskThreadTurn {
   id: string;
   question: string;
   answer: string;
   citations: string[];
   scopeIds: string[];
+  /** CLA-265; absent on turns stored before whole-atlas Ask. */
+  citationDetails?: AskTurnCitationDetail[];
+  retrieval?: AskTurnRetrieval;
   createdAt: number;
 }
 
@@ -50,6 +74,8 @@ export interface PublicAskThread {
     answer: string;
     citations: string[];
     scopeIds: string[];
+    citationDetails?: AskTurnCitationDetail[];
+    retrieval?: AskTurnRetrieval;
     createdAt: number;
   }>;
 }
@@ -59,6 +85,15 @@ export interface AskThreadTurnInput {
   answer: string;
   citations: readonly string[];
   scopeIds: readonly string[];
+  citationDetails?: readonly AskTurnCitationDetail[];
+  retrieval?: {
+    mode: "atlas" | "scope-only";
+    searchedWholeAtlas: boolean;
+    selectedScopeIds?: readonly string[];
+    sectionCount: number;
+    bytes: number;
+    retrievedScopeIds: readonly string[];
+  };
 }
 
 export interface AskThreadStore {
@@ -105,6 +140,8 @@ export function publicAskThread(thread: AskThread): PublicAskThread {
       answer: turn.answer,
       citations: turn.citations,
       scopeIds: turn.scopeIds,
+      ...(turn.citationDetails ? { citationDetails: turn.citationDetails } : {}),
+      ...(turn.retrieval ? { retrieval: turn.retrieval } : {}),
       createdAt: turn.createdAt,
     })),
   };
@@ -149,6 +186,8 @@ export function createAskThreadStore(now: () => number = () => Date.now()): AskT
         answer: turn.answer,
         citations: [...turn.citations],
         scopeIds: [...turn.scopeIds],
+        ...(turn.citationDetails ? { citationDetails: turn.citationDetails.map(detail => ({ ...detail })) } : {}),
+        ...(turn.retrieval ? { retrieval: { ...turn.retrieval, selectedScopeIds: [...(turn.retrieval.selectedScopeIds ?? [])], retrievedScopeIds: [...turn.retrieval.retrievedScopeIds] } } : {}),
         createdAt,
       };
       if (!existing) {
@@ -189,6 +228,45 @@ export function persistAskTurn(
     question: sanitizeTurnText(turn.question, apiKey, 2_000),
     answer: sanitizeTurnText(turn.answer, apiKey, 8_000),
     citations: sanitizeIdList(turn.citations),
-    scopeIds: sanitizeIdList(turn.scopeIds),
+    scopeIds: sanitizeIdList(turn.scopeIds, 96),
+    ...(turn.citationDetails ? { citationDetails: sanitizeCitationDetails(turn.citationDetails, apiKey) } : {}),
+    ...(turn.retrieval ? { retrieval: sanitizeRetrieval(turn.retrieval) } : {}),
   });
+}
+
+function sanitizeCitationDetails(details: readonly AskTurnCitationDetail[], apiKey: string | undefined): AskTurnCitationDetail[] {
+  const out: AskTurnCitationDetail[] = [];
+  const seen = new Set<string>();
+  for (const detail of details) {
+    if (out.length >= MAX_ASK_TURN_CITATION_DETAILS) break;
+    if (!detail || typeof detail !== "object") continue;
+    const id = typeof detail.id === "string" ? scrubGithubTokens(detail.id).trim().slice(0, 200) : "";
+    const name = typeof detail.name === "string" ? sanitizeTurnText(detail.name, apiKey, 200) : "";
+    const kind = typeof detail.kind === "string" ? sanitizeTurnText(detail.kind, apiKey, 64) : "";
+    if (!id || !name || !kind || seen.has(id)) continue;
+    seen.add(id);
+    const path = typeof detail.path === "string" ? sanitizeTurnText(detail.path, apiKey, 300) : "";
+    const line = (value: unknown) => typeof value === "number" && Number.isInteger(value) && value >= 1 ? value : undefined;
+    const startLine = line(detail.startLine);
+    const endLine = line(detail.endLine);
+    out.push({
+      id, name, kind,
+      ...(path ? { path } : {}),
+      ...(startLine !== undefined ? { startLine } : {}),
+      ...(endLine !== undefined && (startLine === undefined || endLine >= startLine) ? { endLine } : {}),
+    });
+  }
+  return out;
+}
+
+function sanitizeRetrieval(retrieval: NonNullable<AskThreadTurnInput["retrieval"]>): AskTurnRetrieval {
+  const count = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  return {
+    mode: retrieval.mode === "atlas" ? "atlas" : "scope-only",
+    searchedWholeAtlas: retrieval.searchedWholeAtlas === true,
+    selectedScopeIds: sanitizeIdList(retrieval.selectedScopeIds ?? [], 64),
+    sectionCount: count(retrieval.sectionCount),
+    bytes: count(retrieval.bytes),
+    retrievedScopeIds: sanitizeIdList(retrieval.retrievedScopeIds, 64),
+  };
 }

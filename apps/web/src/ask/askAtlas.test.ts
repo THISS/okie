@@ -10,8 +10,14 @@ import {
   ASK_SIGNIN_COPY,
   MAX_ASK_PACKETS,
   askScopeEntityIds,
-  askScopeKey,
+  askCitationChips,
+  askRetrievalLabel,
   askSignInHref,
+  appendAskAnswer,
+  askPanelOverlayEdge,
+  askFramedCluster,
+  askShowOnMapPlan,
+  keepNewerAskThread,
   buildAskContext,
   fetchAskAuth,
   isAskUnauthorized,
@@ -20,9 +26,9 @@ import {
   resolveAskAtlasIdentity,
   accountInitials,
   atlasSourceRepositoryUrl,
-  shouldCommitAskAnswer,
   submitAskQuestion,
   type AskEntity,
+  type AskThreadTurn,
 } from './askAtlas';
 
 const entities: AskEntity[] = [
@@ -98,23 +104,6 @@ describe('Ask scope is selected or isolated packets, never a silent whole-repo d
       isolatedIds: crowd.map(entity => entity.id),
     });
     expect(ids).toHaveLength(MAX_ASK_PACKETS);
-  });
-
-  it('does not commit an in-flight or leftover answer after the scope changes', () => {
-    const selected = askScopeKey({ selectedId: 'container:web-app', isolateActive: false, isolatedIds: [] });
-    const other = askScopeKey({ selectedId: 'container:other', isolateActive: false, isolatedIds: [] });
-    const isolated = askScopeKey({
-      selectedId: 'system:okie',
-      isolateActive: true,
-      isolatedIds: ['container:web-app', 'component:web-shell'],
-    });
-    expect(selected).toBe('select:container:web-app');
-    expect(other).not.toBe(selected);
-    expect(isolated).toBe('isolate:component:web-shell,container:web-app');
-    expect(isolated).not.toBe(askScopeKey({ selectedId: 'system:okie', isolateActive: false, isolatedIds: [] }));
-    expect(shouldCommitAskAnswer(selected, selected)).toBe(true);
-    expect(shouldCommitAskAnswer(selected, other)).toBe(false);
-    expect(shouldCommitAskAnswer(selected, isolated)).toBe(false);
   });
 });
 
@@ -341,12 +330,17 @@ describe('Ask sign-in and thread identity', () => {
     expect(resolveAskAtlasIdentity({
       pathname: '/r/THISS/okie',
       commitSha: 'abc123def456',
-    })).toEqual({ owner: 'THISS', repo: 'okie', commitSha: 'abc123def456' });
+    })).toEqual({ owner: 'THISS', repo: 'okie', commitSha: 'abc123def456', slug: 'thiss__okie' });
     expect(resolveAskAtlasIdentity({
       pathname: '/',
       search: '?fixture=scan',
       commitSha: 'deadbeef',
     })).toEqual({ owner: 'THISS', repo: 'okie', commitSha: 'deadbeef' });
+    expect(resolveAskAtlasIdentity({
+      pathname: '/',
+      search: '?fixture=scan:colinhacks__zod',
+      commitSha: 'deadbeef',
+    })).toEqual({ owner: 'colinhacks', repo: 'zod', commitSha: 'deadbeef', slug: 'colinhacks__zod' });
     expect(resolveAskAtlasIdentity({
       pathname: '/',
       search: '?fixture=okie',
@@ -416,9 +410,233 @@ describe('honest disconnected copy', () => {
     expect(ASK_NOT_CONNECTED_LIVE_MESSAGE).toContain('overview tour was not started');
     expect(ASK_DISCONNECTED_SUBMIT_LABEL).toBe('Not connected');
     expect(ASK_CONNECTED_SUBMIT_LABEL).toBe('Ask');
-    expect(ASK_CONNECTED_COPY).toContain('packets and accepted summaries');
-    expect(ASK_CONNECTED_COPY).toContain('selected or isolated');
+    expect(ASK_CONNECTED_COPY).toContain('whole atlas');
+    expect(ASK_CONNECTED_COPY).not.toContain('selected or isolated scopes');
     expect(ASK_SIGNIN_COPY).toContain('Sign in with GitHub');
     expect(ASK_SIGNIN_COPY).toContain('stays public');
+  });
+});
+
+describe('CLA-265 whole-atlas answers: request slug, citation details, retrieval', () => {
+  const atlas = { owner: 'THISS', repo: 'okie', commitSha: 'abc', slug: 'THISS__okie' };
+  const retrieval = { mode: 'atlas', searchedWholeAtlas: true, selectedScopeIds: ['container:web-app'], retrievedScopeIds: ['container:web-app', 'component:x'], sectionCount: 7, bytes: 5120 };
+
+  it('sends atlas.slug and parses citationDetails + retrieval defensively', async () => {
+    const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { atlas?: Record<string, string> };
+      expect(body.atlas).toEqual(atlas);
+      return new Response(JSON.stringify({
+        connected: true,
+        answer: 'Uses **App**.',
+        citations: ['container:web-app', 42],
+        scopeIds: ['container:web-app'],
+        citationDetails: [
+          { id: 'container:web-app', name: 'Web app', kind: 'container', path: 'apps/web/src/App.tsx', startLine: 3, endLine: 9 },
+          { id: 'bad-no-name', kind: 'x' },
+          { id: 'container:web-app', name: 'Duplicate', kind: 'container' },
+          { id: 'component:x', name: 'X', kind: 'component', path: 'x.ts', startLine: -1, endLine: 'nope' },
+          'junk',
+        ],
+        retrieval: { ...retrieval, retrievedScopeIds: ['container:web-app', 7, 'component:x'] },
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const result = await submitAskQuestion('Q?', { packets: [], relations: [] }, { fetch: fetchImpl, timeoutMs: 200, atlas });
+    expect(result).toEqual({
+      connected: true,
+      answer: 'Uses **App**.',
+      citations: ['container:web-app'],
+      scopeIds: ['container:web-app'],
+      citationDetails: [
+        { id: 'container:web-app', name: 'Web app', kind: 'container', path: 'apps/web/src/App.tsx', startLine: 3, endLine: 9 },
+        { id: 'component:x', name: 'X', kind: 'component', path: 'x.ts' },
+      ],
+      retrieval,
+    });
+  });
+
+  it('ignores a malformed retrieval block and omits missing details', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      connected: true, answer: 'A', citations: [], scopeIds: [], retrieval: { mode: 'everything' }, citationDetails: 'nope',
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const result = await submitAskQuestion('Q?', { packets: [], relations: [] }, { fetch: fetchImpl, timeoutMs: 200 });
+    expect(result).toEqual({ connected: true, answer: 'A', citations: [], scopeIds: [] });
+  });
+
+  it('keeps old thread turns and parses new optional turn fields', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      thread: {
+        owner: 'THISS', repo: 'okie', commitSha: 'abc',
+        turns: [
+          { id: 'old', question: 'Q1', answer: 'A1', citations: ['c'], scopeIds: [], createdAt: 1 },
+          { id: 'new', question: 'Q2', answer: 'A2', citations: ['c'], scopeIds: [], createdAt: 2, citationDetails: [{ id: 'c', name: 'C', kind: 'component' }], retrieval },
+          { id: 'broken', question: 'Q3' },
+        ],
+      },
+    }), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const thread = await loadAskThread(atlas, { fetch: fetchImpl });
+    expect(thread?.turns.map(turn => turn.id)).toEqual(['old', 'new']);
+    expect(thread?.turns[0]).not.toHaveProperty('citationDetails');
+    expect(thread?.turns[0]).not.toHaveProperty('retrieval');
+    expect(thread?.turns[1]?.citationDetails).toEqual([{ id: 'c', name: 'C', kind: 'component' }]);
+    expect(thread?.turns[1]?.retrieval).toEqual(retrieval);
+  });
+
+  it('appends one local turn when the server sends no thread, else adopts the server thread', () => {
+    const previous = { owner: 'THISS', repo: 'okie', commitSha: 'abc', turns: [{ id: 't0', question: 'Q0', answer: 'A0', citations: [], scopeIds: [], createdAt: 1 }] };
+    const answer = { connected: true as const, answer: 'A1', citations: ['c'], scopeIds: ['s'], retrieval: retrieval as never };
+    const local = appendAskAnswer(previous, { question: 'Q1', result: answer, now: 5 });
+    expect(local.thread.turns.map(turn => turn.id)).toEqual(['t0', 'local-5']);
+    expect(local.latestTurnId).toBe('local-5');
+    expect(local.thread.turns[1]).toMatchObject({ question: 'Q1', answer: 'A1', citations: ['c'], retrieval });
+    const serverTurn = { id: 's1', question: 'Q1', answer: 'A1', citations: ['c'], scopeIds: ['s'], createdAt: 9 };
+    const adopted = appendAskAnswer(previous, { question: 'Q1', result: { ...answer, thread: { ...previous, turns: [...previous.turns, serverTurn] } }, now: 5 });
+    expect(adopted.thread.turns.map(turn => turn.id)).toEqual(['t0', 's1']);
+    expect(adopted.latestTurnId).toBe('s1');
+    expect(adopted.thread.turns[1]?.retrieval).toEqual(retrieval);
+  });
+
+  it('resolves name-only chips from details, then scene, then snapshot names', () => {
+    const turn: AskThreadTurn = {
+      id: 't', question: 'Q', answer: 'A', scopeIds: [], createdAt: 1,
+      citations: ['code:app', 'container:web-app', 'container:off-map', 'container:unknown'],
+      citationDetails: [{ id: 'code:app', name: 'App', kind: 'code', path: 'apps/web/src/App.tsx', startLine: 10, endLine: 20 }],
+    };
+    const chips = askCitationChips(turn, {
+      sceneEntity: id => id === 'container:web-app'
+        ? { id, name: 'Web app', kind: 'container', detail: 'container', sourceRefs: [{ path: 'apps/web/package.json' }] }
+        : id === 'code:app' ? { id, name: 'App()', kind: 'component', detail: 'code', sourceRefs: [{ path: 'apps/web/src/App.tsx', startLine: 1 }] } : undefined,
+      snapshotName: id => id === 'container:off-map' ? 'Off map' : undefined,
+    });
+    expect(chips).toEqual([
+      { focusId: 'code:app', ids: ['code:app'], mapIds: ['code:app'], label: 'App.tsx', location: 'apps/web/src/App.tsx:10–20', symbols: ['App'], onMap: true, hasSource: true },
+      // Containers never become file chips, even with a manifest path.
+      { focusId: 'container:web-app', ids: ['container:web-app'], mapIds: ['container:web-app'], label: 'Web app', symbols: [], onMap: true, hasSource: false },
+      { focusId: 'container:off-map', ids: ['container:off-map'], mapIds: ['container:off-map'], label: 'Off map', symbols: [], onMap: true, hasSource: false },
+      { focusId: 'container:unknown', ids: ['container:unknown'], mapIds: [], label: 'unknown', symbols: [], onMap: false, hasSource: false },
+    ]);
+  });
+
+  it('groups a citation flood into one chip per file (basename + path:span + symbols)', () => {
+    const file = 'apps/web/src/renderer/createRenderer.ts';
+    const turn: AskThreadTurn = {
+      id: 't', question: 'Q', answer: 'A', scopeIds: [], createdAt: 1,
+      citations: ['component:create-renderer', 'code:create-renderer', 'code:recover-renderer', 'code:query', 'container:web'],
+      citationDetails: [
+        // The file component's name is its relative path — the chip must not repeat it next to the path.
+        { id: 'component:create-renderer', name: 'src/renderer/createRenderer.ts', kind: 'component', path: file },
+        { id: 'code:create-renderer', name: 'createRenderer', kind: 'code', path: file, startLine: 12, endLine: 40 },
+        { id: 'code:recover-renderer', name: 'recoverRenderer', kind: 'code', path: file, startLine: 60, endLine: 88 },
+        { id: 'code:query', name: 'readDemoQuery', kind: 'code', path: 'apps/web/src/renderer/query.ts', startLine: 5, endLine: 9 },
+        { id: 'container:web', name: '@okie/web', kind: 'container' },
+      ],
+    };
+    const inScene = new Set(turn.citations);
+    const chips = askCitationChips(turn, { sceneEntity: id => inScene.has(id) ? { id, name: id, kind: 'component' } : undefined });
+    expect(chips.map(chip => [chip.label, chip.location, chip.symbols, chip.focusId])).toEqual([
+      ['createRenderer.ts', `${file}:12–88`, ['createRenderer', 'recoverRenderer'], 'component:create-renderer'],
+      ['query.ts', 'apps/web/src/renderer/query.ts:5–9', ['readDemoQuery'], 'code:query'],
+      ['@okie/web', undefined, [], 'container:web'],
+    ]);
+    expect(chips[0]!.ids).toEqual(['component:create-renderer', 'code:create-renderer', 'code:recover-renderer']);
+    // Whole-file citation alone → no line span; several symbols without the file → focus their file component.
+    const wholeFile = askCitationChips({ citations: ['component:create-renderer'], citationDetails: turn.citationDetails!.slice(0, 1) }, { sceneEntity: () => undefined });
+    expect(wholeFile[0]).toMatchObject({ label: 'createRenderer.ts', location: file, symbols: [] });
+    const symbolsOnly = askCitationChips(
+      { citations: ['code:create-renderer', 'code:recover-renderer'], citationDetails: turn.citationDetails!.slice(1, 3) },
+      { sceneEntity: id => ({ id, name: id, kind: 'code', parentId: 'component:create-renderer' }) },
+    );
+    expect(symbolsOnly).toHaveLength(1);
+    expect(symbolsOnly[0]!.focusId).toBe('component:create-renderer');
+  });
+
+  it('labels which scopes were searched', () => {
+    expect(askRetrievalLabel(undefined)).toBeUndefined();
+    expect(askRetrievalLabel(retrieval as never)).toBe('Searched: whole atlas · 7 sections');
+    expect(askRetrievalLabel({ ...retrieval, mode: 'scope-only', searchedWholeAtlas: false, sectionCount: 1 } as never))
+      .toBe('Searched: selected scope only (1 part) · 1 section');
+  });
+
+  it('overlays the response retrieval when the persisted turn lacks selectedScopeIds', () => {
+    const previous = { owner: 'THISS', repo: 'okie', commitSha: 'abc', turns: [] };
+    const persisted = { id: 's1', question: 'Q', answer: 'A', citations: [], scopeIds: [], createdAt: 1, retrieval: { ...retrieval, selectedScopeIds: [], sectionCount: 3 } as never };
+    const answer = { connected: true as const, answer: 'A', citations: [], scopeIds: [], retrieval: retrieval as never, thread: { ...previous, turns: [persisted] } };
+    expect(appendAskAnswer(previous, { question: 'Q', result: answer, now: 1 }).thread.turns[0]?.retrieval).toEqual(retrieval);
+    const complete = { ...persisted, retrieval: { ...retrieval, sectionCount: 3 } as never };
+    expect(appendAskAnswer(previous, { question: 'Q', result: { ...answer, thread: { ...previous, turns: [complete] } }, now: 1 }).thread.turns[0]?.retrieval)
+      .toEqual({ ...retrieval, sectionCount: 3 });
+  });
+
+  it('never duplicates a turn and a late thread load does not roll back an answer', () => {
+    const answer = { connected: true as const, answer: 'A', citations: [], scopeIds: [] };
+    const once = appendAskAnswer(undefined, { question: 'Q', result: answer, now: 7 });
+    const twice = appendAskAnswer(once.thread, { question: 'Q', result: answer, now: 7 });
+    expect(twice.thread.turns.map(turn => turn.id)).toEqual(['local-7']);
+    expect(appendAskAnswer(undefined, { question: 'Q', result: answer, now: 7 }).latestTurnId).toBe(once.latestTurnId);
+    const stale = { ...once.thread, turns: [] };
+    expect(keepNewerAskThread(once.thread, stale)).toBe(once.thread);
+    const fresh = { ...once.thread, turns: [...once.thread.turns, { ...once.thread.turns[0]!, id: 'x' }] };
+    expect(keepNewerAskThread(once.thread, fresh)).toBe(fresh);
+    expect(keepNewerAskThread(undefined, stale)).toBe(stale);
+  });
+
+  it('frames around the panel: left dock beside the map, bottom sheet on a narrow stage', () => {
+    expect(askPanelOverlayEdge({ width: 372 }, { width: 1064 })).toBe('left');
+    expect(askPanelOverlayEdge({ width: 366 }, { width: 390 })).toBe('bottom');
+    expect(askPanelOverlayEdge({ width: 624 }, { width: 648 })).toBe('bottom');
+    expect(askPanelOverlayEdge(undefined, { width: 390 })).toBe('left');
+  });
+
+  it('Show on map frames the largest on-screen cluster from the first citation at a fixed band', () => {
+    const boxes: Record<string, { x: number; y: number; width: number; height: number }> = {
+      a: { x: 0, y: 0, width: 80, height: 40 },
+      near: { x: 100, y: 0, width: 80, height: 40 },
+      far: { x: 2000, y: 0, width: 80, height: 40 },
+    };
+    const viewport = { width: 1000, height: 800 };
+    const safe = { top: 100, right: 50, bottom: 100, left: 450 };
+    // A band-locked framer: fixed zoom 2, centred on the union inside the safe area.
+    const frame = (ids: readonly string[]) => {
+      const list = ids.map(id => boxes[id]!);
+      const left = Math.min(...list.map(b => b.x));
+      const right = Math.max(...list.map(b => b.x + b.width));
+      const top = Math.min(...list.map(b => b.y));
+      const bottom = Math.max(...list.map(b => b.y + b.height));
+      const zoom = 2;
+      const safeCx = safe.left + (viewport.width - safe.left - safe.right) / 2;
+      const safeCy = safe.top + (viewport.height - safe.top - safe.bottom) / 2;
+      return { x: (left + right) / 2 - (safeCx - viewport.width / 2) / zoom, y: (top + bottom) / 2 - (safeCy - viewport.height / 2) / zoom, zoom };
+    };
+    const cluster = askFramedCluster(['a', 'far', 'near', 'undrawn'], id => boxes[id], frame, viewport, safe);
+    expect(cluster.ids).toEqual(['a', 'near']);
+    expect(cluster.smallestPx).toBe(80);
+    expect(askFramedCluster(['undrawn'], id => boxes[id], frame, viewport, safe)).toEqual({ ids: [], camera: undefined, smallestPx: 0 });
+  });
+
+  it('Show on map picks L3 inside one container, else L2 across containers', () => {
+    const rows: Record<string, { kind: string; parentId?: string }> = {
+      'system:okie': { kind: 'softwareSystem' },
+      'container:web': { kind: 'container', parentId: 'system:okie' },
+      'container:server': { kind: 'container', parentId: 'system:okie' },
+      'component:adapter': { kind: 'component', parentId: 'container:web' },
+      'code:adapter:class': { kind: 'code', parentId: 'component:adapter' },
+      'component:create': { kind: 'component', parentId: 'container:web' },
+      'component:ask': { kind: 'component', parentId: 'container:server' },
+      // Golden-style nested component (code-detail component under a file component).
+      'component:shell': { kind: 'component', parentId: 'container:web' },
+      'component:shell:app': { kind: 'component', parentId: 'component:shell' },
+    };
+    const lookup = (id: string) => rows[id];
+    // Declarations and files in one container → L3 inside it, cited files (declarations lift to their file).
+    expect(askShowOnMapPlan(['code:adapter:class', 'component:adapter', 'component:create', 'container:web'], lookup))
+      .toEqual({ level: 'component', containerId: 'container:web', focusIds: ['component:adapter', 'component:create'] });
+    expect(askShowOnMapPlan(['component:shell:app'], lookup))
+      .toEqual({ level: 'component', containerId: 'container:web', focusIds: ['component:shell'] });
+    // Spanning containers → L2 with the containers that hold cited parts.
+    expect(askShowOnMapPlan(['code:adapter:class', 'component:ask', 'system:okie'], lookup))
+      .toEqual({ level: 'container', focusIds: ['container:web', 'container:server'] });
+    // Only a container cited → L2 with that container.
+    expect(askShowOnMapPlan(['container:server', 'system:okie'], lookup)).toEqual({ level: 'container', focusIds: ['container:server'] });
+    // Nothing placeable → no plan.
+    expect(askShowOnMapPlan(['system:okie', 'code:unknown'], lookup)).toBeUndefined();
   });
 });

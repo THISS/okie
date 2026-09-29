@@ -1,0 +1,99 @@
+/* CLA-265 Ask Atlas panel.
+   Wide stage: docked to the left of the map stage, between the level rail and the map
+   heading/story launcher, so it never sits over the centred canvas card that
+   is selected or framed. It grows upward from just above the launcher and is
+   bounded by the stage height, so it never reaches the map heading. The thread
+   (.ask-scroll) is the only scroll container; the composer stays pinned. */
+.ask-popover {
+  --ask-top-clearance: 132px;
+  --ask-bottom-clearance: 124px;
+  position: absolute;
+  z-index: 14;
+  left: 76px;
+  right: auto;
+  bottom: var(--ask-bottom-clearance);
+  width: min(372px, calc(100% - 96px));
+  max-height: calc(100% - var(--ask-top-clearance) - var(--ask-bottom-clearance));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--atlas-line-strong);
+  border-radius: 14px;
+  background: rgba(13,18,19,.98);
+  box-shadow: var(--atlas-shadow-panel);
+}
+.ask-popover > p { margin: 0 0 4px; color: var(--atlas-quiet); font-size: 11px; line-height: 1.45; }
+.ask-popover .ask-signin,
+.ask-popover .ask-test-login { display: block; margin-top: 8px; color: var(--atlas-accent); font-size: 12px; font-weight: 650; }
+.ask-popover .ask-test-login { color: var(--atlas-muted); font-weight: 500; }
+
+.ask-header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.ask-header label { font-size: 11px; font-weight: 650; }
+.ask-close { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--atlas-quiet); cursor: pointer; }
+.ask-close:hover { background: rgba(255,255,255,.05); color: var(--atlas-text); }
+
+/* The single scroll container. Nothing inside it scrolls on its own. */
+.ask-scroll { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; margin: 0 -6px 10px; padding: 0 6px; }
+.ask-thread { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.ask-turn { min-width: 0; display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--atlas-line); }
+.ask-turn:last-child { padding-bottom: 2px; border-bottom: 0; }
+.ask-thread-question { margin: 0; color: var(--atlas-accent); font-size: 11.5px; font-weight: 650; line-height: 1.45; overflow-wrap: anywhere; }
+.ask-answer { min-width: 0; color: var(--atlas-text); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.ask-answer-body { display: grid; gap: 8px; }
+.ask-answer-body p { margin: 0; }
+.ask-answer-body ul { margin: 0; padding-left: 18px; }
+.ask-answer-body li + li { margin-top: 3px; }
+.ask-answer-body code { padding: 1px 4px; border-radius: 4px; background: rgba(255,255,255,.06); color: var(--atlas-cyan); font-family: var(--atlas-font-mono); font-size: .9em; }
+.ask-answer-body strong { font-weight: 650; }
+.ask-pending { margin: 0; color: var(--atlas-quiet); font-size: 11px; }
+.ask-retrieval { margin: 0; color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; }
+
+.ask-citations { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ask-citations li { min-width: 0; max-width: 100%; display: flex; align-items: stretch; }
+.ask-citation-chip { min-width: 0; max-width: 100%; display: grid; gap: 1px; padding: 5px 8px; border: 1px solid var(--atlas-line); border-radius: 7px; background: rgba(255,255,255,.025); color: var(--atlas-text); text-align: left; cursor: pointer; }
+.ask-citation-chip:hover:not(:disabled) { border-color: rgba(217,255,112,.35); background: rgba(217,255,112,.05); }
+.ask-citation-chip:disabled { opacity: .6; cursor: default; }
+.ask-citation-chip strong,
+.ask-citation-chip small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ask-citation-chip strong { font-size: 11px; font-weight: 600; }
+.ask-citation-chip small { color: var(--atlas-quiet); font-family: var(--atlas-font-mono); font-size: 10px; }
+.ask-citation-chip .ask-citation-symbols { color: var(--atlas-muted); font-family: inherit; }
+.ask-citations-more { margin-top: -2px; }
+.ask-citations-more > summary { width: max-content; padding: 2px 0; color: var(--atlas-accent); font-size: 10.5px; cursor: pointer; }
+.ask-citations-more > .ask-citations { margin-top: 6px; }
+.ask-citations li:has(.ask-citation-source) .ask-citation-chip { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ask-citation-source { flex: 0 0 auto; width: 26px; display: grid; place-items: center; padding: 0; border: 1px solid var(--atlas-line); border-left: 0; border-radius: 0 7px 7px 0; background: rgba(255,255,255,.025); color: var(--atlas-muted); cursor: pointer; }
+.ask-citation-source:hover { color: var(--atlas-accent); }
+.ask-turn-actions { display: flex; gap: 6px; }
+.ask-show-on-map { min-height: 26px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border: 1px solid var(--atlas-line); border-radius: 6px; background: transparent; color: var(--atlas-muted); font-size: 10.5px; cursor: pointer; }
+.ask-show-on-map:hover,
+.ask-show-on-map[aria-pressed="true"] { border-color: rgba(217,255,112,.3); color: var(--atlas-accent); }
+.ask-popover .ask-error { margin: 10px 0 0; color: #f0b4b4; font-size: 11px; }
+
+.ask-composer { flex: 0 0 auto; display: grid; gap: 8px; }
+.ask-composer textarea { width: 100%; resize: none; padding: 9px 10px; border: 1px solid var(--atlas-line); border-radius: 8px; outline: none; background: rgba(255,255,255,.025); color: var(--atlas-text); font-size: 11.5px; line-height: 1.5; }
+.ask-composer textarea:focus { border-color: rgba(217,255,112,.4); }
+.ask-composer textarea::placeholder { color: var(--atlas-quiet); }
+.ask-note { margin: 0; color: var(--atlas-quiet); font-size: 11px; line-height: 1.45; }
+.ask-submit { height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; border: 0; border-radius: 8px; background: var(--atlas-accent); color: #12170b; font-size: 11px; font-weight: 700; cursor: pointer; }
+.ask-submit:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Out-of-panel reminder that the map is isolated to an answer's cited set. */
+.ask-map-status { position: absolute; z-index: 12; left: 50%; bottom: 122px; display: flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--atlas-line-strong); border-radius: 999px; background: rgba(13,18,19,.94); color: var(--atlas-muted); font-family: var(--atlas-font-mono); font-size: 10px; white-space: nowrap; transform: translateX(-50%); }
+.ask-map-status button { padding: 0; border: 0; background: none; color: var(--atlas-accent); font: inherit; cursor: pointer; text-decoration: underline; }
+
+/* Narrow stage (phones, or a desktop stage squeezed by the inspector): a
+   height-capped bottom sheet above the launcher, at most ~45% of the stage.
+   App registers it as a bottom overlay (askPanelOverlayEdge), so a framed
+   citation lands above it and the selected card stays visible. */
+@container (max-width: 800px) {
+  .ask-popover { --ask-top-clearance: 96px; left: 12px; right: 12px; width: auto; max-height: min(45%, calc(100% - var(--ask-top-clearance) - var(--ask-bottom-clearance))); }
+  /* With a thread the sheet holds its full height, so a citation framed while
+     the answer is still arriving stays above the sheet once it lands. */
+  .ask-popover[data-ask-has-thread="true"] { height: min(45%, calc(100% - var(--ask-top-clearance) - var(--ask-bottom-clearance))); }
+}
+@media (max-width: 780px) {
+  .ask-map-status { bottom: 124px; }
+}

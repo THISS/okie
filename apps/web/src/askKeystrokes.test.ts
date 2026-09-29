@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { askOwnsKeystrokes, askOverlayPresent, keystrokeOwnedByTextEntry, searchOwnsKeystrokes } from './shortcuts';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+const askPanel = readFileSync(new URL('./ask/AskPanel.tsx', import.meta.url), 'utf8');
 
 /**
  * Keyboard events name the focused element as `target`, and the keystroke guard only reads `id`,
@@ -43,10 +44,13 @@ const canvasKeyHandler = (() => {
   return app.slice(start, end);
 })();
 
+// CLA-265: the Ask input lives in AskPanel; its key handler plus the textarea markup.
 const askInputMarkup = (() => {
-  const line = app.split('\n').find(candidate => candidate.includes('id="atlas-question"'));
-  if (!line) throw new Error('Missing the #atlas-question textarea');
-  return line;
+  const start = askPanel.indexOf('const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {');
+  const textarea = askPanel.indexOf('id="atlas-question"');
+  const end = askPanel.indexOf('/>', textarea);
+  if (start < 0 || textarea < 0 || end < 0) throw new Error('Missing the #atlas-question textarea');
+  return askPanel.slice(start, end);
 })();
 
 function topLevelBranches(body: string) {
@@ -136,7 +140,9 @@ describe('Escape on Ask never cancels the semantic lens', () => {
   });
 
   it('stops Ask key events from propagating into canvas lens-cancel', () => {
-    expect(askInputMarkup).toContain("onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); setAskOpen(false);");
+    expect(askInputMarkup).toMatch(/event\.stopPropagation\(\);\s*if \(event\.key === 'Escape'\) \{\s*event\.preventDefault\(\);\s*props\.onClose\(\);/);
+    expect(askInputMarkup).toContain('onKeyDown={onKeyDown}');
+    expect(app).toContain('onClose={() => { setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); }}');
     expect(askInputMarkup).toContain('onKeyPress={event => event.stopPropagation()}');
     expect(askInputMarkup).not.toContain('cancelSemanticLens');
     expect(canvasKeyHandler).toContain('if (searchOwnsKeystrokes(event.target)) return;');
