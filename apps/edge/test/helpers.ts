@@ -135,14 +135,30 @@ export async function seedIndex(repos: Array<{ slug: string; versionId: string; 
   return text;
 }
 
-/** An isolated in-memory Cache stand-in (the real `caches.default` is shared across tests). */
-export function memoryCache(): Cache & { keys: string[] } {
+export type MemoryCacheOptions = { failMatch?: boolean; failPut?: boolean };
+
+/**
+ * An isolated in-memory Cache stand-in (the real `caches.default` is shared across tests). `keys` records
+ * every `put` and `matches` every `match`; `failMatch`/`failPut` make those calls reject like a Cache API outage.
+ */
+export function memoryCache(options: MemoryCacheOptions = {}): Cache & { keys: string[]; matches: string[] } {
   const store = new Map<string, Response>();
   const keys: string[] = [];
+  const matches: string[] = [];
   return {
     keys,
-    async match(key: RequestInfo | URL) { const hit = store.get(String(key)); return hit ? hit.clone() : undefined; },
-    async put(key: RequestInfo | URL, response: Response) { keys.push(String(key)); store.set(String(key), response.clone()); },
+    matches,
+    async match(key: RequestInfo | URL) {
+      matches.push(String(key));
+      if (options.failMatch) throw new Error('cache match unavailable');
+      const hit = store.get(String(key));
+      return hit ? hit.clone() : undefined;
+    },
+    async put(key: RequestInfo | URL, response: Response) {
+      keys.push(String(key));
+      if (options.failPut) throw new Error('cache put unavailable');
+      store.set(String(key), response.clone());
+    },
     async delete(key: RequestInfo | URL) { return store.delete(String(key)); },
-  } as unknown as Cache & { keys: string[] };
+  } as unknown as Cache & { keys: string[]; matches: string[] };
 }

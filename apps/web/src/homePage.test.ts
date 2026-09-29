@@ -171,7 +171,7 @@ describe('CLA-269 home: directory cards', () => {
     const [emoji] = homeAtlasCards(index(row('trpc__trpc', { description: `${mage} Move fast and break nothing`, language: 'Type\u200CScript' })));
     expect(emoji!.description).toBe(`${mage} Move fast and break nothing`);
     expect(emoji!.language).toBe('Type\u200CScript');
-    expect(homePageHtml({ index: index(row('trpc__trpc', { description: `${mage} tRPC` })) })).toContain(`<span class="description">${mage} tRPC</span>`);
+    expect(homePageHtml({ index: index(row('trpc__trpc', { description: `${mage} tRPC` })) })).toContain(`<span class="description" title="${mage} tRPC">${mage} tRPC</span>`);
     expect(normalizeHomeQuery(` ${mage}\u200B `)).toBe(mage);
     expect(homeCardMatchesFor(emoji!, mage)).toBe(true);
   });
@@ -256,12 +256,20 @@ describe('CLA-269 home page HTML', () => {
     expect(html).toContain('<span class="fact" data-field="licence">Unlicense OR MIT</span>');
     expect(html).toContain('<span class="fact" data-field="entities">2,831 entities</span>');
     expect(html).toContain('commit <code>3fce3b5</code> · <time datetime="2026-08-04T14:00:08.000Z">4 Aug 2026</time>');
-    expect(html).toContain('<span class="description">A small app</span>');
+    expect(html).toContain('<span class="description" title="A small app">A small app</span>');
     expect(html).toContain('<span class="fact" data-field="language">TypeScript</span>');
     expect(html).not.toContain('No atlases published yet');
     // Each card is exactly one link.
     const card = html.slice(html.indexOf('<li class="atlas" data-name="acme/app"'), html.indexOf('</li>', html.indexOf('data-name="acme/app"')));
     expect(card.match(/<a /g)).toHaveLength(1);
+  });
+
+  it('clamps card descriptions to three lines and pins the commit line to the card bottom (CLA-269)', () => {
+    const html = homePageHtml({ index: index(row('acme__app', { description: 'A small app' })) });
+    expect(html).toMatch(/\.description\{[^}]*-webkit-line-clamp:3;line-clamp:3;overflow:hidden/);
+    expect(html).toMatch(/\.body\{display:flex;flex:1;flex-direction:column/);
+    expect(html).toMatch(/\.commit\{margin-top:auto/);
+    expect(html).toMatch(/\.card\{display:flex;flex-direction:column;height:100%/);
   });
 
   it('points the CTA at the product atlas when listed, else the first card in display order, else omits it', () => {
@@ -494,9 +502,9 @@ describe('CLA-269 home: search and sort (no JavaScript)', () => {
       row('pmndrs__zustand', { description: '🐻 Bear necessities for state management in React' }),
       row('acme__app', { description: 'Renders <div> & "quotes" in 1 < 2 cases' }),
     ) });
-    expect(html).toContain('<span class="description">🐻 Bear necessities for state management in React</span>');
-    expect(html).toContain('<span class="description">Renders &lt;div&gt; &amp; &quot;quotes&quot; in 1 &lt; 2 cases</span>');
-    const description = /<span class="description">(A cross-platform[^<]*)<\/span>/.exec(html)![1]!;
+    expect(html).toContain('<span class="description" title="🐻 Bear necessities for state management in React">🐻 Bear necessities for state management in React</span>');
+    expect(html).toContain('<span class="description" title="Renders &lt;div&gt; &amp; &quot;quotes&quot; in 1 &lt; 2 cases">Renders &lt;div&gt; &amp; &quot;quotes&quot; in 1 &lt; 2 cases</span>');
+    const description = /<span class="description" title="[^"]*">(A cross-platform[^<]*)<\/span>/.exec(html)![1]!;
     expect(Array.from(description)).toHaveLength(280);
     expect(description.endsWith('…')).toBe(true);
   });

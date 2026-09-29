@@ -76,3 +76,12 @@ A `securitypolicyviolation` listener was installed before each page load. It rec
 
 - **Search:** description and language match only at word starts, so `?q=rip` now shows ripgrep only.
 - **Emoji:** zero-width joiners are kept, so ZWJ emoji such as 🧙‍♀️ render whole.
+
+## Increment 3 (polish), on the local edge
+
+| Check | Result | Screenshot |
+|---|---|---|
+| `/` at 1440 | Cards are the same height across each row, and their commit lines line up. Descriptions are clamped to 3 lines with the full text in `title`. The `excalidraw/excalidraw` and `facebook/docusaurus` thumbnails wrap onto two lines without clipping. All 7 images load. | `inc3-home-1440.png` |
+| `/?q=ex` at 390 | 1 card shown, no horizontal overflow. `line-clamp` is 3. | `inc3-home-390.png` |
+| `/og` edge cache | The second request is `CF-Cache-Status: HIT`. The browser still gets `cache-control: public, max-age=300`. | — |
+| Console | 0 CSP violations. The only entry is the existing Permissions-Policy `tools` warning. | — |

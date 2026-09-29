@@ -177,7 +177,7 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
   }
   if (readOnly && isHomeRequest(url)) return serveHome(request, url, env);
   if (isPublicAtlasRoutePath(pathname)) {
-    const shared = await handleShareRoute(request, env);
+    const shared = await handleShareRoute(request, env, { waitUntil, ...('cache' in deps ? { cache: deps.cache } : {}) });
     if (shared) return shared;
   }
   if (isKnownAppPath(pathname)) return env.ASSETS.fetch(analyticsConditionalRequest(request, env));
