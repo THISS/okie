@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { choice, type ChoiceQuestion, type ChoiceResponse } from "@typesafe-ai/sdk";
-import { createOperatorBudgetLedger, type OperatorBudgetLedger } from "./operatorBudget.js";
+import { clientIpKey, createFixedWindowLimiter } from "./jobs.js";
+import type { OperatorBudgetLedger } from "./operatorBudget.js";
 import type { OperatorUsage } from "./operatorContracts.js";
 import type { OperatorPublicationService } from "./operatorPublication.js";
 import type { OperatorStore } from "./operatorStore.js";
@@ -86,7 +87,7 @@ export interface BlockPlanJob {
   /** Server-derived previews, in the default recipe order. */
   candidates: BlockPlanCandidate[];
 }
-export type BlockPlanUnavailableReason = "disabled" | "no-global-cap" | "no-provider" | "planner-budget" | "global-budget" | "rate-limited" | "busy" | "provider-failure" | "timeout" | "invalid-response" | "invalid-data";
+export type BlockPlanUnavailableReason = "disabled" | "no-planner-ledger" | "no-provider" | "planner-budget" | "rate-limited" | "busy" | "provider-failure" | "timeout" | "invalid-response" | "invalid-data";
 export interface BlockPlanOmission { id: string; why: "jev-omit" | "budget" }
 export type BlockPlanResponse =
   | { state: "planned"; order: string[]; reasons: Record<string, string>; omitted: BlockPlanOmission[]; source: "jev"; cacheKey: string; modelId: string; questionVersion: string; replayed: boolean }
@@ -338,6 +339,13 @@ export const DEFAULT_JEV_PLANNER_PER_IP = 30;
 export const JEV_PLANNER_REQUESTS_PER_IP = 240;
 export const JEV_PLANNER_MAX_IN_FLIGHT = 4;
 export const JEV_PLANNER_IP_WINDOW_MS = 10 * 60 * 1000;
+/**
+ * Planner requests per signed-in account per window: well below the per-IP window, which behind the
+ * loopback proxy is effectively global (the shared spend guard), so one account cannot exhaust it alone.
+ */
+export const JEV_PLANNER_REQUESTS_PER_ACCOUNT = 60;
+/** Keys tracked per planner window map; when full of live windows a new key is refused (fail closed). */
+export const JEV_PLANNER_WINDOW_KEYS = 4_096;
 export interface BlockPlannerConfig { enabled: boolean; maxRequests: number; maxDollars: number; timeoutMs: number; perIp: number }
 function positive(raw: string | undefined, fallback: number): number {
   const value = Number(raw?.trim());
@@ -450,15 +458,12 @@ export interface BlockPlanServiceOptions {
   config: BlockPlannerConfig;
   provider?: JudgmentProvider | undefined;
   source?: BlockPlanPublicationSource | undefined;
-  /** Process-wide operator ledger (OKIE_LLM_GLOBAL_*), reserved before the planner ledger. */
-  globalLedger?: OperatorBudgetLedger | undefined;
   /**
-   * The configured process-wide dollar cap (OKIE_LLM_GLOBAL_MAX_DOLLARS). Required: without it the route
-   * answers `no-global-cap`, so restarting the process (which resets the in-memory planner ledger) can
-   * never lift total spend past an operator-set ceiling.
+   * The planner's own ledger over OKIE_JEV_PLANNER_MAX_* (CLA-304). Required: without it every request
+   * answers `no-planner-ledger`. The server passes a DURABLE ledger (operator store, run id
+   * `jev-block-planner`) so a restart never resets planner spend; it is never the operator global ledger,
+   * so a public caller can never drain operator enrichment budget.
    */
-  globalCapDollars?: number | undefined;
-  /** Test seam; defaults to an in-memory ledger over OKIE_JEV_PLANNER_MAX_*. */
   plannerLedger?: OperatorBudgetLedger | undefined;
   replay?: BlockPlanReplayStore | undefined;
   now?: () => number;
@@ -471,23 +476,26 @@ export interface BlockPlanCallRecord { cacheKey: string; latencyMs: number; usag
 export type BlockPlanHttpResult = { status: number; body: BlockPlanResponse | { error: string } };
 
 /**
- * The planner service. Order of checks, cheapest first: kill switch → configured global cap → per-IP
- * request window (every request) → request validation → current publication (≤1 operator-state read,
- * TTL-cached) → server-derived node facts → memory/durable cache (no Jev call, no budget) → provider →
- * in-flight dedupe and cap → per-IP Jev window → global then planner ledger → one Jev request → strict
- * answer validation → cache.
+ * The planner service. Order of checks, cheapest first: kill switch → planner ledger present → per-IP
+ * (and per-account) request window (every request) → request validation → current publication (≤1
+ * operator-state read, TTL-cached) → server-derived node facts → memory/durable cache (no Jev call, no
+ * budget) → provider → in-flight dedupe and cap → per-IP Jev window → planner ledger → one Jev request →
+ * strict answer validation → cache. Request windows are bounded and fail closed: when full of live
+ * windows a new key is refused (`rate-limited`), never a live window evicted.
  */
 export function createBlockPlanService(options: BlockPlanServiceOptions) {
-  const { config, provider, source, globalLedger, replay } = options;
+  const { config, provider, source, replay } = options;
   const now = options.now ?? (() => Date.now());
   const threshold = options.threshold ?? BLOCK_PLAN_OMIT_THRESHOLD;
   const memoryEntries = options.memoryEntries ?? 256;
   const modelId = provider?.modelId ?? JEV_MODEL;
-  const ledger = options.plannerLedger ?? createOperatorBudgetLedger({ maxRequests: config.maxRequests, maxTokens: Number.MAX_SAFE_INTEGER, maxDollars: config.maxDollars });
+  const ledger = options.plannerLedger;
   const memory = new Map<string, Record<string, ChoiceResponse>>();
   const inFlight = new Map<string, Promise<BlockPlanResponse>>();
-  const requestWindows = new Map<string, { startedAt: number; count: number }>();
-  const jevWindows = new Map<string, { startedAt: number; count: number }>();
+  // Separate bounded maps: junk IP keys can never crowd out account windows (or the reverse).
+  const allowRequestIp = createFixedWindowLimiter({ maxPerWindow: JEV_PLANNER_REQUESTS_PER_IP, windowMs: JEV_PLANNER_IP_WINDOW_MS, now, maxKeys: JEV_PLANNER_WINDOW_KEYS });
+  const allowRequestAccount = createFixedWindowLimiter({ maxPerWindow: JEV_PLANNER_REQUESTS_PER_ACCOUNT, windowMs: JEV_PLANNER_IP_WINDOW_MS, now, maxKeys: JEV_PLANNER_WINDOW_KEYS });
+  const allowJev = createFixedWindowLimiter({ maxPerWindow: config.perIp, windowMs: JEV_PLANNER_IP_WINDOW_MS, now, maxKeys: JEV_PLANNER_WINDOW_KEYS });
   const calls: BlockPlanCallRecord[] = [];
   const fallbacks = new Map<string, number>();
   const unavailable = (reason: BlockPlanUnavailableReason): BlockPlanResponse => {
@@ -498,13 +506,6 @@ export function createBlockPlanService(options: BlockPlanServiceOptions) {
     return { state: "unavailable", reason };
   };
   const remember = (key: string, answers: Record<string, ChoiceResponse>) => { memory.delete(key); memory.set(key, answers); while (memory.size > memoryEntries) memory.delete(memory.keys().next().value!); };
-  const allow = (windows: Map<string, { startedAt: number; count: number }>, ip: string, max: number) => {
-    const at = now(); const current = windows.get(ip);
-    if (!current || at - current.startedAt >= JEV_PLANNER_IP_WINDOW_MS) { windows.set(ip, { startedAt: at, count: 1 }); if (windows.size > 4096) windows.delete(windows.keys().next().value!); return true; }
-    if (current.count >= max) return false;
-    current.count += 1; return true;
-  };
-  const globalCapped = typeof options.globalCapDollars === "number" && Number.isFinite(options.globalCapDollars) && options.globalCapDollars >= 0 && Boolean(globalLedger);
 
   function planned(job: BlockPlanJob, key: string, answers: Record<string, ChoiceResponse>, replayed: boolean): BlockPlanResponse {
     const plan = deriveBlockPlan(job.candidates, answers, job.budget.maxBlocks, threshold);
@@ -515,10 +516,9 @@ export function createBlockPlanService(options: BlockPlanServiceOptions) {
     const questions = blockPlanQuestions(job.candidates);
     const body = redactedJudgmentBody(blockPlanState(job), questions, judgmentSecrets());
     if (!body || Buffer.byteLength(JSON.stringify(body)) > JEV_BODY_BYTES) return unavailable("invalid-data");
-    const globalId = globalLedger?.reserve(JUDGMENT_REQUEST_TOKENS, JUDGMENT_REQUEST_DOLLARS);
-    if (globalLedger && !globalId) return unavailable("global-budget");
-    const reservation = ledger.reserve(JUDGMENT_REQUEST_TOKENS, JUDGMENT_REQUEST_DOLLARS);
-    if (!reservation) { if (globalId) globalLedger!.release(globalId); return unavailable("planner-budget"); }
+    const plannerLedger = ledger!;
+    const reservation = plannerLedger.reserve(JUDGMENT_REQUEST_TOKENS, JUDGMENT_REQUEST_DOLLARS);
+    if (!reservation) return unavailable("planner-budget");
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, config.timeoutMs);
@@ -544,14 +544,14 @@ export function createBlockPlanService(options: BlockPlanServiceOptions) {
       calls.push({ cacheKey: key, latencyMs: now() - started, usage, failed });
       const settled: OperatorUsage = {};
       for (const field of ["inputTokens", "outputTokens", "measuredCostUsd"] as const) { const value = usage[field]; if (typeof value === "number" && Number.isFinite(value) && value >= 0) settled[field] = value; }
-      try { ledger.settle(reservation, settled); } finally { if (globalId) globalLedger!.settle(globalId, settled); }
+      plannerLedger.settle(reservation, settled);
     }
   }
 
   /** Plans a server-built job (the HTTP route builds it from publication facts; the evaluation harness from a fixture). */
   async function planJob(job: BlockPlanJob, ip = "unknown"): Promise<BlockPlanResponse> {
     if (!config.enabled) return unavailable("disabled");
-    if (!globalCapped) return unavailable("no-global-cap");
+    if (!ledger) return unavailable("no-planner-ledger");
     const key = blockPlanCacheKey(job, modelId);
     const hit = memory.get(key);
     if (hit) { remember(key, hit); return planned(job, key, hit, true); }
@@ -567,38 +567,52 @@ export function createBlockPlanService(options: BlockPlanServiceOptions) {
     const pending = inFlight.get(key);
     if (pending) return pending;
     if (inFlight.size >= JEV_PLANNER_MAX_IN_FLIGHT) return unavailable("busy");
-    if (!allow(jevWindows, ip, config.perIp)) return unavailable("rate-limited");
+    if (!allowJev(clientIpKey(ip))) return unavailable("rate-limited");
     const work = ask(job, key).finally(() => inFlight.delete(key));
     inFlight.set(key, work);
     return work;
   }
 
+  /**
+   * The cheap guards, run by the HTTP route before the body is even read: kill switch, planner ledger,
+   * per-account request window (signed-in callers), then the per-IP one. `undefined` = admitted. The
+   * per-IP key is the socket address: behind the loopback dev/hosting proxy that is one address, so the
+   * window is effectively global (as with the scan submit limiter). X-Forwarded-For is never trusted.
+   */
+  function admit(ip: string, account?: string): BlockPlanHttpResult | undefined {
+    if (!config.enabled) return { status: 200, body: unavailable("disabled") };
+    if (!ledger) return { status: 200, body: unavailable("no-planner-ledger") };
+    // Account first: a signed-in caller over its own window never spends the (behind a proxy, shared) IP window.
+    if (account !== undefined && !allowRequestAccount(account)) return { status: 200, body: unavailable("rate-limited") };
+    if (!allowRequestIp(clientIpKey(ip))) return { status: 200, body: unavailable("rate-limited") };
+    return undefined;
+  }
+
+  /** The rest of the HTTP surface, for a request `admit` let through (validation, publication facts, plan). */
+  async function handleAdmitted(body: unknown, ip: string): Promise<BlockPlanHttpResult> {
+    const parsed = parseBlockPlanRequest(body);
+    if ("error" in parsed) return { status: 400, body: { error: parsed.error } };
+    const current = source?.current(parsed.request.scan.slug);
+    if (!current || current.versionId !== parsed.request.scan.versionId) return { status: 404, body: { error: "Not the current publication of a published scan." } };
+    const facts = source!.facts(current.artifactRevisionId, parsed.request.nodeId);
+    if (!facts) return { status: 404, body: { error: "No such node in this published scan version." } };
+    const built = blockPlanJob(parsed.request, facts);
+    if ("error" in built) return { status: 400, body: { error: built.error } };
+    return { status: 200, body: await planJob(built.job, ip) };
+  }
+
   return {
     config,
     planJob,
-    /**
-     * The HTTP surface. Cheap guards (kill switch, global cap, per-IP request window) run before the body
-     * is interpreted or any operator state is read. The per-IP key is the socket address: behind the
-     * loopback dev/hosting proxy that is one address, so the window is effectively global (as with the
-     * scan submit limiter). X-Forwarded-For is never trusted.
-     */
+    admit,
+    handleAdmitted,
+    /** `admit` + `handleAdmitted` in one call (tests and in-process callers). */
     async handle(body: unknown, ip: string): Promise<BlockPlanHttpResult> {
-      if (!config.enabled) return { status: 200, body: unavailable("disabled") };
-      if (!globalCapped) return { status: 200, body: unavailable("no-global-cap") };
-      if (!allow(requestWindows, ip, JEV_PLANNER_REQUESTS_PER_IP)) return { status: 200, body: unavailable("rate-limited") };
-      const parsed = parseBlockPlanRequest(body);
-      if ("error" in parsed) return { status: 400, body: { error: parsed.error } };
-      const current = source?.current(parsed.request.scan.slug);
-      if (!current || current.versionId !== parsed.request.scan.versionId) return { status: 404, body: { error: "Not the current publication of a published scan." } };
-      const facts = source!.facts(current.artifactRevisionId, parsed.request.nodeId);
-      if (!facts) return { status: 404, body: { error: "No such node in this published scan version." } };
-      const built = blockPlanJob(parsed.request, facts);
-      if ("error" in built) return { status: 400, body: { error: built.error } };
-      return { status: 200, body: await planJob(built.job, ip) };
+      return admit(ip) ?? await handleAdmitted(body, ip);
     },
     calls: (): readonly BlockPlanCallRecord[] => calls,
     fallbacks: (): Readonly<Record<string, number>> => Object.fromEntries(fallbacks),
-    ledger: () => ledger.snapshot(),
+    ledger: () => ledger?.snapshot(),
   };
 }
 export type BlockPlanService = ReturnType<typeof createBlockPlanService>;

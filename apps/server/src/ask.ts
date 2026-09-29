@@ -16,6 +16,23 @@ import {
   type AskSection,
 } from "./askRetrieval.js";
 
+/** Whole-atlas evidence retrieved elsewhere (the server's Ask retrieval worker): no index on this thread. */
+export interface AskRemoteEvidence {
+  sections: AskSection[];
+  bytes: number;
+  containerNames: readonly string[];
+  entityCount: number;
+  /** Index details for the sections' symbols and the selected ids (what `askCitationDetails` reads from an index). */
+  citationDetails: readonly AskCitationDetail[];
+}
+
+export interface AskRetrieveInput {
+  question: string;
+  selectedIds: string[];
+  byteBudget: number;
+  systemNames?: readonly string[];
+}
+
 /**
  * Ask Atlas Q&A (CLA-27 + CLA-69 + CLA-265): one-shot answers grounded in a
  * whole-atlas retrieval over the published snapshot (names, paths, symbols,
@@ -228,7 +245,16 @@ export function sanitizeAskRelations(raw: unknown, scopeIds: ReadonlySet<string>
 export async function answerAskQuestion(
   config: LlmGatewayConfig,
   body: unknown,
-  options: { gateway?: AskGateway; timeoutMs?: number; corpus?: AskCorpus; byteBudget?: number; systemNames?: readonly string[] } = {},
+  options: {
+    gateway?: AskGateway;
+    timeoutMs?: number;
+    /** In-process corpus (offline tools and tests). */
+    corpus?: AskCorpus;
+    /** Out-of-process retrieval (the server's worker); `undefined` = no matching corpus, a rejection = retrieval failed. */
+    retrieve?: (input: AskRetrieveInput) => Promise<AskRemoteEvidence | undefined>;
+    byteBudget?: number;
+    systemNames?: readonly string[];
+  } = {},
 ): Promise<AskAnswer> {
   if (!askGatewayConnected(config)) return { connected: false };
 
@@ -246,7 +272,8 @@ export async function answerAskQuestion(
 
   const packets = sanitizeAskPackets(record.packets);
   const index = options.corpus?.index;
-  if (packets.length === 0 && !index) {
+  const remote = !index ? options.retrieve : undefined;
+  if (packets.length === 0 && !index && !remote) {
     return { connected: true, error: "Ask needs a selected or isolated scope." };
   }
   const packetIds = new Set(packets.map(packet => packet.id));
@@ -256,21 +283,30 @@ export async function answerAskQuestion(
     return { connected: true, error: "Ask is connected but the model id is empty." };
   }
 
-  let retrieval: ReturnType<typeof retrieveAskSections> | undefined;
-  let searched = Boolean(index);
+  const query: AskRetrieveInput = { question, selectedIds: [...packetIds], byteBudget: options.byteBudget ?? DEFAULT_ASK_BYTE_BUDGET, ...(options.systemNames ? { systemNames: options.systemNames } : {}) };
+  let found: { sections: AskSection[]; bytes: number; containerNames: readonly string[]; entityCount: number; detail: (id: string) => AskCitationDetail | undefined } | undefined;
   try {
-    retrieval = index ? retrieveAskSections(index, question, { selectedIds: [...packetIds], byteBudget: options.byteBudget ?? DEFAULT_ASK_BYTE_BUDGET, ...(options.systemNames ? { systemNames: options.systemNames } : {}) }) : undefined;
+    if (index) {
+      const retrieval = retrieveAskSections(index, question, query);
+      found = { sections: retrieval.sections, bytes: retrieval.bytes, containerNames: index.containerNames, entityCount: index.documents.length, detail: id => askCitationDetail(index, id) };
+    } else if (remote) {
+      const evidence = await remote(query);
+      if (evidence) {
+        const details = new Map(evidence.citationDetails.map(detail => [detail.id, detail]));
+        found = { sections: evidence.sections, bytes: evidence.bytes, containerNames: evidence.containerNames, entityCount: evidence.entityCount, detail: id => details.get(id) };
+      }
+    }
   } catch {
     // Retrieval must never fail the request: fall back to the selected-scope packets.
-    retrieval = undefined;
-    searched = false;
+    found = undefined;
   }
+  const searched = Boolean(found);
   if (!searched && packets.length === 0) {
     return { connected: true, error: "Ask needs a selected or isolated scope." };
   }
-  const sections = retrieval?.sections ?? [];
-  const evidence: AskEvidence = index && searched
-    ? { mode: "atlas", sections, searchedScopes: index.containerNames, entityCount: index.documents.length }
+  const sections = found?.sections ?? [];
+  const evidence: AskEvidence = found
+    ? { mode: "atlas", sections, searchedScopes: found.containerNames, entityCount: found.entityCount }
     : { mode: "scope-only", sections: [] };
   const allowedIds = askAllowedCitationIds(packets, sections);
   const summary: AskRetrievalSummary = {
@@ -279,7 +315,7 @@ export async function answerAskQuestion(
     selectedScopeIds: packets.map(packet => packet.id),
     retrievedScopeIds: [...new Set(sections.flatMap(section => [section.id, ...(section.symbols ?? []).map(symbol => symbol.id)]))],
     sectionCount: sections.length,
-    bytes: retrieval?.bytes ?? 0,
+    bytes: found?.bytes ?? 0,
   };
 
   try {
@@ -296,7 +332,7 @@ export async function answerAskQuestion(
       answer: parsed.answer,
       citations: parsed.citations,
       scopeIds: allowedIds,
-      citationDetails: askCitationDetails(parsed.citations, sections, packets, index),
+      citationDetails: askCitationDetails(parsed.citations, sections, packets, found?.detail),
       retrieval: summary,
     };
   } catch (error: unknown) {
@@ -353,12 +389,12 @@ function pathNamed(text: string, path: string): boolean {
   return false;
 }
 
-/** Name/kind/path/lines for each cited id: from the retrieved section, else the index, else the packet. */
+/** Name/kind/path/lines for each cited id: from the retrieved section, else the index (or the worker's index details), else the packet. */
 export function askCitationDetails(
   citations: readonly string[],
   sections: readonly AskSection[],
   packets: readonly AskPacket[],
-  index?: AskIndex,
+  index?: AskIndex | ((id: string) => AskCitationDetail | undefined),
 ): AskCitationDetail[] {
   const bySection = new Map(sections.map(section => [section.id, section]));
   const byPacket = new Map(packets.map(packet => [packet.id, packet]));
@@ -376,7 +412,7 @@ export function askCitationDetails(
       });
       continue;
     }
-    const indexed = askCitationDetail(index, id);
+    const indexed = typeof index === "function" ? index(id) : askCitationDetail(index, id);
     if (indexed) { details.push(indexed); continue; }
     const packet = byPacket.get(id);
     if (packet) details.push({ id, name: packet.name, kind: packet.kind, ...(packet.source ? { path: packet.source } : {}) });

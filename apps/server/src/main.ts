@@ -105,15 +105,20 @@ const operatorEnqueue = (input: OperatorWorkflowJob): void => {
 // are off unless configured; the operator "Update to latest commit" route is always available to operators.
 const incrementalAutomation = createIncrementalAutomation({ config: resolveIncrementalTriggerConfig(process.env), store: operatorStore, publications: operatorPublication, enqueue: operatorEnqueue });
 
-// CLA-149 Jev block planner: off unless OKIE_JEV_BLOCK_PLANNER=on, and refused unless OKIE_LLM_GLOBAL_MAX_DOLLARS
-// is set; every Jev request is admitted through the same durable global ledger first.
+// CLA-149 Jev block planner: off unless OKIE_JEV_BLOCK_PLANNER=on. CLA-304: signed-in callers only, and every Jev
+// request is admitted by the planner's OWN durable ledger (OKIE_JEV_PLANNER_MAX_*, run id `jev-block-planner` in the
+// operator store, so a restart never resets it). It never touches the operator global ledger: a public caller cannot
+// drain operator enrichment budget.
 const blockPlannerConfig = resolveBlockPlannerConfig();
 const blockPlans = createBlockPlanService({
   config: blockPlannerConfig,
   provider: blockPlannerConfig.enabled ? createJevProvider() : undefined,
   source: publicationBlockPlanSource(operatorPublication, operatorStore),
-  globalLedger: operatorGlobalBudget,
-  globalCapDollars: globalSpend.cap.maxDollars,
+  plannerLedger: createOperatorBudgetLedger({
+    maxRequests: blockPlannerConfig.maxRequests,
+    maxTokens: Number.MAX_SAFE_INTEGER,
+    maxDollars: blockPlannerConfig.maxDollars,
+  }, { store: operatorStore, runId: "jev-block-planner" }),
   replay: createBlockPlanReplayStore(join(scanRoot, "block-plans")),
   log,
 });

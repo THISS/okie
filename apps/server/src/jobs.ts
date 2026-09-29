@@ -1,3 +1,4 @@
+import { isIPv6 } from "node:net";
 import { scrubProviderIdentifiers } from "@okie/scan";
 import type { ScanGithubAccess } from "./githubAccess.js";
 
@@ -200,6 +201,10 @@ export function toPublicJob(
 /**
  * Fixed-window per-key limiter for the submit endpoint — enough to keep one
  * misbehaving client from monopolizing the single scan worker; not a DDoS story.
+ * Bounded and fail-closed (CLA-304): when `maxKeys` windows are tracked, expired
+ * windows are swept; if every tracked window is still live, a NEW key is refused
+ * (a live window is never evicted, so flooding fresh keys cannot reset anyone's
+ * count). Known keys keep working.
  */
 export function createSubmitLimiter(
   maxPerWindow = 5,
@@ -207,22 +212,52 @@ export function createSubmitLimiter(
   now: () => number = () => Date.now(),
   maxKeys = 10_000,
 ): (key: string) => boolean {
-  // Bounded: expired windows are swept when the map is full, then the oldest window is dropped.
+  return createFixedWindowLimiter({ maxPerWindow, windowMs, now, maxKeys });
+}
+
+/** The fail-closed fixed-window limiter behind `createSubmitLimiter` (also the block planner's per-IP windows). */
+export function createFixedWindowLimiter(options: { maxPerWindow: number; windowMs: number; now?: () => number; maxKeys: number }): (key: string) => boolean {
+  const now = options.now ?? (() => Date.now());
   const windows = new Map<string, { startedAt: number; count: number }>();
   return key => {
+    const max = options.maxPerWindow;
     const current = windows.get(key);
     const at = now();
-    if (!current || at - current.startedAt >= windowMs) {
-      windows.delete(key);
-      if (windows.size >= maxKeys) {
-        for (const [other, window] of windows) if (at - window.startedAt >= windowMs) windows.delete(other);
-        while (windows.size >= maxKeys) windows.delete(windows.keys().next().value!);
-      }
-      windows.set(key, { startedAt: at, count: 1 });
+    if (current && at - current.startedAt < options.windowMs) {
+      if (current.count >= max) return false;
+      current.count += 1;
       return true;
     }
-    if (current.count >= maxPerWindow) return false;
-    current.count += 1;
+    if (current) windows.delete(key);
+    if (windows.size >= options.maxKeys) {
+      for (const [other, window] of windows) if (at - window.startedAt >= options.windowMs) windows.delete(other);
+      if (windows.size >= options.maxKeys) return false;
+    }
+    windows.set(key, { startedAt: at, count: 1 });
     return true;
   };
+}
+
+/**
+ * Rate-limit key for a socket address (CLA-304): an IPv4-mapped IPv6 address is its IPv4 address, and
+ * IPv6 addresses are grouped by /64 (one host usually owns a whole /64, so per-address keys would let it
+ * fill a limiter with junk keys). Anything else is returned as is.
+ */
+export function clientIpKey(address: string): string {
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(address);
+  if (mapped) return mapped[1]!;
+  if (isIPv6(address)) {
+    const [head = "", tail = ""] = address.toLowerCase().split("::");
+    const left = head ? head.split(":") : [];
+    const right = address.includes("::") ? (tail ? tail.split(":") : []) : [];
+    const groups = address.includes("::") ? [...left, ...Array<string>(8 - left.length - right.length).fill("0"), ...right] : left;
+    return `${groups.slice(0, 4).map(group => (Number.parseInt(group, 16) || 0).toString(16)).join(":")}::/64`;
+  }
+  return address;
+}
+
+/** Loopback socket addresses (127.0.0.0/8, ::1, ::ffff:127.*): the local dev/hosting proxy. */
+export function isLoopbackAddress(address: string): boolean {
+  const v4 = clientIpKey(address);
+  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(v4) || address === "::1" || /^0{0,4}(:0{0,4}){6}:0{0,3}1$/.test(address);
 }

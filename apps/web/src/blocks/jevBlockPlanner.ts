@@ -29,7 +29,7 @@ export interface JevBlockPlanner extends BlockPlanner {
   status(input: BlockPlanInput): JevPlanStatus;
 }
 
-/** Reasons worth asking again later this session; everything else (disabled, no-global-cap, invalid-*, budget, 4xx) is final. */
+/** Reasons worth asking again later this session; everything else (disabled, no-planner-ledger, invalid-*, budget, 4xx) is final. */
 const TRANSIENT = new Set(['busy', 'rate-limited', 'timeout', 'provider-failure', 'network', 'http 5xx']);
 /** At most 2 retries per key per session, after 2 s and then 8 s. */
 export const JEV_PLAN_RETRY_DELAYS_MS = [2_000, 8_000] as const;

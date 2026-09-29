@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createScanJobQueue, createSubmitLimiter, toPublicJob, type ScanJob } from "./jobs.js";
+import { clientIpKey, createScanJobQueue, createSubmitLimiter, isLoopbackAddress, toPublicJob, type ScanJob } from "./jobs.js";
 
 const request = (slug = "o__r", ref?: string) => ({
   owner: "o",
@@ -148,19 +148,33 @@ test("submit limiter allows a burst then blocks until the window rolls", () => {
   assert.equal(allow("ip"), true);
 });
 
-test("submit limiter keeps at most maxKeys windows, sweeping expired ones first", () => {
+test("submit limiter keeps at most maxKeys windows and fails closed: a new key is refused, a live window is never evicted (CLA-304)", () => {
   let at = 0;
-  const allow = createSubmitLimiter(1, 1_000, () => at, 2);
-  assert.equal(allow("a"), true);
-  assert.equal(allow("b"), true);
-  assert.equal(allow("a"), false);
-  // A third key evicts the oldest window (a), so the map never grows past two entries.
-  assert.equal(allow("c"), true);
-  assert.equal(allow("a"), true);
-  assert.equal(allow("c"), false);
-  at = 1_500;
-  // Expired windows are swept before anything live is dropped: c and a restart fresh.
-  assert.equal(allow("d"), true);
-  assert.equal(allow("e"), true);
-  assert.equal(allow("d"), false);
+  const allow = createSubmitLimiter(3, 1_000, () => at, 100);
+  for (let key = 0; key < 100; key += 1) assert.equal(allow(`k${key}`), true);
+  // Full of live windows: a flood of fresh keys is refused and cannot reset anyone.
+  for (let key = 100; key < 200; key += 1) assert.equal(allow(`k${key}`), false);
+  // Existing keys keep their own counts (k0 has used 1 of 3).
+  assert.equal(allow("k0"), true);
+  assert.equal(allow("k0"), true);
+  assert.equal(allow("k0"), false);
+  assert.equal(allow("k1"), true);
+  at = 500;
+  assert.equal(allow("fresh"), false, "still full at t=500");
+  at = 1_000;
+  // Expired windows are swept first; then new keys are admitted again, and a known key restarts its window.
+  assert.equal(allow("fresh"), true);
+  assert.equal(allow("fresh"), true);
+  assert.equal(allow("k0"), true);
+});
+
+test("client IP keys: IPv4-mapped IPv6 is its IPv4 address, IPv6 groups by /64; loopback is recognised (CLA-304)", () => {
+  assert.equal(clientIpKey("203.0.113.7"), "203.0.113.7");
+  assert.equal(clientIpKey("::ffff:203.0.113.7"), "203.0.113.7");
+  assert.equal(clientIpKey("2001:db8:1:2:3:4:5:6"), "2001:db8:1:2::/64");
+  assert.equal(clientIpKey("2001:DB8:1:2::ffff"), "2001:db8:1:2::/64");
+  assert.equal(clientIpKey("2001:db8::1"), "2001:db8:0:0::/64");
+  assert.equal(clientIpKey("unknown"), "unknown");
+  for (const address of ["127.0.0.1", "127.255.0.9", "::1", "::ffff:127.0.0.1", "0:0:0:0:0:0:0:1"]) assert.equal(isLoopbackAddress(address), true, address);
+  for (const address of ["128.0.0.1", "10.0.0.1", "::2", "::ffff:10.0.0.1", "2001:db8::1", "unknown"]) assert.equal(isLoopbackAddress(address), false, address);
 });

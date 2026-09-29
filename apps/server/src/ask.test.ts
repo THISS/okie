@@ -12,6 +12,7 @@ import {
   MAX_ASK_PACKETS,
   answerAskQuestion,
   askChatCompletionsBody,
+  type AskRetrieveInput,
   askGatewayConnected,
   askUserMessage,
   parseAskCompletion,
@@ -20,7 +21,8 @@ import {
 } from "./ask.js";
 import { createAskThreadStore } from "./askThreads.js";
 import { buildAskEvalIndex, legacyAskContext, loadAskEvalFixture } from "./askEval.js";
-import { buildAskIndex, type AskCorpus } from "./askRetrieval.js";
+import { buildAskIndex, createAskIndexCache, type AskCorpus } from "./askRetrieval.js";
+import { handleAskWorkerRequest, type AskRetrievalWorker } from "./askWorker.js";
 import { createGithubAuthService, SESSION_COOKIE, TEST_LOGIN_PATH } from "./githubOAuth.js";
 import { createScanJobQueue, createSubmitLimiter } from "./jobs.js";
 import { createLlmGatewayClient, resolveLlmGatewayConfig } from "./llmGateway.js";
@@ -652,6 +654,33 @@ test("whole-atlas Ask from the L1 selection sends createRenderer.ts and WasmRend
   assert.doesNotMatch(JSON.stringify(body), new RegExp(FAKE_GATEWAY_KEY));
 });
 
+test("CLA-304: the worker retrieval path gives the same evidence, answer and citation details as the in-process corpus", async () => {
+  const fixture = loadAskEvalFixture();
+  const corpus: AskCorpus = { index: buildAskEvalIndex(fixture), source: "scan" };
+  const { packets: l1Packets, relations } = legacyAskContext(fixture.snapshot, "system:okie");
+  const dir = mkdtempSync(join(tmpdir(), "okie-ask-remote-"));
+  try {
+    const snapshotPath = join(dir, "snapshot.json");
+    writeFileSync(snapshotPath, JSON.stringify(fixture.snapshot));
+    const cache = createAskIndexCache();
+    // The worker's own handler, in-process: the evidence crosses a structured clone exactly as it would from the thread.
+    const retrieve = async (input: AskRetrieveInput) => structuredClone(handleAskWorkerRequest(cache, { id: 1, commitSha: fixture.snapshot.commitSha, candidates: [{ key: "k", source: "scan", snapshotPath }], buildKeys: ["k"], ...input }).evidence);
+    const citations = ["component:apps-web-src-renderer-create-renderer-ts", "code:apps-web-src-renderer-create-renderer-ts:create-renderer", "system:okie"];
+    const question = { question: "How does Oki choose what renderer to use?", packets: l1Packets, relations };
+    const local: Record<string, unknown>[] = []; const remote: Record<string, unknown>[] = [];
+    const inProcess = await answerAskQuestion(liveConfig(), question, { corpus, gateway: atlasGateway(local, citations), systemNames: ["okie"] });
+    const viaWorker = await answerAskQuestion(liveConfig(), question, { retrieve, gateway: atlasGateway(remote, citations), systemNames: ["okie"] });
+    assert.deepEqual(viaWorker, inProcess);
+    assert.deepEqual(remote, local, "identical gateway request bodies");
+    if (!viaWorker.connected || !("answer" in viaWorker)) throw new Error("expected an answer");
+    assert.equal(viaWorker.citationDetails.find(detail => detail.id === "code:apps-web-src-renderer-create-renderer-ts:create-renderer")?.path, "apps/web/src/renderer/createRenderer.ts", "a folded symbol's details come from the worker's index details");
+    // A worker failure degrades like any retrieval failure; no matching snapshot is scope-only too.
+    const failed = await answerAskQuestion(liveConfig(), question, { retrieve: () => Promise.reject(new Error("timed out")), gateway: atlasGateway([], ["system:okie"]) });
+    assert.equal(failed.connected && "retrieval" in failed ? failed.retrieval.mode : "", "scope-only");
+    assert.deepEqual(await answerAskQuestion(liveConfig(), { question: "renderer?", packets: [] }, { retrieve: async () => undefined, gateway: atlasGateway([], []) }), { connected: true, error: "Ask needs a selected or isolated scope." });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("the model is told to say 'not in the evidence' only when the whole-atlas search found nothing", async () => {
   assert.match(ASK_SYSTEM_PROMPT, /"not in the evidence" ONLY when search\.sectionCount is 0/);
   assert.match(ASK_SYSTEM_PROMPT, /WHOLE atlas/);
@@ -760,8 +789,14 @@ test("POST /api/ask checks the gateway, question and rate limit before touching 
     response.writeHead(200, { "content-type": "application/json" });
     response.end(completion(JSON.stringify({ answer: "Scope answer.", citations: ["container:web-app"] })));
   });
-  let resolves = 0;
-  const broken: AskCorpus = { index: { ...buildAskIndex(SMALL_SNAPSHOT), postings: undefined as never }, source: "scan" };
+  let locates = 0;
+  let runs = 0;
+  // The worker's retrieval fails (as a corrupt index or a timed-out worker would): Ask degrades to scope-only.
+  const broken: AskRetrievalWorker = {
+    admit: () => ({ run: () => { runs += 1; return Promise.reject(new Error("broken index")); }, release: () => undefined }),
+    stats: () => ({ indexBuilds: 0, spawns: 0, timeouts: 0, crashes: 0, pending: 0, warmKeys: [], failedKeys: [] }),
+    close: async () => undefined,
+  };
   const start = (llm: ReturnType<typeof resolveLlmGatewayConfig>, allowAsk?: (key: string) => boolean) => {
     const auth = createGithubAuthService({ bind: "127.0.0.1", env: { OKIE_GITHUB_TEST_DOUBLE: "1", OKIE_PUBLIC_ORIGIN: "http://localhost:4173" } });
     return createScanHttpHandler({
@@ -773,7 +808,8 @@ test("POST /api/ask checks the gateway, question and rate limit before touching 
       enrich: "off",
       bind: "127.0.0.1",
       threads: createAskThreadStore(),
-      askCorpus: { resolve: () => { resolves += 1; return broken; }, stats: () => ({ indexBuilds: 0 }) },
+      askCorpus: { locate: () => { locates += 1; return [{ key: "file:broken", source: "scan", snapshotPath: "/nonexistent/snapshot.json", size: 1 }]; } },
+      askRetrieval: broken,
       ...(allowAsk ? { allowAsk } : {}),
     });
   };
@@ -790,21 +826,24 @@ test("POST /api/ask checks the gateway, question and rate limit before touching 
   };
   const connected = resolveLlmGatewayConfig({ OPENAI_BASE_URL: fake.baseUrl, OPENROUTER_API_KEY: FAKE_GATEWAY_KEY, OPENROUTER_MODEL: "acme/fast" });
   const disconnected = await serve(start(resolveLlmGatewayConfig({})));
-  let allowed = 2;
+  // CLA-304: the account window is checked before the body is read, so the blank question below spends quota too.
+  let allowed = 3;
   const live = await serve(start(connected, () => allowed-- > 0));
   try {
     assert.deepEqual(await (await disconnected.ask("How is the renderer created?")).json(), { connected: false });
     assert.deepEqual(await (await live.ask("   ")).json(), { connected: true, error: "Ask needs a question." });
-    assert.equal(resolves, 0, "no corpus work for unanswerable requests");
+    assert.equal(locates, 0, "no corpus work for unanswerable requests");
     const fellBack = await (await live.ask("How is the renderer created?")).json() as { retrieval: { mode: string; searchedWholeAtlas: boolean }; citations: string[] };
-    assert.equal(resolves, 1);
+    assert.equal(locates, 1);
+    assert.equal(runs, 1);
     assert.equal(fellBack.retrieval.mode, "scope-only");
     assert.equal(fellBack.retrieval.searchedWholeAtlas, false);
     assert.deepEqual(fellBack.citations, ["container:web-app"]);
     assert.equal((await live.ask("Again?")).status, 200);
     const limited = await live.ask("And again?");
     assert.equal(limited.status, 429);
-    assert.equal(resolves, 2, "a rate-limited request never resolves the corpus");
+    assert.equal(locates, 2, "a rate-limited request never locates the corpus");
+    assert.equal(runs, 2);
   } finally {
     await disconnected.close();
     await live.close();

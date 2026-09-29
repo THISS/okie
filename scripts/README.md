@@ -42,6 +42,8 @@ Outputs are gitignored and rebuilt on demand — never hand-edit them.
   carried scope counts, requests, cost, scan ms, enrichment ms, per-level spans (leaf/container/system), the enrichment
   critical path (first leaf start → last system end), total ms and reuse ratio. Dry-run (fake gateway, no spend) is the default; only `--live`
   is paid.
+- **`ask-dos-bench.mjs`**: CLA-304 Ask worst-case-query benchmark (local only: synthetic snapshot, stub gateway, no LLM spend; build `@okie/server` first). Results: `docs/qa/security/ask-dos.md`.
+  `node scripts/ask-dos-bench.mjs --server <build root> [--vocab 120000] [--target-mb 55] [--runs 3] [--warm 6] [--burst 12] [--json --out <file>]`
 - **`cross-repo-eval.mjs`**: CLA-289 cross-repo evaluation over the pinned corpus in
   `fixtures/cross-repo-eval/manifest.json` (build `@okie/server` first).
   `node scripts/cross-repo-eval.mjs <fetch|scan|enrich|claims|ask|blocks|report|all> [--repos a,b] [--work <dir outside the repo>]`.

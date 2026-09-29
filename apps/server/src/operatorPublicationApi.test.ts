@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import type { IncomingMessage } from "node:http";
 import type { GithubAuthService, GithubSession } from "./githubOAuth.js";
+import { createAskCorpusSource } from "./askRetrieval.js";
 import { handleOperatorApi } from "./operatorApi.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
 import { OperatorStore } from "./operatorStore.js";
@@ -75,5 +76,31 @@ test("operator publish rejects incomplete, malformed, and source-mismatched arti
       assert.equal(store.snapshot().publications.length, 0, invalid.name);
       assert.equal(publications.currentPublication(draft.repositoryId), undefined, invalid.name);
     }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("CLA-304: Ask locates a real current publication from one operator-state read, only for its recorded commit", async () => {
+  const root = mkdtempSync(join(tmpdir(), "okie-operator-publication-ask-"));
+  try {
+    // Ask only accepts the owner__repo slug, so publish under that slug.
+    const store = new OperatorStore(root);
+    const publications = new OperatorPublicationService(store);
+    const run = store.createRun({ idempotencyKey: "ask-locate", source: { repositoryId: "repo:acme/demo", owner: "acme", repo: "demo", slug: "acme__demo", commitSha: commit } }).run;
+    const artifact = store.writeArtifactRevision({ repositoryId: "repo:acme/demo", sourceCommitSha: commit, files: completeFiles() });
+    const draft = store.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId });
+    assert.equal((await publish(store, publications, draft.draftRevisionId))?.status, 200);
+    const current = publications.currentWithArtifactForSlug("acme__demo");
+    assert.equal(current?.publication.artifactRevisionId, artifact.artifactRevisionId);
+    assert.equal(current?.artifact?.sourceCommitSha, commit);
+    assert.deepEqual(current?.publication, publications.currentForSlug("acme__demo"));
+    assert.equal(publications.currentWithArtifactForSlug("nobody"), undefined);
+    let reads = 0;
+    const snapshot = store.snapshot.bind(store);
+    store.snapshot = () => { reads += 1; return snapshot(); };
+    const source = createAskCorpusSource({ scanRoot: root, publications, store });
+    const [located] = source.locate({ slug: "acme__demo", owner: "acme", repo: "demo", commitSha: commit });
+    assert.equal(located?.key, `artifact:${artifact.artifactRevisionId}`);
+    assert.equal(reads, 1);
+    assert.deepEqual(source.locate({ slug: "acme__demo", owner: "acme", repo: "demo", commitSha: "c".repeat(40) }), [], "another commit is never located");
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

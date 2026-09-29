@@ -53,7 +53,7 @@ describe('Jev block planner client', () => {
     expect(composed.blocks.map(block => block.id)).toEqual(defaultBlockPlanner.plan(inputFor())!.order);
   });
 
-  it.each([['disabled', 200], ['no-global-cap', 200], ['invalid-response', 200], ['planner-budget', 200], ['bad request', 400], ['not found', 404]])('caches the terminal answer %s (%i) for the session', async (reason, status) => {
+  it.each([['disabled', 200], ['no-planner-ledger', 200], ['invalid-response', 200], ['planner-budget', 200], ['bad request', 400], ['not found', 404]])('caches the terminal answer %s (%i) for the session', async (reason, status) => {
     let clock = 0;
     const fetchImpl = status === 200 ? unavailable(reason) : vi.fn(async () => Response.json({ error: reason }, { status }));
     const planner = createJevBlockPlanner({ scan: () => SCAN, fetchImpl, now: () => clock });
