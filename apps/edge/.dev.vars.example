@@ -14,3 +14,8 @@ DEV_BACKEND_ORIGIN=http://127.0.0.1:4195
 # "1" exposes GET /__store/<key> (public AND private objects) so a local apps/server can mirror the
 # local R2 bucket from http://127.0.0.1:4196/__store. Anything else keeps the route a 404.
 DEV_STORE_ROUTE=1
+
+# Cloudflare Web Analytics beacon on every HTML page (production sets the real site token in
+# wrangler.jsonc). A fake 16-64 character alphanumeric token shows the injected <script> locally; the
+# beacon then fails to report, which is expected.
+# WEB_ANALYTICS_TOKEN=0123456789abcdef0123456789abcdef

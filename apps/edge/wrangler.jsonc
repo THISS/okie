@@ -8,6 +8,11 @@
 // in .dev.vars to try it. Secrets (OKIE_LLM_API_KEY, JEV_API, TURNSTILE_SECRET_KEY) are set with
 // `wrangler secret put --env <env>`; DEV_BACKEND_ORIGIN / DEV_STORE_ROUTE only ever come from a local
 // .dev.vars and must never appear here (asserted in test/config.test.ts).
+// Cloudflare Web Analytics (CLA-318): WEB_ANALYTICS_TOKEN (the dashboard's site token; public, it ships
+// in page HTML) turns on the beacon in every HTML page the Worker serves (src/analytics.ts). Production
+// only: add `"WEB_ANALYTICS_TOKEN": "<token>"` to env.production.vars and redeploy. Unset (as now), blank
+// or not /^[A-Za-z0-9]{16,64}$/ = no analytics. Staging and local dev stay without.
+// Use Web Analytics' manual JS-snippet install and keep its automatic injection off (else double counts).
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "sourcefor-atlas",
@@ -102,6 +107,7 @@
       ],
       "vars": {
         "OKIE_PUBLIC_ORIGIN": "https://sourcefor.dev",
+        // Cloudflare Web Analytics: add "WEB_ANALYTICS_TOKEN" here once the site token is known (see top).
         // Browse-only launch: Ask and block-plan are off (and there is no container to serve them).
         "ASK_ENABLED": "0",
         // Placeholder caps pending Brenton's numbers (dormant while ASK_ENABLED is "0").

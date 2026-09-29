@@ -70,15 +70,29 @@ print a one-line note if they found one.
    `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` everywhere, and a
    `Content-Security-Policy` on HTML only. Pages under `/r/...` have no `frame-ancestors`, because oEmbed iframes them
    with `?embed=1` and `*` would still block file:, data:, blob: and sandboxed parents. Every other page has
-   `frame-ancestors 'self'`. There is no `X-Frame-Options`. The CSP already allows Cloudflare Web Analytics
-   (`static.cloudflareinsights.com` script, `cloudflareinsights.com` beacon). `vite preview` mirrors the headers;
+   `frame-ancestors 'self'`. There is no `X-Frame-Options`. Only when `WEB_ANALYTICS_TOKEN` is set (step 8) does the
+   CSP also allow Cloudflare Web Analytics (`static.cloudflareinsights.com` script, `cloudflareinsights.com`
+   reports); without it, no `cloudflareinsights` source appears. `vite preview` mirrors the headers (without analytics);
    `vite dev` never gets the CSP, because Vite's HMR uses inline scripts.
    `/sitemap.xml` lists `/`, `/new` and every published atlas's canonical `/r/<slug owner>/<slug repo>` on
    `OKIE_PUBLIC_ORIGIN`, with `lastmod` from `publishedAt`. It is served with `cache-control: public, max-age=300`.
    The Worker builds it from `index.json`, which each Worker isolate reads from R2 at most once a minute (the same
    cache serves the `/r` titles). A new publish can therefore take about a minute to appear in the sitemap, and up to
    5 more minutes in shared caches. Production's `robots.txt` points to it.
-8. **First-deploy lessons (fresh account):**
+8. **Web Analytics (production only):** Cloudflare Web Analytics is cookieless, so there is no consent banner and no
+   other tracker. In the dashboard (Analytics & Logs → Web Analytics → Add a site → `sourcefor.dev`), choose the
+   **manual JS snippet install** and leave **automatic setup / JS snippet injection off** for the zone: the Worker
+   injects the snippet itself, and Cloudflare's automatic injection on top would count every page view twice. Copy
+   the site token from the snippet's `data-cf-beacon` (it is public; it ships in every page). Add
+   `"WEB_ANALYTICS_TOKEN": "<token>"` to `env.production.vars` in `apps/edge/wrangler.jsonc`, then run `pnpm build`
+   and `deploy:production`. The Worker then adds the beacon just before `</body>` of every HTML page it serves: the
+   SPA shell, `/new`, `/r/...` (oEmbed embeds included; `WEB_ANALYTICS_IN_EMBEDS` in `apps/edge/src/analytics.ts`
+   turns that off) and the 404 pages. JSON, PNG, assets and the sitemap are never touched. A token that is not 16-64
+   letters or digits is ignored (no beacon, and no `cloudflareinsights` in the CSP). Injected pages carry no ETag or
+   Last-Modified, and the Worker drops conditional headers on the shell, so the shell (`max-age=0,
+   must-revalidate`) is refetched in full rather than 304'd to a copy without the beacon. Staging and local dev stay unset. The web build (and the portable
+   viewer) never contain the beacon. To turn analytics off, remove the var and redeploy.
+9. **First-deploy lessons (fresh account):**
    - Error **10063**: the account has no workers.dev subdomain yet. Open Workers & Pages in the dashboard once to
      create it, then deploy again.
    - Error **100117**: a custom-domain hostname already has DNS records. Delete them in the dashboard (DNS → Records)
@@ -159,6 +173,11 @@ Then run the smoke checks against staging:
   shows no `Refused to …` CSP errors.
 - `curl -s <origin>/sitemap.xml` lists `/`, `/new` and each published atlas (`content-type: application/xml`).
   Production's `/robots.txt` ends with `Sitemap: https://sourcefor.dev/sitemap.xml`.
+- Production with `WEB_ANALYTICS_TOKEN` set: `curl -s https://sourcefor.dev/ | grep -o cloudflareinsights.com/beacon | wc -l`
+  prints exactly `1` (same for `/new` and `/r/<owner>/<repo>`). `2` means Cloudflare's automatic injection is also on:
+  turn it off (step 8). Staging prints `0`. In a browser, the Network tab
+  shows `beacon.min.js` and a `cdn-cgi/rum` POST with no CSP errors, and page views appear in Web Analytics within
+  a few minutes.
 - `/scan/index.json`, `/api/auth/me` (`{ mode: "public", ask: false }`), `/api/ask` (`{ connected: false }`).
 - `curl -s -o /dev/null -w '%{http_code}' <origin>/assets/missing.js` answers `404`, and `curl -sI` on a real chunk
   from the page (`<origin>/assets/index-<hash>.js`) still shows `cache-control: public, max-age=31536000, immutable`

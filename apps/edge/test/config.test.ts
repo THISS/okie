@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import wranglerText from '../wrangler.jsonc?raw';
 import packageText from '../package.json?raw';
 import devVarsExample from '../.dev.vars.example?raw';
+import { WEB_ANALYTICS_TOKEN_PATTERN } from '../src/analytics';
 
 type Env = {
   vars?: Record<string, string>;
@@ -98,6 +99,14 @@ describe('wrangler.jsonc', () => {
       expect(env.vars?.ASK_ENABLED, name).toBe('0');
       expect(Object.keys(env.vars ?? {}).filter(key => key.startsWith('DEV_')), name).toEqual([]);
     }
+  });
+
+  it('keeps Web Analytics off everywhere but (once the token is known) production', () => {
+    // Staging and local dev never report page views; production's token must be a plain site token.
+    expect(config.vars?.WEB_ANALYTICS_TOKEN).toBeUndefined();
+    expect(config.env.staging!.vars?.WEB_ANALYTICS_TOKEN).toBeUndefined();
+    const production = config.env.production!.vars?.WEB_ANALYTICS_TOKEN;
+    if (production !== undefined) expect(production).toMatch(WEB_ANALYTICS_TOKEN_PATTERN);
   });
 
   it('keeps local dev off Docker', () => {

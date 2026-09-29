@@ -1,5 +1,6 @@
 import { isKnownAppPath, notFoundHttpOutput } from '../../web/src/notFoundPage';
 import { securityHeadersFor } from '../../web/src/securityHeaders';
+import { analyticsConditionalRequest, injectsInto, webAnalyticsToken, withWebAnalytics } from './analytics';
 import { handleApiRoute } from './api';
 import { selectBackend, type Backend } from './backend';
 import type { EdgeEnv } from './env';
@@ -35,7 +36,8 @@ export { ContainerProxy } from '@cloudflare/containers';
  *
  * Every response leaves through {@link withEdgeHeaders}: nosniff + Referrer-Policy everywhere, a CSP on
  * HTML (frame-ancestors `*` on /r/... for oEmbed, 'self' elsewhere; securityHeaders.ts), and staging's
- * X-Robots-Tag.
+ * X-Robots-Tag. With `WEB_ANALYTICS_TOKEN` set, every HTML document also gets the Cloudflare Web
+ * Analytics beacon before `</body>` (analytics.ts).
  */
 
 export type EdgeDeps = {
@@ -96,7 +98,8 @@ async function serveHashedAsset(request: Request, env: EdgeEnv): Promise<Respons
 }
 
 export async function handleEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionContext, deps: EdgeDeps = defaultDeps(env)): Promise<Response> {
-  return withEdgeHeaders(request, await routeEdgeRequest(request, env, ctx, deps), env);
+  const response = await routeEdgeRequest(request, env, ctx, deps);
+  return withEdgeHeaders(request, withWebAnalytics(request, response, env), env);
 }
 
 /**
@@ -106,11 +109,13 @@ export async function handleEdgeRequest(request: Request, env: EdgeEnv, ctx: Exe
  * body) and HEAD answers pass through unchanged. A 101 WebSocket upgrade is returned untouched (a copy
  * would drop its socket).
  */
-function withEdgeHeaders(request: Request, response: Response, env: Pick<EdgeEnv, 'ROBOTS_NOINDEX'>): Response {
+function withEdgeHeaders(request: Request, response: Response, env: Pick<EdgeEnv, 'ROBOTS_NOINDEX' | 'WEB_ANALYTICS_TOKEN'>): Response {
   if (response.status === 101 || response.webSocket) return response;
   const out = new Response(response.body, response);
-  const { pathname } = new URL(request.url);
-  for (const [name, value] of Object.entries(securityHeadersFor(pathname, out.headers.get('content-type')))) {
+  const url = new URL(request.url);
+  // The CSP allows the Web Analytics beacon only on pages that carry it.
+  const webAnalytics = webAnalyticsToken(env) !== undefined && injectsInto(url);
+  for (const [name, value] of Object.entries(securityHeadersFor(url.pathname, out.headers.get('content-type'), { webAnalytics }))) {
     // A route that chose its own policy keeps it.
     if (!out.headers.has(name)) out.headers.set(name, value);
   }
@@ -155,7 +160,7 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     const shared = await handleShareRoute(request, env);
     if (shared) return shared;
   }
-  if (isKnownAppPath(pathname)) return env.ASSETS.fetch(request);
+  if (isKnownAppPath(pathname)) return env.ASSETS.fetch(analyticsConditionalRequest(request, env));
   return serveStaticFileOr404(request, env);
 }
 
