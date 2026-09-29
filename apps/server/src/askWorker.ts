@@ -54,6 +54,22 @@ export const ASK_WORKER_MAX_COLD_BUILDS = 1;
  * (above the 64 MB cap) Ask-eval-shaped snapshot hold ~0.9 GB and all four build and serve under 1,536 MB.
  */
 export const ASK_WORKER_HEAP_MB = 1_536;
+/** Default warm indexes the worker keeps (each a parsed snapshot plus its search index). */
+export const ASK_WORKER_MAX_INDEXES = 4;
+
+/**
+ * CLA-266 container sizing: `OKIE_ASK_WORKER_MAX_HEAP_MB` (worker old-generation cap, default ASK_WORKER_HEAP_MB) and
+ * `OKIE_ASK_MAX_WARM_INDEXES` (default ASK_WORKER_MAX_INDEXES). Invalid or non-positive values keep the defaults.
+ */
+export function resolveAskWorkerEnv(env: NodeJS.Dict<string> = process.env): Pick<AskRetrievalWorkerOptions, "heapMb" | "maxIndexes"> {
+  const positive = (raw: string | undefined): number | undefined => {
+    const value = Number.parseInt(raw ?? "", 10);
+    return Number.isSafeInteger(value) && value >= 1 ? value : undefined;
+  };
+  const heapMb = positive(env.OKIE_ASK_WORKER_MAX_HEAP_MB);
+  const maxIndexes = positive(env.OKIE_ASK_MAX_WARM_INDEXES);
+  return { ...(heapMb !== undefined ? { heapMb } : {}), ...(maxIndexes !== undefined ? { maxIndexes } : {}) };
+}
 export const ASK_FAILED_KEY_TTL_MS = 10 * 60 * 1000;
 export const ASK_BUSY_ERROR = "Ask is busy; try again shortly.";
 
@@ -217,7 +233,7 @@ export function createAskRetrievalWorker(options: AskRetrievalWorkerOptions = {}
   const failedKeyTtlMs = options.failedKeyTtlMs ?? ASK_FAILED_KEY_TTL_MS;
   const now = options.now ?? (() => Date.now());
   const settings: Required<AskWorkerSettings> = {
-    maxIndexes: options.maxIndexes ?? 4,
+    maxIndexes: options.maxIndexes ?? ASK_WORKER_MAX_INDEXES,
     maxSnapshotBytes: options.maxSnapshotBytes ?? MAX_ASK_SNAPSHOT_BYTES,
     maxSidecarBytes: options.maxSidecarBytes ?? MAX_ASK_SIDECAR_BYTES,
   };

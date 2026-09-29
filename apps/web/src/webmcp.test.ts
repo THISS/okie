@@ -201,18 +201,16 @@ describe('WebMCP foundation (CLA-40)', () => {
     expect(viteConfig).toContain('okieWebMcpHeadersPlugin');
     expect(viteConfig).toContain('webMcpHostHeadersForFetchDest');
 
-    const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
-      headers?: Array<{ source: string; headers: Array<{ key: string; value: string }> }>;
-    };
-    const applied = vercel.headers?.flatMap(entry => entry.headers) ?? [];
-    expect(applied).toEqual(expect.arrayContaining([
-      { key: 'Permissions-Policy', value: 'tools=(self)' },
-      { key: 'Origin-Agent-Cluster', value: '?1' },
-    ]));
-    expect(applied.some(header => header.key === 'Permissions-Policy' && header.value !== 'tools=(self)')).toBe(false);
-    const shareHeaders = vercel.headers?.find(entry => entry.source === '/(.*)')?.headers ?? [];
-    expect(shareHeaders).toEqual([{ key: 'Permissions-Policy', value: 'tools=(self)' }]);
-    expect(shareHeaders.some(header => header.key === 'Origin-Agent-Cluster')).toBe(false);
+    // Hosted static assets carry the same headers via public/_headers (asserted in staticHosting.test.ts);
+    // the edge Worker applies webMcpHostHeadersForFetchDest to the HTML it renders.
+    const staticHeaders = readFileSync(new URL('../public/_headers', import.meta.url), 'utf8');
+    expect(staticHeaders).toContain('Permissions-Policy: tools=(self)');
+    expect(staticHeaders).toContain('Origin-Agent-Cluster: ?1');
+    for (const line of staticHeaders.split('\n').filter(row => row.includes('Permissions-Policy'))) {
+      expect(line.trim()).toBe('Permissions-Policy: tools=(self)');
+    }
+    const edge = readFileSync(new URL('../../edge/src/share.ts', import.meta.url), 'utf8');
+    expect(edge).toContain('webMcpHostHeadersForFetchDest');
   });
 });
 
@@ -616,6 +614,17 @@ describe('WebMCP atlas tools (CLA-42)', () => {
     expect(openAsk).toHaveBeenCalledWith('What is Okie?');
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+
+  it('Ask disabled by the deployment (CLA-266 browse-only): unavailable, never opens the panel', async () => {
+    const openAsk = vi.fn();
+    bindFakeAtlas({ openAsk, askSignedIn: () => true, askEnabled: () => false });
+    await expect(Promise.resolve(ASK_ATLAS_TOOL.execute({ question: 'What is Okie?' }))).resolves.toMatchObject({
+      ok: false,
+      isError: true,
+      error: { code: 'unavailable' },
+    });
+    expect(openAsk).not.toHaveBeenCalled();
   });
 
   it('does not put secrets in atlas tool names, descriptions, inputs, or results', async () => {

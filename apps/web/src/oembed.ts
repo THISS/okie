@@ -12,7 +12,7 @@ import { parseAppRoute } from './renderer/route';
  * 404 with the same generic error as an unknown URL.
  *
  * Iframe origins are allowlisted (loopback only for loopback requests, plus
- * exact operator/Vercel public origins). A forged Host cannot become the embed
+ * exact configured public origins, e.g. `OKIE_PUBLIC_ORIGIN`). A forged Host cannot become the embed
  * target; invalid Host headers 404 instead of falling back.
  *
  * Default iframe chrome (CLA-85): `?embed=1` collapses the Overview architecture
@@ -357,10 +357,11 @@ export function installPublicAtlasOembedDiscovery(
   head?: OembedLinkParent,
   createLink?: OembedLinkFactory,
 ): void {
-  const target = head
-    ?? (typeof document === 'undefined' ? undefined : document.head as unknown as OembedLinkParent);
-  const factory = createLink
-    ?? (typeof document === 'undefined' ? undefined : () => document.createElement('link'));
+  // Read `document` off globalThis so this module also type-checks (and runs) in DOM-less hosts
+  // such as the edge Worker, which bundles it for the oEmbed handler.
+  const doc = (globalThis as { document?: { head: unknown; createElement(tag: 'link'): { setAttribute(name: string, value: string): void } } }).document;
+  const target = head ?? (doc ? doc.head as OembedLinkParent : undefined);
+  const factory = createLink ?? (doc ? () => doc.createElement('link') : undefined);
   if (!target || !factory) return;
   const href = publicAtlasOembedHref(pageHref);
   const selector = `link[rel="alternate"][type="${OEMBED_JSON_TYPE}"]`;

@@ -7,7 +7,9 @@ import {
   handleOgImageRequest,
   handleShareHtmlRequest,
   injectPublicAtlasOpenGraph,
-  LOCAL_SCAN_ORIGIN,
+  DEFAULT_LOCAL_SCAN_ORIGIN,
+  isTrustedScanOrigin,
+  localScanOriginFromEnv,
   openGraphLeaksSecrets,
   parseOgImagePath,
   publicAtlasDescription,
@@ -146,7 +148,7 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     };
     expect(await resolvePublicAtlasShare('acme', 'app', 'http://127.0.0.1:65534', fetchImpl)).toBe(false);
     expect(called).toBe(0);
-    expect(trustedScanLookupOrigin('http://127.0.0.1:65534')).toBe(LOCAL_SCAN_ORIGIN);
+    expect(trustedScanLookupOrigin('http://127.0.0.1:65534')).toBe(DEFAULT_LOCAL_SCAN_ORIGIN);
     expect(trustedShareOrigin({
       host: 'localhost:4173',
       'x-forwarded-host': '127.0.0.1:65534',
@@ -182,24 +184,37 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     expect(html.match(/<title>/g)).toHaveLength(1);
   });
 
-  it('wires Vite to intercept share HTML and OG images; Vercel SPA-rewrites /r to index.html', () => {
+  it('wires Vite and the edge Worker to the same runtime-agnostic share dispatcher', () => {
     const viteConfig = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
     expect(viteConfig).toContain('okieOpenGraphPlugin');
-    expect(viteConfig).toContain('handleShareHtmlRequest');
-    expect(viteConfig).toContain('handleOgImageRequest');
-    const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
-      rewrites: Array<{ source: string; destination: string }>;
-    };
-    expect(vercel.rewrites).toEqual(expect.arrayContaining([
-      { source: '/og/:owner/:repo', destination: '/api/og?owner=:owner&repo=:repo' },
-      { source: '/r/:path*', destination: '/index.html' },
-    ]));
-    const shareFn = readFileSync(new URL('../api/share.ts', import.meta.url), 'utf8');
-    const ogFn = readFileSync(new URL('../api/og.ts', import.meta.url), 'utf8');
-    expect(shareFn).toContain('trustedShareOrigin');
-    expect(shareFn).toContain('trustedScanLookupOrigin');
-    expect(ogFn).toContain('trustedScanLookupOrigin');
-    expect(shareFn).not.toMatch(/OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
-    expect(ogFn).not.toMatch(/OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
+    expect(viteConfig).toContain('handlePublicAtlasRoute');
+    expect(viteConfig).toContain('localScanOriginFromEnv');
+    expect(viteConfig).not.toMatch(/127\.0\.0\.1:4180/);
+    const dispatcher = readFileSync(new URL('./publicAtlasRoutes.ts', import.meta.url), 'utf8');
+    expect(dispatcher).toContain('handleShareHtmlRequest');
+    expect(dispatcher).toContain('handleOgImageRequest');
+    expect(dispatcher).toContain('handleOembedRequest');
+    const edge = readFileSync(new URL('../../edge/src/share.ts', import.meta.url), 'utf8');
+    expect(edge).toContain('handlePublicAtlasRoute');
+    expect(`${viteConfig}\n${dispatcher}\n${edge}`).not.toMatch(/OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
+  });
+
+  it('configures the local scan origin instead of hard-coding port 4180', async () => {
+    expect(localScanOriginFromEnv({})).toBe('http://127.0.0.1:4180');
+    expect(localScanOriginFromEnv({ OKIE_SCAN_SERVER_PORT: '4195' })).toBe('http://127.0.0.1:4195');
+    expect(localScanOriginFromEnv({ OKIE_SCAN_SERVER_PORT: 'nope' })).toBe('http://127.0.0.1:4180');
+    expect(localScanOriginFromEnv({ OKIE_SCAN_ORIGIN: 'http://localhost:4197/' })).toBe('http://localhost:4197');
+    expect(localScanOriginFromEnv({ OKIE_SCAN_ORIGIN: 'https://scan.example.test' })).toBe('https://scan.example.test');
+    expect(localScanOriginFromEnv({ OKIE_SCAN_ORIGIN: 'http://scan.example.test', OKIE_SCAN_SERVER_PORT: '4195' })).toBe('http://127.0.0.1:4195');
+    expect(isTrustedScanOrigin('http://127.0.0.1:4180')).toBe(true);
+    expect(isTrustedScanOrigin('http://127.0.0.1:4195')).toBe(false);
+    expect(isTrustedScanOrigin('http://127.0.0.1:4195', 'http://127.0.0.1:4195')).toBe(true);
+    expect(isTrustedScanOrigin('http://127.0.0.1:4180', 'http://127.0.0.1:4195')).toBe(false);
+    expect(trustedScanLookupOrigin('http://localhost:4173', [], 'http://127.0.0.1:4195')).toBe('http://127.0.0.1:4195');
+    let fetched = '';
+    const fetchImpl: typeof fetch = async input => { fetched = String(input); return new Response('{}', { status: 200 }); };
+    expect(await resolvePublicAtlasShare('acme', 'app', 'http://127.0.0.1:4195', fetchImpl)).toBe(false);
+    expect(await resolvePublicAtlasShare('acme', 'app', 'http://127.0.0.1:4195', fetchImpl, 'http://127.0.0.1:4195')).toBe(true);
+    expect(fetched).toBe('http://127.0.0.1:4195/scan/acme__app/snapshot.json');
   });
 });

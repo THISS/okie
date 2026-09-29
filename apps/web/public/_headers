@@ -1,0 +1,18 @@
+# Cloudflare Workers Static Assets headers (CLA-266). Mirrors the retired vercel.json header table:
+# every asset keeps WebMCP to this origin; the top-level shells are origin-keyed (Origin-Agent-Cluster).
+# Worker-owned routes (/r/*, /og/*, /oembed, /scan/*, /api/*) set their own headers in apps/edge.
+/*
+  Permissions-Policy: tools=(self)
+
+/
+  Origin-Agent-Cluster: ?1
+
+/new
+  Origin-Agent-Cluster: ?1
+
+/index.html
+  Origin-Agent-Cluster: ?1
+
+# Vite content-hashes everything under /assets/, so it never changes in place.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

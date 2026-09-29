@@ -221,18 +221,11 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     const main = readFileSync(new URL('./main.tsx', import.meta.url), 'utf8');
     expect(main).toContain('installPublicAtlasOembedDiscovery');
     const viteConfig = readFileSync(new URL('../vite.config.ts', import.meta.url), 'utf8');
-    expect(viteConfig).toContain('okieOembedPlugin');
-    expect(viteConfig).toContain(OEMBED_PATH);
-    const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as {
-      rewrites: Array<{ source: string; destination: string }>;
-    };
-    expect(vercel.rewrites).toEqual(expect.arrayContaining([
-      { source: '/oembed', destination: '/api/oembed' },
-    ]));
-    const fn = readFileSync(new URL('../api/oembed.ts', import.meta.url), 'utf8');
-    expect(fn).toContain('handleOembedRequest');
-    expect(fn).toContain('oembedAllowedOriginsFromEnv');
-    expect(fn).not.toMatch(/apiKey|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
+    expect(viteConfig).toContain('handlePublicAtlasRoute');
     expect(viteConfig).toContain('oembedAllowedOriginsFromEnv');
+    const dispatcher = readFileSync(new URL('./publicAtlasRoutes.ts', import.meta.url), 'utf8');
+    expect(dispatcher).toContain('handleOembedRequest');
+    expect(dispatcher).toContain('OEMBED_PATH');
+    expect(dispatcher).not.toMatch(/apiKey|OPENROUTER_API_KEY|GITHUB_TOKEN|GH_TOKEN/);
   });
 });

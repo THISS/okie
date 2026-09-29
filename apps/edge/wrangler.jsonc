@@ -1,0 +1,123 @@
+// sourcefor.dev edge Worker (CLA-266). Top level = local dev (`pnpm --filter @okie/edge dev`);
+// `env.staging` / `env.production` are the deployed environments. Bindings, vars, containers,
+// durable_objects, r2_buckets and ratelimits are NOT inherited by named environments, so each env
+// repeats them.
+// Launch is BROWSE-ONLY: staging/production have no `containers` and no ATLAS_API binding, and
+// ASK_ENABLED is "0" (Ask/block-plan 404 at the edge; browsing is served entirely from R2). The top
+// level keeps the container so the signed-in-Ask follow-up stays testable locally; set ASK_ENABLED=1
+// in .dev.vars to try it. Secrets (OKIE_LLM_API_KEY, JEV_API, TURNSTILE_SECRET_KEY) are set with
+// `wrangler secret put --env <env>`; DEV_BACKEND_ORIGIN / DEV_STORE_ROUTE only ever come from a local
+// .dev.vars and must never appear here (asserted in test/config.test.ts).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "sourcefor-atlas",
+  // Not a secret. Inherited by every env; wrangler then needs only the `wrangler login` OAuth session.
+  "account_id": "204e6bcb5ef0c760a064a57f8e4dd1c0",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-20",
+  "compatibility_flags": ["nodejs_compat"],
+  // No telemetry calls from dry-run builds / local dev.
+  "send_metrics": false,
+  "observability": { "enabled": true },
+  // run_worker_first patterns are path-only, so the Worker runs first for every path except the
+  // content-hashed /assets/* (served straight from Static Assets; _headers still apply to what the
+  // Worker passes through env.ASSETS). That lets it 301 www.sourcefor.dev before anything else.
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/*", "!/assets/*"]
+  },
+  "dev": {
+    "ip": "127.0.0.1",
+    "port": 4196,
+    // Local dev never builds the container image (no Docker needed); API traffic goes to
+    // DEV_BACKEND_ORIGIN from .dev.vars, or answers 503.
+    "enable_containers": false
+  },
+
+  // ---- local dev ----
+  "vars": {
+    "ASK_ENABLED": "0",
+    "ASK_DAILY_MAX_REQUESTS": "500",
+    "BLOCK_PLAN_DAILY_MAX_REQUESTS": "200",
+    "ASK_DAILY_MAX_DOLLARS": "2",
+    "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.01",
+    "TURNSTILE_ENABLED": "0"
+  },
+  "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas-local" }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "ATLAS_API", "class_name": "AtlasApiContainer" },
+      { "name": "ATLAS_BUDGET", "class_name": "AtlasBudget" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AtlasApiContainer", "AtlasBudget"] }],
+  "containers": [
+    {
+      "class_name": "AtlasApiContainer",
+      "image": "../server/Dockerfile",
+      "image_build_context": "../..",
+      "instance_type": "basic",
+      "max_instances": 2
+    }
+  ],
+  "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2660", "simple": { "limit": 10, "period": 60 } }],
+
+  "env": {
+    "staging": {
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [{ "pattern": "staging.sourcefor.dev", "custom_domain": true }],
+      "vars": {
+        "OKIE_PUBLIC_ORIGIN": "https://staging.sourcefor.dev",
+        // Browse-only launch: Ask and block-plan are off (and there is no container to serve them).
+        "ASK_ENABLED": "0",
+        // Placeholder caps pending Brenton's numbers (dormant while ASK_ENABLED is "0").
+        "ASK_DAILY_MAX_REQUESTS": "500",
+        "BLOCK_PLAN_DAILY_MAX_REQUESTS": "200",
+        "ASK_DAILY_MAX_DOLLARS": "2",
+        "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.01",
+        "TURNSTILE_ENABLED": "0"
+      },
+      "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas-staging" }],
+      // No container at launch: only the budget Durable Object. The signed-in-Ask follow-up adds the
+      // ATLAS_API binding and the `containers` entry. The v1 migration already created AtlasApiContainer (it
+      // shipped in the first deploy), so it stays listed; don't add a new migration for it.
+      "durable_objects": {
+        "bindings": [{ "name": "ATLAS_BUDGET", "class_name": "AtlasBudget" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AtlasApiContainer", "AtlasBudget"] }],
+      "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2661", "simple": { "limit": 10, "period": 60 } }]
+    },
+    "production": {
+      "workers_dev": false,
+      "preview_urls": false,
+      // www 301s to the apex in the Worker (index.ts canonicalHostRedirect).
+      "routes": [
+        { "pattern": "sourcefor.dev", "custom_domain": true },
+        { "pattern": "www.sourcefor.dev", "custom_domain": true }
+      ],
+      "vars": {
+        "OKIE_PUBLIC_ORIGIN": "https://sourcefor.dev",
+        // Browse-only launch: Ask and block-plan are off (and there is no container to serve them).
+        "ASK_ENABLED": "0",
+        // Placeholder caps pending Brenton's numbers (dormant while ASK_ENABLED is "0").
+        "ASK_DAILY_MAX_REQUESTS": "500",
+        "BLOCK_PLAN_DAILY_MAX_REQUESTS": "200",
+        "ASK_DAILY_MAX_DOLLARS": "2",
+        "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.01",
+        "TURNSTILE_ENABLED": "0"
+      },
+      "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas" }],
+      // No container at launch: only the budget Durable Object. The signed-in-Ask follow-up adds the
+      // ATLAS_API binding and the `containers` entry. The v1 migration already created AtlasApiContainer (it
+      // shipped in the first deploy), so it stays listed; don't add a new migration for it.
+      "durable_objects": {
+        "bindings": [{ "name": "ATLAS_BUDGET", "class_name": "AtlasBudget" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AtlasApiContainer", "AtlasBudget"] }],
+      "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2662", "simple": { "limit": 10, "period": 60 } }]
+    }
+  }
+}

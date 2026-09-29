@@ -140,6 +140,17 @@ export type AskAuthView = {
   loginPath: string;
   logoutPath: string;
   testLoginPath?: string;
+  /**
+   * CLA-266 hosted public mode (`/api/auth/me` answers `mode: "public"`): there is no sign-in route,
+   * Ask is open to everyone (the edge Worker rate-limits and budgets it) and account chrome is hidden.
+   */
+  publicMode?: boolean;
+  /**
+   * CLA-266 browse-only launch: `/api/auth/me` answers `ask: false` when the deployment has Ask
+   * disabled (`ASK_ENABLED` off at the edge). The shell then hides every Ask affordance instead of
+   * showing a broken one. Absent (older servers, the local operator server) = Ask available.
+   */
+  askEnabled?: boolean;
 };
 
 export type AskAnswer =
@@ -272,7 +283,7 @@ export async function fetchAskAuth(options: {
       signal: options.signal,
     });
     if (!response.ok) return defaultAskAuth();
-    const body = await response.json() as Partial<AskAuthView>;
+    const body = await response.json() as Partial<AskAuthView> & { mode?: unknown; ask?: unknown };
     const loginPath = typeof body.loginPath === 'string' && body.loginPath.startsWith('/')
       ? body.loginPath
       : ASK_LOGIN_PATH;
@@ -288,6 +299,8 @@ export async function fetchAskAuth(options: {
     if (typeof body.testLoginPath === 'string' && body.testLoginPath.startsWith('/')) {
       view.testLoginPath = body.testLoginPath;
     }
+    if (body.mode === 'public') view.publicMode = true;
+    if (body.ask === false) view.askEnabled = false;
     return view;
   } catch {
     return defaultAskAuth();

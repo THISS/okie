@@ -382,6 +382,30 @@ describe('Ask sign-in and thread identity', () => {
     expect(askSignInHref('/api/auth/github', '/r/THISS/okie')).toBe('/api/auth/github?return=%2Fr%2FTHISS%2Fokie');
   });
 
+  it('fetchAskAuth flags the hosted public mode without claiming a session (CLA-266)', async () => {
+    const publicMe = vi.fn(async () => new Response(JSON.stringify({ authenticated: false, mode: 'public' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })) as unknown as typeof fetch;
+    const view = await fetchAskAuth({ fetch: publicMe });
+    expect(view.publicMode).toBe(true);
+    expect(view.authenticated).toBe(false);
+    const otherMode = vi.fn(async () => new Response(JSON.stringify({ authenticated: false, mode: 'private' }), { status: 200 })) as unknown as typeof fetch;
+    expect((await fetchAskAuth({ fetch: otherMode })).publicMode).toBeUndefined();
+    const failed = vi.fn(async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
+    expect((await fetchAskAuth({ fetch: failed })).publicMode).toBeUndefined();
+  });
+
+  it('fetchAskAuth maps ask:false to askEnabled:false (CLA-266 browse-only launch)', async () => {
+    const me = (body: unknown) => vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })) as unknown as typeof fetch;
+    const off = await fetchAskAuth({ fetch: me({ authenticated: false, mode: 'public', ask: false }) });
+    expect(off).toMatchObject({ publicMode: true, askEnabled: false });
+    expect((await fetchAskAuth({ fetch: me({ authenticated: false, mode: 'public', ask: true }) })).askEnabled).toBeUndefined();
+    // Servers that don't send the field (the local operator server) keep Ask.
+    expect((await fetchAskAuth({ fetch: me({ authenticated: true, login: 'octo' }) })).askEnabled).toBeUndefined();
+    expect((await fetchAskAuth({ fetch: me({ authenticated: false, mode: 'public', ask: 'no' }) })).askEnabled).toBeUndefined();
+  });
+
   it('maps atlas identity to a real GitHub source URL (CLA-101)', () => {
     expect(atlasSourceRepositoryUrl(resolveAskAtlasIdentity({
       pathname: '/r/THISS/okie',

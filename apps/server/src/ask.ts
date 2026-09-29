@@ -4,6 +4,7 @@ import {
   isUsableModelId,
   redactGatewayErrorText,
   requireUsableModelId,
+  type GatewayUsage,
   type LlmChatCompletionResult,
   type LlmGatewayConfig,
 } from "./llmGateway.js";
@@ -254,6 +255,10 @@ export async function answerAskQuestion(
     retrieve?: (input: AskRetrieveInput) => Promise<AskRemoteEvidence | undefined>;
     byteBudget?: number;
     systemNames?: readonly string[];
+    /** Gateway-reported usage of the one completion call (CLA-266 edge dollar ledger); not called without usage. */
+    onUsage?: (usage: GatewayUsage) => void;
+    /** Called just before the one completion call goes out (CLA-266: an answer without it spent nothing). */
+    onGatewayCall?: () => void;
   } = {},
 ): Promise<AskAnswer> {
   if (!askGatewayConnected(config)) return { connected: false };
@@ -319,9 +324,11 @@ export async function answerAskQuestion(
   };
 
   try {
+    options.onGatewayCall?.();
     const result = await client.chatCompletions(
       askChatCompletionsBody(modelId, question, packets, relations, evidence),
     );
+    if (result.usage) options.onUsage?.(result.usage);
     const parsed = parseAskCompletion(result.json, new Set(allowedIds));
     if (!parsed) {
       return { connected: true, error: "Ask did not return a usable answer." };

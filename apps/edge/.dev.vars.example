@@ -1,0 +1,16 @@
+# Copy to .dev.vars (gitignored) for local QA with `pnpm --filter @okie/edge dev` (port 4196).
+# The DEV_* names are local-only and must never be set in wrangler.jsonc.
+
+# Browsing (the whole launch scope) needs none of these: /scan, /r, /og, /oembed and source.json are
+# served from the local R2 bucket (and GitHub raw for source.json).
+
+# "1" turns Ask + block-plan on locally (they 404 otherwise, like staging/production).
+# ASK_ENABLED=1
+
+# Proxy POST /api/ask, /api/block-plan and neighborhood pack misses to a locally running apps/server
+# instead of the (Docker) container. Leave empty for no backend (Ask answers 503, pack misses 404).
+DEV_BACKEND_ORIGIN=http://127.0.0.1:4195
+
+# "1" exposes GET /__store/<key> (public AND private objects) so a local apps/server can mirror the
+# local R2 bucket from http://127.0.0.1:4196/__store. Anything else keeps the route a 404.
+DEV_STORE_ROUTE=1

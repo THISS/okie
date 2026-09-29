@@ -24,7 +24,25 @@ type CachedPublishedTrio = {
   publication?: { versionId: string; artifactRevisionId: string };
 };
 
+/**
+ * Parsed trios keyed by snapshot path, least recently used first. Bounded (CLA-266: the read-only container has
+ * limited memory and a snapshot can parse to hundreds of MB); `setPublishedTrioCacheLimit` / OKIE_NEIGHBORHOOD_CACHE_ENTRIES.
+ */
 const publishedCache = new Map<string, CachedPublishedTrio>();
+export const DEFAULT_PUBLISHED_TRIO_CACHE_ENTRIES = 4;
+let publishedCacheLimit = DEFAULT_PUBLISHED_TRIO_CACHE_ENTRIES;
+
+/** Resize the parsed-trio LRU (at least one entry). */
+export function setPublishedTrioCacheLimit(entries: number): void {
+  publishedCacheLimit = Number.isSafeInteger(entries) && entries >= 1 ? entries : DEFAULT_PUBLISHED_TRIO_CACHE_ENTRIES;
+  while (publishedCache.size > publishedCacheLimit) publishedCache.delete(publishedCache.keys().next().value!);
+}
+
+/** OKIE_NEIGHBORHOOD_CACHE_ENTRIES (default DEFAULT_PUBLISHED_TRIO_CACHE_ENTRIES). */
+export function resolvePublishedTrioCacheEntries(env: NodeJS.Dict<string> = process.env): number {
+  const value = Number.parseInt(env.OKIE_NEIGHBORHOOD_CACHE_ENTRIES ?? "", 10);
+  return Number.isSafeInteger(value) && value >= 1 ? value : DEFAULT_PUBLISHED_TRIO_CACHE_ENTRIES;
+}
 
 export type ScanNeighborhoodRequest = {
   pathname: string;
@@ -55,7 +73,8 @@ export function isExcerptScanPath(pathname: string): boolean {
   return parsed?.basename === "excerpt.json";
 }
 
-function sanitizeFocusId(raw: string | null): string | undefined {
+/** The focus / entity id a `?focus=` or `?entity=` value names, or undefined (then the route serves the default / 404). */
+export function sanitizeFocusId(raw: string | null): string | undefined {
   if (raw === null) return undefined;
   const id = raw.trim();
   if (!id || id.length > MAX_FOCUS_ID_LENGTH) return undefined;
@@ -93,11 +112,16 @@ function loadPublishedTrio(scanRoot: string, slugPath: string, request?: ScanNei
   const viewMtimeMs = statSync(viewFile).mtimeMs;
   const cached = publishedCache.get(snapshotFile);
   if (cached && cached.snapshotMtimeMs === snapshotMtimeMs && cached.viewMtimeMs === viewMtimeMs) {
+    publishedCache.delete(snapshotFile);
+    publishedCache.set(snapshotFile, cached);
     return { ...cached, ...(publication ? { publication } : {}) };
   }
+  // Drop the stale entry first so a re-parse never holds two copies of the same snapshot.
+  publishedCache.delete(snapshotFile);
   const snapshot = JSON.parse(readFileSync(snapshotFile, "utf8")) as ArchitectureSnapshot;
   const view = JSON.parse(readFileSync(viewFile, "utf8")) as ArchitectureView;
   const entry = { snapshotMtimeMs, viewMtimeMs, snapshot, view };
+  while (publishedCache.size >= publishedCacheLimit) publishedCache.delete(publishedCache.keys().next().value!);
   publishedCache.set(snapshotFile, entry);
   return { ...entry, ...(publication ? { publication } : {}) };
 }
@@ -110,14 +134,35 @@ export function serveNeighborhoodPacket(
   if (!parsed || parsed.basename !== "neighborhood.json") return undefined;
   const trio = loadPublishedTrio(scanRoot, parsed.slugPath, request);
   if (!trio) return undefined;
-  const focusEntityId = sanitizeFocusId(request.searchParams.get("focus"));
-  const includeExcerpts = request.searchParams.get("excerpts") === "1";
-  const packet = sliceArchitectureNeighborhood(trio.snapshot, trio.view, {
-    ...(focusEntityId ? { focusEntityId } : {}),
-    ...(includeExcerpts ? { includeExcerpts: true } : {}),
-    ...neighborhoodSliceOptionsForFocus(trio.snapshot, focusEntityId),
+  return neighborhoodPacketFor(trio.snapshot, trio.view, {
+    focus: request.searchParams.get("focus"),
+    includeExcerpts: request.searchParams.get("excerpts") === "1",
+    ...(trio.publication ? { publication: trio.publication } : {}),
   });
-  return { ...packet, ...(trio.publication ? { publication: trio.publication } : {}) };
+}
+
+/**
+ * The `/scan/<slug>/neighborhood.json` body for one parsed trio. Shared by the route and the CLA-266 publish precompute,
+ * so a precomputed pack entry is byte-identical to what the route serves.
+ */
+export function neighborhoodPacketFor(
+  snapshot: ArchitectureSnapshot,
+  view: ArchitectureView,
+  input: { focus: string | null; includeExcerpts?: boolean; publication?: { versionId: string; artifactRevisionId: string } },
+): ArchitectureNeighborhoodPacket & { publication?: { versionId: string; artifactRevisionId: string } } {
+  const focusEntityId = sanitizeFocusId(input.focus);
+  const packet = sliceArchitectureNeighborhood(snapshot, view, {
+    ...(focusEntityId ? { focusEntityId } : {}),
+    ...(input.includeExcerpts ? { includeExcerpts: true } : {}),
+    ...neighborhoodSliceOptionsForFocus(snapshot, focusEntityId),
+  });
+  return { ...packet, ...(input.publication ? { publication: input.publication } : {}) };
+}
+
+/** The `/scan/<slug>/excerpt.json` body for one entity (undefined → the route's 404). */
+export function excerptPacketFor(snapshot: ArchitectureSnapshot, entity: string | null): ArchitectureExcerptPacket | undefined {
+  const entityId = sanitizeFocusId(entity);
+  return entityId ? excerptPacketForEntity(snapshot, entityId) : undefined;
 }
 
 export function serveExcerptPacket(
@@ -128,9 +173,12 @@ export function serveExcerptPacket(
   if (!parsed || parsed.basename !== "excerpt.json") return undefined;
   const trio = loadPublishedTrio(scanRoot, parsed.slugPath, request);
   if (!trio) return undefined;
-  const entityId = sanitizeFocusId(request.searchParams.get("entity"));
-  if (!entityId) return undefined;
-  return excerptPacketForEntity(trio.snapshot, entityId);
+  return excerptPacketFor(trio.snapshot, request.searchParams.get("entity"));
+}
+
+/** Test seam — the cached snapshot paths, least recently used first. */
+export function publishedTrioCacheKeys(): string[] {
+  return [...publishedCache.keys()];
 }
 
 /** Test seam — drop the parsed snapshot cache between cases. */
