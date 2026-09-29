@@ -344,7 +344,7 @@ function cardHtml(card: HomeAtlasCard, placement: CardPlacement): string {
     : '';
   const body = [
     `<span class="name"><span class="owner">${e(card.owner)}/</span><strong>${e(card.repo)}</strong></span>`,
-    card.description ? `<span class="description">${e(card.description)}</span>` : '',
+    card.description ? `<span class="description" title="${e(card.description)}">${e(card.description)}</span>` : '',
     facts.length ? `<span class="facts">${facts.join('')}</span>` : '',
     commit,
   ].filter(Boolean);
@@ -440,14 +440,14 @@ const STYLE = `
       .card:hover,.card:focus-visible{border-color:#79dfd4}
       .card:focus-visible{outline:2px solid #79dfd4;outline-offset:2px}
       .card img{display:block;width:100%;height:auto;aspect-ratio:1200/630;background:#101918;border-bottom:1px solid #1d2a28}
-      .body{display:grid;gap:.45rem;padding:.85rem 1rem 1rem}
+      .body{display:flex;flex:1;flex-direction:column;gap:.45rem;padding:.85rem 1rem 1rem}
       .name{font-size:1.05rem;line-height:1.3;color:#f1f7f4}
       .name .owner{color:#97a5a0}
       .name strong{font-weight:600}
-      .description{color:#b7c3c0;font-size:.9rem}
+      .description{color:#b7c3c0;font-size:.9rem;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;overflow-wrap:anywhere}
       .facts{display:flex;flex-wrap:wrap;gap:.35rem}
       .fact{padding:.1rem .5rem;border:1px solid #2a3a37;border-radius:999px;color:#cfd9d6;font-size:.78rem}
-      .commit{color:#97a5a0;font-size:.8rem}
+      .commit{margin-top:auto;color:#97a5a0;font-size:.8rem}
       .commit code{color:#d9ff70;font:600 .8rem/1 "IBM Plex Mono",ui-monospace,monospace}
       .site-footer{max-width:1120px;margin:0 auto;padding:1.5rem 1rem 3rem;border-top:1px solid #1d2a28;color:#b7c3c0;font-size:.85rem;display:grid;gap:.4rem}
       .site-footer p{margin:0}

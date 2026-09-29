@@ -276,6 +276,9 @@ function drawText(
 
 const NODE_COLORS: readonly Rgba[] = [CYAN, BLUE, PURPLE, ACCENT];
 
+/** The map preview board on the card's right (the title column stays left of it). */
+export const CARD_BOARD = { x: 640, y: 88, width: 496, height: 454 } as const;
+
 function drawMapPreview(
   rgba: Uint8Array,
   width: number,
@@ -283,10 +286,7 @@ function drawMapPreview(
   owner: string,
   repo: string,
 ): void {
-  const boardX = 640;
-  const boardY = 88;
-  const boardW = 496;
-  const boardH = 454;
+  const { x: boardX, y: boardY, width: boardW, height: boardH } = CARD_BOARD;
   fillRoundRect(rgba, width, height, boardX, boardY, boardW, boardH, 24, PANEL);
   fillRect(rgba, width, height, boardX, boardY, boardW, 4, ACCENT);
 
@@ -330,6 +330,52 @@ export type AtlasCardInput = {
   label?: { owner: string; repo: string };
 };
 
+/** Left text column: title lines never reach the map preview board (x = 640). */
+export const CARD_TEXT_X = 64;
+export const CARD_TEXT_MAX_WIDTH = 536;
+const TITLE_Y = 250;
+const TITLE_LINE_GAP = 16;
+const TITLE_SCALES = [6, 5, 4, 3] as const;
+
+export type AtlasCardTitleLine = { text: string; scale: number; y: number };
+
+/** Pixel width of `text` drawn with the 5×7 font at `scale` (6-column advance, no trailing gap). */
+export function cardTextWidth(text: string, scale: number): number {
+  const length = [...text].length;
+  return length === 0 ? 0 : (length * 6 - 1) * scale;
+}
+
+function fits(text: string, scale: number): boolean {
+  return cardTextWidth(text, scale) <= CARD_TEXT_MAX_WIDTH;
+}
+
+/** `text` cut to fit the column with `...`, leaving room for `suffix` (appended after, never cut). */
+function ellipsize(text: string, scale: number, suffix = ''): string {
+  if (fits(`${text}${suffix}`, scale)) return `${text}${suffix}`;
+  const chars = [...text];
+  const max = Math.floor((CARD_TEXT_MAX_WIDTH / scale + 1) / 6) - [...suffix].length;
+  return `${chars.slice(0, Math.max(1, max - 3)).join('')}...${suffix}`;
+}
+
+/**
+ * CLA-269: owner/repo fitted to the text column — one line at the largest scale that fits, else
+ * `owner/` and `repo` on two lines at a shared scale, ellipsized only past the smallest scale.
+ */
+function titleLines(owner: string, repo: string): AtlasCardTitleLine[] {
+  const oneLine = `${owner}/${repo}`;
+  for (const scale of TITLE_SCALES.slice(0, 2)) {
+    if (fits(oneLine, scale)) return [{ text: oneLine, scale, y: TITLE_Y }];
+  }
+  const first = `${owner}/`;
+  const scale = TITLE_SCALES.find(candidate => fits(first, candidate) && fits(repo, candidate)) ?? TITLE_SCALES[TITLE_SCALES.length - 1];
+  const lineHeight = 7 * scale + TITLE_LINE_GAP;
+  const top = TITLE_Y - Math.round(lineHeight / 2);
+  return [
+    { text: ellipsize(owner, scale, '/'), scale, y: top },
+    { text: ellipsize(repo, scale), scale, y: top + lineHeight },
+  ];
+}
+
 /**
  * Pixel layout used by the PNG encoder. Exported so tests can assert the card
  * carries owner/repo rather than only a generic mark.
@@ -337,16 +383,21 @@ export type AtlasCardInput = {
 export function atlasCardLayout(input: AtlasCardInput): {
   brand: string;
   title: string;
+  titleLines: AtlasCardTitleLine[];
   subtitle: string;
+  subtitleY: number;
   width: number;
   height: number;
 } {
   const shown = input.label ?? input;
-  const title = `${shown.owner}/${shown.repo}`;
+  const lines = titleLines(shown.owner, shown.repo);
+  const last = lines[lines.length - 1]!;
   return {
     brand: 'SOURCE FOR',
-    title: title.length > 22 ? `${title.slice(0, 21)}…` : title,
+    title: `${shown.owner}/${shown.repo}`,
+    titleLines: lines,
     subtitle: 'Architecture atlas',
+    subtitleY: last.y + 7 * last.scale + 28,
     width: OG_IMAGE_WIDTH,
     height: OG_IMAGE_HEIGHT,
   };
@@ -358,10 +409,9 @@ export function renderAtlasCardPng(input: AtlasCardInput): Uint8Array {
   const rgba = new Uint8Array(width * height * 4);
   fillRect(rgba, width, height, 0, 0, width, height, BG);
   const layout = atlasCardLayout(input);
-  drawText(rgba, width, height, layout.brand, 64, 72, 7, ACCENT);
-  const titleScale = layout.title.length > 16 ? 5 : 6;
-  drawText(rgba, width, height, layout.title, 64, 250, titleScale, TEXT);
-  drawText(rgba, width, height, layout.subtitle, 64, 250 + 7 * titleScale + 28, 4, MUTED);
+  drawText(rgba, width, height, layout.brand, CARD_TEXT_X, 72, 7, ACCENT);
+  for (const line of layout.titleLines) drawText(rgba, width, height, line.text, CARD_TEXT_X, line.y, line.scale, TEXT);
+  drawText(rgba, width, height, layout.subtitle, CARD_TEXT_X, layout.subtitleY, 4, MUTED);
   drawMapPreview(rgba, width, height, input.owner, input.repo);
   return encodePng(width, height, rgba);
 }

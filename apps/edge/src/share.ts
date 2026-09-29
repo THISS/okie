@@ -1,5 +1,6 @@
 import { isDogfoodAtlas } from '../../web/src/hostedAtlas';
 import { oembedAllowedOriginsFromEnv, sanitizeOembedOrigin } from '../../web/src/oembed';
+import { parseOgImagePath } from '../../web/src/openGraph';
 import { handlePublicAtlasRoute, isPublicAtlasRoutePath } from '../../web/src/publicAtlasRoutes';
 import { parseAppRoute, repoSlugFor } from '../../web/src/renderer/route';
 import { PUBLISHED_INDEX_SCHEMA, publishedIndexKey } from '../../server/src/publishedStoreLayout';
@@ -18,8 +19,109 @@ import { isPublishedAtlas } from './scan';
  */
 export { isPublicAtlasRoutePath };
 
-export async function handleShareRoute(request: Request, env: EdgeEnv): Promise<Response | undefined> {
+export type ShareRouteContext = {
+  waitUntil(promise: Promise<unknown>): void;
+  /** Cache API store (defaults to `caches.default`); undefined disables edge caching of `/og` cards. */
+  cache?: Cache;
+};
+
+/**
+ * Bump when the card's pixels change for the same names (a layout change), so a deploy never serves
+ * a card rendered by the previous layout from the edge cache. apps/edge/test/ogCardVersion.test.ts pins
+ * the sha256 of reference cards and fails with a reminder to bump this when apps/web/src/atlasCard.ts
+ * renders different bytes.
+ */
+export const OG_CARD_CACHE_VERSION = '3';
+/** Edge TTL for a rendered `/og` card. The key carries the printed names, so a rename misses at once. */
+export const OG_CARD_EDGE_TTL_SECONDS = 86_400;
+const BROWSER_CACHE_CONTROL_HEADER = 'x-okie-browser-cache-control';
+
+function defaultCache(): Cache | undefined {
+  return typeof caches === 'undefined' ? undefined : (caches as unknown as { default: Cache }).default;
+}
+
+export type OgCardCacheEntry = {
+  key: string;
+  /** Slug the names were read for; the render reuses them instead of reading the index again. */
+  slug: string;
+  names: PublicAtlasDisplayNames | undefined;
+};
+
+/**
+ * Cache API entry for a `/og/<owner>/<repo>` card (CLA-269), or undefined when the request is not a
+ * plain card GET (HEAD, conditional and range requests bypass the cache). The card's bytes are a pure
+ * function of the parsed owner/repo (map seed, case kept) and the printed names, so the key is built
+ * from the parsed owner/repo — never the raw path, so `/og/%61cme/x`, `/og//acme/x` and `/og/acme/x.png`
+ * share one entry — plus the names the published index gives now (read through the per-isolate index
+ * cache) and the card layout version. A backfill or publish that renames the atlas yields a new key
+ * within the index cache's minute.
+ */
+export async function ogCardCacheEntry(request: Request, url: URL, bucket: R2Bucket): Promise<OgCardCacheEntry | undefined> {
+  if (request.method.toUpperCase() !== 'GET') return undefined;
+  for (const header of ['if-none-match', 'if-modified-since', 'range']) {
+    if (request.headers.has(header)) return undefined;
+  }
+  let parsed: { owner: string; repo: string } | undefined;
+  try { parsed = parseOgImagePath(url.pathname); } catch { return undefined; }
+  if (!parsed) return undefined;
+  const slug = repoSlugFor(parsed.owner, parsed.repo);
+  const names = await publishedDisplayNames(bucket, slug);
+  const printed = names ? `${encodeURIComponent(names.owner)}/${encodeURIComponent(names.repo)}` : '-';
+  const path = `/og/${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.repo)}`;
+  return { key: `${url.origin}${path}?card=${OG_CARD_CACHE_VERSION}&names=${printed}`, slug, names };
+}
+
+/** The Cache API key alone (see {@link ogCardCacheEntry}). */
+export async function ogCardCacheKey(request: Request, url: URL, bucket: R2Bucket): Promise<string | undefined> {
+  return (await ogCardCacheEntry(request, url, bucket))?.key;
+}
+
+/** The cached card with the browser's own cache-control restored (the stored copy carries the edge TTL). */
+function fromCache(cached: Response): Response {
+  const headers = new Headers(cached.headers);
+  const browser = headers.get(BROWSER_CACHE_CONTROL_HEADER);
+  headers.delete(BROWSER_CACHE_CONTROL_HEADER);
+  if (browser) headers.set('cache-control', browser); else headers.delete('cache-control');
+  return new Response(cached.body, { status: cached.status, headers });
+}
+
+function forCache(response: Response): Response {
+  const stored = response.clone();
+  const headers = new Headers(stored.headers);
+  const browser = headers.get('cache-control');
+  if (browser) headers.set(BROWSER_CACHE_CONTROL_HEADER, browser);
+  headers.set('cache-control', `public, max-age=${OG_CARD_EDGE_TTL_SECONDS}`);
+  return new Response(stored.body, { status: stored.status, headers });
+}
+
+/**
+ * Share routes. `/og` card GETs go through the Cache API (rendering is a full 1200×630 PNG at deflate
+ * level 9 plus an R2 check): only 200s are stored, never a 404, so an atlas published later shows up at once.
+ * A Cache API failure (match or put) never fails the request: it falls through to a fresh render.
+ *
+ * No purge on unpublish: an unpublished atlas's card stays cached at the edge for up to
+ * {@link OG_CARD_EDGE_TTL_SECONDS} (a day). The card carries only the owner/repo name and a map
+ * preview seeded from that name — no repo content — so serving it a little longer exposes nothing new.
+ */
+export async function handleShareRoute(request: Request, env: EdgeEnv, context?: ShareRouteContext): Promise<Response | undefined> {
   const url = new URL(request.url);
+  const cache = context && ('cache' in context ? context.cache : defaultCache());
+  const entry = cache ? await ogCardCacheEntry(request, url, env.ATLAS_BUCKET) : undefined;
+  if (cache && entry) {
+    let cached: Response | undefined;
+    try { cached = await cache.match(entry.key); } catch { cached = undefined; }
+    if (cached) return fromCache(cached);
+  }
+  const response = await renderShareRoute(request, url, env, entry);
+  if (cache && entry && context && response?.status === 200 && response.headers.get('content-type') === 'image/png') {
+    let stored: Promise<unknown>;
+    try { stored = Promise.resolve(cache.put(entry.key, forCache(response))).catch(() => undefined); } catch { stored = Promise.resolve(); }
+    context.waitUntil(stored);
+  }
+  return response;
+}
+
+async function renderShareRoute(request: Request, url: URL, env: EdgeEnv, known?: OgCardCacheEntry): Promise<Response | undefined> {
   const bucket = env.ATLAS_BUCKET;
   const result = await handlePublicAtlasRoute({
     method: request.method,
@@ -28,7 +130,10 @@ export async function handleShareRoute(request: Request, env: EdgeEnv): Promise<
     requestOrigin: sanitizeOembedOrigin(url.origin) ?? '',
     allowedOrigins: oembedAllowedOriginsFromEnv({ OKIE_PUBLIC_ORIGIN: env.OKIE_PUBLIC_ORIGIN }),
     isPublicAtlas: async (owner, repo) => isDogfoodAtlas(owner, repo) || isPublishedAtlas(bucket, repoSlugFor(owner, repo)),
-    displayNames: (owner, repo) => publishedDisplayNames(bucket, repoSlugFor(owner, repo)),
+    displayNames: async (owner, repo) => {
+      const slug = repoSlugFor(owner, repo);
+      return known?.slug === slug ? known.names : publishedDisplayNames(bucket, slug);
+    },
     indexHtml: async () => {
       const shell = await env.ASSETS.fetch(new Request(new URL('/', url), { headers: { accept: 'text/html' } }));
       return shell.ok ? shell.text() : '';

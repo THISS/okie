@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { pngDimensions, pngSignatureOk } from '../../web/src/atlasCard';
 import { NOINDEX_ROBOTS_TXT } from '../src/http';
 import { canonicalHostRedirect } from '../src/index';
-import { edgeFetch, seedAtlas, seedIndex } from './helpers';
+import { publishedLatestKey } from '../../server/src/publishedStoreLayout';
+import { OG_CARD_CACHE_VERSION, OG_CARD_EDGE_TTL_SECONDS } from '../src/share';
+import { edgeEnv, edgeFetch, memoryCache, seedAtlas, seedIndex } from './helpers';
 
 const ORIGIN = 'http://127.0.0.1:4196';
 
@@ -103,6 +105,101 @@ describe('share pages at the edge', () => {
     expect(pngDimensions(bytes)).toEqual({ width: 1200, height: 630 });
     expect(response.headers.get('content-length')).toBe(String(bytes.byteLength));
     expect((await edgeFetch('/og/nobody/unpublished')).status).toBe(404);
+  });
+
+  it('caches rendered /og cards at the edge, keyed on the printed names (CLA-269)', async () => {
+    const cache = memoryCache();
+    // 404s are never stored: an atlas published afterwards gets its card on the next request.
+    expect((await edgeFetch('/og/acme/later', { cache })).status).toBe(404);
+    expect(cache.keys).toEqual([]);
+    await seedAtlas({ slug: 'acme__later', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__later', versionId: 'v1' }]);
+    const first = await edgeFetch('/og/acme/later', { cache });
+    expect(first.status).toBe(200);
+    const firstBytes = new Uint8Array(await first.arrayBuffer());
+    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=acme/later`]);
+
+    // A hit is served from the cache (the atlas is gone from R2, yet the card still answers) with the browser's cache-control.
+    await edgeEnv.ATLAS_BUCKET.delete(publishedLatestKey('acme__later'));
+    const hit = await edgeFetch('/og/acme/later', { cache });
+    expect(hit.status).toBe(200);
+    expect(hit.headers.get('content-type')).toBe('image/png');
+    expect(hit.headers.get('cache-control')).toBe('public, max-age=300');
+    expect(hit.headers.has('x-okie-browser-cache-control')).toBe(false);
+    expect(new Uint8Array(await hit.arrayBuffer())).toEqual(firstBytes);
+    expect(cache.keys).toHaveLength(1);
+    await seedAtlas({ slug: 'acme__later', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+
+    // A backfill that renames the atlas misses the old entry and renders a fresh card.
+    await seedIndex([{ slug: 'acme__later', versionId: 'v2', owner: 'Acme', repo: 'Later' }]);
+    const renamed = await edgeFetch('/og/acme/later', { cache });
+    expect(renamed.status).toBe(200);
+    expect(new Uint8Array(await renamed.arrayBuffer())).not.toEqual(firstBytes);
+    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=acme/later`, `${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=Acme/Later`]);
+    const stored = await cache.match(cache.keys[1]!);
+    expect(stored?.headers.get('cache-control')).toBe(`public, max-age=${OG_CARD_EDGE_TTL_SECONDS}`);
+  });
+
+  it('never reads or writes the /og cache for HEAD, conditional or range requests (CLA-269)', async () => {
+    await seedAtlas({ slug: 'acme__bypass', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__bypass', versionId: 'v1' }]);
+    const bypassing: Array<[string, RequestInit]> = [
+      ['HEAD', { method: 'HEAD' }],
+      ['if-none-match', { headers: { 'if-none-match': '"x"' } }],
+      ['if-modified-since', { headers: { 'if-modified-since': 'Wed, 30 Sep 2026 00:00:00 GMT' } }],
+      ['range', { headers: { range: 'bytes=0-99' } }],
+    ];
+    for (const [label, init] of bypassing) {
+      const cache = memoryCache();
+      const response = await edgeFetch('/og/acme/bypass', { cache, init });
+      expect(response.status, label).toBeLessThan(500);
+      expect(cache.matches, label).toEqual([]);
+      expect(cache.keys, label).toEqual([]);
+    }
+    // Control: a plain GET on the same card does both, so the assertions above can fail.
+    const cache = memoryCache();
+    expect((await edgeFetch('/og/acme/bypass', { cache })).status).toBe(200);
+    expect(cache.matches).toHaveLength(1);
+    expect(cache.keys).toHaveLength(1);
+  });
+
+  it('keys /og cards on the parsed owner/repo, not the raw path (CLA-269)', async () => {
+    await seedAtlas({ slug: 'acme__keyed', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__keyed', versionId: 'v1' }]);
+    const cache = memoryCache();
+    const key = `${ORIGIN}/og/acme/keyed?card=${OG_CARD_CACHE_VERSION}&names=acme/keyed`;
+    const first = await edgeFetch('/og/acme/keyed', { cache });
+    expect(first.status).toBe(200);
+    const bytes = new Uint8Array(await first.arrayBuffer());
+    const accepted: string[] = [];
+    for (const path of ['/og/%61cme/keyed', '/og//acme/keyed', '/og/acme/keyed.png']) {
+      const response = await edgeFetch(path, { cache });
+      if (response.status !== 200) continue;
+      accepted.push(path);
+      expect(new Uint8Array(await response.arrayBuffer()), path).toEqual(bytes);
+    }
+    // All three aliases render the same card, and each is a hit on the one entry (one put in total).
+    expect(accepted).toEqual(['/og/%61cme/keyed', '/og//acme/keyed', '/og/acme/keyed.png']);
+    expect(cache.matches).toHaveLength(4);
+    expect(new Set(cache.matches)).toEqual(new Set([key]));
+    expect(cache.keys).toEqual([key]);
+    // The map preview is seeded from the URL's owner/repo case, so a differently cased path is its own entry.
+    expect((await edgeFetch('/og/ACME/keyed', { cache })).status).toBe(200);
+    expect(cache.keys[1]).toBe(`${ORIGIN}/og/ACME/keyed?card=${OG_CARD_CACHE_VERSION}&names=acme/keyed`);
+  });
+
+  it('renders the card when the Cache API fails (CLA-269)', async () => {
+    await seedAtlas({ slug: 'acme__flaky', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__flaky', versionId: 'v1' }]);
+    for (const options of [{ failMatch: true }, { failPut: true }, { failMatch: true, failPut: true }]) {
+      const cache = memoryCache(options);
+      const response = await edgeFetch('/og/acme/flaky', { cache });
+      expect(response.status, JSON.stringify(options)).toBe(200);
+      expect(response.headers.get('content-type')).toBe('image/png');
+      expect(pngSignatureOk(new Uint8Array(await response.arrayBuffer()))).toBe(true);
+      expect(cache.matches).toHaveLength(1);
+      expect(cache.keys).toHaveLength(1);
+    }
   });
 
   it('answers oEmbed JSON for a published atlas and 404s others', async () => {
