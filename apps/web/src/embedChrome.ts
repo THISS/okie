@@ -1,5 +1,6 @@
 import { isFramedBrowsingContext } from './embedCanvas';
 import { OEMBED_EMBED_PARAM } from './oembed';
+import { SITE_HOME_HREF, SITE_HOME_LABEL } from './siteMeta';
 
 /**
  * CLA-85: default oEmbed is 800×560. The inspector becomes a 94vw overlay at
@@ -42,4 +43,29 @@ export function initialInspectorOpen(
     framed: isFramedBrowsingContext(win as { self: unknown; top: unknown }),
     embedQuery: isEmbedQueryFlag(search),
   });
+}
+
+export type BrandHomeLinkProps = {
+  href: string;
+  'aria-label': string;
+  target?: '_blank';
+  rel?: string;
+};
+
+/**
+ * CLA-269: the atlas header's brand mark + wordmark links home (`/`). Inside an embed (framed or
+ * `?embed=1`) the header is still shown, so the link opens the site in a new top-level tab without an
+ * opener (like the attribution strip's external links) instead of navigating the host's iframe.
+ * `win`/`search` default to the live window (App.tsx calls it bare), like {@link initialInspectorOpen}.
+ */
+export function brandHomeLinkProps(
+  win: { self?: unknown; top?: unknown } = window,
+  search = typeof window === 'undefined' ? '' : window.location.search,
+): BrandHomeLinkProps {
+  const embedded = isEmbedChrome({
+    framed: isFramedBrowsingContext(win as { self: unknown; top: unknown }),
+    embedQuery: isEmbedQueryFlag(search),
+  });
+  const props: BrandHomeLinkProps = { href: SITE_HOME_HREF, 'aria-label': SITE_HOME_LABEL };
+  return embedded ? { ...props, target: '_blank', rel: 'noopener noreferrer' } : props;
 }

@@ -85,3 +85,36 @@ A `securitypolicyviolation` listener was installed before each page load. It rec
 | `/?q=ex` at 390 | 1 card shown, no horizontal overflow. `line-clamp` is 3. | `inc3-home-390.png` |
 | `/og` edge cache | The second request is `CF-Cache-Status: HIT`. The browser still gets `cache-control: public, max-age=300`. | — |
 | Console | 0 CSP violations. The only entry is the existing Permissions-Policy `tools` warning. | — |
+
+## Brand follow-up (commit 5c82a38), on the local edge
+
+The logo links home, and the footer has a credit line. Tested on the local edge at 127.0.0.1:4196, in headless Chromium. The embed test used a cross-origin host page on 127.0.0.1:4199.
+
+| Check | Result | Screenshot |
+|---|---|---|
+| `/` at 1440×900 | Pass, with one visual defect (see issues). The hero `<h1>` holds `<a class="brand" href="/" aria-label="Source For Atlas — home" aria-current="page">` with no underline and colour `#f1f7f4`. Tabbing to it shows a 2 px `#79dfd4` focus ring. The footer credit reads "Brought to you by the guy who made clabrate.com" at 11.5 px in `#97a5a0`. It links to `https://clabrate.com/` with `rel="noopener noreferrer"`, is underlined and inherits the text colour. 0 CSP violations. | `brand-home-hero-1440.png`, `brand-home-focus-1440.png`, `brand-home-footer-1440.png` |
+| `/r/source-for/atlas` at 1440 | Pass. `[data-testid=atlas-brand-link]` is `<a href="/">` with the name "Source For Atlas — home" and no `target`. There is no underline or colour change at rest or on hover. The brand area of the header (0–440 px) is pixel-identical to the earlier `inc2-zustand-1440.png`. Tab order is the skip link, then the brand, and the brand shows a 2 px `#d9ff70` `:focus-visible` ring. Clicking it lands on `/` (`main[data-home]`, `aria-current="page"`). 0 CSP violations. | `brand-atlas-header-1440.png`, `brand-atlas-header-focus-1440.png` |
+| Embed (`?embed=1` in a cross-origin 800×560 iframe) | Pass. The link has `target="_blank"` and `rel="noopener noreferrer"`, and `data-embed="true"`. Clicking it opens a new page at `http://127.0.0.1:4196/` with `window.opener === null`, showing the home page. The iframe URL and the host URL are unchanged. The same `target=_blank` applies when the page is framed without `?embed=1`, and at top level with `?embed=1`. 0 CSP violations in the host, the frame and the popup. | `brand-embed-iframe.png` |
+| Static 404 `/zzz` | Pass. It returns status 404. The brand is `<a href="/">` with the name "Source For Atlas — home" and no `aria-current`. The credit is present, links to `https://clabrate.com/` and has the same styling. 0 CSP violations. | `brand-404-1440.png` |
+| 390×844 touch (`isMobile`, `hasTouch`) | Pass. On `/`, `/zzz` and the `/r/pmndrs/zustand` small-screen notice, `scrollWidth` is 390 and no element overflows. The credit fits on one line, ending at 366–374 px. The notice has the brand link (`href="/"`, "Source For Atlas — home") and the credit. At 300 px wide the credit wraps to 2 lines on all three pages, with "clabrate.com" kept whole and no overflow. | `brand-home-390.png`, `brand-home-footer-390.png`, `brand-404-390.png`, `brand-zustand-mobile-390.png` |
+| Contrast | Pass. The credit text and link are both `rgb(151,165,160)` (`#97a5a0`) on the footer ground `rgb(7,10,11)` (`#070a0b`), which is **7.76:1** (AA needs 4.5:1). The link is also marked by its underline. | — |
+| Console | 0 CSP violations on every page. The only entries are the existing Permissions-Policy `tools` warning and the expected 404 for `/zzz` itself. | — |
+
+## Issues (brand follow-up)
+
+- **Low (visual): the home-page wordmark got heavier.** `siteBrandLinkHtml` wraps "Source For" in `<strong>`. Inside the hero `h1`, which has `font-weight:600`, `strong` resolves to `bolder`, which is **900**. The wordmark is visibly heavier than before and 16 px wider (link width 340 → 357 px); compare `brand-home-hero-1440.png` with `inc2-home-1440.png`. Repro: open `/` and read `getComputedStyle(document.querySelector('h1 strong')).fontWeight`, which returns `900`. The 404 and the notice already used `<strong>` at their own weights, so they are unchanged. Fix: add `.hero h1 strong{font-weight:inherit}`, or 600, to the home STYLE.
+- **Low (a11y): the home `<h1>` accessible name is now "Source For Atlas — home".** The heading's only content is the link, and the link's `aria-label` becomes the heading's name, so screen readers announce "heading level 1, Source For Atlas — home". Consider dropping the `aria-label` on the home instance, so the visible text "Source For Atlas" is the name; `aria-current="page"` already conveys "this is home". Another option is to move the link out of the `h1`.
+- **Note:** the atlas header link fills the brand grid column (403×30 px at 1440). The empty strip between "PREVIEW" and the search box is clickable and sits inside the focus ring (see `brand-atlas-header-focus-1440.png`). This is harmless, but the ring looks oversized. `width:max-content` or `justify-self:start` would tighten it.
+- **Note (existing, not a regression):** in an 800 px embed, "Source For" wraps onto 2 lines in the header. Swapping the `<a>` back to a `<div>` in the DOM gives the same layout (210 px wide), so this predates the change.
+
+### Brand follow-up: after the review fixes (lead check, local edge)
+
+- **Atlas page `/r/source-for/atlas` at 1440:**
+  - The header brand is a 212 px link to `/` with the label "Source For Atlas — home".
+  - The attribution strip ends with the credit (`rel="noopener"`), and nothing overflows.
+  - Screenshot: `brand-atlas-strip-1440.png`.
+- **Home page:**
+  - The wordmark is back to weight 600.
+  - The home link has `aria-current="page"` and no `aria-label`, so its name is "Source For Atlas".
+  - The footer credit has `rel="noopener"`.
+- **Console:** 0 CSP violations.

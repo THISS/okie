@@ -23,6 +23,14 @@ export const DEFAULT_OG_IMAGE_ALT = `${SITE_NAME}: explore how open-source softw
 /** Footer / about (CLA-318): the product's own repository and contact address. */
 export const GITHUB_REPO_URL = 'https://github.com/source-for/atlas';
 export const CONTACT_EMAIL = 'hello@sourcefor.dev';
+/** The brand mark + wordmark link to the home page everywhere (CLA-269); this is its accessible name. */
+export const SITE_HOME_HREF = '/';
+export const SITE_HOME_LABEL = `${SITE_NAME} \u2014 home`;
+/** Fine-print footer credit (CLA-269), in the site owner's words. */
+export const CREDIT_LEAD = 'Brought to you by the guy who made ';
+export const CREDIT_LINK_TEXT = 'clabrate.com';
+export const CREDIT_URL = 'https://clabrate.com';
+export const CREDIT_REL = 'noopener';
 export const ATLAS_LICENCE_NOTE =
   'Atlases are derived from public repositories; each repository\u2019s code remains under its own licence.';
 

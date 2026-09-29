@@ -93,6 +93,9 @@ a:focus-visible {
 .saved-story { display: flex; align-items: center; }
 
 .brand-block { gap: 11px; min-width: 0; }
+/* CLA-269: the brand block is the home link; it looks as before (the global a:focus-visible ring shows on focus).
+   justify-self: start sizes it to the mark + wordmark, so the rest of its grid column is not clickable. */
+a.brand-block { justify-self: start; color: inherit; text-decoration: none; border-radius: 6px; }
 
 .brand-mark { display: block; width: 30px; height: 30px; flex: 0 0 auto; }
 
@@ -1105,6 +1108,9 @@ html[data-atlas-attribution] #root { height: calc(100% - var(--atlas-attribution
 .atlas-attribution a { color: var(--atlas-text); text-decoration: underline; text-decoration-color: var(--atlas-line-strong); text-underline-offset: 2px; }
 .atlas-attribution a:hover { color: var(--atlas-accent); }
 .atlas-attribution code { font-family: var(--atlas-font-mono); font-size: 10.5px; }
+/* CLA-269: the site footer's fine-print credit trails the line: muted, smaller, link inherits the colour (underlined). */
+.atlas-attribution-credit { color: var(--atlas-muted); font-size: 10px; }
+.atlas-attribution .atlas-attribution-credit a { color: inherit; text-decoration-color: currentColor; }
 @media (max-width: 780px) {
   .atlas-attribution { padding: 0 10px; font-size: 10.5px; }
 }

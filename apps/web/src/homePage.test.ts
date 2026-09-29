@@ -23,7 +23,7 @@ import {
   isHomeQueryParam,
   isHomeRequest,
 } from './homePage';
-import { SOURCE_FOR_MARK_SVG, siteFooterHtml } from './notFoundPage';
+import { SITE_CREDIT_HTML, SOURCE_FOR_MARK_SVG, siteFooterHtml } from './notFoundPage';
 import { CONTACT_EMAIL, HOME_DESCRIPTION, HOME_TITLE } from './siteMeta';
 
 const SHA = '3fce3b5a1b2c3d4e5f60718293a4b5c6d7e8f901';
@@ -246,6 +246,15 @@ describe('CLA-269 home page HTML', () => {
     expect(html).toContain(`Want your repo mapped? <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>`);
     expect(html).toContain(siteFooterHtml());
     expect(html).toContain('id="about"');
+    // The brand is the home link, marked as the current page here; the footer carries the credit.
+    // No aria-label on home: the h1's name is the visible wordmark, "Source For Atlas", and aria-current says it is home.
+    expect(html).toContain(`<h1 id="home-heading"><a class="brand" href="/" aria-current="page">${SOURCE_FOR_MARK_SVG}<span><strong>Source For</strong> <span>Atlas</span></span></a></h1>`);
+    expect(html).not.toContain('Source For Atlas — home');
+    // The wordmark's <strong> keeps the h1's weight (600) instead of going "bolder" (900).
+    expect(html).toContain('.hero h1 strong{font-weight:inherit}');
+    expect(html).toMatch(/\.hero h1\{[^}]*font-weight:600/);
+    expect(html).toContain(SITE_CREDIT_HTML);
+    expect(html).toContain('a.brand:focus-visible');
     // Same commit date (4 Aug), so the later publish comes first: ripgrep (29 Sep) before acme/app (1 Sep).
     expect(html.indexOf('href="/r/burnt-sushi/ripgrep"')).toBeLessThan(html.indexOf('href="/r/acme/app"'));
     expect(html).toContain('data-atlas-count="2"');

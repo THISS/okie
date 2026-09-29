@@ -85,5 +85,8 @@ describe('CLA-318 small-screen notice', () => {
     expect(html).not.toContain('href="/new"');
     expect(html).toContain(`href="${GITHUB_REPO_URL}"`);
     expect(html).toContain(CONTACT_EMAIL);
+    // CLA-269: the brand links home; the footer carries the credit.
+    expect(html).toMatch(/<a aria-label="Source For Atlas — home" data-testid="site-brand" href="\/"[^>]*><svg aria-hidden="true"/);
+    expect(html).toContain('Brought to you by the guy who made <a href="https://clabrate.com" rel="noopener"');
   });
 });

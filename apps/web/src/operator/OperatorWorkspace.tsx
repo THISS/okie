@@ -15,6 +15,7 @@ import { budgetWarning, buildRetryRequest, confirmText, fitToBudget, isBelowCap,
 import { initialRun, runIdFromSearch, searchWithRun } from './runUrl';
 import { incrementalRunLabel, noDraftMessage, repositoryIdOf, requestUpdate, staleReasonText, updateButtonState, type UpdateOutcome } from './incremental';
 import { OperatorChangelog, OperatorUpdateResult } from './OperatorIncremental';
+import { SITE_HOME_HREF, SITE_HOME_LABEL, SITE_NAME } from '../siteMeta';
 import './operator.css';
 
 /** Latest attempts and events shown; both scroll inside a bounded box. */
@@ -197,7 +198,7 @@ export function OperatorWorkspace({ onPreview, initialRunId, initialDraftRevisio
   if (allowed === undefined) return <main className="operator-shell"><p role="status">Checking operator access…</p></main>;
   if (!allowed) return <OperatorAccessMessage/>;
   return <main className="operator-shell">
-    <header className="operator-header"><div><a className="operator-brand" href="/">Source For Atlas</a><h1>Operator review</h1></div><a href="/">Public atlas</a></header>
+    <header className="operator-header"><div><a aria-label={SITE_HOME_LABEL} className="operator-brand" href={SITE_HOME_HREF}>{SITE_NAME}</a><h1>Operator review</h1></div><a href="/">Public atlas</a></header>
     <div className="operator-feedback" ref={feedbackRef}>{error && <OperatorErrorAlert error={error} onOpenCurrent={runId => void openCurrentRevision(runId)} opening={busy === 'open-current'} selectedRunId={selectedRun?.runId} stale={staleRevision}/>}{notice && <p className="operator-notice" role="status">{notice}</p>}</div>
     <section className="operator-start"><h2>Scan a public repository</h2><form onSubmit={event => { event.preventDefault(); void act('start', async () => { const started = await operatorApi.start(url, crypto.randomUUID()); await refreshRuns(); clearFeedback(); setSelectedDraftRevisionId(undefined); setAcknowledged(false); setDetail(undefined); resetScope(); setRunActivity(undefined); setSelectedRun(started.run); setUrl(''); setNotice(started.deduped ? 'Reopened the matching active run.' : 'Scan queued.'); }); }}><input aria-label="Public GitHub repository URL" placeholder="https://github.com/owner/repository" required type="url" value={url} onChange={event => setUrl(event.target.value)}/><button disabled={busy === 'start'}>{busy === 'start' ? 'Starting…' : 'Start scan'}</button></form></section>
     <div className="operator-layout"><aside><h2>Runs</h2>{runs.length === 0 ? <p className="operator-muted">No scan runs yet.</p> : <ol className="operator-runs">{runs.map(run => <li key={run.runId}><button className={selectedRun?.runId === run.runId ? 'selected' : ''} data-run-kind={run.kind ?? 'full'} onClick={() => openRun(run)}><strong>{run.source.owner}/{run.source.repo}</strong>{incrementalRunLabel(run) && <span className="operator-run-kind">{incrementalRunLabel(run)}</span>}<span>{runStateLabel(run.state)} · {time(run.updatedAt)}</span></button></li>)}</ol>}</aside>

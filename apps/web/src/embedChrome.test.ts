@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 import { OEMBED_DEFAULT_HEIGHT, OEMBED_DEFAULT_WIDTH, OEMBED_EMBED_PARAM, OEMBED_SNIPPET_CHROME_NOTE } from './oembed';
 import {
+  brandHomeLinkProps,
   INSPECTOR_OVERLAY_MAX_WIDTH,
   initialInspectorOpen,
   isEmbedChrome,
@@ -73,5 +74,59 @@ describe('CLA-85 embed chrome vs Overview overlay', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
     const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
+  });
+});
+
+describe('CLA-269 atlas header brand link', () => {
+  const topLevel = (() => { const win: { self?: unknown; top?: unknown } = {}; win.self = win; win.top = win; return win; })();
+  const framed = { self: {}, top: {} };
+  const plain = { href: '/', 'aria-label': 'Source For Atlas — home' };
+  const newTab = { ...plain, target: '_blank', rel: 'noopener noreferrer' };
+
+  it('links home in the same browsing context outside embeds (top-level, no ?embed=1)', () => {
+    expect(brandHomeLinkProps(topLevel, '')).toEqual(plain);
+    expect(brandHomeLinkProps(topLevel, '?fixture=golden')).toEqual(plain);
+  });
+
+  it('opens the site top-level in a new tab without an opener inside an embed', () => {
+    // Framed (self !== top) without ?embed=1.
+    expect(brandHomeLinkProps(framed, '')).toEqual(newTab);
+    // Top-level with ?embed=1.
+    expect(brandHomeLinkProps(topLevel, '?embed=1')).toEqual(newTab);
+    // A cross-origin top that throws on access counts as framed.
+    const throwing = { self: {}, get top(): unknown { throw new Error('cross-origin'); } };
+    expect(brandHomeLinkProps(throwing, '')).toEqual(newTab);
+  });
+
+  it('defaults to the live window and location.search (the bare call App.tsx makes)', () => {
+    vi.stubGlobal('window', { ...topLevel, location: { search: '?embed=1' } });
+    try {
+      expect(brandHomeLinkProps()).toEqual(newTab);
+      const win: { self?: unknown; top?: unknown; location: { search: string } } = { location: { search: '' } };
+      win.self = win; win.top = win;
+      vi.stubGlobal('window', win);
+      expect(brandHomeLinkProps()).toEqual(plain);
+      vi.stubGlobal('window', { self: {}, top: {}, location: { search: '' } });
+      expect(brandHomeLinkProps()).toEqual(newTab);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('is what the App header renders, as a link styled like the old block', () => {
+    const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
+    expect(app).toContain('<a className="brand-block" data-testid="atlas-brand-link" {...brandHomeLinkProps()}>');
+    expect(app).not.toContain('<div className="brand-block"');
+    // Only the mark + wordmark are clickable, not the whole grid column.
+    expect(css).toMatch(/a\.brand-block \{ justify-self: start; color: inherit; text-decoration: none;/);
+    expect(css).not.toMatch(/\.brand-block \{[^}]*(?:width: 100%|justify-self: stretch)/);
+    // ≤780px: the wordmark hides and the link shrinks to the mark in the topbar's auto column.
+    const narrowAt = css.indexOf('@media (max-width: 780px) {\n  .app-shell { --topbar-height: 60px; }');
+    expect(narrowAt).toBeGreaterThan(0);
+    const narrow = css.slice(narrowAt + 1);
+    expect(narrow).toMatch(/^[^@]*\.topbar \{ grid-template-columns: auto 1fr auto;/);
+    expect(narrow).toMatch(/^[^@]*\.brand-block > div:last-child \{ display: none; \}/);
+    expect(css).toMatch(/a:focus-visible \{\s*outline: 2px solid/);
   });
 });

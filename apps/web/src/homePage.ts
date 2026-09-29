@@ -1,8 +1,8 @@
-import { SOURCE_FOR_MARK_SVG, siteFooterHtml } from './notFoundPage';
+import { SITE_FOOTER_CSS, siteBrandLinkHtml, siteFooterHtml } from './notFoundPage';
 import { buildSitePageOpenGraphTags, renderOpenGraphHead, trustedPageOrigin } from './openGraph';
 import { canonicalAtlasPathForSlug, isoDate, publishedNamesFor } from './publishedNames';
 import { repoSlugFor } from './renderer/route';
-import { BRAND_NAME, CONTACT_EMAIL, HOME_DESCRIPTION, PRODUCT_NAME, homePageMeta } from './siteMeta';
+import { CONTACT_EMAIL, HOME_DESCRIPTION, homePageMeta } from './siteMeta';
 
 /**
  * The hosted home page (CLA-269): `/` on sourcefor.dev is a server-rendered hero plus a directory of
@@ -423,6 +423,8 @@ const STYLE = `
       .hero h1{display:flex;align-items:center;gap:.7rem;margin:0 0 .75rem;font-size:2rem;line-height:1.2;font-weight:600;letter-spacing:-.02em;color:#f1f7f4}
       .hero h1 svg{flex:none;width:40px;height:40px}
       .hero h1 span span{color:#97a5a0;font-weight:500}
+      .hero h1 .brand{display:inline-flex;align-items:center;gap:.7rem;min-width:0;color:inherit;text-decoration:none}
+      .hero h1 strong{font-weight:inherit}
       .lede{max-width:42rem;margin:0;color:#b7c3c0;font-size:1.1rem}
       .actions{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1.25rem;margin-top:1.75rem}
       .cta{padding:.6rem 1.1rem;border:1px solid #d9ff70;border-radius:8px;background:#d9ff70;color:#0d1a17;font-weight:600;text-decoration:none}
@@ -452,6 +454,7 @@ const STYLE = `
       .site-footer{max-width:1120px;margin:0 auto;padding:1.5rem 1rem 3rem;border-top:1px solid #1d2a28;color:#b7c3c0;font-size:.85rem;display:grid;gap:.4rem}
       .site-footer p{margin:0}
       .site-footer a{color:#79dfd4}
+      ${SITE_FOOTER_CSS}
       .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
       .search{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 .75rem}
       .search-input{flex:1 1 16rem;min-width:0}
@@ -517,7 +520,7 @@ function renderHomePage(input: HomePageInput, cards: readonly HomeAtlasCard[]): 
   <body>
     <main data-home="true">
       <section class="hero" aria-labelledby="home-heading">
-        <h1 id="home-heading">${SOURCE_FOR_MARK_SVG}<span>${escapeHtml(BRAND_NAME)} <span>${escapeHtml(PRODUCT_NAME)}</span></span></h1>
+        <h1 id="home-heading">${siteBrandLinkHtml('brand', true)}</h1>
         <p class="lede">${escapeHtml(HOME_DESCRIPTION)}</p>
         <div class="actions">
           ${cta}<p class="ask">Want your repo mapped? <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
