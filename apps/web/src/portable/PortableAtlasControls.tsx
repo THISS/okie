@@ -35,9 +35,10 @@ export function PortableAtlasControls({
     <strong>Local atlas</strong>
     <span>{bundle.repository.commitSha.slice(0, 12)}</span>
     <details style={{ maxWidth: 520 }}>
-      <summary>Analysis coverage{bundle.analysis.mode === 'quick' || bundle.analysis.adapters.some(adapter => adapter.coverage !== 'semantic' || adapter.limitations.length > 0) ? ' · limited' : ''}</summary>
+      <summary>Analysis coverage{bundle.analysis.mode === 'quick' || (bundle.analysis.limitations?.length ?? 0) > 0 || bundle.analysis.adapters.some(adapter => adapter.coverage !== 'semantic' || adapter.limitations.length > 0) ? ' · limited' : ''}</summary>
       <div style={{ maxHeight: '35vh', overflow: 'auto' }}>
         <p>{bundle.analysis.mode === 'quick' ? 'Quick scan: relationships may be missing.' : 'Full analysis was requested. Available results depend on each language tool and repository dependencies.'}</p>
+        {(bundle.analysis.limitations?.length ?? 0) > 0 && <ul>{bundle.analysis.limitations!.map((limitation, item) => <li key={item}>{limitation}</li>)}</ul>}
         {bundle.analysis.adapters.length === 0 && <p>No language analyzer reported coverage.</p>}
         {bundle.analysis.adapters.map((adapter, index) => <section key={`${adapter.language}-${index}`}>
           <strong>{adapter.language}: {adapter.coverage === 'semantic' ? 'resolved symbols' : adapter.coverage === 'syntax' ? 'syntax only' : 'analyzer unavailable'}</strong>

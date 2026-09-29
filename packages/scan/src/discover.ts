@@ -1,9 +1,23 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import ts from "typescript";
 import { resolveRelativeImport } from "./extract.js";
 import { slug } from "./ids.js";
+import {
+  classifyFsSymlink,
+  countSymlink,
+  emptySkippedEntries,
+  hasSkippedEntries,
+  isBufferOverflow,
+  mergeSkippedEntries,
+  safeRegularFile,
+  SCAN_SIZE_LIMITS,
+  ScanSizeLimitError,
+  walkRegularFiles,
+  type ScanSizeLimits,
+  type SkippedTreeEntries,
+} from "./source-tree.js";
 
 /**
  * A container-level unit of the repository: a workspace member, the whole repo
@@ -52,6 +66,17 @@ export interface DiscoverySummary {
    * `analysis.membership`, and importers of a shim resolve to its target.
    */
   reexportAliases?: ReexportAlias[];
+  /**
+   * Tracked symlinks (in-repo ones kept for config/imports; escaping, dangling and looping ones removed) and submodules, none scanned as source files (CLA-299).
+   * Present only when at least one count is non-zero; rendered into the scan's
+   * `analysis.limitations`.
+   */
+  skippedEntries?: SkippedTreeEntries;
+  /**
+   * Source-extension files excluded because they live under a conventional test-data
+   * directory (see `isTestDataPath`). Present only when non-zero.
+   */
+  excludedTestDataFiles?: number;
 }
 
 /** A re-export shim folded into the component of the file it re-exports. */
@@ -84,11 +109,13 @@ export interface DiscoverOptions {
    * tooling component — which the membership diagnostic must then flag.
    */
   foldReexportShims?: boolean;
-}
-
-function git(sourceRoot: string, args: readonly string[]): string[] {
-  const out = execFileSync("git", args, { cwd: sourceRoot, encoding: "utf8", maxBuffer: 128 * 1024 * 1024 });
-  return out.split("\n").map(line => line.trim()).filter(line => line.length > 0);
+  /**
+   * Entries the acquisition step already skipped (e.g. committed symlinks that were
+   * never materialized); merged into `summary.skippedEntries`.
+   */
+  skippedEntries?: SkippedTreeEntries;
+  /** Test seam: override {@link SCAN_SIZE_LIMITS} for the tracked-file listing. */
+  limits?: Partial<ScanSizeLimits>;
 }
 
 // Always scanned. `.js` is added only for pure-JS repos (no root tsconfig).
@@ -103,8 +130,24 @@ const FIXTURE_MEMBER_PATTERN = /(^|\/)(playground|playgrounds|examples?|example-
 // vendored copy can never balloon the walk or leak into discovery.
 const TARBALL_SKIP_DIRS = new Set([".git", "node_modules"]);
 
+/**
+ * Conventional test-data directories: `testdata/` is the Go toolchain's reserved
+ * fixture directory (ignored by `go build`) and is used the same way by other
+ * ecosystems — compiler test cases, golden baselines, deliberately malformed input.
+ * Never architecture; e.g. microsoft/TypeScript keeps ~61k generated files there.
+ * Excluded files are counted in `DiscoverySummary.excludedTestDataFiles`.
+ */
+export function isTestDataPath(path: string): boolean {
+  return /(^|\/)testdata\//.test(path);
+}
+
 /** Test/generated files excluded from every scan (a named, tested list). */
 function isExcludedPath(path: string): boolean {
+  return isTestDataPath(path) || isExcludedFile(path);
+}
+
+/** The per-file exclusions (everything in `isExcludedPath` except test-data directories). */
+function isExcludedFile(path: string): boolean {
   return /\.d\.ts$/.test(path)
     || /(^|\/)dist\//.test(path)
     || /\.test\.[cm]?[jt]sx?$/.test(path)
@@ -122,14 +165,25 @@ function hasExtension(path: string, includeJs: boolean): boolean {
   return includeJs && path.endsWith(".js");
 }
 
+/**
+ * Reads a repository-relative config/source file only when it is a regular file
+ * reached without any symlink (never follows a link outside — or inside — the root).
+ */
+function readRepositoryFile(sourceRoot: string, relativePath: string): string | undefined {
+  const path = safeRegularFile(sourceRoot, relativePath);
+  if (!path) return undefined;
+  try { return readFileSync(path, "utf8"); } catch { return undefined; }
+}
+
 function hasRootTsconfig(sourceRoot: string): boolean {
-  return ["tsconfig.json", "tsconfig.base.json"].some(file => existsSync(`${sourceRoot}/${file}`));
+  return ["tsconfig.json", "tsconfig.base.json"].some(file => safeRegularFile(sourceRoot, file) !== undefined);
 }
 
 function readPackageName(sourceRoot: string, dir: string): string | undefined {
-  const manifest = dir ? `${sourceRoot}/${dir}/package.json` : `${sourceRoot}/package.json`;
+  const text = readRepositoryFile(sourceRoot, dir ? `${dir}/package.json` : "package.json");
+  if (text === undefined) return undefined;
   try {
-    const pkg = JSON.parse(readFileSync(manifest, "utf8")) as { name?: string };
+    const pkg = JSON.parse(text) as { name?: string };
     return typeof pkg.name === "string" && pkg.name.trim() ? pkg.name : undefined;
   } catch {
     return undefined;
@@ -137,12 +191,8 @@ function readPackageName(sourceRoot: string, dir: string): string | undefined {
 }
 
 function workspaceGlobs(sourceRoot: string): string[] {
-  let text: string;
-  try {
-    text = readFileSync(`${sourceRoot}/pnpm-workspace.yaml`, "utf8");
-  } catch {
-    return [];
-  }
+  const text = readRepositoryFile(sourceRoot, "pnpm-workspace.yaml");
+  if (text === undefined) return [];
   const globs: string[] = [];
   let inPackages = false;
   for (const raw of text.split("\n")) {
@@ -228,8 +278,8 @@ function foldReexportShims(sourceRoot: string, unitByFile: Map<string, string>, 
   const fileSet = new Set(unitByFile.keys());
   const aliases: ReexportAlias[] = [];
   for (const file of [...nonMemberFiles].sort()) {
-    let text: string;
-    try { text = readFileSync(`${sourceRoot}/${file}`, "utf8"); } catch { continue; }
+    const text = readRepositoryFile(sourceRoot, file);
+    if (text === undefined) continue;
     const specifiers = pureRelativeReexportSpecifiers(file, text);
     if (!specifiers) continue;
     const targets = new Set(specifiers.map(specifier => resolveRelativeImport(file, specifier, fileSet)));
@@ -246,33 +296,53 @@ function foldReexportShims(sourceRoot: string, unitByFile: Map<string, string>, 
   return aliases;
 }
 
-/** All tracked files at the current index/HEAD (gitignore-aware), repo-relative POSIX. */
-function listTrackedFiles(sourceRoot: string): string[] {
-  return git(sourceRoot, ["ls-files"]);
+/**
+ * All tracked regular files at the current index (gitignore-aware), repo-relative
+ * POSIX. Symlinks (mode 120000) and submodules (160000) are skipped and counted; the
+ * listing is bounded by {@link SCAN_SIZE_LIMITS} (typed {@link ScanSizeLimitError}).
+ */
+function listTrackedFiles(sourceRoot: string, limits: ScanSizeLimits): { files: string[]; skipped: SkippedTreeEntries } {
+  let out: string;
+  try {
+    out = execFileSync("git", ["ls-files", "-s", "-z"], { cwd: sourceRoot, encoding: "utf8", maxBuffer: limits.maxListingBytes });
+  } catch (error) {
+    if (isBufferOverflow(error)) throw new ScanSizeLimitError("listing", limits.maxListingBytes, limits.maxListingBytes);
+    throw error;
+  }
+  const files: string[] = [];
+  const skipped = emptySkippedEntries();
+  const seen = new Set<string>();
+  for (const record of out.split("\0")) {
+    // `<mode> <object> <stage>\t<path>`; unmerged paths appear once per stage.
+    const tab = record.indexOf("\t");
+    if (tab < 0) continue;
+    const mode = record.slice(0, record.indexOf(" "));
+    const path = record.slice(tab + 1);
+    if (!path || seen.has(path)) continue;
+    seen.add(path);
+    if (mode === "160000") skipped.submodules += 1;
+    else if (mode === "120000") countSymlink(skipped, classifyFsSymlink(sourceRoot, `${sourceRoot}/${path}`));
+    else files.push(path);
+  }
+  if (files.length > limits.maxFiles) throw new ScanSizeLimitError("files", limits.maxFiles, files.length);
+  return { files, skipped };
 }
 
 /**
- * Recursively lists every file under an extracted tree, repo-relative POSIX. A
+ * Recursively lists every regular file under an extracted tree, repo-relative POSIX. A
  * GitHub codeload tarball already contains exactly the committed tree at the SHA
  * (untracked/gitignored content was never archived), so a plain walk reproduces
  * `git ls-files` for that commit — no `.gitignore` parsing required. Divergence to
  * note: `git archive` honors `.gitattributes export-ignore`, so a rare export-ignored
  * (but tracked) path is present under `git ls-files` yet absent from the tarball.
+ * Symlinks are never listed as source files and a symlinked directory is never
+ * descended; the links still present (in-repo, kept for config/import resolution) are
+ * counted and classified in `skipped`.
  */
-function walkExtractedTree(root: string): string[] {
-  const files: string[] = [];
-  const visit = (relativeDir: string): void => {
-    const absoluteDir = relativeDir ? `${root}/${relativeDir}` : root;
-    for (const entry of readdirSync(absoluteDir, { withFileTypes: true })) {
-      if (entry.isDirectory() && TARBALL_SKIP_DIRS.has(entry.name)) continue;
-      const relative = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
-      if (entry.isDirectory()) visit(relative);
-      else if (entry.isFile()) files.push(relative);
-      // symlinks and other non-regular entries are ignored (not source)
-    }
-  };
-  visit("");
-  return files;
+function walkExtractedTree(root: string, limits: ScanSizeLimits): { files: string[]; skipped: SkippedTreeEntries } {
+  const walked = walkRegularFiles(root, TARBALL_SKIP_DIRS);
+  if (walked.files.length > limits.maxFiles) throw new ScanSizeLimitError("files", limits.maxFiles, walked.files.length);
+  return walked;
 }
 
 /**
@@ -291,6 +361,8 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
   const includedJs = !hasRootTsconfig(sourceRoot) && !hasTypeScriptSource;
   const sourceCandidates = candidates.filter(path => hasExtension(path, includedJs) && !isExcludedPath(path));
   const skippedJsFiles = includedJs ? 0 : candidates.filter(path => path.endsWith(".js") && !isExcludedPath(path)).length;
+  // Only files the testdata rule newly excludes (a testdata `.d.ts` / `*.test.ts` was already out).
+  const excludedTestDataFiles = candidates.filter(path => hasExtension(path, includedJs) && isTestDataPath(path) && !isExcludedFile(path)).length;
 
   const globs = workspaceGlobs(sourceRoot);
   const memberDirs = new Set<string>();
@@ -327,7 +399,7 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
       dir: rootKey,
       name: rootName,
       ...(rootPackage ? { packageName: rootPackage } : {}),
-      evidencePath: existsSync(`${sourceRoot}/package.json`) ? "package.json" : rootKey,
+      evidencePath: safeRegularFile(sourceRoot, "package.json") ? "package.json" : rootKey,
     });
     if (rootPackage) unitByPackageName.set(rootPackage, rootKey);
   } else {
@@ -375,6 +447,8 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
       skippedJsFiles,
       skippedMembers,
       ...(reexportAliases.length > 0 ? { reexportAliases } : {}),
+      ...(hasSkippedEntries(options.skippedEntries) ? { skippedEntries: { ...options.skippedEntries } } : {}),
+      ...(excludedTestDataFiles > 0 ? { excludedTestDataFiles } : {}),
     },
   };
 }
@@ -384,7 +458,8 @@ export function discoverFromFiles(sourceRoot: string, allFiles: readonly string[
  * from a local git working tree (gitignore-aware via `git ls-files`).
  */
 export function discoverRepository(sourceRoot: string, options: DiscoverOptions = {}): Discovery {
-  return discoverFromFiles(sourceRoot, listTrackedFiles(sourceRoot), options);
+  const listed = listTrackedFiles(sourceRoot, { ...SCAN_SIZE_LIMITS, ...options.limits });
+  return discoverFromFiles(sourceRoot, listed.files, { ...options, skippedEntries: mergeSkippedEntries(options.skippedEntries, listed.skipped) });
 }
 
 /**
@@ -394,5 +469,6 @@ export function discoverRepository(sourceRoot: string, options: DiscoverOptions 
  * local clone or a `gh:` tarball.
  */
 export function discoverExtractedTree(root: string, options: DiscoverOptions = {}): Discovery {
-  return discoverFromFiles(root, walkExtractedTree(root), options);
+  const walked = walkExtractedTree(root, { ...SCAN_SIZE_LIMITS, ...options.limits });
+  return discoverFromFiles(root, walked.files, { ...options, skippedEntries: mergeSkippedEntries(options.skippedEntries, walked.skipped) });
 }

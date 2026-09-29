@@ -4,10 +4,11 @@
   "repository": "hagopj13/node-express-boilerplate",
   "commitSha": "179ae84efec61b14206d0305d941daed6c6d07f9",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "179ae84efec61b14206d0305d941daed6c6d07f9",
       "ok": true,
-      "ms": 17943,
+      "ms": 14357,
       "entities": 253,
       "relations": 211,
       "kinds": { "code": 208, "component": 43, "container": 1, "softwareSystem": 1 },
@@ -1624,5 +1625,5 @@
       { "scopeId": "container:create-nodejs-express-app", "claimId": "c302727a2d01ad188056f", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" }
     ]
   },
-  "stageMs": { "blocks": 957 }
+  "stageMs": { "blocks": 957, "fetch": 783, "scan": 14366 }
 }

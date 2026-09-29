@@ -6,6 +6,7 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { slug } from "./ids.js";
 import { scrubGithubTokens } from "./redact.js";
+import { detachSymlinks, type SkippedTreeEntries } from "./source-tree.js";
 
 /**
  * A parsed `gh:owner/repo[@ref]` source. `ref` may be a branch, tag, or SHA and can
@@ -372,6 +373,8 @@ function acquisitionError(src: GithubSourceRef, result: { status: number; rateLi
 export interface AcquiredTree {
   /** Absolute path to the extracted repository root (the tarball's single top-level dir). */
   root: string;
+  /** Escaping / dangling / looping symlinks removed after extraction (in-repo links are kept); see detachSymlinks. */
+  skipped: SkippedTreeEntries;
   cleanup: () => void;
 }
 
@@ -401,7 +404,8 @@ export async function acquireGithubTree(src: GithubSourceRef, sha: string, clien
     }
     const root = join(extractDir, entries[0]!.name);
     if (!statSync(root).isDirectory()) throw new GithubAcquisitionError("Extracted tarball root is not a directory.");
-    return { root, cleanup };
+    const skipped = detachSymlinks(root);
+    return { root, skipped, cleanup };
   } catch (error) {
     cleanup();
     throw error;

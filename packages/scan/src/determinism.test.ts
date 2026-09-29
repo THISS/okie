@@ -4,6 +4,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { discoverRepository } from "./discover.js";
 import { extractArchitecture } from "./extract.js";
+import { boundStableId, MAX_STABLE_ID_CHARACTERS } from "./ids.js";
 import { pinRepository } from "./pin.js";
 import { buildScanArtifacts, stableJson } from "./scan.js";
 import { ASPECT_PRESET_TARGET } from "@okie/architecture";
@@ -63,4 +64,30 @@ test("full scan artifacts are byte-identical across reversed discovery order", (
   const aspect = world.width / world.height;
   assert.ok(aspect >= 1.4, `scan CLI scene.json aspect ${aspect.toFixed(3)} must be landscape ≥ 1.4 (CLA-96)`);
   assert.equal(ASPECT_PRESET_TARGET.landscape, 1.6);
+});
+
+// Guard, not a before/after proof: every id Okie's own scan emits is within the
+// 192-character limit, where bounding is the identity by construction. (Byte-identical
+// before/after scans of this repo were compared by hand for CLA-299.)
+test("CLA-299: every id in Okie's own scan is within the 192-character limit (bounding leaves it unchanged)", () => {
+  const pin = pinRepository(repoRoot);
+  const discovery = discoverRepository(repoRoot);
+  const artifacts = buildScanArtifacts({ discovery, pin, readFile, repositorySlug: "okie", systemName: "Okie" });
+  const ids = [
+    artifacts.snapshot.id,
+    artifacts.snapshot.repositoryId,
+    artifacts.view.id,
+    ...artifacts.stories.flatMap(story => [story.id, ...story.steps.map(step => step.id)]),
+    ...artifacts.snapshot.entities.flatMap(entity => [entity.id, ...(entity.parentId ? [entity.parentId] : [])]),
+    ...artifacts.snapshot.relations.flatMap(relation => [relation.id, relation.from, relation.to, ...(relation.lineageId ? [relation.lineageId] : [])]),
+  ];
+  assert.ok(ids.length > 500, "a non-trivial id set");
+  for (const id of ids) {
+    assert.ok(id.length <= MAX_STABLE_ID_CHARACTERS, `${id} exceeds the limit`);
+    assert.equal(boundStableId(id), id);
+  }
+  // No acquisition limitation applies to this repository (no symlinks, submodules or testdata/).
+  assert.equal(artifacts.analysis.limitations, undefined);
+  assert.equal(artifacts.discoverySummary.skippedEntries, undefined);
+  assert.equal(artifacts.discoverySummary.excludedTestDataFiles, undefined);
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -168,6 +168,47 @@ test("acquireGithubTree extracts the single top-level dir, exposes the root, and
     fixture.cleanup();
   }
   assert.ok(!existsSync(acquired.root), "cleanup discards the ephemeral checkout");
+});
+
+test("tarball symlinks: in-root kept, escaping/dangling detached before any reader, all reported (CLA-299)", async () => {
+  const work = mkdtempSync(join(tmpdir(), "okie-scan-tar-links-"));
+  const top = join(work, "links-2222222");
+  mkdirSync(join(top, "src"), { recursive: true });
+  writeFileSync(join(top, "package.json"), JSON.stringify({ name: "links" }));
+  writeFileSync(join(top, "src/index.ts"), "export const x = 1;\n");
+  symlinkSync("index.ts", join(top, "src/alias.ts"));
+  symlinkSync("/etc/hosts", join(top, "tsconfig.json"));
+  symlinkSync("../../../../../etc", join(top, "src/etc"));
+  symlinkSync("gone.ts", join(top, "src/gone.ts.link"));
+  const tgz = join(work, "archive.tar.gz");
+  execFileSync("tar", ["-czf", tgz, "-C", work, "links-2222222"]);
+  const client: GithubClient = {
+    async getJson() { return { ok: true, json: COMMIT_JSON }; },
+    async downloadTarball(_owner, _repo, _sha, destFile) {
+      copyFileSync(tgz, destFile);
+      return statSync(destFile).size;
+    },
+  };
+  try {
+    const acquired = await acquireGithubTree({ owner: "acme", repo: "links", dirSlug: "acme__links" }, "2222222", client);
+    try {
+      assert.deepEqual(acquired.skipped, { symlinksInternal: 0, symlinksEscaping: 2, symlinksUnresolved: 1, submodules: 0 }, "counts what was removed");
+      assert.ok(lstatSync(join(acquired.root, "src/alias.ts")).isSymbolicLink(), "an in-root link is kept");
+      for (const link of ["tsconfig.json", "src/etc", "src/gone.ts.link"]) {
+        assert.throws(() => lstatSync(join(acquired.root, link)), /ENOENT/, `${link} detached`);
+      }
+      assert.ok(existsSync(join(acquired.root, "src/index.ts")));
+    } finally {
+      acquired.cleanup();
+    }
+    const result = await scanGithubRepository({ owner: "acme", repo: "links", ref: "main", dirSlug: "acme__links" }, { client });
+    assert.deepEqual(result.artifacts.discoverySummary.skippedEntries, { symlinksInternal: 1, symlinksEscaping: 2, symlinksUnresolved: 1, submodules: 0 });
+    assert.deepEqual(result.artifacts.analysis.limitations, [
+      "4 committed symlink(s) were not scanned as source: 1 resolve inside the repository (followed only for config/imports; not listed as separate source files); 2 point outside the repository (absolute or ../ target; never read); 1 are dangling, loop or collide with another path (not followed).",
+    ]);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 test("live enrichment packets use accepted mapped components while retaining the immutable base", async () => {

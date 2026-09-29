@@ -33,8 +33,11 @@ portable atlas's `analysis.membership`. Warnings never fail a scan.
 1. **Pin** — `git rev-parse HEAD` + `HEAD^{tree}`; `generatedAt` is the commit's own
    committer date (`git show -s --format=%cI`), never wall-clock, so a re-scan of a commit
    is byte-identical.
-2. **Discover** — `git ls-files` (deterministic, gitignore-aware) filtered to
-   `.ts/.tsx/.mjs`, excluding `dist/`, `*.test.*`, `*.d.ts`; canonical sort.
+2. **Discover** — the committed tree (raw blobs streamed in bounded `git cat-file --batch`
+   chunks; size limits in `SCAN_SIZE_LIMITS`) or a `gh:` tarball walk, filtered to source
+   extensions minus the named exclusions below; canonical sort. Symlinks are never listed as
+   source files: in-repo ones are kept for config/import resolution, escaping / dangling /
+   looping ones are dropped, submodules skipped — all counted in `analysis.limitations`.
 3. **Extract** — one `ts.createSourceFile` per file; map to the C4 hierarchy (below);
    static `import`/`export … from` specifiers become `dependsOn` relations.
 4. **Gate** — build one `ArchitectureExtraction` → `validateArchitectureExtraction` →
@@ -129,7 +132,8 @@ Discovery generalizes beyond Okie's own layout (validated against third-party cl
   **only for a genuinely pure-JS repo** (no root tsconfig *and* no TypeScript source) — otherwise
   `.js` files are skipped and **counted in the scan summary**, never dropped silently.
 - **Excluded** (a named, tested list): `*.d.ts`, `dist/`, `*.test.*`, `*.spec.*`, `*.bench.*`,
-  `__tests__/`, `__mocks__/`, Rust `tests/` / `benches/` / `examples/` / `*_qa.rs`.
+  `__tests__/`, `__mocks__/`, `testdata/` (conventional test-data dirs; count reported in
+  `analysis.limitations`), Rust `tests/` / `benches/` / `examples/` / `*_qa.rs`.
 - **Fixture members** whose path matches `playground/example/e2e/fixtures/demo/sandbox` are skipped
   by default (with a summary count); pass `--include-members` to scan them.
 - **System name** comes from the root `package.json` `name` (fallback: directory basename).

@@ -4,10 +4,11 @@
   "repository": "excalidraw/excalidraw",
   "commitSha": "5a406e51875157bece389b9bc92d41ff241d5f3d",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "5a406e51875157bece389b9bc92d41ff241d5f3d",
       "ok": true,
-      "ms": 85250,
+      "ms": 74057,
       "entities": 4163,
       "relations": 17756,
       "kinds": { "code": 3638, "component": 523, "container": 1, "softwareSystem": 1 },
@@ -2051,5 +2052,5 @@
     ],
     "rateLimited": 0
   },
-  "stageMs": { "claims": 18985, "ask": 35599, "blocks": 739 }
+  "stageMs": { "claims": 18985, "ask": 35599, "blocks": 739, "fetch": 5270, "scan": 74152 }
 }

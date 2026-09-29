@@ -3,21 +3,20 @@
   "slug": "saleor__saleor",
   "repository": "saleor/saleor",
   "commitSha": "58e2eb7cabb6ce37678062ff04b051ef58c5e479",
-  "preparedCommitSha": "1a2c0eefae3755ee7e3787ba0bafb5fa2b15a4ad",
-  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (CLAUDE.md): \"symlink/submodule is unsupported\".", "droppedPaths": 2 },
   "scan": {
-    "asIs": { "revision": "58e2eb7cabb6ce37678062ff04b051ef58c5e479", "ok": false, "ms": 74, "error": "Committed source requires materialized files; symlink/submodule is unsupported: CLAUDE.md" },
-    "prepared": {
-      "revision": "1a2c0eefae3755ee7e3787ba0bafb5fa2b15a4ad",
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
+    "asIs": {
+      "revision": "58e2eb7cabb6ce37678062ff04b051ef58c5e479",
       "ok": true,
-      "ms": 1497,
+      "ms": 1118,
       "entities": 2,
       "relations": 0,
       "kinds": { "container": 1, "softwareSystem": 1 },
       "containers": [
         { "id": "container:saleor", "name": "saleor", "components": 0 }
       ],
-      "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Python" }
+      "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Python" },
+      "limitations": ["2 committed symlink(s) were not scanned as source: 2 resolve inside the repository (followed only for config/imports; not listed as separate source files)."]
     }
   },
   "ask": {
@@ -298,5 +297,11 @@
     ]
   },
   "enrichmentSkipped": { "reason": "skipped: scanner-blind (Python; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)" },
-  "stageMs": { "ask": 9060, "blocks": 467 }
+  "stageMs": { "ask": 9060, "blocks": 467, "fetch": 6794, "scan": 1127 },
+  "paidStagesCorpus": {
+    "preparedCommitSha": "1a2c0eefae3755ee7e3787ba0bafb5fa2b15a4ad",
+    "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (CLAUDE.md): \"symlink/submodule is unsupported\".", "droppedPaths": 2 },
+    "stages": ["ask", "blocks"],
+    "note": "Recorded over the CLA-289 eval-prepared commit, before its evalPrepare was retired; re-running a listed stage drops it here."
+  }
 }

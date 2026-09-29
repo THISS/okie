@@ -227,6 +227,7 @@ function summaryLines(artifacts: ScanArtifacts): string {
   const membersNote = discoverySummary.skippedMembers.length > 0
     ? `  skipped ${discoverySummary.skippedMembers.length} fixture/example member(s): ${discoverySummary.skippedMembers.slice(0, 5).join(", ")}${discoverySummary.skippedMembers.length > 5 ? " ..." : ""} (--include-members to scan)\n`
     : "";
+  const limitationsNote = (artifacts.analysis.limitations ?? []).map(line => `  ${line}\n`).join("");
   const aliases = artifacts.membership.reexportAliases;
   const aliasNote = (aliases.length > 0
     ? `  folded ${aliases.length} re-export shim(s) into their target's container: ${aliases.slice(0, 5).map(alias => `${alias.path} -> ${alias.target}`).join(", ")}${aliases.length > 5 ? " ..." : ""} (see membership-report.json)\n`
@@ -244,7 +245,7 @@ function summaryLines(artifacts: ScanArtifacts): string {
     : `  component map: REJECTED; retained original file graph (see component-map-report.json)\n${mapping.reasons.map(reason => `    ${reason}\n`).join('')}`;
   return `okie-scan: ${snapshot.entities.length} entities, ${snapshot.relations.length} relations\n` +
     `  commit ${pin.commitSha}\n  tree   ${pin.treeHash}\n` +
-    modeNote + jsNote + membersNote + aliasNote + coverageNote + flowNote + enrichedNote + systemScopeNote + mappingNote;
+    modeNote + jsNote + membersNote + limitationsNote + aliasNote + coverageNote + flowNote + enrichedNote + systemScopeNote + mappingNote;
 }
 
 /** Rewrites <scanRoot>/index.json to index every per-repo scan slot deterministically. */

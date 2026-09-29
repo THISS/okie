@@ -45,6 +45,11 @@ export interface PortableAtlas {
     adapters: { language: string; tool: string; version: string; coverage: 'semantic' | 'syntax' | 'unavailable'; limitations: string[] }[];
     /** Present only when discovery folded a shim or found a membership warning (CLA-263). */
     membership?: PortableMembershipReport;
+    /**
+     * Scan-level limitations from source acquisition/discovery (e.g. committed symlinks
+     * or submodules that were not scanned, CLA-299). Present only when non-empty.
+     */
+    limitations?: string[];
   };
   /** Optional full files at repository.commitSha; snippets remain in snapshot entities. */
   sources?: { path: string; text: string }[];
@@ -79,6 +84,7 @@ export function parsePortableAtlas(text: string): PortableAtlas {
     if (!record(adapter) || ![adapter.language, adapter.tool, adapter.version].every(value => typeof value === 'string' && value.length > 0)
       || typeof adapter.coverage !== 'string' || !['semantic', 'syntax', 'unavailable'].includes(adapter.coverage) || !strings(adapter.limitations)) throw new Error('Invalid analyzer coverage entry.');
   }
+  if (raw.analysis.limitations !== undefined && !strings(raw.analysis.limitations)) throw new Error('Invalid scan limitations list.');
   if (raw.analysis.membership !== undefined) {
     const membership = raw.analysis.membership;
     const nonEmpty = (value: unknown): boolean => typeof value === 'string' && value.length > 0;

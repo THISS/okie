@@ -4,10 +4,11 @@
   "repository": "go-gitea/gitea",
   "commitSha": "fba8d7eaceeed3f8bbc364386d2a35aa672285a2",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "fba8d7eaceeed3f8bbc364386d2a35aa672285a2",
       "ok": true,
-      "ms": 4899,
+      "ms": 3512,
       "entities": 1195,
       "relations": 2532,
       "kinds": { "code": 1011, "component": 182, "container": 1, "softwareSystem": 1 },
@@ -1966,5 +1967,5 @@
     ],
     "rateLimited": 0
   },
-  "stageMs": { "claims": 15138, "ask": 20061, "blocks": 591 }
+  "stageMs": { "claims": 15138, "ask": 20061, "blocks": 591, "fetch": 2455, "scan": 3535 }
 }

@@ -3,21 +3,20 @@
   "slug": "rubygems__rubygems.org",
   "repository": "rubygems/rubygems.org",
   "commitSha": "fd828b37546d331f1104d44c1824e8ad2fcdb96f",
-  "preparedCommitSha": "cd36d273c34b53c75186f7127eab18d9b76cef09",
-  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (.claude/skills): \"symlink/submodule is unsupported\".", "droppedPaths": 21 },
   "scan": {
-    "asIs": { "revision": "fd828b37546d331f1104d44c1824e8ad2fcdb96f", "ok": false, "ms": 46, "error": "Committed source requires materialized files; symlink/submodule is unsupported: .claude/skills" },
-    "prepared": {
-      "revision": "cd36d273c34b53c75186f7127eab18d9b76cef09",
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
+    "asIs": {
+      "revision": "fd828b37546d331f1104d44c1824e8ad2fcdb96f",
       "ok": true,
-      "ms": 17648,
+      "ms": 14351,
       "entities": 251,
       "relations": 284,
       "kinds": { "code": 211, "component": 38, "container": 1, "softwareSystem": 1 },
       "containers": [
         { "id": "container:rubygems-rubygems-org", "name": "rubygems_rubygems.org", "components": 38 }
       ],
-      "signals": { "entities": 251, "containers": 1, "components": 38, "files": 40, "maxDepth": 3, "medianDepth": 3, "language": "Ruby" }
+      "signals": { "entities": 251, "containers": 1, "components": 38, "files": 40, "maxDepth": 3, "medianDepth": 3, "language": "Ruby" },
+      "limitations": ["21 committed symlink(s) were not scanned as source: 20 resolve inside the repository (followed only for config/imports; not listed as separate source files); 1 are dangling, loop or collide with another path (not followed)."]
     }
   },
   "ask": {
@@ -615,5 +614,11 @@
     ],
     "rateLimited": 0
   },
-  "stageMs": { "claims": 7815, "ask": 21715, "blocks": 545 }
+  "stageMs": { "claims": 7815, "ask": 21715, "blocks": 545, "fetch": 1081, "scan": 14361 },
+  "paidStagesCorpus": {
+    "preparedCommitSha": "cd36d273c34b53c75186f7127eab18d9b76cef09",
+    "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (.claude/skills): \"symlink/submodule is unsupported\".", "droppedPaths": 21 },
+    "stages": ["enrich", "claims", "ask", "blocks"],
+    "note": "Recorded over the CLA-289 eval-prepared commit, before its evalPrepare was retired; re-running a listed stage drops it here."
+  }
 }

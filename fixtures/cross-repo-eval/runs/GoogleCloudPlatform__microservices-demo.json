@@ -4,10 +4,11 @@
   "repository": "GoogleCloudPlatform/microservices-demo",
   "commitSha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
   "scan": {
+    "provenance": { "harnessSha": "b4d89a324caaeee8a124372530289201afe24c80", "harnessDirty": false },
     "asIs": {
       "revision": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
       "ok": true,
-      "ms": 1841,
+      "ms": 1288,
       "entities": 55,
       "relations": 28,
       "kinds": { "code": 47, "component": 6, "container": 1, "softwareSystem": 1 },
@@ -630,5 +631,5 @@
     ]
   },
   "enrichmentSkipped": { "reason": "skipped: scanner-blind (Polyglot; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 6 components and 47 code entities)" },
-  "stageMs": { "ask": 17597, "blocks": 459 }
+  "stageMs": { "ask": 17597, "blocks": 459, "fetch": 2024, "scan": 1297 }
 }

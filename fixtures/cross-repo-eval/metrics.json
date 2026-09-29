@@ -97,7 +97,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 2553, "entities": 256 },
+        "asIs": { "ok": true, "ms": 1751, "entities": 256 },
         "signals": { "entities": 256, "containers": 1, "components": 66, "files": 68, "maxDepth": 4, "medianDepth": 2, "language": "TypeScript" }
       },
       "labels": {
@@ -139,11 +139,11 @@
         "reservationEquivalentUsd": 0.168
       },
       "cost": {
-        "stageMs": { "blocks": 844 },
+        "stageMs": { "blocks": 844, "fetch": 866, "scan": 1763 },
         "enrichScope": "full",
         "enrichMaxConcurrent": 4,
         "jevReservationEquivalentUsd": 0.174,
-        "scanMs": 2553,
+        "scanMs": 1751,
         "enrichMs": 507699,
         "enrichUsd": 0.0712,
         "enrichRequests": 68,
@@ -251,7 +251,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 10049, "entities": 173 },
+        "asIs": { "ok": true, "ms": 7350, "entities": 173 },
         "signals": { "entities": 173, "containers": 1, "components": 30, "files": 32, "maxDepth": 4, "medianDepth": 2, "language": "TypeScript" }
       },
       "labels": {
@@ -293,12 +293,12 @@
         "reservationEquivalentUsd": 0.045
       },
       "cost": {
-        "stageMs": { "blocks": 741 },
+        "stageMs": { "blocks": 741, "fetch": 897, "scan": 7359 },
         "enrichScope": "full",
         "enrichFailuresByClass": { "rejected-by-validator": 1 },
         "enrichMaxConcurrent": 4,
         "jevReservationEquivalentUsd": 0.051,
-        "scanMs": 10049,
+        "scanMs": 7350,
         "enrichMs": 232797,
         "enrichUsd": 0.0384,
         "enrichRequests": 32,
@@ -417,7 +417,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 17943, "entities": 253 },
+        "asIs": { "ok": true, "ms": 14357, "entities": 253 },
         "signals": { "entities": 253, "containers": 1, "components": 43, "files": 45, "maxDepth": 3, "medianDepth": 2, "language": "JavaScript" }
       },
       "labels": {
@@ -459,12 +459,12 @@
         "reservationEquivalentUsd": 0.105
       },
       "cost": {
-        "stageMs": { "blocks": 957 },
+        "stageMs": { "blocks": 957, "fetch": 783, "scan": 14366 },
         "enrichScope": "full",
         "enrichFailuresByClass": { "rejected-by-validator": 2 },
         "enrichMaxConcurrent": 4,
         "jevReservationEquivalentUsd": 0.111,
-        "scanMs": 17943,
+        "scanMs": 14357,
         "enrichMs": 472289,
         "enrichUsd": 0.061,
         "enrichRequests": 45,
@@ -583,10 +583,8 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": false, "ms": 25035, "error": "Invalid architecture extraction:\nrelations[3968].id: must not exceed 192 characters\nrelations[3982].id: must not exceed 192 characters\nrelations[3987].id: must not exceed 192 characters" },
-        "prepared": { "ok": true, "ms": 24791, "entities": 3897, "containers": 11, "components": 485 },
-        "evalPrepare": { "dropPaths": ["packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi"], "why": "As-is scan fails validation: 5 relation ids exceed 192 characters, all between generated heyapi client files under packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi (the longest router name). Dropping only that generated test client dir lets the rest of the monorepo scan.", "droppedPaths": 16 },
-        "signals": { "entities": 3897, "containers": 11, "components": 485, "files": 497, "maxDepth": 6, "medianDepth": 5, "language": "TypeScript" }
+        "asIs": { "ok": true, "ms": 23582, "entities": 4031 },
+        "signals": { "entities": 4031, "containers": 11, "components": 501, "files": 513, "maxDepth": 6, "medianDepth": 5, "language": "TypeScript" }
       },
       "labels": {
         "questions": 9,
@@ -627,13 +625,12 @@
         "reservationEquivalentUsd": 0.129
       },
       "cost": {
-        "stageMs": { "claims": 11681, "ask": 32065, "blocks": 1812 },
+        "stageMs": { "claims": 11681, "ask": 32065, "blocks": 1812, "fetch": 18, "scan": 23667 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=5 (55/485 components)",
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.144,
-        "scanMs": 25035,
-        "preparedScanMs": 24791,
+        "scanMs": 23582,
         "enrichMs": 325636,
         "enrichUsd": 0.1216,
         "enrichRequests": 67,
@@ -752,7 +749,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 39401, "entities": 3681 },
+        "asIs": { "ok": true, "ms": 35649, "entities": 3681 },
         "signals": { "entities": 3681, "containers": 42, "components": 770, "files": 814, "maxDepth": 8, "medianDepth": 4, "language": "TypeScript" }
       },
       "labels": {
@@ -794,13 +791,13 @@
         "reservationEquivalentUsd": 0.282
       },
       "cost": {
-        "stageMs": { "enrich": 385676, "claims": 27254, "ask": 33558, "blocks": 1367 },
+        "stageMs": { "enrich": 385676, "claims": 27254, "ask": 33558, "blocks": 1367, "fetch": 5138, "scan": 35706 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=3 (115/770 components)",
         "enrichFailuresByClass": { "invalid-output": 1, "rejected-by-validator": 2 },
         "enrichMaxConcurrent": 32,
         "jevReservationEquivalentUsd": 0.297,
-        "scanMs": 39401,
+        "scanMs": 35649,
         "enrichMs": 333235,
         "enrichUsd": 0.2426,
         "enrichRequests": 159,
@@ -919,7 +916,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 85250, "entities": 4163 },
+        "asIs": { "ok": true, "ms": 74057, "entities": 4163 },
         "signals": { "entities": 4163, "containers": 1, "components": 523, "files": 525, "maxDepth": 5, "medianDepth": 3, "language": "TypeScript" }
       },
       "labels": {
@@ -961,12 +958,12 @@
         "reservationEquivalentUsd": 0.081
       },
       "cost": {
-        "stageMs": { "claims": 18985, "ask": 35599, "blocks": 739 },
+        "stageMs": { "claims": 18985, "ask": 35599, "blocks": 739, "fetch": 5270, "scan": 74152 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=30 (30/523 components)",
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.087,
-        "scanMs": 85250,
+        "scanMs": 74057,
         "enrichMs": 197078,
         "enrichUsd": 0.0881,
         "enrichRequests": 32,
@@ -1074,7 +1071,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 96155, "entities": 5233 },
+        "asIs": { "ok": true, "ms": 99768, "entities": 5233 },
         "signals": { "entities": 5233, "containers": 19, "components": 316, "files": 335, "maxDepth": 8, "medianDepth": 4, "language": "Rust+TypeScript" }
       },
       "labels": {
@@ -1116,13 +1113,13 @@
         "reservationEquivalentUsd": 0.213
       },
       "cost": {
-        "stageMs": { "claims": 39187, "ask": 34038, "blocks": 1648 },
+        "stageMs": { "claims": 39187, "ask": 34038, "blocks": 1648, "fetch": 2277, "scan": 99851 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=5 (77/316 components)",
         "enrichFailuresByClass": { "rejected-by-validator": 5 },
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.228,
-        "scanMs": 96155,
+        "scanMs": 99768,
         "enrichMs": 389367,
         "enrichUsd": 0.1929,
         "enrichRequests": 97,
@@ -1230,9 +1227,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": false, "ms": 30, "error": "Committed source requires materialized files; symlink/submodule is unsupported: HomebrewFormula" },
-        "prepared": { "ok": true, "ms": 20155, "entities": 2831, "containers": 11, "components": 88 },
-        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (HomebrewFormula): \"Committed source requires materialized files; symlink/submodule is unsupported\".", "droppedPaths": 1 },
+        "asIs": { "ok": true, "ms": 22038, "entities": 2831 },
         "signals": { "entities": 2831, "containers": 11, "components": 88, "files": 100, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
       },
       "labels": {
@@ -1274,14 +1269,13 @@
         "reservationEquivalentUsd": 0.129
       },
       "cost": {
-        "stageMs": { "claims": 27184, "ask": 26599, "blocks": 1558 },
+        "stageMs": { "claims": 27184, "ask": 26599, "blocks": 1558, "fetch": 887, "scan": 22087 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=5 (44/88 components)",
         "enrichFailuresByClass": { "invalid-output": 1 },
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.144,
-        "scanMs": 30,
-        "preparedScanMs": 20155,
+        "scanMs": 22038,
         "enrichMs": 397455,
         "enrichUsd": 0.1375,
         "enrichRequests": 56,
@@ -1389,10 +1383,8 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": false, "ms": 35, "error": "Committed source requires materialized files; symlink/submodule is unsupported: README.md" },
-        "prepared": { "ok": true, "ms": 141738, "entities": 1428, "containers": 1, "components": 116 },
-        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on committed symlinks (README.md and others): \"symlink/submodule is unsupported\".", "droppedPaths": 5 },
-        "signals": { "entities": 1428, "containers": 1, "components": 116, "files": 117, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
+        "asIs": { "ok": true, "ms": 131488, "entities": 1428 },
+        "signals": { "entities": 1428, "containers": 1, "components": 116, "files": 118, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
       },
       "labels": {
         "questions": 8,
@@ -1433,14 +1425,13 @@
         "reservationEquivalentUsd": 0.084
       },
       "cost": {
-        "stageMs": { "blocks": 529, "claims": 27677, "ask": 26067 },
+        "stageMs": { "blocks": 529, "claims": 27677, "ask": 26067, "fetch": 930, "scan": 131512 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=30 (30/116 components)",
         "enrichFailuresByClass": { "invalid-output": 1, "rejected-by-validator": 1 },
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.09,
-        "scanMs": 35,
-        "preparedScanMs": 141738,
+        "scanMs": 131488,
         "enrichMs": 234939,
         "enrichUsd": 0.0685,
         "enrichRequests": 32,
@@ -1548,9 +1539,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": false, "ms": 858, "error": "spawnSync git ENOBUFS" },
-        "prepared": { "ok": true, "ms": 39119, "entities": 3267, "containers": 1, "components": 158 },
-        "evalPrepare": { "dropPaths": ["tsc/testdata"], "why": "As-is scan fails with \"spawnSync git ENOBUFS\": every blob is read through one 128 MB git buffer; tsc/testdata holds ~61k generated baselines.", "droppedPaths": 61117 },
+        "asIs": { "ok": true, "ms": 42029, "entities": 3267 },
         "signals": { "entities": 3267, "containers": 1, "components": 158, "files": 160, "maxDepth": 5, "medianDepth": 4, "language": "Go+TypeScript" }
       },
       "labels": {
@@ -1592,14 +1581,13 @@
         "reservationEquivalentUsd": 0.072
       },
       "cost": {
-        "stageMs": { "claims": 18530, "ask": 25042, "blocks": 707 },
+        "stageMs": { "claims": 18530, "ask": 25042, "blocks": 707, "fetch": 21, "scan": 42214 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=30 (30/158 components)",
         "enrichFailuresByClass": { "rejected-by-validator": 1 },
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.078,
-        "scanMs": 858,
-        "preparedScanMs": 39119,
+        "scanMs": 42029,
         "enrichMs": 167174,
         "enrichUsd": 0.0774,
         "enrichRequests": 32,
@@ -1718,7 +1706,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 1841, "entities": 55 },
+        "asIs": { "ok": true, "ms": 1288, "entities": 55 },
         "signals": { "entities": 55, "containers": 1, "components": 6, "files": 8, "maxDepth": 2, "medianDepth": 2, "language": "Polyglot" }
       },
       "labels": {
@@ -1744,11 +1732,11 @@
         "jevCostUsd": 0.0001
       },
       "cost": {
-        "stageMs": { "ask": 17597, "blocks": 459 },
+        "stageMs": { "ask": 17597, "blocks": 459, "fetch": 2024, "scan": 1297 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "jevReservationEquivalentUsd": 0.006,
         "enrichSkipped": "skipped: scanner-blind (Polyglot; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 6 components and 47 code entities)",
-        "scanMs": 1841,
+        "scanMs": 1288,
         "askUsd": 0.0111,
         "jevUsd": 0.0001
       }
@@ -1860,7 +1848,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 4899, "entities": 1195 },
+        "asIs": { "ok": true, "ms": 3512, "entities": 1195 },
         "signals": { "entities": 1195, "containers": 1, "components": 182, "files": 184, "maxDepth": 4, "medianDepth": 3, "language": "Go+TypeScript" }
       },
       "labels": {
@@ -1902,12 +1890,12 @@
         "reservationEquivalentUsd": 0.09
       },
       "cost": {
-        "stageMs": { "claims": 15138, "ask": 20061, "blocks": 591 },
+        "stageMs": { "claims": 15138, "ask": 20061, "blocks": 591, "fetch": 2455, "scan": 3535 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=30 (30/182 components)",
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.096,
-        "scanMs": 4899,
+        "scanMs": 3512,
         "enrichMs": 194325,
         "enrichUsd": 0.0625,
         "enrichRequests": 32,
@@ -2015,9 +2003,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": false, "ms": 74, "error": "Committed source requires materialized files; symlink/submodule is unsupported: CLAUDE.md" },
-        "prepared": { "ok": true, "ms": 1497, "entities": 2, "containers": 1, "components": 0 },
-        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (CLAUDE.md): \"symlink/submodule is unsupported\".", "droppedPaths": 2 },
+        "asIs": { "ok": true, "ms": 1118, "entities": 2 },
         "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Python" }
       },
       "labels": {
@@ -2043,12 +2029,11 @@
         "jevCostUsd": 0.0001
       },
       "cost": {
-        "stageMs": { "ask": 9060, "blocks": 467 },
+        "stageMs": { "ask": 9060, "blocks": 467, "fetch": 6794, "scan": 1127 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "jevReservationEquivalentUsd": 0.006,
         "enrichSkipped": "skipped: scanner-blind (Python; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)",
-        "scanMs": 74,
-        "preparedScanMs": 1497,
+        "scanMs": 1118,
         "askUsd": 0.0027,
         "jevUsd": 0.0001
       }
@@ -2149,9 +2134,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": false, "ms": 46, "error": "Committed source requires materialized files; symlink/submodule is unsupported: .claude/skills" },
-        "prepared": { "ok": true, "ms": 17648, "entities": 251, "containers": 1, "components": 38 },
-        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (.claude/skills): \"symlink/submodule is unsupported\".", "droppedPaths": 21 },
+        "asIs": { "ok": true, "ms": 14351, "entities": 251 },
         "signals": { "entities": 251, "containers": 1, "components": 38, "files": 40, "maxDepth": 3, "medianDepth": 3, "language": "Ruby" }
       },
       "labels": {
@@ -2193,14 +2176,13 @@
         "reservationEquivalentUsd": 0.006
       },
       "cost": {
-        "stageMs": { "claims": 7815, "ask": 21715, "blocks": 545 },
+        "stageMs": { "claims": 7815, "ask": 21715, "blocks": 545, "fetch": 1081, "scan": 14361 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "enrichScope": "sampled k=30 (30/38 components)",
         "enrichFailuresByClass": { "rejected-by-validator": 1 },
         "enrichMaxConcurrent": 8,
         "jevReservationEquivalentUsd": 0.012,
-        "scanMs": 46,
-        "preparedScanMs": 17648,
+        "scanMs": 14351,
         "enrichMs": 267020,
         "enrichUsd": 0.034,
         "enrichRequests": 32,
@@ -2308,7 +2290,7 @@
         }
       ],
       "scan": {
-        "asIs": { "ok": true, "ms": 81, "entities": 2 },
+        "asIs": { "ok": true, "ms": 76, "entities": 2 },
         "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Java" }
       },
       "labels": {
@@ -2334,11 +2316,11 @@
         "jevCostUsd": 0.0001
       },
       "cost": {
-        "stageMs": { "ask": 10282, "blocks": 482 },
+        "stageMs": { "ask": 10282, "blocks": 482, "fetch": 818, "scan": 85 },
         "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
         "jevReservationEquivalentUsd": 0.006,
         "enrichSkipped": "skipped: scanner-blind (Java; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)",
-        "scanMs": 81,
+        "scanMs": 76,
         "askUsd": 0.0024,
         "jevUsd": 0.0001
       }
@@ -2346,7 +2328,7 @@
   ],
   "overall": {
     "repos": 15,
-    "scannedAsIs": 9,
+    "scannedAsIs": 15,
     "scannedPrepared": 15,
     "aggregation": { "retrieval.recall*": "mean of per-family means, families pooled across repos (a repo counts by its number of families)", "retrieval.perRepoMean": "mean over repos of each repo's family-mean (every repo weighs the same)", "retrieval.byCategory": "mean of per-family means within the category, pooled across repos", "answers.*": "mean of per-family means over answered questions, pooled across repos", "answers.perRepoMean": "mean over answered repos of each repo's family-mean", "blocks.default/jev": "mean over labeled nodes pooled across repos (tau/top-k on shared candidates: nodes where it is undefined, e.g. one shared block, are skipped); omittedRendered = sum over nodes of rendered blocks missing from the hand order; keptDropped = sum over nodes of hand-kept candidate blocks the order does not render", "blocks.perRepoMean": "mean over repos of each repo's per-node mean", "claims.*": "pooled claim rows across repos; rates over judged (= checked − unavailable), unavailableRate over checked", "spendUsd.*": "sum over repos (jevReservationEquivalent = $0.003 per Jev request: claim checks + block planner)", "labels": "items with status \"rejected\" are excluded from every score; draft and checked both count", "rateLimited": "sum of live 429s across repos and stages (backed off + retried, never silently dropped)", "stageMs.*": "sum of each repo's last-pass wall time (repos may have run in parallel)" },
     "retrieval": {
@@ -2397,7 +2379,7 @@
       "unavailableByReason": { "invalid-response": 19 }
     },
     "spendUsd": { "enrich": 1.1958, "ask": 0.4873, "jev": 0.0466, "jevReservationEquivalent": 1.53 },
-    "stageMs": { "total": 884256, "blocks": 13446, "claims": 193451, "ask": 291683, "enrich": 385676 },
+    "stageMs": { "total": 1387597, "blocks": 13446, "fetch": 30259, "scan": 473082, "claims": 193451, "ask": 291683, "enrich": 385676 },
     "rateLimited": 0
   },
   "adaptive": {
