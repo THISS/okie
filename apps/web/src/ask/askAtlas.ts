@@ -262,28 +262,49 @@ export function askSignInHref(loginPath: string, returnPath: string): string {
   return `${path}${separator}return=${encodeURIComponent(returnPath)}`;
 }
 
-function defaultAskAuth(): AskAuthView {
+/**
+ * The view when `/api/auth/me` fails (network error, non-2xx, or a non-JSON body such as an SPA
+ * fallback page) and this page has no earlier answer. Fails closed: Ask is hidden rather than offered
+ * against an API that did not answer.
+ */
+function unavailableAskAuth(): AskAuthView {
   return {
     authenticated: false,
     loginPath: ASK_LOGIN_PATH,
     logoutPath: '/api/auth/logout',
+    askEnabled: false,
   };
 }
 
-export async function fetchAskAuth(options: {
-  fetch?: AskFetch;
-  signal?: AbortSignal;
-} = {}): Promise<AskAuthView> {
-  const fetchImpl = options.fetch ?? fetch;
+/** The last view `/api/auth/me` actually answered in this page: a transient failure never revokes it. */
+let lastAnsweredAskAuth: AskAuthView | undefined;
+
+/** Test seam: forget the last answered view. */
+export function resetAskAuthMemory(): void {
+  lastAnsweredAskAuth = undefined;
+}
+
+const ASK_AUTH_RETRY_DELAY_MS = 1500;
+
+function delay(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise(resolve => {
+    if (ms <= 0 || signal?.aborted) { resolve(); return; }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+  });
+}
+
+async function requestAskAuth(fetchImpl: AskFetch, signal: AbortSignal | undefined): Promise<AskAuthView | undefined> {
   try {
     const response = await fetchImpl('/api/auth/me', {
       method: 'GET',
       credentials: 'include',
       headers: { accept: 'application/json' },
-      signal: options.signal,
+      signal,
     });
-    if (!response.ok) return defaultAskAuth();
+    if (!response.ok) return undefined;
     const body = await response.json() as Partial<AskAuthView> & { mode?: unknown; ask?: unknown };
+    if (!body || typeof body !== 'object') return undefined;
     const loginPath = typeof body.loginPath === 'string' && body.loginPath.startsWith('/')
       ? body.loginPath
       : ASK_LOGIN_PATH;
@@ -303,8 +324,32 @@ export async function fetchAskAuth(options: {
     if (body.ask === false) view.askEnabled = false;
     return view;
   } catch {
-    return defaultAskAuth();
+    return undefined;
   }
+}
+
+/**
+ * `/api/auth/me` as an Ask view. Only a real JSON answer decides (`ask: false` hides Ask). A failed
+ * request is retried once after a short pause; if that fails too, the page keeps the last answer it got
+ * (so a blip while the panel is open does not tear Ask down), and with none it fails closed.
+ */
+export async function fetchAskAuth(options: {
+  fetch?: AskFetch;
+  signal?: AbortSignal;
+  /** Pause before the single retry (default 1.5 s; tests pass 0). */
+  retryDelayMs?: number;
+} = {}): Promise<AskAuthView> {
+  const fetchImpl = options.fetch ?? fetch;
+  let view = await requestAskAuth(fetchImpl, options.signal);
+  if (!view && !options.signal?.aborted) {
+    await delay(options.retryDelayMs ?? ASK_AUTH_RETRY_DELAY_MS, options.signal);
+    if (!options.signal?.aborted) view = await requestAskAuth(fetchImpl, options.signal);
+  }
+  if (view) {
+    lastAnsweredAskAuth = view;
+    return { ...view };
+  }
+  return lastAnsweredAskAuth ? { ...lastAnsweredAskAuth } : unavailableAskAuth();
 }
 
 export async function loadAskThread(

@@ -53,8 +53,8 @@ describe('CLA-266 Cloudflare static hosting', () => {
 
   it('serves /r and /new as the SPA shell and hands share routes to the Worker', () => {
     expect(wrangler).toMatch(/"not_found_handling":\s*"single-page-application"/);
-    // Every path except the content-hashed /assets/* runs the Worker first (share routes, /scan, /api,
-    // and the www → apex redirect; run_worker_first patterns cannot be host-specific).
-    expect(wrangler).toContain('"run_worker_first": ["/*", "!/assets/*"]');
+    // Every path runs the Worker first (share routes, /scan, /api, the www → apex redirect, and the
+    // 404 for a missing /assets/* chunk instead of the SPA shell; run_worker_first cannot be host-specific).
+    expect(wrangler).toContain('"run_worker_first": true');
   });
 });

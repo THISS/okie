@@ -4,6 +4,7 @@ import {
   isPublishedVersionId,
   publishedIndexKey,
   publishedLatestKey,
+  publishedManifestKey,
   publishedPackIndexKey,
   publishedPackKey,
   publishedPublicFileKey,
@@ -20,7 +21,8 @@ import { handleSourceRoute } from './source';
  * Public `/scan/*` surface served from R2 (CLA-266), mirroring apps/server's routes:
  *
  *   /scan/index.json                         → atlas/v1/index.json                          (60 s)
- *   /scan/<slug>/<PUBLIC_SCAN_FILES>         → versions/<v>/public/<file>                    (immutable when ?version=, else 60 s)
+ *   /scan/<slug>/<PUBLIC_SCAN_FILES>         → versions/<v>/public/<file>                    (immutable when ?version=, else 60 s;
+ *                                                                                             an absent OPTIONAL_SCAN_FILES sidecar → 204)
  *   /scan/<slug>/neighborhood.json?focus=    → range slice of packs/neighborhood.pack       (miss → 404, or the container
  *                                                                                             when one is bound; excerpts=1 → 404)
  *   /scan/<slug>/excerpt.json?entity=        → range slice of packs/excerpt.pack            (miss → 404, never wakes the container)
@@ -34,6 +36,8 @@ import { handleSourceRoute } from './source';
  */
 
 export const VERSION_HEADER = 'x-okie-published-version';
+/** Public files the web client loads as optional (`fetchOptionalScanJson`): absent → 204, never 404. */
+export const OPTIONAL_SCAN_FILES: readonly string[] = ['stories.json', 'enrichment-report.json', 'enrichment-status.json'];
 const MAX_FOCUS_ID_LENGTH = 512;
 const PACK_INDEX_CACHE_LIMIT = 32;
 
@@ -254,7 +258,15 @@ async function answer(request: Request, url: URL, context: ScanRouteContext, cac
     return proxyTo(backend, request, url.pathname, `?${params.toString()}`);
   }
 
-  return serveObject(request, bucket, publishedPublicFileKey(slug, version.versionId, file), versionHeaders(version));
+  const served = await serveObject(request, bucket, publishedPublicFileKey(slug, version.versionId, file), versionHeaders(version));
+  if (served.status === 404 && OPTIONAL_SCAN_FILES.includes(file)
+    && (await bucket.head(publishedManifestKey(slug, version.versionId))) !== null) {
+    // An optional sidecar this (existing) version was published without: an empty answer, not a 404
+    // (which the browser logs as a console error on every atlas load). Stable for a pinned version.
+    const { 'content-type': _type, ...headers } = versionHeaders(version);
+    return new Response(null, { status: 204, headers });
+  }
+  return served;
 }
 
 function defaultCache(): Cache | undefined {
@@ -276,7 +288,9 @@ export async function handleScanRoute(request: Request, context: ScanRouteContex
     if (cached) return cached;
   }
   const response = await answer(request, url, context, cache);
-  if (cacheable && response.status === 200 && response.headers.get('cache-control') === IMMUTABLE_CACHE_CONTROL
+  // 204 = an optional sidecar a pinned version was published without; versions are immutable (publish
+  // writes the manifest last and never rewrites one), so that answer is as stable as a 200.
+  if (cacheable && (response.status === 200 || response.status === 204) && response.headers.get('cache-control') === IMMUTABLE_CACHE_CONTROL
     && !response.headers.has('vary')) {
     context.waitUntil(cache.put(request.url, response.clone()));
   }

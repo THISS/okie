@@ -20,6 +20,7 @@ import {
   keepNewerAskThread,
   buildAskContext,
   fetchAskAuth,
+  resetAskAuthMemory,
   isAskUnauthorized,
   loadAskThread,
   probeAskConnection,
@@ -393,7 +394,48 @@ describe('Ask sign-in and thread identity', () => {
     const otherMode = vi.fn(async () => new Response(JSON.stringify({ authenticated: false, mode: 'private' }), { status: 200 })) as unknown as typeof fetch;
     expect((await fetchAskAuth({ fetch: otherMode })).publicMode).toBeUndefined();
     const failed = vi.fn(async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
-    expect((await fetchAskAuth({ fetch: failed })).publicMode).toBeUndefined();
+    expect((await fetchAskAuth({ fetch: failed, retryDelayMs: 0 })).publicMode).toBeUndefined();
+  });
+
+  it('fetchAskAuth fails closed: Ask is hidden when /api/auth/me never answered with JSON (CLA-266)', async () => {
+    const failures: Array<typeof fetch> = [
+      vi.fn(async () => new Response('nope', { status: 500 })) as unknown as typeof fetch,
+      vi.fn(async () => new Response('<!doctype html><html></html>', { status: 200, headers: { 'content-type': 'text/html' } })) as unknown as typeof fetch,
+      vi.fn(async () => new Response('null', { status: 200 })) as unknown as typeof fetch,
+      vi.fn(async () => { throw new TypeError('network down'); }) as unknown as typeof fetch,
+    ];
+    for (const failed of failures) {
+      resetAskAuthMemory();
+      const view = await fetchAskAuth({ fetch: failed, retryDelayMs: 0 });
+      expect(view.askEnabled).toBe(false);
+      expect(view.authenticated).toBe(false);
+      expect(failed).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  it('fetchAskAuth retries once, and a later failure keeps the last real answer (CLA-266)', async () => {
+    resetAskAuthMemory();
+    const answer = { authenticated: true, login: 'octo', loginPath: '/api/auth/github', logoutPath: '/api/auth/logout' };
+    const flaky = vi.fn()
+      .mockRejectedValueOnce(new TypeError('blip'))
+      .mockResolvedValueOnce(new Response(JSON.stringify(answer), { status: 200 })) as unknown as typeof fetch;
+    const first = await fetchAskAuth({ fetch: flaky, retryDelayMs: 0 });
+    expect(first).toMatchObject({ authenticated: true, login: 'octo' });
+    expect(first.askEnabled).toBeUndefined();
+    // Panel re-fetch during an outage: the page keeps the answer it had instead of hiding Ask.
+    const down = vi.fn(async () => new Response('bad gateway', { status: 502 })) as unknown as typeof fetch;
+    expect(await fetchAskAuth({ fetch: down, retryDelayMs: 0 })).toEqual(first);
+    // A real answer always wins, including ask:false.
+    const off = vi.fn(async () => new Response(JSON.stringify({ authenticated: false, mode: 'public', ask: false }), { status: 200 })) as unknown as typeof fetch;
+    expect((await fetchAskAuth({ fetch: off })).askEnabled).toBe(false);
+    expect((await fetchAskAuth({ fetch: down, retryDelayMs: 0 })).askEnabled).toBe(false);
+    // An aborted request does not wait out the retry.
+    const controller = new AbortController();
+    controller.abort();
+    resetAskAuthMemory();
+    const aborted = vi.fn(async () => { throw new DOMException('aborted', 'AbortError'); }) as unknown as typeof fetch;
+    expect((await fetchAskAuth({ fetch: aborted, signal: controller.signal })).askEnabled).toBe(false);
+    expect(aborted).toHaveBeenCalledTimes(1);
   });
 
   it('fetchAskAuth maps ask:false to askEnabled:false (CLA-266 browse-only launch)', async () => {

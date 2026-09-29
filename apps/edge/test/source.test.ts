@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_SOURCE_BYTES, SOURCE_UNAVAILABLE_ERROR } from '../src/source';
-import { edgeFetch, recordingBackend, seedAtlas } from './helpers';
+import { edgeFetch, memoryCache, recordingBackend, seedAtlas } from './helpers';
 
 const SHA = '0123456789abcdef0123456789abcdef01234567';
 const FILE = 'line one\r\nline two\nline three\n';
@@ -19,18 +19,6 @@ function fakeGithub(files: Record<string, BodyInit | Response | (() => Response 
     return new Response(entry);
   }) as typeof fetch;
   return { fetchImpl, calls };
-}
-
-/** An isolated in-memory Cache stand-in (the real `caches.default` is shared across tests). */
-function memoryCache(): Cache & { keys: string[] } {
-  const store = new Map<string, Response>();
-  const keys: string[] = [];
-  return {
-    keys,
-    async match(key: RequestInfo | URL) { const hit = store.get(String(key)); return hit ? hit.clone() : undefined; },
-    async put(key: RequestInfo | URL, response: Response) { keys.push(String(key)); store.set(String(key), response.clone()); },
-    async delete(key: RequestInfo | URL) { return store.delete(String(key)); },
-  } as unknown as Cache & { keys: string[] };
 }
 
 async function seedSource(slug: string, versionId: string, paths: string[], options: { owner?: string; repo?: string; commitSha?: string; latest?: boolean } = {}) {

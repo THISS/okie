@@ -43,7 +43,7 @@ describe('wrangler.jsonc', () => {
     expect(devVarsExample).toContain('DEV_STORE_ROUTE=');
   });
 
-  it('serves the web build as an SPA, Worker-first only on the routes the Worker owns', () => {
+  it('serves the web build as an SPA, with the Worker first on every path', () => {
     expect(config.name).toBe('sourcefor-atlas');
     expect(config.account_id).toBe('204e6bcb5ef0c760a064a57f8e4dd1c0');
     expect(config.compatibility_flags).toContain('nodejs_compat');
@@ -51,7 +51,7 @@ describe('wrangler.jsonc', () => {
       directory: '../web/dist',
       binding: 'ASSETS',
       not_found_handling: 'single-page-application',
-      run_worker_first: ['/*', '!/assets/*'],
+      run_worker_first: true,
     });
     expect(config.dev).toMatchObject({ enable_containers: false, port: 4196 });
   });
@@ -78,6 +78,10 @@ describe('wrangler.jsonc', () => {
     expect(config.containers).toEqual([{ class_name: 'AtlasApiContainer', image: '../server/Dockerfile', image_build_context: '../..', instance_type: 'basic', max_instances: 2 }]);
     expect(config.migrations?.[0]?.new_sqlite_classes).toEqual(['AtlasApiContainer', 'AtlasBudget']);
     expect(config.env.staging!.routes).toEqual([{ pattern: 'staging.sourcefor.dev', custom_domain: true }]);
+    // Only staging opts out of search engines.
+    expect(config.env.staging!.vars?.ROBOTS_NOINDEX).toBe('1');
+    expect(config.env.production!.vars?.ROBOTS_NOINDEX).toBeUndefined();
+    expect(config.vars?.ROBOTS_NOINDEX).toBeUndefined();
     expect(config.env.production!.routes).toEqual([
       { pattern: 'sourcefor.dev', custom_domain: true },
       { pattern: 'www.sourcefor.dev', custom_domain: true },

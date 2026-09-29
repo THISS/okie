@@ -25,6 +25,9 @@ export interface EdgeEnv {
   /** "1" turns on Ask + block-plan. Anything else (the code default) = browse-only: those routes 404 at the edge. */
   ASK_ENABLED?: string;
 
+  /** "1" (staging only): every response carries `X-Robots-Tag: noindex, nofollow` and robots.txt disallows all. */
+  ROBOTS_NOINDEX?: string;
+
   /** https://staging.sourcefor.dev / https://sourcefor.dev — the only non-loopback share origin. */
   OKIE_PUBLIC_ORIGIN?: string;
 

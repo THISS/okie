@@ -477,6 +477,11 @@ describe('CLA-73 slim neighborhood boot', () => {
     ]);
   });
 
+  it('CLA-266: the hosted edge 204 (optional sidecar published without) reads as missing (empty body)', async () => {
+    const fetchImpl: typeof fetch = async () => new Response(null, { status: 204 });
+    await expect(loadPublishedEnrichmentHonesty('thiss__okie', fetchImpl)).resolves.toBeUndefined();
+  });
+
   it('does not raise the 2000 hang-guard', () => {
     const fixture = compileScanFixture(validTrio());
     expect(fixture.boot).toBe('full');
