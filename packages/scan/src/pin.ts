@@ -1,6 +1,5 @@
-import { execFileSync } from "node:child_process";
+import { scanExecFileSync, scanWorkDir } from "./scan-env.js";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
   classifyTreeSymlinkTargets,
@@ -31,7 +30,7 @@ export interface RepositoryPin {
 }
 
 function git(sourceRoot: string, args: readonly string[]): string {
-  return execFileSync("git", ['--no-replace-objects', ...args], { cwd: sourceRoot, encoding: "utf8" }).trim();
+  return scanExecFileSync("git", "git", ['--no-replace-objects', ...args], { cwd: sourceRoot, encoding: "utf8" }).trim();
 }
 
 /** Resolves a local revision to its immutable commit identity. */
@@ -57,7 +56,7 @@ export interface AcquiredCommittedTree {
 /** Test seam: override {@link SCAN_SIZE_LIMITS} (e.g. a tiny `batchBytes` to exercise chunking). */
 export interface AcquireCommittedTreeOptions {
   limits?: Partial<ScanSizeLimits>;
-  /** Directory the temporary tree is created in (default `os.tmpdir()`). */
+  /** Directory the temporary tree is created in (default the scanner work dir, see scanWorkDir). */
   tempRoot?: string;
 }
 
@@ -67,7 +66,7 @@ interface TreeEntry { mode: string; kind: string; hash: string; size: number; pa
 function listCommittedTree(sourceRoot: string, commitSha: string, maxListingBytes: number): TreeEntry[] {
   let listing: string;
   try {
-    listing = execFileSync("git", ["--no-replace-objects", "ls-tree", "-rlz", "--full-tree", commitSha], { cwd: sourceRoot, encoding: "utf8", maxBuffer: maxListingBytes });
+    listing = scanExecFileSync("git", "git", ["--no-replace-objects", "ls-tree", "-rlz", "--full-tree", commitSha], { cwd: sourceRoot, encoding: "utf8", maxBuffer: maxListingBytes });
   } catch (error) {
     if (isBufferOverflow(error)) throw new ScanSizeLimitError("listing", maxListingBytes, maxListingBytes);
     throw error;
@@ -95,7 +94,7 @@ export function readBlobsInChunks(sourceRoot: string, entries: readonly { hash: 
     const bytes = chunk.reduce((sum, entry) => sum + entry.size, 0);
     // Each record is `<hash> blob <size>\n<bytes>\n`; 128 bytes covers any header.
     const maxBuffer = bytes + chunk.length * 128 + 1024;
-    const output = execFileSync("git", ["--no-replace-objects", "cat-file", "--batch"], { cwd: sourceRoot, input: chunk.map(entry => entry.hash + "\n").join(""), maxBuffer });
+    const output = scanExecFileSync("git", "git", ["--no-replace-objects", "cat-file", "--batch"], { cwd: sourceRoot, input: chunk.map(entry => entry.hash + "\n").join(""), maxBuffer });
     let offset = 0;
     chunk.forEach((entry, position) => {
       const newline = output.indexOf(10, offset);
@@ -148,7 +147,7 @@ export function acquireCommittedTree(sourceRoot: string, revision = "HEAD", opti
   const skipped: SkippedTreeEntries = { ...emptySkippedEntries(), symlinksUnresolved: links.length - readableLinks.length, submodules };
   for (const kind of linkClasses.values()) if (kind !== "internal") countSymlink(skipped, kind);
 
-  const temporary = mkdtempSync(join(options.tempRoot ?? tmpdir(), "okie-committed-"));
+  const temporary = mkdtempSync(join(options.tempRoot ?? scanWorkDir(), "okie-committed-"));
   const root = join(temporary, sourceName);
   try {
     mkdirSync(root);

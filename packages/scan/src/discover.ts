@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { scanExecFileSync } from "./scan-env.js";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import ts from "typescript";
@@ -304,7 +304,7 @@ function foldReexportShims(sourceRoot: string, unitByFile: Map<string, string>, 
 function listTrackedFiles(sourceRoot: string, limits: ScanSizeLimits): { files: string[]; skipped: SkippedTreeEntries } {
   let out: string;
   try {
-    out = execFileSync("git", ["ls-files", "-s", "-z"], { cwd: sourceRoot, encoding: "utf8", maxBuffer: limits.maxListingBytes });
+    out = scanExecFileSync("git", "git", ["ls-files", "-s", "-z"], { cwd: sourceRoot, encoding: "utf8", maxBuffer: limits.maxListingBytes });
   } catch (error) {
     if (isBufferOverflow(error)) throw new ScanSizeLimitError("listing", limits.maxListingBytes, limits.maxListingBytes);
     throw error;

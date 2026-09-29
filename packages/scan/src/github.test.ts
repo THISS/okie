@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -24,6 +24,7 @@ import {
   type GithubJsonResult,
 } from "./github.js";
 import { scanGithubRepository } from "./scan.js";
+import { acquireCommittedTree } from "./pin.js";
 
 test("isGithubSource / parseGithubSource cover owner/repo, refs, .git, and rejects", () => {
   assert.equal(isGithubSource("gh:colinhacks/zod"), true);
@@ -142,7 +143,7 @@ function makeTarball(topDir: string, files: Record<string, string>): { tgz: stri
     writeFileSync(full, content);
   }
   const tgz = join(work, "archive.tar.gz");
-  execFileSync("tar", ["-czf", tgz, "-C", work, topDir]);
+  execFileSync("tar", ["-czf", tgz, "-C", work, topDir], { env: { ...process.env, COPYFILE_DISABLE: "1" } }); // no macOS AppleDouble `._*` entries (never in a GitHub tarball)
   return { tgz, cleanup: () => rmSync(work, { recursive: true, force: true }) };
 }
 
@@ -181,7 +182,7 @@ test("tarball symlinks: in-root kept, escaping/dangling detached before any read
   symlinkSync("../../../../../etc", join(top, "src/etc"));
   symlinkSync("gone.ts", join(top, "src/gone.ts.link"));
   const tgz = join(work, "archive.tar.gz");
-  execFileSync("tar", ["-czf", tgz, "-C", work, "links-2222222"]);
+  execFileSync("tar", ["-czf", tgz, "-C", work, "links-2222222"], { env: { ...process.env, COPYFILE_DISABLE: "1" } }); // no macOS AppleDouble `._*` entries (never in a GitHub tarball)
   const client: GithubClient = {
     async getJson() { return { ok: true, json: COMMIT_JSON }; },
     async downloadTarball(_owner, _repo, _sha, destFile) {
@@ -356,4 +357,26 @@ test("live: resolves a real public repo commit", { skip: !process.env.OKIE_SCAN_
   const resolved = await resolveGithubCommit(parseGithubSource("gh:sindresorhus/is-odd")!, createDefaultGithubClient());
   assert.match(resolved.sha, /^[0-9a-f]{40}$/);
   assert.match(resolved.generatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("CLA-305: the tarball extraction and the committed-tree copy land under the scanner work root (OKIE_SCAN_WORK_DIR)", async () => {
+  const operator = mkdtempSync(join(tmpdir(), "okie-work-wiring-"));
+  const previous = process.env.OKIE_SCAN_WORK_DIR;
+  const fixture = makeTarball("zod-3333333", { "package.json": "{}" });
+  const repo = mkdtempSync(join(tmpdir(), "okie-work-wiring-repo-"));
+  try {
+    process.env.OKIE_SCAN_WORK_DIR = operator;
+    const workRoot = join(realpathSync(operator), "okie-scan-work");
+    const client: GithubClient = { async getJson() { throw new Error("unused"); }, async downloadTarball(_o, _r, _s, destFile) { copyFileSync(fixture.tgz, destFile); return statSync(destFile).size; } };
+    const acquired = await acquireGithubTree({ owner: "colinhacks", repo: "zod", dirSlug: "colinhacks__zod" }, "3333333", client);
+    try { assert.ok(realpathSync(acquired.root).startsWith(`${workRoot}/`), `${acquired.root} is under ${workRoot}`); } finally { acquired.cleanup(); }
+    execFileSync("git", ["init", "-q"], { cwd: repo }); writeFileSync(join(repo, "a.txt"), "a\n");
+    execFileSync("git", ["-c", "user.email=t@example.com", "-c", "user.name=t", "add", "."], { cwd: repo });
+    execFileSync("git", ["-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-qm", "init"], { cwd: repo });
+    const committed = acquireCommittedTree(repo);
+    try { assert.ok(realpathSync(committed.root).startsWith(`${workRoot}/`), `${committed.root} is under ${workRoot}`); } finally { committed.cleanup(); }
+  } finally {
+    if (previous === undefined) delete process.env.OKIE_SCAN_WORK_DIR; else process.env.OKIE_SCAN_WORK_DIR = previous;
+    fixture.cleanup(); for (const path of [operator, repo]) rmSync(path, { recursive: true, force: true });
+  }
 });

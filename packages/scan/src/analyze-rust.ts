@@ -1,14 +1,15 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, dirname, extname, join, resolve, sep } from "node:path";
-import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
 import Parser from "tree-sitter";
 import Rust from "tree-sitter-rust";
 import { PositionEncoding, SymbolRole, type Occurrence } from "@scip-code/scip";
 import type { AnalysisDefinition, AnalysisExternalReference, AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
 import { decodeScipIndex } from "./scip.js";
-import { cachedScipIndex, rustcIdentity, rustInputDigest } from "./scip-cache.js";
+import { cachedScipIndex, rustAnalyzerVersion, rustcIdentity, rustInputDigest } from "./scip-cache.js";
+import { createScanScratch, operatorCargoHome, rustToolchainPin, scanSpawnSync, scanWorkDir, type ScanScratch } from "./scan-env.js";
+import { inspectRustAncestors, nodeAncestorFs, rustProjectJsonIn, type AncestorFs } from "./rust-ancestors.js";
 
 type Point = { row: number; column: number };
 type OccurrenceRange = { start: Point; end: Point };
@@ -237,6 +238,104 @@ function moduleTarget(path: string, text: string, allowed: ReadonlySet<string>):
 }
 
 /**
+ * Truthful dependency-resolution line (both CARGO_HOME modes). `reason` is cargo's first error line from an offline
+ * `cargo metadata` of the root manifest; undefined when there is no root manifest to check.
+ * - default (isolated scratch CARGO_HOME): emitted when resolution failed, or could not be checked;
+ * - OKIE_SCAN_CARGO_HOME: emitted only when resolution failed (e.g. a git dependency that is not in that cache).
+ */
+export function rustDependencyLimitation(mode: "isolated" | "operator", reason: string | undefined): string {
+  return mode === "isolated"
+    ? `crates.io dependencies are not resolved (offline, isolated CARGO_HOME${reason ? `: ${reason}` : ""}): external references to them are omitted, and calls through dependency types may be missed. An operator can set OKIE_SCAN_CARGO_HOME to a registry cache.`
+    : `Dependency resolution failed offline (${reason ?? "unknown error"}): external references omitted and calls through dependency types may be missed.`;
+}
+
+/** First `error:` line of cargo's stderr, with machine paths replaced (tree, scratch, CARGO_HOME, home). */
+export function scrubCargoError(stderr: string, paths: ReadonlyArray<readonly [label: string, path: string | undefined]>): string {
+  const lines = stderr.split("\n").map(line => line.trim()).filter(Boolean);
+  let line = lines.find(item => /^error\b/i.test(item)) ?? lines[0] ?? "cargo metadata failed";
+  const replacements = paths.filter((entry): entry is readonly [string, string] => Boolean(entry[1])).sort((a, b) => b[1].length - a[1].length);
+  for (const [label, path] of replacements) line = line.split(path).join(`<${label}>`);
+  return line.replace(/^error:\s*/i, "").slice(0, 300);
+}
+
+/**
+ * CLA-305 lockdown, carried by a config file on EVERY rust-analyzer `scip` run. Verified against rust-analyzer 1.87 (see
+ * docs/architecture/scan-sandbox.md): `scip` ignores `cargo.buildScripts.enable` and `procMacro.enable` / `procMacro.server`
+ * (it always loads build data and uses the sysroot proc-macro server), but it does honour
+ * `cargo.buildScripts.overrideCommand`. Replacing the build-data step with a no-op that exits 0 and prints nothing means
+ * no build script is compiled or run, no proc-macro dylib is built (so none is loaded), and no `target/` is written in
+ * the tree; the index is still produced from the source. A repository `rust-analyzer.toml` is not read by `scip`.
+ */
+export const RUST_LOCKDOWN_LIMITATION = "Build scripts and proc macros are not executed: code generated into OUT_DIR (include!(concat!(env!(\"OUT_DIR\"), ...))) and items produced by proc-macro expansion are not indexed.";
+
+/** An absolute no-op command: exits 0 with no output. /usr/bin/true exists on macOS and glibc Linux; /bin/true on busybox. */
+export function lockdownNoopCommand(): string[] {
+  for (const candidate of ["/usr/bin/true", "/bin/true"]) if (existsSync(candidate)) return [candidate];
+  return [process.execPath, "-e", ""];
+}
+
+/** The rust-analyzer config for one variant, with the lockdown merged in; `noop` is a placeholder in the cache key. */
+export function rustAnalyzerConfig(variant: "host" | "wasm32", noop: readonly string[] = lockdownNoopCommand()): Record<string, unknown> {
+  const buildScripts = { overrideCommand: [...noop] };
+  return variant === "wasm32"
+    ? { cargo: { target: "wasm32-unknown-unknown", allTargets: false, buildScripts } }
+    : { cargo: { buildScripts } };
+}
+
+/**
+ * rust-analyzer loads `proc_macro_dylib_path` dylibs into its sysroot proc-macro server, and runs the `sysroot`'s
+ * `bin/rustc` and `libexec/rust-analyzer-proc-macro-srv`, whatever the config says (both verified with 1.87). A
+ * rust-project.json that names either (or a sysroot source), cannot be parsed, or is a symlink is refused: returns the
+ * reason, or undefined when every rust-project.json in the tree is safe to load. Each directory is checked by folded
+ * name AND by asking the filesystem for the canonical names, so `Rust-Project.JSON` or `ruſt-project.json` (what
+ * rust-analyzer opens on APFS) cannot slip past.
+ */
+export function unsafeRustProjectJson(root: string): string | undefined {
+  const refused: string[] = [];
+  const walk = (directory: string) => {
+    let entries; try { entries = readdirSync(directory, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) if (entry.isDirectory() && entry.name !== ".git") walk(join(directory, entry.name));
+    // Folded names plus a direct lstat of the canonical names (the filesystem's own folding: `ruſt-project.json`).
+    for (const absolute of rustProjectJsonIn(directory, entries.map(entry => entry.name), nodeAncestorFs)) {
+      const path = relative(root, absolute).split(sep).join("/");
+      let regular = false; try { regular = lstatSync(absolute).isFile(); } catch { regular = false; }
+      if (!regular) { refused.push(`${path} (not a regular file)`); continue; }
+      let parsed: unknown;
+      try { parsed = JSON.parse(readFileSync(absolute, "utf8")); } catch { refused.push(`${path} (unparseable)`); continue; }
+      const keys = new Set<string>();
+      const visit = (value: unknown) => {
+        if (Array.isArray(value)) { value.forEach(visit); return; }
+        if (!value || typeof value !== "object") return;
+        for (const [key, inner] of Object.entries(value)) {
+          if (["proc_macro_dylib_path", "sysroot", "sysroot_src", "sysroot_project"].includes(key) && inner !== null) keys.add(key);
+          visit(inner);
+        }
+      };
+      visit(parsed);
+      if (keys.size) refused.push(`${path} (${[...keys].sort().join(", ")})`);
+    }
+  };
+  walk(root);
+  return refused.length ? `Rust analysis skipped: rust-analyzer would load or execute repository-supplied binaries named by ${refused.sort().join("; ")}.` : undefined;
+}
+
+/**
+ * `cargo metadata --offline` of the root manifest with the scanner env (the same exposure rust-analyzer already has:
+ * pinned cargo/rustc, no wrappers, no build scripts). Stdout is discarded; only success and the first error matter.
+ */
+function dependencyResolution(root: string, scratch: ScanScratch, cargoBinary: string | undefined, cargoHome: string | undefined): { checked: boolean; failed: boolean; reason?: string } {
+  const manifest = join(root, "Cargo.toml");
+  if (!existsSync(manifest)) return { checked: false, failed: false };
+  // cwd = the tree (already ancestor-checked): cargo discovers `.cargo/config.toml` from its cwd, so this sees exactly
+  // the configuration rust-analyzer's own `cargo metadata` sees (e.g. a vendored `[source]` replacement).
+  const run = scanSpawnSync("rust", cargoBinary ?? "cargo", ["metadata", "--offline", "--format-version", "1", "--manifest-path", manifest], { cwd: root, scratch, encoding: "utf8", timeout: 60_000, stdio: ["ignore", "ignore", "pipe"] });
+  if (!run.error && run.status === 0) return { checked: true, failed: false };
+  const paths = [["tree", root], ["scratch", scratch.dir], ["CARGO_HOME", cargoHome], ["work-root", scanWorkDir()], ["home", homedir()]] as const;
+  const reason = scrubCargoError(run.error ? `error: ${run.error.message}` : run.stderr ?? "", paths);
+  return { checked: true, failed: true, reason };
+}
+
+/**
  * Invoke rust-analyzer's SCIP exporter and retain only resolved, in-repository facts.
  * Import/file links are emitted separately; calls are established from the parsed call AST.
  */
@@ -245,24 +344,50 @@ export interface RustAnalysisOptions {
   indexCacheDir?: string;
   /** Test/measurement seam: reports whether each SCIP run was served from the cache. */
   onIndex?: (variant: "host" | "wasm32", cache: "hit" | "miss" | "off") => void;
+  /** Test seam for the ancestor inspection (rust-ancestors.ts). */
+  ancestorFs?: AncestorFs;
 }
 
 export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly string[], options: RustAnalysisOptions = {}): LanguageAnalysis {
-  const root = resolve(sourceRoot);
+  // Symlinks resolved: the path rust-analyzer and cargo walk up from is exactly the one the ancestor check inspects.
+  let root = resolve(sourceRoot);
+  try { root = realpathSync(root); } catch { /* missing tree: nothing below will index it */ }
   const allFiles = discoveredFiles ?? [];
   const allowed = new Set(allFiles.filter(path => path.endsWith(".rs")).map(path => path.split(sep).join("/")));
   const result: LanguageAnalysis = { schemaVersion: 1, definitions: [], references: [], modules: [], coverage: [] };
   if (!allowed.size) return result;
-  const temporary = mkdtempSync(join(tmpdir(), "okie-rust-scip-"));
-  const indexPath = join(temporary, "index.scip");
+  const unavailable = (limitation: string) => {
+    result.coverage.push({ language: "rust", tool: "rust-analyzer", version: "unavailable", coverage: "unavailable", indexedFiles: [], limitations: [limitation] });
+    return result;
+  };
+  const refusal = unsafeRustProjectJson(root);
+  if (refusal) return unavailable(refusal);
+  const ancestors = inspectRustAncestors(root, options.ancestorFs ? { fs: options.ancestorFs } : {});
+  if (ancestors.refusal) return unavailable(ancestors.refusal);
+  // Operator-owned ancestor cargo files shape `cargo metadata`: their content (and position relative to the tree, not
+  // the machine path) is part of the cache key.
+  const ancestorKey = ancestors.keyInputs.length ? createHash("sha256").update(JSON.stringify(ancestors.keyInputs.map(({ relative, content }) => ({ relative, content })))).digest("hex") : null;
+  const pin = rustToolchainPin();
+  if (pin.error) return unavailable(`Rust analysis unavailable: ${pin.error}`);
+  const cargo = operatorCargoHome();
+  // A private (0700) scratch dir: HOME, CARGO_HOME, config files and index output, removed afterwards.
+  const scratch = createScanScratch("okie-rust-scip-");
+  const temporary = scratch.dir;
   /** One rust-analyzer SCIP run through the optional cache; the variant names the invocation minus machine paths. */
-  const scip = (variant: "host" | "wasm32", args: readonly string[], output: string, config?: { path: string; content: string }) => {
+  const scip = (variant: "host" | "wasm32") => {
+    const output = join(temporary, `${variant}.scip`); const configPath = join(temporary, `${variant}.json`);
+    writeFileSync(configPath, JSON.stringify(rustAnalyzerConfig(variant)), { mode: 0o600 });
+    const args = ["--config-path", configPath, "--exclude-vendored-libraries"];
     const digest = options.indexCacheDir ? (inputDigest ??= rustInputDigest(root)) : undefined;
-    const toolchain = options.indexCacheDir ? (toolchainIdentity ??= rustcIdentity(root) ?? "") : undefined;
-    // The cache key names the arguments with the config file's content in place of its (temporary) path.
-    const keyArgs = args.map(arg => config && arg === config.path ? "<config>" : arg);
-    const result = cachedScipIndex({ ...(options.indexCacheDir ? { cacheDir: options.indexCacheDir } : {}), root, ...(digest ? { digest } : {}), ...(toolchain ? { toolchain } : {}), variant: JSON.stringify({ variant, args: keyArgs, config: config?.content ?? null }), run: () => {
-      const spawned = spawnSync("rust-analyzer", ["scip", root, "--output", output, ...args], { encoding: "utf8", timeout: 120_000 });
+    const toolchain = options.indexCacheDir ? (toolchainIdentity ??= rustcIdentity() ?? "") : undefined;
+    // The key names the arguments with the config content (no-op path as a placeholder) in place of its temporary path.
+    const keyArgs = args.map(arg => arg === configPath ? "<config>" : arg);
+    const keyConfig = JSON.stringify(rustAnalyzerConfig(variant, ["<noop>"]));
+    // The opt-in CARGO_HOME changes what resolves: its path and what it holds are part of the key.
+    const cargoHome = cargo.path ? { path: cargo.path, registry: existsSync(join(cargo.path, "registry")), git: existsSync(join(cargo.path, "git")) } : "scratch";
+    const result = cachedScipIndex({ ...(options.indexCacheDir ? { cacheDir: options.indexCacheDir } : {}), root, ...(digest ? { digest } : {}), ...(toolchain ? { toolchain } : {}), variant: JSON.stringify({ variant, args: keyArgs, config: keyConfig, cargoHome, ancestors: ancestorKey }), run: () => {
+      // cwd is the scratch dir, never the tree: nothing about the toolchain is resolved from the repository.
+      const spawned = scanSpawnSync("rust", "rust-analyzer", ["scip", root, "--output", output, ...args], { cwd: temporary, scratch, encoding: "utf8", timeout: 120_000 });
       if (spawned.error || spawned.status !== 0 || !existsSync(output)) return { stderr: spawned.stderr ?? "", error: spawned.error?.message ?? (spawned.stderr?.trim() ?? "") };
       return { bytes: readFileSync(output), stderr: spawned.stderr ?? "" };
     } });
@@ -270,14 +395,22 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     return result;
   };
   let inputDigest: string | undefined; let toolchainIdentity: string | undefined;
-  const run = scip("host", ["--exclude-vendored-libraries"], indexPath);
-  const limitations = new Set<string>();
+  const limitations = new Set<string>(ancestors.limitations);
   try {
+    const run = scip("host");
     if (!run.bytes) {
-      limitations.add(run.error || "rust-analyzer SCIP indexing failed.");
+      const missing = !rustAnalyzerVersion();
+      limitations.add(missing
+        ? `rust-analyzer is unavailable for the scanner's Rust toolchain${pin.toolchain ? ` ${pin.toolchain}` : ""} (resolved from the scanner's working directory; set OKIE_SCAN_RUST_TOOLCHAIN to a toolchain with the rust-analyzer component): ${run.error || "not installed"}`
+        : run.error || "rust-analyzer SCIP indexing failed.");
       result.coverage.push({ language: "rust", tool: "rust-analyzer", version: "unavailable", coverage: "unavailable", indexedFiles: [], limitations: canonical(limitations) });
       return result;
     }
+    limitations.add(RUST_LOCKDOWN_LIMITATION);
+    if (cargo.error) limitations.add(cargo.error);
+    // Recomputed on every run (cache hit or not): did cargo actually resolve the dependency graph offline?
+    const resolution = dependencyResolution(root, scratch, pin.cargo, cargo.path);
+    if (resolution.failed || (!cargo.path && !resolution.checked)) limitations.add(rustDependencyLimitation(cargo.path ? "operator" : "isolated", resolution.reason));
     const indexes = [decodeScipIndex(run.bytes)];
     // The browser facade is deliberately compiled only for the target used by the
     // repository's wasm-pack build. rust-analyzer otherwise omits it on a host scan.
@@ -286,11 +419,7 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
       return existsSync(absolute) && hasWasmTargetGate(readFileSync(absolute, "utf8"));
     });
     if (needsWasmTarget) {
-      const wasmConfigPath = join(temporary, "wasm32.json");
-      const wasmIndexPath = join(temporary, "wasm32.scip");
-      const wasmConfig = JSON.stringify({ cargo: { target: "wasm32-unknown-unknown", allTargets: false } });
-      writeFileSync(wasmConfigPath, wasmConfig);
-      const wasmRun = scip("wasm32", ["--config-path", wasmConfigPath, "--exclude-vendored-libraries"], wasmIndexPath, { path: wasmConfigPath, content: wasmConfig });
+      const wasmRun = scip("wasm32");
       if (!wasmRun.bytes) {
         limitations.add(`wasm32-unknown-unknown SCIP indexing failed: ${wasmRun.error || "rust-analyzer exited unsuccessfully."}`);
       } else {
@@ -396,6 +525,6 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     result.coverage.push({ language: "rust", tool: "rust-analyzer", version: "unknown", coverage: "unavailable", indexedFiles: [], limitations: canonical(limitations) });
     return result;
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    scratch.dispose();
   }
 }

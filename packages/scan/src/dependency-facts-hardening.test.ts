@@ -414,7 +414,8 @@ test("item 9: a Cargo.lock written by the analyzer mid-scan is never cited; quic
       "[[package]]", 'name = "itoa"', 'version = "1.0.11"', 'source = "registry+https://github.com/rust-lang/crates.io-index"', "",
       "[[package]]", 'name = "nolock"', 'version = "0.1.0"', 'dependencies = [', ' "helper",', ' "itoa",', "]",
       "LOCK",
-      "  touch \"$OKIE_FAKE_RA_MARKER\"",
+      // The scanner's child env is minimal (CLA-305), so the marker path is the script's own directory, not an env var.
+      "  touch \"$(dirname \"$0\")/ran\"",
       "fi",
       "echo 'fake rust-analyzer: no index' >&2",
       "exit 1",
@@ -423,10 +424,9 @@ test("item 9: a Cargo.lock written by the analyzer mid-scan is never cited; quic
   execFileSync("chmod", ["+x", join(bin.root, "rust-analyzer")]);
   const marker = join(bin.root, "ran");
   const repo = tree(NOLOCK_CRATE, true);
-  const saved = { PATH: process.env.PATH, OKIE_FAKE_RA_MARKER: process.env.OKIE_FAKE_RA_MARKER };
+  const saved = { PATH: process.env.PATH };
   try {
     process.env.PATH = `${bin.root}:${process.env.PATH ?? ""}`;
-    process.env.OKIE_FAKE_RA_MARKER = marker;
     const quick = scanRepository(repo.root, { analysisMode: "quick" }).dependencies;
     const full = scanRepository(repo.root, { analysisMode: "full" }).dependencies;
     assert.doesNotThrow(() => readFileSync(marker), "the fake analyzer ran and wrote Cargo.lock into the acquired tree");
@@ -437,7 +437,6 @@ test("item 9: a Cargo.lock written by the analyzer mid-scan is never cited; quic
     assert.deepEqual(full.declarations, quick.declarations);
   } finally {
     process.env.PATH = saved.PATH;
-    if (saved.OKIE_FAKE_RA_MARKER === undefined) delete process.env.OKIE_FAKE_RA_MARKER; else process.env.OKIE_FAKE_RA_MARKER = saved.OKIE_FAKE_RA_MARKER;
     repo.cleanup();
     bin.cleanup();
   }

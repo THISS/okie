@@ -111,13 +111,17 @@ export async function assertPublicRepository(client: GithubClient, owner: string
 
 /** Controller seam: full committed scans create immutable drafts only; publication is never called here (except CLA-271's opt-in incremental auto-publish). */
 export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
-  // The scan seam: a test `scan`, else inline with an injected client, else (production) a worker thread so the
-  // synchronous analysis never blocks the server's event loop.
-  const scanSource = (source: GithubSourceRef, client: GithubClient, access: ScanGithubAccess): Promise<OperatorRunnerScan> => {
+  // The scan seam: a test `scan`, else inline with an injected client, else (production) a child process (CLA-305) so
+  // the synchronous analysis never blocks the server's event loop and never sees its secrets. Cancelling the run kills it.
+  const scanSource = async (source: GithubSourceRef, client: GithubClient, access: ScanGithubAccess, runId: string): Promise<OperatorRunnerScan> => {
     const options = { analysisMode: "full" as const, codeSurface: "all" as const, rustIndexCacheDir: rustIndexCacheDir(deps.store) };
     if (deps.scan) return deps.scan(source, { client, ...options });
     if (deps.githubClient) return scanGithubRepository(source, { client, ...options });
-    return scanInWorker({ source, access, options });
+    const cancel = new AbortController();
+    const poll = setInterval(() => { if (deps.store.isCancelled(runId)) cancel.abort(); }, 1000);
+    // Each scan's extracted tree and scratch live in a private per-scan dir under the scanner work root (CLA-305,
+    // scanWorkDir: never inside okie's own Cargo workspace or a world-writable /tmp).
+    try { return await scanInWorker({ source, access, options }, { signal: cancel.signal }); } finally { clearInterval(poll); }
   };
   const runner: OperatorRunner = {
     async profile(input, signal) {
@@ -141,7 +145,7 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
         // Cron and webhook triggers carry no session: public repositories are read anonymously (never operator `gh`).
         client: access => deps.githubClient ? deps.githubClient(access) : access.kind === "unauthenticated" ? createAnonymousGithubClient() : githubClientForAccess(access),
         resolveCommit: async (source, client) => { await assertPublicRepository(client, source.owner, source.repo); return deps.resolveCommit ? deps.resolveCommit(source, client) : (await resolveGithubCommit(source, client)).sha; },
-        scan: (source, client) => scanSource(source, client, input.githubAccess),
+        scan: (source, client) => scanSource(source, client, input.githubAccess, input.runId),
         publicFiles: artifacts => publicArtifactFiles(run.source, artifacts),
         defaultCap: resolveOperatorEnrichmentDepth,
         hashModel: () => ({ modelId: rawGateway?.modelId ?? (deps.gatewayConfig ?? resolveLlmGatewayConfig()).modelId, leafReasoning: leafReasoningFor(rawGateway, deps.gatewayConfig) }),
@@ -305,7 +309,7 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
     deps.store.updateRun(run.runId, { state: "running" });
     try {
       const client = (deps.githubClient ?? githubClientForAccess)(input.githubAccess); await assertPublicRepository(client, run.source.owner, run.source.repo);
-      const scanned = await scanSource({ owner: run.source.owner, repo: run.source.repo, ...(run.source.ref ? { ref: run.source.ref } : {}), dirSlug: run.source.slug }, client, input.githubAccess);
+      const scanned = await scanSource({ owner: run.source.owner, repo: run.source.repo, ...(run.source.ref ? { ref: run.source.ref } : {}), dirSlug: run.source.slug }, client, input.githubAccess, run.runId);
       if (deps.store.isCancelled(run.runId)) return;
       const artifacts = scanned.artifacts;
       // The cap in effect for this run is recorded in every sidecar so "below cap" never has to be guessed later.
