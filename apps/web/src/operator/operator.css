@@ -42,3 +42,21 @@
 .operator-scope .explanation-key-points ul,.operator-scope .explanation-evidence ul { padding-left:0; }
 /* CLA-264: a superseded revision replaces its coverage chips with this notice and a way to the current revision. */
 .operator-scope-rows small[data-state="superseded"] { font-style:italic; }
+/* CLA-145: report-only claim checks. Chips carry state words; colour is a secondary cue. No "correct" styling exists. */
+.operator-claim-checks { margin-top:18px; border-top:1px solid var(--atlas-line); padding-top:12px; max-width:72ch; }
+.operator-claim-checks>header { display:flex; align-items:center; justify-content:space-between; gap:12px; }.operator-claim-checks>header .operator-actions { margin:0; }
+.operator-claim-caption { margin:4px 0 8px; font-size:12px; }.operator-claim-counts { margin:6px 0; font-size:12px; color:var(--atlas-muted); }
+.operator-claim-rows { margin:0; padding:0; list-style:none; }.operator-claim-rows>li { border:1px solid var(--atlas-line); border-radius:8px; padding:8px 10px; margin-top:6px; }
+.operator-claim-text { margin:0 0 6px; color:var(--atlas-text)!important; overflow-wrap:anywhere; }.operator-claim-origin { color:var(--atlas-quiet); font-size:11px; margin-right:4px; }
+.operator-claim-meta { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.operator-claim-chip { border:1px solid var(--atlas-line); border-radius:20px; padding:2px 8px; font-size:11px; color:var(--atlas-muted); }
+.operator-claim-chip[data-claim-state="failed-check"],.operator-claim-chip[data-claim-state="contradicted"] { border-color:rgba(255,155,155,.55); color:#ffbaba; }
+.operator-claim-chip[data-claim-state="stale"],.operator-claim-chip[data-claim-state="uncertain"],.operator-claim-chip[data-claim-state="unavailable"] { border-color:rgba(217,255,112,.45); color:var(--atlas-accent); }
+.operator-claim-chip[data-claim-state="not-evaluated"],.operator-claim-chip[data-claim-state="insufficient"],.operator-claim-chip[data-claim-state="insufficient-context"] { border-style:dashed; }
+.operator-claim-evidence { display:flex; flex-wrap:wrap; gap:6px; margin:0; padding:0!important; list-style:none; font-size:12px; }.operator-claim-evidence a { color:var(--atlas-cyan); }
+.operator-claim-reason { margin:6px 0 0; font-size:12px; }
+.operator-shell .operator-claim-cue { color:#ffbaba; border:1px solid var(--atlas-line); border-radius:4px; padding:0 4px; }
+.operator-claim-dropped { margin-top:8px; font-size:12px; color:var(--atlas-muted); }.operator-claim-dropped summary { cursor:pointer; }.operator-claim-dropped code { overflow-wrap:anywhere; white-space:normal; }
+.operator-claim-attempts summary { cursor:pointer; font-size:12px; }
+/* Missing coverage (not checked / not run) reads quieter than review results. */
+.operator-shell .operator-claim-cue[data-claim-attention="5"] { color:var(--atlas-muted); }

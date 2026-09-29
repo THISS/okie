@@ -13,10 +13,12 @@ import { githubClientForAccess } from "./githubAccess.js";
 import { belowEnrichmentCap, coverageFor, legacyEnrichmentCap, sidecarState, type OperatorEnrichmentCap, type OperatorSidecarScopeState } from "./operatorContracts.js";
 import { createJevProvider, runOperatorJudgments, type JudgmentLimits, type JudgmentOutcome, type JudgmentProvider, type JudgmentRequest } from "./operatorJudgments.js";
 import { runSectionProfile } from "./sectionProfiles.js";
+import { CLAIM_CHECK_STALE_SKIP, claimReasonText, runClaimChecks } from "./claimChecks.js";
+import { resolveClaimCheckConfig } from "./llmGateway.js";
 
 export interface OperatorRunnerScan { commitSha: string; artifacts: ScanArtifacts; }
 export interface OperatorRunnerDeps { store: OperatorStore; publication: OperatorPublicationService; githubClient?(access: ScanGithubAccess): GithubClient; scan?(source: GithubSourceRef, options: { client: GithubClient; analysisMode: "full"; codeSurface: "all" }): Promise<OperatorRunnerScan>; gateway?: OperatorEnrichmentGateway; gatewayConfig?: LlmGatewayConfig; judgmentProvider?: JudgmentProvider | null; judgmentLimits?: Partial<JudgmentLimits>; /** Test seam; defaults to the process-wide limiter for the gateway's provider. */ rateLimiter?: LlmRateLimiter; /** Process-wide operator spend ledger (OKIE_LLM_GLOBAL_*), reserved before the run ledger. */ globalLedger?: OperatorBudgetLedger; /** Test seam: pause before a transport retry (default TRANSPORT_RETRY_DELAY_MS). */ transportRetryDelayMs?: number; }
-export interface OperatorRunner { profile(input: { runId: string; draftRevisionId: string; scopeId: string }, signal?: AbortSignal): ReturnType<typeof runSectionProfile>; judge(request: JudgmentRequest, signal?: AbortSignal): Promise<JudgmentOutcome>; enqueue(input: { kind: "run" | "retry" | "refresh"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Batch retry: re-reduce affected ancestors in the same pass (CLA-258). */ batch?: boolean; /** Internal audit label for refresh's targeted retry execution. */ attemptKind?: "retry" | "refresh" }): Promise<void>; }
+export interface OperatorRunner { profile(input: { runId: string; draftRevisionId: string; scopeId: string }, signal?: AbortSignal): ReturnType<typeof runSectionProfile>; judge(request: JudgmentRequest, signal?: AbortSignal): Promise<JudgmentOutcome>; enqueue(input: { kind: "run" | "retry" | "refresh" | "claim-checks"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Batch retry: re-reduce affected ancestors in the same pass (CLA-258). */ batch?: boolean; /** Internal audit label for refresh's targeted retry execution. */ attemptKind?: "retry" | "refresh" }): Promise<void>; }
 
 function persistedUsage(usage?: GatewayUsage) {
   return usage ? {
@@ -109,6 +111,37 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
     }
     /** Retry/refresh execution is visible as "running" (the API's 409 guard covers it); a cancellation is never overwritten. */
     const markRunning = () => { if (!deps.store.isCancelled(run.runId)) deps.store.updateRun(run.runId, { state: "running" }); };
+    if (input.kind === "claim-checks") {
+      // CLA-145: report-only Jev claim checks through the same seam as retry: visible as "running",
+      // cancellable, one installed revision per pass, and back to awaiting_review afterwards.
+      const config = resolveClaimCheckConfig();
+      const provider = deps.judgmentProvider === undefined ? createJevProvider() : deps.judgmentProvider ?? undefined;
+      markRunning();
+      // Lets the operator UI say "Checking claims…" instead of enrichment progress while this pass runs.
+      deps.store.appendEvent({ runId: run.runId, type: "claim_checks.started", detail: { ...(input.scopeIds ? { scopes: input.scopeIds.length } : {}) } });
+      let result: Awaited<ReturnType<typeof runClaimChecks>>;
+      try {
+        result = await runClaimChecks({ store: deps.store, publication: deps.publication, runId: run.runId, draftRevisionId: input.draftRevisionId!, ...(input.scopeIds ? { scopeIds: input.scopeIds } : {}), ...(provider ? { provider } : {}), limits: { maxRequests: config.maxRequests, maxTokens: config.maxTokens, maxDollars: config.maxDollars, maxConcurrent: 1, timeoutMs: config.timeoutMs }, ...(deps.globalLedger ? { globalLedger: deps.globalLedger } : {}), enabled: config.enabled, runnerOwned: true });
+      } catch (error) { result = { state: "unavailable", file: error instanceof Error ? error.message : "claim checks" }; }
+      if (result.state === "cancelled" || deps.store.isCancelled(run.runId)) { deps.store.appendEvent({ runId: run.runId, type: "claim_checks.finished", detail: { stopped: "cancelled", message: "Claim checks were cancelled; nothing was installed." } }); return; }
+      const counts: Record<string, number> = {};
+      if (result.state === "accepted") for (const row of result.rows) counts[row.state] = (counts[row.state] ?? 0) + 1;
+      const skipped = result.state === "accepted" || result.state === "stale" ? result.skipped.length : 0;
+      const message = result.state === "disabled" ? "Claim checks were not run: they are off on this server (OKIE_JEV_CLAIM_CHECKS)."
+        : result.state === "no-claims" ? "Claim checks were not run: no selected scope has a claim mapping."
+        : result.state === "stale" ? `Claim checks were not run: ${CLAIM_CHECK_STALE_SKIP}`
+        : result.state === "conflict" ? "Claim checks were not installed: the revision changed during the pass."
+        : result.state === "unavailable" || result.state === "corrupt" ? `Claim checks failed: ${result.state} ${result.file}.`
+        : result.stopped === "limit" ? `Claim checks stopped: ${claimReasonText(result.ledger === "global" ? "global-budget" : "run-budget")} Remaining claims are marked unavailable.`
+        : result.stopped === "unavailable" ? `Claim checks were not judged: ${claimReasonText("no-provider")} Code checks were recorded.`
+        : result.stopped === "failed" ? "Some claim-check requests failed or timed out; those claims are marked unavailable. Re-check to try again."
+        : skipped ? `Claim checks finished; ${skipped} stale scope${skipped === 1 ? " was" : "s were"} skipped (${CLAIM_CHECK_STALE_SKIP.toLowerCase()})` : undefined;
+      // Outcome messages live on the event, never on run.error: a report-only pass must not clear or overwrite an
+      // enrichment error the operator still needs to see.
+      deps.store.appendEvent({ runId: run.runId, type: "claim_checks.finished", detail: { stopped: result.state === "accepted" ? result.stopped ?? "complete" : result.state, ...(result.state === "accepted" ? { installed: result.installed, requests: result.requests, replayed: result.replayed, claims: result.rows.length, ...(result.ledger ? { ledger: result.ledger } : {}) } : {}), ...(skipped ? { skipped } : {}), ...(message ? { message } : {}), ...counts } });
+      deps.store.updateRun(run.runId, { state: "awaiting_review" });
+      return;
+    }
     if (input.kind === "refresh") {
       // CLA-264: one batch pass over the stale scopes (the retry path's pool, admission and install), so ancestors shared by
       // several refreshed scopes re-reduce once and one revision is installed, instead of one retry (and revision) per scope.

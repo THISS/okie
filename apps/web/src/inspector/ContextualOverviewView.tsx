@@ -2,7 +2,8 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ContextualOverview } from './contextualOverview';
 import { LinkList } from './LinkList';
 import { OverviewBlocks } from '../blocks/OverviewBlocks';
-import { composeOverviewBlocks, usesBlockOverview } from '../blocks/composeBlocks';
+import { composeOverviewBlocks, usesBlockOverview, type ComposedOverview } from '../blocks/composeBlocks';
+import { jevBlockPlanner, plannerNote, useAtlasDevMode, useOverviewBlockPlanner, type JevPlanStatus } from '../blocks/jevBlockPlanner';
 import type { OperatorScope } from '../operator/api';
 import { ExplanationView } from '../explanation/ExplanationView';
 import { explanationViewModel, hasExplanationContent, kindLabel, type EntityNameLookup, type ExplanationEvidence } from '../explanation/explanationModel';
@@ -49,6 +50,12 @@ export function explanationForOverview(explanation: OperatorScope | undefined, e
   return explanation && entityId !== undefined && (explanation.entityId ?? explanation.scopeId) === entityId ? explanation : undefined;
 }
 
+/** Dev mode only: which planner ordered the blocks. Planner reasons live in the tooltip, never as reader-facing facts. */
+function PlannerNote({ composed, status }: { composed: ComposedOverview; status: JevPlanStatus }) {
+  const reasons = composed.plan.reasons ? composed.plan.order.map(id => `${id}: ${composed.plan.reasons![id] ?? '—'}`).join('\n') : undefined;
+  return <p className="overview-planner-note" data-block-planner={composed.plan.source} {...(reasons ? { title: reasons } : {})}>{plannerNote(composed.plan, status)}</p>;
+}
+
 export function ContextualOverviewView({ overview, onOpenEntity, explanation: offered, entityName, onOpenEvidence }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const entityId = overview?.entity.id;
@@ -56,9 +63,13 @@ export function ContextualOverviewView({ overview, onOpenEntity, explanation: of
   useLayoutEffect(() => { resetOverviewScroll(rootRef.current); }, [entityId]);
   const explanationContent = explanation?.explanation;
   // CLA-149 pilot: containers and software systems render the Overview as ordered typed blocks.
+  // CLA-149 phase 2: the Jev planner (flagged, off by default) answers from its cache. A plan that arrives after this
+  // view painted is kept for the next visit (no reorder under the reader); `plannerVersion` refreshes the dev note.
+  const { planner, version: plannerVersion, deferred } = useOverviewBlockPlanner(entityId);
+  const devMode = useAtlasDevMode();
   const composed = useMemo(() => overview && usesBlockOverview(overview.entity.kind)
-    ? composeOverviewBlocks({ overview, explanation: explanationContent, ...(entityName ? { entityName } : {}) })
-    : undefined, [overview, explanationContent, entityName]);
+    ? composeOverviewBlocks({ overview, explanation: explanationContent, planner, ...(entityName ? { entityName } : {}) })
+    : undefined, [overview, explanationContent, entityName, planner, plannerVersion]);
   if (!overview) return <div ref={rootRef}><p className="detail-muted">Overview evidence is unavailable for this selection.</p></div>;
   const placeholder = overview.parent ? `Part of ${overview.parent.name}. No description has been captured yet.` : 'No description has been captured yet.';
   if (composed) {
@@ -72,6 +83,7 @@ export function ContextualOverviewView({ overview, onOpenEntity, explanation: of
         </div>
         {!composed.described && <p className="detail-muted">{placeholder}</p>}
       </section>
+      {devMode && <PlannerNote composed={composed} status={planner.name !== jevBlockPlanner.name ? { state: 'off' } : deferred(composed.planInput) ? { state: 'deferred' } : jevBlockPlanner.status(composed.planInput)}/>}
       <OverviewBlocks blocks={composed.blocks} dropped={composed.dropped.length} itemsOmitted={itemsOmitted} entityName={composed.entityName} onOpenEntity={onOpenEntity} {...(onOpenEvidence ? { onOpenEvidence } : {})} subjectName={overview.entity.name}/>
     </div>;
   }

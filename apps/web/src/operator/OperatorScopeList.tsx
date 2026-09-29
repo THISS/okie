@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 
 import type { OperatorScope } from './api';
 import { belowCapChip, reviewStateLabel, supersededRetryHint } from './reviewState';
 import { activeToggles, collapseAll, focusSearchOnShortcut, SCOPE_SORTS, scopeLabel, scopeListView, searchEscapeAction, withToggles, type ExpansionState, type ScopeSort } from './scopeList';
+import { attentionCueFor, attentionRollup } from './claimChecks';
 import { count, isBelowCap, levelTag, SCOPE_FILTERS, selectable, selectByLevel, selectByState, selectSubtree, selectVisible, type ScopeFilter } from './scopeSelection';
 
 type Selection = ReadonlySet<string>;
@@ -30,6 +31,7 @@ export function OperatorScopeList(props: ScopeListProps) {
   const setExpanded = (next: ReadonlyMap<string, boolean>) => setExpansion(current => withToggles(current, options, next));
   const view = useMemo(() => scopeListView(scopes, options, expanded), [scopes, props.filter, props.query, showBelowCap, props.sort, expanded]);
   const lookup = useMemo(() => new Map(scopes.map(scope => [scope.scopeId, scope])), [scopes]);
+  const rollup = useMemo(() => attentionRollup(scopes), [scopes]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { focusSearchOnShortcut(event, searchRef.current); };
     document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey);
@@ -70,7 +72,7 @@ export function OperatorScopeList(props: ScopeListProps) {
       return <li aria-current={props.openScopeId === item.scopeId ? 'true' : undefined} aria-level={row.depth + 1} className={[props.openScopeId === item.scopeId ? 'selected' : '', row.match || !view.filtering ? '' : 'context'].filter(Boolean).join(' ') || undefined} data-scope-id={item.scopeId} key={item.scopeId} style={{ '--depth': row.depth } as CSSProperties}>
         {row.hasChildren ? <button aria-controls={listId} aria-expanded={row.expanded} aria-label={`${row.expanded ? 'Collapse' : 'Expand'} ${name.primary}`} className="operator-tree-toggle" onClick={() => setOpen(item.scopeId, !row.expanded)} type="button">{row.expanded ? '▾' : '▸'}</button> : <span aria-hidden="true" className="operator-tree-toggle"/>}
         <input aria-label={`Select ${name.primary}`} checked={selected.has(item.scopeId)} disabled={!canSelect} onChange={() => toggle(item.scopeId)} type="checkbox"/>
-        <button className="operator-scope-open" onClick={() => props.onOpen(item)} title={name.title} type="button"><span className="operator-scope-name">{name.primary}{name.secondary && <small className="operator-scope-hint">{name.secondary}</small>}</span>{badge && <small className="operator-count">{badge}</small>}{levelTag(item) && <em className="operator-level">{levelTag(item)}</em>}<small data-state={label}>{label}</small></button>
+        <button className="operator-scope-open" onClick={() => props.onOpen(item)} title={name.title} type="button"><span className="operator-scope-name">{name.primary}{name.secondary && <small className="operator-scope-hint">{name.secondary}</small>}</span>{badge && <small className="operator-count">{badge}</small>}{levelTag(item) && <em className="operator-level">{levelTag(item)}</em>}<small data-state={label}>{label}</small>{(() => { const cue = attentionCueFor(item, row.hasChildren && !row.expanded, rollup); return cue && <small className="operator-claim-cue" data-claim-attention={cue.tier} {...(cue.below ? { 'data-claim-attention-below': '' } : {})} title={cue.title}>{cue.text}</small>; })()}</button>
       </li>;
     })}</ul>
   </nav>;

@@ -4,13 +4,15 @@ import { createOperatorBudgetLedger, type OperatorBudgetLedger } from "./operato
 import { resolveLlmRateLimitConfig, resolveOperatorEnrichmentBudget } from "./llmGateway.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
 import { OperatorStore } from "./operatorStore.js";
+import { CLAIM_CHECK_CONFIDENCE_THRESHOLD, CLAIM_CHECK_LABEL, isClaimCheckAttempt, readClaimCheckView, type ClaimCheckView, type ScopeClaimChecks } from "./claimChecks.js";
+import { resolveClaimCheckConfig } from "./llmGateway.js";
 
 /** `kind` is the C4 kind recorded in the sidecar (absent on hand-written legacy rows); `depth` counts ancestors. */
 /**
  * `path`: the scope's primary source path (first source ref), for list search and tooltips (CLA-259).
  * `metrics`: operator-only cost/tokens/last-updated summary of the attempts behind the scope's current state (CLA-259).
  */
-export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; path?: string; depth: number; state: string; stale: boolean; explanation?: unknown; explanationVersionId?: string; diagramError?: string; /** `inherited`: borrowed from an earlier revision of the run (lineage, CLA-264); display only, never counted in metrics. */ attempts?: Array<OperatorScopeAttempt & { inherited?: true }>; metrics?: OperatorScopeMetrics; }
+export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; path?: string; depth: number; state: string; stale: boolean; explanation?: unknown; explanationVersionId?: string; diagramError?: string; /** CLA-145: per-scope claim-check counts and rows (model judgment over captured excerpts, not verification). */ claimChecks?: ScopeClaimChecks; /** `inherited`: borrowed from an earlier revision of the run (lineage, CLA-264); display only, never counted in metrics. */ attempts?: Array<OperatorScopeAttempt & { inherited?: true }>; metrics?: OperatorScopeMetrics; }
 /** Every field optional; `metrics` is omitted when none is known. */
 export interface OperatorScopeMetrics { costUsd?: number; totalTokens?: number; updatedAt?: number; }
 
@@ -34,7 +36,7 @@ export function scopeMetricsFor(draftAttempts: readonly OperatorScopeAttempt[], 
   return costUsd === undefined && totalTokens === undefined && updatedAt === undefined ? undefined : { ...(costUsd !== undefined ? { costUsd } : {}), ...(totalTokens !== undefined ? { totalTokens } : {}), ...(updatedAt !== undefined ? { updatedAt } : {}) };
 }
 /** `batch`: the retry came in the API's `scopeIds` form and re-reduces affected ancestors in one pass. */
-export interface OperatorWorkflowJob { kind: "run" | "retry" | "refresh"; runId: string; draftRevisionId?: string; scopeIds?: string[]; batch?: boolean; githubAccess: ScanGithubAccess; }
+export interface OperatorWorkflowJob { kind: "run" | "retry" | "refresh" | "claim-checks"; runId: string; draftRevisionId?: string; scopeIds?: string[]; batch?: boolean; githubAccess: ScanGithubAccess; }
 /** The run ledger as the operator sees it: spend so far against the configured per-run limits. */
 export interface OperatorRunBudget { maxDollars: number; spentDollars: number; maxRequests: number; requests: number; maxTokens: number; tokens: number; /** Present only when a global operator dollar cap is configured. */ globalRemainingDollars?: number; /** Run requests left (maxRequests − requests). */ remainingRequests: number; /** Present only when a global request cap is configured. */ globalRemainingRequests?: number; /** Run tokens left (maxTokens − tokens, reservations included; CLA-264). */ remainingTokens: number; /** Present only when a global token cap is configured. */ globalRemainingTokens?: number; /** Requests the pass keeps in flight at once; each holds a token reservation until it settles. */ maxConcurrent: number; /** Average tokens one admission reserved (request bytes + max output tokens) in this run; absent before any. */ avgTokenReservation?: number; }
 /** The process-wide operator ledger and its dollar cap (OKIE_LLM_GLOBAL_*). */
@@ -53,7 +55,8 @@ export class OperatorWorkflow {
     return {
       run,
       draft: state.drafts.find(value => value.draftRevisionId === run.draftRevisionId),
-      attempts: attempts.slice(-100),
+      // Claim-check attempts are listed separately (latest 20) so they never push enrichment attempts out of the latest 100.
+      attempts: [...enrichmentAttempts(attempts).slice(-100), ...attempts.filter(isClaimCheckAttempt).slice(-20)].sort((a, b) => a.createdAt - b.createdAt),
       events: state.events.filter(value => value.runId === runId).slice(-100),
       usage: usage(attempts),
       budget: { ...runBudget(this.options.store, runId), ...globalRemaining(this.options.globalBudget) },
@@ -77,12 +80,19 @@ export class OperatorWorkflow {
     // revision, so its error stays visible; it never changes the scope's state or metrics.
     const earlier = new Set(state.drafts.filter(value => value.runId === draft.runId && value.revision < draft.revision).map(value => value.draftRevisionId));
     const lineage = new Map<string, OperatorScopeAttempt>(); for (const attempt of state.attempts) if (earlier.has(attempt.draftRevisionId)) lineage.set(attempt.scopeId, attempt);
-    const scopes = readArtifactScopes(this.options.store, draft.artifactRevisionId, attempts, { live, metrics: true, lineage });
+    const scopes = readArtifactScopes(this.options.store, draft.artifactRevisionId, attempts, { live, metrics: true, lineage, claims: true });
     const current = this.options.publications.currentPublication(draft.repositoryId);
     const artifact = state.artifacts.find(value => value.artifactRevisionId === draft.artifactRevisionId);
     // Coverage is re-derived from the immutable sidecar (+ this draft's attempts) so legacy drafts count "below cap" correctly.
     const coverage = scopes.length ? coverageFor(scopes, scopes.filter(scope => scope.explanation !== undefined)) : draft.coverage;
-    return { draft: { ...draft, coverage }, source: run.source, scopes, usage: usage(attempts), artifact,
+    // Report-only: claim checks never change coverage, publication or acknowledgement.
+    // A malformed artifact must never break review: the view degrades to "corrupt" and claims read as not evaluated.
+    let view: ClaimCheckView;
+    try { view = readClaimCheckView(this.options.store, artifact, resolveClaimCheckConfig().enabled); }
+    catch { view = { enabled: resolveClaimCheckConfig().enabled, label: CLAIM_CHECK_LABEL, threshold: CLAIM_CHECK_CONFIDENCE_THRESHOLD, state: "corrupt", file: "snapshot.json", scopes: {} }; }
+    const { scopes: claimScopes, ...claimChecks } = view;
+    for (const scope of scopes) { const checks = claimScopes[scope.scopeId]; if (checks) scope.claimChecks = checks; }
+    return { draft: { ...draft, coverage }, source: run.source, scopes, usage: usage(attempts), artifact, claimChecks,
       ...(current ? { currentPublicationVersionId: current.versionId } : {}) };
   }
   bundle(draftRevisionId: string): Buffer | undefined { const detail = this.draftDetail(draftRevisionId); return detail ? this.options.store.readArtifactFile(detail.draft.artifactRevisionId, "atlas.okie.json") : undefined; }
@@ -99,7 +109,7 @@ export function runBudget(store: OperatorStore, runId: string): OperatorRunBudge
   const limits = resolveOperatorEnrichmentBudget();
   const snapshot = createOperatorBudgetLedger({ maxRequests: limits.maxScopes, maxTokens: limits.maxTokens, maxDollars: limits.maxDollars }, { store, runId }).snapshot();
   const tokens = snapshot.inputTokens + snapshot.outputTokens + snapshot.reservedTokens;
-  const reservations = store.snapshot().events.filter(event => event.runId === runId && event.type === "budget.reserved" && event.detail?.kind !== "judgment" && typeof event.detail?.tokens === "number").map(event => event.detail!.tokens as number);
+  const reservations = store.snapshot().events.filter(event => event.runId === runId && event.type === "budget.reserved" && event.detail?.kind === undefined && typeof event.detail?.tokens === "number").map(event => event.detail!.tokens as number);
   return { maxConcurrent: Math.max(1, Math.floor(resolveLlmRateLimitConfig().maxConcurrent)), ...(reservations.length ? { avgTokenReservation: reservations.reduce((total, value) => total + value, 0) / reservations.length } : {}), maxDollars: limits.maxDollars, spentDollars: (snapshot.measuredCostUsd ?? 0) + (snapshot.estimatedCostUsd ?? 0), maxRequests: limits.maxScopes, requests: snapshot.requests, remainingRequests: Math.max(0, limits.maxScopes - snapshot.requests), maxTokens: limits.maxTokens, tokens, remainingTokens: Math.max(0, limits.maxTokens - tokens) };
 }
 
@@ -109,7 +119,10 @@ export function passStartedAt(events: readonly { type: string; at: number; detai
   return 0;
 }
 
-export function progressOf(attempts: readonly OperatorScopeAttempt[]): { accepted: number; failed: number; inFlight: number } {
+/** CLA-145 claim-check attempts are report-only Jev calls, not scope enrichment: they never count as enrichment progress or per-scope cost. */
+const enrichmentAttempts = (attempts: readonly OperatorScopeAttempt[]) => attempts.filter(attempt => !isClaimCheckAttempt(attempt));
+export function progressOf(all: readonly OperatorScopeAttempt[]): { accepted: number; failed: number; inFlight: number } {
+  const attempts = enrichmentAttempts(all);
   return { accepted: attempts.filter(value => value.state === "accepted").length, failed: attempts.filter(value => value.state === "failed").length, inFlight: attempts.filter(value => value.state === "running" || value.state === "queued").length };
 }
 
@@ -122,7 +135,7 @@ export function globalRemaining(global?: OperatorGlobalBudget): { globalRemainin
 
 /** Average cost of the run's attempts that reported one (measured, else estimated); absent when none did. */
 export function avgCost(attempts: readonly OperatorScopeAttempt[]): { avgCostPerScopeUsd?: number } {
-  const costs = attempts.map(attempt => attempt.usage?.measuredCostUsd ?? attempt.usage?.estimatedCostUsd).filter((value): value is number => value !== undefined);
+  const costs = enrichmentAttempts(attempts).map(attempt => attempt.usage?.measuredCostUsd ?? attempt.usage?.estimatedCostUsd).filter((value): value is number => value !== undefined);
   return costs.length ? { avgCostPerScopeUsd: costs.reduce((total, value) => total + value, 0) / costs.length } : {};
 }
 
@@ -131,14 +144,15 @@ export function avgCost(attempts: readonly OperatorScopeAttempt[]): { avgCostPer
  * web's fit-to-budget checks the token cap with it. Absent when no attempt reported tokens.
  */
 export function avgTokens(attempts: readonly OperatorScopeAttempt[]): { avgTokensPerScope?: number } {
-  const totals = attempts.flatMap(attempt => attempt.usage?.inputTokens !== undefined || attempt.usage?.outputTokens !== undefined ? [(attempt.usage.inputTokens ?? 0) + (attempt.usage.outputTokens ?? 0)] : []);
+  const totals = enrichmentAttempts(attempts).flatMap(attempt => attempt.usage?.inputTokens !== undefined || attempt.usage?.outputTokens !== undefined ? [(attempt.usage.inputTokens ?? 0) + (attempt.usage.outputTokens ?? 0)] : []);
   return totals.length ? { avgTokensPerScope: totals.reduce((total, value) => total + value, 0) / totals.length } : {};
 }
 
 /** Artifact content is authoritative, so later attempts cannot rewrite a frozen preview. */
 /** `metrics` adds the operator-only per-scope cost/tokens/updated summary (never on public routes). */
 /** `lineage`: per scope, the run's latest attempt on an earlier revision; listed only when this draft has none for the scope. */
-export function readArtifactScopes(store: OperatorStore, artifactRevisionId: string, attempts: OperatorScopeAttempt[] = [], options: { live?: boolean; metrics?: boolean; lineage?: ReadonlyMap<string, OperatorScopeAttempt> } = {}): OperatorScopeDto[] {
+/** `claims`: keep the CLA-145 claim mapping (`claims`, `claimsNote`) on explanations; operator-only, never on public routes. */
+export function readArtifactScopes(store: OperatorStore, artifactRevisionId: string, attempts: OperatorScopeAttempt[] = [], options: { live?: boolean; metrics?: boolean; lineage?: ReadonlyMap<string, OperatorScopeAttempt>; claims?: boolean } = {}): OperatorScopeDto[] {
   const bytes = store.readArtifactFile(artifactRevisionId, "operator-explanations.json");
   if (!bytes) return [];
   const sidecar = object(JSON.parse(bytes.toString("utf8")));
@@ -164,7 +178,8 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
     if (typeof scope.scopeId !== "string" || typeof scope.name !== "string") return [];
     const row = byScope.get(scope.scopeId);
     const content = row?.content ?? row?.explanation;
-    const explanation = object(content);
+    const { claims: _claims, claimsNote: _claimsNote, ...withoutClaims } = object(content);
+    const explanation = options.claims ? object(content) : withoutClaims;
     const rows = attemptsByScope.get(scope.scopeId) ?? [];
     const metrics = attemptById ? scopeMetricsFor(rows, row, attemptById) : undefined;
     const latest = rows.at(-1);

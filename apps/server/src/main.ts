@@ -20,6 +20,8 @@ import { OperatorStore } from "./operatorStore.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
 import { createOperatorRunner } from "./operatorRunner.js";
 import { createOperatorBudgetLedger } from "./operatorBudget.js";
+import { createBlockPlanReplayStore, createBlockPlanService, publicationBlockPlanSource, resolveBlockPlannerConfig } from "./blockPlans.js";
+import { createJevProvider } from "./operatorJudgments.js";
 
 /**
  * Paste-a-repo scan process used by the hosted public atlas (CLA-30):
@@ -33,6 +35,7 @@ import { createOperatorBudgetLedger } from "./operatorBudget.js";
  *   GET  /api/ask                  { connected } — gateway key present, never the key
  *   GET  /api/ask/thread           GitHub session required — that user's turns for owner/repo@sha
  *   POST /api/ask                  GitHub session required → one-shot Q&A; persist thread
+ *   POST /api/block-plan           CLA-149 Jev Overview block order (off unless OKIE_JEV_BLOCK_PLANNER=on)
  *   GET  /scan/*                   published trio objects, neighborhood packets, excerpts, index.json
  *
  * Public atlas *views* are the web app's `/r/<owner>/<repo>` URLs (no login wall).
@@ -90,7 +93,21 @@ const operatorRunner = createOperatorRunner({
   ...(operatorGateway ? { gateway: operatorGateway } : {}),
 });
 
+// CLA-149 Jev block planner: off unless OKIE_JEV_BLOCK_PLANNER=on, and refused unless OKIE_LLM_GLOBAL_MAX_DOLLARS
+// is set; every Jev request is admitted through the same durable global ledger first.
+const blockPlannerConfig = resolveBlockPlannerConfig();
+const blockPlans = createBlockPlanService({
+  config: blockPlannerConfig,
+  provider: blockPlannerConfig.enabled ? createJevProvider() : undefined,
+  source: publicationBlockPlanSource(operatorPublication, operatorStore),
+  globalLedger: operatorGlobalBudget,
+  globalCapDollars: globalSpend.cap.maxDollars,
+  replay: createBlockPlanReplayStore(join(scanRoot, "block-plans")),
+  log,
+});
+
 const server = createScanHttpServer({
+  blockPlans,
   queue,
   allowSubmit,
   auth,

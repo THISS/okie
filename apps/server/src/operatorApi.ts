@@ -8,6 +8,8 @@ import { canonicalOperatorRepositoryId, OperatorStore } from "./operatorStore.js
 import { OperatorWorkflow, type OperatorGlobalBudget, type OperatorWorkflowJob } from "./operatorWorkflow.js";
 import { resolveScanGithubAccess } from "./githubAccess.js";
 import { parsePortableAtlas } from "@okie/architecture";
+import { MAX_CLAIM_CHECK_SCOPES } from "./claimChecks.js";
+import { resolveClaimCheckConfig } from "./llmGateway.js";
 
 export interface OperatorApiOptions { auth: GithubAuthService; allowedGithubIds: ReadonlySet<string>; publicOrigin: string; store: OperatorStore; publications: OperatorPublicationService; enqueue: (job: OperatorWorkflowJob) => void | Promise<void>; /** Process-wide operator ledger, when a global dollar cap is configured (shown as global remaining in run detail). */ globalBudget?: OperatorGlobalBudget; }
 export interface OperatorApiResult { status: number; body: unknown; }
@@ -35,6 +37,30 @@ export function parseRetrySelection(value: Record<string, unknown>, scopes: read
   if (!optIn && scopeIds.some(scopeId => byId.get(scopeId)!.state === "below cap")) return { error: "below-cap scopes require explicit opt-in (includeBelowCap: true)" };
   return { scopeIds, batch: true };
 }
+/**
+ * Claim-check body (CLA-145): `{}` checks every non-stale scope whose explanation has a claim mapping;
+ * `{ scopeIds }` names known scopes (deduplicated, capped). A named scope without claims is refused.
+ * Stale scopes are never sent to Jev: a selection with only stale scopes is refused with
+ * `claim_scopes_stale` (refresh first); stale members of a mixed selection are skipped by the pass.
+ */
+export function parseClaimCheckSelection(value: Record<string, unknown>, scopes: readonly { scopeId: string; stale?: boolean; claimChecks?: { mapping: string } }[]): { scopeIds: string[] } | { error: string; code?: "claim_scopes_stale" } {
+  const withClaims = scopes.filter(scope => scope.claimChecks?.mapping === "claims");
+  const staleError = { error: "Every selected scope's explanation is stale; refresh it, then re-check.", code: "claim_scopes_stale" as const };
+  if (value.scopeIds === undefined) {
+    if (!withClaims.length) return { error: "no scope in this revision has a claim mapping" };
+    const fresh = withClaims.filter(scope => !scope.stale).map(scope => scope.scopeId);
+    return fresh.length ? { scopeIds: fresh.slice(0, MAX_CLAIM_CHECK_SCOPES) } : staleError;
+  }
+  if (!Array.isArray(value.scopeIds) || !value.scopeIds.length || value.scopeIds.some(scopeId => typeof scopeId !== "string")) return { error: "scopeIds must be a non-empty array of scope ids" };
+  const scopeIds = [...new Set(value.scopeIds as string[])];
+  if (scopeIds.length > MAX_CLAIM_CHECK_SCOPES) return { error: `at most ${MAX_CLAIM_CHECK_SCOPES} scopes can be checked at once` };
+  const unknown = scopeIds.find(scopeId => !scopes.some(scope => scope.scopeId === scopeId));
+  if (unknown !== undefined) return { error: `unknown scope id: ${unknown}` };
+  const unmapped = scopeIds.find(scopeId => !withClaims.some(scope => scope.scopeId === scopeId));
+  if (unmapped !== undefined) return { error: `scope has no claim mapping: ${unmapped}` };
+  if (scopeIds.every(scopeId => withClaims.find(scope => scope.scopeId === scopeId)!.stale)) return staleError;
+  return { scopeIds };
+}
 const record = (value: unknown): Record<string, unknown> => typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
 /** Authorization happens before any ID lookup, intentionally preventing existence inference. */
 export async function handleOperatorApi(options: OperatorApiOptions, request: IncomingMessage, pathname: string, body?: unknown): Promise<OperatorApiResult | undefined> {
@@ -46,7 +72,19 @@ export async function handleOperatorApi(options: OperatorApiOptions, request: In
   if (pathname === "/api/operator/runs" && request.method === "GET") return { status: 200, body: { runs: options.store.snapshot().runs.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 100) } };
   if (pathname === "/api/operator/runs" && request.method === "POST") { const value = record(body); const parsed = typeof value.url === "string" ? normalizeRepoInput(value.url) : undefined; if (!parsed || typeof value.idempotencyKey !== "string") return { status: 422, body: { error: "url and idempotencyKey required" } }; const owner = parsed.owner.toLowerCase(); const repo = parsed.repo.toLowerCase(); const created = options.store.createRun({ idempotencyKey: value.idempotencyKey, source: { repositoryId: canonicalOperatorRepositoryId(`repo:${owner}/${repo}`), owner, repo, slug: parsed.dirSlug, ...(parsed.ref ? { ref: parsed.ref } : {}) } }); if (!created.deduped) await workflow.enqueue({ kind: "run", runId: created.run.runId, githubAccess: resolveScanGithubAccess({ session: access.session }) }); return { status: 202, body: created }; }
   const runMatch = /^\/api\/operator\/runs\/([^/]+)(?:\/cancel)?$/.exec(pathname); if (runMatch) { const detail = workflow.runDetail(decodeURIComponent(runMatch[1]!)); if (!detail) return { status: 404, body: { error: "not found" } }; if (pathname.endsWith("/cancel") && request.method === "POST") return { status: 200, body: { run: options.store.updateRun(detail.run.runId, { state: "cancelled" }) } }; if (request.method === "GET") return { status: 200, body: detail }; }
-  const draft = /^\/api\/operator\/drafts\/([^/]+)(?:\/(bundle|retry|refresh|publish))?$/.exec(pathname); if (!draft) return { status: 404, body: { error: "not found" } }; const id = decodeURIComponent(draft[1]!); const detail = workflow.draftDetail(id); if (!detail) return { status: 404, body: { error: "not found" } }; const action = draft[2]; if (!action && request.method === "GET") return { status: 200, body: detail }; if (action === "bundle" && request.method === "GET") return { status: 200, body: { bundle: workflow.bundle(id)?.toString("utf8") } }; const value = record(body); if ((action === "retry" || action === "refresh") && request.method === "POST") { const currentRun = options.store.snapshot().runs.find(run => run.runId === detail.draft.runId); if (currentRun?.state === "queued" || currentRun?.state === "running") return { status: 409, body: { error: "operator action already running", code: "run_active" } }; const currentDraftRevisionId = currentRun?.draftRevisionId; if (currentDraftRevisionId !== id) return { status: 409, body: { error: "draft is no longer current", code: "draft_superseded", ...(currentDraftRevisionId ? { currentDraftRevisionId } : {}) } }; let scopeIds: string[]; let batch = false; if (action === "retry") { const parsed = parseRetrySelection(value, detail.scopes); if ("error" in parsed) return { status: 422, body: { error: parsed.error } }; scopeIds = parsed.scopeIds; batch = parsed.batch; } else { scopeIds = Array.isArray(value.scopeIds) ? value.scopeIds.filter((v): v is string => typeof v === "string") : []; if (!scopeIds.length || scopeIds.some(scopeId => !detail.scopes.some(scope => scope.scopeId === scopeId))) return { status: 422, body: { error: "known scope id required" } }; } /* Refresh is one batch pass too (CLA-264): stale scopes and their shared ancestors re-reduce once. */ await workflow.enqueue({ kind: action, runId: detail.draft.runId, draftRevisionId: id, scopeIds, ...(batch || action === "refresh" ? { batch: true } : {}), githubAccess: resolveScanGithubAccess({ session: access.session }) }); return { status: 202, body: { run: detail.draft.runId, draftRevisionId: id } }; }
+  const draft = /^\/api\/operator\/drafts\/([^/]+)(?:\/(bundle|retry|refresh|publish|claim-checks))?$/.exec(pathname); if (!draft) return { status: 404, body: { error: "not found" } }; const id = decodeURIComponent(draft[1]!); const detail = workflow.draftDetail(id); if (!detail) return { status: 404, body: { error: "not found" } }; const action = draft[2]; if (!action && request.method === "GET") return { status: 200, body: detail }; if (action === "bundle" && request.method === "GET") return { status: 200, body: { bundle: workflow.bundle(id)?.toString("utf8") } }; const value = record(body); if ((action === "retry" || action === "refresh") && request.method === "POST") { const currentRun = options.store.snapshot().runs.find(run => run.runId === detail.draft.runId); if (currentRun?.state === "queued" || currentRun?.state === "running") return { status: 409, body: { error: "operator action already running", code: "run_active" } }; const currentDraftRevisionId = currentRun?.draftRevisionId; if (currentDraftRevisionId !== id) return { status: 409, body: { error: "draft is no longer current", code: "draft_superseded", ...(currentDraftRevisionId ? { currentDraftRevisionId } : {}) } }; let scopeIds: string[]; let batch = false; if (action === "retry") { const parsed = parseRetrySelection(value, detail.scopes); if ("error" in parsed) return { status: 422, body: { error: parsed.error } }; scopeIds = parsed.scopeIds; batch = parsed.batch; } else { scopeIds = Array.isArray(value.scopeIds) ? value.scopeIds.filter((v): v is string => typeof v === "string") : []; if (!scopeIds.length || scopeIds.some(scopeId => !detail.scopes.some(scope => scope.scopeId === scopeId))) return { status: 422, body: { error: "known scope id required" } }; } /* Refresh is one batch pass too (CLA-264): stale scopes and their shared ancestors re-reduce once. */ await workflow.enqueue({ kind: action, runId: detail.draft.runId, draftRevisionId: id, scopeIds, ...(batch || action === "refresh" ? { batch: true } : {}), githubAccess: resolveScanGithubAccess({ session: access.session }) }); return { status: 202, body: { run: detail.draft.runId, draftRevisionId: id } }; }
+  if (action === "claim-checks" && request.method === "POST") {
+    // Same guards as retry: mutation auth above, no active pass, and only the run's current revision.
+    const currentRun = options.store.snapshot().runs.find(run => run.runId === detail.draft.runId);
+    if (currentRun?.state === "queued" || currentRun?.state === "running") return { status: 409, body: { error: "operator action already running", code: "run_active" } };
+    if (currentRun?.draftRevisionId !== id) return { status: 409, body: { error: "draft is no longer current", code: "draft_superseded", ...(currentRun?.draftRevisionId ? { currentDraftRevisionId: currentRun.draftRevisionId } : {}) } };
+    if (currentRun.state !== "awaiting_review" && currentRun.state !== "complete") return { status: 409, body: { error: "run is not reviewable", code: "run_not_reviewable" } };
+    if (!resolveClaimCheckConfig().enabled) return { status: 422, body: { error: "Claim checks are off on this server (OKIE_JEV_CLAIM_CHECKS).", code: "claim_checks_disabled" } };
+    const parsed = parseClaimCheckSelection(value, detail.scopes);
+    if ("error" in parsed) return { status: 422, body: { error: parsed.error, ...(parsed.code ? { code: parsed.code } : {}) } };
+    await workflow.enqueue({ kind: "claim-checks", runId: detail.draft.runId, draftRevisionId: id, scopeIds: parsed.scopeIds, githubAccess: resolveScanGithubAccess({ session: access.session }) });
+    return { status: 202, body: { run: detail.draft.runId, draftRevisionId: id, scopes: parsed.scopeIds.length } };
+  }
   if (action === "publish" && request.method === "POST") {
     const required = ["atlas.okie.json", "snapshot.json", "view.json", "scene.json", "story.json", "stories.json", "timeline.json"];
     const artifact = options.store.snapshot().artifacts.find(item => item.artifactRevisionId === detail.draft.artifactRevisionId);

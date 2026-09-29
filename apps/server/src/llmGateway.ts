@@ -192,6 +192,33 @@ export function resolveOperatorEnrichmentBudget(env: NodeJS.Dict<string> = proce
   };
 }
 
+/**
+ * CLA-145 Jev claim checks. Off unless `OKIE_JEV_CLAIM_CHECKS` is on/true/1. Per-run caps
+ * `OKIE_JEV_MAX_{REQUESTS,TOKENS,DOLLARS}` and a per-request deadline `OKIE_JEV_TIMEOUT_MS`.
+ *
+ * Defaults are deliberately small. Each Jev request reserves the documented 64k context plus 16k
+ * typed output (81,920 tokens) and $0.003 (65,536 input tokens × $0.042/1M, rounded up; Jev bills
+ * input only and reports no cost, so the $0.003 reservation stays counted). 32 requests (at most 8
+ * claims each, one scope per request) therefore cost at most 32 × $0.003 = $0.096 ≤ $0.10, and 32 ×
+ * 81,920 = 2,621,440 reserved tokens. Real input is ≤24 KB of JSON (≈6-8k tokens), so the token cap
+ * never binds before the request cap. 20 s: batches carry up to eight questions over ≤24 KB of
+ * excerpts, twice the 10 s single-batch judgment default. Raising any limit is an operator action.
+ */
+export const DEFAULT_JEV_CLAIM_CHECK_MAX_REQUESTS = 32;
+export const DEFAULT_JEV_CLAIM_CHECK_MAX_TOKENS = 32 * 81_920;
+export const DEFAULT_JEV_CLAIM_CHECK_MAX_DOLLARS = 0.1;
+export const DEFAULT_JEV_CLAIM_CHECK_TIMEOUT_MS = 20_000;
+export interface ClaimCheckConfig { enabled: boolean; maxRequests: number; maxTokens: number; maxDollars: number; timeoutMs: number; }
+export function resolveClaimCheckConfig(env: NodeJS.Dict<string> = process.env): ClaimCheckConfig {
+  return {
+    enabled: /^(?:1|on|true|yes)$/i.test(env.OKIE_JEV_CLAIM_CHECKS?.trim() ?? ""),
+    maxRequests: Math.floor(parsePositiveNumber(env.OKIE_JEV_MAX_REQUESTS, DEFAULT_JEV_CLAIM_CHECK_MAX_REQUESTS)),
+    maxTokens: Math.floor(parsePositiveNumber(env.OKIE_JEV_MAX_TOKENS, DEFAULT_JEV_CLAIM_CHECK_MAX_TOKENS)),
+    maxDollars: parsePositiveNumber(env.OKIE_JEV_MAX_DOLLARS, DEFAULT_JEV_CLAIM_CHECK_MAX_DOLLARS),
+    timeoutMs: Math.floor(parsePositiveNumber(env.OKIE_JEV_TIMEOUT_MS, DEFAULT_JEV_CLAIM_CHECK_TIMEOUT_MS)),
+  };
+}
+
 /** Deepest C4 kind operator enrichment explains; `code` symbols are opt-in. */
 export type OperatorEnrichmentDepth = "component" | "code";
 export function resolveOperatorEnrichmentDepth(env: NodeJS.Dict<string> = process.env): OperatorEnrichmentDepth {

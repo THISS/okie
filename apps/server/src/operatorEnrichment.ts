@@ -27,7 +27,16 @@ export interface OperatorExplanationV3 {
   evidence: OperatorEvidenceRef[];
   /** Why an invalid optional diagram and/or table was dropped; the prose is kept. */
   diagramError?: string;
+  /**
+   * CLA-145: bounded claims mapped to canonical evidence (prompt v4). Absent on legacy content, which
+   * reads as "not evaluated: no claim mapping". Claim text is verbatim prose; it never replaces it.
+   */
+  claims?: OperatorExplanationClaim[];
+  /** Why some or all model claim mappings were dropped (the explanation itself is kept unchanged). */
+  claimsNote?: string;
 }
+/** One bounded assertion copied verbatim from the summary or equal to one key point, with its canonical evidence. */
+export interface OperatorExplanationClaim { id: string; text: string; origin: "summary" | "keyPoint"; index: number; evidence: OperatorEvidenceRef[]; }
 /** v1/v2 content already stored in sidecars and publications; loaded and published unchanged. */
 export interface LegacyOperatorExplanation {
   format?: undefined;
@@ -177,6 +186,8 @@ function isEvidence(value: unknown): value is OperatorEvidenceRef {
   return isObject(value) && (typeof value.entityId === "string" || typeof value.path === "string")
     && (value.startLine === undefined || value.startLine === null || typeof value.startLine === "number") && (value.endLine === undefined || value.endLine === null || typeof value.endLine === "number");
 }
+/** Canonical fields only: models decorate refs with note/quote/confidence, which are never stored; null line numbers are absent. */
+function canonicalRef(ref: OperatorEvidenceRef): OperatorEvidenceRef { return { ...(ref.entityId !== undefined ? { entityId: ref.entityId } : {}), ...(ref.path !== undefined ? { path: ref.path } : {}), ...(typeof ref.startLine === "number" ? { startLine: ref.startLine } : {}), ...(typeof ref.endLine === "number" ? { endLine: ref.endLine } : {}) }; }
 function evidenceKey(ref: OperatorEvidenceRef): string { return `${ref.entityId ?? ""}|${ref.path ?? ""}|${ref.startLine ?? ""}|${ref.endLine ?? ""}`; }
 function canonical(value: unknown): string { if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`; if (isObject(value)) return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonical(value[key])}`).join(",")}}`; return JSON.stringify(value); }
 function inputHash(value: unknown): string { return createHash("sha256").update(canonical(value)).digest("hex"); }
@@ -230,10 +241,91 @@ function validText(raw: string, field: string, maxChars: number): string {
   if (value.length > maxChars) throw new Error(`rejected explanation: ${field} is ${value.length} characters (limit ${maxChars})`);
   return value;
 }
-/** Leading list markers the model sometimes adds are removed (the renderer draws its own bullets); newlines collapse. */
+/** Leading list markers the model sometimes adds are removed (the renderer draws its own bullets); newlines collapse. A v4 `{ text, evidence }` item contributes its text. */
 function keyPointText(item: unknown): string {
-  if (typeof item !== "string") throw new Error("malformed explanation: keyPoints must be strings");
-  return collapse(item).replace(/^(?:[-*•]|\d+[.)])\s+/, "");
+  const text = isObject(item) && typeof item.text === "string" ? item.text : item;
+  if (typeof text !== "string") throw new Error("malformed explanation: keyPoints must be strings");
+  return collapse(text).replace(/^(?:[-*•]|\d+[.)])\s+/, "");
+}
+
+/** CLA-145 claim-mapping caps: optional, dropped (never rejecting) when exceeded. */
+export const OPERATOR_CLAIM_LIMITS = { claims: 8, evidencePerClaim: 3, claimChars: 600, minSummaryClaimChars: 12 } as const;
+/**
+ * A summary claim must be whole sentences of the summary: after whitespace normalisation it starts at
+ * the start of the summary or right after a sentence end (`[.!?]` + space), and ends at a sentence end
+ * (`[.!?]` followed by a space or the end) or at the end of the summary. A fragment such as "writes rows
+ * to disk" out of "never writes rows to disk" would drop the negation, and "It" asserts nothing, so both
+ * are rejected. `summary` and `text` must already be collapsed.
+ */
+export function isSummarySentenceSpan(summary: string, text: string): boolean {
+  if (text.length < OPERATOR_CLAIM_LIMITS.minSummaryClaimChars) return false;
+  for (let at = summary.indexOf(text); at !== -1; at = summary.indexOf(text, at + 1)) {
+    const end = at + text.length;
+    const starts = at === 0 || /[.!?] $/.test(summary.slice(Math.max(0, at - 2), at));
+    const ends = end === summary.length || (/[.!?]$/.test(text) && summary[end] === " ");
+    if (starts && ends) return true;
+  }
+  return false;
+}
+/** Stable claim identity: origin, verbatim text and canonical evidence. Prose position is not identity. */
+export function operatorClaimId(origin: OperatorExplanationClaim["origin"], text: string, evidence: readonly OperatorEvidenceRef[]): string {
+  return `c${inputHash({ origin, text, evidence: evidence.map(ref => ({ entityId: ref.entityId, path: ref.path, startLine: ref.startLine, endLine: ref.endLine })) }).slice(0, 20)}`;
+}
+/**
+ * Maps the model's claim annotations to canonical evidence. Code checks only: a keyPoint claim IS its
+ * stored key point; a summary claim must be whole, whitespace-normalised sentence(s) of the stored summary.
+ * A claim's `evidence` entries are either ref objects copied from allowedEvidence (the form the prompt
+ * teaches), resolved with the same canonical resolution as the reply's `evidence` and required to be
+ * among the reply's own evidence, or (compatibility) zero-based indices into the reply's `evidence`
+ * array. Anything else is dropped with a note. Compound sentences are never split here.
+ */
+function mapClaims(value: Record<string, unknown>, keyPointItems: readonly unknown[], keyPoints: readonly string[], summary: string, resolved: readonly (OperatorEvidenceRef | undefined)[], allowedEvidence: readonly OperatorEvidenceRef[]): { claims: OperatorExplanationClaim[]; notes: string[] } {
+  const notes: string[] = []; const claims: OperatorExplanationClaim[] = []; const ids = new Set<string>();
+  const replyKeys = new Set(resolved.filter((ref): ref is OperatorEvidenceRef => ref !== undefined).map(evidenceKey));
+  const refsFor = (raw: unknown, where: string): OperatorEvidenceRef[] | undefined => {
+    if (!Array.isArray(raw) || !raw.length) { notes.push(`${where}: no evidence`); return undefined; }
+    if (raw.length > OPERATOR_CLAIM_LIMITS.evidencePerClaim) { notes.push(`${where}: more than ${OPERATOR_CLAIM_LIMITS.evidencePerClaim} evidence refs`); return undefined; }
+    const refs: OperatorEvidenceRef[] = [];
+    for (const entry of raw) {
+      let ref: OperatorEvidenceRef | undefined;
+      if (typeof entry === "number") {
+        ref = Number.isSafeInteger(entry) && entry >= 0 ? resolved[entry] : undefined;
+        if (!ref) { notes.push(`${where}: evidence index out of range`); return undefined; }
+      } else if (isEvidence(entry)) {
+        ref = resolveEvidence(canonicalRef(entry), allowedEvidence);
+        if (!ref) { notes.push(`${where}: evidence ref is not in allowedEvidence`); return undefined; }
+        if (!replyKeys.has(evidenceKey(ref))) { notes.push(`${where}: evidence ref is not in the reply's evidence`); return undefined; }
+      } else { notes.push(`${where}: evidence entries must be refs from allowedEvidence`); return undefined; }
+      if (!refs.some(item => evidenceKey(item) === evidenceKey(ref))) refs.push(ref);
+    }
+    return refs;
+  };
+  const add = (origin: OperatorExplanationClaim["origin"], index: number, text: string, evidence: OperatorEvidenceRef[], where: string) => {
+    if (claims.length >= OPERATOR_CLAIM_LIMITS.claims) { notes.push(`${where}: over ${OPERATOR_CLAIM_LIMITS.claims} claims`); return; }
+    const id = operatorClaimId(origin, text, evidence);
+    if (ids.has(id)) return;
+    ids.add(id); claims.push({ id, text, origin, index, evidence });
+  };
+  const normalizedSummary = collapse(summary);
+  if (Array.isArray(value.summaryClaims)) value.summaryClaims.forEach((item, index) => {
+    const where = `summaryClaims[${index}]`;
+    if (!isObject(item) || typeof item.text !== "string" || !collapse(item.text)) { notes.push(`${where}: text is required`); return; }
+    const text = collapse(item.text);
+    if (text.length > OPERATOR_CLAIM_LIMITS.claimChars) { notes.push(`${where}: over ${OPERATOR_CLAIM_LIMITS.claimChars} characters`); return; }
+    if (!isSummarySentenceSpan(normalizedSummary, text)) { notes.push(`${where}: not whole verbatim sentence(s) of the summary`); return; }
+    const evidence = refsFor(item.evidence, where); if (evidence) add("summary", index, text, evidence, where);
+  });
+  else if (value.summaryClaims !== undefined && value.summaryClaims !== null) notes.push("summaryClaims: not a list");
+  // Key point positions after empty items were filtered out, matching the stored keyPoints.
+  let position = 0;
+  keyPointItems.forEach((item, raw) => {
+    if (keyPointText(item) === "") return;
+    const index = position++;
+    if (!isObject(item) || item.evidence === undefined || item.evidence === null) return;
+    const where = `keyPoints[${raw}]`;
+    const evidence = refsFor(item.evidence, where); if (evidence) add("keyPoint", index, keyPoints[index]!, evidence, where);
+  });
+  return { claims, notes };
 }
 
 const ENTITY_ID_LIKE = /\b(?:system|container|component|code|external|softwareSystem|externalSystem|relation):[\w./-]+/;
@@ -349,7 +441,7 @@ export function validateOperatorExplanation(value: unknown, allowedEvidence: rea
   if (keyPoints.length < L.keyPointsMin || keyPoints.length > L.keyPointsMax) throw new Error(`rejected explanation: ${keyPoints.length} keyPoints (allowed ${L.keyPointsMin}-${L.keyPointsMax})`);
   if (!Array.isArray(value.evidence) || !value.evidence.length || !value.evidence.every(isEvidence)) throw new Error("malformed explanation: evidence is required");
   // Canonical fields only: models decorate refs with note/quote/confidence, which must not be stored as evidence; null line numbers (a MiMo habit) are absent.
-  const cited = (value.evidence as OperatorEvidenceRef[]).map(ref => ({ ...(ref.entityId !== undefined ? { entityId: ref.entityId } : {}), ...(ref.path !== undefined ? { path: ref.path } : {}), ...(typeof ref.startLine === "number" ? { startLine: ref.startLine } : {}), ...(typeof ref.endLine === "number" ? { endLine: ref.endLine } : {}) }));
+  const cited = (value.evidence as OperatorEvidenceRef[]).map(canonicalRef);
   const resolved = cited.map(ref => resolveEvidence(ref, allowedEvidence));
   const unknown = cited.filter((_ref, index) => resolved[index] === undefined);
   if (unknown.length) throw new Error(`rejected explanation: unknown evidence reference(s): ${unknown.slice(0, 3).map(describeEvidence).join(", ")}${unknown.length > 3 ? ` (+${unknown.length - 3} more)` : ""}`);
@@ -364,7 +456,11 @@ export function validateOperatorExplanation(value: unknown, allowedEvidence: rea
     if ("table" in checked) table = checked.table; else dropped.push(checked.error);
   }
   const corrections = new Map<string, string>(); cited.forEach((ref, index) => { const path = resolved[index]!.path; if (typeof ref.path === "string" && path !== undefined && ref.path !== path) corrections.set(ref.path, path); });
-  return { format: "v3", summary: canonicalPathSpans(summary, corrections), keyPoints: keyPoints.map(item => canonicalPathSpans(item, corrections)), ...(diagram ? { diagram } : {}), ...(table ? { table } : {}), evidence, ...(dropped.length ? { diagramError: dropped.join("; ") } : {}) };
+  const finalSummary = canonicalPathSpans(summary, corrections); const finalKeyPoints = keyPoints.map(item => canonicalPathSpans(item, corrections));
+  const summaryClaims = Array.isArray(value.summaryClaims) ? value.summaryClaims.map(item => isObject(item) && typeof item.text === "string" ? { ...item, text: canonicalPathSpans(item.text, corrections) } : item) : value.summaryClaims;
+  const mapped = mapClaims({ ...value, summaryClaims }, value.keyPoints as unknown[], finalKeyPoints, finalSummary, resolved, allowedEvidence);
+  const claimsNote = mapped.notes.length ? scrubProviderIdentifiers(`dropped claim mapping: ${mapped.notes.slice(0, 4).join("; ")}${mapped.notes.length > 4 ? ` (+${mapped.notes.length - 4} more)` : ""}`) : undefined;
+  return { format: "v3", summary: finalSummary, keyPoints: finalKeyPoints, ...(diagram ? { diagram } : {}), ...(table ? { table } : {}), evidence, ...(dropped.length ? { diagramError: dropped.join("; ") } : {}), ...(mapped.claims.length ? { claims: mapped.claims } : {}), ...(claimsNote ? { claimsNote } : {}) };
 }
 
 /**
@@ -375,12 +471,18 @@ export function validateOperatorExplanation(value: unknown, allowedEvidence: rea
  */
 export function explanationRowForJudgment(row: unknown): unknown {
   if (!isObject(row) || !isObject(row.content) || row.content.format !== "v3") return row;
-  const { diagram: _diagram, table: _table, ...content } = row.content;
+  // Claim mappings duplicate prose already in summary/keyPoints; rows without them hash exactly as before.
+  const { diagram: _diagram, table: _table, claims: _claims, claimsNote: _claimsNote, ...content } = row.content;
   return { ...row, content };
 }
 
 function completionText(result: LlmChatCompletionResult): unknown { return parseChatCompletionDocument(result.json); }
-export const OPERATOR_PROMPT_VERSION = "operator-enrichment/v3";
+/**
+ * v4 (CLA-145) asks the model to map bounded claims to its own evidence entries. Stored content
+ * keeps `format: "v3"` (renderers are unchanged); the version bump invalidates v3 input hashes
+ * because the prompt changed.
+ */
+export const OPERATOR_PROMPT_VERSION = "operator-enrichment/v4";
 const PROMPT_VERSION = OPERATOR_PROMPT_VERSION;
 /**
  * v3 voice (CLA-260): the owner of this area briefing a new teammate. The output shape and the
@@ -394,10 +496,13 @@ export const OPERATOR_OUTPUT_SCHEMA_PROMPT = [
   "Use only the supplied deterministic facts and evidence; do not guess beyond them. Never mention enrichment or documentation status, failures or coverage; describe the code only. Never list or restate dependencies, dependents, imports or relationships (the atlas already draws those edges). Name specific files, symbols and behaviours instead of generic descriptions.",
   "Return one JSON object only, exactly this shape (omit an optional field rather than returning null):",
   "{\"summary\": string (2-3 short sentences, at most 60 words: what it is and why it matters),",
-  " \"keyPoints\": string[] (2-4 items, each ONE idea in at most 20 words; each points at something worth looking into: a file or symbol to open first, a gotcha, or a design decision and why; never a dependency list),",
+  " \"keyPoints\": (string | {\"text\": string, \"evidence\": EvidenceRef[]})[] (2-4 items, each ONE idea in at most 20 words; each points at something worth looking into: a file or symbol to open first, a gotcha, or a design decision and why; never a dependency list),",
   " \"evidence\": [{\"entityId\": string, \"path\": string, \"startLine\"?: number, \"endLine\"?: number}] (copy entries verbatim from allowedEvidence; no other fields; at least one),",
+  " \"summaryClaims\"?: [{\"text\": string, \"evidence\": EvidenceRef[]}] (at most 4),",
   " \"diagram\"?: string (Mermaid source, only when a picture explains a flow better than words; most scopes omit it),",
   " \"table\"?: {\"caption\"?: string, \"columns\": string[] (2-4 short headings), \"rows\": string[][] (1-8 rows, one cell per column)} (only when a side-by-side comparison genuinely helps; usually omit)}",
+  "Claim mapping: write a key point as {\"text\", \"evidence\"} when specific evidence entries show it. A claim's \"evidence\" lists 1-3 EvidenceRef objects, each copied verbatim from allowedEvidence (the same {\"entityId\", \"path\", \"startLine\"?, \"endLine\"?} object) and also listed in your top-level evidence array; never numbers. summaryClaims marks whole sentences of the summary the same way; each text is copied verbatim from the summary. One claim = one assertion, copied verbatim: never split, shorten or reword it to fit evidence, and leave a statement unmapped rather than cite an entry that does not show it.",
+  "Claim mapping example (unrelated service): {\"text\": \"Start with `handleEvent()` in `webhooks/stripe.ts`; every event type fans out from its switch.\", \"evidence\": [{\"entityId\": \"code:webhooks-stripe-ts:handle-event\", \"path\": \"webhooks/stripe.ts\", \"startLine\": 12, \"endLine\": 58}]}",
   "Text uses inline markdown only: **bold** for one or two key terms, `code` for paths and symbols, *italics* sparingly. No headings, links, images, HTML or code blocks.",
   "Diagram rules: first line `flowchart LR` or `flowchart TB`; at most 10 nodes; short human-readable labels in quotes, e.g. scan[\"Repository scan\"] --> model[\"C4 model\"]; never raw entity ids such as component:foo; no style, classDef, class, linkStyle, click or %% lines.",
   "Example of the tone wanted (about an unrelated billing service, not this scope):",

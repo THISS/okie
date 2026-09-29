@@ -12,7 +12,8 @@ following. It never lists dependencies or dependents; the atlas already draws th
 
 ## Request
 
-One chat-completions request per scope (`promptVersion: "operator-enrichment/v3"`, JSON mode). The
+One chat-completions request per scope (`promptVersion: "operator-enrichment/v4"`, JSON mode; v4
+added claim mapping for CLA-145, and stored content stays `format: "v3"`). The
 system message spells out the output shape and lengths, in words and well under the validator's
 character limits, and includes one worked example about an unrelated service. A parent scope's
 system message adds a synthesis instruction: say how the children fit together, which child to
@@ -47,8 +48,37 @@ interface OperatorExplanationV3 {
   table?: { caption?: string; columns: string[]; rows: string[][] };
   evidence: Array<{ entityId?: string; path?: string; startLine?: number; endLine?: number }>;
   diagramError?: string;        // why an optional diagram and/or table was dropped
+  claims?: Array<{ id: string; text: string; origin: "summary" | "keyPoint"; index: number; evidence: EvidenceRef[] }>;
+  claimsNote?: string;          // why some or all claim mappings were dropped
 }
 ```
+
+### Claim mapping (prompt v4, CLA-145)
+
+The model may write a key point as `{ "text", "evidence": number[] }` and add
+`summaryClaims: [{ "text", "evidence" }]`. A claim's `evidence` lists 1-3 ref objects copied verbatim from
+`allowedEvidence` (the form the prompt teaches, with an example). Each is resolved like the reply's `evidence`
+(`resolveEvidence`) and must also appear in it. Zero-based indices into the reply's `evidence` array are still
+accepted for compatibility.
+The prompt says that a claim is one assertion, copied verbatim, and must never be split or reworded.
+Ordinary code validates the mapping:
+
+- A key-point claim is exactly the stored key point.
+- A summary claim must be whole sentences of the stored summary, after whitespace normalisation.
+  It starts at the start of the summary or after `[.!?]` and a space, ends at a sentence end or the
+  end of the summary, and is at least 12 characters (`isSummarySentenceSpan`). The same rule
+  re-validates stored claims on read.
+- Ref objects must resolve to allowed evidence that the reply also cites. Indices must be in range.
+- There are at most 8 claims and at most 3 refs per claim.
+
+An invalid mapping is dropped with a `claimsNote`. It never rejects the explanation, and the prose
+is never changed. The claim `id` is a hash of the origin, the text and the canonical evidence.
+Content without `claims` (v1, v2 and earlier v3) reads as "not evaluated: no claim mapping". Claims
+never travel to parents (`childPromptInput` sends only the summary and key points), and the public
+`operator-explanations.json` route strips `claims` and `claimsNote`.
+`explanationRowForJudgment` leaves them out, so judgment hashes for rows without claims are
+unchanged. Operator claim checks are described in
+[docs/qa/operator-workflow/operations.md](../qa/operator-workflow/operations.md#claim-checks-cla-145).
 
 Legacy content (`{ summary, roleWithinParent?, interactions?, evidence, diagram?: { nodes, edges },
 diagramError? }`, no `format`) that is already stored loads, publishes and renders unchanged.

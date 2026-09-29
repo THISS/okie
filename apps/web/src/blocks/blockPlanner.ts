@@ -5,6 +5,7 @@ import { BLOCK_CAPS, type BlockProvenance, type BlockType } from './blockModel';
  * composer already built (by id); it never supplies content. The deterministic
  * default recipe is always the fallback. See docs/roadmap/overview-blocks.md.
  */
+/** Only ids, types and provenance: a remote planner derives any content digest server-side. */
 export interface BlockCandidate { id: string; type: BlockType; provenance: BlockProvenance }
 export interface BlockPlanInput {
   node: { id: string; kind: string; size: { children: number; dependencies: number; dependents: number } };
@@ -83,7 +84,7 @@ function validatePlan(plan: unknown, input: BlockPlanInput): BlockPlan {
 }
 
 export interface BlockPlannerFlags {
-  /** Future: enable the remote (Jev) planner. Off by default; nothing implements it yet. */
+  /** Enable the remote (Jev) planner (`jevBlockPlanner.ts`). Off by default. */
   remotePlanner?: boolean;
 }
 

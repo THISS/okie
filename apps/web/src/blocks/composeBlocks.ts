@@ -13,6 +13,8 @@ export interface ComposedOverview {
   /** Rendered blocks with items left out (over a cap or individually invalid). */
   trimmed: TrimmedBlock[];
   plan: BlockPlan;
+  /** The exact planner input (for planner status lookups; never rendered). */
+  planInput: BlockPlanInput;
   /** An accepted explanation contributed at least one valid block. */
   explained: boolean;
   /**
@@ -126,5 +128,5 @@ export function composeOverviewBlocks({ overview, explanation, entityName, plann
   };
   const plan = runBlockPlanner(planner, input);
   const byId = new Map(candidates.map(block => [block.id, block]));
-  return { blocks: plan.order.flatMap(id => byId.get(id) ?? []), dropped: [...enrichment.dropped, ...observed.dropped], trimmed: [...enrichment.trimmed, ...observed.trimmed], plan, explained, described, entityName: names };
+  return { blocks: plan.order.flatMap(id => byId.get(id) ?? []), planInput: input, dropped: [...enrichment.dropped, ...observed.dropped], trimmed: [...enrichment.trimmed, ...observed.trimmed], plan, explained, described, entityName: names };
 }

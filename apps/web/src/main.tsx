@@ -25,6 +25,7 @@ import { OperatorWorkspace } from './operator/OperatorWorkspace';
 import { previewReturnSelection } from './operator/workspaceController';
 import { clearDraftPreviewContext, setDraftPreviewContext, setPublishedPreviewContext } from './operator/previewContext';
 import { loadPublishedExplanations } from './operator/publishedExplanations';
+import { captureBlockPlannerQueryFlag, setBlockPlannerScan } from './blocks/blockPlannerScan';
 import { documentPageFor, setDocumentPage } from './pageScroll';
 import {
   availableScanRepoSlugs,
@@ -37,6 +38,8 @@ import {
   type ScanTrioLoader,
 } from './renderer/scanFixture';
 
+// CLA-149: read `?planner=jev` before anything can rewrite the URL.
+captureBlockPlannerQueryFlag(window.location.search);
 const root = createRoot(document.getElementById('root')!);
 let indexedDb: IDBFactory | undefined;
 try { indexedDb = window.indexedDB; } catch { /* Browser policy may deny even reading the factory. */ }
@@ -87,6 +90,8 @@ async function tryBootNeighborhoodFixture(
       { targetAspect: bootstrapScanAspect() },
     );
     setActiveScanFixture(fixture);
+    // CLA-149: the Jev block planner (flagged) plans against this exact immutable publication only.
+    setBlockPlannerScan(slug && fixture.publication ? { slug, versionId: fixture.publication.versionId } : undefined);
     if (slug && fixture.publication) {
       try {
         const scopes = await loadPublishedExplanations(slug, fixture.publication.versionId);
@@ -139,6 +144,7 @@ async function mountPortableAtlas(bundle: PortableAtlas, fixture: ScanFixture, n
   // Unmount first: no old App effect may observe the replacement's module state.
   flushSync(() => root.render(null));
   setActivePortableAtlas(bundle);
+  setBlockPlannerScan(undefined);
   setActiveScanFixture(fixture);
   refreshAppScanFixture();
   if (resetNavigation || portableNavigationDiffers(window.location.search, bundle)) {
@@ -177,6 +183,7 @@ async function mountOperatorDraftPreview(draftRevisionId: string, scopes: import
   const { App, refreshAppScanFixture } = await import('./App');
   flushSync(() => root.render(null));
   setActivePortableAtlas(bundle);
+  setBlockPlannerScan(undefined);
   setDraftPreviewContext(draftRevisionId, scopes);
   setActiveScanFixture(prepared.fixture);
   refreshAppScanFixture();

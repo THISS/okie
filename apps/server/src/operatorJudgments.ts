@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { APIError, TypeSafeClient, type ChoiceQuestion, type ChoiceResponse, type EntryType, type Fetch } from "@typesafe-ai/sdk";
 import { redactGatewayText } from "./llmGateway.js";
-import { createOperatorBudgetLedger } from "./operatorBudget.js";
+import { createOperatorBudgetLedger, type OperatorBudgetLedger } from "./operatorBudget.js";
 import { explanationRowForJudgment } from "./operatorEnrichment.js";
 import type { OperatorUsage } from "./operatorContracts.js";
 import type { OperatorPublicationService } from "./operatorPublication.js";
@@ -105,6 +105,125 @@ export function validateJudgmentAnswers(json: unknown, questions: Record<string,
   }));
 }
 
+/** Why a batch was not answered. `limit` names the ledger that refused; `failed` distinguishes a timeout. */
+export type JudgmentBatchOutcome =
+  | { state: "answered"; answers: Record<string, ChoiceResponse>; modelId: string; inputHash: string; replayed: boolean; attemptId?: string; usage: OperatorUsage }
+  | { state: "unavailable" | "cancelled"; inputHash?: string }
+  | { state: "failed"; reason: "timeout" | "provider" | "invalid-response"; inputHash?: string }
+  | { state: "limit"; ledger: "run" | "global"; inputHash?: string };
+export interface JudgmentBatchOptions {
+  store: OperatorStore;
+  runId: string;
+  draftRevisionId: string;
+  /** Durable attempt subject (never a real scope id, so attempts stay out of scope enrichment state). */
+  attemptScopeId: string;
+  schema: string;
+  questionVersion: string;
+  /** Digest of the evidence the caller placed in `body.state`; part of the input hash. */
+  evidenceDigest: string;
+  body: { state: EntryType; questions: Record<string, ChoiceQuestion> };
+  provider?: JudgmentProvider;
+  limits: JudgmentLimits;
+  signal?: AbortSignal;
+  cancelled: () => boolean;
+  /** Replay: a previously accepted answer set for this exact input hash, validated before reuse. */
+  cached?: (inputHash: string, modelId: string) => Record<string, ChoiceResponse> | undefined;
+  /** Durable run-ledger namespace (default "judgment"). */
+  ledgerKind?: "judgment" | "claim-check";
+  /** Process-wide operator ledger (OKIE_LLM_GLOBAL_*), reserved before the run ledger like enrichment admission. */
+  globalLedger?: OperatorBudgetLedger;
+}
+
+/**
+ * The lower-level Jev seam shared by judgments and claim checks: pinned model, input hash, replay
+ * cache, durable attempt, run (and optional global) ledger admission, timeout/abort/cancel and strict
+ * answer validation. It never installs anything: an answered outcome leaves its attempt `running`
+ * for the caller to mark accepted (installed) or failed (conflict). Throws on invalid identity/data
+ * before any attempt exists; callers own that failure mapping.
+ */
+export async function evaluateJudgmentBatch(options: JudgmentBatchOptions): Promise<JudgmentBatchOutcome> {
+  const { store, provider, limits, body } = options;
+  if (Buffer.byteLength(JSON.stringify(body)) > 24_000) throw new Error("judgment state limit");
+  const modelId = provider?.modelId ?? JEV_MODEL;
+  if (!/^jev-\d+\.\d+\.\d+$/.test(modelId)) throw new Error("judgment requires pinned model");
+  const inputHash = digest({ schema: options.schema, modelId, questionVersion: options.questionVersion, evidenceDigest: options.evidenceDigest, body });
+  const cached = options.cached?.(inputHash, modelId);
+  if (cached) {
+    validateJudgmentAnswers({ model: modelId, answers: cached }, body.questions, modelId);
+    return { state: "answered", answers: cached, modelId, inputHash, replayed: true, usage: {} };
+  }
+  const attempt = store.createAttempt({ draftRevisionId: options.draftRevisionId, scopeId: options.attemptScopeId, kind: "judgment", state: "running", provider: "typesafe", modelId, inputHash });
+  const close = (state: "cancelled" | "failed", error: string, usage: OperatorUsage = {}) => store.updateAttempt(attempt.attemptId, { state, usage, error });
+  if (!provider) { close("failed", "judgment unavailable"); return { state: "unavailable", inputHash }; }
+  // The run ledger exists before anything is reserved globally, so no step between the two reservations can throw
+  // with a global reservation held; every later exit settles both (see finally).
+  const ledger = createOperatorBudgetLedger(limits, { store, runId: options.runId, kind: options.ledgerKind ?? "judgment" });
+  const globalId = options.globalLedger?.reserve(REQUEST_TOKENS, REQUEST_DOLLARS, attempt.attemptId);
+  if (options.globalLedger && !globalId) { close("failed", "judgment limit"); return { state: "limit", ledger: "global", inputHash }; }
+  let reservation: string | undefined;
+  try { reservation = ledger.reserve(REQUEST_TOKENS, REQUEST_DOLLARS, attempt.attemptId); }
+  catch (error) { if (globalId) options.globalLedger!.release(globalId); throw error; }
+  if (!reservation) {
+    try { close("failed", "judgment limit"); } finally { if (globalId) options.globalLedger!.release(globalId); }
+    return { state: "limit", ledger: "run", inputHash };
+  }
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  let timedOut = false;
+  let timeout: ReturnType<typeof setTimeout> | undefined; let poll: ReturnType<typeof setInterval> | undefined;
+  let usage: OperatorUsage = {};
+  try {
+    options.signal?.addEventListener("abort", cancel, { once: true });
+    timeout = setTimeout(() => { timedOut = true; cancel(); }, limits.timeoutMs);
+    poll = setInterval(() => { if (options.cancelled()) cancel(); }, 50);
+    // Subscribe before entering a provider, which may abort synchronously.
+    const aborted = new Promise<never>((_, reject) => controller.signal.addEventListener("abort", () => reject(new Error("judgment aborted")), { once: true }));
+    const reply = await Promise.race([
+      Promise.resolve().then(() => {
+        if (options.cancelled() || controller.signal.aborted) throw new Error("judgment aborted");
+        return provider.evaluate(body, controller.signal, limits.timeoutMs);
+      }),
+      aborted,
+    ]);
+    usage = reply.usage;
+    if (options.cancelled()) { close("cancelled", "judgment cancelled", usage); return { state: "cancelled", inputHash }; }
+    if (controller.signal.aborted || reply.failed) { close("failed", "judgment failed", usage); return { state: "failed", reason: timedOut ? "timeout" : "provider", inputHash }; }
+    let answers: Record<string, ChoiceResponse>;
+    try { answers = validateJudgmentAnswers(reply.json, body.questions, modelId); }
+    catch { close("failed", "judgment failed", usage); return { state: "failed", reason: "invalid-response", inputHash }; }
+    return { state: "answered", answers, modelId, inputHash, replayed: false, attemptId: attempt.attemptId, usage };
+  } catch {
+    if (options.cancelled()) { close("cancelled", "judgment cancelled", usage); return { state: "cancelled", inputHash }; }
+    close("failed", "judgment failed", usage);
+    return { state: "failed", reason: timedOut ? "timeout" : "provider", inputHash };
+  } finally {
+    clearTimeout(timeout); clearInterval(poll); options.signal?.removeEventListener("abort", cancel);
+    // Provider usage is untrusted: only well-formed amounts are settled, so a malformed reply cannot make settle throw.
+    const settled = ledgerUsage(usage);
+    try { ledger.settle(reservation, settled); }
+    finally { if (globalId) options.globalLedger!.settle(globalId, settled); }
+  }
+}
+
+function ledgerUsage(usage: OperatorUsage): OperatorUsage {
+  const result: OperatorUsage = {};
+  for (const key of ["inputTokens", "outputTokens", "measuredCostUsd", "estimatedCostUsd"] as const) { const value = usage[key]; if (typeof value === "number" && Number.isFinite(value) && value >= 0) result[key] = value; }
+  return result;
+}
+
+/** Every secret the server knows of, for redaction and fail-closed identity checks. */
+export function judgmentSecrets(extra: readonly string[] = []): string[] {
+  return [...extra, ...[process.env.JEV_API, process.env.OKIE_LLM_API_KEY, process.env.OPENROUTER_API_KEY, process.env.OPENAI_API_KEY, process.env.GITHUB_TOKEN].filter((value): value is string => Boolean(value))];
+}
+/** Redacted, JSON-normalised request body, or undefined when a question itself carries a secret (fail closed). */
+export function redactedJudgmentBody(state: unknown, questions: Record<string, ChoiceQuestion>, secrets: readonly string[]): { state: EntryType; questions: Record<string, ChoiceQuestion> } | undefined {
+  if (canonical(redact(questions, secrets, false)) !== canonical(questions)) return undefined;
+  return JSON.parse(JSON.stringify({ state: redact(state, secrets), questions })) as { state: EntryType; questions: Record<string, ChoiceQuestion> };
+}
+/** Identifier policy shared by judgment ids, batch ids and question keys. */
+export function safeJudgmentId(id: string, secrets: readonly string[]): boolean { return /^[A-Za-z][A-Za-z0-9_.:-]{0,120}$/.test(id) && redact(id, secrets) === id && !["__proto__", "constructor", "prototype"].includes(id); }
+export { canonical as canonicalJudgmentJson, digest as judgmentDigest, REQUEST_TOKENS as JUDGMENT_REQUEST_TOKENS, REQUEST_DOLLARS as JUDGMENT_REQUEST_DOLLARS };
+
 /**
  * Explicit server-only operation, not an automatic scan pass. One call = one
  * durable attempt = one batched provider request. Retrying invokes this seam
@@ -126,8 +245,9 @@ export async function runOperatorJudgments(options: { store: OperatorStore; publ
   // failed and interrupted runs require their existing recovery/retry owner.
   const admissible = (state: string) => state === "awaiting_review" || state === "complete";
   if (!admissible(run.state)) return { state: "conflict" };
+  const attemptScopeId = `judgment:${digest([request.scopeId, request.batchId])}`;
   const dataFailure = (): JudgmentOutcome => {
-    store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: `judgment:${digest([request.scopeId, request.batchId])}`, kind: "judgment", state: "failed", usage: {}, error: "judgment invalid data" });
+    store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: attemptScopeId, kind: "judgment", state: "failed", usage: {}, error: "judgment invalid data" });
     return { state: "failed" };
   };
   try {
@@ -140,8 +260,8 @@ export async function runOperatorJudgments(options: { store: OperatorStore; publ
   const explanation = explanationRowForJudgment((Array.isArray(explanations.explanations) ? explanations.explanations : []).find(value => record(value).scopeId === request.scopeId) ?? null);
   const scope = (Array.isArray(explanations.scopes) ? explanations.scopes : []).find(value => record(value).scopeId === request.scopeId) ?? null;
   const evidence = { sourceCommitSha: artifact.sourceCommitSha ?? null, entity, scope, explanation, relations: (Array.isArray(observed.relations) ? observed.relations : []).filter(value => record(value).from === request.scopeId || record(value).to === request.scopeId) };
-  const secrets = [...(options.secrets ?? []), ...[process.env.JEV_API, process.env.OKIE_LLM_API_KEY, process.env.OPENROUTER_API_KEY, process.env.OPENAI_API_KEY, process.env.GITHUB_TOKEN].filter((value): value is string => Boolean(value))];
-  const safeId = (id: string) => /^[A-Za-z][A-Za-z0-9_.:-]{0,120}$/.test(id) && redact(id, secrets) === id && !["__proto__", "constructor", "prototype"].includes(id);
+  const secrets = judgmentSecrets(options.secrets);
+  const safeId = (id: string) => safeJudgmentId(id, secrets);
   if (![request.batchId, request.questionVersion, request.scopeId].every(safeId)) throw new Error("invalid judgment identity");
   if (!Object.keys(request.questions).length || Object.keys(request.questions).length > 8) throw new Error("judgment batch limit");
   for (const [id, question] of Object.entries(request.questions)) {
@@ -150,66 +270,37 @@ export async function runOperatorJudgments(options: { store: OperatorStore; publ
   // Snapshot caller-owned inputs before yielding so mutation cannot change a request/hash.
   // Trusted schemas are immutable. Secret-bearing schemas fail closed instead
   // of silently changing the meaning of a question or banning domain vocabulary.
-  if (canonical(redact(request.questions, secrets, false)) !== canonical(request.questions)) return dataFailure();
-  const body = JSON.parse(JSON.stringify({ state: redact({ evidence, inputs: request.inputs }, secrets), questions: request.questions })) as { state: EntryType; questions: Record<string, ChoiceQuestion> };
-  if (Buffer.byteLength(JSON.stringify(body)) > 24_000) throw new Error("judgment state limit");
-  const modelId = provider?.modelId ?? JEV_MODEL;
-  if (!/^jev-\d+\.\d+\.\d+$/.test(modelId) || !safeId(modelId)) throw new Error("judgment requires pinned model");
+  const body = redactedJudgmentBody({ evidence, inputs: request.inputs }, request.questions, secrets);
+  if (!body) return dataFailure();
+  if (provider && !safeId(provider.modelId)) throw new Error("judgment requires pinned model");
   const evidenceDigest = digest(evidence);
-  const inputHash = digest({ schema: SCHEMA, modelId, questionVersion: request.questionVersion, evidenceDigest, body });
   const previous = record(read(SIDECAR));
   const rows = (Array.isArray(previous.judgments) ? previous.judgments : []) as JudgmentArtifact[];
-  const cached = rows.find(row => row.scopeId === request.scopeId && row.batchId === request.batchId && row.inputHash === inputHash && row.schemaVersion === SCHEMA);
-  if (cached) {
-    validateJudgmentAnswers({ model: cached.modelId, answers: cached.answers }, body.questions, modelId);
-    return { state: "accepted", draftRevisionId: draft.draftRevisionId, artifact: cached, replayed: true };
+  let cachedRow: JudgmentArtifact | undefined;
+  const outcome = await evaluateJudgmentBatch({ store, runId: run.runId, draftRevisionId: draft.draftRevisionId, attemptScopeId, schema: SCHEMA, questionVersion: request.questionVersion, evidenceDigest, body, ...(provider ? { provider } : {}), limits, ...(options.signal ? { signal: options.signal } : {}), cancelled,
+    cached: inputHash => { cachedRow = rows.find(row => row.scopeId === request.scopeId && row.batchId === request.batchId && row.inputHash === inputHash && row.schemaVersion === SCHEMA); return cachedRow ? { ...cachedRow.answers } : undefined; } });
+  if (outcome.state === "answered" && outcome.replayed) {
+    validateJudgmentAnswers({ model: cachedRow!.modelId, answers: cachedRow!.answers }, body.questions, outcome.modelId);
+    return { state: "accepted", draftRevisionId: draft.draftRevisionId, artifact: cachedRow!, replayed: true };
   }
-  const attempt = store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: `judgment:${digest([request.scopeId, request.batchId])}`, kind: "judgment", state: "running", provider: "typesafe", modelId, inputHash });
-  const finish = (state: Exclude<JudgmentOutcome["state"], "accepted">, usage: OperatorUsage = {}): JudgmentOutcome => {
-    store.updateAttempt(attempt.attemptId, { state: state === "cancelled" ? "cancelled" : "failed", usage, error: `judgment ${state}` });
-    return { state };
-  };
-  if (!provider) return finish("unavailable");
-  const ledger = createOperatorBudgetLedger(limits, { store, runId: run.runId, kind: "judgment" });
-  const reservation = ledger.reserve(REQUEST_TOKENS, REQUEST_DOLLARS, attempt.attemptId);
-  if (!reservation) return finish("limit");
-  const controller = new AbortController();
-  const cancel = () => controller.abort();
-  options.signal?.addEventListener("abort", cancel, { once: true });
-  const timeout = setTimeout(cancel, limits.timeoutMs);
-  const poll = setInterval(() => { if (cancelled()) cancel(); }, 50);
-  let usage: OperatorUsage = {};
+  if (outcome.state !== "answered") return { state: outcome.state === "limit" ? "limit" : outcome.state };
+  const { answers, modelId, inputHash, usage } = outcome; const attemptId = outcome.attemptId!;
+  const accepted: JudgmentArtifact = { schemaVersion: SCHEMA, scopeId: request.scopeId, batchId: request.batchId, questionVersion: request.questionVersion, modelId, evidenceDigest, inputHash, attemptId, sourceDraftRevisionId: draft.draftRevisionId, answers };
+  const finish = (state: "cancelled" | "conflict" | "failed"): JudgmentOutcome => { store.updateAttempt(attemptId, { state: state === "cancelled" ? "cancelled" : "failed", usage, error: `judgment ${state}` }); return { state }; };
   try {
-    // Subscribe before entering a provider, which may abort synchronously.
-    const aborted = new Promise<never>((_, reject) => controller.signal.addEventListener("abort", () => reject(new Error("judgment aborted")), { once: true }));
-    const reply = await Promise.race([
-      Promise.resolve().then(() => {
-        if (cancelled() || controller.signal.aborted) throw new Error("judgment aborted");
-        return provider.evaluate(body, controller.signal, limits.timeoutMs);
-      }),
-      aborted,
-    ]);
-    usage = reply.usage;
-    if (cancelled()) return finish("cancelled", usage);
-    if (controller.signal.aborted || reply.failed) return finish("failed", usage);
-    const answers = validateJudgmentAnswers(reply.json, body.questions, modelId);
-    const accepted: JudgmentArtifact = { schemaVersion: SCHEMA, scopeId: request.scopeId, batchId: request.batchId, questionVersion: request.questionVersion, modelId, evidenceDigest, inputHash, attemptId: attempt.attemptId, sourceDraftRevisionId: draft.draftRevisionId, answers };
     return store.withExclusiveLock(() => {
-      if (cancelled()) return finish("cancelled", usage);
+      if (cancelled()) return finish("cancelled");
       const current = store.snapshot().runs.find(row => row.runId === run.runId);
-      if (current?.draftRevisionId !== draft.draftRevisionId || !admissible(current.state)) return finish("conflict", usage);
+      if (current?.draftRevisionId !== draft.draftRevisionId || !admissible(current.state)) return finish("conflict");
       const files = Object.fromEntries(artifact.files.map(file => [file, store.readArtifactFile(artifact.artifactRevisionId, file)!]));
       const next = store.writeArtifactRevision({ repositoryId: draft.repositoryId, ...(artifact.sourceCommitSha ? { sourceCommitSha: artifact.sourceCommitSha } : {}), files: { ...files, [SIDECAR]: JSON.stringify({ schemaVersion: SCHEMA, judgments: [...rows.filter(row => row.scopeId !== request.scopeId || row.batchId !== request.batchId), accepted] }) } });
       const nextDraft = publication.createDraftRevision({ runId: run.runId, artifactRevisionId: next.artifactRevisionId, coverage: draft.coverage });
-      store.updateAttempt(attempt.attemptId, { state: "accepted", usage, validation: { accepted: true, validator: SCHEMA, evidenceHash: evidenceDigest } });
+      store.updateAttempt(attemptId, { state: "accepted", usage, validation: { accepted: true, validator: SCHEMA, evidenceHash: evidenceDigest } });
       store.updateRun(run.runId, { state: "awaiting_review" });
       return { state: "accepted", draftRevisionId: nextDraft.draftRevisionId, artifact: accepted, replayed: false };
     });
   } catch {
-    return finish(cancelled() ? "cancelled" : "failed", usage);
-  } finally {
-    clearTimeout(timeout); clearInterval(poll); options.signal?.removeEventListener("abort", cancel);
-    ledger.settle(reservation, usage);
+    return finish(cancelled() ? "cancelled" : "failed");
   }
   } catch {
     return dataFailure();
