@@ -36,3 +36,11 @@ apps/web/dist-portable/
 
 # Per-orb portal metadata is not repository configuration.
 .amp/portals/*
+# QA evidence screenshots live on the qa-screenshots release, not in git history.
+docs/qa/**/*.png
+docs/qa/**/*.jpg
+docs/qa/**/*.jpeg
+docs/qa/**/*.webp
+docs/qa/**/*.gif
+docs/qa/**/*.mp4
+docs/qa/**/*.webm

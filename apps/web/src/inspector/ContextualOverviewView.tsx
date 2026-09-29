@@ -1,5 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react';
-import type { ContextualOverview, ContextualOverviewLink } from './contextualOverview';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { ContextualOverview } from './contextualOverview';
+import { LinkList } from './LinkList';
+import { OverviewBlocks } from '../blocks/OverviewBlocks';
+import { composeOverviewBlocks, usesBlockOverview } from '../blocks/composeBlocks';
 import type { OperatorScope } from '../operator/api';
 import { ExplanationView } from '../explanation/ExplanationView';
 import { explanationViewModel, hasExplanationContent, kindLabel, type EntityNameLookup, type ExplanationEvidence } from '../explanation/explanationModel';
@@ -11,13 +14,6 @@ interface Props {
   explanation?: OperatorScope;
   entityName?: EntityNameLookup;
   onOpenEvidence?: (evidence: ExplanationEvidence) => void;
-}
-
-function LinkList({ title, items, onOpenEntity }: { title: string; items: ContextualOverviewLink[]; onOpenEntity: (id: string) => void }) {
-  const [expanded, setExpanded] = useState(false);
-  if (!items.length) return null;
-  const visible = expanded ? items : items.slice(0, 5);
-  return <section className="detail-section"><div className="section-heading"><span>{title}</span><span className="detail-count">{items.length}</span></div>{items.length ? <div className="inspector-link-list">{visible.map((item) => <button key={`${item.id}:${item.relationship}`} type="button" className="inspector-link-row" onClick={() => onOpenEntity(item.id)}><span>{item.name}</span><small>{item.relationship}</small></button>)}{items.length > 5 ? <button aria-expanded={expanded} className="empty-inspector-section relations-omitted-more" onClick={() => setExpanded(value => !value)} type="button">{expanded ? 'Show fewer' : `Show all ${items.length}`}</button> : null}</div> : <p className="detail-muted">None captured.</p>}</section>;
 }
 
 export function ComponentImplementation({ files, onOpenEntity }: {
@@ -48,14 +44,39 @@ export function resetOverviewScroll(element: Parameters<typeof overviewScrollHos
   if (host && host.scrollTop !== 0) host.scrollTop = 0;
 }
 
-export function ContextualOverviewView({ overview, onOpenEntity, explanation, entityName, onOpenEvidence }: Props) {
+/** The explanation only belongs to the Overview of the entity it explains; a mismatched scope is ignored. */
+export function explanationForOverview(explanation: OperatorScope | undefined, entityId: string | undefined): OperatorScope | undefined {
+  return explanation && entityId !== undefined && (explanation.entityId ?? explanation.scopeId) === entityId ? explanation : undefined;
+}
+
+export function ContextualOverviewView({ overview, onOpenEntity, explanation: offered, entityName, onOpenEvidence }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const entityId = overview?.entity.id;
+  const explanation = explanationForOverview(offered, entityId);
   useLayoutEffect(() => { resetOverviewScroll(rootRef.current); }, [entityId]);
+  const explanationContent = explanation?.explanation;
+  // CLA-149 pilot: containers and software systems render the Overview as ordered typed blocks.
+  const composed = useMemo(() => overview && usesBlockOverview(overview.entity.kind)
+    ? composeOverviewBlocks({ overview, explanation: explanationContent, ...(entityName ? { entityName } : {}) })
+    : undefined, [overview, explanationContent, entityName]);
   if (!overview) return <div ref={rootRef}><p className="detail-muted">Overview evidence is unavailable for this selection.</p></div>;
+  const placeholder = overview.parent ? `Part of ${overview.parent.name}. No description has been captured yet.` : 'No description has been captured yet.';
+  if (composed) {
+    const itemsOmitted = composed.trimmed.reduce((sum, block) => sum + block.omitted, 0);
+    const stale = composed.explained && explanation?.stale;
+    return <div className="contextual-overview" ref={rootRef} data-contextual-overview={overview.entity.id} data-overview-explained={composed.explained ? 'true' : undefined} data-overview-blocks="v1" data-blocks-dropped={composed.dropped.length} data-block-items-omitted={itemsOmitted}>
+      <section className="detail-section">
+        <div className="overview-identity">
+          <h3 className="overview-title">{overview.entity.name}</h3>
+          <div className="overview-identity-meta"><span className="overview-chip">{kindLabel(overview.entity.kind)}</span>{stale && <span className="overview-chip is-stale" title="The code changed after this explanation was written.">Stale</span>}</div>
+        </div>
+        {!composed.described && <p className="detail-muted">{placeholder}</p>}
+      </section>
+      <OverviewBlocks blocks={composed.blocks} dropped={composed.dropped.length} itemsOmitted={itemsOmitted} entityName={composed.entityName} onOpenEntity={onOpenEntity} {...(onOpenEvidence ? { onOpenEvidence } : {})} subjectName={overview.entity.name}/>
+    </div>;
+  }
   const explained = explanation && hasExplanationContent(explanationViewModel(explanation.explanation)) ? explanation : undefined;
   const lookup: EntityNameLookup = entityName ?? (() => undefined);
-  const placeholder = overview.parent ? `Part of ${overview.parent.name}. No description has been captured yet.` : 'No description has been captured yet.';
   return <div className="contextual-overview" ref={rootRef} data-contextual-overview={overview.entity.id} data-overview-explained={explained ? 'true' : undefined}>
     <section className="detail-section">
       <div className="overview-identity">

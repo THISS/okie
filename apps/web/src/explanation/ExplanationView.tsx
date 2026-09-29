@@ -23,7 +23,7 @@ export interface ExplanationViewProps {
   diagramError?: string;
 }
 
-function EvidenceRow({ evidence, entityName, onOpenEvidence, evidenceHref }: { evidence: ExplanationEvidence } & Pick<ExplanationViewProps, 'entityName' | 'onOpenEvidence' | 'evidenceHref'>) {
+export function EvidenceRow({ evidence, entityName, onOpenEvidence, evidenceHref }: { evidence: ExplanationEvidence } & Pick<ExplanationViewProps, 'entityName' | 'onOpenEvidence' | 'evidenceHref'>) {
   const label = evidenceLabel(evidence, entityName);
   const owner = evidence.entityId ? entityName(evidence.entityId) : undefined;
   const hint = owner && evidence.path ? owner : undefined;

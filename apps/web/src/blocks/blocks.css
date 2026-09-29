@@ -1,0 +1,12 @@
+/* CLA-149 block Overview: spacing between blocks; blocks reuse Overview + explanation styles. */
+.overview-blocks > .overview-block.explanation-view { margin-top: 16px; }
+.overview-blocks > .overview-block.is-section + .overview-block.explanation-view { margin-top: 25px; padding-top: 18px; border-top: 1px solid var(--atlas-line); }
+
+.overview-node-refs ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.overview-node-ref { max-width: 100%; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 10px; border: 1px solid var(--atlas-line); border-radius: 9px; background: rgba(255,255,255,.018); color: inherit; font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+.overview-node-ref > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.overview-node-ref > small { color: var(--atlas-quiet); font-size: 10.5px; }
+.overview-node-ref:hover,
+.overview-node-ref:focus-visible { border-color: var(--atlas-line-strong); background: rgba(255,255,255,.045); }
+
+.overview-blocks-note { margin: 16px 0 0; color: var(--atlas-quiet); font-size: 12px; }

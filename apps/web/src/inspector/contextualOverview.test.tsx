@@ -51,24 +51,32 @@ it('presents authored multi-file membership with declarations and preserves file
   expect(buildContextualOverview(snapshot, 'container:app')?.implementationFiles).toBeUndefined();
 });
 
-describe('overview leads with an accepted explanation (CLA-260)', () => {
-  const overview = { entity: { id: 'system:okie', name: 'okie', kind: 'softwareSystem', summary: 'Local responsibility.' }, dependencies: [], dependents: [], children: [{ id: 'container:web', name: 'Web', relationship: 'container' }] };
+// CLA-149: software systems render through the block Overview, components through the classic one — both must lead with the explanation.
+describe.each([
+  { kind: 'softwareSystem', chip: 'Software system', childrenHeading: 'Children', blocks: true },
+  { kind: 'component', chip: 'Component', childrenHeading: 'Implementing code', blocks: false },
+])('overview leads with an accepted explanation (CLA-260) — $kind', ({ kind, chip, childrenHeading, blocks }) => {
+  const overview = { entity: { id: 'system:okie', name: 'okie', kind, summary: 'Local responsibility.' }, dependencies: [], dependents: [], children: [{ id: 'container:web', name: 'Web', relationship: 'container' }] };
   const scope = { scopeId: 'system:okie', entityId: 'system:okie', name: 'okie', state: 'accepted' as const, stale: true, explanation: { format: 'v3' as const, summary: 'Maps a repository as an **atlas**.', keyPoints: ['Start at `App.tsx`.'], evidence: [{ entityId: 'container:web', path: 'apps/web/src/App.tsx', startLine: 1, endLine: 9 }] } };
   it('shows name, kind chip, explanation and evidence, without boilerplate', () => {
     const markup = renderToStaticMarkup(<ContextualOverviewView entityName={id => id === 'container:web' ? 'Web' : undefined} explanation={scope} onOpenEntity={() => undefined} onOpenEvidence={() => undefined} overview={overview}/>);
     expect(markup).toContain('<h3 class="overview-title">okie</h3>');
-    expect(markup).toContain('<span class="overview-chip">Software system</span>');
+    expect(markup).toContain(`<span class="overview-chip">${chip}</span>`);
+    expect(markup.includes('data-overview-blocks="v1"')).toBe(blocks);
     expect(markup).toContain('>Stale</span>');
     expect(markup).toContain('<strong>atlas</strong>');
     expect(markup).toContain('<code>apps/web/src/App.tsx:1–9</code>');
-    expect(markup.indexOf('explanation-view')).toBeLessThan(markup.indexOf('Children'));
-    expect(markup).not.toMatch(/Accepted operator explanation|softwareSystem|is a softwareSystem|No relationships captured|Local responsibility/iu);
+    expect(markup.indexOf(childrenHeading)).toBeGreaterThan(0);
+    expect(markup.indexOf('explanation-view')).toBeLessThan(markup.indexOf(childrenHeading));
+    expect(markup).not.toMatch(/Accepted operator explanation|No relationships captured|Local responsibility/iu);
+    // The raw kind never leaks (case-insensitively, unless the human chip itself spells it, as "Component" does).
+    expect(markup).not.toMatch(new RegExp(`${kind}|is a ${kind}`, chip.toLowerCase().includes(kind.toLowerCase()) ? 'u' : 'iu'));
   });
   it('falls back to the captured summary, then a quiet placeholder', () => {
     expect(renderToStaticMarkup(<ContextualOverviewView onOpenEntity={() => undefined} overview={overview}/>)).toContain('<p class="overview-description">Local responsibility.</p>');
-    const bare = renderToStaticMarkup(<ContextualOverviewView onOpenEntity={() => undefined} overview={{ ...overview, entity: { id: 'system:okie', name: 'okie', kind: 'softwareSystem' } }}/>);
+    const bare = renderToStaticMarkup(<ContextualOverviewView onOpenEntity={() => undefined} overview={{ ...overview, entity: { id: 'system:okie', name: 'okie', kind } }}/>);
     expect(bare).toContain('No description has been captured yet.');
-    expect(bare).not.toContain('is a softwareSystem');
+    expect(bare).not.toContain(`is a ${kind}`);
   });
   it('ignores an explanation with no summary, key points or evidence', () => {
     const empty = { ...scope, explanation: { format: 'v3' as const, summary: ' ', keyPoints: [], evidence: [] } };
@@ -81,6 +89,14 @@ describe('overview leads with an accepted explanation (CLA-260)', () => {
     const markup = renderToStaticMarkup(<ContextualOverviewView explanation={legacyScope} onOpenEntity={() => undefined} overview={overview}/>);
     expect(markup).toContain('Legacy text.');
     expect(markup).not.toMatch(/Calls the database|Important interactions|Gateway|>Stale</u);
+  });
+  it("never shows another entity's explanation under this entity", () => {
+    const other = { ...scope, scopeId: 'container:web', entityId: 'container:web' };
+    const markup = renderToStaticMarkup(<ContextualOverviewView explanation={other} onOpenEntity={() => undefined} overview={overview}/>);
+    expect(markup).toContain('<p class="overview-description">Local responsibility.</p>');
+    expect(markup).not.toMatch(/atlas|explanation-view|>Stale</u);
+    const draftScope = { ...scope, entityId: undefined };
+    expect(renderToStaticMarkup(<ContextualOverviewView explanation={draftScope} onOpenEntity={() => undefined} overview={overview}/>)).toContain('<strong>atlas</strong>');
   });
 });
 
