@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { oembedAllowedOriginsFromEnv } from './src/oembed';
 import { localScanOriginFromEnv, resolvePublicAtlasShare, trustedShareOrigin } from './src/openGraph';
+import { isKnownAppPath, notFoundHttpOutput } from './src/notFoundPage';
 import { handlePublicAtlasRoute, isPublicAtlasRoutePath } from './src/publicAtlasRoutes';
 import { WEBMCP_HOST_HEADERS, webMcpHostHeadersForFetchDest } from './src/webmcpHeaders';
 
@@ -110,8 +111,64 @@ function okieOpenGraphPlugin(): Plugin {
   };
 }
 
+function isFileUnder(root: string, pathname: string): boolean {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return false;
+  }
+  const target = fileURLToPath(new URL(`.${decoded}`, root));
+  if (!target.startsWith(fileURLToPath(root))) return false;
+  try {
+    return existsSync(target) && statSync(target).isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Branded 404 with a real status for paths the SPA does not route (CLA-318), like the edge Worker:
+ * instead of Vite's SPA fallback (index.html, 200). Proxied (/api, /scan), share (/r, /og, /oembed)
+ * and Vite-internal paths pass through; so does any real file (dist in preview; the app root and
+ * public/ in dev, where only page navigations — HTML accept or no extension — are considered).
+ */
+function okieNotFoundPlugin(): Plugin {
+  const appRoot = new URL('./', import.meta.url);
+  const publicRoot = new URL('./public/', import.meta.url);
+  const distRoot = new URL('./dist/', import.meta.url);
+  const passThrough = /^\/(?:api|scan|assets|@|src\/|node_modules\/|__)/;
+  const attach = (server: ViteDevServer | PreviewServer, mode: 'dev' | 'preview') => {
+    server.middlewares.use((request, response, next) => {
+      const method = (request.method ?? 'GET').toUpperCase();
+      const pathname = requestPathname(request.url ?? '/');
+      if ((method !== 'GET' && method !== 'HEAD') || !pathname || passThrough.test(pathname)
+        || isKnownAppPath(pathname) || isPublicAtlasRoutePath(pathname)) {
+        next();
+        return;
+      }
+      if (mode === 'dev') {
+        const navigation = String(request.headers.accept ?? '').includes('text/html') || !/\.[^/]+$/.test(pathname);
+        if (!navigation || isFileUnder(appRoot.href, pathname) || isFileUnder(publicRoot.href, pathname)) {
+          next();
+          return;
+        }
+      } else if (isFileUnder(distRoot.href, pathname)) {
+        next();
+        return;
+      }
+      writeNodeResponse(response, notFoundHttpOutput(method));
+    });
+  };
+  return {
+    name: 'okie-not-found',
+    configureServer: server => attach(server, 'dev'),
+    configurePreviewServer: server => attach(server, 'preview'),
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), okieWebMcpHeadersPlugin(), okieOpenGraphPlugin()],
+  plugins: [react(), okieWebMcpHeadersPlugin(), okieOpenGraphPlugin(), okieNotFoundPlugin()],
   // SPA so `/new` and `/r/<owner>/<repo>` are public share/view URLs (CLA-30).
   appType: 'spa',
   server: {

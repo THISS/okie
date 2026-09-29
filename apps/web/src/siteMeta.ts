@@ -20,6 +20,12 @@ export const DEFAULT_OG_IMAGE_WIDTH = 1200;
 export const DEFAULT_OG_IMAGE_HEIGHT = 630;
 export const DEFAULT_OG_IMAGE_ALT = `${SITE_NAME}: explore how open-source software is built`;
 
+/** Footer / about (CLA-318): the product's own repository and contact address. */
+export const GITHUB_REPO_URL = 'https://github.com/source-for/atlas';
+export const CONTACT_EMAIL = 'hello@sourcefor.dev';
+export const ATLAS_LICENCE_NOTE =
+  'Atlases are derived from public repositories; each repository\u2019s code remains under its own licence.';
+
 export const HOME_TITLE = `${SITE_NAME}: explore how open-source software is built`;
 export const HOME_DESCRIPTION =
   'Architecture atlases of open-source software, from system context down to the exact lines of source. Every claim is backed by evidence from the code.';
@@ -36,7 +42,12 @@ export type PageMeta = {
 
 /** `<repo> by <owner> · Source For Atlas` — the share page title for `/r/<owner>/<repo>`. */
 export function repoPageTitle(owner: string, repo: string): string {
-  return `${repo} by ${owner} · ${SITE_NAME}`;
+  return `${repoPageHeading(owner, repo)} · ${SITE_NAME}`;
+}
+
+/** `<repo> by <owner>`: the atlas's name as a page heading (the title without the site suffix). */
+export function repoPageHeading(owner: string, repo: string): string {
+  return `${repo} by ${owner}`;
 }
 
 export function repoPageDescription(owner: string, repo: string): string {
@@ -58,7 +69,7 @@ export function landingPageMeta(): PageMeta {
 
 /** Title, description and canonical path for a pathname (a malformed escape reads as the home page). */
 export function pageMetaForPath(pathname: string): PageMeta {
-  if (pathname === '/operator') return { title: `Operator review · ${SITE_NAME}`, description: HOME_DESCRIPTION, canonicalPath: '/' };
+  if (pathname === '/operator' || pathname === '/operator/') return { title: `Operator review · ${SITE_NAME}`, description: HOME_DESCRIPTION, canonicalPath: '/' };
   let route: ReturnType<typeof parseAppRoute>;
   try {
     route = parseAppRoute(pathname);

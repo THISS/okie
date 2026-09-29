@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadLandingSession, scanLandingChrome } from './scanLanding';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { loadLandingSession, ScanLandingScreen, scanLandingChrome } from './scanLanding';
+import { CONTACT_EMAIL, GITHUB_REPO_URL } from './siteMeta';
 
 describe('scan landing hosted public mode (CLA-266)', () => {
   it('hides scanning, sign-in and operator chrome when /api/auth/me says mode "public"', () => {
@@ -30,5 +33,13 @@ describe('scan landing hosted public mode (CLA-266)', () => {
     expect(operatorFetch.mock.calls.map(call => String(call[0]))).toEqual(['/api/auth/me', '/api/operator/session']);
     const down = vi.fn(async () => { throw new Error('offline'); });
     expect(await loadLandingSession(down as unknown as typeof fetch)).toEqual({ auth: undefined, operator: false });
+  });
+
+  it('closes with the site footer (CLA-318): GitHub, contact, licence note', () => {
+    const html = renderToStaticMarkup(createElement(ScanLandingScreen));
+    expect(html).toContain('data-testid="site-footer"');
+    expect(html).toContain(`href="${GITHUB_REPO_URL}"`);
+    expect(html).toContain(CONTACT_EMAIL);
+    expect(html).toContain('under its own licence');
   });
 });

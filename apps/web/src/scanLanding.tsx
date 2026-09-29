@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { SourceForMark } from './icons';
+import { SiteFooter } from './siteFooter';
 import { enrichmentStageDetail, scanEntityCountCopy, type PublicEnrichment } from './scanJobEnrichment';
 import {
   bindScanLandingActions,
@@ -39,6 +40,8 @@ const page: React.CSSProperties = {
   padding: '4.5rem 1.5rem',
   color: '#eef4f2',
   fontFamily: 'IBM Plex Sans, ui-sans-serif, system-ui, sans-serif',
+  // Long owner/repo slugs and commit hashes wrap instead of widening the page on a phone.
+  overflowWrap: 'anywhere',
 };
 const brandStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -122,6 +125,25 @@ export async function loadLandingSession(fetchImpl: typeof fetch = fetch): Promi
   return { auth, operator };
 }
 
+/**
+ * `/new#about` (the atlas attribution strip's "About" link, CLA-318): the browser's own fragment scroll
+ * runs before the async list renders above the footer, so re-scroll to the fragment's element once the
+ * landing mounts and again when the list arrives. No fragment, or no such element: nothing moves.
+ */
+export function scrollToLocationHash(doc: Pick<Document, 'getElementById'>, hash: string): boolean {
+  if (!hash || hash === '#') return false;
+  let id: string;
+  try {
+    id = decodeURIComponent(hash.slice(1));
+  } catch {
+    return false;
+  }
+  const target = doc.getElementById(id);
+  if (!target) return false;
+  target.scrollIntoView({ block: 'start' });
+  return true;
+}
+
 export function ScanLandingScreen() {
   const [input, setInput] = useState('');
   const [job, setJob] = useState<PublicJob | undefined>();
@@ -150,6 +172,11 @@ export function ScanLandingScreen() {
       })
       .catch(() => {});
   }, [job?.atlasReady]);
+
+  // Mount, then every time the list (above the footer) changes height.
+  useEffect(() => {
+    scrollToLocationHash(document, window.location.hash);
+  }, [published]);
 
   const submitRepoRef = useRef<(url: string) => Promise<StartPublicScanResult>>(
     async () => startPublicScanResultFromHttp(0, {}),
@@ -226,6 +253,7 @@ export function ScanLandingScreen() {
   const chrome = scanLandingChrome(auth, operator);
 
   return (
+    <>
     <main data-auth-state={auth ? (signedIn ? 'signed-in' : 'signed-out') : 'unknown'} data-public-mode={chrome.publicMode ? 'true' : undefined} style={page}>
       <a aria-label="Source For Atlas home" data-testid="site-brand" href="/" style={brandStyle}>
         <SourceForMark size={30}/>
@@ -375,5 +403,7 @@ export function ScanLandingScreen() {
         {' '}(no login).
       </p>
     </main>
+    <SiteFooter/>
+    </>
   );
 }
