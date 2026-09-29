@@ -1,0 +1,228 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "hagopj13/node-express-boilerplate",
+  "commitSha": "179ae84efec61b14206d0305d941daed6c6d07f9",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "nodeexpress-login",
+      "family": "nodeexpress-login",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "What happens when someone signs in, and what do they get back?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:create-nodejs-express-app"
+      },
+      "expectedFiles": [
+        "src/services/auth.service.js",
+        "src/services/token.service.js"
+      ],
+      "mustMention": [
+        "refresh",
+        "jwt|JSON Web Token"
+      ],
+      "answerNote": "POST /v1/auth/login -> controller -> loginUserWithEmailAndPassword checks the user by email and isPasswordMatch (401 'Incorrect email or password'); then generateAuthTokens signs a short-lived access JWT and a refresh JWT, saving the refresh token in the Token collection; response is {user, tokens}."
+    },
+    {
+      "id": "nodeexpress-admin-rights",
+      "family": "nodeexpress-admin-rights",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "How does the API decide whether a user is allowed to list or manage other people's accounts?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:create-nodejs-express-app"
+      },
+      "expectedFiles": [
+        "src/middlewares/auth.js",
+        "src/config/roles.js"
+      ],
+      "mustMention": [
+        "admin",
+        "getUsers|manageUsers"
+      ],
+      "answerNote": "Routes call auth('getUsers'/'manageUsers'); the middleware authenticates via passport 'jwt', looks up roleRights for user.role (admin has getUsers+manageUsers, user has none) and returns 403 unless the rights match or req.params.userId is the caller's own id."
+    },
+    {
+      "id": "nodeexpress-errors",
+      "family": "nodeexpress-errors",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "What does a client get back when something goes wrong, and how are unexpected crashes hidden in production?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:create-nodejs-express-app"
+      },
+      "expectedFiles": [
+        "src/middlewares/error.js",
+        "src/utils/ApiError.js"
+      ],
+      "mustMention": [
+        "isOperational",
+        "errorConverter|errorHandler"
+      ],
+      "answerNote": "errorConverter wraps any non-ApiError (400 for mongoose errors, else 500) as a non-operational ApiError; errorHandler sends {code, message} (plus stack in development) and in production replaces non-operational errors with a generic 500 message."
+    },
+    {
+      "id": "nodeexpress-async-wrapper",
+      "family": "nodeexpress-async-wrapper",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "Why don't the request handlers need try/catch around their async code?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:src-models-plugins-to-json-plugin-js"
+      },
+      "expectedFiles": [
+        "src/utils/catchAsync.js"
+      ],
+      "mustMention": [
+        "catchAsync",
+        "next"
+      ],
+      "answerNote": "Controllers are wrapped in catchAsync, which runs the handler inside Promise.resolve(...).catch(err => next(err)), forwarding rejections to the Express error middleware."
+    },
+    {
+      "id": "nodeexpress-required-env",
+      "family": "nodeexpress-required-env",
+      "status": "draft",
+      "category": "config",
+      "question": "Which environment settings have to be present before the server will even start?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:create-nodejs-express-app"
+      },
+      "expectedFiles": [
+        "src/config/config.js",
+        ".env.example"
+      ],
+      "mustMention": [
+        "MONGODB_URL",
+        "JWT_SECRET"
+      ],
+      "answerNote": "config.js loads .env with dotenv and validates process.env with a Joi schema: NODE_ENV, MONGODB_URL and JWT_SECRET are required (others default, SMTP optional); a validation failure throws 'Config validation error'. In test mode the Mongo URL gets a -test suffix."
+    },
+    {
+      "id": "nodeexpress-login-flood",
+      "family": "nodeexpress-login-flood",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "Is there anything stopping someone from hammering the sign-in endpoint with password guesses?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:create-nodejs-express-app"
+      },
+      "expectedFiles": [
+        "src/middlewares/rateLimiter.js",
+        "src/app.js"
+      ],
+      "mustMention": [
+        "rate|limit",
+        "production"
+      ],
+      "answerNote": "authLimiter (express-rate-limit: 20 requests per 15 min, successful requests not counted) is mounted on /v1/auth only when NODE_ENV is production."
+    },
+    {
+      "id": "nodeexpress-api-docs",
+      "family": "nodeexpress-api-docs",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "Where can I browse interactive API documentation, and why doesn't it show up on my production server?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:create-nodejs-express-app"
+      },
+      "expectedFiles": [
+        "src/routes/v1/index.js",
+        "src/routes/v1/docs.route.js"
+      ],
+      "mustMention": [
+        "swagger",
+        "development"
+      ],
+      "answerNote": "docs.route builds an OpenAPI spec with swagger-jsdoc from src/docs/*.yml and the @swagger comments in route files and serves swagger-ui at /v1/docs; routes/v1/index.js only mounts devRoutes (docs) when config.env === 'development'."
+    },
+    {
+      "id": "nodeexpress-paging",
+      "family": "nodeexpress-paging",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "How does listing users support page size and sort order?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:src-services-email-service-js"
+      },
+      "expectedFiles": [
+        "src/models/plugins/paginate.plugin.js"
+      ],
+      "mustMention": [
+        "sortBy",
+        "limit"
+      ],
+      "answerNote": "A mongoose plugin adds schema.statics.paginate(filter, options): parses sortBy 'field:desc,field2:asc', defaults limit=10 and page=1, runs count + find/skip/limit (optional populate) and returns {results, page, limit, totalPages, totalResults}."
+    },
+    {
+      "id": "nodeexpress-prod-run",
+      "family": "nodeexpress-prod-run",
+      "status": "draft",
+      "category": "config",
+      "question": "How is the app kept running in production — what actually starts the process?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:create-nodejs-express-app"
+      },
+      "expectedFiles": [
+        "ecosystem.config.json",
+        "package.json"
+      ],
+      "mustMention": [
+        "pm2"
+      ],
+      "answerNote": "npm start runs 'pm2 start ecosystem.config.json --no-daemon'; the ecosystem file starts src/index.js as one instance with autorestart and NODE_ENV=production. docker-compose.prod.yml runs yarn start inside the container."
+    }
+  ],
+  "c4Note": {
+    "verdict": "partly",
+    "note": "One container for a single Express API is right, but the 43 components are one-per-file with no layering, whereas the README 'Project Structure' section explains it as routes -> validations -> controllers -> services -> models, plus middlewares, config and utils. The system is named after the npm package (create-nodejs-express-app, i.e. the scaffolding CLI in bin/) rather than the REST API, and the scaffolder itself is lumped in as a component of the API. MongoDB and the SMTP server are the obvious external systems and neither appears.",
+    "expectedContainers": [
+      "REST API service (src/, Express + Mongoose)",
+      "project scaffolding CLI (bin/createNodejsApp.js)",
+      "external: MongoDB",
+      "external: SMTP email server"
+    ],
+    "problems": [
+      "system name taken from package.json name 'create-nodejs-express-app' (the scaffolder), not the API",
+      "43 one-file components with no grouping by layer (routes/, controllers/, services/, models/, middlewares/, validations/, config/, utils/)",
+      "bin/createNodejsApp.js (a separate CLI) modelled as a component of the API",
+      "test fixtures and jest.config.js shown as components",
+      "no external systems for MongoDB (mongoose) or SMTP (nodemailer)"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:create-nodejs-express-app",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary frames scaffolder vs generated app; key points give the read order and seams; the 1-container children list is just a drill-in link."
+    },
+    {
+      "nodeId": "container:create-nodejs-express-app",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:diagram",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary and key points name the entry files and auth/error seams; diagram shows the route-to-service flow; 43 real src files are worth browsing; parent adds nothing."
+    }
+  ]
+}

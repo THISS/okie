@@ -1,0 +1,1816 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "tokio-rs__axum",
+  "repository": "tokio-rs/axum",
+  "commitSha": "d775cb202bea5f86d7b5f5cd3b36717944635858",
+  "preparedCommitSha": "fff69c5fb826c3d44f83d820560d26a80d648d65",
+  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on committed symlinks (README.md and others): \"symlink/submodule is unsupported\".", "droppedPaths": 5 },
+  "scan": {
+    "asIs": { "revision": "d775cb202bea5f86d7b5f5cd3b36717944635858", "ok": false, "ms": 35, "error": "Committed source requires materialized files; symlink/submodule is unsupported: README.md" },
+    "prepared": {
+      "revision": "fff69c5fb826c3d44f83d820560d26a80d648d65",
+      "ok": true,
+      "ms": 141738,
+      "entities": 1428,
+      "relations": 1902,
+      "kinds": { "code": 1310, "component": 116, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:tokio-rs-axum", "name": "tokio-rs_axum", "components": 116 }
+      ],
+      "signals": { "entities": 1428, "containers": 1, "components": 116, "files": 117, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:38.851Z",
+    "corpus": "sampled-enriched",
+    "entityCount": 1428,
+    "systemNames": ["axum"],
+    "paths": ["axum/src/extract/matched_path.rs", "axum/src/routing/path_router.rs", "axum/src/extract/path/mod.rs", "axum/src/handler/mod.rs", "axum/src/routing/mod.rs", "axum-macros/src/debug_handler.rs", "axum/src/routing/method_routing.rs", "axum-core/src/ext_traits/request_parts.rs", "axum-macros/src/from_request/attr.rs", "axum-macros/src/from_request/mod.rs", "axum/src/handler/service.rs", "axum/src/extract/path/inner_path.rs", "axum/src/extract/nested_path.rs", "axum/src/extract/mod.rs", "axum-extra/src/handler/mod.rs", "axum/src/handler/future.rs", "axum/src/error_handling/mod.rs", "axum-extra/src/routing/mod.rs", "axum-extra/src/handler/or.rs", "axum/src/middleware/map_request.rs", "axum-extra/src/routing/resource.rs", "axum-core/src/extract/mod.rs", "axum-macros/src/typed_path.rs", "axum/src/boxed.rs", "axum/src/routing/url_params.rs", "axum-macros/src/lib.rs", "axum/src/extract/path/de.rs", "axum-core/src/extract/request_parts.rs", "axum-core/src/ext_traits/request.rs", "axum-macros/src/with_position.rs", "tokio-rs-axum", "axum-core/src/response/mod.rs", "axum/src/response/redirect.rs", "axum-core/src/response/into_response.rs", "axum/src/test_helpers/test_client.rs", "axum-core/src/response/into_response_parts.rs", "axum-extra/src/extract/multipart.rs", "axum/src/extract/multipart.rs", "axum/src/routing/not_found.rs", "axum-extra/src/typed_header.rs", "axum-core/src/macros.rs", "axum/src/response/mod.rs", "axum-extra/src/response/file_stream.rs", "axum/src/extract/ws.rs", "axum-core/src/body.rs", "axum-extra/src/body/async_read_body.rs", "axum/src/middleware/response_axum_body.rs", "axum-core/src/extract/default_body_limit.rs", "axum/src/routing/route.rs", "axum-extra/src/response/error_response.rs", "axum-extra/src/response/multiple.rs", "axum/src/body/mod.rs", "axum-extra/src/extract/cookie/mod.rs", "axum-core/src/extract/rejection.rs", "axum/src/middleware/map_response.rs", "axum-extra/src/extract/cookie/private.rs", "axum-extra/src/extract/cookie/signed.rs", "axum/src/json.rs", "axum-core/src/body/unknown.rs", "axum-extra/src/body/mod.rs", "axum/src/form.rs", "axum/src/extract/raw_form.rs", "axum-extra/src/json_lines.rs", "axum/src/serve/mod.rs", "axum/src/serve/listener.rs", "axum/src/macros.rs", "axum/src/extract/connect_info.rs", "axum/src/routing/into_make_service.rs", "axum-core/src/extract/tuple.rs", "axum-core/src/ext_traits/mod.rs", "axum-extra/src/routing/typed.rs", "axum/src/routing/strip_prefix.rs", "axum-macros/src/attr_parsing.rs", "axum-extra/src/either.rs", "axum/src/lib.rs", "axum/src/middleware/from_fn.rs", "axum/src/middleware/from_extractor.rs", "axum-extra/src/middleware.rs", "axum/src/middleware/mod.rs", "axum/src/service_ext.rs", "axum/src/extension.rs", "axum/src/test_helpers/tracing_helpers.rs", "axum/src/test_helpers/mod.rs", "axum-extra/src/protobuf.rs"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "axum-route-matching",
+        "question": "When a request arrives, how does the app decide which handler gets it, and what happens if no path matches?",
+        "selectedId": "system:tokio-rs-axum",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23860,
+        "sectionCount": 15,
+        "ranked": [0, 1, 2, 3, 4, 6, 7, 5, 8, 9, 10, 11, 12, 13, 14],
+        "packets": [30],
+        "sections": [
+          {
+            "id": "component:axum-src-extract-matched-path-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:axum-src-extract-matched-path-rs:set-matched-path-for-request", "name": "set_matched_path_for_request" },
+              { "id": "code:axum-src-extract-matched-path-rs:matched-path-from-request-parts", "name": "MatchedPath::from_request_parts" },
+              { "id": "code:axum-src-extract-matched-path-rs:matched-path-from-request-parts-2", "name": "MatchedPath::from_request_parts" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-path-router-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:axum-src-routing-path-router-rs:path-router", "name": "PathRouter" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-call-with-state", "name": "PathRouter<S>::call_with_state" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-nest-service", "name": "PathRouter<S>::nest_service" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-path-mod-rs",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:axum-src-extract-path-mod-rs:raw-path-params-from-request-extensions", "name": "RawPathParams::from_request_extensions" },
+              { "id": "code:axum-src-extract-path-mod-rs:path-t-from-request-parts-2", "name": "Path<T>::from_request_parts" },
+              { "id": "code:axum-src-extract-path-mod-rs:path-t-from-request-parts", "name": "Path<T>::from_request_parts" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-mod-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:axum-src-handler-mod-rs:handler", "name": "Handler" },
+              { "id": "code:axum-src-handler-mod-rs:impl-handler", "name": "impl_handler" },
+              { "id": "code:axum-src-handler-mod-rs:handler-without-state-ext", "name": "HandlerWithoutStateExt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-mod-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:axum-src-routing-mod-rs:path-router", "name": "path_router" },
+              { "id": "code:axum-src-routing-mod-rs:fallback-param-path", "name": "FALLBACK_PARAM_PATH" },
+              { "id": "code:axum-src-routing-mod-rs:router-s-fallback-endpoint", "name": "Router<S>::fallback_endpoint" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-method-routing-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:axum-src-routing-method-routing-rs:chained-handler-fn", "name": "chained_handler_fn" },
+              { "id": "code:axum-src-routing-method-routing-rs:method-router-s-e-merge-for-path", "name": "MethodRouter<S, E>::merge_for_path" },
+              { "id": "code:axum-src-routing-method-routing-rs:top-level-handler-fn", "name": "top_level_handler_fn" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-ext-traits-request-parts-rs",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:axum-core-src-ext-traits-request-parts-rs:request-parts-ext", "name": "RequestPartsExt" },
+              { "id": "code:axum-core-src-ext-traits-request-parts-rs:parts-extract-with-state", "name": "Parts::extract_with_state" },
+              { "id": "code:axum-core-src-ext-traits-request-parts-rs:sealed", "name": "sealed" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-debug-handler-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:axum-macros-src-debug-handler-rs:check-path-extractor", "name": "check_path_extractor" },
+              { "id": "code:axum-macros-src-debug-handler-rs:check-inputs-impls-from-request", "name": "check_inputs_impls_from_request" },
+              { "id": "code:axum-macros-src-debug-handler-rs:request-consuming-type-name", "name": "request_consuming_type_name" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-from-request-attr-rs",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:axum-macros-src-from-request-attr-rs:from-request-container-attrs", "name": "FromRequestContainerAttrs" },
+              { "id": "code:axum-macros-src-from-request-attr-rs:from-request-field-attrs", "name": "FromRequestFieldAttrs" },
+              { "id": "code:axum-macros-src-from-request-attr-rs:from-request-container-attrs-combine", "name": "FromRequestContainerAttrs::combine" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-from-request-mod-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:axum-macros-src-from-request-mod-rs:path-ident-is-state", "name": "path_ident_is_state" },
+              { "id": "code:axum-macros-src-from-request-mod-rs:test-field-doesnt-impl-from-request", "name": "test_field_doesnt_impl_from_request" },
+              { "id": "code:axum-macros-src-from-request-mod-rs:impl-struct-by-extracting-all-at-once", "name": "impl_struct_by_extracting_all_at_once" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-service-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-call", "name": "HandlerService<H, T, S>::call" },
+              { "id": "code:axum-src-handler-service-rs:handler-service", "name": "HandlerService" },
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-new", "name": "HandlerService<H, T, S>::new" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-path-inner-path-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:axum-src-extract-path-inner-path-rs:inner-path-t-from-request-parts-2", "name": "InnerPath<T>::from_request_parts" },
+              { "id": "code:axum-src-extract-path-inner-path-rs:inner-path-t-from-request-parts", "name": "InnerPath<T>::from_request_parts" },
+              { "id": "code:axum-src-extract-path-inner-path-rs:inner-path", "name": "InnerPath" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-nested-path-rs",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:axum-src-extract-nested-path-rs:nested-path-from-request-parts", "name": "NestedPath::from_request_parts" },
+              { "id": "code:axum-src-extract-nested-path-rs:nested-path", "name": "NestedPath" },
+              { "id": "code:axum-src-extract-nested-path-rs:set-nested-path-s-call", "name": "SetNestedPath<S>::call" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-mod-rs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:axum-src-extract-mod-rs:matched-path", "name": "matched_path" },
+              { "id": "code:axum-src-extract-mod-rs:path", "name": "path" },
+              { "id": "code:axum-src-extract-mod-rs:nested-path", "name": "nested_path" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-handler-mod-rs",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:axum-extra-src-handler-mod-rs:handler-call-with-extractors", "name": "HandlerCallWithExtractors" },
+              { "id": "code:axum-extra-src-handler-mod-rs:into-handler-h-t-s-call", "name": "IntoHandler<H, T, S>::call" },
+              { "id": "code:axum-extra-src-handler-mod-rs:impl-handler-call-with", "name": "impl_handler_call_with" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum/src/routing/path_router.rs": true, "axum/src/routing/mod.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11525, "sectionCount": 6, "ranked": [0, 1, 2, 3, 4, 5] },
+          "double": { "byteBudget": 48000, "bytes": 35083, "sectionCount": 30, "ranked": [0, 1, 2, 3, 4, 6, 7, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 28434, "sectionCount": 21, "ranked": [0, 1, 2, 3, 4, 6, 7, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29784, "sectionCount": 22, "ranked": [0, 1, 2, 3, 4, 6, 7, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "863b06f3865ba9a22e3492e2741d626198fe2d359457ced7ac483f56f78e290d",
+          "allowedIdsCount": 62,
+          "allowedIdsSha256": "e5b48c07c1a0384958c4e8ca980f6e8caf5f529dabdc4593f361a259a28a2ed8",
+          "allowedIdsInContent": ["component:axum-src-extract-matched-path-rs", "code:axum-src-extract-matched-path-rs:set-matched-path-for-request", "component:axum-src-routing-path-router-rs", "code:axum-src-routing-path-router-rs:path-router", "code:axum-src-routing-path-router-rs:path-router-s-call-with-state", "code:axum-src-routing-path-router-rs:path-router-s-nest-service", "component:axum-src-handler-mod-rs", "code:axum-src-handler-mod-rs:handler", "code:axum-src-handler-mod-rs:impl-handler", "component:axum-src-routing-mod-rs", "code:axum-src-routing-mod-rs:fallback-param-path", "code:axum-src-routing-mod-rs:router-s-fallback-endpoint", "component:axum-src-routing-method-routing-rs", "code:axum-src-routing-method-routing-rs:chained-handler-fn", "code:axum-src-routing-method-routing-rs:method-router-s-e-merge-for-path", "component:axum-src-handler-service-rs", "code:axum-src-handler-service-rs:handler-service"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Requests are routed in two stages: a `matchit`-backed `Node` maps the request path to a `RouteId`, whose slot in `routes: Vec<Endpoint<S>>` gives the endpoint, and then a `MethodRouter` picks the per-verb handler for the matched path.\\n\\n- `PathRouter<S>` in `axum/src/routing/path_router.rs` pairs `routes` with `node: Arc<Node>`; `PathRouter<S>::call_with_state` performs the lookup and dispatch, and `PathRouter<S>::nest_service` folds nested services into the same table. Route ids are Vec positions (`new_route` uses `routes.len()`).\\n- `axum/src/routing/method_routing.rs` supplies the verb-level dispatch: `MethodRouter` holds one endpoint per method plus a fallback, `MethodRouter::new()` gives unmatched verbs a 405 `METHOD_NOT_ALLOWED` fallback, and `MethodRouter<S, E>::merge_for_path` combines method routers registered on the same path. `chained_handler_fn` is what lets `.get(...).post(...)` chains build one router.\\n- When no path matches at all, routing falls through to the router's fallback: `axum/src/routing/mod.rs` defines `FALLBACK_PARAM_PATH` (the sentinel path param used for catch-all fallbacks) and `Router<S>::fallback_endpoint`, which installs the endpoint served for unmatched paths. If no user fallback is registered, that produces the default 404 response.\\n- Once a handler is chosen, `Handler::call(self, Request, S)` in `axum/src/handler/mod.rs` runs it (impls generated by `impl_handler!`), with `HandlerService` in `axum/src/handler/service.rs` as the service adapter. Matched path info is recorded via `set_matched_path_for_request` in `axum/src/extract/matched_path.rs` so `MatchedPath` can be extracted later.\\n\\nNote: the exact default-fallback response body is not in the evidence; only the fallback mechanism and the 405 method fallback are documented here.\",\"citations\":[\"component:axum-src-routing-path-router-rs\",\"code:axum-src-routing-path-router-rs:path-router\",\"code:axum-src-routing-path-router-rs:path-router-s-call-with-state\",\"code:axum-src-routing-path-router-rs:path-router-s-nest-service\",\"component:axum-src-routing-method-routing-rs\",\"code:axum-src-routing-method-routing-rs:chained-handler-fn\",\"code:axum-src-routing-method-routing-rs:method-router-s-e-merge-for-path\",\"component:axum-src-routing-mod-rs\",\"code:axum-src-routing-mod-rs:fallback-param-path\",\"code:axum-src-routing-mod-rs:router-s-fallback-endpoint\",\"component:axum-src-handler-mod-rs\",\"code:axum-src-handler-mod-rs:handler\",\"code:axum-src-handler-mod-rs:impl-handler\",\"component:axum-src-handler-service-rs\",\"code:axum-src-handler-service-rs:handler-service\",\"component:axum-src-extract-matched-path-rs\",\"code:axum-src-extract-matched-path-rs:set-matched-path-for-request\"]}",
+          "usage": { "promptTokens": 9412, "completionTokens": 753, "totalTokens": 10165, "costUsd": 0.00474933 },
+          "ms": 22957
+        }
+      },
+      {
+        "id": "axum-json-rejection",
+        "question": "If a client posts a JSON body that is malformed or has the wrong fields, what status code do they get and where is that decided?",
+        "selectedId": "system:tokio-rs-axum",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23919,
+        "sectionCount": 19,
+        "ranked": [31, 32, 33, 2, 34, 35, 36, 37, 39, 40, 41, 17, 38, 4, 42, 22, 43, 45, 49],
+        "packets": [30],
+        "sections": [
+          {
+            "id": "component:axum-core-src-response-mod-rs",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:axum-core-src-response-mod-rs:force-status-code-r-into-response", "name": "(ForceStatusCode, R)::into_response" },
+              { "id": "code:axum-core-src-response-mod-rs:force-status-code", "name": "ForceStatusCode" },
+              { "id": "code:axum-core-src-response-mod-rs:force-status-code-into-response", "name": "ForceStatusCode::into_response" }
+            ]
+          },
+          {
+            "id": "component:axum-src-response-redirect-rs",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:axum-src-response-redirect-rs:redirect-with-status-code", "name": "Redirect::with_status_code" },
+              { "id": "code:axum-src-response-redirect-rs:redirect-status-code", "name": "Redirect::status_code" },
+              { "id": "code:axum-src-response-redirect-rs:redirect", "name": "Redirect" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-response-into-response-rs",
+            "kind": "component",
+            "p": 33,
+            "symbols": [
+              { "id": "code:axum-core-src-response-into-response-rs:status-code-into-response", "name": "StatusCode::into_response" },
+              { "id": "code:axum-core-src-response-into-response-rs:status-code-r-into-response", "name": "(StatusCode, R)::into_response" },
+              { "id": "code:axum-core-src-response-into-response-rs:bytes-chain-body", "name": "BytesChainBody" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-path-mod-rs",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:axum-src-extract-path-mod-rs:failed-to-deserialize-path-params-status", "name": "FailedToDeserializePathParams::status" },
+              { "id": "code:axum-src-extract-path-mod-rs:invalid-utf8-in-path-param-status", "name": "InvalidUtf8InPathParam::status" },
+              { "id": "code:axum-src-extract-path-mod-rs:path-deserialization-error-wrong-number-of-parameters", "name": "PathDeserializationError::wrong_number_of_parameters" }
+            ]
+          },
+          {
+            "id": "component:axum-src-test-helpers-test-client-rs",
+            "kind": "component",
+            "p": 34,
+            "symbols": [
+              { "id": "code:axum-src-test-helpers-test-client-rs:test-client-post", "name": "TestClient::post" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:test-client", "name": "TestClient" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:test-client-get", "name": "TestClient::get" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-response-into-response-parts-rs",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:axum-core-src-response-into-response-parts-rs:response-parts-status", "name": "ResponseParts::status" },
+              { "id": "code:axum-core-src-response-into-response-parts-rs:response-parts-status-mut", "name": "ResponseParts::status_mut" },
+              { "id": "code:axum-core-src-response-into-response-parts-rs:try-into-header-error-k-v-into-response", "name": "TryIntoHeaderError<K, V>::into_response" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-extract-multipart-rs",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:axum-extra-src-extract-multipart-rs:status-code-from-multer-error", "name": "status_code_from_multer_error" },
+              { "id": "code:axum-extra-src-extract-multipart-rs:multipart-error-body-text", "name": "MultipartError::body_text" },
+              { "id": "code:axum-extra-src-extract-multipart-rs:multipart-next-field", "name": "Multipart::next_field" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-multipart-rs",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:axum-src-extract-multipart-rs:status-code-from-multer-error", "name": "status_code_from_multer_error" },
+              { "id": "code:axum-src-extract-multipart-rs:multipart-next-field", "name": "Multipart::next_field" },
+              { "id": "code:axum-src-extract-multipart-rs:multipart-error-status", "name": "MultipartError::status" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-typed-header-rs",
+            "kind": "component",
+            "p": 39,
+            "symbols": [
+              { "id": "code:axum-extra-src-typed-header-rs:typed-header-rejection-into-response", "name": "TypedHeaderRejection::into_response" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-macros-rs",
+            "kind": "component",
+            "p": 40,
+            "symbols": [
+              { "id": "code:axum-core-src-macros-rs:define-rejection", "name": "__define_rejection" },
+              { "id": "code:axum-core-src-macros-rs:composite-rejection", "name": "__composite_rejection" },
+              { "id": "code:axum-core-src-macros-rs:log-rejection", "name": "__log_rejection" }
+            ]
+          },
+          {
+            "id": "component:axum-src-response-mod-rs",
+            "kind": "component",
+            "p": 41,
+            "symbols": [
+              { "id": "code:axum-src-response-mod-rs:no-content-into-response", "name": "NoContent::into_response" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-routing-mod-rs",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:axum-extra-src-routing-mod-rs:router-s-typed-post", "name": "Router<S>::typed_post" },
+              { "id": "code:axum-extra-src-routing-mod-rs:add-tsr-redirect-route", "name": "add_tsr_redirect_route" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-not-found-rs",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:axum-src-routing-not-found-rs:not-found-call", "name": "NotFound::call" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-mod-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:axum-src-routing-mod-rs:router-s-fmt", "name": "Router<S>::fmt" },
+              { "id": "code:axum-src-routing-mod-rs:take-route-or-internal-error", "name": "take_route_or_internal_error" },
+              { "id": "code:axum-src-routing-mod-rs:endpoint-s-fmt", "name": "Endpoint<S>::fmt" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-response-file-stream-rs",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:axum-extra-src-response-file-stream-rs:file-stream-s-into-range-response", "name": "FileStream<S>::into_range_response" },
+              { "id": "code:axum-extra-src-response-file-stream-rs:file-stream-s-try-range-response", "name": "FileStream<S>::try_range_response" },
+              { "id": "code:axum-extra-src-response-file-stream-rs:file-stream-s-into-response", "name": "FileStream<S>::into_response" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-typed-path-rs",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:axum-macros-src-typed-path-rs:expand-unnamed-fields", "name": "expand_unnamed_fields" },
+              { "id": "code:axum-macros-src-typed-path-rs:expand-unit-fields", "name": "expand_unit_fields" },
+              { "id": "code:axum-macros-src-typed-path-rs:expand-named-fields", "name": "expand_named_fields" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-ws-rs",
+            "kind": "component",
+            "p": 43,
+            "symbols": [
+              { "id": "code:axum-src-extract-ws-rs:close-code-2", "name": "close_code" },
+              { "id": "code:axum-src-extract-ws-rs:close-code", "name": "CloseCode" },
+              { "id": "code:axum-src-extract-ws-rs:rejection", "name": "rejection" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-body-async-read-body-rs",
+            "kind": "component",
+            "p": 45,
+            "symbols": [
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-size-hint", "name": "AsyncReadBody::size_hint" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-new", "name": "AsyncReadBody::new" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-poll-frame", "name": "AsyncReadBody::poll_frame" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-response-error-response-rs",
+            "kind": "component",
+            "p": 49,
+            "symbols": [
+              { "id": "code:axum-extra-src-response-error-response-rs:internal-server-error-t-into-response", "name": "InternalServerError<T>::into_response" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum/src/json.rs": true, "axum/src/extract/rejection.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11688, "sectionCount": 9, "ranked": [31, 32, 33, 2, 34, 35, 36, 37, 38] },
+          "double": { "byteBudget": 48000, "bytes": 30270, "sectionCount": 26, "ranked": [31, 32, 33, 2, 34, 35, 36, 37, 39, 40, 41, 17, 38, 4, 42, 22, 43, 6, 44, 45, 46, 47, 48, 49, 50, 9] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 28607, "sectionCount": 23, "ranked": [31, 32, 33, 2, 34, 35, 36, 37, 39, 40, 41, 17, 38, 4, 42, 22, 43, 6, 44, 45, 46, 47, 48] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29598, "sectionCount": 25, "ranked": [31, 32, 33, 2, 34, 35, 36, 37, 39, 40, 41, 17, 38, 4, 42, 22, 43, 6, 44, 45, 46, 47, 48, 49, 50] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "5eece0d5dea37699a94f98eee053890a8b8e169c09a0f86e9009232fbdbe74b1",
+          "allowedIdsCount": 69,
+          "allowedIdsSha256": "9fd2f3781212508584157c08a1d9ffc6b738df513a680ac8d4a4ad9afa1e42d3",
+          "allowedIdsInContent": ["code:axum-core-src-response-into-response-rs:status-code-into-response", "component:axum-src-extract-path-mod-rs", "code:axum-src-extract-path-mod-rs:failed-to-deserialize-path-params-status", "code:axum-src-extract-multipart-rs:status-code-from-multer-error", "code:axum-extra-src-typed-header-rs:typed-header-rejection-into-response", "component:axum-core-src-macros-rs", "code:axum-core-src-macros-rs:define-rejection", "code:axum-core-src-macros-rs:composite-rejection", "container:tokio-rs-axum"],
+          "packetSources": { "container:tokio-rs-axum": 30 },
+          "content": "{\"answer\": \"The specific status for a bad JSON body is **not in the evidence** — no `axum/src/extract/json.rs` (or `JsonRejection`) section appeared in the 19 matches, so I can't state the exact code the Json extractor returns. What the evidence does establish is *where* such a code would be decided:\\n\\n- Rejection types are stamped out by `__define_rejection` in `axum-core/src/macros.rs`, which generates a `pub fn status(&self) -> http::StatusCode` from a `#[status = ...]` attribute — i.e. the status is baked in at the rejection type's definition site (`code:axum-core-src-macros-rs:define-rejection`). `__composite_rejection` does the same by matching variants (`code:axum-core-src-macros-rs:composite-rejection`).\\n- The parallel path-param rejection shows the pattern concretely: `FailedToDeserializePathParams::status` in `axum/src/extract/path/mod.rs` returns `BAD_REQUEST` for deserialize/parse errors and `INTERNAL_SERVER_ERROR` for wrong parameter counts (`code:axum-src-extract-path-mod-rs:failed-to-deserialize-path-params-status`).\\n- Other body/header rejections follow the same shape — e.g. `TypedHeaderRejection::into_response` in `axum-extra/src/typed_header.rs` builds a `400` with the error text (`code:axum-extra-src-typed-header-rs:typed-header-rejection-into-response`), and multipart maps multer errors via `status_code_from_multer_error` (`code:axum-src-extract-multipart-rs:status-code-from-multer-error`).\\n- Once a rejection is built, its `into_response` sets the status on the response through `IntoResponse` (`code:axum-core-src-response-into-response-rs:status-code-into-response`).\\n\\nMissing: the `Json` extractor's rejection definitions and their `#[status = ...]` values (e.g. whether malformed JSON vs. wrong fields differ).\", \"citations\": [\"code:axum-core-src-macros-rs:define-rejection\", \"code:axum-core-src-macros-rs:composite-rejection\", \"component:axum-core-src-macros-rs\", \"code:axum-src-extract-path-mod-rs:failed-to-deserialize-path-params-status\", \"component:axum-src-extract-path-mod-rs\", \"code:axum-extra-src-typed-header-rs:typed-header-rejection-into-response\", \"code:axum-src-extract-multipart-rs:status-code-from-multer-error\", \"code:axum-core-src-response-into-response-rs:status-code-into-response\", \"container:tokio-rs-axum\"]}",
+          "usage": { "promptTokens": 9637, "completionTokens": 939, "totalTokens": 10576, "costUsd": 0.005009025 },
+          "ms": 25592
+        }
+      },
+      {
+        "id": "axum-body-limit",
+        "question": "Is there a cap on how large a request body can be, and how do I raise or remove it?",
+        "selectedId": "component:axum-macros-src-typed-path-rs",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23934,
+        "sectionCount": 21,
+        "ranked": [19, 27, 28, 44, 21, 47, 37, 31, 36, 4, 46, 52, 1, 6, 33, 34, 45, 53, 51, 54, 7],
+        "packets": [22, 30],
+        "sections": [
+          {
+            "id": "component:axum-src-middleware-map-request-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:axum-src-middleware-map-request-rs:map-request", "name": "map_request" },
+              { "id": "code:axum-src-middleware-map-request-rs:map-request-2", "name": "MapRequest" },
+              { "id": "code:axum-src-middleware-map-request-rs:into-map-request-result", "name": "IntoMapRequestResult" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-request-parts-rs",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-request-parts-rs:body-from-request", "name": "Body::from_request" },
+              { "id": "code:axum-core-src-extract-request-parts-rs:header-map-from-request-parts", "name": "HeaderMap::from_request_parts" },
+              { "id": "code:axum-core-src-extract-request-parts-rs:body-to-bytes-mut", "name": "body_to_bytes_mut" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-ext-traits-request-rs",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:axum-core-src-ext-traits-request-rs:request-with-limited-body", "name": "Request::with_limited_body" },
+              { "id": "code:axum-core-src-ext-traits-request-rs:request-into-limited-body", "name": "Request::into_limited_body" },
+              { "id": "code:axum-core-src-ext-traits-request-rs:request-ext", "name": "RequestExt" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-body-rs",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:axum-core-src-body-rs:body", "name": "Body" },
+              { "id": "code:axum-core-src-body-rs:body-from", "name": "Body::from" },
+              { "id": "code:axum-core-src-body-rs:body-new", "name": "Body::new" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-mod-rs",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-mod-rs:from-request", "name": "FromRequest" },
+              { "id": "code:axum-core-src-extract-mod-rs:request", "name": "Request" },
+              { "id": "code:axum-core-src-extract-mod-rs:t-from-request", "name": "T::from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-default-body-limit-rs",
+            "kind": "component",
+            "p": 47,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-default-body-limit-rs:default-body-limit", "name": "DefaultBodyLimit" },
+              { "id": "code:axum-core-src-extract-default-body-limit-rs:default-body-limit-apply", "name": "DefaultBodyLimit::apply" },
+              { "id": "code:axum-core-src-extract-default-body-limit-rs:default-body-limit-kind", "name": "DefaultBodyLimitKind" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-multipart-rs",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:axum-src-extract-multipart-rs:multipart-error-body-text", "name": "MultipartError::body_text" },
+              { "id": "code:axum-src-extract-multipart-rs:multipart-from-request", "name": "Multipart::from_request" },
+              { "id": "code:axum-src-extract-multipart-rs:multipart-from-request-2", "name": "Multipart::from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-response-mod-rs",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:axum-core-src-response-mod-rs:response", "name": "Response" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-extract-multipart-rs",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:axum-extra-src-extract-multipart-rs:multipart-error-body-text", "name": "MultipartError::body_text" },
+              { "id": "code:axum-extra-src-extract-multipart-rs:multipart-from-request", "name": "Multipart::from_request" },
+              { "id": "code:axum-extra-src-extract-multipart-rs:is-body-limit-error", "name": "is_body_limit_error" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-mod-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:axum-src-routing-mod-rs:fallback-s-e-map", "name": "Fallback<S, E>::map" },
+              { "id": "code:axum-src-routing-mod-rs:tap-inner", "name": "tap_inner" },
+              { "id": "code:axum-src-routing-mod-rs:map-inner", "name": "map_inner" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-response-axum-body-rs",
+            "kind": "component",
+            "p": 46,
+            "symbols": [
+              { "id": "code:axum-src-middleware-response-axum-body-rs:response-axum-body", "name": "ResponseAxumBody" },
+              { "id": "code:axum-src-middleware-response-axum-body-rs:response-axum-body-s-call", "name": "ResponseAxumBody<S>::call" },
+              { "id": "code:axum-src-middleware-response-axum-body-rs:response-axum-body-future-fut-poll", "name": "ResponseAxumBodyFuture<Fut>::poll" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-extract-cookie-mod-rs",
+            "kind": "component",
+            "p": 52,
+            "symbols": [
+              { "id": "code:axum-extra-src-extract-cookie-mod-rs:cookies-from-request", "name": "cookies_from_request" },
+              { "id": "code:axum-extra-src-extract-cookie-mod-rs:cookie-jar-remove", "name": "CookieJar::remove" },
+              { "id": "code:axum-extra-src-extract-cookie-mod-rs:cookie-jar-from-request-parts", "name": "CookieJar::from_request_parts" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-path-router-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-call-with-state", "name": "PathRouter<S>::call_with_state" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-layer", "name": "PathRouter<S>::layer" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-route-layer", "name": "PathRouter<S>::route_layer" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-method-routing-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:axum-src-routing-method-routing-rs:method-endpoint-s-e-map", "name": "MethodEndpoint<S, E>::map" },
+              { "id": "code:axum-src-routing-method-routing-rs:chained-service-fn", "name": "chained_service_fn" },
+              { "id": "code:axum-src-routing-method-routing-rs:method-router-s-e-layer", "name": "MethodRouter<S, E>::layer" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-response-into-response-rs",
+            "kind": "component",
+            "p": 33,
+            "symbols": [
+              { "id": "code:axum-core-src-response-into-response-rs:bytes-chain-body", "name": "BytesChainBody" },
+              { "id": "code:axum-core-src-response-into-response-rs:body-into-response", "name": "Body::into_response" },
+              { "id": "code:axum-core-src-response-into-response-rs:bytes-chain-body-t-u-is-end-stream", "name": "BytesChainBody<T, U>::is_end_stream" }
+            ]
+          },
+          {
+            "id": "component:axum-src-test-helpers-test-client-rs",
+            "kind": "component",
+            "p": 34,
+            "symbols": [
+              { "id": "code:axum-src-test-helpers-test-client-rs:request-builder-body", "name": "RequestBuilder::body" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:request-builder", "name": "RequestBuilder" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:request-builder-json", "name": "RequestBuilder::json" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-body-async-read-body-rs",
+            "kind": "component",
+            "p": 45,
+            "symbols": [
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-size-hint", "name": "AsyncReadBody::size_hint" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-new", "name": "AsyncReadBody::new" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-poll-frame", "name": "AsyncReadBody::poll_frame" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-rejection-rs",
+            "kind": "component",
+            "p": 53,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-rejection-rs:failed-to-buffer-body-from-err", "name": "FailedToBufferBody::from_err" }
+            ]
+          },
+          {
+            "id": "component:axum-src-body-mod-rs",
+            "kind": "component",
+            "p": 51,
+            "symbols": [
+              { "id": "code:axum-src-body-mod-rs:to-bytes", "name": "to_bytes" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-map-response-rs",
+            "kind": "component",
+            "p": 54,
+            "symbols": [
+              { "id": "code:axum-src-middleware-map-response-rs:map-response", "name": "map_response" },
+              { "id": "code:axum-src-middleware-map-response-rs:map-response-2", "name": "MapResponse" },
+              { "id": "code:axum-src-middleware-map-response-rs:map-response-with-state", "name": "map_response_with_state" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-ext-traits-request-parts-rs",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:axum-core-src-ext-traits-request-parts-rs:request-parts-ext", "name": "RequestPartsExt" },
+              { "id": "code:axum-core-src-ext-traits-request-parts-rs:parts-extract-with-state", "name": "Parts::extract_with_state" },
+              { "id": "code:axum-core-src-ext-traits-request-parts-rs:sealed", "name": "sealed" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum-core/src/extract/default_body_limit.rs": true, "axum-core/src/ext_traits/request.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11996, "sectionCount": 11, "ranked": [19, 27, 28, 44, 21, 47, 37, 31, 36, 4, 51] },
+          "double": { "byteBudget": 48000, "bytes": 34995, "sectionCount": 34, "ranked": [19, 27, 28, 44, 21, 47, 37, 31, 36, 4, 46, 52, 1, 6, 33, 34, 45, 53, 51, 0, 54, 55, 56, 48, 7, 9, 57, 58, 59, 2, 8, 60, 61, 62] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 28578, "sectionCount": 26, "ranked": [19, 27, 28, 44, 21, 47, 37, 31, 36, 4, 46, 52, 1, 6, 33, 34, 45, 53, 51, 0, 54, 55, 56, 48, 7, 58] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29929, "sectionCount": 29, "ranked": [19, 27, 28, 44, 21, 47, 37, 31, 36, 4, 46, 52, 1, 6, 33, 34, 45, 53, 51, 0, 54, 55, 56, 48, 7, 9, 58, 59, 61] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "802099bd2c34a08c9d42939886ac3b24633b4c9b1aa77e6af61942149b73efc4",
+          "allowedIdsCount": 98,
+          "allowedIdsSha256": "43260eae88438cddbaf4f466d551a0defd3bc1fa45834cc56b4ad16eddb68e21",
+          "allowedIdsInContent": ["component:axum-core-src-ext-traits-request-rs", "code:axum-core-src-ext-traits-request-rs:request-with-limited-body", "code:axum-core-src-ext-traits-request-rs:request-into-limited-body", "code:axum-core-src-body-rs:body", "code:axum-core-src-body-rs:body-new", "component:axum-core-src-extract-default-body-limit-rs", "code:axum-core-src-extract-default-body-limit-rs:default-body-limit", "code:axum-core-src-extract-default-body-limit-rs:default-body-limit-apply", "code:axum-core-src-extract-default-body-limit-rs:default-body-limit-kind", "code:axum-extra-src-extract-multipart-rs:multipart-error-body-text", "code:axum-extra-src-extract-multipart-rs:multipart-from-request", "code:axum-extra-src-extract-multipart-rs:is-body-limit-error"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Yes — axum caps request bodies at **2 MB by default** (`const DEFAULT_LIMIT: usize = 2_097_152`) unless a limit is configured or disabled.\\n\\n- `Request::with_limited_body` in `axum-core/src/ext_traits/request.rs` is where the cap is applied: it wraps the body in `http_body_util::Limited`. It reads `DefaultBodyLimitKind` from request extensions — `Limit(limit)` wraps with that limit, `Disable` passes the body through untouched, and no extension falls back to the 2 MB default.\\n- Raise or remove it with `DefaultBodyLimit` in `axum-core/src/extract/default_body_limit.rs` (see `DefaultBodyLimit::apply`), which stores a `DefaultBodyLimitKind` — set `Limit(n)` for a bigger cap or `Disable` to turn limiting off entirely.\\n- Per-request, `Request::into_limited_body` (`axum-core/src/ext_traits/request.rs`) applies the same logic and consumes the request.\\n- Extractors built on this path include `Multipart::from_request` in `axum-extra/src/extract/multipart.rs`, which calls `req.with_limited_body()`; exceeding the cap surfaces as `MultipartError::body_text` → `\\\"Request payload is too large\\\"` via `is_body_limit_error`.\\n- The body itself is the `Body` wrapper in `axum-core/src/body.rs` (`Body::new`), which is what `Limited` is applied to.\\n\\nNot in the evidence: the exact constructor/layer API names for setting a custom limit (e.g. `DefaultBodyLimit::max`/`disable`) — only the struct, `apply`, and the `DefaultBodyLimitKind` variants are shown.\", \"citations\": [\"code:axum-core-src-ext-traits-request-rs:request-with-limited-body\", \"code:axum-core-src-ext-traits-request-rs:request-into-limited-body\", \"component:axum-core-src-extract-default-body-limit-rs\", \"code:axum-core-src-extract-default-body-limit-rs:default-body-limit\", \"code:axum-core-src-extract-default-body-limit-rs:default-body-limit-apply\", \"code:axum-core-src-extract-default-body-limit-rs:default-body-limit-kind\", \"code:axum-extra-src-extract-multipart-rs:multipart-from-request\", \"code:axum-extra-src-extract-multipart-rs:multipart-error-body-text\", \"code:axum-extra-src-extract-multipart-rs:is-body-limit-error\", \"code:axum-core-src-body-rs:body-new\", \"component:axum-core-src-ext-traits-request-rs\"]}",
+          "usage": { "promptTokens": 14540, "completionTokens": 779, "totalTokens": 15319, "costUsd": 0.00700263 },
+          "ms": 20535
+        }
+      },
+      {
+        "id": "axum-shared-state",
+        "question": "What's the recommended way to give every request handler access to a database connection pool?",
+        "selectedId": "system:tokio-rs-axum",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23580,
+        "sectionCount": 15,
+        "ranked": [63, 64, 10, 3, 16, 14, 5, 6, 21, 15, 19, 44, 48, 18, 23],
+        "packets": [30],
+        "sections": [
+          {
+            "id": "component:axum-src-serve-mod-rs",
+            "kind": "component",
+            "p": 63,
+            "symbols": [
+              { "id": "code:axum-src-serve-mod-rs:handle-connection", "name": "handle_connection" },
+              { "id": "code:axum-src-serve-mod-rs:connection-lifetime-limits-max-connection-age", "name": "ConnectionLifetimeLimits::max_connection_age" },
+              { "id": "code:axum-src-serve-mod-rs:connection-lifetime-limits", "name": "ConnectionLifetimeLimits" }
+            ]
+          },
+          {
+            "id": "component:axum-src-serve-listener-rs",
+            "kind": "component",
+            "p": 64,
+            "symbols": [
+              { "id": "code:axum-src-serve-listener-rs:is-connection-error", "name": "is_connection_error" },
+              { "id": "code:axum-src-serve-listener-rs:handle-accept-error", "name": "handle_accept_error" },
+              { "id": "code:axum-src-serve-listener-rs:conn-limiter-io-t-poll-flush", "name": "ConnLimiterIo<T>::poll_flush" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-service-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-poll-ready", "name": "HandlerService<H, T, S>::poll_ready" },
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-call", "name": "HandlerService<H, T, S>::call" },
+              { "id": "code:axum-src-handler-service-rs:handler-service", "name": "HandlerService" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-mod-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:axum-src-handler-mod-rs:handler", "name": "Handler" },
+              { "id": "code:axum-src-handler-mod-rs:handler-without-state-ext", "name": "HandlerWithoutStateExt" },
+              { "id": "code:axum-src-handler-mod-rs:impl-handler", "name": "impl_handler" }
+            ]
+          },
+          {
+            "id": "component:axum-src-error-handling-mod-rs",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error-s-f-poll-ready", "name": "HandleError<S, F, ()>::poll_ready" },
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error-s-f-call", "name": "HandleError<S, F, ()>::call" },
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error", "name": "HandleError" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-handler-mod-rs",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:axum-extra-src-handler-mod-rs:handler-call-with-extractors", "name": "HandlerCallWithExtractors" },
+              { "id": "code:axum-extra-src-handler-mod-rs:into-handler-h-t-s-call", "name": "IntoHandler<H, T, S>::call" },
+              { "id": "code:axum-extra-src-handler-mod-rs:impl-handler-call-with", "name": "impl_handler_call_with" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-debug-handler-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:axum-macros-src-debug-handler-rs:check-inputs-impls-from-request", "name": "check_inputs_impls_from_request" },
+              { "id": "code:axum-macros-src-debug-handler-rs:request-consuming-type-name", "name": "request_consuming_type_name" },
+              { "id": "code:axum-macros-src-debug-handler-rs:check-input-order", "name": "check_input_order" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-method-routing-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:axum-src-routing-method-routing-rs:chained-handler-fn", "name": "chained_handler_fn" },
+              { "id": "code:axum-src-routing-method-routing-rs:top-level-handler-fn", "name": "top_level_handler_fn" },
+              { "id": "code:axum-src-routing-method-routing-rs:method-router-s-e-handle-error", "name": "MethodRouter<S, E>::handle_error" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-mod-rs",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-mod-rs:from-request", "name": "FromRequest" },
+              { "id": "code:axum-core-src-extract-mod-rs:t-from-request", "name": "T::from_request" },
+              { "id": "code:axum-core-src-extract-mod-rs:result-t-t-rejection-from-request", "name": "Result<T, T::Rejection>::from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-future-rs",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:axum-src-handler-future-rs:layered-future-s-poll", "name": "LayeredFuture<S>::poll" },
+              { "id": "code:axum-src-handler-future-rs:layered-future-s-new", "name": "LayeredFuture<S>::new" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-map-request-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:axum-src-middleware-map-request-rs:map-request", "name": "map_request" },
+              { "id": "code:axum-src-middleware-map-request-rs:map-request-2", "name": "MapRequest" },
+              { "id": "code:axum-src-middleware-map-request-rs:response-future-poll", "name": "ResponseFuture::poll" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-body-rs",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:axum-core-src-body-rs:stream-body-s-poll-frame", "name": "StreamBody<S>::poll_frame" },
+              { "id": "code:axum-core-src-body-rs:body-data-stream-poll-next", "name": "BodyDataStream::poll_next" },
+              { "id": "code:axum-core-src-body-rs:body-poll-frame", "name": "Body::poll_frame" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-route-rs",
+            "kind": "component",
+            "p": 48,
+            "symbols": [
+              { "id": "code:axum-src-routing-route-rs:infallible-route-future-poll", "name": "InfallibleRouteFuture::poll" },
+              { "id": "code:axum-src-routing-route-rs:route-future-e-poll", "name": "RouteFuture<E>::poll" },
+              { "id": "code:axum-src-routing-route-rs:route-e-poll-ready", "name": "Route<E>::poll_ready" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-handler-or-rs",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:axum-extra-src-handler-or-rs:or", "name": "Or" },
+              { "id": "code:axum-extra-src-handler-or-rs:or-l-r-lt-rt-s-call-2", "name": "Or<L, R, Lt, Rt, S>::call" },
+              { "id": "code:axum-extra-src-handler-or-rs:or-l-r-lt-rt-s-call", "name": "Or<L, R, Lt, Rt, S>::call" }
+            ]
+          },
+          {
+            "id": "component:axum-src-boxed-rs",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:axum-src-boxed-rs:boxed-into-route-s-infallible-from-handler", "name": "BoxedIntoRoute<S, Infallible>::from_handler" },
+              { "id": "code:axum-src-boxed-rs:make-erased-handler-h-s-call-with-state", "name": "MakeErasedHandler<H, S>::call_with_state" },
+              { "id": "code:axum-src-boxed-rs:make-erased-handler", "name": "MakeErasedHandler" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum/src/lib.rs": true, "axum/src/extract/state.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11940, "sectionCount": 7, "ranked": [63, 64, 10, 3, 16, 14, 5] },
+          "double": { "byteBudget": 48000, "bytes": 37463, "sectionCount": 31, "ranked": [63, 64, 10, 3, 16, 14, 5, 6, 21, 15, 19, 44, 48, 18, 23, 9, 65, 4, 29, 66, 27, 25, 28, 8, 43, 33, 7, 67, 68, 17, 30] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 28507, "sectionCount": 20, "ranked": [63, 64, 10, 3, 16, 14, 5, 6, 21, 15, 19, 44, 48, 18, 23, 9, 65, 4, 29, 66] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29774, "sectionCount": 22, "ranked": [63, 64, 10, 3, 16, 14, 5, 6, 21, 15, 19, 44, 48, 18, 23, 9, 65, 4, 29, 66, 27, 28] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "256ab550059ddbcef18ff9299f5cd3fd0dc88c1a42827211ecabeab1c11fb707",
+          "allowedIdsCount": 61,
+          "allowedIdsSha256": "56ef62562ce50152a39aff54c97e86e3c374d0eaf88f12e55c27000a23479487",
+          "allowedIdsInContent": ["code:axum-src-serve-mod-rs:handle-connection", "code:axum-src-handler-mod-rs:handler", "code:axum-core-src-extract-mod-rs:from-request", "code:axum-core-src-extract-mod-rs:t-from-request", "code:axum-src-boxed-rs:boxed-into-route-s-infallible-from-handler"],
+          "packetSources": {},
+          "content": "{\"answer\": \"The pattern the framework supports is shared application state: handlers are generic over a state type `S`, and `Handler::call(self, req, state: S)` passes that state into every handler, so you'd hold the connection pool in your state type and extract it per request (e.g. via a `State`-style extractor). There is no per-request or per-connection pool wiring — `handle_connection` in `axum/src/serve/mod.rs` only builds a service per connection and never injects anything request-specific, so state is the intended seam.\\n\\n- `code:axum-src-handler-mod-rs:handler` — `Handler<T, S>`'s `call(self, req: Request, state: S)` is the contract: state flows to every handler.\\n- `code:axum-core-src-extract-mod-rs:from-request` and `code:axum-core-src-extract-mod-rs:t-from-request` — `FromRequest`/`FromRequestParts` also receive `&S`, so any custom extractor can read the pool from state.\\n- `code:axum-src-boxed-rs:boxed-into-route-s-infallible-from-handler` — `Handler::with_state(handler, state)` binds state into a handler when routing, confirming state is the injection point.\\n- `code:axum-src-serve-mod-rs:handle-connection` — connection setup is about IO/lifetime only, not per-request resources.\\n\\nMissing from the evidence: the concrete `State<T>` extractor type and the `Router::with_state` builder API (and any `FromRef` cloning guidance), so I can't cite those symbols here.\",\"citations\": [\"code:axum-src-handler-mod-rs:handler\", \"code:axum-core-src-extract-mod-rs:from-request\", \"code:axum-core-src-extract-mod-rs:t-from-request\", \"code:axum-src-boxed-rs:boxed-into-route-s-infallible-from-handler\", \"code:axum-src-serve-mod-rs:handle-connection\"]}",
+          "usage": { "promptTokens": 9569, "completionTokens": 721, "totalTokens": 10290, "costUsd": 0.004789785 },
+          "ms": 19691
+        }
+      },
+      {
+        "id": "axum-handler-type-error",
+        "question": "The compiler says my async function can't be used as a route handler because some trait isn't implemented. What are the rules, and how do I get a clearer error?",
+        "selectedId": "system:tokio-rs-axum",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23916,
+        "sectionCount": 17,
+        "ranked": [17, 6, 16, 3, 10, 5, 4, 48, 65, 25, 70, 14, 1, 20, 28, 23, 45],
+        "packets": [30],
+        "sections": [
+          {
+            "id": "component:axum-extra-src-routing-mod-rs",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:axum-extra-src-routing-mod-rs:router-ext", "name": "RouterExt" },
+              { "id": "code:axum-extra-src-routing-mod-rs:add-tsr-redirect-route", "name": "add_tsr_redirect_route" },
+              { "id": "code:axum-extra-src-routing-mod-rs:router-s-route-with-tsr", "name": "Router<S>::route_with_tsr" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-method-routing-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:axum-src-routing-method-routing-rs:method-router-s-e-handle-error", "name": "MethodRouter<S, E>::handle_error" },
+              { "id": "code:axum-src-routing-method-routing-rs:method-router", "name": "MethodRouter" },
+              { "id": "code:axum-src-routing-method-routing-rs:chained-handler-fn", "name": "chained_handler_fn" }
+            ]
+          },
+          {
+            "id": "component:axum-src-error-handling-mod-rs",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error-s-f-call", "name": "HandleError<S, F, ()>::call" },
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error", "name": "HandleError" },
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error-layer", "name": "HandleErrorLayer" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-mod-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:axum-src-handler-mod-rs:handler", "name": "Handler" },
+              { "id": "code:axum-src-handler-mod-rs:handler-without-state-ext", "name": "HandlerWithoutStateExt" },
+              { "id": "code:axum-src-handler-mod-rs:impl-handler", "name": "impl_handler" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-service-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-poll-ready", "name": "HandlerService<H, T, S>::poll_ready" },
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-call", "name": "HandlerService<H, T, S>::call" },
+              { "id": "code:axum-src-handler-service-rs:handler-service", "name": "HandlerService" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-debug-handler-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:axum-macros-src-debug-handler-rs:function-kind", "name": "FunctionKind" },
+              { "id": "code:axum-macros-src-debug-handler-rs:function-kind-fmt", "name": "FunctionKind::fmt" },
+              { "id": "code:axum-macros-src-debug-handler-rs:function-kind-name-uppercase-plural", "name": "FunctionKind::name_uppercase_plural" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-mod-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:axum-src-routing-mod-rs:take-route-or-internal-error", "name": "take_route_or_internal_error" },
+              { "id": "code:axum-src-routing-mod-rs:router-s-fallback-endpoint", "name": "Router<S>::fallback_endpoint" },
+              { "id": "code:axum-src-routing-mod-rs:router-s-route-service", "name": "Router<S>::route_service" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-route-rs",
+            "kind": "component",
+            "p": 48,
+            "symbols": [
+              { "id": "code:axum-src-routing-route-rs:route", "name": "Route" },
+              { "id": "code:axum-src-routing-route-rs:route-e-layer", "name": "Route<E>::layer" },
+              { "id": "code:axum-src-routing-route-rs:route-e-oneshot-inner", "name": "Route<E>::oneshot_inner" }
+            ]
+          },
+          {
+            "id": "component:axum-src-macros-rs",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:axum-src-macros-rs:error", "name": "error" },
+              { "id": "code:axum-src-macros-rs:error-2", "name": "error" },
+              { "id": "code:axum-src-macros-rs:trace-2", "name": "trace" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-lib-rs",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:axum-macros-src-lib-rs:debug-handler-2", "name": "debug_handler" },
+              { "id": "code:axum-macros-src-lib-rs:debug-handler", "name": "debug_handler" },
+              { "id": "code:axum-macros-src-lib-rs:expand", "name": "expand" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-routing-typed-rs",
+            "kind": "component",
+            "p": 70,
+            "symbols": [
+              { "id": "code:axum-extra-src-routing-typed-rs:typed-path", "name": "TypedPath" },
+              { "id": "code:axum-extra-src-routing-typed-rs:second-element-is", "name": "SecondElementIs" },
+              { "id": "code:axum-extra-src-routing-typed-rs:impl-second-element-is", "name": "impl_second_element_is" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-handler-mod-rs",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:axum-extra-src-handler-mod-rs:handler-call-with-extractors", "name": "HandlerCallWithExtractors" },
+              { "id": "code:axum-extra-src-handler-mod-rs:impl-handler-call-with", "name": "impl_handler_call_with" },
+              { "id": "code:axum-extra-src-handler-mod-rs:into-handler-h-t-s-call", "name": "IntoHandler<H, T, S>::call" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-path-router-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:axum-src-routing-path-router-rs:path-router", "name": "PathRouter" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-route", "name": "PathRouter<S>::route" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-nest", "name": "PathRouter<S>::nest" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-routing-resource-rs",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:axum-extra-src-routing-resource-rs:resource-s-route", "name": "Resource<S>::route" },
+              { "id": "code:axum-extra-src-routing-resource-rs:router-s-from", "name": "Router<S>::from" },
+              { "id": "code:axum-extra-src-routing-resource-rs:resource", "name": "Resource" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-ext-traits-request-rs",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:axum-core-src-ext-traits-request-rs:request-ext", "name": "RequestExt" },
+              { "id": "code:axum-core-src-ext-traits-request-rs:request-extract-parts-with-state", "name": "Request::extract_parts_with_state" },
+              { "id": "code:axum-core-src-ext-traits-request-rs:sealed", "name": "sealed" }
+            ]
+          },
+          {
+            "id": "component:axum-src-boxed-rs",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:axum-src-boxed-rs:boxed-into-route-s-infallible-from-handler", "name": "BoxedIntoRoute<S, Infallible>::from_handler" },
+              { "id": "code:axum-src-boxed-rs:make-erased-handler-h-s-into-route", "name": "MakeErasedHandler<H, S>::into_route" },
+              { "id": "code:axum-src-boxed-rs:erased-into-route", "name": "ErasedIntoRoute" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-body-async-read-body-rs",
+            "kind": "component",
+            "p": 45,
+            "symbols": [
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-poll-frame", "name": "AsyncReadBody::poll_frame" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-new", "name": "AsyncReadBody::new" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-into-response", "name": "AsyncReadBody::into_response" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum/src/docs/debugging_handler_type_errors.md": false, "axum-macros/src/debug_handler.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11735, "sectionCount": 8, "ranked": [17, 6, 16, 3, 10, 5, 65, 69] },
+          "double": { "byteBudget": 48000, "bytes": 34124, "sectionCount": 32, "ranked": [17, 6, 16, 3, 10, 5, 4, 48, 65, 25, 70, 14, 1, 20, 28, 23, 45, 7, 21, 71, 26, 64, 72, 69, 33, 18, 15, 73, 9, 31, 74, 29] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 28510, "sectionCount": 24, "ranked": [17, 6, 16, 3, 10, 5, 4, 48, 65, 25, 70, 14, 1, 20, 28, 23, 45, 7, 21, 71, 26, 64, 72, 69] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29920, "sectionCount": 25, "ranked": [17, 6, 16, 3, 10, 5, 4, 48, 65, 25, 70, 14, 1, 20, 28, 23, 45, 7, 21, 71, 26, 64, 72, 69, 33] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "228ccd9e1da692a03087463b46e8bc47c64292418679f79479e3042738212c7a",
+          "allowedIdsCount": 70,
+          "allowedIdsSha256": "abc3c7fcbd550a67f401b0ad8d3f636323febbdb70438a2b26aaad866137e6a0",
+          "allowedIdsInContent": ["component:axum-extra-src-routing-mod-rs", "code:axum-extra-src-routing-mod-rs:router-ext", "component:axum-src-routing-method-routing-rs", "code:axum-src-routing-method-routing-rs:method-router-s-e-handle-error", "code:axum-src-routing-method-routing-rs:method-router", "component:axum-src-error-handling-mod-rs", "code:axum-src-error-handling-mod-rs:handle-error", "code:axum-src-error-handling-mod-rs:handle-error-layer", "component:axum-src-handler-mod-rs", "code:axum-src-handler-mod-rs:handler", "code:axum-src-handler-mod-rs:impl-handler", "component:axum-macros-src-debug-handler-rs", "code:axum-macros-src-debug-handler-rs:function-kind", "component:axum-macros-src-lib-rs", "code:axum-macros-src-lib-rs:debug-handler-2", "code:axum-macros-src-lib-rs:debug-handler", "code:axum-macros-src-lib-rs:expand", "component:axum-src-boxed-rs", "code:axum-src-boxed-rs:boxed-into-route-s-infallible-from-handler"],
+          "packetSources": {},
+          "content": "{\"answer\":\"A route handler must satisfy `axum::handler::Handler<T, S>` — that's the trait your error is about. Use `#[axum::debug_handler]` on the function to get a targeted compile-time diagnostic; it expands through `debug_handler::expand` (and only runs in debug builds — it's a no-op when `debug_assertions` is off).\\n\\n- **`Handler` (`axum/src/handler/mod.rs`)** requires `Clone + Send + Sync + Sized + 'static`, an associated `Future: Future<Output = Response> + Send + 'static`, and `call(self, Request, state)`. The `impl_handler!` macro generates impls for varying extractor arities: each argument is an extractor (`FromRequestParts`/`FromRequest`), and the last one is treated as the final, consuming extractor. A blanket impl covers any `T: IntoResponse` — don't try to implement `Handler` for your own type (it's gated behind a private marker).\\n- **Registration path**: `Router::route`/`MethodRouter` demand `H: Handler<T, S>` (see `RouterExt::typed_get` in `axum-extra/src/routing/mod.rs`, which adds `T: SecondElementIs<P>` for typed routes), then boxing goes through `BoxedIntoRoute::from_handler` in `axum/src/boxed.rs`.\\n- **Clearer errors**: `#[axum::debug_handler]` (`axum-macros/src/lib.rs` → `axum-macros/src/debug_handler.rs`, `FunctionKind::Handler`) checks the signature and emits friendly errors. Note it also has a `Middleware` kind for `#[axum::debug_middleware]`.\\n- **Related failure mode**: if your handler/layer returns a fallible error type, handle it with `HandleErrorLayer`/`HandleError` (`axum/src/error_handling/mod.rs`) or `MethodRouter::handle_error` (`axum/src/routing/method_routing.rs`) to convert errors into responses.\\n\\nNot in the evidence: the exact wording of the trait-not-implemented error and each specific `debug_handler` message.\",\"citations\":[\"component:axum-src-handler-mod-rs\",\"code:axum-src-handler-mod-rs:handler\",\"code:axum-src-handler-mod-rs:impl-handler\",\"component:axum-macros-src-lib-rs\",\"code:axum-macros-src-lib-rs:debug-handler-2\",\"code:axum-macros-src-lib-rs:expand\",\"component:axum-macros-src-debug-handler-rs\",\"code:axum-macros-src-debug-handler-rs:function-kind\",\"component:axum-extra-src-routing-mod-rs\",\"code:axum-extra-src-routing-mod-rs:router-ext\",\"component:axum-src-boxed-rs\",\"code:axum-src-boxed-rs:boxed-into-route-s-infallible-from-handler\",\"component:axum-src-error-handling-mod-rs\",\"code:axum-src-error-handling-mod-rs:handle-error-layer\",\"code:axum-src-error-handling-mod-rs:handle-error\",\"component:axum-src-routing-method-routing-rs\",\"code:axum-src-routing-method-routing-rs:method-router-s-e-handle-error\"]}",
+          "usage": { "promptTokens": 9858, "completionTokens": 773, "totalTokens": 10631, "costUsd": 0.00496074 },
+          "ms": 24200
+        }
+      },
+      {
+        "id": "axum-middleware-order",
+        "question": "If I stack several middleware layers on a router, in what order do they see the request?",
+        "selectedId": "system:tokio-rs-axum",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23307,
+        "sectionCount": 15,
+        "ranked": [4, 19, 6, 1, 48, 75, 76, 54, 46, 3, 77, 5, 78, 21, 17],
+        "packets": [30],
+        "sections": [
+          {
+            "id": "component:axum-src-routing-mod-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:axum-src-routing-mod-rs:router-s-layer", "name": "Router<S>::layer" },
+              { "id": "code:axum-src-routing-mod-rs:router-s-route-layer", "name": "Router<S>::route_layer" },
+              { "id": "code:axum-src-routing-mod-rs:router-s-fallback-endpoint", "name": "Router<S>::fallback_endpoint" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-map-request-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:axum-src-middleware-map-request-rs:map-request-layer-f-s-t-layer", "name": "MapRequestLayer<F, S, T>::layer" },
+              { "id": "code:axum-src-middleware-map-request-rs:map-request-layer", "name": "MapRequestLayer" },
+              { "id": "code:axum-src-middleware-map-request-rs:map-request-layer-f-s-t-fmt", "name": "MapRequestLayer<F, S, T>::fmt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-method-routing-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:axum-src-routing-method-routing-rs:method-router-s-e-layer", "name": "MethodRouter<S, E>::layer" },
+              { "id": "code:axum-src-routing-method-routing-rs:method-router-s-e-route-layer", "name": "MethodRouter<S, E>::route_layer" },
+              { "id": "code:axum-src-routing-method-routing-rs:method-router", "name": "MethodRouter" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-path-router-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-route-layer", "name": "PathRouter<S>::route_layer" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router-s-layer", "name": "PathRouter<S>::layer" },
+              { "id": "code:axum-src-routing-path-router-rs:path-router", "name": "PathRouter" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-route-rs",
+            "kind": "component",
+            "p": 48,
+            "symbols": [
+              { "id": "code:axum-src-routing-route-rs:route-e-layer", "name": "Route<E>::layer" },
+              { "id": "code:axum-src-routing-route-rs:route", "name": "Route" },
+              { "id": "code:axum-src-routing-route-rs:route-e-oneshot-inner", "name": "Route<E>::oneshot_inner" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-from-fn-rs",
+            "kind": "component",
+            "p": 75,
+            "symbols": [
+              { "id": "code:axum-src-middleware-from-fn-rs:from-fn-layer-f-s-t-layer", "name": "FromFnLayer<F, S, T>::layer" },
+              { "id": "code:axum-src-middleware-from-fn-rs:from-fn-layer", "name": "FromFnLayer" },
+              { "id": "code:axum-src-middleware-from-fn-rs:from-fn-layer-f-s-t-fmt", "name": "FromFnLayer<F, S, T>::fmt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-from-extractor-rs",
+            "kind": "component",
+            "p": 76,
+            "symbols": [
+              { "id": "code:axum-src-middleware-from-extractor-rs:from-extractor-layer-e-s-layer", "name": "FromExtractorLayer<E, S>::layer" },
+              { "id": "code:axum-src-middleware-from-extractor-rs:from-extractor-layer", "name": "FromExtractorLayer" },
+              { "id": "code:axum-src-middleware-from-extractor-rs:from-extractor-layer-e-s-fmt", "name": "FromExtractorLayer<E, S>::fmt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-map-response-rs",
+            "kind": "component",
+            "p": 54,
+            "symbols": [
+              { "id": "code:axum-src-middleware-map-response-rs:map-response-layer-f-s-t-layer", "name": "MapResponseLayer<F, S, T>::layer" },
+              { "id": "code:axum-src-middleware-map-response-rs:map-response-layer", "name": "MapResponseLayer" },
+              { "id": "code:axum-src-middleware-map-response-rs:map-response-layer-f-s-t-fmt", "name": "MapResponseLayer<F, S, T>::fmt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-response-axum-body-rs",
+            "kind": "component",
+            "p": 46,
+            "symbols": [
+              { "id": "code:axum-src-middleware-response-axum-body-rs:response-axum-body-layer-layer", "name": "ResponseAxumBodyLayer::layer" },
+              { "id": "code:axum-src-middleware-response-axum-body-rs:response-axum-body-layer", "name": "ResponseAxumBodyLayer" },
+              { "id": "code:axum-src-middleware-response-axum-body-rs:response-axum-body", "name": "ResponseAxumBody" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-mod-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:axum-src-handler-mod-rs:layered-l-h-t-s-call", "name": "Layered<L, H, T, S>::call" },
+              { "id": "code:axum-src-handler-mod-rs:layered-l-h-t-s-fmt", "name": "Layered<L, H, T, S>::fmt" },
+              { "id": "code:axum-src-handler-mod-rs:layered", "name": "Layered" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-middleware-rs",
+            "kind": "component",
+            "p": 77,
+            "symbols": [
+              { "id": "code:axum-extra-src-middleware-rs:option-layer", "name": "option_layer" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-debug-handler-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:axum-macros-src-debug-handler-rs:check-input-order", "name": "check_input_order" },
+              { "id": "code:axum-macros-src-debug-handler-rs:request-consuming-type-name", "name": "request_consuming_type_name" },
+              { "id": "code:axum-macros-src-debug-handler-rs:check-inputs-impls-from-request", "name": "check_inputs_impls_from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-mod-rs",
+            "kind": "component",
+            "p": 78,
+            "symbols": [
+              { "id": "code:axum-src-middleware-mod-rs:map-request", "name": "map_request" },
+              { "id": "code:axum-src-middleware-mod-rs:future", "name": "future" },
+              { "id": "code:axum-src-middleware-mod-rs:from-extractor", "name": "from_extractor" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-mod-rs",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-mod-rs:from-request", "name": "FromRequest" },
+              { "id": "code:axum-core-src-extract-mod-rs:t-from-request", "name": "T::from_request" },
+              { "id": "code:axum-core-src-extract-mod-rs:result-t-t-rejection-from-request", "name": "Result<T, T::Rejection>::from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-routing-mod-rs",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:axum-extra-src-routing-mod-rs:router-ext", "name": "RouterExt" },
+              { "id": "code:axum-extra-src-routing-mod-rs:add-tsr-redirect-route", "name": "add_tsr_redirect_route" },
+              { "id": "code:axum-extra-src-routing-mod-rs:router-s-route-with-tsr", "name": "Router<S>::route_with_tsr" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum/src/docs/middleware.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11582, "sectionCount": 6, "ranked": [4, 19, 6, 1, 48, 75] },
+          "double": { "byteBudget": 48000, "bytes": 32230, "sectionCount": 27, "ranked": [4, 19, 6, 1, 48, 75, 76, 54, 46, 3, 77, 5, 78, 21, 17, 23, 71, 16, 66, 67, 79, 29, 20, 10, 33, 15, 80] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 28284, "sectionCount": 22, "ranked": [4, 19, 6, 1, 48, 75, 76, 54, 46, 3, 77, 5, 78, 21, 17, 23, 71, 16, 66, 67, 79, 29] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29786, "sectionCount": 25, "ranked": [4, 19, 6, 1, 48, 75, 76, 54, 46, 3, 77, 5, 78, 21, 17, 23, 71, 16, 66, 67, 79, 29, 20, 10, 15] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "1b9bfa91ceff957e724a75e068acde07742a3c0ffd629371b43b5417ecc14779",
+          "allowedIdsCount": 60,
+          "allowedIdsSha256": "7f343635f5e2568b2b3e52ed378986a6f559fa64b35595f86d1d8f53c09316aa",
+          "allowedIdsInContent": ["code:axum-src-routing-mod-rs:router-s-layer", "code:axum-src-routing-mod-rs:router-s-route-layer", "code:axum-src-middleware-map-request-rs:map-request-layer-f-s-t-layer", "code:axum-src-middleware-map-request-rs:map-request-layer", "code:axum-src-routing-method-routing-rs:method-router-s-e-layer", "code:axum-src-routing-method-routing-rs:method-router", "code:axum-src-routing-path-router-rs:path-router-s-route-layer", "code:axum-src-routing-path-router-rs:path-router", "code:axum-src-routing-route-rs:route-e-layer", "code:axum-src-routing-route-rs:route", "code:axum-src-middleware-from-fn-rs:from-fn-layer-f-s-t-layer", "code:axum-src-middleware-from-fn-rs:from-fn-layer", "code:axum-src-middleware-from-extractor-rs:from-extractor-layer-e-s-layer", "code:axum-src-middleware-from-extractor-rs:from-extractor-layer", "code:axum-src-middleware-map-response-rs:map-response-layer-f-s-t-layer", "code:axum-src-middleware-map-response-rs:map-response-layer", "code:axum-src-middleware-response-axum-body-rs:response-axum-body-layer-layer", "code:axum-src-middleware-response-axum-body-rs:response-axum-body-layer", "code:axum-src-middleware-response-axum-body-rs:response-axum-body"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Layers are nested tower wrappers: each `layer(...)` call wraps the service built so far, so the **most recently added layer is outermost and sees the request first**, unwinding back to the handler; on the response the order is reversed (earliest-added layer touches the response last).\\n\\n- `axum/src/routing/route.rs` — `Route<E>::layer` literally wraps the existing route with `layer.layer(self)` (plus `MapErrLayer`), so a later layer encloses an earlier one (`code:axum-src-routing-route-rs:route-e-layer`).\\n- `axum/src/routing/mod.rs` — `Router<S>::layer` applies the layer to every route and the catch-all fallback via `PathRouter` (`code:axum-src-routing-mod-rs:router-s-layer`), while `Router<S>::route_layer` touches only already-registered routes (`code:axum-src-routing-mod-rs:router-s-route-layer`, `code:axum-src-routing-path-router-rs:path-router-s-route-layer`, which panics if no routes exist yet).\\n- Same wrapping convention in the middleware constructors: `MapRequestLayer`, `FromFnLayer`, `FromExtractorLayer`, `MapResponseLayer`, `ResponseAxumBodyLayer` all build `... { inner, ... }` around the wrapped service (`code:axum-src-middleware-map-request-rs:map-request-layer-f-s-t-layer`, `code:axum-src-middleware-from-fn-rs:from-fn-layer-f-s-t-layer`, `code:axum-src-middleware-from-extractor-rs:from-extractor-layer-e-s-layer`, `code:axum-src-middleware-map-response-rs:map-response-layer-f-s-t-layer`, `code:axum-src-middleware-response-axum-body-rs:response-axum-body-layer-layer`).\\n- `MethodRouter<S, E>::layer` maps each per-verb endpoint through `route.layer(...)` (`code:axum-src-routing-method-routing-rs:method-router-s-e-layer`).\\n\\nNote: the evidence shows the wrapping mechanism but contains no explicit documented statement of ordering semantics, so the \\\"last-added runs first\\\" rule is derived from `layer.layer(self)` / `inner` construction.\",\"citations\":[\"code:axum-src-routing-route-rs:route-e-layer\",\"code:axum-src-routing-mod-rs:router-s-layer\",\"code:axum-src-routing-mod-rs:router-s-route-layer\",\"code:axum-src-routing-path-router-rs:path-router-s-route-layer\",\"code:axum-src-middleware-map-request-rs:map-request-layer-f-s-t-layer\",\"code:axum-src-middleware-from-fn-rs:from-fn-layer-f-s-t-layer\",\"code:axum-src-middleware-from-extractor-rs:from-extractor-layer-e-s-layer\",\"code:axum-src-middleware-map-response-rs:map-response-layer-f-s-t-layer\",\"code:axum-src-middleware-response-axum-body-rs:response-axum-body-layer-layer\",\"code:axum-src-routing-method-routing-rs:method-router-s-e-layer\"]}",
+          "usage": { "promptTokens": 9355, "completionTokens": 813, "totalTokens": 10168, "costUsd": 0.004776735 },
+          "ms": 23179
+        }
+      },
+      {
+        "id": "axum-graceful-shutdown",
+        "question": "How do I make the server finish in-flight requests and stop cleanly when I hit Ctrl-C?",
+        "selectedId": "system:tokio-rs-axum",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23971,
+        "sectionCount": 19,
+        "ranked": [63, 64, 66, 67, 4, 34, 48, 6, 23, 19, 21, 10, 3, 79, 65, 27, 81, 49, 16],
+        "packets": [30],
+        "sections": [
+          {
+            "id": "component:axum-src-serve-mod-rs",
+            "kind": "component",
+            "p": 63,
+            "symbols": [
+              { "id": "code:axum-src-serve-mod-rs:serve", "name": "serve" },
+              { "id": "code:axum-src-serve-mod-rs:serve-l-m-s-b-e-fmt", "name": "Serve<L, M, S, B, E>::fmt" },
+              { "id": "code:axum-src-serve-mod-rs:serve-l-m-s-b-e-with-executor", "name": "Serve<L, M, S, B, E>::with_executor" }
+            ]
+          },
+          {
+            "id": "component:axum-src-serve-listener-rs",
+            "kind": "component",
+            "p": 64,
+            "symbols": [
+              { "id": "code:axum-src-serve-listener-rs:listener", "name": "Listener" },
+              { "id": "code:axum-src-serve-listener-rs:listener-ext", "name": "ListenerExt" },
+              { "id": "code:axum-src-serve-listener-rs:handle-accept-error", "name": "handle_accept_error" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-connect-info-rs",
+            "kind": "component",
+            "p": 66,
+            "symbols": [
+              { "id": "code:axum-src-extract-connect-info-rs:into-make-service-with-connect-info-s-c-fmt", "name": "IntoMakeServiceWithConnectInfo<S, C>::fmt" },
+              { "id": "code:axum-src-extract-connect-info-rs:connect-info-t-from-request-parts", "name": "ConnectInfo<T>::from_request_parts" },
+              { "id": "code:axum-src-extract-connect-info-rs:into-make-service-with-connect-info", "name": "IntoMakeServiceWithConnectInfo" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-into-make-service-rs",
+            "kind": "component",
+            "p": 67,
+            "symbols": [
+              { "id": "code:axum-src-routing-into-make-service-rs:into-make-service", "name": "IntoMakeService" },
+              { "id": "code:axum-src-routing-into-make-service-rs:into-make-service-s-call", "name": "IntoMakeService<S>::call" },
+              { "id": "code:axum-src-routing-into-make-service-rs:into-make-service-s-new", "name": "IntoMakeService<S>::new" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-mod-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:axum-src-routing-mod-rs:router-into-make-service", "name": "Router::into_make_service" },
+              { "id": "code:axum-src-routing-mod-rs:router-into-make-service-with-connect-info", "name": "Router::into_make_service_with_connect_info" },
+              { "id": "code:axum-src-routing-mod-rs:into-make-service", "name": "into_make_service" }
+            ]
+          },
+          {
+            "id": "component:axum-src-test-helpers-test-client-rs",
+            "kind": "component",
+            "p": 34,
+            "symbols": [
+              { "id": "code:axum-src-test-helpers-test-client-rs:request-builder", "name": "RequestBuilder" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:test-client-server-port", "name": "TestClient::server_port" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:request-builder-json", "name": "RequestBuilder::json" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-route-rs",
+            "kind": "component",
+            "p": 48,
+            "symbols": [
+              { "id": "code:axum-src-routing-route-rs:route-future-e-not-top-level", "name": "RouteFuture<E>::not_top_level" },
+              { "id": "code:axum-src-routing-route-rs:route", "name": "Route" },
+              { "id": "code:axum-src-routing-route-rs:route-future-e-poll", "name": "RouteFuture<E>::poll" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-method-routing-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:axum-src-routing-method-routing-rs:top-level-service-fn", "name": "top_level_service_fn" },
+              { "id": "code:axum-src-routing-method-routing-rs:top-level-handler-fn", "name": "top_level_handler_fn" },
+              { "id": "code:axum-src-routing-method-routing-rs:method-router-infallible-into-make-service", "name": "MethodRouter<(), Infallible>::into_make_service" }
+            ]
+          },
+          {
+            "id": "component:axum-src-boxed-rs",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:axum-src-boxed-rs:make-erased-handler-h-s-call-with-state", "name": "MakeErasedHandler<H, S>::call_with_state" },
+              { "id": "code:axum-src-boxed-rs:make-erased-router-s-call-with-state", "name": "MakeErasedRouter<S>::call_with_state" },
+              { "id": "code:axum-src-boxed-rs:make-erased-handler", "name": "MakeErasedHandler" }
+            ]
+          },
+          {
+            "id": "component:axum-src-middleware-map-request-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:axum-src-middleware-map-request-rs:map-request", "name": "map_request" },
+              { "id": "code:axum-src-middleware-map-request-rs:map-request-2", "name": "MapRequest" },
+              { "id": "code:axum-src-middleware-map-request-rs:map-request-with-state", "name": "map_request_with_state" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-mod-rs",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-mod-rs:from-request", "name": "FromRequest" },
+              { "id": "code:axum-core-src-extract-mod-rs:t-from-request", "name": "T::from_request" },
+              { "id": "code:axum-core-src-extract-mod-rs:result-t-t-rejection-from-request", "name": "Result<T, T::Rejection>::from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-service-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-into-make-service", "name": "HandlerService<H, T, S>::into_make_service" },
+              { "id": "code:axum-src-handler-service-rs:handler-service-h-t-s-into-make-service-with-connect-info", "name": "HandlerService<H, T, S>::into_make_service_with_connect_info" },
+              { "id": "code:axum-src-handler-service-rs:x", "name": "_" }
+            ]
+          },
+          {
+            "id": "component:axum-src-handler-mod-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:axum-src-handler-mod-rs:h-into-make-service", "name": "H::into_make_service" },
+              { "id": "code:axum-src-handler-mod-rs:h-into-make-service-with-connect-info", "name": "H::into_make_service_with_connect_info" },
+              { "id": "code:axum-src-handler-mod-rs:handler-without-state-ext", "name": "HandlerWithoutStateExt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-service-ext-rs",
+            "kind": "component",
+            "p": 79,
+            "symbols": [
+              { "id": "code:axum-src-service-ext-rs:s-into-make-service", "name": "S::into_make_service" },
+              { "id": "code:axum-src-service-ext-rs:s-into-make-service-with-connect-info", "name": "S::into_make_service_with_connect_info" },
+              { "id": "code:axum-src-service-ext-rs:service-ext", "name": "ServiceExt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-macros-rs",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:axum-src-macros-rs:opaque-future", "name": "opaque_future" }
+            ]
+          },
+          {
+            "id": "component:axum-core-src-extract-request-parts-rs",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:axum-core-src-extract-request-parts-rs:string-from-request", "name": "String::from_request" },
+              { "id": "code:axum-core-src-extract-request-parts-rs:request-from-request", "name": "Request::from_request" },
+              { "id": "code:axum-core-src-extract-request-parts-rs:body-from-request", "name": "Body::from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-src-test-helpers-tracing-helpers-rs",
+            "kind": "component",
+            "p": 81,
+            "symbols": [
+              { "id": "code:axum-src-test-helpers-tracing-helpers-rs:test-make-writer-make-writer", "name": "TestMakeWriter::make_writer" },
+              { "id": "code:axum-src-test-helpers-tracing-helpers-rs:test-make-writer", "name": "TestMakeWriter" },
+              { "id": "code:axum-src-test-helpers-tracing-helpers-rs:test-make-writer-new", "name": "TestMakeWriter::new" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-response-error-response-rs",
+            "kind": "component",
+            "p": 49,
+            "symbols": [
+              { "id": "code:axum-extra-src-response-error-response-rs:internal-server-error-t-into-response", "name": "InternalServerError<T>::into_response" },
+              { "id": "code:axum-extra-src-response-error-response-rs:internal-server-error", "name": "InternalServerError" }
+            ]
+          },
+          {
+            "id": "component:axum-src-error-handling-mod-rs",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:axum-src-error-handling-mod-rs:impl-service", "name": "impl_service" },
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error-layer-f-e-fmt", "name": "HandleErrorLayer<F, E>::fmt" },
+              { "id": "code:axum-src-error-handling-mod-rs:handle-error-s-f-e-fmt", "name": "HandleError<S, F, E>::fmt" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum/src/serve/mod.rs": true, "examples/graceful-shutdown/src/main.rs": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11728, "sectionCount": 9, "ranked": [63, 64, 66, 67, 4, 34, 48, 23, 31] },
+          "double": { "byteBudget": 48000, "bytes": 29297, "sectionCount": 27, "ranked": [63, 64, 66, 67, 4, 34, 48, 6, 23, 19, 21, 10, 3, 79, 65, 27, 81, 49, 28, 8, 5, 9, 7, 16, 30, 74, 31] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 28429, "sectionCount": 26, "ranked": [63, 64, 66, 67, 4, 34, 48, 6, 23, 19, 21, 10, 3, 79, 65, 27, 81, 49, 28, 8, 5, 9, 7, 16, 30, 31] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29297, "sectionCount": 27, "ranked": [63, 64, 66, 67, 4, 34, 48, 6, 23, 19, 21, 10, 3, 79, 65, 27, 81, 49, 28, 8, 5, 9, 7, 16, 30, 74, 31] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "de99faf55b7ff4056037cfc8989f69d7840596de5ef6766b818a618c9d1d2f6b",
+          "allowedIdsCount": 75,
+          "allowedIdsSha256": "5d067841948f4fb1ef51594a3d903ffe9b6ab449784558267942f3c431d94740",
+          "allowedIdsInContent": ["component:axum-src-serve-mod-rs", "code:axum-src-serve-mod-rs:serve", "code:axum-src-serve-mod-rs:serve-l-m-s-b-e-with-executor", "component:axum-src-serve-listener-rs", "code:axum-src-serve-listener-rs:listener", "code:axum-src-serve-listener-rs:listener-ext"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Pass a shutdown-signal future to the accept loop via axum's graceful-shutdown support and await the returned `ServeFuture`: the `WithGracefulShutdown::run` loop in `axum/src/serve/mod.rs` is the only place the shutdown signal is handled — `Serve::run` itself has no shutdown handling — so awaiting `serve(listener, make_service).with_graceful_shutdown(ctrl_c_signal)` makes the server stop accepting and let in-flight connections drain on Ctrl-C.\\n\\n- `serve()` (`axum/src/serve/mod.rs`, `Serve`) builds the accept-loop future; `into_future` only boxes `Serve::run` into `ServeFuture`.\\n- `WithGracefulShutdown::run` (same file) is a separate loop from `Serve::run`; the signal is consumed there, so that's where clean stop is decided.\\n- Connections are spawned through the `Executor` seam (`TokioExecutor` default, `Serve::with_executor` swaps it), which is what lets completed connections finish before the process exits.\\n- Listener abstraction is `Listener`/`ListenerExt` in `axum/src/serve/listener.rs` (`accept`, `local_addr`, `handle_accept_error`).\\n\\nNote: the exact `with_graceful_shutdown` symbol/definition wasn't returned in the search sections, so the precise signature and signal-future bounds are not in the evidence — check `axum/src/serve/mod.rs` around `WithGracefulShutdown` for those details.\",\"citations\":[\"component:axum-src-serve-mod-rs\",\"code:axum-src-serve-mod-rs:serve\",\"code:axum-src-serve-mod-rs:serve-l-m-s-b-e-with-executor\",\"component:axum-src-serve-listener-rs\",\"code:axum-src-serve-listener-rs:listener\",\"code:axum-src-serve-listener-rs:listener-ext\"]}",
+          "usage": { "promptTokens": 10007, "completionTokens": 566, "totalTokens": 10573, "costUsd": 0.004845465 },
+          "ms": 19688
+        }
+      },
+      {
+        "id": "axum-signed-cookies",
+        "question": "Where is the support for cookies that the client can read but can't tamper with?",
+        "selectedId": "component:axum-extra-src-protobuf-rs",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 18450,
+        "sectionCount": 18,
+        "ranked": [34, 45, 59, 52, 55, 64, 82, 43, 42, 4, 21, 31, 30, 56, 62, 9, 63, 1],
+        "packets": [83, 30],
+        "sections": [
+          {
+            "id": "component:axum-src-test-helpers-test-client-rs",
+            "kind": "component",
+            "p": 34,
+            "symbols": [
+              { "id": "code:axum-src-test-helpers-test-client-rs:test-client", "name": "TestClient" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:test-client-get", "name": "TestClient::get" },
+              { "id": "code:axum-src-test-helpers-test-client-rs:test-client-new", "name": "TestClient::new" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-body-async-read-body-rs",
+            "kind": "component",
+            "p": 45,
+            "symbols": [
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-new", "name": "AsyncReadBody::new" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-into-response", "name": "AsyncReadBody::into_response" },
+              { "id": "code:axum-extra-src-body-async-read-body-rs:async-read-body-is-end-stream", "name": "AsyncReadBody::is_end_stream" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-body-mod-rs",
+            "kind": "component",
+            "p": 59,
+            "symbols": [
+              { "id": "code:axum-extra-src-body-mod-rs:async-read-body", "name": "async_read_body" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-extract-cookie-mod-rs",
+            "kind": "component",
+            "p": 52,
+            "symbols": [
+              { "id": "code:axum-extra-src-extract-cookie-mod-rs:cookies-from-request", "name": "cookies_from_request" },
+              { "id": "code:axum-extra-src-extract-cookie-mod-rs:set-cookies", "name": "set_cookies" },
+              { "id": "code:axum-extra-src-extract-cookie-mod-rs:cookie-jar-into-response-parts", "name": "CookieJar::into_response_parts" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-extract-cookie-private-rs",
+            "kind": "component",
+            "p": 55,
+            "symbols": [
+              { "id": "code:axum-extra-src-extract-cookie-private-rs:private-cookie-jar-k-into-response-parts", "name": "PrivateCookieJar<K>::into_response_parts" },
+              { "id": "code:axum-extra-src-extract-cookie-private-rs:private-cookie-jar-from-headers", "name": "PrivateCookieJar::from_headers" }
+            ]
+          },
+          {
+            "id": "component:axum-src-serve-listener-rs",
+            "kind": "component",
+            "p": 64,
+            "symbols": [
+              { "id": "code:axum-src-serve-listener-rs:conn-limiter-io-t-poll-read", "name": "ConnLimiterIo<T>::poll_read" },
+              { "id": "code:axum-src-serve-listener-rs:tap-io", "name": "TapIo" },
+              { "id": "code:axum-src-serve-listener-rs:tap-io-l-f-fmt", "name": "TapIo<L, F>::fmt" }
+            ]
+          },
+          {
+            "id": "component:axum-src-test-helpers-mod-rs",
+            "kind": "component",
+            "p": 82,
+            "symbols": [
+              { "id": "code:axum-src-test-helpers-mod-rs:test-client", "name": "test_client" }
+            ]
+          },
+          {
+            "id": "component:axum-src-extract-ws-rs",
+            "kind": "component",
+            "p": 43,
+            "symbols": [
+              { "id": "code:axum-src-extract-ws-rs:web-socket-upgrade-f-read-buffer-size", "name": "WebSocketUpgrade<F>::read_buffer_size" },
+              { "id": "code:axum-src-extract-ws-rs:message", "name": "Message" },
+              { "id": "code:axum-src-extract-ws-rs:close-code-2", "name": "close_code" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-response-file-stream-rs",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:axum-extra-src-response-file-stream-rs:file-stream-reader-stream-file-from-path", "name": "FileStream<ReaderStream<File>>::from_path" },
+              { "id": "code:axum-extra-src-response-file-stream-rs:file-stream-s-try-range-response", "name": "FileStream<S>::try_range_response" }
+            ]
+          },
+          {
+            "id": "component:axum-src-routing-mod-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:axum-src-routing-mod-rs:tap-inner", "name": "tap_inner" },
+              { "id": "code:axum-src-routing-mod-rs:router-s-nest-service", "name": "Router<S>::nest_service" },
+              { "id": "code:axum-src-routing-mod-rs:router-s-nest", "name": "Router<S>::nest" }
+            ]
+          },
+          { "id": "component:axum-core-src-extract-mod-rs", "kind": "component", "p": 21 },
+          { "id": "component:axum-core-src-response-mod-rs", "kind": "component", "p": 31 },
+          { "id": "container:tokio-rs-axum", "kind": "container", "p": 30 },
+          {
+            "id": "component:axum-extra-src-extract-cookie-signed-rs",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:axum-extra-src-extract-cookie-signed-rs:signed-cookie-jar-k-into-response-parts", "name": "SignedCookieJar<K>::into_response_parts" },
+              { "id": "code:axum-extra-src-extract-cookie-signed-rs:signed-cookie-jar-from-headers", "name": "SignedCookieJar::from_headers" }
+            ]
+          },
+          {
+            "id": "component:axum-extra-src-json-lines-rs",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:axum-extra-src-json-lines-rs:json-lines-t-as-extractor-from-request", "name": "JsonLines<T, AsExtractor>::from_request" }
+            ]
+          },
+          {
+            "id": "component:axum-macros-src-from-request-mod-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:axum-macros-src-from-request-mod-rs:parse-single-generic-type-on-struct", "name": "parse_single_generic_type_on_struct" },
+              { "id": "code:axum-macros-src-from-request-mod-rs:error-on-generic-ident", "name": "error_on_generic_ident" }
+            ]
+          },
+          { "id": "component:axum-src-serve-mod-rs", "kind": "component", "p": 63 },
+          {
+            "id": "component:axum-src-routing-path-router-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:axum-src-routing-path-router-rs:validate-nest-path", "name": "validate_nest_path" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "axum-extra/src/extract/cookie/signed.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11267, "sectionCount": 11, "ranked": [34, 45, 59, 52, 55, 64, 82, 43, 42, 4, 31] },
+          "double": { "byteBudget": 48000, "bytes": 18450, "sectionCount": 18, "ranked": [34, 45, 59, 52, 55, 64, 82, 43, 42, 4, 21, 31, 30, 56, 62, 9, 63, 1] },
+          "size-scaled": { "byteBudget": 28680, "bytes": 18450, "sectionCount": 18, "ranked": [34, 45, 59, 52, 55, 64, 82, 43, 42, 4, 21, 31, 30, 56, 62, 9, 63, 1] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 18450, "sectionCount": 18, "ranked": [34, 45, 59, 52, 55, 64, 82, 43, 42, 4, 21, 31, 30, 56, 62, 9, 63, 1] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "bfc5fb2c85555f061527de3d7eecbd257f809a58bfc9f22696bf95a326ea673b",
+          "allowedIdsCount": 53,
+          "allowedIdsSha256": "34a90e963e3a8bc34848e8229c60178084f849309ce8e6e6f103532158874630",
+          "allowedIdsInContent": ["component:axum-extra-src-extract-cookie-mod-rs", "code:axum-extra-src-extract-cookie-mod-rs:cookies-from-request", "code:axum-extra-src-extract-cookie-mod-rs:set-cookies", "code:axum-extra-src-extract-cookie-mod-rs:cookie-jar-into-response-parts", "component:axum-extra-src-extract-cookie-private-rs", "component:axum-extra-src-extract-cookie-signed-rs", "code:axum-extra-src-extract-cookie-signed-rs:signed-cookie-jar-k-into-response-parts", "code:axum-extra-src-extract-cookie-signed-rs:signed-cookie-jar-from-headers"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Signed cookies: `SignedCookieJar` in `axum-extra/src/extract/cookie/signed.rs`. Cookie values stay readable by the client but carry a signature that is verified on the way in, so tampered values are rejected.\\n\\n- `SignedCookieJar::from_headers` (`axum-extra/src/extract/cookie/signed.rs`, line 174) builds a `cookie::CookieJar`, wraps it via `signed_mut(&key)`, and only keeps cookies where `signed_jar.verify(cookie)` succeeds — that verification is the anti-tampering check.\\n- `SignedCookieJar<K>::into_response_parts` (line 294) hands off to the shared `set_cookies` helper, writing the modified cookies back as `Set-Cookie`.\\n- The plain `CookieJar` in `axum-extra/src/extract/cookie/mod.rs` (`cookies_from_request`, `set_cookies`, `CookieJar::into_response_parts`) is the shared base: it parses request `Cookie` headers and emits only the jar's `delta()`.\\n- Contrast: `PrivateCookieJar` in `axum-extra/src/extract/cookie/private.rs` is the opposite trade-off — it encrypts so the client can't read the value either.\\n\\nIf you also want the exact signing/verification implementation details, that lives inside the `cookie` crate's `signed_mut`/`verify`, which is outside this evidence.\",\"citations\":[\"component:axum-extra-src-extract-cookie-signed-rs\",\"code:axum-extra-src-extract-cookie-signed-rs:signed-cookie-jar-from-headers\",\"code:axum-extra-src-extract-cookie-signed-rs:signed-cookie-jar-k-into-response-parts\",\"component:axum-extra-src-extract-cookie-mod-rs\",\"code:axum-extra-src-extract-cookie-mod-rs:cookies-from-request\",\"code:axum-extra-src-extract-cookie-mod-rs:set-cookies\",\"code:axum-extra-src-extract-cookie-mod-rs:cookie-jar-into-response-parts\",\"component:axum-extra-src-extract-cookie-private-rs\"]}",
+          "usage": { "promptTokens": 7859, "completionTokens": 534, "totalTokens": 8393, "costUsd": 0.003883245 },
+          "ms": 19689
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "sampled-enriched",
+    "nodes": [
+      {
+        "nodeId": "system:tokio-rs-axum",
+        "name": "Tokio-rs_axum",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "children", "type": "children", "preview": "Children: 1 node — tokio-rs_axum (container)" }
+        ],
+        "defaultOrder": ["children"],
+        "jev": { "order": ["children"], "inputTokens": 612, "estimatedCostUsd": 0.0000257, "latencyMs": 266 }
+      },
+      {
+        "nodeId": "container:tokio-rs-axum",
+        "name": "tokio-rs_axum",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**tokio-rs_axum** is the source of the Axum web framework in Rust. `axum-core` holds the kernel types, `axum` the routing and server, `axum-extra` optional helpers, `axum-macros` the proc macros. Rea…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `axum-core/src/lib.rs` first: `body`, `extract` and `response` are the contracts everything else implements. | Request hand-off: `RouteFuture::poll` in `axum/src/routing/route.rs` …" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — Tokio-rs_axum (softwareSystem)" },
+          { "id": "enrichment:diagram", "type": "mermaid", "preview": "Diagram: tokio-rs_axum at a glance" },
+          { "id": "children", "type": "children", "preview": "Children: 116 nodes — axum-core/src/body.rs (component); axum-core/src/body/unknown.rs (component); axum-core/src/error.rs (component); +113 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "enrichment:diagram", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:diagram", "enrichment:keyPoints", "children", "relations:parent", "enrichment:evidence"], "inputTokens": 2295, "estimatedCostUsd": 0.0000964, "latencyMs": 241 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "sampled", "k": 5, "singleContainerK": 30, "componentsSampled": 30, "componentsFull": 116, "containers": 1, "droppedFiles": 86, "sampledCommitSha": "beaf342a02e233db9bbe973b61948f1f14263f7d", "parentsFromSample": true, "overlaidOnFullScan": true },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 200, "maxTokens": 4000000, "maxDollars": 0.5, "maxConcurrent": 8, "globalMaxDollars": 1.783 },
+    "ms": 234939,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 32,
+    "inputTokens": 84979,
+    "outputTokens": 40949,
+    "costUsd": 0.068493,
+    "costEstimated": false,
+    "coverage": { "accepted": 30, "failed": 2, "notRun": 0, "belowCap": 553, "inScope": 32 },
+    "byKind": {
+      "code": { "total": 553, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 553 },
+      "component": { "total": 30, "accepted": 29, "failed": 1, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 0, "failed": 1, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": false,
+    "containersExplained": 1,
+    "parentsWithUnsettledChildren": 0,
+    "failures": [
+      { "scopeId": "component:axum-core-src-response-mod-rs", "kind": "component", "class": "invalid-output", "error": "llm gateway response content is not JSON" },
+      { "scopeId": "system:tokio-rs-axum", "kind": "softwareSystem", "class": "rejected-by-validator", "error": "malformed explanation: evidence is required" }
+    ]
+  },
+  "stageMs": { "blocks": 529, "claims": 27677, "ask": 26067 },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 7802,
+    "outcome": "accepted",
+    "stopped": "failed",
+    "requests": 28,
+    "inputTokens": 73318,
+    "costUsd": 0.0030794,
+    "costEstimated": true,
+    "reservationEquivalentUsd": 0.084,
+    "rows": [
+      { "scopeId": "component:axum-core-src-body-rs", "claimId": "c6064104c8caa0e626c10", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:axum-core-src-body-rs", "claimId": "c27e57d6c2ad3e44df0d3", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:axum-core-src-body-rs", "claimId": "c04775ece12ed6f7d8b54", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:axum-core-src-body-rs", "claimId": "c0edb9128b7552bfe15e6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.17 },
+      { "scopeId": "component:axum-core-src-extract-mod-rs", "claimId": "c87dfa8a47fa10d9f2b1b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:axum-core-src-extract-mod-rs", "claimId": "cb4847181e2a79f66df9e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:axum-core-src-extract-mod-rs", "claimId": "c8e62eee051c418f64235", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:axum-core-src-extract-mod-rs", "claimId": "c11ac00937101b8b0cb49", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:axum-core-src-extract-mod-rs", "claimId": "c746934fc040ac21b21ee", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:axum-core-src-extract-mod-rs", "claimId": "c24c9120b435bea31b0a6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.32 },
+      { "scopeId": "component:axum-core-src-lib-rs", "claimId": "c445eac1e6b04277988d0", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:axum-core-src-lib-rs", "claimId": "c9cb5164df77c55519ecd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:axum-core-src-lib-rs", "claimId": "c8564abac7ab2ea89709b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:axum-core-src-lib-rs", "claimId": "cdca058ae5cbd17be5e4c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:axum-core-src-lib-rs", "claimId": "c4d9da0ba0b0bae3201d8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-core-src-response-into-response-parts-rs", "claimId": "c889e157854b40dbe1553", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:axum-core-src-response-into-response-parts-rs", "claimId": "cdd390c3eaea8dabee822", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:axum-core-src-response-into-response-parts-rs", "claimId": "c43b237c3c305be536c79", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:axum-core-src-response-into-response-parts-rs", "claimId": "c0b07cf2b62f408940028", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:axum-core-src-response-into-response-parts-rs", "claimId": "c22fd37801c6aa0ebe7a7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:axum-core-src-response-into-response-rs", "claimId": "c813d1c1cdd203dd93e59", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.51 },
+      { "scopeId": "component:axum-core-src-response-into-response-rs", "claimId": "c49d7d688f47857ba286a", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:axum-core-src-response-into-response-rs", "claimId": "c4bc6523de0bbebb1526d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:axum-core-src-response-into-response-rs", "claimId": "c32645778f0dd9d6a99fa", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.22 },
+      { "scopeId": "component:axum-core-src-response-into-response-rs", "claimId": "cbacc08e6a32843db69ed", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:axum-core-src-response-into-response-rs", "claimId": "c016b0bbd81c67d308c84", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.72 },
+      { "scopeId": "component:axum-core-src-response-into-response-rs", "claimId": "c473ea59bc0be7426c8eb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:axum-extra-src-extract-cookie-mod-rs", "claimId": "c25160baceeb23e9b5eaf", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:axum-extra-src-extract-cookie-mod-rs", "claimId": "c5f5f5980cde126b3a9e8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-extra-src-extract-cookie-mod-rs", "claimId": "c334b8f5cae279fd49d14", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:axum-extra-src-routing-mod-rs", "claimId": "c9becd611b6bad8c62f8e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:axum-extra-src-routing-mod-rs", "claimId": "cf9acef5ac0d670d775fe", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:axum-extra-src-routing-mod-rs", "claimId": "c1f012775c36f612d6072", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:axum-extra-src-routing-mod-rs", "claimId": "c002cbe9aec3de2ca01cb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:axum-extra-src-routing-mod-rs", "claimId": "c6470f40905a64ba40793", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:axum-extra-src-routing-mod-rs", "claimId": "cb35328e29a35f736dc12", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:axum-extra-src-typed-header-rs", "claimId": "c25af12bfd7058f5b8649", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.39 },
+      { "scopeId": "component:axum-extra-src-typed-header-rs", "claimId": "cc4c00828a7487673e2de", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:axum-extra-src-typed-header-rs", "claimId": "c83e91226472862b0e1dc", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-extra-src-typed-header-rs", "claimId": "c19562ac89cebaf784036", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:axum-extra-src-typed-header-rs", "claimId": "c71c058a3e62f695ce222", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:axum-extra-src-typed-header-rs", "claimId": "ceb31dbabe9b41efab102", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:axum-macros-src-lib-rs", "claimId": "c86c0ae6543d61c97d4b7", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:axum-macros-src-lib-rs", "claimId": "cd06343bb236434b833e8", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:axum-macros-src-lib-rs", "claimId": "cd7b7c667247c0ab94f23", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:axum-macros-src-lib-rs", "claimId": "c8623c38e4f7ca8eebfac", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:axum-src-extension-rs", "claimId": "cfa8cbfa6a6201d87297b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:axum-src-extension-rs", "claimId": "cc9e690307227a2c16a00", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-extension-rs", "claimId": "cded5b20783ce25e207a0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:axum-src-extension-rs", "claimId": "c0fda80b42fb49b51091c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:axum-src-extract-connect-info-rs", "claimId": "cc48abeb382f84840a4eb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.64 },
+      { "scopeId": "component:axum-src-extract-connect-info-rs", "claimId": "cee86eddcfe10d238dcc3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:axum-src-extract-connect-info-rs", "claimId": "c4843c68b4816f30174d7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:axum-src-extract-connect-info-rs", "claimId": "c799e7bac77d0e7b19c8c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:axum-src-extract-matched-path-rs", "claimId": "cf890741229bf6b2b4e97", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:axum-src-extract-matched-path-rs", "claimId": "c5ff63089f9a643c5828e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:axum-src-extract-matched-path-rs", "claimId": "c0307f5da037d841f54af", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:axum-src-extract-matched-path-rs", "claimId": "c657670acaf1731d323cd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.27 },
+      { "scopeId": "component:axum-src-extract-matched-path-rs", "claimId": "cd030d44aed4d04601e58", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:axum-src-extract-matched-path-rs", "claimId": "ca869cb4519183a33266f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:axum-src-extract-mod-rs", "claimId": "ce553f2f9136bc0e5364d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.21 },
+      { "scopeId": "component:axum-src-extract-mod-rs", "claimId": "c48b6411597878094d1a4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:axum-src-extract-mod-rs", "claimId": "c64bbbc8dbb293db4a53d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:axum-src-extract-path-inner-path-rs", "claimId": "cdab10d5a3707edf93c89", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.17 },
+      { "scopeId": "component:axum-src-extract-path-inner-path-rs", "claimId": "c511c636f4d4e3ee7fc82", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:axum-src-extract-path-inner-path-rs", "claimId": "c08f1b7fb61d006efaf8b", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:axum-src-extract-path-inner-path-rs", "claimId": "c0c9c8726cb4169e41390", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:axum-src-extract-path-inner-path-rs", "claimId": "c4f5e4f17eeb61b516ac4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:axum-src-extract-path-inner-path-rs", "claimId": "cb696e635e93a1ca1dca5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:axum-src-extract-path-mod-rs", "claimId": "c522bd38492c88eaef845", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-extract-path-mod-rs", "claimId": "c8164bdd19a8398434c8d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-extract-path-mod-rs", "claimId": "c4627b524792977911357", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:axum-src-form-rs", "claimId": "c3c579aff4ebb1bd72250", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:axum-src-form-rs", "claimId": "c80802aae0c82409bebe4", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:axum-src-form-rs", "claimId": "c97a7d5a2c412fd093d2f", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:axum-src-form-rs", "claimId": "c76dfbd7be1d768c6b24b", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:axum-src-form-rs", "claimId": "cacea8c85c324067d979a", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:axum-src-handler-mod-rs", "claimId": "cee3225043272c8b3eb4b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:axum-src-handler-mod-rs", "claimId": "c334d7cb6b05ea2871f11", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:axum-src-handler-mod-rs", "claimId": "c62b192293aa00b61a152", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:axum-src-handler-mod-rs", "claimId": "cf44d54922fedb6485dfb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:axum-src-json-rs", "claimId": "c0f95e3023034526d61d7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:axum-src-json-rs", "claimId": "c7d91904495319257d856", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:axum-src-json-rs", "claimId": "c4005bce56beabaf16831", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-json-rs", "claimId": "c4fba13f4b02b9932fed7", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:axum-src-json-rs", "claimId": "c2f9a550754ba957eb330", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:axum-src-json-rs", "claimId": "c6c4841c12b7b40c5af50", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-lib-rs", "claimId": "c037e49609c3a96e5a46b", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:axum-src-lib-rs", "claimId": "c7809f3a2848bbb948b90", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:axum-src-lib-rs", "claimId": "cd3b4a0e8267c3d3729c1", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:axum-src-lib-rs", "claimId": "c4200c8527dfc275400b2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:axum-src-lib-rs", "claimId": "c5456fc311da31083745e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:axum-src-middleware-from-fn-rs", "claimId": "cd8bab67c14152195f53b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:axum-src-middleware-from-fn-rs", "claimId": "c6fd314cd0ac047fbac4b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:axum-src-middleware-from-fn-rs", "claimId": "cbe992bd9b32a941c23f7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:axum-src-middleware-from-fn-rs", "claimId": "cb6a50a69cc2a14e1980e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:axum-src-middleware-from-fn-rs", "claimId": "c549887d61e61e90cfe4e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.08 },
+      { "scopeId": "component:axum-src-response-mod-rs", "claimId": "c52f1f0266f64e0d7c152", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:axum-src-response-mod-rs", "claimId": "c3d22f35ce7b79ec2fdaa", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.46 },
+      { "scopeId": "component:axum-src-response-mod-rs", "claimId": "cc032992075007f0cb6cd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:axum-src-response-mod-rs", "claimId": "c404847a94ba3f1e9753a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:axum-src-response-mod-rs", "claimId": "c07ae80b57e1f3ee8435a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:axum-src-response-mod-rs", "claimId": "c6084532b47a59e9ac00c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:axum-src-response-mod-rs", "claimId": "c87085825491d6bdf81d1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:axum-src-routing-method-routing-rs", "claimId": "c1f9c8c8dafe98ab39e2b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:axum-src-routing-method-routing-rs", "claimId": "c378691a04e5177eb5d25", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:axum-src-routing-method-routing-rs", "claimId": "ccdb4cff72ac91c6ce9ae", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.51 },
+      { "scopeId": "component:axum-src-routing-method-routing-rs", "claimId": "c4c0a7733d5385ff33c7c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:axum-src-routing-method-routing-rs", "claimId": "c83e26046cc3e70d47f6f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:axum-src-routing-method-routing-rs", "claimId": "cc669b6f0d99257e0441b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:axum-src-routing-mod-rs", "claimId": "c5390217978048e86d68b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:axum-src-routing-mod-rs", "claimId": "c41d07ea545878c4b4536", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:axum-src-routing-mod-rs", "claimId": "cb2b0804390bc7aa3838d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:axum-src-routing-mod-rs", "claimId": "cc8d0d61cab0691605fc9", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-routing-mod-rs", "claimId": "c7c38a3f804b145eadc1e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:axum-src-routing-mod-rs", "claimId": "c3bde7b73754f768cb458", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:axum-src-routing-path-router-rs", "claimId": "cc2606f54804a2b8b889f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:axum-src-routing-path-router-rs", "claimId": "cf1dcab316cefc1474313", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:axum-src-routing-path-router-rs", "claimId": "cf3d1cb093b3a8089c549", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:axum-src-routing-path-router-rs", "claimId": "c28af8c3c8416d101bc51", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:axum-src-routing-route-rs", "claimId": "c30dd87e2910d78f94a83", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:axum-src-routing-route-rs", "claimId": "cd12d9a77d3fbe19ff3a7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.38 },
+      { "scopeId": "component:axum-src-routing-route-rs", "claimId": "cf22a36b0a463b2cdc9b8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:axum-src-routing-route-rs", "claimId": "c7de7f30ec73ed62fefb8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:axum-src-routing-route-rs", "claimId": "c87c66f0c923f26920ac2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-routing-route-rs", "claimId": "c45d46775598c542e48af", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:axum-src-serve-mod-rs", "claimId": "ca9b2b26f119de5dbb0fd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:axum-src-serve-mod-rs", "claimId": "c03d7b238827b956f4c99", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.72 },
+      { "scopeId": "component:axum-src-serve-mod-rs", "claimId": "cd8bdf47084765df3e98d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:axum-src-serve-mod-rs", "claimId": "c7de34414472a1e899e54", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:axum-src-serve-mod-rs", "claimId": "c8f99f00ca151735a311b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:axum-src-serve-mod-rs", "claimId": "c28319ebdce42bbac1472", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:axum-src-test-helpers-mod-rs", "claimId": "cd3e2a79b579aac6676d0", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:axum-src-test-helpers-mod-rs", "claimId": "c2ee6b57491202d03a324", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:axum-src-test-helpers-test-client-rs", "claimId": "cba56d9b68d97b29efbde", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:axum-src-test-helpers-test-client-rs", "claimId": "c2a766db1f932dfc417b3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:axum-src-test-helpers-test-client-rs", "claimId": "cf177f58148105bd7a583", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:axum-src-test-helpers-test-client-rs", "claimId": "c2359dc8593abfb22bffa", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:axum-src-test-helpers-test-client-rs", "claimId": "c78630c04a04352a0d991", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.95 }
+    ],
+    "rateLimited": 0
+  }
+}

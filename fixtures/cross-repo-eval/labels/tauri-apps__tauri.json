@@ -1,0 +1,258 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "tauri-apps/tauri",
+  "commitSha": "d15cf9b1e481035a248227c791fde5740fcfe0ba",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "tauri-invoke-ipc",
+      "family": "tauri-invoke-ipc",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When the web page calls a Rust function from JavaScript, how does that call physically travel from the webview into Rust and how does the result come back?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tauri-workspace"
+      },
+      "expectedFiles": [
+        "crates/tauri/scripts/ipc-protocol.js",
+        "crates/tauri/src/ipc/protocol.rs",
+        "packages/api/src/core.ts"
+      ],
+      "mustMention": [
+        "ipc://|custom protocol",
+        "postMessage",
+        "Tauri-Callback|callback"
+      ],
+      "answerNote": "invoke() in @tauri-apps/api calls window.__TAURI_INTERNALS__.invoke; the injected ipc-protocol.js POSTs the payload with fetch to the ipc:// custom protocol (headers Tauri-Callback, Tauri-Error, Tauri-Invoke-Key). ipc/protocol.rs parses the request, checks the invoke key and dispatches to the webview's command handler; the HTTP response body resolves the callback via runCallback. If the custom protocol fails (CSP, Android) it falls back to window.ipc.postMessage handled by the same message_handler, replying by evaluating JS."
+    },
+    {
+      "id": "tauri-capability-check",
+      "family": "tauri-capability-check",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "How does the app decide whether a particular window is allowed to call a given backend command?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tauri-workspace"
+      },
+      "expectedFiles": [
+        "crates/tauri/src/ipc/authority.rs",
+        "crates/tauri-utils/src/acl/capability.rs"
+      ],
+      "mustMention": [
+        "capabilit",
+        "permission",
+        "deny|denied"
+      ],
+      "answerNote": "Capabilities (JSON/TOML files) group permission identifiers and bind them to window/webview labels (globs allowed), platforms, and local or remote URL contexts. At build time they are resolved into an ACL; at runtime RuntimeAuthority::resolve_access (called from webview/mod.rs on each invoke) rejects explicitly denied commands for the origin, then returns the allowed ResolvedCommand only if the origin matches and a window or webview label matches; otherwise the call fails with a 'not allowed' message listing the missing permission."
+    },
+    {
+      "id": "tauri-arg-casing",
+      "family": "tauri-arg-casing",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "My Rust command takes a parameter called user_id, but the frontend has to send it as userId. Why, and can I change that?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tauri-workspace"
+      },
+      "expectedFiles": [
+        "crates/tauri-macros/src/command/wrapper.rs"
+      ],
+      "mustMention": [
+        "camelCase",
+        "rename_all",
+        "snake_case"
+      ],
+      "answerNote": "The #[command] attribute macro (tauri-macros command/wrapper.rs) generates a wrapper that extracts each argument by key; by default the key is the argument name converted to lower camelCase. #[tauri::command(rename_all = \"snake_case\")] switches to snake_case keys (rename_all accepts only camelCase or snake_case)."
+    },
+    {
+      "id": "tauri-embed-assets",
+      "family": "tauri-embed-assets",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How do the built frontend files end up inside the final desktop executable, and how are they served to the webview at runtime?",
+      "selection": {
+        "level": "L2 container",
+        "selectedId": "container:crates-tauri-bundler"
+      },
+      "expectedFiles": [
+        "crates/tauri-codegen/src/embedded_assets.rs",
+        "crates/tauri-codegen/src/context.rs",
+        "crates/tauri/src/protocol/tauri.rs"
+      ],
+      "mustMention": [
+        "brotli|compress",
+        "include_bytes",
+        "frontendDist|frontend_dist"
+      ],
+      "answerNote": "At compile time generate_context!/tauri-build codegen reads build.frontendDist from the config; EmbeddedAssets walks that directory, brotli-compresses each file into OUT_DIR (hash-named, cached), records CSP hashes for inline scripts/styles, and emits include_bytes! for every asset so they are baked into the binary. At runtime the tauri:// protocol handler (protocol/tauri.rs) looks assets up via the manager's get_asset (or proxies to devUrl in dev)."
+    },
+    {
+      "id": "tauri-config-platform",
+      "family": "tauri-config-platform",
+      "status": "draft",
+      "category": "config",
+      "question": "Can I keep separate app configuration overrides for macOS and Windows, and which file formats are accepted?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tauri-workspace"
+      },
+      "expectedFiles": [
+        "crates/tauri-utils/src/config.rs",
+        "crates/tauri-utils/src/config/parse.rs"
+      ],
+      "mustMention": [
+        "tauri.macos.conf.json|platform-specific",
+        "json5|toml",
+        "merge"
+      ],
+      "answerNote": "The main config is tauri.conf.json (Config struct in tauri-utils config.rs); JSON5 (tauri.conf.json5) and TOML (Tauri.toml) are supported behind the config-json5/config-toml features. Platform files tauri.<linux|windows|macos|android|ios>.conf.json (or Tauri.<platform>.toml) are read by config/parse.rs and merged over the main config."
+    },
+    {
+      "id": "tauri-two-clis",
+      "family": "tauri-two-clis",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "Why are there both an npm package and a Rust crate for the command-line tool, and how are they related?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tauri-workspace"
+      },
+      "expectedFiles": [
+        "ARCHITECTURE.md",
+        "packages/cli/src/lib.rs"
+      ],
+      "mustMention": [
+        "napi",
+        "tauri-cli|tauri_cli",
+        "wrapper"
+      ],
+      "answerNote": "ARCHITECTURE.md: @tauri-apps/cli (packages/cli) is a wrapper around the Rust tauri-cli built with napi-rs to publish per-platform npm packages. packages/cli/src/lib.rs exposes a #[napi] run() that calls tauri_cli::try_run(args) on a separate thread and reports success/failure through a Node threadsafe callback."
+    },
+    {
+      "id": "tauri-isolation",
+      "family": "tauri-isolation",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "What is the isolation pattern and how does it protect messages coming from the frontend?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:crates-tauri-macos-sign-src-certificate-rs"
+      },
+      "expectedFiles": [
+        "crates/tauri-utils/src/pattern/isolation.js",
+        "crates/tauri-utils/src/pattern/isolation.rs"
+      ],
+      "mustMention": [
+        "iframe",
+        "AES-GCM|encrypt",
+        "__TAURI_ISOLATION_HOOK__|hook"
+      ],
+      "answerNote": "With the isolation pattern every IPC message is first sent to a hidden, sandboxed iframe (#__tauri_isolation__) running the app's isolation application; its __TAURI_ISOLATION_HOOK__ can inspect/modify the payload, then isolation.js encrypts it with an AES-GCM key generated at runtime (Web Crypto) before posting it back. pattern/isolation.rs holds the runtime-generated AES-256-GCM keys and decryption; crates/tauri/src/ipc/protocol.rs decrypts the payload before dispatch (protocol/isolation.rs serves the iframe page with CSP), so frontend code cannot forge IPC without going through the hook."
+    },
+    {
+      "id": "tauri-events",
+      "family": "tauri-events",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When Rust code broadcasts an event, how does it reach a listener that was registered in the page's JavaScript?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tauri-workspace"
+      },
+      "expectedFiles": [
+        "crates/tauri/src/event/listener.rs",
+        "crates/tauri/src/event/mod.rs",
+        "packages/api/src/event.ts"
+      ],
+      "mustMention": [
+        "listen",
+        "eval|script",
+        "callback"
+      ],
+      "answerNote": "listen() in @tauri-apps/api/event invokes plugin:event|listen with a transformCallback handler id; Rust records the JS listener per webview/target. On emit, Listeners::emit_js_filter selects webviews with matching JS listeners and Webview::emit_js evals emit_js_script, which calls the injected listeners function that runs each handler via __TAURI_INTERNALS__.runCallback. Rust-side listeners are called directly."
+    }
+  ],
+  "c4Note": {
+    "verdict": "partly",
+    "note": "One container per Cargo crate / npm package largely matches how Tauri describes itself in ARCHITECTURE.md (tauri, tauri-runtime, tauri-runtime-wry, tauri-macros, tauri-codegen, tauri-build, tauri-utils, tauri-cli, bundler, @tauri-apps/api, @tauri-apps/cli). But the 18 containers sit flat with no split between runtime crates and tooling, tauri-schema-worker appears twice (once empty, because it is both a Cargo member and a pnpm package), and bench/ is filed under a 'Build & fixture tooling' container whose only sourceRef is a non-existent 'scripts' path. The injected JS runtime (crates/tauri/scripts/*.js, tauri-utils pattern/isolation.js) that implements invoke/IPC was skipped as 'JS in a TypeScript repo', so the IPC path is half-invisible.",
+    "expectedContainers": [
+      "tauri core runtime (crates/tauri, incl. crates/tauri/scripts/*.js injected into the webview)",
+      "runtime abstraction (crates/tauri-runtime) + wry/tao backend (crates/tauri-runtime-wry)",
+      "compile-time crates: tauri-macros, tauri-codegen, tauri-build, tauri-utils (shared config/ACL)",
+      "plugin SDK (crates/tauri-plugin)",
+      "JS API (packages/api)",
+      "CLI: tauri-cli (crates/tauri-cli) + npm wrapper @tauri-apps/cli (packages/cli)",
+      "bundler + signing (crates/tauri-bundler, crates/tauri-macos-sign)",
+      "tauri-driver (WebDriver), schema generator/worker",
+      "tests/bench/examples (crates/tests, bench, examples) as tooling"
+    ],
+    "problems": [
+      "duplicate containers container:crates-tauri-schema-worker (0 components) and container:crates-tauri-schema-worker-2 for the same directory",
+      "container:tooling 'Build & fixture tooling' has sourceRef 'scripts' (no such dir at the pin) but actually holds bench/src/*.rs",
+      "38 .js files skipped, including crates/tauri/scripts/ipc-protocol.js, core.js, init.js and tauri-utils/src/pattern/isolation.js, which implement the webview side of IPC/isolation",
+      "components are 1:1 with files (67 in crates/tauri, 103 in tauri-cli); ipc/, event/, menu/, window/ modules not grouped",
+      "Cargo workspace members crates/tests/acl, crates/tests/restart and bench/tests/* are absent; examples skipped by design",
+      "no grouping of the 18 flat containers into runtime vs build-time vs tooling layers"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:tauri-workspace",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "children",
+        "enrichment:keyPoints",
+        "enrichment:evidence"
+      ],
+      "note": "Summary explains config/assets/permissions -> binary; the 19 crate/package containers are the map; key points give IPC and ACL cross-crate seams."
+    },
+    {
+      "nodeId": "container:crates-tauri",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Public Rust shell: summary layers lifecycle/AppManager/webview; key points give lib.rs + CSP seam; 67 real module children; parent redundant."
+    },
+    {
+      "nodeId": "container:crates-tauri-cli",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "relations:dependencies",
+        "enrichment:evidence"
+      ],
+      "note": "Summary + key points give try_run dispatch and the resolve_dirs panic; 103 real subcommand files; the single @tauri-apps/api dependency is minor; related duplicates it."
+    },
+    {
+      "nodeId": "container:crates-tauri-utils",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary says it owns config model + ACL; key points name the ACL security seam; 26 real modules; parent redundant."
+    },
+    {
+      "nodeId": "container:crates-tauri-bundler",
+      "status": "draft",
+      "order": [
+        "children",
+        "relations:parent"
+      ],
+      "note": "Unenriched: the 28 bundle/* module children are the only real content; parent is a back-link."
+    }
+  ]
+}

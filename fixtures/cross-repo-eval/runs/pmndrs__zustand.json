@@ -1,0 +1,1348 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "pmndrs__zustand",
+  "repository": "pmndrs/zustand",
+  "commitSha": "b57db4f86ef179285da216eeb291266da82c361c",
+  "scan": {
+    "asIs": {
+      "revision": "b57db4f86ef179285da216eeb291266da82c361c",
+      "ok": true,
+      "ms": 10049,
+      "entities": 173,
+      "relations": 219,
+      "kinds": { "code": 141, "component": 30, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:zustand", "name": "zustand", "components": 30 }
+      ],
+      "signals": { "entities": 173, "containers": 1, "components": 30, "files": 32, "maxDepth": 4, "medianDepth": 2, "language": "TypeScript" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T02:00:27.986Z",
+    "corpus": "enriched",
+    "entityCount": 173,
+    "systemNames": ["zustand"],
+    "paths": ["src/middleware/devtools.ts", "examples/demo/src/components/CodePreview.jsx", "examples/starter/src/index.tsx", "src/vanilla/shallow.ts", "examples/demo/src/components/SnippetLang.jsx", "src/vanilla.ts", "src/react/shallow.ts", "src/shallow.ts", "examples/demo/src/components/CopyButton.jsx", "src/traditional.ts", "examples/demo/src/components/Fireflies.jsx", "src/middleware/persist.ts", "src/middleware/redux.ts", "rollup.config.mjs", "examples/demo/src/components/Scene.jsx", "src/react.ts", "examples/demo/src/components/Details.jsx", "vitest.config.mts", "src/middleware.ts", "tests/test-utils.ts", "package.json", "src/index.ts", "examples/demo/src/App.jsx", "README.md", "src/middleware/ssrSafe.ts", "src/middleware/immer.ts", "src/middleware/subscribeWithSelector.ts", "src/middleware/combine.ts", "examples/starter/vite.config.ts", "tests/setup.ts", "eslint.config.mjs", "examples/demo/src/main.jsx"],
+    "questions": [
+      {
+        "id": "zustand-notify",
+        "question": "When I change a value in a store, how do the components that use it find out and re-render?",
+        "selectedId": "system:zustand",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23748,
+        "sectionCount": 19,
+        "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 8, 13, 14, 15, 16, 17, 18],
+        "packets": [23, 20],
+        "sections": [
+          {
+            "id": "component:src-middleware-devtools-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-middleware-devtools-ts:remove-store-from-tracked-connections", "name": "removeStoreFromTrackedConnections" },
+              { "id": "code:src-middleware-devtools-ts:find-caller-name", "name": "findCallerName" },
+              { "id": "code:src-middleware-devtools-ts:store-information", "name": "StoreInformation" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-code-preview-jsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-code-preview-jsx:use-store", "name": "useStore" },
+              { "id": "code:examples-demo-src-components-code-preview-jsx:code-preview", "name": "CodePreview" }
+            ]
+          },
+          {
+            "id": "component:examples-starter-src-index-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:examples-starter-src-index-tsx:use-store", "name": "useStore" },
+              { "id": "code:examples-starter-src-index-tsx:store", "name": "Store" },
+              { "id": "code:examples-starter-src-index-tsx:counter", "name": "Counter" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-shallow-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-vanilla-shallow-ts:shallow", "name": "shallow" },
+              { "id": "code:src-vanilla-shallow-ts:compare-entries", "name": "compareEntries" },
+              { "id": "code:src-vanilla-shallow-ts:compare-iterables", "name": "compareIterables" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-snippet-lang-jsx",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-snippet-lang-jsx:snippet-lang", "name": "SnippetLang" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-vanilla-ts:create-store-impl", "name": "createStoreImpl" },
+              { "id": "code:src-vanilla-ts:create-store-2", "name": "CreateStore" },
+              { "id": "code:src-vanilla-ts:create-store", "name": "createStore" }
+            ]
+          },
+          { "id": "component:src-react-shallow-ts", "kind": "component", "p": 6 },
+          { "id": "component:src-shallow-ts", "kind": "component", "p": 7 },
+          {
+            "id": "component:src-traditional-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-3", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-2", "name": "useStoreWithEqualityFn" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-fireflies-jsx",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-fireflies-jsx:fireflies", "name": "Fireflies" },
+              { "id": "code:examples-demo-src-components-fireflies-jsx:fatline", "name": "Fatline" },
+              { "id": "code:examples-demo-src-components-fireflies-jsx:r", "name": "r" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-persist-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-middleware-persist-ts:storage-value", "name": "StorageValue" },
+              { "id": "code:src-middleware-persist-ts:store-persist", "name": "StorePersist" },
+              { "id": "code:src-middleware-persist-ts:persist", "name": "Persist" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-redux-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-middleware-redux-ts:store-redux", "name": "StoreRedux" },
+              { "id": "code:src-middleware-redux-ts:with-redux", "name": "WithRedux" },
+              { "id": "code:src-middleware-redux-ts:redux", "name": "Redux" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-copy-button-jsx",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-copy-button-jsx:copy-button", "name": "CopyButton" }
+            ]
+          },
+          {
+            "id": "component:rollup-config-mjs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:rollup-config-mjs:entries", "name": "entries" },
+              { "id": "code:rollup-config-mjs:create-esm-config", "name": "createESMConfig" },
+              { "id": "code:rollup-config-mjs:create-common-js-config", "name": "createCommonJSConfig" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-scene-jsx",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-scene-jsx:scene", "name": "Scene" },
+              { "id": "code:examples-demo-src-components-scene-jsx:canvas", "name": "Canvas" },
+              { "id": "code:examples-demo-src-components-scene-jsx:effects", "name": "Effects" }
+            ]
+          },
+          {
+            "id": "component:src-react-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:src-react-ts:use-store-3", "name": "useStore" },
+              { "id": "code:src-react-ts:use-store", "name": "useStore" },
+              { "id": "code:src-react-ts:use-store-2", "name": "useStore" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-details-jsx",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-details-jsx:details", "name": "Details" }
+            ]
+          },
+          { "id": "component:vitest-config-mts", "kind": "component", "p": 17 },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 }
+        ],
+        "expectedIndexed": { "src/vanilla.ts": true, "src/react.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11806, "sectionCount": 9, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8] },
+          "double": { "byteBudget": 48000, "bytes": 26979, "sectionCount": 23, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11806, "sectionCount": 9, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23748, "sectionCount": 19, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 8, 13, 14, 15, 16, 17, 18] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "b7b1a4f349fd16b1a8999506c92970cbc835d37480a9949d77243037ea5b60d5",
+          "allowedIdsCount": 59,
+          "allowedIdsSha256": "7b10580b54f9a5c38159c5c1616a5dbe9f33166b848d0062c182a91c1c029897",
+          "allowedIdsInContent": ["code:examples-starter-src-index-tsx:counter", "code:src-vanilla-shallow-ts:shallow", "component:src-vanilla-ts", "code:src-vanilla-ts:create-store-impl", "code:src-vanilla-ts:create-store", "component:src-react-shallow-ts", "code:src-traditional-ts:use-store-with-equality-fn-3", "code:src-traditional-ts:use-store-with-equality-fn", "component:src-react-ts", "code:src-react-ts:use-store-3", "code:src-react-ts:use-store"],
+          "packetSources": {},
+          "content": "{\"answer\":\"`setState` in `createStoreImpl` (`src/vanilla.ts`) is the single mutation point: it computes the next state, and if it differs (`Object.is` check) it updates `state` and calls every registered listener with `(state, previousState)`. Components find out because the React hook `useStore` (`src/react.ts`) wires `api.subscribe` into `React.useSyncExternalStore`, so any listener firing triggers React to re-read the slice and re-render.\\n\\n- `src/vanilla.ts` — `createStoreImpl` keeps a `Set<Listener>`; `subscribe` adds a listener and returns an unsubscribe closure, and `setState` iterates `listeners.forEach(...)` after the state swap.\\n- `src/react.ts` — `useStore` (the `useStore<TState, StateSlice>` implementation, lines 26-37) calls `React.useSyncExternalStore(api.subscribe, ...)` with a `selector` (default `identity`, i.e. whole state), so re-render happens only when the selected slice changes.\\n- `examples/starter/src/index.tsx` — `Counter` shows the consumer pattern: separate selector calls for `count` and `inc` limit re-renders to just the changed value.\\n- `src/traditional.ts` — `useStoreWithEqualityFn` is the equality-function flavor; rerender control lives at hook level via `equalityFn` rather than in the store.\\n- `src/react/shallow.ts` / `src/vanilla/shallow.ts` — `useShallow` memoizes selector output by `shallow` comparison so a selector rebuilding an equal object doesn't cause a re-render.\\n\\nNot in the evidence: the full body of `useStore` beyond the `useSyncExternalStore` call line (the excerpt is truncated at line 26+).\",\"citations\":[\"component:src-vanilla-ts\",\"code:src-vanilla-ts:create-store-impl\",\"component:src-react-ts\",\"code:src-react-ts:use-store-3\",\"code:examples-starter-src-index-tsx:counter\",\"code:src-traditional-ts:use-store-with-equality-fn-3\",\"component:src-react-shallow-ts\",\"code:src-vanilla-shallow-ts:shallow\"]}",
+          "usage": { "promptTokens": 8735, "completionTokens": 518, "totalTokens": 9253, "costUsd": 0.004250385 },
+          "ms": 11985
+        }
+      },
+      {
+        "id": "zustand-saved-shape-change",
+        "question": "If I change the shape of the state I save in the browser between releases, what happens to data users already have stored?",
+        "selectedId": "system:zustand",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23790,
+        "sectionCount": 16,
+        "ranked": [24, 5, 15, 9, 25, 11, 26, 18, 0, 2, 12, 27, 21, 6, 20, 23],
+        "packets": [23, 20],
+        "sections": [
+          {
+            "id": "component:src-middleware-ssr-safe-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middleware-ssr-safe-ts:ssr-safe", "name": "ssrSafe" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-vanilla-ts:create-store-impl", "name": "createStoreImpl" },
+              { "id": "code:src-vanilla-ts:state-creator", "name": "StateCreator" },
+              { "id": "code:src-vanilla-ts:store-api", "name": "StoreApi" }
+            ]
+          },
+          {
+            "id": "component:src-react-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:src-react-ts:use-store-3", "name": "useStore" },
+              { "id": "code:src-react-ts:use-bound-store", "name": "UseBoundStore" },
+              { "id": "code:src-react-ts:use-store-2", "name": "useStore" }
+            ]
+          },
+          {
+            "id": "component:src-traditional-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-3", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-bound-store-with-equality-fn", "name": "UseBoundStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:readonly-store-api", "name": "ReadonlyStoreApi" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-immer-ts",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-middleware-immer-ts:store-immer", "name": "StoreImmer" },
+              { "id": "code:src-middleware-immer-ts:set-state-type", "name": "SetStateType" },
+              { "id": "code:src-middleware-immer-ts:immer", "name": "Immer" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-persist-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-middleware-persist-ts:store-persist", "name": "StorePersist" },
+              { "id": "code:src-middleware-persist-ts:state-storage", "name": "StateStorage" },
+              { "id": "code:src-middleware-persist-ts:persist", "name": "Persist" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-subscribe-with-selector-ts",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "name": "StoreSubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector", "name": "SubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector-impl-2", "name": "subscribeWithSelectorImpl" }
+            ]
+          },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 },
+          {
+            "id": "component:src-middleware-devtools-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-middleware-devtools-ts:remove-store-from-tracked-connections", "name": "removeStoreFromTrackedConnections" },
+              { "id": "code:src-middleware-devtools-ts:store-devtools", "name": "StoreDevtools" },
+              { "id": "code:src-middleware-devtools-ts:get-tracked-connection-state", "name": "getTrackedConnectionState" }
+            ]
+          },
+          {
+            "id": "component:examples-starter-src-index-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:examples-starter-src-index-tsx:use-store", "name": "useStore" },
+              { "id": "code:examples-starter-src-index-tsx:store", "name": "Store" },
+              { "id": "code:examples-starter-src-index-tsx:counter", "name": "Counter" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-redux-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-middleware-redux-ts:redux-state", "name": "ReduxState" },
+              { "id": "code:src-middleware-redux-ts:store-redux", "name": "StoreRedux" },
+              { "id": "code:src-middleware-redux-ts:redux", "name": "Redux" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-combine-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:src-middleware-combine-ts:combine", "name": "combine" }
+            ]
+          },
+          { "id": "component:src-index-ts", "kind": "component", "p": 21 },
+          {
+            "id": "component:src-react-shallow-ts",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:src-react-shallow-ts:use-shallow", "name": "useShallow" }
+            ]
+          },
+          { "id": "container:zustand", "kind": "container", "p": 20 },
+          { "id": "system:zustand", "kind": "softwareSystem", "p": 23 }
+        ],
+        "expectedIndexed": { "src/middleware/persist.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11984, "sectionCount": 6, "ranked": [24, 5, 15, 9, 25, 11] },
+          "double": { "byteBudget": 48000, "bytes": 25989, "sectionCount": 19, "ranked": [24, 5, 15, 9, 25, 11, 26, 18, 0, 2, 12, 27, 21, 6, 20, 23, 3, 1, 28] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11984, "sectionCount": 6, "ranked": [24, 5, 15, 9, 25, 11] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23790, "sectionCount": 16, "ranked": [24, 5, 15, 9, 25, 11, 26, 18, 0, 2, 12, 27, 21, 6, 20, 23] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "f671196d379ab9eb486c857217eab4ec50d4c6179f876579d424ed307d834974",
+          "allowedIdsCount": 46,
+          "allowedIdsSha256": "1a714dccbe13e7d7685226f3ed2c71da4f3776c5444b348bce537a6f676bd557",
+          "allowedIdsInContent": ["code:src-vanilla-ts:create-store-impl", "component:src-middleware-persist-ts", "code:src-middleware-persist-ts:store-persist", "code:src-middleware-persist-ts:state-storage", "code:src-middleware-persist-ts:persist"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Browser-stored data is handled by the `persist` middleware (`src/middleware/persist.ts`) — the core store in `src/vanilla.ts` holds state only in memory, so nothing is written to storage unless `persist` wraps the store. What actually happens to old-shape data on a version change is **not in the evidence**: the excerpts describe the surface (stored values carry an optional `version`, and `PersistOptions` is the configuration surface), but the hydration/`persistImpl` body that would decide whether stale data is dropped, migrated, or merged isn't included.\\n\\n- `src/middleware/persist.ts` — `persistImpl` rehydrates from a key-value storage and writes updates back; the exported `persist` is that implementation cast to its public type (`Persist`).\\n- `StorageValue` carries an optional `version`; `PersistOptions` is where version/migration-style configuration would live — but the exact option semantics are not shown in the excerpts.\\n- `StateStorage` is the raw storage adapter; `createJSONStorage` wraps it with JSON serialization, so the stored payload is whatever shape your state serializes to.\\n- `StorePersist` shows the runtime surface you'd use to force a reload (`persist.rehydrate`, `clearStorage`, `onFinishHydration`) if you handle reshaping yourself.\\n\\nMissing part: the version-comparison / migration / merge logic inside `persistImpl` (lines 187-376) is not in the evidence, so I can't say definitively whether legacy data is migrated or discarded.\", \"citations\": [\"component:src-middleware-persist-ts\", \"code:src-middleware-persist-ts:persist\", \"code:src-middleware-persist-ts:state-storage\", \"code:src-middleware-persist-ts:store-persist\", \"code:src-vanilla-ts:create-store-impl\"]}",
+          "usage": { "promptTokens": 8484, "completionTokens": 684, "totalTokens": 9168, "costUsd": 0.00428562 },
+          "ms": 23063
+        }
+      },
+      {
+        "id": "zustand-pick-many-rerender",
+        "question": "My component picks several fields out of the store as an object and now re-renders all the time — how do I stop that?",
+        "selectedId": "system:zustand",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23990,
+        "sectionCount": 19,
+        "ranked": [0, 2, 5, 1, 9, 15, 3, 4, 12, 7, 26, 6, 27, 23, 24, 10, 20, 14, 18],
+        "packets": [23, 20],
+        "sections": [
+          {
+            "id": "component:src-middleware-devtools-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-middleware-devtools-ts:remove-store-from-tracked-connections", "name": "removeStoreFromTrackedConnections" },
+              { "id": "code:src-middleware-devtools-ts:v8-stack-line-re", "name": "v8StackLineRe" },
+              { "id": "code:src-middleware-devtools-ts:store-information", "name": "StoreInformation" }
+            ]
+          },
+          {
+            "id": "component:examples-starter-src-index-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:examples-starter-src-index-tsx:use-store", "name": "useStore" },
+              { "id": "code:examples-starter-src-index-tsx:store", "name": "Store" },
+              { "id": "code:examples-starter-src-index-tsx:counter", "name": "Counter" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-vanilla-ts:create-store-impl", "name": "createStoreImpl" },
+              { "id": "code:src-vanilla-ts:create-store-2", "name": "CreateStore" },
+              { "id": "code:src-vanilla-ts:create-store", "name": "createStore" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-code-preview-jsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-code-preview-jsx:use-store", "name": "useStore" },
+              { "id": "code:examples-demo-src-components-code-preview-jsx:code-preview", "name": "CodePreview" }
+            ]
+          },
+          {
+            "id": "component:src-traditional-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-traditional-ts:readonly-store-api", "name": "ReadonlyStoreApi" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-3", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn", "name": "useStoreWithEqualityFn" }
+            ]
+          },
+          {
+            "id": "component:src-react-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:src-react-ts:readonly-store-api", "name": "ReadonlyStoreApi" },
+              { "id": "code:src-react-ts:use-store-3", "name": "useStore" },
+              { "id": "code:src-react-ts:use-store", "name": "useStore" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-shallow-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-vanilla-shallow-ts:shallow", "name": "shallow" },
+              { "id": "code:src-vanilla-shallow-ts:compare-entries", "name": "compareEntries" },
+              { "id": "code:src-vanilla-shallow-ts:is-iterable", "name": "isIterable" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-snippet-lang-jsx",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-snippet-lang-jsx:snippet-lang", "name": "SnippetLang" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-redux-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-middleware-redux-ts:store-redux", "name": "StoreRedux" },
+              { "id": "code:src-middleware-redux-ts:with-redux", "name": "WithRedux" },
+              { "id": "code:src-middleware-redux-ts:redux", "name": "Redux" }
+            ]
+          },
+          { "id": "component:src-shallow-ts", "kind": "component", "p": 7 },
+          {
+            "id": "component:src-middleware-subscribe-with-selector-ts",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "name": "StoreSubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector", "name": "SubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector-impl", "name": "SubscribeWithSelectorImpl" }
+            ]
+          },
+          { "id": "component:src-react-shallow-ts", "kind": "component", "p": 6 },
+          {
+            "id": "component:src-middleware-combine-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:src-middleware-combine-ts:combine", "name": "combine" }
+            ]
+          },
+          { "id": "system:zustand", "kind": "softwareSystem", "p": 23 },
+          {
+            "id": "component:src-middleware-ssr-safe-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middleware-ssr-safe-ts:ssr-safe", "name": "ssrSafe" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-fireflies-jsx",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-fireflies-jsx:fireflies", "name": "Fireflies" },
+              { "id": "code:examples-demo-src-components-fireflies-jsx:fatline", "name": "Fatline" },
+              { "id": "code:examples-demo-src-components-fireflies-jsx:r", "name": "r" }
+            ]
+          },
+          { "id": "container:zustand", "kind": "container", "p": 20 },
+          {
+            "id": "component:examples-demo-src-components-scene-jsx",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-scene-jsx:scene", "name": "Scene" },
+              { "id": "code:examples-demo-src-components-scene-jsx:canvas", "name": "Canvas" },
+              { "id": "code:examples-demo-src-components-scene-jsx:effects", "name": "Effects" }
+            ]
+          },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 }
+        ],
+        "expectedIndexed": { "src/react/shallow.ts": true, "docs/reference/hooks/use-shallow.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11797, "sectionCount": 8, "ranked": [0, 2, 5, 1, 9, 15, 3, 7] },
+          "double": { "byteBudget": 48000, "bytes": 29512, "sectionCount": 26, "ranked": [0, 2, 5, 1, 9, 15, 3, 4, 12, 7, 26, 6, 27, 23, 24, 10, 20, 14, 18, 16, 8, 25, 22, 11, 21, 29] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11797, "sectionCount": 8, "ranked": [0, 2, 5, 1, 9, 15, 3, 7] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23990, "sectionCount": 19, "ranked": [0, 2, 5, 1, 9, 15, 3, 4, 12, 7, 26, 6, 27, 23, 24, 10, 20, 14, 18] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "0f30bfd741b166e0e49440abf7e5d869132b3fc260cc6bc7bcc4d4fbda58859e",
+          "allowedIdsCount": 54,
+          "allowedIdsSha256": "1fc51053abc8a4a7b050d5b633554b0da8c37867ae1fe1292a25ac08a589e293",
+          "allowedIdsInContent": ["component:examples-starter-src-index-tsx", "code:examples-starter-src-index-tsx:counter", "component:src-traditional-ts", "code:src-traditional-ts:use-store-with-equality-fn-3", "code:src-traditional-ts:use-store-with-equality-fn", "component:src-react-ts", "code:src-react-ts:use-store-3", "code:src-react-ts:use-store", "component:src-vanilla-shallow-ts", "code:src-vanilla-shallow-ts:shallow", "code:src-vanilla-shallow-ts:compare-entries", "component:src-react-shallow-ts"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Wrap your object-returning selector in `useShallow` — it memoizes the selected object by shallow comparison, so a freshly built but equal-shaped object no longer triggers a re-render.\\n\\n- `src/react/shallow.ts` exports `useShallow`; it caches the last result in a `React.useRef` and only recomputes when the shallow comparison fails (first call always computes since the ref starts as `undefined`).\\n- The comparison itself is `shallow()` in `src/vanilla/shallow.ts`, which does an `Object.is` fast path, then prototype check, then entry/iterable comparison via `compareEntries`.\\n- Alternative: use `useStoreWithEqualityFn` from `src/traditional.ts` (`code:src-traditional-ts:use-store-with-equality-fn-3`) and pass `shallow` (or any custom equality fn) as the second argument; rerender control then happens at hook level.\\n- Or avoid the problem entirely: split reads into separate selector calls instead of one object, as `Counter` in `examples/starter/src/index.tsx` does — it reads `count` and `inc` through two `useStore` calls specifically to limit re-renders.\\n- Note `useStore` in `src/react.ts` defaults the selector to `identity`, so calling it with no selector returns whole state and re-renders on every change.\", \"citations\": [\"component:src-react-shallow-ts\", \"component:src-vanilla-shallow-ts\", \"code:src-vanilla-shallow-ts:shallow\", \"code:src-vanilla-shallow-ts:compare-entries\", \"component:src-traditional-ts\", \"code:src-traditional-ts:use-store-with-equality-fn-3\", \"component:examples-starter-src-index-tsx\", \"code:examples-starter-src-index-tsx:counter\", \"component:src-react-ts\", \"code:src-react-ts:use-store-3\"]}",
+          "usage": { "promptTokens": 8703, "completionTokens": 561, "totalTokens": 9264, "costUsd": 0.004273875 },
+          "ms": 13457
+        }
+      },
+      {
+        "id": "zustand-split-store",
+        "question": "How should I organise a big store into smaller pieces per feature?",
+        "selectedId": "system:zustand",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23540,
+        "sectionCount": 17,
+        "ranked": [11, 0, 18, 26, 5, 12, 22, 15, 23, 9, 20, 2, 27, 24, 25, 1, 10],
+        "packets": [23, 20],
+        "sections": [
+          {
+            "id": "component:src-middleware-persist-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-middleware-persist-ts:store-persist", "name": "StorePersist" },
+              { "id": "code:src-middleware-persist-ts:persist", "name": "Persist" },
+              { "id": "code:src-middleware-persist-ts:with-persist", "name": "WithPersist" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-devtools-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-middleware-devtools-ts:parse-json-then", "name": "parseJsonThen" },
+              { "id": "code:src-middleware-devtools-ts:remove-store-from-tracked-connections", "name": "removeStoreFromTrackedConnections" },
+              { "id": "code:src-middleware-devtools-ts:store-information", "name": "StoreInformation" }
+            ]
+          },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 },
+          {
+            "id": "component:src-middleware-subscribe-with-selector-ts",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "name": "StoreSubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector", "name": "SubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:with-selector-subscribe", "name": "WithSelectorSubscribe" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-vanilla-ts:create-store-impl", "name": "createStoreImpl" },
+              { "id": "code:src-vanilla-ts:create-store-2", "name": "CreateStore" },
+              { "id": "code:src-vanilla-ts:create-store", "name": "createStore" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-redux-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-middleware-redux-ts:store-redux", "name": "StoreRedux" },
+              { "id": "code:src-middleware-redux-ts:with-redux", "name": "WithRedux" },
+              { "id": "code:src-middleware-redux-ts:redux", "name": "Redux" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-app-jsx",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:examples-demo-src-app-jsx:use-store", "name": "useStore" }
+            ]
+          },
+          {
+            "id": "component:src-react-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:src-react-ts:use-store-3", "name": "useStore" },
+              { "id": "code:src-react-ts:use-store", "name": "useStore" },
+              { "id": "code:src-react-ts:use-store-2", "name": "useStore" }
+            ]
+          },
+          { "id": "system:zustand", "kind": "softwareSystem", "p": 23 },
+          {
+            "id": "component:src-traditional-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-3", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-2", "name": "useStoreWithEqualityFn" }
+            ]
+          },
+          { "id": "container:zustand", "kind": "container", "p": 20 },
+          {
+            "id": "component:examples-starter-src-index-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:examples-starter-src-index-tsx:use-store", "name": "useStore" },
+              { "id": "code:examples-starter-src-index-tsx:store", "name": "Store" },
+              { "id": "code:examples-starter-src-index-tsx:counter", "name": "Counter" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-combine-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:src-middleware-combine-ts:combine", "name": "combine" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-ssr-safe-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middleware-ssr-safe-ts:ssr-safe", "name": "ssrSafe" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-immer-ts",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-middleware-immer-ts:store-immer", "name": "StoreImmer" },
+              { "id": "code:src-middleware-immer-ts:immer", "name": "Immer" },
+              { "id": "code:src-middleware-immer-ts:with-immer", "name": "WithImmer" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-components-code-preview-jsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:examples-demo-src-components-code-preview-jsx:use-store", "name": "useStore" }
+            ]
+          },
+          { "id": "component:examples-demo-src-components-fireflies-jsx", "kind": "component", "p": 10 }
+        ],
+        "expectedIndexed": { "docs/learn/guides/slices-pattern.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11906, "sectionCount": 8, "ranked": [11, 0, 18, 26, 5, 12, 22, 1] },
+          "double": { "byteBudget": 48000, "bytes": 26698, "sectionCount": 21, "ranked": [11, 0, 18, 26, 5, 12, 22, 15, 23, 9, 20, 2, 27, 24, 25, 1, 10, 19, 14, 4, 8] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11906, "sectionCount": 8, "ranked": [11, 0, 18, 26, 5, 12, 22, 1] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23540, "sectionCount": 17, "ranked": [11, 0, 18, 26, 5, 12, 22, 15, 23, 9, 20, 2, 27, 24, 25, 1, 10] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "d679b1f4db676eaf4522f698796f142f7049b24dbb55a8ddebd4204a757fa012",
+          "allowedIdsCount": 48,
+          "allowedIdsSha256": "73a8adfef5990f737c1f484004cba6057bd6ee7ed4d2fbaf9a07acea17f04022",
+          "allowedIdsInContent": ["component:src-middleware-persist-ts", "code:src-middleware-persist-ts:persist", "component:src-middleware-devtools-ts", "component:src-middleware-ts", "component:src-middleware-subscribe-with-selector-ts", "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector", "component:src-vanilla-ts", "code:src-vanilla-ts:create-store-impl", "code:src-vanilla-ts:create-store", "component:examples-demo-src-app-jsx", "code:examples-demo-src-app-jsx:use-store", "component:src-react-ts", "code:src-react-ts:use-store-3", "code:src-react-ts:use-store", "component:examples-starter-src-index-tsx", "code:examples-starter-src-index-tsx:use-store", "code:examples-starter-src-index-tsx:store", "code:examples-starter-src-index-tsx:counter", "component:src-middleware-combine-ts", "code:src-middleware-combine-ts:combine", "component:examples-demo-src-components-code-preview-jsx", "code:examples-demo-src-components-code-preview-jsx:use-store"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The evidence doesn't document a slices/bounded-context convention for large stores, but it does show the building blocks: create one small store per module with `create`/`createStore`, and merge state pieces with `combine` where you want a single object. What's missing is any repo guidance on splitting a *big* store per feature.\\n\\n- `examples/starter/src/index.tsx` (`useStore`, `Store`, `Counter`) is the canonical minimal store: one `create` call plus per-field selector reads, so each feature file can own its own `create`.\\n- `examples/demo/src/App.jsx` and `examples/demo/src/components/CodePreview.jsx` each define a file-local `useStore` — the repo's actual pattern for scoping state to a feature/component and keeping it unexported.\\n- `src/middleware/combine.ts` (`combine`) composes `initialState` with a creator object; `Write<T, U>` makes the creator's keys win, so you can assemble slices from smaller pieces.\\n- `src/vanilla.ts` (`createStoreImpl`, `createStore`) is the core each feature store wraps; `setState` is the single mutation point.\\n- For reading pieces out of shared state, `src/react.ts` (`useStore`) and `src/middleware/subscribeWithSelector.ts` (`subscribeWithSelector`, `StoreSubscribeWithSelector`) give selector- and slice-scoped subscriptions.\\n- `src/middleware/persist.ts` (`persist`, `StorePersist`) and `src/middleware/devtools.ts` can be attached per store via `src/middleware.ts`.\\n\\nIf you need a documented \\\"slices\\\" API (single store, multiple feature slices), that is not in the evidence.\",\"citations\":[\"component:examples-starter-src-index-tsx\",\"code:examples-starter-src-index-tsx:use-store\",\"code:examples-starter-src-index-tsx:store\",\"code:examples-starter-src-index-tsx:counter\",\"component:examples-demo-src-app-jsx\",\"code:examples-demo-src-app-jsx:use-store\",\"component:examples-demo-src-components-code-preview-jsx\",\"code:examples-demo-src-components-code-preview-jsx:use-store\",\"component:src-middleware-combine-ts\",\"code:src-middleware-combine-ts:combine\",\"component:src-vanilla-ts\",\"code:src-vanilla-ts:create-store-impl\",\"code:src-vanilla-ts:create-store\",\"component:src-react-ts\",\"code:src-react-ts:use-store-3\",\"component:src-middleware-subscribe-with-selector-ts\",\"code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector\",\"code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector\",\"component:src-middleware-persist-ts\",\"code:src-middleware-persist-ts:persist\",\"component:src-middleware-ts\",\"component:src-middleware-devtools-ts\"]}",
+          "usage": { "promptTokens": 8518, "completionTokens": 753, "totalTokens": 9271, "costUsd": 0.00436044 },
+          "ms": 18722
+        }
+      },
+      {
+        "id": "zustand-browser-debug",
+        "question": "How can I watch state changes and time-travel through them in the browser's debugging extension?",
+        "selectedId": "component:examples-demo-src-components-fireflies-jsx",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 21974,
+        "sectionCount": 19,
+        "ranked": [0, 5, 13, 9, 15, 12, 20, 26, 2, 11, 25, 18, 28, 30, 4, 21, 24, 10, 17],
+        "packets": [10, 20],
+        "sections": [
+          {
+            "id": "component:src-middleware-devtools-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-middleware-devtools-ts:get-tracked-connection-state", "name": "getTrackedConnectionState" },
+              { "id": "code:src-middleware-devtools-ts:devtools", "name": "Devtools" },
+              { "id": "code:src-middleware-devtools-ts:devtools-impl-2", "name": "devtoolsImpl" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-vanilla-ts:state-creator", "name": "StateCreator" },
+              { "id": "code:src-vanilla-ts:set-state-internal", "name": "SetStateInternal" },
+              { "id": "code:src-vanilla-ts:extract-state", "name": "ExtractState" }
+            ]
+          },
+          {
+            "id": "component:rollup-config-mjs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:rollup-config-mjs:extensions", "name": "extensions" },
+              { "id": "code:rollup-config-mjs:create-common-js-config", "name": "createCommonJSConfig" },
+              { "id": "code:rollup-config-mjs:create-esm-config", "name": "createESMConfig" }
+            ]
+          },
+          {
+            "id": "component:src-traditional-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-3", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:create-with-equality-fn-2", "name": "createWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-bound-store-with-equality-fn", "name": "UseBoundStoreWithEqualityFn" }
+            ]
+          },
+          {
+            "id": "component:src-react-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:src-react-ts:use-store-3", "name": "useStore" },
+              { "id": "code:src-react-ts:create-2", "name": "create" },
+              { "id": "code:src-react-ts:use-bound-store", "name": "UseBoundStore" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-redux-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-middleware-redux-ts:redux-state", "name": "ReduxState" },
+              { "id": "code:src-middleware-redux-ts:redux", "name": "Redux" },
+              { "id": "code:src-middleware-redux-ts:redux-impl", "name": "ReduxImpl" }
+            ]
+          },
+          { "id": "container:zustand", "kind": "container", "p": 20 },
+          {
+            "id": "component:src-middleware-subscribe-with-selector-ts",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector", "name": "SubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector-impl-2", "name": "subscribeWithSelectorImpl" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "name": "StoreSubscribeWithSelector" }
+            ]
+          },
+          {
+            "id": "component:examples-starter-src-index-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:examples-starter-src-index-tsx:use-store", "name": "useStore" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-persist-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-middleware-persist-ts:state-storage", "name": "StateStorage" },
+              { "id": "code:src-middleware-persist-ts:persist", "name": "Persist" },
+              { "id": "code:src-middleware-persist-ts:persist-options", "name": "PersistOptions" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-immer-ts",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-middleware-immer-ts:set-state-type", "name": "SetStateType" },
+              { "id": "code:src-middleware-immer-ts:immer", "name": "Immer" },
+              { "id": "code:src-middleware-immer-ts:store-immer", "name": "StoreImmer" }
+            ]
+          },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 },
+          { "id": "component:examples-starter-vite-config-ts", "kind": "component", "p": 28 },
+          { "id": "component:eslint-config-mjs", "kind": "component", "p": 30 },
+          { "id": "component:examples-demo-src-components-snippet-lang-jsx", "kind": "component", "p": 4 },
+          { "id": "component:src-index-ts", "kind": "component", "p": 21 },
+          {
+            "id": "component:src-middleware-ssr-safe-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middleware-ssr-safe-ts:ssr-safe", "name": "ssrSafe" }
+            ]
+          },
+          { "id": "component:examples-demo-src-components-fireflies-jsx", "kind": "component", "p": 10 },
+          { "id": "component:vitest-config-mts", "kind": "component", "p": 17 }
+        ],
+        "expectedIndexed": { "src/middleware/devtools.ts": true, "docs/reference/middlewares/devtools.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11901, "sectionCount": 9, "ranked": [0, 5, 13, 9, 15, 12, 20, 2, 18] },
+          "double": { "byteBudget": 48000, "bytes": 21974, "sectionCount": 19, "ranked": [0, 5, 13, 9, 15, 12, 20, 26, 2, 11, 25, 18, 28, 30, 4, 21, 24, 10, 17] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11901, "sectionCount": 9, "ranked": [0, 5, 13, 9, 15, 12, 20, 2, 18] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 21974, "sectionCount": 19, "ranked": [0, 5, 13, 9, 15, 12, 20, 26, 2, 11, 25, 18, 28, 30, 4, 21, 24, 10, 17] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "e427f1e8a164a0a73880d1adbbd1d64aee91f5c08ceddf815f5670581a096e65",
+          "allowedIdsCount": 51,
+          "allowedIdsSha256": "93ad2aaaf18a24e98bd3fd8d9c0f51b493bcf27513d290008433c36e63ba9b45",
+          "allowedIdsInContent": ["component:src-middleware-devtools-ts", "code:src-middleware-devtools-ts:get-tracked-connection-state", "code:src-middleware-devtools-ts:devtools", "code:src-middleware-devtools-ts:devtools-impl-2", "component:src-middleware-redux-ts"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Wrap your store in the `devtools` middleware from `src/middleware/devtools.ts`, which connects it to `window.__REDUX_DEVTOOLS_EXTENSION__` and relays messages so you can inspect state changes and use the extension's time-travel (jump-to-action) controls. The whole connection/dispatch flow lives in `devtoolsImpl` (`src/middleware/devtools.ts:188-423`).\\n\\n- `src/middleware/devtools.ts` — component holding the middleware; `devtoolsImpl` destructures `enabled`, `anonymousActionType`, and `store` from `DevtoolsOptions` and wires the extension connection.\\n- `devtoolsImpl` gates extension-originated dispatches via `shouldDispatchFromDevtools` on the `dispatchFromDevtools` flag, so time-travel jumps actually re-dispatch into your store.\\n- `getTrackedConnectionState` (`src/middleware/devtools.ts:121-129`) merges states of all stores sharing one connection name (from `trackedConnections`) — relevant if several stores use the same connection name.\\n- `Devtools` (lines 91-99) is the public type surface; `findCallerName` with `v8StackLineRe`/`geckoStackLineRe` labels actions.\\n- If you use the `redux` middleware (`src/middleware/redux.ts`), its `StoreRedux<A>` type carries `dispatchFromDevtools`, which the devtools middleware consults for reducer-based actions.\\n\\nNot in the evidence: exact middleware invocation syntax/options (e.g. `devtools(..., 'name')` call shape) and how to enable the extension, since no usage example for `devtools` was returned.\", \"citations\": [\"component:src-middleware-devtools-ts\", \"code:src-middleware-devtools-ts:devtools-impl-2\", \"code:src-middleware-devtools-ts:get-tracked-connection-state\", \"code:src-middleware-devtools-ts:devtools\", \"component:src-middleware-redux-ts\"]}",
+          "usage": { "promptTokens": 8360, "completionTokens": 456, "totalTokens": 8816, "costUsd": 0.00403332 },
+          "ms": 14935
+        }
+      },
+      {
+        "id": "zustand-build-formats",
+        "question": "How is the package built into the different module formats it publishes?",
+        "selectedId": "system:zustand",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 11189,
+        "sectionCount": 14,
+        "ranked": [20, 13, 10, 18, 23, 31, 21, 0, 5, 15, 28, 29, 30, 19],
+        "packets": [23, 20],
+        "sections": [
+          { "id": "container:zustand", "kind": "container", "p": 20 },
+          {
+            "id": "component:rollup-config-mjs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:rollup-config-mjs:create-common-js-config", "name": "createCommonJSConfig" },
+              { "id": "code:rollup-config-mjs:create-esm-config", "name": "createESMConfig" }
+            ]
+          },
+          { "id": "component:examples-demo-src-components-fireflies-jsx", "kind": "component", "p": 10 },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 },
+          { "id": "system:zustand", "kind": "softwareSystem", "p": 23 },
+          { "id": "component:examples-demo-src-main-jsx", "kind": "component", "p": 31 },
+          { "id": "component:src-index-ts", "kind": "component", "p": 21 },
+          { "id": "component:src-middleware-devtools-ts", "kind": "component", "p": 0 },
+          { "id": "component:src-vanilla-ts", "kind": "component", "p": 5 },
+          { "id": "component:src-react-ts", "kind": "component", "p": 15 },
+          { "id": "component:examples-starter-vite-config-ts", "kind": "component", "p": 28 },
+          { "id": "component:tests-setup-ts", "kind": "component", "p": 29 },
+          { "id": "component:eslint-config-mjs", "kind": "component", "p": 30 },
+          { "id": "component:tests-test-utils-ts", "kind": "component", "p": 19 }
+        ],
+        "expectedIndexed": { "rollup.config.mjs": true, "package.json": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11189, "sectionCount": 14, "ranked": [20, 13, 10, 18, 23, 31, 21, 0, 5, 15, 28, 29, 30, 19] },
+          "double": { "byteBudget": 48000, "bytes": 11189, "sectionCount": 14, "ranked": [20, 13, 10, 18, 23, 31, 21, 0, 5, 15, 28, 29, 30, 19] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11189, "sectionCount": 14, "ranked": [20, 13, 10, 18, 23, 31, 21, 0, 5, 15, 28, 29, 30, 19] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 11189, "sectionCount": 14, "ranked": [20, 13, 10, 18, 23, 31, 21, 0, 5, 15, 28, 29, 30, 19] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "935ebd4772d090ae8309ca07f2db7eb86832805e3f8ca530616f0c05034c9b42",
+          "allowedIdsCount": 16,
+          "allowedIdsSha256": "6b55e137616805782eb623acab664a1a278e04bbc8e9241ef6a06e80ef880329",
+          "allowedIdsInContent": ["container:zustand", "component:rollup-config-mjs", "code:rollup-config-mjs:create-common-js-config", "code:rollup-config-mjs:create-esm-config"],
+          "packetSources": { "container:zustand": 20 },
+          "content": "{\"answer\":\"The library is built with `rollup.config.mjs`, which defines three near-parallel factories — `createDeclarationConfig`, `createESMConfig`, and `createCommonJSConfig` — producing declaration, ESM, and CJS outputs respectively.\\n\\n- `createCommonJSConfig` (lines 75–91) emits `output: { file: output, format: 'cjs' }` and chains plugins: `alias` (applying `entries` minus the one matching the current input), `resolve`, `replace`, and `getEsbuild()`.\\n- `createESMConfig` (lines 47–73) is the ESM counterpart; the two must be kept in sync when changing `output`/`plugins`. Its exact output shape isn't in the evidence beyond the symbol.\\n- The `entries` regexes in `rollup.config.mjs` rewrite internal imports (`vanilla.ts`, `shallow.ts`) to published `zustand/*` specifiers, so each built format ships pointing at the package's public paths rather than relative sources.\\n- `external(id)` treats anything that is neither relative nor under `root` as external, keeping dependencies out of the bundles.\\n- `getEsbuild()` pins `target: 'es2018'` with `import-meta` enabled; CJS additionally replaces `import.meta.env?.MODE` with `process.env.NODE_ENV`, which is how `import.meta` survives into the CommonJS output.\\n\\nNot covered in the evidence: the precise `output` settings of `createESMConfig` and the full body of `createDeclarationConfig` (only named in `component:rollup-config-mjs`'s key points).\",\"citations\":[\"component:rollup-config-mjs\",\"code:rollup-config-mjs:create-common-js-config\",\"code:rollup-config-mjs:create-esm-config\",\"container:zustand\"]}",
+          "usage": { "promptTokens": 3805, "completionTokens": 684, "totalTokens": 4489, "costUsd": 0.002250255 },
+          "ms": 35264
+        }
+      },
+      {
+        "id": "zustand-reset",
+        "question": "How do I put a store back to how it started, say when a user logs out?",
+        "selectedId": "system:zustand",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23858,
+        "sectionCount": 18,
+        "ranked": [2, 5, 11, 0, 18, 6, 20, 9, 12, 7, 23, 3, 25, 24, 26, 15, 22, 28],
+        "packets": [23, 20],
+        "sections": [
+          {
+            "id": "component:examples-starter-src-index-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:examples-starter-src-index-tsx:use-store", "name": "useStore" },
+              { "id": "code:examples-starter-src-index-tsx:store", "name": "Store" },
+              { "id": "code:examples-starter-src-index-tsx:counter", "name": "Counter" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-vanilla-ts:create-store-impl", "name": "createStoreImpl" },
+              { "id": "code:src-vanilla-ts:create-store-2", "name": "CreateStore" },
+              { "id": "code:src-vanilla-ts:create-store", "name": "createStore" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-persist-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-middleware-persist-ts:store-persist", "name": "StorePersist" },
+              { "id": "code:src-middleware-persist-ts:persist", "name": "Persist" },
+              { "id": "code:src-middleware-persist-ts:with-persist", "name": "WithPersist" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-devtools-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-middleware-devtools-ts:remove-store-from-tracked-connections", "name": "removeStoreFromTrackedConnections" },
+              { "id": "code:src-middleware-devtools-ts:store-devtools", "name": "StoreDevtools" },
+              { "id": "code:src-middleware-devtools-ts:store-information", "name": "StoreInformation" }
+            ]
+          },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 },
+          {
+            "id": "component:src-react-shallow-ts",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:src-react-shallow-ts:use-shallow", "name": "useShallow" }
+            ]
+          },
+          { "id": "container:zustand", "kind": "container", "p": 20 },
+          {
+            "id": "component:src-traditional-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-3", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-2", "name": "useStoreWithEqualityFn" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-redux-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-middleware-redux-ts:store-redux", "name": "StoreRedux" },
+              { "id": "code:src-middleware-redux-ts:with-redux", "name": "WithRedux" },
+              { "id": "code:src-middleware-redux-ts:redux", "name": "Redux" }
+            ]
+          },
+          { "id": "component:src-shallow-ts", "kind": "component", "p": 7 },
+          { "id": "system:zustand", "kind": "softwareSystem", "p": 23 },
+          { "id": "component:src-vanilla-shallow-ts", "kind": "component", "p": 3 },
+          {
+            "id": "component:src-middleware-immer-ts",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-middleware-immer-ts:store-immer", "name": "StoreImmer" },
+              { "id": "code:src-middleware-immer-ts:immer", "name": "Immer" },
+              { "id": "code:src-middleware-immer-ts:with-immer", "name": "WithImmer" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-ssr-safe-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middleware-ssr-safe-ts:ssr-safe", "name": "ssrSafe" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-subscribe-with-selector-ts",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "name": "StoreSubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:subscribe-with-selector", "name": "SubscribeWithSelector" },
+              { "id": "code:src-middleware-subscribe-with-selector-ts:with-selector-subscribe", "name": "WithSelectorSubscribe" }
+            ]
+          },
+          {
+            "id": "component:src-react-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:src-react-ts:use-store-3", "name": "useStore" },
+              { "id": "code:src-react-ts:use-store", "name": "useStore" },
+              { "id": "code:src-react-ts:use-store-2", "name": "useStore" }
+            ]
+          },
+          {
+            "id": "component:examples-demo-src-app-jsx",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:examples-demo-src-app-jsx:use-store", "name": "useStore" }
+            ]
+          },
+          { "id": "component:examples-starter-vite-config-ts", "kind": "component", "p": 28 }
+        ],
+        "expectedIndexed": { "docs/learn/guides/how-to-reset-state.md": false, "src/vanilla.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11873, "sectionCount": 8, "ranked": [2, 5, 11, 0, 18, 6, 20, 12] },
+          "double": { "byteBudget": 48000, "bytes": 27313, "sectionCount": 22, "ranked": [2, 5, 11, 0, 18, 6, 20, 9, 12, 7, 23, 3, 25, 24, 26, 15, 22, 1, 28, 13, 4, 27] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11873, "sectionCount": 8, "ranked": [2, 5, 11, 0, 18, 6, 20, 12] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23858, "sectionCount": 18, "ranked": [2, 5, 11, 0, 18, 6, 20, 9, 12, 7, 23, 3, 25, 24, 26, 15, 22, 28] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "5e2151020f1b0ff82419d5dc0aa6c453aad9bd46b5b68faebb1ad84bc11ce185",
+          "allowedIdsCount": 48,
+          "allowedIdsSha256": "5cd99fb3eab8018455bb26676077cde0dd8e6973b210bd80cb7a63aeb3452c94",
+          "allowedIdsInContent": ["component:examples-starter-src-index-tsx", "code:examples-starter-src-index-tsx:use-store", "component:src-vanilla-ts", "code:src-vanilla-ts:create-store-impl", "code:src-vanilla-ts:create-store-2", "code:src-vanilla-ts:create-store", "component:src-middleware-persist-ts", "code:src-middleware-persist-ts:store-persist"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Use the store API's `getInitialState()` to restore the state captured at creation time: call `useStore.setState(useStore.getInitialState())` (or on an api object from `createStore`). This works because `createStoreImpl` snapshots the initializer's result into `initialState` and returns `getInitialState` alongside `setState`, so resetting is just setting state back to that snapshot — no special reset middleware exists in the evidence.\\n\\n- `src/vanilla.ts` — `createStoreImpl` defines `getInitialState: () => initialState` and captures `initialState` from the initializer; `setState` is the only mutation point, so `setState(getInitialState())` is the reset.\\n- `src/vanilla.ts` — `createStore` / `CreateStore` build the api object containing both methods, whether bound via `create` or used directly.\\n- `examples/starter/src/index.tsx` — `useStore` shows the typical `create` store you'd reset this way (e.g. in a logout handler).\\n- If the store is wrapped in `persist` (`src/middleware/persist.ts`), also call the exposed `persist.clearStorage()` (see `StorePersist`) so the persisted copy doesn't rehydrate old state on next login.\\n\\nNote: a dedicated `reset`/`useReset` API is not in the evidence; the `getInitialState` + `setState` pattern is the documented mechanism.\",\"citations\":[\"component:src-vanilla-ts\",\"code:src-vanilla-ts:create-store-impl\",\"code:src-vanilla-ts:create-store\",\"code:src-vanilla-ts:create-store-2\",\"component:examples-starter-src-index-tsx\",\"code:examples-starter-src-index-tsx:use-store\",\"component:src-middleware-persist-ts\",\"code:src-middleware-persist-ts:store-persist\"]}",
+          "usage": { "promptTokens": 8510, "completionTokens": 496, "totalTokens": 9006, "costUsd": 0.00413337 },
+          "ms": 14852
+        }
+      },
+      {
+        "id": "zustand-custom-equality",
+        "question": "Is there a way to use my own comparison function to decide whether a selected value changed?",
+        "selectedId": "component:rollup-config-mjs",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 20103,
+        "sectionCount": 16,
+        "ranked": [3, 6, 26, 11, 7, 19, 13, 9, 27, 5, 15, 17, 18, 20, 28, 0],
+        "packets": [13, 20],
+        "sections": [
+          {
+            "id": "component:src-vanilla-shallow-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-vanilla-shallow-ts:shallow", "name": "shallow" },
+              { "id": "code:src-vanilla-shallow-ts:compare-entries", "name": "compareEntries" },
+              { "id": "code:src-vanilla-shallow-ts:compare-iterables", "name": "compareIterables" }
+            ]
+          },
+          {
+            "id": "component:src-react-shallow-ts",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:src-react-shallow-ts:use-shallow", "name": "useShallow" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-subscribe-with-selector-ts",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "name": "StoreSubscribeWithSelector" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-persist-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-middleware-persist-ts:storage-value", "name": "StorageValue" },
+              { "id": "code:src-middleware-persist-ts:persist-options", "name": "PersistOptions" },
+              { "id": "code:src-middleware-persist-ts:persist-storage", "name": "PersistStorage" }
+            ]
+          },
+          { "id": "component:src-shallow-ts", "kind": "component", "p": 7 },
+          {
+            "id": "component:tests-test-utils-ts",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:tests-test-utils-ts:reviver", "name": "reviver" },
+              { "id": "code:tests-test-utils-ts:replacer", "name": "replacer" },
+              { "id": "code:tests-test-utils-ts:is-replaced-map", "name": "isReplacedMap" }
+            ]
+          },
+          {
+            "id": "component:rollup-config-mjs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:rollup-config-mjs:external", "name": "external" },
+              { "id": "code:rollup-config-mjs:get-esbuild", "name": "getEsbuild" },
+              { "id": "code:rollup-config-mjs:create-declaration-config", "name": "createDeclarationConfig" }
+            ]
+          },
+          {
+            "id": "component:src-traditional-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn-3", "name": "useStoreWithEqualityFn" },
+              { "id": "code:src-traditional-ts:readonly-store-api", "name": "ReadonlyStoreApi" },
+              { "id": "code:src-traditional-ts:use-store-with-equality-fn", "name": "useStoreWithEqualityFn" }
+            ]
+          },
+          {
+            "id": "component:src-middleware-combine-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:src-middleware-combine-ts:combine", "name": "combine" }
+            ]
+          },
+          {
+            "id": "component:src-vanilla-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-vanilla-ts:create-store-impl", "name": "createStoreImpl" }
+            ]
+          },
+          {
+            "id": "component:src-react-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:src-react-ts:use-store-3", "name": "useStore" },
+              { "id": "code:src-react-ts:readonly-store-api", "name": "ReadonlyStoreApi" },
+              { "id": "code:src-react-ts:use-store", "name": "useStore" }
+            ]
+          },
+          { "id": "component:vitest-config-mts", "kind": "component", "p": 17 },
+          { "id": "component:src-middleware-ts", "kind": "component", "p": 18 },
+          { "id": "container:zustand", "kind": "container", "p": 20 },
+          { "id": "component:examples-starter-vite-config-ts", "kind": "component", "p": 28 },
+          {
+            "id": "component:src-middleware-devtools-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-middleware-devtools-ts:should-dispatch-from-devtools", "name": "shouldDispatchFromDevtools" },
+              { "id": "code:src-middleware-devtools-ts:find-caller-name", "name": "findCallerName" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "src/traditional.ts": true, "docs/reference/hooks/use-store-with-equality-fn.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11841, "sectionCount": 9, "ranked": [3, 6, 26, 11, 7, 19, 13, 9, 17] },
+          "double": { "byteBudget": 48000, "bytes": 20103, "sectionCount": 16, "ranked": [3, 6, 26, 11, 7, 19, 13, 9, 27, 5, 15, 17, 18, 20, 28, 0] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 11841, "sectionCount": 9, "ranked": [3, 6, 26, 11, 7, 19, 13, 9, 17] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 20103, "sectionCount": 16, "ranked": [3, 6, 26, 11, 7, 19, 13, 9, 27, 5, 15, 17, 18, 20, 28, 0] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "84bb6f88429a85e6036a421e13371ae32fc39d02d739cfd714f3f4f69aa191f9",
+          "allowedIdsCount": 44,
+          "allowedIdsSha256": "4002d2f3b138ed30aa1519ea8ec295645179439d2faddc5e9a835f16b13ca578",
+          "allowedIdsInContent": ["component:src-vanilla-shallow-ts", "code:src-vanilla-shallow-ts:shallow", "component:src-react-shallow-ts", "code:src-react-shallow-ts:use-shallow", "component:src-middleware-subscribe-with-selector-ts", "code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector", "component:src-traditional-ts", "code:src-traditional-ts:use-store-with-equality-fn-3", "code:src-traditional-ts:use-store-with-equality-fn"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Yes — two places accept your own comparison function: `useStoreWithEqualityFn` (and `createWithEqualityFn`) in `src/traditional.ts`, and the `subscribe` overloads exposed by the `subscribeWithSelector` middleware.\\n\\n- `src/traditional.ts` — `useStoreWithEqualityFn` takes `equalityFn?: (a: StateSlice, b: StateSlice) => boolean` alongside the selector (selector defaults to `identity`), so rerender/change decisions happen at hook level with your function. `createWithEqualityFn` threads a `defaultEqualityFn` through store creation.\\n- `src/middleware/subscribeWithSelector.ts` — `StoreSubscribeWithSelector` shows the selector-based `subscribe(selector, listener, options)` overload with `options?: { equalityFn?: (a: U, b: U) => boolean; fireImmediately?: boolean }`, so listener notification for a selected slice also honors a custom comparison.\\n- If you only want shallow semantics rather than a fully custom function, `useShallow` in `src/react/shallow.ts` wraps your selector and memoizes on `shallow` comparison (fixed to `shallow`, not pluggable). The built-in `shallow` in `src/vanilla/shallow.ts` (`compareEntries` / `compareIterables`) is what it uses.\",\"citations\":[\"component:src-traditional-ts\",\"code:src-traditional-ts:use-store-with-equality-fn-3\",\"code:src-traditional-ts:use-store-with-equality-fn\",\"component:src-middleware-subscribe-with-selector-ts\",\"code:src-middleware-subscribe-with-selector-ts:store-subscribe-with-selector\",\"component:src-react-shallow-ts\",\"code:src-react-shallow-ts:use-shallow\",\"component:src-vanilla-shallow-ts\",\"code:src-vanilla-shallow-ts:shallow\"]}",
+          "usage": { "promptTokens": 8222, "completionTokens": 592, "totalTokens": 8814, "costUsd": 0.00409161 },
+          "ms": 16536
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "enriched",
+    "nodes": [
+      {
+        "nodeId": "system:zustand",
+        "name": "zustand",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**zustand** is a small state-management library: a framework-agnostic core with React bindings and composable middleware. Read the **zustand** container's `src/vanilla.ts` first; everything else wrap…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `createStoreImpl` in `src/vanilla.ts`; it holds `state`, the `Listener` list, and the only `setState`. | Middleware reshapes store types via `StoreMutators` declaration mergi…" },
+          { "id": "children", "type": "children", "preview": "Children: 1 node — zustand (container)" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"],
+        "jev": {
+          "order": ["enrichment:summary", "enrichment:keyPoints", "children"],
+          "omitted": [
+            { "id": "enrichment:evidence", "why": "jev-omit" }
+          ],
+          "inputTokens": 1641,
+          "estimatedCostUsd": 0.0000689,
+          "latencyMs": 368
+        }
+      },
+      {
+        "nodeId": "container:zustand",
+        "name": "zustand",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**zustand** is a small state-management library: a framework-agnostic core in `src/vanilla.ts` with React bindings and composable middleware. Read `src/vanilla.ts` first; everything else wraps its `s…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `createStoreImpl` in `src/vanilla.ts`; it holds `state`, the `Listener` list, and the only `setState`. | Middleware reshapes store types via `StoreMutators` declaration mergi…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — zustand (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 30 nodes — eslint.config.mjs (component); examples/demo/src/App.jsx (component); examples/demo/src/components/CodePrevie… (component); +27 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:keyPoints", "children", "relations:parent", "enrichment:evidence"], "inputTokens": 1971, "estimatedCostUsd": 0.0000828, "latencyMs": 233 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "full" },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 80, "maxTokens": 4000000, "maxDollars": 0.35, "maxConcurrent": 4, "globalMaxDollars": 0.8288 },
+    "ms": 232797,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 32,
+    "inputTokens": 48826,
+    "outputTokens": 28152,
+    "costUsd": 0.038399,
+    "costEstimated": false,
+    "coverage": { "accepted": 31, "failed": 1, "notRun": 0, "belowCap": 141, "inScope": 32 },
+    "byKind": {
+      "code": { "total": 141, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 141 },
+      "component": { "total": 30, "accepted": 29, "failed": 1, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 1,
+    "parentsWithUnsettledChildren": 0,
+    "failures": [
+      { "scopeId": "component:examples-demo-src-components-details-jsx", "kind": "component", "class": "rejected-by-validator", "error": "rejected explanation: 1 keyPoints (allowed 2-5)" }
+    ]
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 4011,
+    "outcome": "accepted",
+    "stopped": "failed",
+    "requests": 15,
+    "inputTokens": 34140,
+    "costUsd": 0.0014339,
+    "costEstimated": true,
+    "rows": [
+      { "scopeId": "component:eslint-config-mjs", "claimId": "ca46bfb88588514f84c03", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-app-jsx", "claimId": "c88e23780e0787d3ddbf5", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-app-jsx", "claimId": "cf3874a502391441b051b", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-app-jsx", "claimId": "cb8a4e1ffb1687ebbe4ee", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-app-jsx", "claimId": "c23c29299ba12942935fa", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-code-preview-jsx", "claimId": "cff05af09308b3495fd9b", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-code-preview-jsx", "claimId": "cdf49479cec5f0c89c312", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-code-preview-jsx", "claimId": "c41ecbbe0febde668ffea", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-code-preview-jsx", "claimId": "ce8cb129ffb6213b974a6", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-copy-button-jsx", "claimId": "c025de72f94bb0665dd8d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-copy-button-jsx", "claimId": "c4560f152c6c8c55000d1", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-copy-button-jsx", "claimId": "c5e749e47cc587ba0ae58", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-fireflies-jsx", "claimId": "c5b6abde485a57f0eb5a4", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-fireflies-jsx", "claimId": "c0ed079ab69e6a786505e", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-fireflies-jsx", "claimId": "c172f60728be8718c2382", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-fireflies-jsx", "claimId": "cd512187d79d76f801780", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-scene-jsx", "claimId": "cd673a74b54ebf4fda2c6", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-scene-jsx", "claimId": "c7809cb0838185ffcc77c", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-scene-jsx", "claimId": "cf929c928ba83a3684b14", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-scene-jsx", "claimId": "ce2028c62878b2c5bfc4e", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-scene-jsx", "claimId": "c13e10f508055e2c455c4", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-scene-jsx", "claimId": "c21b8a0cc6061aad1a61b", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-snippet-lang-jsx", "claimId": "cdc65f91d8fcd796c858a", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-components-snippet-lang-jsx", "claimId": "cc45db2823a67a3342ce5", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-main-jsx", "claimId": "c2e8fd736e9f4f807bfe3", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-main-jsx", "claimId": "c66ab0752a7a581a65606", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-main-jsx", "claimId": "c8d74b32e7899aa1d87f1", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-demo-src-main-jsx", "claimId": "c2e6b168c278f2fa07038", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:examples-starter-src-index-tsx", "claimId": "cb3f94f027b18ff5f3a3c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:examples-starter-src-index-tsx", "claimId": "cfb4cb9349c7b74f62712", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:examples-starter-src-index-tsx", "claimId": "c7b9a24ceefa26a14dbe8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:rollup-config-mjs", "claimId": "c31ae68ea82ec40d62d06", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:rollup-config-mjs", "claimId": "c51c548a6870c6e2b8729", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:rollup-config-mjs", "claimId": "c1b918b644bfc90864a3b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:rollup-config-mjs", "claimId": "cf62ba32c62dc1635314a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:rollup-config-mjs", "claimId": "c061c850c797ab75fe200", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:rollup-config-mjs", "claimId": "c4651e373ecd7c85b8bf0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:src-index-ts", "claimId": "c29ad67205f2751d9f048", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-index-ts", "claimId": "c2657fdc8704a89dd9811", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-middleware-combine-ts", "claimId": "cc9fe973cd1d2799ad9d1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.16 },
+      { "scopeId": "component:src-middleware-combine-ts", "claimId": "c5c55d57fd0a04229319c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:src-middleware-devtools-ts", "claimId": "c31655d8ddeae4bd8a270", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-middleware-devtools-ts", "claimId": "c153401407c5f664f1fc6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-middleware-devtools-ts", "claimId": "cf07e2aca0e66b2be3af2", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:src-middleware-devtools-ts", "claimId": "c0e1a5f848510622d2246", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.72 },
+      { "scopeId": "component:src-middleware-devtools-ts", "claimId": "c76d459119da52ce8282a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:src-middleware-devtools-ts", "claimId": "c65ad2a3a0632644dec55", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:src-middleware-immer-ts", "claimId": "c26b832ab308cf2fd9d8d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:src-middleware-immer-ts", "claimId": "c2cab81b4dd51cf4a530a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:src-middleware-immer-ts", "claimId": "cab875a292931c0107fe1", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-middleware-immer-ts", "claimId": "caeb04cd7113edb5dfa1a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-middleware-immer-ts", "claimId": "c41e7d78df8f0de244ddd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:src-middleware-immer-ts", "claimId": "c6af58f8b4a66765194f6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:src-middleware-persist-ts", "claimId": "c22d11e6463c77e1dbd38", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-middleware-persist-ts", "claimId": "c45a75d9cc302d09fbca8", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-middleware-persist-ts", "claimId": "cf4c772c0355e2a87bfb4", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-middleware-persist-ts", "claimId": "c93f8db47983bfd565d21", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.27 },
+      { "scopeId": "component:src-middleware-redux-ts", "claimId": "ca027880f963ef7b5dc93", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:src-middleware-redux-ts", "claimId": "cf82e1eeff5ac27237a35", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.6 },
+      { "scopeId": "component:src-middleware-redux-ts", "claimId": "c609f738d9d3dbb2cf46c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:src-middleware-redux-ts", "claimId": "ca0d6008dd880cdba25e0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:src-middleware-redux-ts", "claimId": "c2c72903494e2719a9aae", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:src-middleware-ssr-safe-ts", "claimId": "c638ea85470ebbd7f3d1a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:src-middleware-ssr-safe-ts", "claimId": "ca6421ca53370fdc3f823", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:src-middleware-ssr-safe-ts", "claimId": "c9b4f083562bc598cbaa7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:src-middleware-ssr-safe-ts", "claimId": "c72b47701b3248c51019c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:src-middleware-ssr-safe-ts", "claimId": "c6f79d3502c04912f6b46", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:src-middleware-subscribe-with-selector-ts", "claimId": "c4116211b3b98fcbe7229", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.22 },
+      { "scopeId": "component:src-middleware-subscribe-with-selector-ts", "claimId": "cb1c8a8e901a1c6c9ce60", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.63 },
+      { "scopeId": "component:src-middleware-subscribe-with-selector-ts", "claimId": "ce6158c92e162740b7922", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-middleware-subscribe-with-selector-ts", "claimId": "c90429ff95577234dafba", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-middleware-ts", "claimId": "cddac59544001c4a47ac0", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-middleware-ts", "claimId": "cbcb18ea591190fb4b706", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-react-shallow-ts", "claimId": "ced3a77dd697029f5ee8e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:src-react-shallow-ts", "claimId": "ca2b1dcd3e088d45f07ef", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:src-react-shallow-ts", "claimId": "c1bf6ceed4c51821a4223", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.17 },
+      { "scopeId": "component:src-react-ts", "claimId": "cbb3a055c34ce21f5af20", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.6 },
+      { "scopeId": "component:src-react-ts", "claimId": "cef236ab12ef9f0104325", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:src-react-ts", "claimId": "c70d880394a32c7fb24f6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:src-react-ts", "claimId": "cfbd4a7451796f906b1f5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:src-traditional-ts", "claimId": "c30abb15e8b3670fb71cb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:src-traditional-ts", "claimId": "cf53643e3286da501b49d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:src-traditional-ts", "claimId": "c3ddd5b293bcdea95dad5", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:src-traditional-ts", "claimId": "c17f4f82a70b84b2845e6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:src-vanilla-shallow-ts", "claimId": "cebe0a38dfbe09b00fda4", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:src-vanilla-shallow-ts", "claimId": "c06ed883cfb82856855c7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:src-vanilla-shallow-ts", "claimId": "c8db5c62b58a9d1729e17", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:src-vanilla-shallow-ts", "claimId": "cedab099aba3c10759989", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-vanilla-ts", "claimId": "c16b0a37e5a023c2758ca", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:src-vanilla-ts", "claimId": "ca86864d28976f6c8eb2d", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:src-vanilla-ts", "claimId": "cd232e9198f85e4901764", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:src-vanilla-ts", "claimId": "c274387980b06ed2cbab8", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:src-vanilla-ts", "claimId": "c82435b6ca7c6ba554b32", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:src-vanilla-ts", "claimId": "c4685122d737ed19fe13a", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:tests-setup-ts", "claimId": "cf5896d288abfe33c6531", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:tests-test-utils-ts", "claimId": "c0c8a3c08b6706f481f35", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:tests-test-utils-ts", "claimId": "c47360a4286569aaa6af6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:tests-test-utils-ts", "claimId": "cd1ae2beaa3f327a5373a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.64 }
+    ]
+  },
+  "stageMs": { "blocks": 741 }
+}

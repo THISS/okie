@@ -1,0 +1,204 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "pmndrs/zustand",
+  "commitSha": "b57db4f86ef179285da216eeb291266da82c361c",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "zustand-notify",
+      "family": "zustand-notify",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When I change a value in a store, how do the components that use it find out and re-render?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:zustand"
+      },
+      "expectedFiles": [
+        "src/vanilla.ts",
+        "src/react.ts"
+      ],
+      "mustMention": [
+        "listeners|subscribe",
+        "useSyncExternalStore"
+      ],
+      "answerNote": "createStoreImpl keeps state plus a Set of listeners; setState merges (Object.assign unless replace) only when !Object.is(next, state) and calls every listener with (state, prev). The React hook useStore wires api.subscribe/getState into React.useSyncExternalStore with the selector, so a component re-renders when its selected slice changes."
+    },
+    {
+      "id": "zustand-saved-shape-change",
+      "family": "zustand-saved-shape-change",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "If I change the shape of the state I save in the browser between releases, what happens to data users already have stored?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:zustand"
+      },
+      "expectedFiles": [
+        "src/middleware/persist.ts"
+      ],
+      "mustMention": [
+        "version",
+        "migrate"
+      ],
+      "answerNote": "persist stores {state, version}; on hydrate, if the stored version differs from options.version it calls options.migrate(persistedState, version); with no migrate function it logs that the state couldn't be migrated and doesn't use it. Result is merged (shallow by default, or options.merge) and written back."
+    },
+    {
+      "id": "zustand-pick-many-rerender",
+      "family": "zustand-pick-many-rerender",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "My component picks several fields out of the store as an object and now re-renders all the time — how do I stop that?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:zustand"
+      },
+      "expectedFiles": [
+        "src/react/shallow.ts",
+        "docs/reference/hooks/use-shallow.md"
+      ],
+      "mustMention": [
+        "useShallow",
+        "shallow"
+      ],
+      "answerNote": "Wrap the selector in useShallow: it keeps the previous result in a ref and returns it when shallow(prev, next) says the top-level keys/entries are equal, so useSyncExternalStore sees a stable reference."
+    },
+    {
+      "id": "zustand-split-store",
+      "family": "zustand-split-store",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "How should I organise a big store into smaller pieces per feature?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:zustand"
+      },
+      "expectedFiles": [
+        "docs/learn/guides/slices-pattern.md"
+      ],
+      "mustMention": [
+        "slice"
+      ],
+      "answerNote": "Slices pattern guide: write per-feature creator functions (createBearSlice, createFishSlice) that receive (set, get, api) and spread them into one bound store via create((...a) => ({...sliceA(...a), ...sliceB(...a)})); middleware only on the combined store."
+    },
+    {
+      "id": "zustand-browser-debug",
+      "family": "zustand-browser-debug",
+      "status": "draft",
+      "category": "locate",
+      "question": "How can I watch state changes and time-travel through them in the browser's debugging extension?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:examples-demo-src-components-fireflies-jsx"
+      },
+      "expectedFiles": [
+        "src/middleware/devtools.ts",
+        "docs/reference/middlewares/devtools.md"
+      ],
+      "mustMention": [
+        "Redux DevTools|__REDUX_DEVTOOLS_EXTENSION__",
+        "devtools"
+      ],
+      "answerNote": "Wrap the creator in the devtools middleware; it connects to window.__REDUX_DEVTOOLS_EXTENSION__, sends each setState with an action name and handles jump/time-travel messages. Needs @redux-devtools/extension types."
+    },
+    {
+      "id": "zustand-build-formats",
+      "family": "zustand-build-formats",
+      "status": "draft",
+      "category": "config",
+      "question": "How is the package built into the different module formats it publishes?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:zustand"
+      },
+      "expectedFiles": [
+        "rollup.config.mjs",
+        "package.json"
+      ],
+      "mustMention": [
+        "rollup",
+        "esm|cjs|CommonJS"
+      ],
+      "answerNote": "package.json build:* scripts run rollup -c --config-<entry> per entry point (vanilla, react, middleware, shallow, traditional…); rollup.config.mjs emits a CommonJS dist/<entry>.js and an ESM dist/esm/<entry>.mjs for each (plus .d.ts for index), aliasing internal imports to zustand/* subpaths."
+    },
+    {
+      "id": "zustand-reset",
+      "family": "zustand-reset",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "How do I put a store back to how it started, say when a user logs out?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:zustand"
+      },
+      "expectedFiles": [
+        "docs/learn/guides/how-to-reset-state.md",
+        "src/vanilla.ts"
+      ],
+      "mustMention": [
+        "getInitialState"
+      ],
+      "answerNote": "Guide pattern: add a reset action that calls set(store.getInitialState()); for many stores keep a set of reset functions. getInitialState is part of StoreApi in vanilla.ts and returns the state captured when the creator first ran."
+    },
+    {
+      "id": "zustand-custom-equality",
+      "family": "zustand-custom-equality",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "Is there a way to use my own comparison function to decide whether a selected value changed?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:rollup-config-mjs"
+      },
+      "expectedFiles": [
+        "src/traditional.ts",
+        "docs/reference/hooks/use-store-with-equality-fn.md"
+      ],
+      "mustMention": [
+        "useStoreWithEqualityFn|createWithEqualityFn",
+        "use-sync-external-store"
+      ],
+      "answerNote": "zustand/traditional exports useStoreWithEqualityFn and createWithEqualityFn, built on useSyncExternalStoreWithSelector from the use-sync-external-store package, taking an equalityFn third argument."
+    }
+  ],
+  "c4Note": {
+    "verdict": "partly",
+    "note": "A single container for a small library is defensible, but it mixes the published library (src/) with two separate example apps (examples/demo, examples/starter, each with their own package.json/Vite config), test setup and root tool configs as if they were peer components. A maintainer would describe the library by its entry points: vanilla core, React bindings, middleware, shallow helpers, and the 'traditional' equality-fn API. The ~50-file docs/ site, which answers most usage questions, is invisible.",
+    "expectedContainers": [
+      "zustand library (src/, published npm package with subpath entry points)",
+      "demo site (examples/demo)",
+      "starter example (examples/starter)"
+    ],
+    "problems": [
+      "examples/demo (8 components) and examples/starter folded into the library container instead of their own containers",
+      "eslint.config.mjs, rollup.config.mjs, vitest.config.mts, examples/starter/vite.config.ts and tests/setup.ts shown as architecture components",
+      "src/middleware/*.ts (7 files) and src/middleware.ts not grouped into one 'middleware' component; vanilla/react shallow helpers likewise split",
+      "docs/ Markdown (guides + API reference) not represented at all"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:zustand",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Tiny library: summary says what it is and to read src/vanilla.ts; key points add middleware typing and rollup gotcha; children is one drill-in link."
+    },
+    {
+      "nodeId": "container:zustand",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary and key points carry the whole mental model; the 30 children mix examples and lint config with src so they come after; parent is redundant."
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "spring-projects__spring-petclinic",
+  "repository": "spring-projects/spring-petclinic",
+  "commitSha": "818c4136ea971c21674525f9053de0d9c7ad8cfe",
+  "scan": {
+    "asIs": {
+      "revision": "818c4136ea971c21674525f9053de0d9c7ad8cfe",
+      "ok": true,
+      "ms": 81,
+      "entities": 2,
+      "relations": 0,
+      "kinds": { "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:spring-projects-spring-petclinic", "name": "spring-projects_spring-petclinic", "components": 0 }
+      ],
+      "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Java" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:49.134Z",
+    "corpus": "scan",
+    "entityCount": 2,
+    "systemNames": ["spring-petclinic"],
+    "paths": ["README.md", "spring-projects-spring-petclinic"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "petclinic-owner-search",
+        "question": "When I search for an owner by surname, what happens with zero, one, or many matches?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "7c83a832771e33ddd73ab62f322383bf45ffa493d679155ca71199ef9e99885d",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"Not in the evidence — the whole-atlas search returned no sections (`search.sectionCount: 0`), and the selected scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) contain only scope metadata (name, kind, source), with no code, symbols, or behaviour describing owner search by surname or its zero/one/many match handling. Nothing in the provided evidence answers what happens in those cases.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 609, "completionTokens": 197, "totalTokens": 806, "costUsd": 0.000325969 },
+          "ms": 10147
+        }
+      },
+      {
+        "id": "petclinic-pet-rules",
+        "question": "What rules must a pet's details satisfy before it can be saved?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "d4ec006e887e474db621d9f265345efb919bdb1d05325f2669bc00f444fc37f3",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned zero sections (`search.sectionCount: 0`), and the selected scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) only identify the system and container names — they contain no source excerpts, symbols, or validation rules. So there is nothing here describing what a pet's details must satisfy before saving (e.g. any validation annotations or constraints). A search over the pet/owner validation or persistence code would be needed to answer this.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 603, "completionTokens": 168, "totalTokens": 771, "costUsd": 0.000298129 },
+          "ms": 10279
+        }
+      },
+      {
+        "id": "petclinic-vet-cache",
+        "question": "Is the list of veterinarians cached, and where is that set up?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java": false, "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "4fed64714fbade423ac74efc0cc0cede88a0549b2e1aa31f0ae6421056f1d000",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned no sections (`search.sectionCount` is 0), and the selected-scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) contain only scope identity/metadata — no files, symbols, or descriptions mentioning caching, a veterinarian list, or where any cache would be configured. Nothing in the provided evidence can confirm or locate such caching.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 604, "completionTokens": 151, "totalTokens": 755, "costUsd": 0.0002836716 },
+          "ms": 9389
+        }
+      },
+      {
+        "id": "petclinic-switch-db",
+        "question": "How do I run the app against MySQL instead of the built-in in-memory database?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/resources/application-mysql.properties": false, "README.md": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "fa5c1e916572bbc8fb5d1c2519ac3944ad9bed16d950fa4572c810623052733f",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned zero sections, and the selected scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) contain only names and sources — no configuration, profile, or datasource details. I can't tell you how to run the app against MySQL without inventing specifics that aren't present here.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 606, "completionTokens": 130, "totalTokens": 736, "costUsd": 0.0002662716 },
+          "ms": 5320
+        }
+      },
+      {
+        "id": "petclinic-language",
+        "question": "How can a visitor switch the site's language?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/java/org/springframework/samples/petclinic/system/WebConfiguration.java": false, "src/main/resources/messages/messages.properties": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "1eb2d54031d5c5e753578ab7c313bf61d8c70ca0f4e5188289d0ed7b73f14cad",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"This is not in the evidence. The whole-atlas search returned zero sections (`search.sectionCount` is 0), and the selected scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) carry only names and sources — no language-switching mechanism, i18n configuration, or locale selector is described in any available evidence.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 599, "completionTokens": 145, "totalTokens": 744, "costUsd": 0.0002762766 },
+          "ms": 5953
+        }
+      },
+      {
+        "id": "petclinic-error-demo",
+        "question": "Is there a page that deliberately triggers an error to show what the error screen looks like?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/java/org/springframework/samples/petclinic/system/CrashController.java": false, "src/main/resources/templates/error.html": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "1f947e8500da59878976b67c4e399eb723836360085cb0710f5a434d55fad02e",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned zero matching sections (`search.sectionCount` is 0), and the selected scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) provide only names and sources — no pages, controllers, or routes are described in them. So I cannot confirm or deny the existence of a page that deliberately triggers an error to demonstrate the error screen.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 607, "completionTokens": 145, "totalTokens": 752, "costUsd": 0.0002797566 },
+          "ms": 5449
+        }
+      },
+      {
+        "id": "petclinic-schema",
+        "question": "Where are the database tables and the sample owners, pets and vets defined?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/resources/db/h2/schema.sql": false, "src/main/resources/db/h2/data.sql": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "baee72c60facbe0a872035172f4e6718969c8726f95c58ace7c044c3eb9ee6c8",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"The atlas does not contain where the database tables or the sample owners, pets and vets data are defined. The whole-atlas search returned zero matching sections, and the selected scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) only identify the Spring PetClinic software system and its container — they carry no files, symbols, or schema details. Answer: not in the evidence.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 604, "completionTokens": 198, "totalTokens": 802, "costUsd": 0.000435 },
+          "ms": 9609
+        }
+      },
+      {
+        "id": "petclinic-visit-date",
+        "question": "When booking a vet visit for a pet, what stops someone choosing a date in the past?",
+        "selectedId": "system:spring-projects-spring-petclinic",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "f0e065e3795535f815c79cdc9563e5b07c5525f4d2b79498e44a97aaee75334b",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "8dff2c94c600212efb64ee92b8eb52a5cc9dbcd16e713eec77b0bcddaa2c9921",
+          "allowedIdsInContent": ["system:spring-projects-spring-petclinic", "container:spring-projects-spring-petclinic"],
+          "packetSources": { "system:spring-projects-spring-petclinic": 0, "container:spring-projects-spring-petclinic": 1 },
+          "content": "{\"answer\": \"Not in the evidence — the whole-atlas search returned no sections, and the selected scope packets (`system:spring-projects-spring-petclinic`, `container:spring-projects-spring-petclinic`) contain only names and sources, with no details about visit booking or date validation rules. So I cannot say what prevents selecting a past date when booking a vet visit.\", \"citations\": [\"system:spring-projects-spring-petclinic\", \"container:spring-projects-spring-petclinic\"]}",
+          "usage": { "promptTokens": 608, "completionTokens": 124, "totalTokens": 732, "costUsd": 0.0002619216 },
+          "ms": 5542
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "scan",
+    "nodes": [
+      {
+        "nodeId": "system:spring-projects-spring-petclinic",
+        "name": "Spring-projects_spring-petclinic",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "children", "type": "children", "preview": "Children: 1 node — spring-projects_spring-petclinic (container)" }
+        ],
+        "defaultOrder": ["children"],
+        "jev": { "order": ["children"], "inputTokens": 620, "estimatedCostUsd": 0.000026, "latencyMs": 240 }
+      },
+      {
+        "nodeId": "container:spring-projects-spring-petclinic",
+        "name": "spring-projects_spring-petclinic",
+        "kind": "container",
+        "candidates": [
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — Spring-projects_spring-petclinic (softwareSystem)" }
+        ],
+        "defaultOrder": ["relations:parent"],
+        "jev": { "order": ["relations:parent"], "inputTokens": 622, "estimatedCostUsd": 0.0000261, "latencyMs": 240 }
+      }
+    ]
+  },
+  "enrichmentSkipped": { "reason": "skipped: scanner-blind (Java; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)" },
+  "stageMs": { "ask": 10282, "blocks": 482 }
+}

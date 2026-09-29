@@ -1,0 +1,229 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "go-gitea/gitea",
+  "commitSha": "fba8d7eaceeed3f8bbc364386d2a35aa672285a2",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "gitea-webhook-delivery",
+      "family": "gitea-webhook-delivery",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "After a push, how are the external URLs a repo owner registered notified, and how can the receiver tell the request is genuine?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:go-gitea-gitea"
+      },
+      "expectedFiles": [
+        "services/webhook/webhook.go",
+        "services/webhook/deliver.go",
+        "services/webhook/notifier.go"
+      ],
+      "mustMention": [
+        "queue|HookTask",
+        "HMAC|signature"
+      ],
+      "answerNote": "webhookNotifier.PushCommits builds a PushPayload -> PrepareWebhooks/PrepareWebhook applies branch filter, creates a HookTask and enqueues it; Deliver sends the HTTP request with X-Gitea-Signature / X-Hub-Signature-256 (HMAC-SHA256 of the payload with the webhook secret)."
+    },
+    {
+      "id": "gitea-protected-branch",
+      "family": "gitea-protected-branch",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "What stops someone from force-pushing to a branch the team has locked down?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:go-gitea-gitea"
+      },
+      "expectedFiles": [
+        "routers/private/hook_pre_receive.go"
+      ],
+      "mustMention": [
+        "pre-receive|pre_receive|prereceive",
+        "force"
+      ],
+      "answerNote": "git pre-receive hook calls the internal HookPreReceive endpoint; preReceiveBranch loads the protected-branch rule and rejects deletion, force pushes (unless allowlisted), unsigned commits when required, protected-file changes, and users not allowed to push."
+    },
+    {
+      "id": "gitea-web-routes",
+      "family": "gitea-web-routes",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "Where are the browser page URLs connected to the code that handles them?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:go-gitea-gitea"
+      },
+      "expectedFiles": [
+        "routers/web/web.go"
+      ],
+      "mustMention": [
+        "registerWebRoutes|Routes",
+        "Group"
+      ],
+      "answerNote": "routers/web/web.go Routes()/registerWebRoutes registers every web path with m.Group/m.Get/m.Post against handlers in routers/web/*; the REST API equivalent is routers/api/v1/api.go."
+    },
+    {
+      "id": "gitea-api-token",
+      "family": "gitea-api-token",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "How does a script calling the REST API prove who it is with a personal token?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:tools-generate-svg-ts"
+      },
+      "expectedFiles": [
+        "services/auth/oauth2.go"
+      ],
+      "mustMention": [
+        "Authorization|bearer",
+        "access token|GetAccessTokenBySHA"
+      ],
+      "answerNote": "OAuth2 auth method parseToken reads token/access_token query params (unless DISABLE_QUERY_AUTH_TOKEN) or an Authorization Bearer header; userFromToken tries OAuth JWT first, then looks up a personal access token by hash (GetAccessTokenBySHA) and sets its scope. Selection starts from an unrelated tools/ component."
+    },
+    {
+      "id": "gitea-listen-port",
+      "family": "gitea-listen-port",
+      "status": "draft",
+      "category": "config",
+      "question": "How do I change which port the web server listens on?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:go-gitea-gitea"
+      },
+      "expectedFiles": [
+        "custom/conf/app.example.ini",
+        "modules/setting/server.go"
+      ],
+      "mustMention": [
+        "HTTP_PORT",
+        "3000",
+        "app.ini"
+      ],
+      "answerNote": "Set HTTP_PORT in the [server] section of app.ini (documented in custom/conf/app.example.ini); modules/setting/server.go reads it with default 3000."
+    },
+    {
+      "id": "gitea-schema-upgrades",
+      "family": "gitea-schema-upgrades",
+      "status": "draft",
+      "category": "locate",
+      "question": "When upgrading to a newer release, where are the database schema changes applied?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:go-gitea-gitea"
+      },
+      "expectedFiles": [
+        "modelmigration/migrations.go"
+      ],
+      "mustMention": [
+        "migration",
+        "version"
+      ],
+      "answerNote": "modelmigration/migrations.go prepareMigrationTasks lists numbered newMigration(...) steps grouped by release (v1_6, v1_7 ... subpackages); the DB version table records the last applied id. Note: lives in top-level modelmigration/, not models/migrations."
+    },
+    {
+      "id": "gitea-run-one-test",
+      "family": "gitea-run-one-test",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "How do I run just one backend test locally?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:go-gitea-gitea"
+      },
+      "expectedFiles": [
+        "docs/testing.md"
+      ],
+      "mustMention": [
+        "go test -run",
+        "test-backend"
+      ],
+      "answerNote": "docs/testing.md: go test -run '^TestName$' ./modulepath/ or make test-backend#TestName; frontend via pnpm exec vitest <filter>; integration via make test-integration#TestName."
+    },
+    {
+      "id": "gitea-heatmap",
+      "family": "gitea-heatmap",
+      "status": "draft",
+      "category": "locate",
+      "question": "How is the contribution calendar on a user's profile page drawn?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:go-gitea-gitea"
+      },
+      "expectedFiles": [
+        "web_src/js/features/heatmap.ts",
+        "web_src/js/components/ActivityHeatmap.vue"
+      ],
+      "mustMention": [
+        "data-heatmap-url|fetch|GET",
+        "ActivityHeatmap|Vue"
+      ],
+      "answerNote": "TS: initHeatmap finds #user-heatmap, GETs data-heatmap-url, buckets [timestamp,count] by local date, then mounts the ActivityHeatmap Vue component (own SVG grid + tippy tooltips). Partial scanner coverage: heatmap.ts visible, .vue not."
+    },
+    {
+      "id": "gitea-notification-badge",
+      "family": "gitea-notification-badge",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How does the unread-notifications badge in the header update without reloading the page?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:web-src-js-features-emoji-ts"
+      },
+      "expectedFiles": [
+        "web_src/js/features/notification.ts",
+        "web_src/js/user-events.sharedworker.ts"
+      ],
+      "mustMention": [
+        "SharedWorker|shared worker",
+        "WebSocket|poll"
+      ],
+      "answerNote": "TS: initNotificationCount subscribes to notification-count user events delivered through a SharedWorker that holds one WebSocket per URL; on worker-unavailable it falls back to periodic polling of the count. Selection starts from an unrelated web_src component."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "Gitea is a Go monolith (cmd/ entry, routers/ HTTP layer, services/ business logic, models/ persistence, modules/ shared libraries) with a TS/Vue frontend bundle in web_src/. The scan sees only TypeScript: one container keyed on package.json with 182 per-file components, almost all web_src/js (features 88, modules 32, utils 11) plus build/lint config files (eslint/vite/tailwind/playwright configs, tools/*.ts) promoted to peer components. No Go, no .vue files (0 entities), so the server - which is the product - is absent.",
+    "expectedContainers": [
+      "gitea server (Go: cmd/, routers/, services/, models/, modules/)",
+      "web frontend bundle (web_src/js + web_src/css, built by vite.config.ts)",
+      "database (models/ via xorm; modelmigration/)",
+      "git repositories on disk + SSH/HTTP git transport (modules/git, routers/private hooks)",
+      "optional: act runner / Actions (services/actions) as separate system"
+    ],
+    "problems": [
+      "Whole Go backend (routers/, services/, models/, modules/) invisible - the Ask/atlas would describe gitea as a frontend-only project",
+      "Single container named after package.json; frontend vs tooling vs e2e tests not separated",
+      "182 components at one level, one per .ts file; web_src/js/features/* should be grouped (e.g. by feature area), not flattened",
+      "Build/lint config files (eslint.config.ts, vite.config.ts, tailwind.config.ts, tools/*.ts) are components alongside product code",
+      ".vue single-file components (e.g. web_src/js/components/ActivityHeatmap.vue) produce no entities"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:go-gitea-gitea",
+      "status": "draft",
+      "order": [
+        "enrichment:keyPoints",
+        "enrichment:summary",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Scanner-blind: summary wrongly calls the whole system the TS frontend, so lead with key points whose concrete web_src pointers stay true; children is one collapsed container."
+    },
+    {
+      "nodeId": "container:go-gitea-gitea",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:diagram",
+        "enrichment:evidence",
+        "children"
+      ],
+      "note": "For the container the frontend framing is accurate: summary + key points give the init order and observer seam; 182 children open with eslint/playwright configs so they go last; parent redundant."
+    }
+  ]
+}

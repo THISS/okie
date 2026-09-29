@@ -1,0 +1,216 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "tokio-rs/axum",
+  "commitSha": "d775cb202bea5f86d7b5f5cd3b36717944635858",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "axum-route-matching",
+      "family": "axum-route-matching",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When a request arrives, how does the app decide which handler gets it, and what happens if no path matches?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tokio-rs-axum"
+      },
+      "expectedFiles": [
+        "axum/src/routing/path_router.rs",
+        "axum/src/routing/mod.rs"
+      ],
+      "mustMention": [
+        "matchit",
+        "fallback",
+        "404|NotFound"
+      ],
+      "answerNote": "Router::call_with_state asks PathRouter, which looks the URI path up in a matchit::Router (Node) to get a RouteId, stores MatchedPath and URL params in request extensions, then calls the endpoint's MethodRouter (which picks by HTTP method). On MatchError::NotFound the request goes to the catch_all_fallback, which defaults to the NotFound service (404)."
+    },
+    {
+      "id": "axum-json-rejection",
+      "family": "axum-json-rejection",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "If a client posts a JSON body that is malformed or has the wrong fields, what status code do they get and where is that decided?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tokio-rs-axum"
+      },
+      "expectedFiles": [
+        "axum/src/json.rs",
+        "axum/src/extract/rejection.rs"
+      ],
+      "mustMention": [
+        "400",
+        "422",
+        "415"
+      ],
+      "answerNote": "The Json extractor first checks Content-Type is application/json (or +json) else MissingJsonContentType -> 415. It buffers the body and deserializes with serde_path_to_error: syntax/EOF errors -> JsonSyntaxError 400; valid JSON of the wrong shape (Category::Data) -> JsonDataError 422. Statuses and bodies are declared with define_rejection! in extract/rejection.rs."
+    },
+    {
+      "id": "axum-body-limit",
+      "family": "axum-body-limit",
+      "status": "draft",
+      "category": "config",
+      "question": "Is there a cap on how large a request body can be, and how do I raise or remove it?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:axum-macros-src-typed-path-rs"
+      },
+      "expectedFiles": [
+        "axum-core/src/extract/default_body_limit.rs",
+        "axum-core/src/ext_traits/request.rs"
+      ],
+      "mustMention": [
+        "2 MB|2_097_152|2mb",
+        "DefaultBodyLimit",
+        "disable|max"
+      ],
+      "answerNote": "Body-consuming extractors built on Bytes (String, Json, Form...) are limited to 2 MB by default: with_limited_body wraps the body in http_body_util::Limited with DEFAULT_LIMIT = 2_097_152 unless a DefaultBodyLimit layer set another value. Use .layer(DefaultBodyLimit::max(n)) or DefaultBodyLimit::disable(); this is local to extractors, unlike tower-http's RequestBodyLimit which applies globally.",
+      "labelFix": "Post-freeze mechanical fix (CLA-289 review): '2 ?MB' was regex syntax that the literal matcher could never satisfy; now '2 MB' (with '2mb' / '2_097_152' alternatives). Question and expected files unchanged."
+    },
+    {
+      "id": "axum-shared-state",
+      "family": "axum-shared-state",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "What's the recommended way to give every request handler access to a database connection pool?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tokio-rs-axum"
+      },
+      "expectedFiles": [
+        "axum/src/lib.rs",
+        "axum/src/extract/state.rs"
+      ],
+      "mustMention": [
+        "State",
+        "with_state",
+        "Arc|Clone"
+      ],
+      "answerNote": "Put it in an app-state struct (derive Clone, often wrap in Arc), attach with Router::with_state(state), and take State<AppState> as a handler argument (before any body extractor). Substates can be pulled out via FromRef. Alternatives documented in lib.rs 'Sharing state with handlers': Extension layer or closure captures; request-derived data belongs in Extension, not State."
+    },
+    {
+      "id": "axum-handler-type-error",
+      "family": "axum-handler-type-error",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "The compiler says my async function can't be used as a route handler because some trait isn't implemented. What are the rules, and how do I get a clearer error?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tokio-rs-axum"
+      },
+      "expectedFiles": [
+        "axum/src/docs/debugging_handler_type_errors.md",
+        "axum-macros/src/debug_handler.rs"
+      ],
+      "mustMention": [
+        "debug_handler",
+        "FromRequestParts|last argument",
+        "Send"
+      ],
+      "answerNote": "A handler must be an async fn with <=16 arguments, all but the last implementing FromRequestParts and the last FromRequest, returning IntoResponse, and its future must be Send (don't hold !Send across .await). Rust's error is opaque; annotate the function with #[axum_macros::debug_handler] (axum-macros) to get a targeted diagnostic."
+    },
+    {
+      "id": "axum-middleware-order",
+      "family": "axum-middleware-order",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "If I stack several middleware layers on a router, in what order do they see the request?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tokio-rs-axum"
+      },
+      "expectedFiles": [
+        "axum/src/docs/middleware.md"
+      ],
+      "mustMention": [
+        "bottom to top|onion",
+        "ServiceBuilder",
+        "top to bottom"
+      ],
+      "answerNote": "Each Router::layer call wraps everything added before it, so with .layer(a).layer(b).layer(c) the request passes c -> b -> a -> handler and the response returns a -> b -> c (bottom to top, onion model). Layers composed inside a tower::ServiceBuilder run top to bottom, which is why ServiceBuilder is recommended."
+    },
+    {
+      "id": "axum-graceful-shutdown",
+      "family": "axum-graceful-shutdown",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How do I make the server finish in-flight requests and stop cleanly when I hit Ctrl-C?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:tokio-rs-axum"
+      },
+      "expectedFiles": [
+        "axum/src/serve/mod.rs",
+        "examples/graceful-shutdown/src/main.rs"
+      ],
+      "mustMention": [
+        "with_graceful_shutdown",
+        "ctrl_c|SIGTERM|signal",
+        "new connections"
+      ],
+      "answerNote": "axum::serve(listener, app).with_graceful_shutdown(signal_future). When the future resolves the accept loop stops taking new connections, each connection is told to shut down gracefully via a watch channel, and serve waits for all connection tasks to finish. The example builds the signal from tokio::signal::ctrl_c and SIGTERM and adds a TimeoutLayer so slow requests cannot block shutdown forever."
+    },
+    {
+      "id": "axum-signed-cookies",
+      "family": "axum-signed-cookies",
+      "status": "draft",
+      "category": "locate",
+      "question": "Where is the support for cookies that the client can read but can't tamper with?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:axum-extra-src-protobuf-rs"
+      },
+      "expectedFiles": [
+        "axum-extra/src/extract/cookie/signed.rs"
+      ],
+      "mustMention": [
+        "SignedCookieJar",
+        "Key",
+        "plaintext|not private"
+      ],
+      "answerNote": "axum-extra's SignedCookieJar (cookie/signed.rs, 'cookie-signed' feature) signs and verifies cookies with a cookie::Key obtained via FromRef from state; values remain readable plaintext (use PrivateCookieJar in cookie/private.rs for encryption). The modified jar must be returned from the handler for Set-Cookie headers to be sent."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "axum is a four-crate Cargo workspace (members = [\"axum\", \"axum-*\"]), but the scanner did not expand the glob members, logged 'single-package repo (no workspace)' and produced a single root container holding 116 file-level components from axum, axum-core, axum-extra and axum-macros. A maintainer explains it as the core traits crate (axum-core), the main framework (axum), opt-in extras (axum-extra) and proc macros (axum-macros), plus a separate examples workspace. Meanwhile the example crates' Rust is not scanned at all, yet five static script.js asset files became components.",
+    "expectedContainers": [
+      "axum-core (axum-core/: FromRequest/IntoResponse traits, body, rejections)",
+      "axum (axum/: Router, handlers, extractors, middleware, serve)",
+      "axum-extra (axum-extra/: cookies, typed routing, extra extractors/responses)",
+      "axum-macros (axum-macros/: debug_handler, FromRequest/FromRef/TypedPath derives)",
+      "examples (examples/*, its own Cargo workspace; optional/noise)"
+    ],
+    "problems": [
+      "Cargo workspace glob members 'axum-*' not expanded; whole repo collapsed into one container 'tokio-rs_axum' (system and container named after the clone dir)",
+      "examples/sse, static-file-server, websockets, websockets-http2 assets/script.js and axum-extra/test_files/script.js shown as architecture components",
+      "example crates' Rust sources (examples/*/src/main.rs, their own workspace) are not scanned, so e.g. the graceful-shutdown example is invisible",
+      "axum/src/docs/*.md (pulled into rustdoc via include_str!, where much behaviour is documented) invisible",
+      "components are 1:1 with files; routing/, extract/, middleware/ modules not grouped"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:tokio-rs-axum",
+      "status": "draft",
+      "order": [
+        "children"
+      ],
+      "note": "No enrichment at system level; the one container link is the only block and leads to the useful narrative."
+    },
+    {
+      "nodeId": "container:tokio-rs-axum",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:diagram",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary names the four crates and read order; key points trace the request hand-off; diagram shows crate layering; 116 file children are secondary; parent redundant."
+    }
+  ]
+}

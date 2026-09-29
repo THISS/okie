@@ -1,0 +1,268 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "BurntSushi/ripgrep",
+  "commitSha": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "rg-ignore-precedence",
+      "family": "rg-ignore-precedence",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "If a file is excluded by .gitignore but another ignore file in a subfolder re-includes it, which rule wins, and in what order are the different ignore sources consulted?",
+      "selection": {
+        "level": "L2 container",
+        "selectedId": "container:crates-pcre2"
+      },
+      "expectedFiles": [
+        "crates/ignore/src/dir.rs",
+        "crates/core/flags/hiargs.rs"
+      ],
+      "mustMention": [
+        "override|--glob",
+        ".rgignore",
+        ".ignore"
+      ],
+      "answerNote": "Ignore::matched checks override globs first (highest precedence, e.g. -g), then matched_ignore walks the directory's matcher and its parents: custom ignore files (.rgignore, registered in hiargs via add_custom_ignore_filename) beat .ignore, which beats .gitignore, then .git/info/exclude, then the global gitignore, then explicit --ignore-file; the nearest directory's match wins, whitelists (!pattern) can re-include, and file-type filters are checked last."
+    },
+    {
+      "id": "rg-binary-files",
+      "family": "rg-binary-files",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "Why does rg sometimes stop searching a file partway through and warn that it looks binary, and how do I make it search such files anyway?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:burnt-sushi-ripgrep"
+      },
+      "expectedFiles": [
+        "GUIDE.md",
+        "crates/core/flags/hiargs.rs"
+      ],
+      "mustMention": [
+        "NUL",
+        "--text|-a",
+        "explicit|implicit"
+      ],
+      "answerNote": "A file is treated as binary when a NUL byte is seen. Files found by directory traversal use 'quit' detection (stop at the NUL, warn if a match was already printed); files named explicitly on the command line use 'convert' (keep searching, suppress binary output). --binary forces the convert mode everywhere, -a/--text disables detection; mmap vs non-mmap changes how much is inspected (--no-mmap for consistency). Implemented by BinaryDetection::from_low_args in hiargs.rs."
+    },
+    {
+      "id": "rg-compressed-search",
+      "family": "rg-compressed-search",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How can rg find matches inside .gz or .xz archives, and does it decompress them itself?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:crates-printer-src-color-rs"
+      },
+      "expectedFiles": [
+        "crates/cli/src/decompress.rs",
+        "crates/core/search.rs"
+      ],
+      "mustMention": [
+        "-z|--search-zip",
+        "gzip -d -c|external command|shells out",
+        "preprocessor|--pre"
+      ],
+      "answerNote": "With -z/--search-zip the SearchWorker checks the path against DecompressionMatcher globs (*.gz, *.bz2, *.xz, *.lz4, *.lzma, *.br, *.zst, *.Z) and spawns an external tool (gzip -d -c, xz -d -c, zstd -q -d -c, ...) reading its stdout; ripgrep does not decompress in-process. A --pre preprocessor command, if set, takes priority over decompression."
+    },
+    {
+      "id": "rg-config-file",
+      "family": "rg-config-file",
+      "status": "draft",
+      "category": "config",
+      "question": "Can I make rg always apply my favourite flags without typing them each time? Where does it look for that?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:burnt-sushi-ripgrep"
+      },
+      "expectedFiles": [
+        "crates/core/flags/config.rs",
+        "GUIDE.md"
+      ],
+      "mustMention": [
+        "RIPGREP_CONFIG_PATH",
+        "--no-config",
+        "one argument per line|each line"
+      ],
+      "answerNote": "There is no default location: only the file named by the RIPGREP_CONFIG_PATH env var is read. Each non-empty, non-# line is one shell argument (no escaping); the args are prepended before the real CLI args so the command line can override them. --no-config disables it (checked in flags/parse.rs)."
+    },
+    {
+      "id": "rg-exit-codes",
+      "family": "rg-exit-codes",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "What exit status does rg return when it finds nothing versus when something goes wrong, and why doesn't piping into head produce an error?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:burnt-sushi-ripgrep"
+      },
+      "expectedFiles": [
+        "crates/core/main.rs"
+      ],
+      "mustMention": [
+        "0",
+        "1",
+        "2",
+        "broken pipe|BrokenPipe"
+      ],
+      "answerNote": "main.rs run(): exit 0 if a match was found (and no error, or --quiet), 1 if no match, 2 if any error was reported via messages::errored() or run() returned Err. A BrokenPipe io error anywhere in the error chain is treated as graceful termination with exit 0 (and search loops break/quit on BrokenPipe)."
+    },
+    {
+      "id": "rg-add-flag",
+      "family": "rg-add-flag",
+      "status": "draft",
+      "category": "locate",
+      "question": "I want to add a new command-line option. Where is each option declared, and where does its value end up?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:burnt-sushi-ripgrep"
+      },
+      "expectedFiles": [
+        "crates/core/flags/defs.rs",
+        "crates/core/flags/lowargs.rs"
+      ],
+      "mustMention": [
+        "Flag",
+        "FLAGS",
+        "LowArgs"
+      ],
+      "answerNote": "Each logical flag is a unit struct implementing the Flag trait in flags/defs.rs (long/short/negated names, category, docs, update()) and is registered in the global FLAGS slice; update() writes into a field of LowArgs (lowargs.rs), which HiArgs later converts into matchers/printers. Help text, man page and shell completions are generated from the same definitions."
+    },
+    {
+      "id": "rg-index-status",
+      "family": "rg-index-status",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "There's an index crate in the tree — can ripgrep actually build and use a search index today?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:burnt-sushi-ripgrep"
+      },
+      "expectedFiles": [
+        "crates/core/index/disabled.rs",
+        "crates/core/index/enabled.rs",
+        "crates/index/src/index.rs"
+      ],
+      "mustMention": [
+        "unstable-index",
+        "not enabled|exhaustive"
+      ],
+      "answerNote": "Indexing is behind the unstable-index Cargo feature; without it, core/index/disabled.rs makes both index write and read bail with 'indexing not enabled in this build of ripgrep'. With the feature, enabled.rs opens/creates the index (a redb database index.db in crates/index) but read still does an exhaustive normal search. crates/index/README.md just says WIP."
+    },
+    {
+      "id": "rg-lowargs-hiargs",
+      "family": "rg-lowargs-hiargs",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "What is the difference between LowArgs and HiArgs in the flag handling code?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:burnt-sushi-ripgrep"
+      },
+      "expectedFiles": [
+        "crates/core/flags/lowargs.rs",
+        "crates/core/flags/hiargs.rs"
+      ],
+      "mustMention": [
+        "low level|close to the CLI",
+        "matcher|walk|printer"
+      ],
+      "answerNote": "LowArgs is a near-literal representation of the parsed CLI flags (e.g. -g globs as Vec<String>, overrides between flags resolved). HiArgs is derived from it and holds higher-level, ready-to-use objects and builders: the glob override matcher, binary detection pair, type matcher, and methods to build the walker, searcher, matcher and printer that main.rs uses."
+    }
+  ],
+  "c4Note": {
+    "verdict": "partly",
+    "note": "Per-crate containers for the reusable libraries (ignore, globset, searcher, printer, matcher, regex, pcre2, cli, grep, index) match how a maintainer would describe the workspace. But the actual rg binary (crates/core: main, flags, search, haystack) is not its own named container: it is the anonymous root container named after the clone directory 'BurntSushi_ripgrep' (refs 'burnt-sushi-ripgrep', not a path), mixed with build.rs and fuzz/. Container names use directory names ('cli', 'regex', 'matcher') rather than crate names grep-cli/grep-regex/grep-matcher, so 'regex' reads like the regex crate. The scan log says 'single-package repo (no workspace)' even though Cargo.toml has a [workspace] member list.",
+    "expectedContainers": [
+      "rg binary (crates/core + build.rs; Cargo package 'ripgrep')",
+      "grep facade crate (crates/grep)",
+      "grep-searcher (crates/searcher)",
+      "grep-printer (crates/printer)",
+      "grep-matcher (crates/matcher)",
+      "grep-regex (crates/regex)",
+      "grep-pcre2 (crates/pcre2)",
+      "grep-cli (crates/cli)",
+      "ignore (crates/ignore)",
+      "globset (crates/globset)",
+      "index (crates/index, unstable/WIP)",
+      "integration tests (tests/) and fuzz (fuzz/) as tooling, optional"
+    ],
+    "problems": [
+      "crates/core (the rg executable, the most important code) lives in an unnamed root container called 'BurntSushi_ripgrep' whose sourceRef is 'burnt-sushi-ripgrep' rather than a path",
+      "system/root container named from the checkout directory, not the package name 'ripgrep'",
+      "fuzz/fuzz_targets/fuzz_glob.rs and build.rs sit beside main.rs as peer components of the binary",
+      "container names drop the grep- prefix of the crate names (cli, regex, matcher, printer, searcher), creating ambiguity with external crates",
+      "crates/core/flags/* (15 files incl. completions and docs generators) not grouped into one 'CLI flags' component; components are 1:1 with files",
+      "GUIDE.md / FAQ.md (where much user-facing behaviour is explained) and the tests/ integration suite are invisible",
+      "scan log claims 'single-package repo (no workspace)' despite the explicit [workspace] members list"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:burnt-sushi-ripgrep",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:diagram",
+        "children",
+        "enrichment:keyPoints",
+        "enrichment:evidence"
+      ],
+      "note": "Real multi-crate system: summary sets the pipeline, the diagram and the 11 crate containers are the map a newcomer needs next; key points dive into core CLI internals."
+    },
+    {
+      "nodeId": "container:burnt-sushi-ripgrep",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:diagram",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Core CLI: summary + key points give flags->HiArgs->search read order; diagram shows the flow; 25 real files; parent redundant."
+    },
+    {
+      "nodeId": "container:crates-searcher",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "relations:dependents",
+        "relations:dependencies",
+        "enrichment:keyPoints",
+        "enrichment:diagram",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary says what the crate does; dependents/dependencies place it between matcher and printer/grep; key points hold the Sink gotcha; related duplicates the relation blocks and is omitted."
+    },
+    {
+      "nodeId": "container:crates-printer",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "relations:dependencies",
+        "relations:dependents",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary + where it sits in the pipeline (consumes searcher/matcher, used by grep) first; key points for config and summary-mode gotcha; related is a duplicate of the relation blocks."
+    },
+    {
+      "nodeId": "container:crates-ignore",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "relations:dependencies",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Leaf-ish crate: summary and key points (precedence in dir.rs) carry most value; globset dependency is minor context; related duplicates it."
+    }
+  ]
+}

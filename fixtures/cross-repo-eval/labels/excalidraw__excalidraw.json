@@ -1,0 +1,228 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "excalidraw/excalidraw",
+  "commitSha": "5a406e51875157bece389b9bc92d41ff241d5f3d",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "excalidraw-share-link",
+      "family": "excalidraw-share-link",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When I share a drawing as a link, how is it kept private from the server that stores it?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:excalidraw-monorepo"
+      },
+      "expectedFiles": [
+        "excalidraw-app/data/index.ts",
+        "packages/excalidraw/data/encryption.ts"
+      ],
+      "mustMention": [
+        "hash|#json",
+        "AES-GCM|encrypt"
+      ],
+      "answerNote": "exportToBackend generates a fresh AES-GCM key, compresses+encrypts the serialized scene and POSTs only ciphertext to the json backend; the returned id and the key go in the URL hash (#json=<id>,<key>), which browsers never send to the server. Images are encrypted and stored in Firebase under /files/shareLinks/<id>."
+    },
+    {
+      "id": "excalidraw-concurrent-edits",
+      "family": "excalidraw-concurrent-edits",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When two people edit the same shape at the same time in a live session, whose change wins?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:excalidraw-monorepo"
+      },
+      "expectedFiles": [
+        "packages/excalidraw/data/reconcile.ts",
+        "excalidraw-app/collab/Collab.tsx"
+      ],
+      "mustMention": [
+        "version",
+        "versionNonce"
+      ],
+      "answerNote": "Remote scene updates are decrypted and passed through reconcileElements: the local copy is kept if it is being edited/resized/created locally or has a higher version; on equal versions the lower versionNonce wins deterministically; otherwise the remote element replaces it."
+    },
+    {
+      "id": "excalidraw-autosave",
+      "family": "excalidraw-autosave",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "Where does my drawing get saved when I close the tab without exporting, and how often?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:excalidraw-monorepo"
+      },
+      "expectedFiles": [
+        "excalidraw-app/data/LocalData.ts"
+      ],
+      "mustMention": [
+        "localStorage",
+        "IndexedDB|idb-keyval"
+      ],
+      "answerNote": "LocalData.save is debounced (SAVE_TO_LOCAL_STORAGE_TIMEOUT = 300ms): elements and cleaned appState go to localStorage, image files go to IndexedDB (idb-keyval) via a LocalFileManager; saving is paused while collaborating, and quota-exceeded is surfaced via an atom."
+    },
+    {
+      "id": "excalidraw-undo",
+      "family": "excalidraw-undo",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How does undo work, and why doesn't it roll back what a collaborator just drew?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:excalidraw-monorepo"
+      },
+      "expectedFiles": [
+        "packages/excalidraw/history.ts"
+      ],
+      "mustMention": [
+        "undoStack|undo stack",
+        "delta"
+      ],
+      "answerNote": "History keeps undo/redo stacks of HistoryDelta entries recorded only from local durable store increments; undo/redo apply the inverse delta to current elements/appState, excluding version/versionNonce so each undo produces a new version for collaborators. Remote changes are never recorded, so they are not undone."
+    },
+    {
+      "id": "excalidraw-sketchy-look",
+      "family": "excalidraw-sketchy-look",
+      "status": "draft",
+      "category": "locate",
+      "question": "What gives shapes their wobbly hand-drawn look, and why doesn't the wobble change every time the screen redraws?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:excalidraw-app-share-qr-code-tsx"
+      },
+      "expectedFiles": [
+        "packages/element/src/shape.ts"
+      ],
+      "mustMention": [
+        "rough",
+        "seed"
+      ],
+      "answerNote": "Shapes are generated with roughjs's RoughGenerator; generateRoughOptions passes the element's stored seed (plus roughness adjusted for size, stroke style, fill weight), so the same element always produces the same jitter."
+    },
+    {
+      "id": "excalidraw-language-list",
+      "family": "excalidraw-language-list",
+      "status": "draft",
+      "category": "config",
+      "question": "Why doesn't a language appear in the language picker even though someone has started translating it?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:excalidraw-monorepo"
+      },
+      "expectedFiles": [
+        "packages/excalidraw/i18n.ts",
+        "crowdin.yml"
+      ],
+      "mustMention": [
+        "85|COMPLETION_THRESHOLD",
+        "percentages"
+      ],
+      "answerNote": "Translations come from Crowdin (crowdin.yml maps locales/en.json to locales/<locale>.json); i18n.ts only lists languages whose completion in locales/percentages.json is >= COMPLETION_THRESHOLD (85%), falling back to en.json for missing keys."
+    },
+    {
+      "id": "excalidraw-embed",
+      "family": "excalidraw-embed",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "How do I put the whiteboard inside my own React app, and what do I do about fonts if I host everything myself?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:excalidraw-monorepo"
+      },
+      "expectedFiles": [
+        "dev-docs/docs/@excalidraw/excalidraw/installation.mdx"
+      ],
+      "mustMention": [
+        "@excalidraw/excalidraw",
+        "EXCALIDRAW_ASSET_PATH"
+      ],
+      "answerNote": "Install react, react-dom and @excalidraw/excalidraw; fonts load from a CDN by default, so for self-hosting copy dist/prod/fonts into your public assets and set window.EXCALIDRAW_ASSET_PATH; the container must have non-zero width/height."
+    },
+    {
+      "id": "excalidraw-backend-servers",
+      "family": "excalidraw-backend-servers",
+      "status": "draft",
+      "category": "config",
+      "question": "Which outside services does the hosted app talk to for share links and live sessions, and where is that set?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:excalidraw-monorepo"
+      },
+      "expectedFiles": [
+        ".env.production",
+        "excalidraw-app/collab/Collab.tsx"
+      ],
+      "mustMention": [
+        "VITE_APP_WS_SERVER_URL",
+        "VITE_APP_BACKEND_V2"
+      ],
+      "answerNote": ".env.production sets VITE_APP_BACKEND_V2_GET/POST_URL (json.excalidraw.com share storage), VITE_APP_WS_SERVER_URL (collab socket.io server), Firebase config (files/room persistence), library and AI backends; Collab.tsx opens the socket.io connection to the WS server URL."
+    },
+    {
+      "id": "excalidraw-frame-throttle",
+      "family": "excalidraw-frame-throttle",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "Is there a shared helper that limits how often something runs to at most once per screen frame?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:packages-excalidraw-charts-charts-bar-ts"
+      },
+      "expectedFiles": [
+        "packages/common/src/utils.ts"
+      ],
+      "mustMention": [
+        "throttleRAF",
+        "requestAnimationFrame"
+      ],
+      "answerNote": "throttleRAF in @excalidraw/common utils schedules the wrapped function with window.requestAnimationFrame, keeping only the latest args, with flush/cancel; the same file also has debounce."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "The whole yarn-workspaces monorepo collapses into one container named after the root package with 523 flat file components, so the fundamental split the repo's own CLAUDE.md describes — the excalidraw.com web app vs the @excalidraw/excalidraw React library vs supporting packages (element, common, math, utils) — is lost. Examples and the dev-docs site are mixed in. The services the app depends on (share-link JSON backend, collab socket server, Firebase) are not modelled.",
+    "expectedContainers": [
+      "excalidraw-app (excalidraw.com web app, Vite)",
+      "@excalidraw/excalidraw (packages/excalidraw, embeddable React editor library)",
+      "@excalidraw/element (packages/element)",
+      "@excalidraw/common, @excalidraw/math, @excalidraw/utils (shared packages)",
+      "examples (examples/with-nextjs, examples/with-script-in-browser)",
+      "dev-docs (Docusaurus developer docs site)",
+      "external: json.excalidraw.com share backend, collab socket.io server, Firebase"
+    ],
+    "problems": [
+      "package.json 'workspaces' (excalidraw-app, packages/*, examples/*) ignored: everything collapsed into container:excalidraw-monorepo",
+      "523 one-file components with no grouping (372 of them from packages/excalidraw)",
+      "examples/* and dev-docs/src mixed into the same container as the product",
+      "no external systems for the JSON share backend, socket collab server or Firebase configured in .env.production",
+      "dev-docs MDX (the integration docs) invisible"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:excalidraw-monorepo",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary says it is the Excalidraw editor monorepo and its layers; key points name the element union and mutation funnel; children is one collapsed container."
+    },
+    {
+      "nodeId": "container:excalidraw-monorepo",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:evidence",
+        "children"
+      ],
+      "note": "Summary and key points give the entry files and store/undo seam; 523 children starting with dev-docs/examples is noise, so it goes last; parent redundant."
+    }
+  ]
+}

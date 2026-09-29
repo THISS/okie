@@ -1,0 +1,2055 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "excalidraw__excalidraw",
+  "repository": "excalidraw/excalidraw",
+  "commitSha": "5a406e51875157bece389b9bc92d41ff241d5f3d",
+  "scan": {
+    "asIs": {
+      "revision": "5a406e51875157bece389b9bc92d41ff241d5f3d",
+      "ok": true,
+      "ms": 85250,
+      "entities": 4163,
+      "relations": 17756,
+      "kinds": { "code": 3638, "component": 523, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:excalidraw-monorepo", "name": "excalidraw-monorepo", "components": 523 }
+      ],
+      "signals": { "entities": 4163, "containers": 1, "components": 523, "files": 525, "maxDepth": 5, "medianDepth": 3, "language": "TypeScript" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:14.823Z",
+    "corpus": "sampled-enriched",
+    "entityCount": 4163,
+    "systemNames": ["excalidraw"],
+    "paths": ["excalidraw-app/share/ShareDialog.tsx", "excalidraw-app/data/fileStatusStore.ts", "packages/common/src/versionedSnapshotStore.ts", "packages/element/src/store.ts", "packages/excalidraw/components/App.drawshape.ts", "packages/excalidraw/drawShapeTrail.ts", "excalidraw-app/share/qrcode.chunk.ts", "packages/excalidraw/types.ts", "excalidraw-app/share/QRCode.tsx", "packages/excalidraw/subset/subset-main.ts", "excalidraw-app/app_constants.ts", "packages/excalidraw/appState.ts", "excalidraw-app/data/LocalData.ts", "excalidraw-app/App.tsx", "excalidraw-app/collab/Collab.tsx", "packages/excalidraw/components/App.tsx", "packages/element/src/types.ts", "packages/common/src/utils.ts", "packages/excalidraw/components/icons.tsx", "packages/excalidraw/history.ts", "packages/element/src/elementLink.ts", "packages/excalidraw/data/library.ts", "packages/excalidraw/subset/subset-shared.chunk.ts", "packages/element/src/bucketFill.ts", "packages/excalidraw/components/ShareableLinkDialog.tsx", "packages/excalidraw/actions/actionElementLink.ts", "packages/excalidraw/components/ElementLinkDialog.tsx", "packages/element/src/convertToShape.ts", "packages/excalidraw/components/LinkButton.tsx", "packages/excalidraw/actions/actionLink.tsx", "packages/element/src/embeddable.ts", "packages/excalidraw/components/dropdownMenu/DropdownMenuItemLink.tsx", "packages/common/src/constants.ts", "README.md", "package.json", "packages/excalidraw/components/TopPicksDnD/topPicksDnD.tsx", "packages/excalidraw/components/shapeActionPredicates.ts", "packages/excalidraw/components/live-collaboration/LiveCollaborationTrigger.tsx", "packages/excalidraw/components/ColorPicker/colorTopPicksDnD.ts", "packages/excalidraw/components/Actions.tsx", "packages/element/src/shape.ts", "packages/element/src/groups.ts", "packages/excalidraw/actions/actionProperties.tsx", "packages/element/src/stickyNote.ts", "packages/excalidraw/actions/actionGroup.tsx", "packages/utils/src/shape.ts", "packages/excalidraw/components/FontPicker/fontTopPicksDnD.ts", "packages/element/src/showSelectedShapeActions.ts", "packages/excalidraw/actions/actionToggleShapeSwitch.tsx", "packages/excalidraw/components/CommandPalette/CommandPalette.tsx", "packages/excalidraw/components/ColorPicker/ColorPicker.tsx", "packages/element/src/selection.ts", "packages/element/src/collision.ts", "packages/common/src/editorInterface.ts", "packages/excalidraw/components/main-menu/DefaultItems.tsx", "packages/element/src/comparisons.ts", "packages/excalidraw/components/LayerUI.tsx", "packages/excalidraw/index.tsx", "packages/excalidraw/components/welcome-screen/WelcomeScreen.Center.tsx", "packages/excalidraw/components/TTDDialog/types.ts", "packages/element/src/visualdebug.ts", "packages/excalidraw/components/Sidebar/SidebarTab.tsx", "packages/excalidraw/components/Sidebar/SidebarTabTrigger.tsx", "packages/excalidraw/components/TTDDialog/useTTDChatStorage.ts", "excalidraw-app/data/tabSync.ts", "packages/excalidraw/components/Sidebar/SidebarTabTriggers.tsx", "packages/excalidraw/components/TTDDialog/TTDDialogTab.tsx", "packages/excalidraw/components/Sidebar/SidebarTabs.tsx", "packages/excalidraw/components/TTDDialog/TTDDialogTabTriggers.tsx", "packages/excalidraw/components/TTDDialog/TTDDialogTabTrigger.tsx", "packages/excalidraw/components/TTDDialog/TTDDialog.tsx", "packages/excalidraw/components/TTDDialog/Chat/TTDChatPanel.tsx", "packages/element/src/renderElement.ts", "packages/excalidraw/components/DefaultSidebar.tsx", "packages/excalidraw/components/TTDDialog/TTDDialogTabs.tsx", "packages/math/src/types.ts", "packages/excalidraw/components/TTDDialog/Chat/ChatHistoryMenu.tsx", "packages/element/src/typeChecks.ts", "packages/excalidraw/components/TTDDialog/TextToDiagram.tsx", "packages/element/src/utils.ts", "packages/excalidraw/hooks/useTextEditorFocus.ts", "packages/element/src/textWrapping.ts", "packages/excalidraw/components/Sidebar/common.ts", "packages/excalidraw/components/Sidebar/Sidebar.tsx", "excalidraw-app/data/firebase.ts", "excalidraw-app/components/DebugCanvas.tsx", "excalidraw-app/data/TTDStorage.ts", "excalidraw-app/debugCollaborators.ts", "packages/excalidraw/actions/actionHistory.tsx", "packages/excalidraw/actions/actionNavigate.tsx", "packages/excalidraw/components/UserList.tsx", "packages/excalidraw/actions/actionZindex.tsx", "packages/excalidraw/components/footer/Footer.tsx", "packages/excalidraw/components/App.viewport.ts", "packages/common/src/colors.ts", "packages/excalidraw/clients.ts", "packages/excalidraw/components/EyeDropper.tsx", "packages/excalidraw/tests/test-utils.ts", "packages/excalidraw/components/main-menu/MainMenu.tsx", "packages/excalidraw/actions/manager.tsx", "packages/excalidraw/components/Tooltip.tsx", "packages/excalidraw/i18n.ts", "packages/excalidraw/components/Tools.tsx", "packages/excalidraw/fonts/Fonts.ts", "packages/excalidraw/components/FontPicker/FontPicker.tsx", "packages/excalidraw/components/welcome-screen/WelcomeScreen.tsx", "packages/excalidraw/components/welcome-screen/WelcomeScreen.Hints.tsx", "excalidraw-app/components/AppWelcomeScreen.tsx", "packages/element/src/textElement.ts", "packages/excalidraw/viewport.ts", "packages/element/src/binding.ts", "packages/excalidraw/components/Stats/FontSize.tsx", "packages/element/src/bounds.ts", "packages/excalidraw/components/Stats/MultiFontSize.tsx", "excalidraw-app/app-language/language-detector.ts", "excalidraw-app/app-language/LanguageList.tsx", "excalidraw-app/app-language/language-state.ts", "packages/excalidraw/components/IconPicker.tsx", "packages/excalidraw/components/ColorPicker/Picker.tsx", "packages/excalidraw/components/ColorPicker/colorPickerUtils.ts", "packages/excalidraw/components/ColorPicker/TopPicks.tsx", "packages/excalidraw/components/InitializeApp.tsx", "packages/excalidraw/components/FontPicker/FontPickerList.tsx", "packages/excalidraw/components/App.bucketFill.ts", "packages/element/src/elbowArrow.ts", "excalidraw-app/components/AppMainMenu.tsx", "packages/excalidraw/components/ColorPicker/keyboardNavHandlers.ts", "packages/excalidraw/components/ColorPicker/HotkeyLabel.tsx", "packages/excalidraw/components/ColorPicker/CustomColorList.tsx", "packages/excalidraw/components/ColorPicker/PickerColorList.tsx", "packages/excalidraw/components/FontPicker/FontPickerTrigger.tsx", "packages/excalidraw/components/ColorPicker/PickerHeading.tsx", "packages/excalidraw/components/TopPicksDnD/TopPicksTip.tsx", "packages/excalidraw/components/TopPicksDnD/TopPicksContextMenu.tsx", "packages/excalidraw/editor-jotai.ts", "packages/excalidraw/fonts/Helvetica/index.ts", "packages/excalidraw/components/App.duplicate.ts", "packages/excalidraw/components/FontPicker/keyboardNavHandlers.ts", "packages/common/src/font-metadata.ts", "packages/excalidraw/fonts/ExcalidrawFontFace.ts", "packages/excalidraw/lasso/utils.ts", "packages/excalidraw/reactUtils.ts", "packages/excalidraw/fonts/Emoji/index.ts", "packages/excalidraw/components/Stats/index.tsx", "packages/excalidraw/fonts/Nunito/index.ts", "packages/excalidraw/fonts/Cascadia/index.ts", "packages/excalidraw/fonts/Liberation/index.ts", "packages/excalidraw/fonts/Lilita/index.ts", "packages/excalidraw/fonts/Virgil/index.ts", "packages/excalidraw/fonts/Excalifont/index.ts", "packages/excalidraw/fonts/Xiaolai/index.ts", "packages/excalidraw/fonts/ComicShanns/index.ts", "packages/element/src/duplicate.ts", "packages/excalidraw/wysiwyg/textWysiwyg.tsx", "packages/excalidraw/components/Spinner.tsx", "packages/excalidraw/components/hyperlink/Hyperlink.tsx", "excalidraw-app/data/index.ts", "packages/excalidraw/renderer/staticScene.ts", "packages/excalidraw/hooks/useOutsideClick.ts", "packages/excalidraw/components/Dialog.tsx", "packages/excalidraw/context/ui-appState.ts", "examples/with-script-in-browser/components/ExampleApp.tsx", "packages/excalidraw/context/tunnels.ts", "packages/excalidraw/charts/charts.helpers.ts", "packages/excalidraw/components/TTDDialog/TTDContext.tsx", "packages/excalidraw/snapping.ts", "packages/element/src/frame.ts", "packages/excalidraw/tests/helpers/ui.ts", "packages/excalidraw/renderer/helpers.ts", "packages/excalidraw/components/TTDDialog/utils/TTDStreamFetch.ts", "packages/excalidraw/components/HelpDialog.tsx", "packages/excalidraw/charts/charts.constants.ts", "packages/excalidraw/actions/actionFrame.ts", "packages/laser-pointer/src/state.ts", "packages/excalidraw/actions/actionMenu.tsx", "packages/excalidraw/components/HelpButton.tsx", "packages/element/src/sizeHelpers.ts", "packages/excalidraw/components/hyperlink/helpers.ts", "packages/excalidraw/tests/helpers/polyfills.ts", "packages/excalidraw/errors.ts", "packages/excalidraw/charts/charts.bar.ts"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "excalidraw-share-link",
+        "question": "When I share a drawing as a link, how is it kept private from the server that stores it?",
+        "selectedId": "system:excalidraw-monorepo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23874,
+        "sectionCount": 16,
+        "ranked": [0, 1, 2, 3, 4, 7, 5, 8, 9, 10, 11, 12, 13, 14, 15, 19],
+        "packets": [33, 34],
+        "sections": [
+          {
+            "id": "component:excalidraw-app-share-share-dialog-tsx",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog", "name": "ShareDialog" },
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog-picker", "name": "ShareDialogPicker" },
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog-inner", "name": "ShareDialogInner" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-data-file-status-store-ts",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:excalidraw-app-data-file-status-store-ts:file-status-store", "name": "FileStatusStore" },
+              { "id": "code:excalidraw-app-data-file-status-store-ts:file-loading-status", "name": "FileLoadingStatus" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-versioned-snapshot-store-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:packages-common-src-versioned-snapshot-store-ts:versioned-snapshot-store", "name": "VersionedSnapshotStore" },
+              { "id": "code:packages-common-src-versioned-snapshot-store-ts:versioned-snapshot", "name": "VersionedSnapshot" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-store-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:packages-element-src-store-ts:store", "name": "Store" },
+              { "id": "code:packages-element-src-store-ts:store-delta", "name": "StoreDelta" },
+              { "id": "code:packages-element-src-store-ts:store-snapshot", "name": "StoreSnapshot" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-drawshape-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-drawshape-ts:app-draw-shape", "name": "AppDrawShape" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:interaction-config", "name": "InteractionConfig" },
+              { "id": "code:packages-excalidraw-types-ts:app-class-properties", "name": "AppClassProperties" },
+              { "id": "code:packages-excalidraw-types-ts:scroll-constraints", "name": "ScrollConstraints" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-draw-shape-trail-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:packages-excalidraw-draw-shape-trail-ts:draw-shape-trail", "name": "DrawShapeTrail" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-share-qr-code-tsx",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:excalidraw-app-share-qr-code-tsx:qr-code", "name": "QRCode" },
+              { "id": "code:excalidraw-app-share-qr-code-tsx:qr-code-props", "name": "QRCodeProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-subset-subset-main-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:packages-excalidraw-subset-subset-main-ts:lazy-load-shared-subset-chunk", "name": "lazyLoadSharedSubsetChunk" },
+              { "id": "code:packages-excalidraw-subset-subset-main-ts:subset-shared", "name": "subsetShared" },
+              { "id": "code:packages-excalidraw-subset-subset-main-ts:subset-woff2-glyphs-by-codepoints", "name": "subsetWoff2GlyphsByCodepoints" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-constants-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-constants-ts:firebase-storage-prefixes", "name": "FIREBASE_STORAGE_PREFIXES" },
+              { "id": "code:excalidraw-app-app-constants-ts:ws-events", "name": "WS_EVENTS" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-app-state-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:packages-excalidraw-app-state-ts:app-state-storage-conf", "name": "APP_STATE_STORAGE_CONF" },
+              { "id": "code:packages-excalidraw-app-state-ts:clear-app-state-for-database", "name": "clearAppStateForDatabase" },
+              { "id": "code:packages-excalidraw-app-state-ts:clear-app-state-for-storage", "name": "_clearAppStateForStorage" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-data-local-data-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:excalidraw-app-data-local-data-ts:files-store", "name": "filesStore" },
+              { "id": "code:excalidraw-app-data-local-data-ts:local-data", "name": "LocalData" },
+              { "id": "code:excalidraw-app-data-local-data-ts:library-indexed-db-adapter", "name": "LibraryIndexedDBAdapter" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-tsx",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-tsx:shareable-link-confirm-dialog", "name": "shareableLinkConfirmDialog" },
+              { "id": "code:excalidraw-app-app-tsx:initialize-scene", "name": "initializeScene" },
+              { "id": "code:excalidraw-app-app-tsx:excalidraw-wrapper", "name": "ExcalidrawWrapper" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-collab-collab-tsx",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:excalidraw-app-collab-collab-tsx:active-room-link-atom", "name": "activeRoomLinkAtom" },
+              { "id": "code:excalidraw-app-collab-collab-tsx:collab", "name": "Collab" },
+              { "id": "code:excalidraw-app-collab-collab-tsx:collab-api", "name": "CollabAPI" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-tsx",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-tsx:app", "name": "App" },
+              { "id": "code:packages-excalidraw-components-app-tsx:global", "name": "global" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-history-ts",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:packages-excalidraw-history-ts:history", "name": "History" },
+              { "id": "code:packages-excalidraw-history-ts:history-delta", "name": "HistoryDelta" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "excalidraw-app/data/index.ts": true, "packages/excalidraw/data/encryption.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11777, "sectionCount": 7, "ranked": [0, 1, 2, 3, 4, 5, 6] },
+          "double": { "byteBudget": 48000, "bytes": 35900, "sectionCount": 33, "ranked": [0, 1, 2, 3, 4, 7, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 6, 26, 27, 28, 29, 30, 31, 32] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 35900, "sectionCount": 33, "ranked": [0, 1, 2, 3, 4, 7, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 6, 26, 27, 28, 29, 30, 31, 32] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29868, "sectionCount": 23, "ranked": [0, 1, 2, 3, 4, 7, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 6] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "c482fef61e485963689a6032df86030b18374dd78473495ad739348ba3499e4d",
+          "allowedIdsCount": 56,
+          "allowedIdsSha256": "7c9210f1252807fb3e5790fa77aa654db62771a3fed47ae5ac14c17c5862d0bc",
+          "allowedIdsInContent": ["component:excalidraw-app-share-share-dialog-tsx", "code:excalidraw-app-share-share-dialog-tsx:share-dialog", "code:excalidraw-app-share-share-dialog-tsx:share-dialog-picker", "code:excalidraw-app-share-share-dialog-tsx:share-dialog-inner", "component:excalidraw-app-app-constants-ts", "code:excalidraw-app-app-constants-ts:firebase-storage-prefixes", "component:packages-excalidraw-app-state-ts", "code:packages-excalidraw-app-state-ts:app-state-storage-conf", "code:packages-excalidraw-app-state-ts:clear-app-state-for-database", "code:packages-excalidraw-app-state-ts:clear-app-state-for-storage"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The evidence covers the share-link flow's shape but not its privacy mechanism: `ShareDialog` takes an `onExportToBackend` callback and renders share options (`ShareDialogPicker`, `ShareDialogInner`), and exported link files land in Firebase under `FIREBASE_STORAGE_PREFIXES.shareLinkFiles` (`/files/shareLinks`) in `excalidraw-app/app_constants.ts`. What is documented as stripped before anything goes to the server is app state: `APP_STATE_STORAGE_CONF` marks fields with `server: boolean`, and `clearAppStateForDatabase` runs `_clearAppStateForStorage(appState, \\\"server\\\")` so non-server fields are excluded from shareLink/collab payloads.\\n\\nSo the only privacy-related handling visible here is state-field filtering plus the separate `/files/shareLinks` storage path — but **how the drawing itself is kept private from the storing server (e.g. any client-side encryption of the scene or key kept in the link) is not in the evidence**. The search returned share/storage-related sections but none describing encryption, key handling, or the upload payload for share links; that part would live in the `onExportToBackend` implementation, which isn't among the sections.\",\"citations\":[\"component:excalidraw-app-share-share-dialog-tsx\",\"code:excalidraw-app-share-share-dialog-tsx:share-dialog\",\"code:excalidraw-app-share-share-dialog-tsx:share-dialog-picker\",\"code:excalidraw-app-share-share-dialog-tsx:share-dialog-inner\",\"component:excalidraw-app-app-constants-ts\",\"code:excalidraw-app-app-constants-ts:firebase-storage-prefixes\",\"component:packages-excalidraw-app-state-ts\",\"code:packages-excalidraw-app-state-ts:app-state-storage-conf\",\"code:packages-excalidraw-app-state-ts:clear-app-state-for-database\",\"code:packages-excalidraw-app-state-ts:clear-app-state-for-storage\"]}",
+          "usage": { "promptTokens": 9234, "completionTokens": 652, "totalTokens": 9886, "costUsd": 0.00458403 },
+          "ms": 24817
+        }
+      },
+      {
+        "id": "excalidraw-concurrent-edits",
+        "question": "When two people edit the same shape at the same time in a live session, whose change wins?",
+        "selectedId": "system:excalidraw-monorepo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23704,
+        "sectionCount": 16,
+        "ranked": [35, 36, 17, 27, 37, 38, 39, 40, 41, 42, 43, 16, 44, 45, 7, 49],
+        "packets": [33, 34],
+        "sections": [
+          {
+            "id": "component:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx:drag-session", "name": "DragSession" },
+              { "id": "code:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx:drag-time-threshold-ms", "name": "DRAG_TIME_THRESHOLD_MS" },
+              { "id": "code:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx:use-top-picks-dn-d", "name": "useTopPicksDnD" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-shape-action-predicates-ts",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-shape-action-predicates-ts:get-shape-action-predicates", "name": "getShapeActionPredicates" },
+              { "id": "code:packages-excalidraw-components-shape-action-predicates-ts:shape-action-predicates", "name": "ShapeActionPredicates" },
+              { "id": "code:packages-excalidraw-components-shape-action-predicates-ts:can-change-background-color", "name": "canChangeBackgroundColor" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-utils-ts",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:packages-common-src-utils-ts:set-date-time-for-tests", "name": "setDateTimeForTests" },
+              { "id": "code:packages-common-src-utils-ts:get-date-time", "name": "getDateTime" },
+              { "id": "code:packages-common-src-utils-ts:mock-date-time", "name": "mockDateTime" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-convert-to-shape-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:packages-element-src-convert-to-shape-ts:convert-to-shape", "name": "convertToShape" },
+              { "id": "code:packages-element-src-convert-to-shape-ts:convert-to-shape-handle-pointer-move-from-pointer-down", "name": "convertToShapeHandlePointerMoveFromPointerDown" },
+              { "id": "code:packages-element-src-convert-to-shape-ts:shape-recognition-result", "name": "ShapeRecognitionResult" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx:live-collaboration-trigger", "name": "LiveCollaborationTrigger" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-color-picker-color-top-picks-dn-d-ts",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-color-picker-color-top-picks-dn-d-ts:is-same-color", "name": "isSameColor" },
+              { "id": "code:packages-excalidraw-components-color-picker-color-top-picks-dn-d-ts:use-color-top-picks-dn-d", "name": "useColorTopPicksDnD" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-actions-tsx",
+            "kind": "component",
+            "p": 39,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-actions-tsx:selected-shape-actions", "name": "SelectedShapeActions" },
+              { "id": "code:packages-excalidraw-components-actions-tsx:compact-shape-actions", "name": "CompactShapeActions" },
+              { "id": "code:packages-excalidraw-components-actions-tsx:mobile-shape-actions", "name": "MobileShapeActions" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-shape-ts",
+            "kind": "component",
+            "p": 40,
+            "symbols": [
+              { "id": "code:packages-element-src-shape-ts:shape-cache", "name": "ShapeCache" },
+              { "id": "code:packages-element-src-shape-ts:get-element-shape", "name": "getElementShape" },
+              { "id": "code:packages-element-src-shape-ts:generate-element-shape", "name": "_generateElementShape" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-groups-ts",
+            "kind": "component",
+            "p": 41,
+            "symbols": [
+              { "id": "code:packages-element-src-groups-ts:edit-group-for-selected-element", "name": "editGroupForSelectedElement" },
+              { "id": "code:packages-element-src-groups-ts:elements-are-in-same-group", "name": "elementsAreInSameGroup" },
+              { "id": "code:packages-element-src-groups-ts:select-groups-for-selected-elements", "name": "selectGroupsForSelectedElements" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-properties-tsx",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-arrow-properties", "name": "actionChangeArrowProperties" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:change-property", "name": "changeProperty" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-stroke-color", "name": "actionChangeStrokeColor" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-sticky-note-ts",
+            "kind": "component",
+            "p": 43,
+            "symbols": [
+              { "id": "code:packages-element-src-sticky-note-ts:has-sticky-note-layout-input-changed", "name": "hasStickyNoteLayoutInputChanged" },
+              { "id": "code:packages-element-src-sticky-note-ts:sticky-note-layout-opts", "name": "StickyNoteLayoutOpts" },
+              { "id": "code:packages-element-src-sticky-note-ts:sync-sticky-note-ink", "name": "syncStickyNoteInk" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-types-ts",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:packages-element-src-types-ts:excalidraw-element-base", "name": "_ExcalidrawElementBase" },
+              { "id": "code:packages-element-src-types-ts:fixed-point-binding", "name": "FixedPointBinding" },
+              { "id": "code:packages-element-src-types-ts:iframe-data", "name": "IframeData" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-group-tsx",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-group-tsx:all-elements-in-same-group", "name": "allElementsInSameGroup" },
+              { "id": "code:packages-excalidraw-actions-action-group-tsx:enable-action-group", "name": "enableActionGroup" }
+            ]
+          },
+          {
+            "id": "component:packages-utils-src-shape-ts",
+            "kind": "component",
+            "p": 45,
+            "symbols": [
+              { "id": "code:packages-utils-src-shape-ts:get-curve-shape", "name": "getCurveShape" },
+              { "id": "code:packages-utils-src-shape-ts:get-closed-curve-shape", "name": "getClosedCurveShape" },
+              { "id": "code:packages-utils-src-shape-ts:get-freedraw-shape", "name": "getFreedrawShape" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:excalidraw-imperative-api", "name": "ExcalidrawImperativeAPI" },
+              { "id": "code:packages-excalidraw-types-ts:pointer-down-state", "name": "PointerDownState" },
+              { "id": "code:packages-excalidraw-types-ts:app-class-properties", "name": "AppClassProperties" }
+            ]
+          },
+          { "id": "component:packages-excalidraw-components-command-palette-command-palette-tsx", "kind": "component", "p": 49 }
+        ],
+        "expectedIndexed": { "packages/excalidraw/data/reconcile.ts": true, "excalidraw-app/collab/Collab.tsx": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11776, "sectionCount": 7, "ranked": [35, 36, 17, 27, 37, 38, 39] },
+          "double": { "byteBudget": 48000, "bytes": 39847, "sectionCount": 36, "ranked": [35, 36, 17, 27, 37, 38, 39, 40, 41, 42, 43, 16, 44, 45, 7, 46, 47, 48, 4, 49, 50, 51, 52, 30, 18, 3, 53, 5, 54, 55, 13, 32, 15, 56, 57, 58] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 39847, "sectionCount": 36, "ranked": [35, 36, 17, 27, 37, 38, 39, 40, 41, 42, 43, 16, 44, 45, 7, 46, 47, 48, 4, 49, 50, 51, 52, 30, 18, 3, 53, 5, 54, 55, 13, 32, 15, 56, 57, 58] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29678, "sectionCount": 25, "ranked": [35, 36, 17, 27, 37, 38, 39, 40, 41, 42, 43, 16, 44, 45, 7, 46, 47, 48, 4, 49, 50, 51, 52, 30, 53] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "85c7438ed1339e735b780532b69c889bdab54799d89f020301e360afdcd2dea6",
+          "allowedIdsCount": 59,
+          "allowedIdsSha256": "177d70f954a76d89af010654b6fb96736f8e39a6fb602a76cf05d140ad3f1897",
+          "allowedIdsInContent": ["component:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx", "code:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx:live-collaboration-trigger", "component:packages-excalidraw-types-ts", "code:packages-excalidraw-types-ts:app-class-properties"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Not in the evidence — nothing in the search results describes conflict resolution or ordering for concurrent edits to the same shape in a live session. The only collaboration-related material is `packages/excalidraw/components/live-collaboration/LiveCollaborationTrigger.tsx`, and `LiveCollaborationTrigger` is purely a share button that renders the collaborator count from `appState.collaborators`; it says nothing about how simultaneous edits are merged or which one wins.\\n\\nWhat is missing: the reconciliation / sync layer (e.g. a collaboration client, socket handling, element versioning or last-writer-wins logic). None of the searched sections — shape actions, property actions (`changeProperty`, `actionChangeStrokeColor`), element types (`_ExcalidrawElementBase`), or shape generation (`ShapeCache`, `getElementShape`) — touch concurrent-edit resolution, so the answer would have to come from a part of the repo not covered here.\",\"citations\":[\"component:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx\",\"code:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx:live-collaboration-trigger\",\"component:packages-excalidraw-types-ts\",\"code:packages-excalidraw-types-ts:app-class-properties\"]}",
+          "usage": { "promptTokens": 9170, "completionTokens": 479, "totalTokens": 9649, "costUsd": 0.00440568 },
+          "ms": 21655
+        }
+      },
+      {
+        "id": "excalidraw-autosave",
+        "question": "Where does my drawing get saved when I close the tab without exporting, and how often?",
+        "selectedId": "system:excalidraw-monorepo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23970,
+        "sectionCount": 27,
+        "ranked": [59, 60, 61, 62, 7, 10, 27, 63, 64, 65, 66, 67, 68, 69, 70, 71, 16, 21, 72, 73, 74, 75, 76, 5, 14, 23, 86],
+        "packets": [33, 34],
+        "sections": [
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-types-ts",
+            "kind": "component",
+            "p": 59,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-types-ts:saved-chats", "name": "SavedChats" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-types-ts:saved-chat", "name": "SavedChat" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-types-ts:tttd-dialog", "name": "TTTDDialog" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-visualdebug-ts",
+            "kind": "component",
+            "p": 60,
+            "symbols": [
+              { "id": "code:packages-element-src-visualdebug-ts:debug-draw-polygon", "name": "debugDrawPolygon" },
+              { "id": "code:packages-element-src-visualdebug-ts:debug-draw-hit-volume", "name": "debugDrawHitVolume" },
+              { "id": "code:packages-element-src-visualdebug-ts:debug-draw-point", "name": "debugDrawPoint" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-sidebar-sidebar-tab-tsx",
+            "kind": "component",
+            "p": 61,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-sidebar-sidebar-tab-tsx:sidebar-tab", "name": "SidebarTab" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-sidebar-sidebar-tab-trigger-tsx",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-sidebar-sidebar-tab-trigger-tsx:sidebar-tab-trigger", "name": "SidebarTabTrigger" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:export-opts", "name": "ExportOpts" },
+              { "id": "code:packages-excalidraw-types-ts:sidebar-tab-name", "name": "SidebarTabName" },
+              { "id": "code:packages-excalidraw-types-ts:on-export-progress", "name": "OnExportProgress" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-constants-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-constants-ts:sync-browser-tabs-timeout", "name": "SYNC_BROWSER_TABS_TIMEOUT" },
+              { "id": "code:excalidraw-app-app-constants-ts:file-upload-timeout", "name": "FILE_UPLOAD_TIMEOUT" },
+              { "id": "code:excalidraw-app-app-constants-ts:load-images-timeout", "name": "LOAD_IMAGES_TIMEOUT" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-convert-to-shape-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:packages-element-src-convert-to-shape-ts:classify-closed-stroke", "name": "classifyClosedStroke" },
+              { "id": "code:packages-element-src-convert-to-shape-ts:is-draw-shape-preview-equal", "name": "isDrawShapePreviewEqual" },
+              { "id": "code:packages-element-src-convert-to-shape-ts:closed-gap-max-ratio", "name": "CLOSED_GAP_MAX_RATIO" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-use-ttd-chat-storage-ts",
+            "kind": "component",
+            "p": 63,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-use-ttd-chat-storage-ts:saved-chats-atom", "name": "savedChatsAtom" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-use-ttd-chat-storage-ts:use-ttd-chat-storage", "name": "useTTDChatStorage" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-use-ttd-chat-storage-ts:use-ttd-chat-storage-return", "name": "UseTTDChatStorageReturn" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-data-tab-sync-ts",
+            "kind": "component",
+            "p": 64,
+            "symbols": [
+              { "id": "code:excalidraw-app-data-tab-sync-ts:is-browser-storage-state-newer", "name": "isBrowserStorageStateNewer" },
+              { "id": "code:excalidraw-app-data-tab-sync-ts:update-browser-state-version", "name": "updateBrowserStateVersion" },
+              { "id": "code:excalidraw-app-data-tab-sync-ts:reset-browser-state-versions", "name": "resetBrowserStateVersions" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-sidebar-sidebar-tab-triggers-tsx",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-sidebar-sidebar-tab-triggers-tsx:sidebar-tab-triggers", "name": "SidebarTabTriggers" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-ttd-dialog-tab-tsx",
+            "kind": "component",
+            "p": 66,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-ttd-dialog-tab-tsx:ttd-dialog-tab", "name": "TTDDialogTab" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-sidebar-sidebar-tabs-tsx",
+            "kind": "component",
+            "p": 67,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-sidebar-sidebar-tabs-tsx:sidebar-tabs", "name": "SidebarTabs" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-ttd-dialog-tab-triggers-tsx",
+            "kind": "component",
+            "p": 68,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-ttd-dialog-tab-triggers-tsx:ttd-dialog-tab-triggers", "name": "TTDDialogTabTriggers" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-ttd-dialog-tab-trigger-tsx",
+            "kind": "component",
+            "p": 69,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-ttd-dialog-tab-trigger-tsx:ttd-dialog-tab-trigger", "name": "TTDDialogTabTrigger" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-ttd-dialog-tsx",
+            "kind": "component",
+            "p": 70,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-ttd-dialog-tsx:ttd-dialog", "name": "TTDDialog" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-ttd-dialog-tsx:ttd-dialog-base", "name": "TTDDialogBase" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-chat-ttd-chat-panel-tsx",
+            "kind": "component",
+            "p": 71,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-chat-ttd-chat-panel-tsx:ttd-chat-panel", "name": "TTDChatPanel" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-types-ts",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:packages-element-src-types-ts:excalidraw-free-draw-element", "name": "ExcalidrawFreeDrawElement" },
+              { "id": "code:packages-element-src-types-ts:excalidraw-elbow-arrow-element", "name": "ExcalidrawElbowArrowElement" },
+              { "id": "code:packages-element-src-types-ts:excalidraw-image-element", "name": "ExcalidrawImageElement" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-data-library-ts",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:packages-excalidraw-data-library-ts:last-saved-library-items-hash", "name": "lastSavedLibraryItemsHash" },
+              { "id": "code:packages-excalidraw-data-library-ts:library-persistence-adapter", "name": "LibraryPersistenceAdapter" },
+              { "id": "code:packages-excalidraw-data-library-ts:library-adatapter-source", "name": "LibraryAdatapterSource" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-render-element-ts",
+            "kind": "component",
+            "p": 72,
+            "symbols": [
+              { "id": "code:packages-element-src-render-element-ts:draw-sticky-note-path", "name": "drawStickyNotePath" },
+              { "id": "code:packages-element-src-render-element-ts:draw-element", "name": "drawElement" },
+              { "id": "code:packages-element-src-render-element-ts:draw-image-placeholder", "name": "drawImagePlaceholder" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-default-sidebar-tsx",
+            "kind": "component",
+            "p": 73,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-default-sidebar-tsx:default-tab-triggers", "name": "DefaultTabTriggers" },
+              { "id": "code:packages-excalidraw-components-default-sidebar-tsx:default-sidebar", "name": "DefaultSidebar" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-ttd-dialog-tabs-tsx",
+            "kind": "component",
+            "p": 74,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-ttd-dialog-tabs-tsx:ttd-dialog-tabs", "name": "TTDDialogTabs" }
+            ]
+          },
+          {
+            "id": "component:packages-math-src-types-ts",
+            "kind": "component",
+            "p": 75,
+            "symbols": [
+              { "id": "code:packages-math-src-types-ts:degrees", "name": "Degrees" },
+              { "id": "code:packages-math-src-types-ts:radians", "name": "Radians" },
+              { "id": "code:packages-math-src-types-ts:vector", "name": "Vector" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-chat-chat-history-menu-tsx",
+            "kind": "component",
+            "p": 76,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-chat-chat-history-menu-tsx:chat-history-menu", "name": "ChatHistoryMenu" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-chat-chat-history-menu-tsx:chat-history-menu-props", "name": "ChatHistoryMenuProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-draw-shape-trail-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:packages-excalidraw-draw-shape-trail-ts:draw-shape-trail", "name": "DrawShapeTrail" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-collab-collab-tsx",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:excalidraw-app-collab-collab-tsx:collab", "name": "Collab" },
+              { "id": "code:excalidraw-app-collab-collab-tsx:collab-state", "name": "CollabState" },
+              { "id": "code:excalidraw-app-collab-collab-tsx:is-collaborating-atom", "name": "isCollaboratingAtom" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-bucket-fill-ts",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:packages-element-src-bucket-fill-ts:is-closed-owner-candidate", "name": "isClosedOwnerCandidate" },
+              { "id": "code:packages-element-src-bucket-fill-ts:bucket-fill-options", "name": "BucketFillOptions" },
+              { "id": "code:packages-element-src-bucket-fill-ts:bucket-fill-geometry-result", "name": "BucketFillGeometryResult" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-data-ttd-storage-ts",
+            "kind": "component",
+            "p": 86,
+            "symbols": [
+              { "id": "code:excalidraw-app-data-ttd-storage-ts:ttd-indexed-db-adapter", "name": "TTDIndexedDBAdapter" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "excalidraw-app/data/LocalData.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11483, "sectionCount": 11, "ranked": [59, 60, 61, 62, 7, 10, 27, 63, 64, 65, 66] },
+          "double": { "byteBudget": 48000, "bytes": 34820, "sectionCount": 40, "ranked": [59, 60, 61, 62, 7, 10, 27, 63, 64, 65, 66, 67, 68, 69, 70, 71, 16, 21, 72, 73, 74, 75, 76, 5, 14, 23, 12, 77, 32, 78, 18, 79, 80, 81, 82, 83, 84, 85, 86, 13] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 34820, "sectionCount": 40, "ranked": [59, 60, 61, 62, 7, 10, 27, 63, 64, 65, 66, 67, 68, 69, 70, 71, 16, 21, 72, 73, 74, 75, 76, 5, 14, 23, 12, 77, 32, 78, 18, 79, 80, 81, 82, 83, 84, 85, 86, 13] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29912, "sectionCount": 33, "ranked": [59, 60, 61, 62, 7, 10, 27, 63, 64, 65, 66, 67, 68, 69, 70, 71, 16, 21, 72, 73, 74, 75, 76, 5, 14, 23, 12, 77, 32, 78, 18, 79, 86] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "ac3514097dbde5360820cc01364fbfec511a52471fcac28f186810728dc223b5",
+          "allowedIdsCount": 85,
+          "allowedIdsSha256": "36da591d5165ab661dc0af0aaee830014f8523a4f856b68c28dde4aab0aa9788",
+          "allowedIdsInContent": ["code:excalidraw-app-app-constants-ts:sync-browser-tabs-timeout", "code:excalidraw-app-data-tab-sync-ts:is-browser-storage-state-newer", "code:excalidraw-app-data-tab-sync-ts:update-browser-state-version", "code:excalidraw-app-data-tab-sync-ts:reset-browser-state-versions", "code:packages-excalidraw-data-library-ts:library-persistence-adapter", "code:excalidraw-app-data-ttd-storage-ts:ttd-indexed-db-adapter"],
+          "packetSources": {},
+          "content": "{\"answer\": \"The actual scene-save path and its interval aren't in the evidence — no local scene persistence module (save/debounce code) came back from the whole-atlas search. What the evidence does show is the cross-tab and non-drawing persistence plumbing:\\n\\n- `excalidraw-app/data/tabSync.ts` — `isBrowserStorageStateNewer`, `updateBrowserStateVersion`, `resetBrowserStateVersions` write version timestamps into `localStorage` keyed by `BrowserStateTypes`, so tabs can tell which one holds newer state. That's coordination metadata, not the drawing itself.\\n- `excalidraw-app/app_constants.ts` — `SYNC_BROWSER_TABS_TIMEOUT = 50` is the only timing constant here, and it governs browser-tab sync, not save frequency. `FILE_UPLOAD_TIMEOUT` and `LOAD_IMAGES_TIMEOUT` are unrelated.\\n- `excalidraw-app/data/TTDStorage.ts` — `TTDIndexedDBAdapter` persists TTD chat data to IndexedDB, not canvas elements.\\n- `packages/excalidraw/data/library.ts` — `LibraryPersistenceAdapter` persists library items, a separate store from the drawing.\\n\\nSo: the \\\"where\\\" for the drawing (likely browser local storage) and the \\\"how often\\\" (debounce/throttle value) are both missing from this evidence — only the tab-sync timestamp mechanism and a 50ms tab-sync timeout are documented. If you point me at the app's scene/local-storage module, I can pin down the exact store and cadence.\", \"citations\": [\"code:excalidraw-app-data-tab-sync-ts:is-browser-storage-state-newer\", \"code:excalidraw-app-data-tab-sync-ts:update-browser-state-version\", \"code:excalidraw-app-data-tab-sync-ts:reset-browser-state-versions\", \"code:excalidraw-app-app-constants-ts:sync-browser-tabs-timeout\", \"code:excalidraw-app-data-ttd-storage-ts:ttd-indexed-db-adapter\", \"code:packages-excalidraw-data-library-ts:library-persistence-adapter\"]}",
+          "usage": { "promptTokens": 10415, "completionTokens": 782, "totalTokens": 11197, "costUsd": 0.005210865 },
+          "ms": 24362
+        }
+      },
+      {
+        "id": "excalidraw-undo",
+        "question": "How does undo work, and why doesn't it roll back what a collaborator just drew?",
+        "selectedId": "system:excalidraw-monorepo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23992,
+        "sectionCount": 19,
+        "ranked": [87, 88, 7, 89, 90, 91, 18, 92, 93, 94, 39, 19, 95, 96, 3, 15, 13, 97, 14],
+        "packets": [33, 34],
+        "sections": [
+          {
+            "id": "component:excalidraw-app-debug-collaborators-ts",
+            "kind": "component",
+            "p": 87,
+            "symbols": [
+              { "id": "code:excalidraw-app-debug-collaborators-ts:generate-simulated-collaborators", "name": "generateSimulatedCollaborators" },
+              { "id": "code:excalidraw-app-debug-collaborators-ts:use-simulated-collaborators", "name": "useSimulatedCollaborators" },
+              { "id": "code:excalidraw-app-debug-collaborators-ts:get-simulated-collaborator-count-from-url", "name": "getSimulatedCollaboratorCountFromUrl" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-history-tsx",
+            "kind": "component",
+            "p": 88,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-history-tsx:create-undo-action", "name": "createUndoAction" },
+              { "id": "code:packages-excalidraw-actions-action-history-tsx:create-redo-action", "name": "createRedoAction" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:collaborator", "name": "Collaborator" },
+              { "id": "code:packages-excalidraw-types-ts:collaborator-pointer", "name": "CollaboratorPointer" },
+              { "id": "code:packages-excalidraw-types-ts:interactive-canvas-app-state", "name": "InteractiveCanvasAppState" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-navigate-tsx",
+            "kind": "component",
+            "p": 89,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-navigate-tsx:action-go-to-collaborator", "name": "actionGoToCollaborator" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-user-list-tsx",
+            "kind": "component",
+            "p": 90,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-user-list-tsx:render-collaborator", "name": "renderCollaborator" },
+              { "id": "code:packages-excalidraw-components-user-list-tsx:go-to-collaborator-component-props", "name": "GoToCollaboratorComponentProps" },
+              { "id": "code:packages-excalidraw-components-user-list-tsx:show-collaborators-filter-at", "name": "SHOW_COLLABORATORS_FILTER_AT" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-zindex-tsx",
+            "kind": "component",
+            "p": 91,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-zindex-tsx:action-send-to-back", "name": "actionSendToBack" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-icons-tsx",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-icons-tsx:undo-icon", "name": "UndoIcon" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:send-to-back-icon", "name": "SendToBackIcon" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:create-icon", "name": "createIcon" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-footer-footer-tsx",
+            "kind": "component",
+            "p": 92,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-footer-footer-tsx:footer", "name": "Footer" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-viewport-ts",
+            "kind": "component",
+            "p": 93,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-viewport-ts:snap-back-to-constraints", "name": "snapBackToConstraints" },
+              { "id": "code:packages-excalidraw-components-app-viewport-ts:scroll-constraints-snap-back-animation-key", "name": "SCROLL_CONSTRAINTS_SNAP_BACK_ANIMATION_KEY" },
+              { "id": "code:packages-excalidraw-components-app-viewport-ts:snap-back-animation-duration", "name": "SNAP_BACK_ANIMATION_DURATION" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-colors-ts",
+            "kind": "component",
+            "p": 94,
+            "symbols": [
+              { "id": "code:packages-common-src-colors-ts:remove-dark-mode-filter", "name": "removeDarkModeFilter" },
+              { "id": "code:packages-common-src-colors-ts:css-hue-rotate", "name": "cssHueRotate" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-actions-tsx",
+            "kind": "component",
+            "p": 39,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-actions-tsx:undo-redo-actions", "name": "UndoRedoActions" },
+              { "id": "code:packages-excalidraw-components-actions-tsx:layers-fieldset", "name": "LayersFieldset" },
+              { "id": "code:packages-excalidraw-components-actions-tsx:mobile-shape-actions", "name": "MobileShapeActions" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-history-ts",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:packages-excalidraw-history-ts:history", "name": "History" },
+              { "id": "code:packages-excalidraw-history-ts:history-changed-event", "name": "HistoryChangedEvent" },
+              { "id": "code:packages-excalidraw-history-ts:history-delta", "name": "HistoryDelta" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-clients-ts",
+            "kind": "component",
+            "p": 95,
+            "symbols": [
+              { "id": "code:packages-excalidraw-clients-ts:get-client-color", "name": "getClientColor" },
+              { "id": "code:packages-excalidraw-clients-ts:render-remote-cursors", "name": "renderRemoteCursors" }
+            ]
+          },
+          { "id": "component:packages-excalidraw-components-eye-dropper-tsx", "kind": "component", "p": 96 },
+          {
+            "id": "component:packages-element-src-store-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:packages-element-src-store-ts:store", "name": "Store" },
+              { "id": "code:packages-element-src-store-ts:capture-update-action", "name": "CaptureUpdateAction" }
+            ]
+          },
+          { "id": "component:packages-excalidraw-components-app-tsx", "kind": "component", "p": 15 },
+          { "id": "component:excalidraw-app-app-tsx", "kind": "component", "p": 13 },
+          {
+            "id": "component:packages-excalidraw-tests-test-utils-ts",
+            "kind": "component",
+            "p": 97,
+            "symbols": [
+              { "id": "code:packages-excalidraw-tests-test-utils-ts:checkpoint-history", "name": "checkpointHistory" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-collab-collab-tsx",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:excalidraw-app-collab-collab-tsx:collab", "name": "Collab" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "packages/excalidraw/history.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11972, "sectionCount": 7, "ranked": [87, 88, 7, 89, 90, 91, 18] },
+          "double": { "byteBudget": 48000, "bytes": 30095, "sectionCount": 27, "ranked": [87, 88, 7, 89, 90, 91, 18, 92, 93, 94, 39, 19, 95, 96, 3, 15, 13, 32, 16, 97, 98, 56, 17, 14, 99, 100, 101] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 30095, "sectionCount": 27, "ranked": [87, 88, 7, 89, 90, 91, 18, 92, 93, 94, 39, 19, 95, 96, 3, 15, 13, 32, 16, 97, 98, 56, 17, 14, 99, 100, 101] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29055, "sectionCount": 26, "ranked": [87, 88, 7, 89, 90, 91, 18, 92, 93, 94, 39, 19, 95, 96, 3, 15, 13, 32, 16, 97, 98, 56, 17, 14, 99, 100] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "30d68f58312bca29cd74a614609ab2de46304a756b1d07e9b827d8592f0c5c8d",
+          "allowedIdsCount": 55,
+          "allowedIdsSha256": "42ea34a88aeee474225f48ed6da557e93b6c4c0bda4d8675b6549325da0d1338",
+          "allowedIdsInContent": ["code:packages-excalidraw-actions-action-history-tsx:create-undo-action", "code:packages-excalidraw-actions-action-history-tsx:create-redo-action", "code:packages-excalidraw-components-icons-tsx:undo-icon", "code:packages-excalidraw-components-actions-tsx:undo-redo-actions", "component:packages-excalidraw-history-ts", "code:packages-excalidraw-history-ts:history", "code:packages-excalidraw-history-ts:history-changed-event", "code:packages-excalidraw-history-ts:history-delta", "code:packages-element-src-store-ts:store", "code:packages-element-src-store-ts:capture-update-action", "code:excalidraw-app-collab-collab-tsx:collab"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Undo is a **local** stack of deltas: `History` keeps `undoStack`/`redoStack` of `HistoryDelta`s, and `createUndoAction` calls `history.undo(...)` on Ctrl/Cmd+Z or the undo button (disabled when the stack is empty).\\n\\nIt deliberately ignores collaborator strokes because remote updates are tagged as never undoable in the change-tracking layer.\\n\\n- `packages/excalidraw/history.ts` — `History` holds `undoStack`/`redoStack` of `HistoryDelta`s and emits `HistoryChangedEvent` so the button can gray out; `HistoryDelta` describes the reversible change.\\n- `packages/excalidraw/actions/actionHistory.tsx` — `createUndoAction` / `createRedoAction` wrap `history.undo` / `history.redo` and expose the keyboard shortcut (Ctrl/Cmd+Z) and the `IconButton` UI.\\n- `packages/element/src/store.ts` — `Store` emits durable increments that feed history; `CaptureUpdateAction` decides what lands in the undo stack. Its `NEVER` variant is explicitly \\\"Never undoable… such as remote updates\\\", which is why a collaborator's drawing never enters your stack (only `IMMEDIATELY` updates are \\\"immediately undoable\\\").\\n- `excalidraw-app/collab/Collab.tsx` — the `Collab` session that receives remote scene updates is where those never-captured updates come in.\\n\\nUI wiring: `UndoRedoActions` in `packages/excalidraw/components/Actions.tsx` renders the undo/redo actions using `UndoIcon` from `packages/excalidraw/components/icons.tsx`.\\n\\nNot covered in the evidence: the exact plumbing that tags each remote update with `CaptureUpdateAction.NEVER` inside `Collab.tsx`.\", \"citations\": [\"component:packages-excalidraw-history-ts\", \"code:packages-excalidraw-history-ts:history\", \"code:packages-excalidraw-history-ts:history-delta\", \"code:packages-excalidraw-history-ts:history-changed-event\", \"code:packages-excalidraw-actions-action-history-tsx:create-undo-action\", \"code:packages-excalidraw-actions-action-history-tsx:create-redo-action\", \"code:packages-element-src-store-ts:capture-update-action\", \"code:packages-element-src-store-ts:store\", \"code:excalidraw-app-collab-collab-tsx:collab\", \"code:packages-excalidraw-components-actions-tsx:undo-redo-actions\", \"code:packages-excalidraw-components-icons-tsx:undo-icon\"]}",
+          "usage": { "promptTokens": 9289, "completionTokens": 675, "totalTokens": 9964, "costUsd": 0.004627965 },
+          "ms": 24560
+        }
+      },
+      {
+        "id": "excalidraw-sketchy-look",
+        "question": "What gives shapes their wobbly hand-drawn look, and why doesn't the wobble change every time the screen redraws?",
+        "selectedId": "component:excalidraw-app-share-qr-code-tsx",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23319,
+        "sectionCount": 15,
+        "ranked": [27, 32, 7, 36, 18, 102, 103, 42, 104, 58, 17, 105, 4, 106, 16],
+        "packets": [8, 34],
+        "sections": [
+          {
+            "id": "component:packages-element-src-convert-to-shape-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:packages-element-src-convert-to-shape-ts:convert-to-shape", "name": "convertToShape" },
+              { "id": "code:packages-element-src-convert-to-shape-ts:convert-to-shape-handle-pointer-move-from-pointer-down", "name": "convertToShapeHandlePointerMoveFromPointerDown" },
+              { "id": "code:packages-element-src-convert-to-shape-ts:shape-recognition-result", "name": "ShapeRecognitionResult" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-constants-ts",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:packages-common-src-constants-ts:cjk-hand-drawn-fallback-font", "name": "CJK_HAND_DRAWN_FALLBACK_FONT" },
+              { "id": "code:packages-common-src-constants-ts:element-pending-draw-shape-opacity", "name": "ELEMENT_PENDING_DRAW_SHAPE_OPACITY" },
+              { "id": "code:packages-common-src-constants-ts:classes", "name": "CLASSES" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:scroll-constraints", "name": "ScrollConstraints" },
+              { "id": "code:packages-excalidraw-types-ts:pointer-down-state", "name": "PointerDownState" },
+              { "id": "code:packages-excalidraw-types-ts:excalidraw-imperative-api", "name": "ExcalidrawImperativeAPI" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-shape-action-predicates-ts",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-shape-action-predicates-ts:get-shape-action-predicates", "name": "getShapeActionPredicates" },
+              { "id": "code:packages-excalidraw-components-shape-action-predicates-ts:shape-action-predicates", "name": "ShapeActionPredicates" },
+              { "id": "code:packages-excalidraw-components-shape-action-predicates-ts:can-change-background-color", "name": "canChangeBackgroundColor" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-icons-tsx",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-icons-tsx:hand-icon", "name": "handIcon" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:welcome-screen-help-arrow", "name": "WelcomeScreenHelpArrow" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:welcome-screen-menu-arrow", "name": "WelcomeScreenMenuArrow" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-tools-tsx",
+            "kind": "component",
+            "p": 102,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-tools-tsx:hand-tool-button", "name": "HandToolButton" },
+              { "id": "code:packages-excalidraw-components-tools-tsx:find-shape-by-key", "name": "findShapeByKey" },
+              { "id": "code:packages-excalidraw-components-tools-tsx:tools", "name": "TOOLS" }
+            ]
+          },
+          { "id": "component:packages-excalidraw-fonts-fonts-ts", "kind": "component", "p": 103 },
+          {
+            "id": "component:packages-excalidraw-actions-action-properties-tsx",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-arrow-properties", "name": "actionChangeArrowProperties" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-background-color", "name": "actionChangeBackgroundColor" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-vertical-align", "name": "actionChangeVerticalAlign" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-picker-tsx",
+            "kind": "component",
+            "p": 104,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:font-picker", "name": "FontPicker" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:default-fonts", "name": "DEFAULT_FONTS" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:font-picker-props", "name": "FontPickerProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx",
+            "kind": "component",
+            "p": 58,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx:welcome-screen-menu-item", "name": "WelcomeScreenMenuItem" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx:welcome-screen-menu-item-link", "name": "WelcomeScreenMenuItemLink" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx:welcome-screen-menu-item-content", "name": "WelcomeScreenMenuItemContent" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-utils-ts",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:packages-common-src-utils-ts:set-date-time-for-tests", "name": "setDateTimeForTests" },
+              { "id": "code:packages-common-src-utils-ts:get-date-time", "name": "getDateTime" },
+              { "id": "code:packages-common-src-utils-ts:mock-date-time", "name": "mockDateTime" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-welcome-screen-welcome-screen-tsx",
+            "kind": "component",
+            "p": 105,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-tsx:welcome-screen", "name": "WelcomeScreen" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-drawshape-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-drawshape-ts:app-draw-shape", "name": "AppDrawShape" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx",
+            "kind": "component",
+            "p": 106,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx:menu-hint", "name": "MenuHint" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx:toolbar-hint", "name": "ToolbarHint" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx:help-hint", "name": "HelpHint" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-types-ts",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:packages-element-src-types-ts:excalidraw-element-base", "name": "_ExcalidrawElementBase" },
+              { "id": "code:packages-element-src-types-ts:fixed-point-binding", "name": "FixedPointBinding" },
+              { "id": "code:packages-element-src-types-ts:excalidraw-text-element", "name": "ExcalidrawTextElement" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "packages/element/src/shape.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11994, "sectionCount": 7, "ranked": [27, 32, 7, 36, 18, 102, 103] },
+          "double": { "byteBudget": 48000, "bytes": 37272, "sectionCount": 32, "ranked": [27, 32, 7, 36, 18, 102, 103, 42, 104, 58, 17, 105, 4, 106, 16, 40, 107, 45, 47, 108, 48, 39, 109, 5, 110, 93, 3, 15, 56, 111, 112, 113] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 37272, "sectionCount": 32, "ranked": [27, 32, 7, 36, 18, 102, 103, 42, 104, 58, 17, 105, 4, 106, 16, 40, 107, 45, 47, 108, 48, 39, 109, 5, 110, 93, 3, 15, 56, 111, 112, 113] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29715, "sectionCount": 25, "ranked": [27, 32, 7, 36, 18, 102, 103, 42, 104, 58, 17, 105, 4, 106, 16, 40, 107, 45, 47, 108, 48, 39, 109, 5, 93] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "43571f847ec085d026fb7d54ae474c87d9da30ff8da60c1c439602863fc96ae6",
+          "allowedIdsCount": 57,
+          "allowedIdsSha256": "fb8323f705f7fe13a084852f0b0e496ba23431287442731082f385dd96e6d73e",
+          "allowedIdsInContent": ["code:packages-element-src-convert-to-shape-ts:convert-to-shape", "code:packages-common-src-constants-ts:cjk-hand-drawn-fallback-font", "code:packages-excalidraw-components-font-picker-font-picker-tsx:default-fonts", "code:packages-element-src-types-ts:excalidraw-element-base"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The sketchy look comes from **rough.js-style rendering driven by two per-element fields**: `roughness` (how heavily the stroke wobbles) and `seed` (a random integer that feeds shape generation). Because the seed is stored on the element and reused on every render, the same element always produces the same wobble — the randomness is captured once at creation time rather than sampled per frame.\\n\\n- `packages/element/src/types.ts` — `_ExcalidrawElementBase` declares `roughness: number` and `seed: number`, with the comment: \\\"Random integer used to seed shape generation so that the roughjs shape doesn't differ across renders.\\\" (`code:packages-element-src-types-ts:excalidraw-element-base`)\\n- `packages/element/src/convertToShape.ts` — `convertToShape` creates recognized shapes with `roughness: appState.currentItemRoughness`, so the roughness setting is stamped onto the element at creation (`code:packages-element-src-convert-to-shape-ts:convert-to-shape`).\\n- For text, the hand-drawn aesthetic extends to fonts: `packages/common/src/constants.ts` defines `CJK_HAND_DRAWN_FALLBACK_FONT = \\\"Xiaolai\\\"` (`code:packages-common-src-constants-ts:cjk-hand-drawn-fallback-font`), and `packages/excalidraw/components/FontPicker/FontPicker.tsx` labels `FONT_FAMILY.Excalifont` as the \\\"hand drawn\\\" font (`code:packages-excalidraw-components-font-picker-font-picker-tsx:default-fonts`).\\n\\nNote: the actual rough.js drawing call site isn't in the evidence — only the element fields and their stated purpose.\",\"citations\":[\"code:packages-element-src-types-ts:excalidraw-element-base\",\"code:packages-element-src-convert-to-shape-ts:convert-to-shape\",\"code:packages-common-src-constants-ts:cjk-hand-drawn-fallback-font\",\"code:packages-excalidraw-components-font-picker-font-picker-tsx:default-fonts\"]}",
+          "usage": { "promptTokens": 9353, "completionTokens": 591, "totalTokens": 9944, "costUsd": 0.004582725 },
+          "ms": 21740
+        }
+      },
+      {
+        "id": "excalidraw-language-list",
+        "question": "Why doesn't a language appear in the language picker even though someone has started translating it?",
+        "selectedId": "system:excalidraw-monorepo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23966,
+        "sectionCount": 21,
+        "ranked": [114, 115, 116, 101, 38, 46, 117, 35, 50, 118, 119, 120, 104, 121, 42, 7, 122, 123, 32, 124, 125],
+        "packets": [33, 34],
+        "sections": [
+          {
+            "id": "component:excalidraw-app-app-language-language-detector-ts",
+            "kind": "component",
+            "p": 114,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-language-language-detector-ts:language-detector", "name": "languageDetector" },
+              { "id": "code:excalidraw-app-app-language-language-detector-ts:get-preferred-language", "name": "getPreferredLanguage" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-language-language-list-tsx",
+            "kind": "component",
+            "p": 115,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-language-language-list-tsx:language-list", "name": "LanguageList" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-language-language-state-ts",
+            "kind": "component",
+            "p": 116,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-language-language-state-ts:use-app-lang-code", "name": "useAppLangCode" },
+              { "id": "code:excalidraw-app-app-language-language-state-ts:app-lang-code-atom", "name": "appLangCodeAtom" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-i18n-ts",
+            "kind": "component",
+            "p": 101,
+            "symbols": [
+              { "id": "code:packages-excalidraw-i18n-ts:set-language", "name": "setLanguage" },
+              { "id": "code:packages-excalidraw-i18n-ts:languages", "name": "languages" },
+              { "id": "code:packages-excalidraw-i18n-ts:language", "name": "Language" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-color-picker-color-top-picks-dn-d-ts",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-color-picker-color-top-picks-dn-d-ts:use-color-top-picks-dn-d", "name": "useColorTopPicksDnD" },
+              { "id": "code:packages-excalidraw-components-color-picker-color-top-picks-dn-d-ts:use-color-picker-dn-d", "name": "useColorPickerDnD" },
+              { "id": "code:packages-excalidraw-components-color-picker-color-top-picks-dn-d-ts:color-picker-dn-d", "name": "ColorPickerDnD" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts",
+            "kind": "component",
+            "p": 46,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts:use-font-top-picks-dn-d", "name": "useFontTopPicksDnD" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts:use-font-picker-dn-d", "name": "useFontPickerDnD" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts:font-picker-dn-d", "name": "FontPickerDnD" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-icon-picker-tsx",
+            "kind": "component",
+            "p": 117,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-icon-picker-tsx:icon-picker", "name": "IconPicker" },
+              { "id": "code:packages-excalidraw-components-icon-picker-tsx:picker", "name": "Picker" },
+              { "id": "code:packages-excalidraw-components-icon-picker-tsx:picker-columns", "name": "PICKER_COLUMNS" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx:use-top-picks-dn-d", "name": "useTopPicksDnD" },
+              { "id": "code:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx:top-picks-dn-d", "name": "TopPicksDnD" },
+              { "id": "code:packages-excalidraw-components-top-picks-dn-d-top-picks-dn-d-tsx:create-top-picks-ghost", "name": "CreateTopPicksGhost" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-color-picker-color-picker-tsx",
+            "kind": "component",
+            "p": 50,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-color-picker-color-picker-tsx:color-picker", "name": "ColorPicker" },
+              { "id": "code:packages-excalidraw-components-color-picker-color-picker-tsx:color-picker-component", "name": "ColorPickerComponent" },
+              { "id": "code:packages-excalidraw-components-color-picker-color-picker-tsx:color-picker-popup-content", "name": "ColorPickerPopupContent" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-color-picker-picker-tsx",
+            "kind": "component",
+            "p": 118,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-color-picker-picker-tsx:picker", "name": "Picker" },
+              { "id": "code:packages-excalidraw-components-color-picker-picker-tsx:picker-props", "name": "PickerProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-color-picker-color-picker-utils-ts",
+            "kind": "component",
+            "p": 119,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-color-picker-color-picker-utils-ts:active-color-picker-section-atom", "name": "activeColorPickerSectionAtom" },
+              { "id": "code:packages-excalidraw-components-color-picker-color-picker-utils-ts:color-picker-hotkey-bindings", "name": "colorPickerHotkeyBindings" },
+              { "id": "code:packages-excalidraw-components-color-picker-color-picker-utils-ts:color-picker-type", "name": "ColorPickerType" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-color-picker-top-picks-tsx",
+            "kind": "component",
+            "p": 120,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-color-picker-top-picks-tsx:top-picks", "name": "TopPicks" },
+              { "id": "code:packages-excalidraw-components-color-picker-top-picks-tsx:top-picks-props", "name": "TopPicksProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-picker-tsx",
+            "kind": "component",
+            "p": 104,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:font-picker", "name": "FontPicker" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:font-top-picks", "name": "FontTopPicks" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:get-font-top-picks", "name": "getFontTopPicks" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-initialize-app-tsx",
+            "kind": "component",
+            "p": 121,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-initialize-app-tsx:initialize-app", "name": "InitializeApp" },
+              { "id": "code:packages-excalidraw-components-initialize-app-tsx:props", "name": "Props" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-properties-tsx",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-bucket-fill-background-color", "name": "actionChangeBucketFillBackgroundColor" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-background-color", "name": "actionChangeBackgroundColor" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-arrowhead", "name": "actionChangeArrowhead" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:observed-elements-app-state", "name": "ObservedElementsAppState" },
+              { "id": "code:packages-excalidraw-types-ts:pointer-down-state", "name": "PointerDownState" },
+              { "id": "code:packages-excalidraw-types-ts:interactive-canvas-app-state", "name": "InteractiveCanvasAppState" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-picker-list-tsx",
+            "kind": "component",
+            "p": 122,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-list-tsx:font-picker-list", "name": "FontPickerList" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-list-tsx:font-picker-list-props", "name": "FontPickerListProps" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-list-tsx:font-descriptor", "name": "FontDescriptor" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-bucket-fill-ts",
+            "kind": "component",
+            "p": 123,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-bucket-fill-ts:bucket-fill-keyboard-color-picks", "name": "BUCKET_FILL_KEYBOARD_COLOR_PICKS" },
+              { "id": "code:packages-excalidraw-components-app-bucket-fill-ts:app-bucket-fill", "name": "AppBucketFill" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-constants-ts",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:packages-common-src-constants-ts:element-translate-amount", "name": "ELEMENT_TRANSLATE_AMOUNT" },
+              { "id": "code:packages-common-src-constants-ts:element-shift-translate-amount", "name": "ELEMENT_SHIFT_TRANSLATE_AMOUNT" },
+              { "id": "code:packages-common-src-constants-ts:font-top-picks-slots", "name": "FONT_TOP_PICKS_SLOTS" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-elbow-arrow-ts",
+            "kind": "component",
+            "p": 124,
+            "symbols": [
+              { "id": "code:packages-element-src-elbow-arrow-ts:generate-dynamic-aab-bs", "name": "generateDynamicAABBs" },
+              { "id": "code:packages-element-src-elbow-arrow-ts:route-elbow-arrow", "name": "routeElbowArrow" },
+              { "id": "code:packages-element-src-elbow-arrow-ts:estimate-segment-count", "name": "estimateSegmentCount" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-components-app-main-menu-tsx",
+            "kind": "component",
+            "p": 125,
+            "symbols": [
+              { "id": "code:excalidraw-app-components-app-main-menu-tsx:app-main-menu", "name": "AppMainMenu" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "packages/excalidraw/i18n.ts": true, "crowdin.yml": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11821, "sectionCount": 10, "ranked": [114, 115, 116, 101, 38, 46, 117, 35, 50, 118] },
+          "double": { "byteBudget": 48000, "bytes": 33767, "sectionCount": 34, "ranked": [114, 115, 116, 101, 38, 46, 117, 35, 50, 118, 119, 120, 104, 121, 42, 7, 122, 123, 32, 124, 125, 126, 127, 128, 129, 130, 94, 93, 131, 110, 132, 133, 16, 134] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 33767, "sectionCount": 34, "ranked": [114, 115, 116, 101, 38, 46, 117, 35, 50, 118, 119, 120, 104, 121, 42, 7, 122, 123, 32, 124, 125, 126, 127, 128, 129, 130, 94, 93, 131, 110, 132, 133, 16, 134] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29786, "sectionCount": 29, "ranked": [114, 115, 116, 101, 38, 46, 117, 35, 50, 118, 119, 120, 104, 121, 42, 7, 122, 123, 32, 124, 125, 126, 127, 128, 129, 130, 94, 93, 131] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "4ac77e1e5d11ff9e0e0b403e7270e4df33442c9ad664d5961847dfb07bd7b06c",
+          "allowedIdsCount": 76,
+          "allowedIdsSha256": "69e5d7e41c2b8bdf20186c832e87dd487be3d025658ae7e9404f67ea2db7628c",
+          "allowedIdsInContent": ["component:excalidraw-app-app-language-language-detector-ts", "code:excalidraw-app-app-language-language-detector-ts:get-preferred-language", "component:excalidraw-app-app-language-language-list-tsx", "code:excalidraw-app-app-language-language-list-tsx:language-list", "component:excalidraw-app-app-language-language-state-ts", "code:excalidraw-app-app-language-language-state-ts:app-lang-code-atom", "component:packages-excalidraw-i18n-ts", "code:packages-excalidraw-i18n-ts:set-language", "code:packages-excalidraw-i18n-ts:languages", "code:packages-excalidraw-i18n-ts:language"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Because the picker doesn't discover translations from locale files — it only renders whatever is listed in the static `languages` registry in `packages/excalidraw/i18n.ts`. `LanguageList` (`excalidraw-app/app-language/LanguageList.tsx`) maps over `languages` to build its `<option>`s, so a locale someone started translating (e.g. `locales/<code>.json`) stays invisible until it's added as an entry to `languages`.\\n\\n- `LanguageList` (`code:excalidraw-app-app-language-language-list-tsx:language-list`) renders `languages.map(...)` and calls `setLangCode(target.value)` on change; there is no loading of locale files or progress filtering.\\n- `languages` (`code:packages-excalidraw-i18n-ts:languages`) and the `Language` type (`code:packages-excalidraw-i18n-ts:language`) are the sole source of picker entries.\\n- `setLanguage` (`code:packages-excalidraw-i18n-ts:set-language`) loads the translation lazily via `import(./locales/${currentLang.code}.json)` — that's per-code loading at switch time, not discovery, so an unregistered locale is never fetched or shown.\\n- The selection path is `appLangCodeAtom` / `useAppLangCode` (`code:excalidraw-app-app-language-language-state-ts:app-lang-code-atom`) with detection/caching in `excalidraw-app/app-language/language-detector.ts` (`code:excalidraw-app-app-language-language-detector-ts:get-preferred-language`); none of these add languages to the list.\\n\\nNot in the evidence: any criteria (e.g. minimum translation percentage) for when a locale file gets an entry in `languages`. Adding one is a manual registry edit as far as the atlas shows.\",\"citations\":[\"component:excalidraw-app-app-language-language-list-tsx\",\"code:excalidraw-app-app-language-language-list-tsx:language-list\",\"component:packages-excalidraw-i18n-ts\",\"code:packages-excalidraw-i18n-ts:languages\",\"code:packages-excalidraw-i18n-ts:language\",\"code:packages-excalidraw-i18n-ts:set-language\",\"component:excalidraw-app-app-language-language-state-ts\",\"code:excalidraw-app-app-language-language-state-ts:app-lang-code-atom\",\"component:excalidraw-app-app-language-language-detector-ts\",\"code:excalidraw-app-app-language-language-detector-ts:get-preferred-language\"]}",
+          "usage": { "promptTokens": 10094, "completionTokens": 672, "totalTokens": 10766, "costUsd": 0.00497553 },
+          "ms": 21442
+        }
+      },
+      {
+        "id": "excalidraw-embed",
+        "question": "How do I put the whiteboard inside my own React app, and what do I do about fonts if I host everything myself?",
+        "selectedId": "system:excalidraw-monorepo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23891,
+        "sectionCount": 13,
+        "ranked": [104, 122, 15, 42, 136, 103, 130, 7, 32, 137, 46, 113, 135],
+        "packets": [33, 34],
+        "sections": [
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-picker-tsx",
+            "kind": "component",
+            "p": 104,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:font-picker", "name": "FontPicker" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:font-top-picks", "name": "FontTopPicks" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-tsx:get-top-pick-font", "name": "getTopPickFont" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-picker-list-tsx",
+            "kind": "component",
+            "p": 122,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-list-tsx:font-picker-list", "name": "FontPickerList" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-list-tsx:get-font-family-icon", "name": "getFontFamilyIcon" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-list-tsx:get-font-family-label", "name": "getFontFamilyLabel" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-tsx",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-tsx:app", "name": "App" },
+              { "id": "code:packages-excalidraw-components-app-tsx:use-app", "name": "useApp" },
+              { "id": "code:packages-excalidraw-components-app-tsx:excalidraw-set-app-state-context", "name": "ExcalidrawSetAppStateContext" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-properties-tsx",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-font-size", "name": "actionChangeFontSize" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:change-font-size", "name": "changeFontSize" },
+              { "id": "code:packages-excalidraw-actions-action-properties-tsx:action-change-font-family", "name": "actionChangeFontFamily" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-duplicate-ts",
+            "kind": "component",
+            "p": 136,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-duplicate-ts:app-duplicate", "name": "AppDuplicate" },
+              { "id": "code:packages-excalidraw-components-app-duplicate-ts:duplication", "name": "Duplication" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-fonts-fonts-ts",
+            "kind": "component",
+            "p": 103,
+            "symbols": [
+              { "id": "code:packages-excalidraw-fonts-fonts-ts:fonts", "name": "Fonts" },
+              { "id": "code:packages-excalidraw-fonts-fonts-ts:excalidraw-font-face-descriptor", "name": "ExcalidrawFontFaceDescriptor" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-picker-trigger-tsx",
+            "kind": "component",
+            "p": 130,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-trigger-tsx:font-picker-trigger", "name": "FontPickerTrigger" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-picker-trigger-tsx:font-picker-trigger-props", "name": "FontPickerTriggerProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:app-class-properties", "name": "AppClassProperties" },
+              { "id": "code:packages-excalidraw-types-ts:interactive-canvas-app-state", "name": "InteractiveCanvasAppState" },
+              { "id": "code:packages-excalidraw-types-ts:static-canvas-app-state", "name": "StaticCanvasAppState" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-constants-ts",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:packages-common-src-constants-ts:get-font-family-fallbacks", "name": "getFontFamilyFallbacks" },
+              { "id": "code:packages-common-src-constants-ts:get-generic-font-family-fallback", "name": "getGenericFontFamilyFallback" },
+              { "id": "code:packages-common-src-constants-ts:font-family-fallbacks", "name": "FONT_FAMILY_FALLBACKS" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-keyboard-nav-handlers-ts",
+            "kind": "component",
+            "p": 137,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-keyboard-nav-handlers-ts:font-picker-key-handler", "name": "fontPickerKeyHandler" },
+              { "id": "code:packages-excalidraw-components-font-picker-keyboard-nav-handlers-ts:font-picker-key-nav-handler-props", "name": "FontPickerKeyNavHandlerProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts",
+            "kind": "component",
+            "p": 46,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts:use-font-top-picks-dn-d", "name": "useFontTopPicksDnD" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts:create-font-ghost", "name": "createFontGhost" },
+              { "id": "code:packages-excalidraw-components-font-picker-font-top-picks-dn-d-ts:use-font-picker-dn-d", "name": "useFontPickerDnD" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-stats-multi-font-size-tsx",
+            "kind": "component",
+            "p": 113,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-stats-multi-font-size-tsx:multi-font-size", "name": "MultiFontSize" },
+              { "id": "code:packages-excalidraw-components-stats-multi-font-size-tsx:handle-font-size-change", "name": "handleFontSizeChange" },
+              { "id": "code:packages-excalidraw-components-stats-multi-font-size-tsx:multi-font-size-props", "name": "MultiFontSizeProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-fonts-helvetica-index-ts",
+            "kind": "component",
+            "p": 135,
+            "symbols": [
+              { "id": "code:packages-excalidraw-fonts-helvetica-index-ts:helvetica-font-faces", "name": "HelveticaFontFaces" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "dev-docs/docs/@excalidraw/excalidraw/installation.mdx": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11961, "sectionCount": 6, "ranked": [104, 122, 15, 42, 46, 135] },
+          "double": { "byteBudget": 48000, "bytes": 43380, "sectionCount": 40, "ranked": [104, 122, 15, 42, 136, 103, 130, 7, 32, 137, 46, 113, 111, 138, 52, 139, 16, 140, 43, 17, 82, 141, 135, 142, 143, 144, 145, 146, 147, 148, 11, 93, 149, 150, 151, 112, 18, 152, 153, 73] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 43380, "sectionCount": 40, "ranked": [104, 122, 15, 42, 136, 103, 130, 7, 32, 137, 46, 113, 111, 138, 52, 139, 16, 140, 43, 17, 82, 141, 135, 142, 143, 144, 145, 146, 147, 148, 11, 93, 149, 150, 151, 112, 18, 152, 153, 73] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29664, "sectionCount": 18, "ranked": [104, 122, 15, 42, 136, 103, 130, 7, 32, 137, 46, 113, 111, 138, 52, 139, 16, 140] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "72d3c2297f53a3a3c847c2e24cf11bc0ead74b0c49b2220f26e2c4835591412e",
+          "allowedIdsCount": 48,
+          "allowedIdsSha256": "c2678eebc2e9552a5b8a38dded9e6925a8f3cb19c297ddc84c85fcf7ea6b792b",
+          "allowedIdsInContent": ["component:packages-excalidraw-components-app-tsx", "code:packages-excalidraw-components-app-tsx:app", "code:packages-excalidraw-components-app-tsx:use-app", "component:packages-excalidraw-fonts-fonts-ts", "code:packages-excalidraw-fonts-fonts-ts:fonts", "code:packages-excalidraw-fonts-fonts-ts:excalidraw-font-face-descriptor", "component:packages-common-src-constants-ts", "code:packages-common-src-constants-ts:get-font-family-fallbacks", "code:packages-common-src-constants-ts:get-generic-font-family-fallback", "code:packages-common-src-constants-ts:font-family-fallbacks", "component:packages-excalidraw-fonts-helvetica-index-ts", "code:packages-excalidraw-fonts-helvetica-index-ts:helvetica-font-faces"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Embedding instructions aren't in the evidence — nothing here covers installing the npm package or rendering the `<Excalidraw>` component in a host app. What the evidence does show is that the editor's core React component is `App` in `packages/excalidraw/components/App.tsx`, exposed to children via hooks like `useApp`/`useExcalidrawAppState`, but no integration/usage docs were returned.\\n\\nOn self-hosted fonts, the evidence gives the mechanics:\\n\\n- `packages/excalidraw/fonts/Fonts.ts` — `Fonts` lazily registers font families, and the static `Fonts.registered` getter explicitly merges fonts a **host app registers before** lazy init (host registrations are preserved, not overridden). So self-hosting means registering your own font faces into `Fonts`.\\n- `packages/excalidraw/fonts/Fonts.ts` (`ExcalidrawFontFaceDescriptor`, lines 480-483) — the descriptor shape used to declare font faces.\\n- `packages/excalidraw/fonts/Helvetica/index.ts` (`HelveticaFontFaces`) — example descriptor using `LOCAL_FONT_PROTOCOL` for a locally served font, which is the pattern for self-hosted font files.\\n- `packages/common/src/constants.ts` (`FONT_FAMILY_FALLBACKS`, `getFontFamilyFallbacks`, `getGenericFontFamilyFallback`) — fallback stacks (CJK, Windows emoji, generic monospace/sans/serif) so text still renders if a self-hosted face fails to load.\\n\\nMissing from the evidence: the public React integration API (component name, props, `excalidrawAPI`) and any config option for pointing at a self-hosted fonts directory/CDN.\",\"citations\":[\"component:packages-excalidraw-components-app-tsx\",\"code:packages-excalidraw-components-app-tsx:app\",\"code:packages-excalidraw-components-app-tsx:use-app\",\"component:packages-excalidraw-fonts-fonts-ts\",\"code:packages-excalidraw-fonts-fonts-ts:fonts\",\"code:packages-excalidraw-fonts-fonts-ts:excalidraw-font-face-descriptor\",\"component:packages-excalidraw-fonts-helvetica-index-ts\",\"code:packages-excalidraw-fonts-helvetica-index-ts:helvetica-font-faces\",\"component:packages-common-src-constants-ts\",\"code:packages-common-src-constants-ts:font-family-fallbacks\",\"code:packages-common-src-constants-ts:get-font-family-fallbacks\",\"code:packages-common-src-constants-ts:get-generic-font-family-fallback\"]}",
+          "usage": { "promptTokens": 8723, "completionTokens": 808, "totalTokens": 9531, "costUsd": 0.004497465 },
+          "ms": 31118
+        }
+      },
+      {
+        "id": "excalidraw-backend-servers",
+        "question": "Which outside services does the hosted app talk to for share links and live sessions, and where is that set?",
+        "selectedId": "system:excalidraw-monorepo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23929,
+        "sectionCount": 20,
+        "ranked": [0, 8, 13, 10, 14, 37, 20, 6, 26, 25, 15, 93, 32, 155, 18, 156, 56, 136, 7, 154],
+        "packets": [33, 34],
+        "sections": [
+          {
+            "id": "component:excalidraw-app-share-share-dialog-tsx",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog", "name": "ShareDialog" },
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog-picker", "name": "ShareDialogPicker" },
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog-inner", "name": "ShareDialogInner" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-share-qr-code-tsx",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:excalidraw-app-share-qr-code-tsx:qr-code", "name": "QRCode" },
+              { "id": "code:excalidraw-app-share-qr-code-tsx:qr-code-props", "name": "QRCodeProps" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-tsx",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-tsx:shareable-link-confirm-dialog", "name": "shareableLinkConfirmDialog" },
+              { "id": "code:excalidraw-app-app-tsx:excalidraw-app", "name": "ExcalidrawApp" },
+              { "id": "code:excalidraw-app-app-tsx:excalidraw-wrapper", "name": "ExcalidrawWrapper" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-constants-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-constants-ts:firebase-storage-prefixes", "name": "FIREBASE_STORAGE_PREFIXES" },
+              { "id": "code:excalidraw-app-app-constants-ts:storage-keys", "name": "STORAGE_KEYS" },
+              { "id": "code:excalidraw-app-app-constants-ts:cookies", "name": "COOKIES" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-collab-collab-tsx",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:excalidraw-app-collab-collab-tsx:active-room-link-atom", "name": "activeRoomLinkAtom" },
+              { "id": "code:excalidraw-app-collab-collab-tsx:collab", "name": "Collab" },
+              { "id": "code:excalidraw-app-collab-collab-tsx:collab-api", "name": "CollabAPI" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-live-collaboration-live-collaboration-trigger-tsx:live-collaboration-trigger", "name": "LiveCollaborationTrigger" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-element-link-ts",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:packages-element-src-element-link-ts:is-element-link", "name": "isElementLink" },
+              { "id": "code:packages-element-src-element-link-ts:default-get-element-link-from-selection", "name": "defaultGetElementLinkFromSelection" },
+              { "id": "code:packages-element-src-element-link-ts:get-link-id-and-type-from-selection", "name": "getLinkIdAndTypeFromSelection" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-share-qrcode-chunk-ts",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:excalidraw-app-share-qrcode-chunk-ts:generate-qr-code-svg", "name": "generateQRCodeSVG" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-element-link-dialog-tsx",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-element-link-dialog-tsx:element-link-dialog", "name": "ElementLinkDialog" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-actions-action-element-link-ts",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:packages-excalidraw-actions-action-element-link-ts:action-link-to-element", "name": "actionLinkToElement" },
+              { "id": "code:packages-excalidraw-actions-action-element-link-ts:action-copy-element-link", "name": "actionCopyElementLink" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-tsx",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-tsx:excalidraw-set-app-state-context", "name": "ExcalidrawSetAppStateContext" },
+              { "id": "code:packages-excalidraw-components-app-tsx:use-excalidraw-set-app-state", "name": "useExcalidrawSetAppState" },
+              { "id": "code:packages-excalidraw-components-app-tsx:app", "name": "App" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-viewport-ts",
+            "kind": "component",
+            "p": 93,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-viewport-ts:app-viewport", "name": "AppViewport" },
+              { "id": "code:packages-excalidraw-components-app-viewport-ts:is-set-viewport-rect", "name": "isSetViewportRect" },
+              { "id": "code:packages-excalidraw-components-app-viewport-ts:app-viewport-dependencies", "name": "AppViewportDependencies" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-constants-ts",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:packages-common-src-constants-ts:element-link-key", "name": "ELEMENT_LINK_KEY" },
+              { "id": "code:packages-common-src-constants-ts:app-name", "name": "APP_NAME" },
+              { "id": "code:packages-common-src-constants-ts:event", "name": "EVENT" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-hyperlink-hyperlink-tsx",
+            "kind": "component",
+            "p": 155,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-hyperlink-hyperlink-tsx:should-hide-link-popup", "name": "shouldHideLinkPopup" },
+              { "id": "code:packages-excalidraw-components-hyperlink-hyperlink-tsx:embeddable-link-cache", "name": "embeddableLinkCache" },
+              { "id": "code:packages-excalidraw-components-hyperlink-hyperlink-tsx:hyperlink", "name": "Hyperlink" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-icons-tsx",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-icons-tsx:share", "name": "share" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:share-ios", "name": "shareIOS" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:share-windows", "name": "shareWindows" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-data-index-ts",
+            "kind": "component",
+            "p": 156,
+            "symbols": [
+              { "id": "code:excalidraw-app-data-index-ts:is-collaboration-link", "name": "isCollaborationLink" },
+              { "id": "code:excalidraw-app-data-index-ts:get-collaboration-link-data", "name": "getCollaborationLinkData" },
+              { "id": "code:excalidraw-app-data-index-ts:re-collab-link", "name": "RE_COLLAB_LINK" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-layer-ui-tsx",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-layer-ui-tsx:strip-irrelevant-app-state-props", "name": "stripIrrelevantAppStateProps" },
+              { "id": "code:packages-excalidraw-components-layer-ui-tsx:layer-ui", "name": "LayerUI" },
+              { "id": "code:packages-excalidraw-components-layer-ui-tsx:layer-ui-props", "name": "LayerUIProps" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-duplicate-ts",
+            "kind": "component",
+            "p": 136,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-duplicate-ts:app-duplicate", "name": "AppDuplicate" },
+              { "id": "code:packages-excalidraw-components-app-duplicate-ts:duplication", "name": "Duplication" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:app-class-properties", "name": "AppClassProperties" },
+              { "id": "code:packages-excalidraw-types-ts:interactive-canvas-app-state", "name": "InteractiveCanvasAppState" },
+              { "id": "code:packages-excalidraw-types-ts:common-canvas-app-state", "name": "_CommonCanvasAppState" }
+            ]
+          },
+          { "id": "component:packages-excalidraw-components-spinner-tsx", "kind": "component", "p": 154 }
+        ],
+        "expectedIndexed": { ".env.production": false, "excalidraw-app/collab/Collab.tsx": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11868, "sectionCount": 11, "ranked": [0, 8, 13, 10, 14, 37, 20, 6, 26, 25, 154] },
+          "double": { "byteBudget": 48000, "bytes": 29527, "sectionCount": 30, "ranked": [0, 8, 13, 10, 14, 37, 20, 6, 26, 25, 15, 93, 32, 155, 18, 156, 56, 136, 7, 24, 157, 158, 22, 11, 159, 29, 160, 30, 154, 161] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 29527, "sectionCount": 30, "ranked": [0, 8, 13, 10, 14, 37, 20, 6, 26, 25, 15, 93, 32, 155, 18, 156, 56, 136, 7, 24, 157, 158, 22, 11, 159, 29, 160, 30, 154, 161] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29527, "sectionCount": 30, "ranked": [0, 8, 13, 10, 14, 37, 20, 6, 26, 25, 15, 93, 32, 155, 18, 156, 56, 136, 7, 24, 157, 158, 22, 11, 159, 29, 160, 30, 154, 161] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "e43424ad4244840996cfe96d726b85abba1b0e89ddc861790abfd14be2513492",
+          "allowedIdsCount": 70,
+          "allowedIdsSha256": "e1389b781cfefdff7d55dd2b948370a9d9e87b175b4ba3d4512f28100b3f6b26",
+          "allowedIdsInContent": ["component:excalidraw-app-share-share-dialog-tsx", "code:excalidraw-app-share-share-dialog-tsx:share-dialog", "code:excalidraw-app-share-share-dialog-tsx:share-dialog-picker", "component:excalidraw-app-share-qr-code-tsx", "code:excalidraw-app-share-qr-code-tsx:qr-code", "component:excalidraw-app-app-tsx", "code:excalidraw-app-app-tsx:shareable-link-confirm-dialog", "code:excalidraw-app-app-tsx:excalidraw-wrapper", "component:excalidraw-app-app-constants-ts", "code:excalidraw-app-app-constants-ts:firebase-storage-prefixes", "code:excalidraw-app-app-constants-ts:storage-keys", "code:excalidraw-app-app-constants-ts:cookies", "component:excalidraw-app-collab-collab-tsx", "code:excalidraw-app-collab-collab-tsx:active-room-link-atom", "code:excalidraw-app-collab-collab-tsx:collab", "code:excalidraw-app-collab-collab-tsx:collab-api", "component:excalidraw-app-share-qrcode-chunk-ts", "code:excalidraw-app-share-qrcode-chunk-ts:generate-qr-code-svg", "component:excalidraw-app-data-index-ts", "code:excalidraw-app-data-index-ts:is-collaboration-link", "code:excalidraw-app-data-index-ts:get-collaboration-link-data", "code:excalidraw-app-data-index-ts:re-collab-link"],
+          "packetSources": {},
+          "content": "{\"answer\": \"The hosted app stores both share-link files and live-session (room) files under Firebase paths: `FIREBASE_STORAGE_PREFIXES` in `excalidraw-app/app_constants.ts` defines `shareLinkFiles: /files/shareLinks` and `collabFiles: /files/rooms`, so Firebase is the outside service the app points share links and collaboration at.\\n\\n- `excalidraw-app/app_constants.ts` → `FIREBASE_STORAGE_PREFIXES` is the single place these service paths are set (`code:excalidraw-app-app-constants-ts:firebase-storage-prefixes`), alongside `STORAGE_KEYS` and `COOKIES` (`code:excalidraw-app-app-constants-ts:storage-keys`, `code:excalidraw-app-app-constants-ts:cookies`).\\n- Share links flow through `excalidraw-app/share/ShareDialog.tsx` (`ShareDialog`, `ShareDialogPicker`) and `excalidraw-app/share/QRCode.tsx` → `generateQRCodeSVG` in `excalidraw-app/share/qrcode.chunk.ts` (`code:excalidraw-app-share-share-dialog-tsx:share-dialog`, `code:excalidraw-app-share-qr-code-tsx:qr-code`).\\n- Live sessions are handled by `excalidraw-app/collab/Collab.tsx` (`Collab`, `CollabAPI`, `activeRoomLinkAtom`), with links parsed by `excalidraw-app/data/index.ts` (`RE_COLLAB_LINK`, `isCollaborationLink`, `getCollaborationLinkData`) (`code:excalidraw-app-collab-collab-tsx:collab`, `code:excalidraw-app-data-index-ts:re-collab-link`).\\n- `excalidraw-app/App.tsx` wires this together via `ExcalidrawWrapper` and `shareableLinkConfirmDialog` (`code:excalidraw-app-app-tsx:excalidraw-wrapper`).\\n\\nNot in the evidence: the actual Firebase/host URLs or the realtime/socket endpoint used for live sessions — only the storage path prefixes are shown.\",\"citations\":[\"component:excalidraw-app-app-constants-ts\",\"code:excalidraw-app-app-constants-ts:firebase-storage-prefixes\",\"code:excalidraw-app-app-constants-ts:storage-keys\",\"code:excalidraw-app-app-constants-ts:cookies\",\"component:excalidraw-app-share-share-dialog-tsx\",\"code:excalidraw-app-share-share-dialog-tsx:share-dialog\",\"code:excalidraw-app-share-share-dialog-tsx:share-dialog-picker\",\"component:excalidraw-app-share-qr-code-tsx\",\"code:excalidraw-app-share-qr-code-tsx:qr-code\",\"component:excalidraw-app-share-qrcode-chunk-ts\",\"code:excalidraw-app-share-qrcode-chunk-ts:generate-qr-code-svg\",\"component:excalidraw-app-collab-collab-tsx\",\"code:excalidraw-app-collab-collab-tsx:collab\",\"code:excalidraw-app-collab-collab-tsx:collab-api\",\"code:excalidraw-app-collab-collab-tsx:active-room-link-atom\",\"component:excalidraw-app-data-index-ts\",\"code:excalidraw-app-data-index-ts:re-collab-link\",\"code:excalidraw-app-data-index-ts:is-collaboration-link\",\"code:excalidraw-app-data-index-ts:get-collaboration-link-data\",\"component:excalidraw-app-app-tsx\",\"code:excalidraw-app-app-tsx:excalidraw-wrapper\",\"code:excalidraw-app-app-tsx:shareable-link-confirm-dialog\"]}",
+          "usage": { "promptTokens": 10104, "completionTokens": 941, "totalTokens": 11045, "costUsd": 0.00521391 },
+          "ms": 17879
+        }
+      },
+      {
+        "id": "excalidraw-frame-throttle",
+        "question": "Is there a shared helper that limits how often something runs to at most once per screen frame?",
+        "selectedId": "component:packages-excalidraw-charts-charts-bar-ts",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23967,
+        "sectionCount": 19,
+        "ranked": [106, 105, 58, 107, 18, 162, 163, 17, 0, 165, 59, 13, 166, 164, 7, 167, 168, 15, 171],
+        "packets": [180, 34],
+        "sections": [
+          {
+            "id": "component:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx",
+            "kind": "component",
+            "p": 106,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx:help-hint", "name": "HelpHint" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx:menu-hint", "name": "MenuHint" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-hints-tsx:toolbar-hint", "name": "ToolbarHint" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-welcome-screen-welcome-screen-tsx",
+            "kind": "component",
+            "p": 105,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-tsx:welcome-screen", "name": "WelcomeScreen" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx",
+            "kind": "component",
+            "p": 58,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx:menu-item-help", "name": "MenuItemHelp" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx:welcome-screen-menu-item", "name": "WelcomeScreenMenuItem" },
+              { "id": "code:packages-excalidraw-components-welcome-screen-welcome-screen-center-tsx:welcome-screen-menu-item-link", "name": "WelcomeScreenMenuItemLink" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-components-app-welcome-screen-tsx",
+            "kind": "component",
+            "p": 107,
+            "symbols": [
+              { "id": "code:excalidraw-app-components-app-welcome-screen-tsx:app-welcome-screen", "name": "AppWelcomeScreen" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-icons-tsx",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-icons-tsx:welcome-screen-help-arrow", "name": "WelcomeScreenHelpArrow" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:share", "name": "share" },
+              { "id": "code:packages-excalidraw-components-icons-tsx:share-ios", "name": "shareIOS" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-context-tunnels-ts",
+            "kind": "component",
+            "p": 162,
+            "symbols": [
+              { "id": "code:packages-excalidraw-context-tunnels-ts:tunnels-context-value", "name": "TunnelsContextValue" },
+              { "id": "code:packages-excalidraw-context-tunnels-ts:use-initialize-tunnels", "name": "useInitializeTunnels" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-charts-charts-helpers-ts",
+            "kind": "component",
+            "p": 163,
+            "symbols": [
+              { "id": "code:packages-excalidraw-charts-charts-helpers-ts:get-series-aware-slot-width", "name": "getSeriesAwareSlotWidth" },
+              { "id": "code:packages-excalidraw-charts-charts-helpers-ts:bg-colors", "name": "bgColors" },
+              { "id": "code:packages-excalidraw-charts-charts-helpers-ts:cartesian-axis-label-spec", "name": "CartesianAxisLabelSpec" }
+            ]
+          },
+          {
+            "id": "component:packages-common-src-utils-ts",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:packages-common-src-utils-ts:next-animation-frame", "name": "nextAnimationFrame" },
+              { "id": "code:packages-common-src-utils-ts:is-running-in-iframe", "name": "isRunningInIframe" },
+              { "id": "code:packages-common-src-utils-ts:is-full-screen", "name": "isFullScreen" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-share-share-dialog-tsx",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog", "name": "ShareDialog" },
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:share-dialog-picker", "name": "ShareDialogPicker" },
+              { "id": "code:excalidraw-app-share-share-dialog-tsx:get-share-icon", "name": "getShareIcon" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-snapping-ts",
+            "kind": "component",
+            "p": 165,
+            "symbols": [
+              { "id": "code:packages-excalidraw-snapping-ts:visible-gaps-limit-per-axis", "name": "VISIBLE_GAPS_LIMIT_PER_AXIS" },
+              { "id": "code:packages-excalidraw-snapping-ts:get-visible-gaps", "name": "getVisibleGaps" },
+              { "id": "code:packages-excalidraw-snapping-ts:is-active-tool-non-linear-snappable", "name": "isActiveToolNonLinearSnappable" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-types-ts",
+            "kind": "component",
+            "p": 59,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-types-ts:rate-limits", "name": "RateLimits" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-types-ts:tttd-dialog", "name": "TTTDDialog" },
+              { "id": "code:packages-excalidraw-components-ttd-dialog-types-ts:t-chat", "name": "TChat" }
+            ]
+          },
+          {
+            "id": "component:excalidraw-app-app-tsx",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:excalidraw-app-app-tsx:excalidraw-wrapper", "name": "ExcalidrawWrapper" }
+            ]
+          },
+          {
+            "id": "component:packages-element-src-frame-ts",
+            "kind": "component",
+            "p": 166,
+            "symbols": [
+              { "id": "code:packages-element-src-frame-ts:get-elements-in-resizing-frame", "name": "getElementsInResizingFrame" },
+              { "id": "code:packages-element-src-frame-ts:should-apply-frame-clip", "name": "shouldApplyFrameClip" },
+              { "id": "code:packages-element-src-frame-ts:add-elements-to-frame", "name": "addElementsToFrame" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-ttd-dialog-ttd-context-tsx",
+            "kind": "component",
+            "p": 164,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-ttd-dialog-ttd-context-tsx:rate-limits-atom", "name": "rateLimitsAtom" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-types-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-excalidraw-types-ts:frame-name-bounds-cache", "name": "FrameNameBoundsCache" },
+              { "id": "code:packages-excalidraw-types-ts:frame-name-bounds", "name": "FrameNameBounds" },
+              { "id": "code:packages-excalidraw-types-ts:viewport-status-frame", "name": "ViewportStatusFrame" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-tests-helpers-ui-ts",
+            "kind": "component",
+            "p": 167,
+            "symbols": [
+              { "id": "code:packages-excalidraw-tests-helpers-ui-ts:ui", "name": "UI" },
+              { "id": "code:packages-excalidraw-tests-helpers-ui-ts:transform", "name": "transform" },
+              { "id": "code:packages-excalidraw-tests-helpers-ui-ts:alt-key", "name": "altKey" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-renderer-helpers-ts",
+            "kind": "component",
+            "p": 168,
+            "symbols": [
+              { "id": "code:packages-excalidraw-renderer-helpers-ts:snap-scroll-to-device-pixels", "name": "snapScrollToDevicePixels" },
+              { "id": "code:packages-excalidraw-renderer-helpers-ts:bootstrap-canvas", "name": "bootstrapCanvas" },
+              { "id": "code:packages-excalidraw-renderer-helpers-ts:default-selection-color", "name": "DEFAULT_SELECTION_COLOR" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-components-app-tsx",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:packages-excalidraw-components-app-tsx:editor-lifecycle-event-behavior", "name": "editorLifecycleEventBehavior" },
+              { "id": "code:packages-excalidraw-components-app-tsx:editor-interface-context-initial-value", "name": "editorInterfaceContextInitialValue" }
+            ]
+          },
+          {
+            "id": "component:packages-excalidraw-charts-charts-constants-ts",
+            "kind": "component",
+            "p": 171,
+            "symbols": [
+              { "id": "code:packages-excalidraw-charts-charts-constants-ts:cartesian-bar-slot-extra-per-series", "name": "CARTESIAN_BAR_SLOT_EXTRA_PER_SERIES" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "packages/common/src/utils.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11876, "sectionCount": 9, "ranked": [106, 105, 58, 107, 18, 162, 163, 17, 164] },
+          "double": { "byteBudget": 48000, "bytes": 33627, "sectionCount": 34, "ranked": [106, 105, 58, 107, 18, 162, 163, 17, 0, 165, 59, 13, 166, 164, 7, 167, 168, 15, 169, 170, 171, 22, 172, 8, 173, 174, 94, 6, 16, 175, 176, 177, 178, 179] },
+          "size-scaled": { "byteBudget": 48968, "bytes": 33627, "sectionCount": 34, "ranked": [106, 105, 58, 107, 18, 162, 163, 17, 0, 165, 59, 13, 166, 164, 7, 167, 168, 15, 169, 170, 171, 22, 172, 8, 173, 174, 94, 6, 16, 175, 176, 177, 178, 179] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29940, "sectionCount": 29, "ranked": [106, 105, 58, 107, 18, 162, 163, 17, 0, 165, 59, 13, 166, 164, 7, 167, 168, 15, 169, 170, 171, 22, 172, 8, 173, 174, 94, 6, 175] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "caf8c4ca60fab56a07abfa1c6d470d0f020cc19748e40c8958f3efdc33c6e841",
+          "allowedIdsCount": 67,
+          "allowedIdsSha256": "baefaa1dc8b80615cf3a25a5fd47db02bde3e55e48b779ebe2abf4dda51dbb76",
+          "allowedIdsInContent": ["component:packages-common-src-utils-ts", "code:packages-common-src-utils-ts:next-animation-frame"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Yes — `packages/common/src/utils.ts` holds the shared timing helpers: `throttleRAF` and `debounce` are called out as the helpers to prefer for pointer and resize work, and `throttleRAF` is the one that rate-limits a callback to at most once per animation frame. The same module also exposes `nextAnimationFrame`, which schedules a callback after two `requestAnimationFrame` ticks rather than throttling.\\n\\n- `packages/common/src/utils.ts` — the shared utility module; its documented timing helpers are `throttleRAF` (frame-rate limiting) and `debounce` (delay-based limiting).\\n- `nextAnimationFrame` (`packages/common/src/utils.ts:150`) — waits two frames before running a callback; it's a scheduler, not a throttle.\\n\\nNote: the excerpt provided shows only `nextAnimationFrame` and `isRunningInIframe`; the `throttleRAF` source itself is described in the module's key points but its declaration body is not in the evidence, so I can't quote its exact implementation.\",\"citations\":[\"component:packages-common-src-utils-ts\",\"code:packages-common-src-utils-ts:next-animation-frame\"]}",
+          "usage": { "promptTokens": 9967, "completionTokens": 350, "totalTokens": 10317, "costUsd": 0.004640145 },
+          "ms": 20427
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "sampled-enriched",
+    "nodes": [
+      {
+        "nodeId": "system:excalidraw-monorepo",
+        "name": "excalidraw-monorepo",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "This system is the **Excalidraw** whiteboard editor, built as a TypeScript monorepo: element core, shared constants, math types, the React editor, and an app shell. Start with the `excalidraw-monorep…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `ExcalidrawElement` in `packages/element/src/types.ts`; every handler narrows or mutates that union. | Gotcha: `gesture`, `didTapTwice`, and `lastPointerUp` in `packages/exca…" },
+          { "id": "children", "type": "children", "preview": "Children: 1 node — excalidraw-monorepo (container)" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"],
+        "jev": {
+          "order": ["enrichment:summary", "enrichment:keyPoints"],
+          "omitted": [
+            { "id": "children", "why": "jev-omit" },
+            { "id": "enrichment:evidence", "why": "jev-omit" }
+          ],
+          "inputTokens": 1657,
+          "estimatedCostUsd": 0.0000696,
+          "latencyMs": 335
+        }
+      },
+      {
+        "nodeId": "container:excalidraw-monorepo",
+        "name": "excalidraw-monorepo",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "This is a **TypeScript monorepo** holding the Excalidraw editor: element core, shared constants, math types, React editor, and app shell. Start at `packages/element/src/types.ts` and `packages/excali…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `ExcalidrawElement` in `packages/element/src/types.ts`; it is the union every handler narrows or mutates. | Gotcha: `gesture`, `didTapTwice`, and `lastPointerUp` in `packages…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — excalidraw-monorepo (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 523 nodes — dev-docs/src/components/Homepage/index.… (component); dev-docs/src/pages/index.tsx (component); examples/with-nextjs/src/app/layout.tsx (component); +520 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"], "inputTokens": 1993, "estimatedCostUsd": 0.0000837, "latencyMs": 292 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "sampled", "k": 5, "singleContainerK": 30, "componentsSampled": 30, "componentsFull": 523, "containers": 1, "droppedFiles": 493, "sampledCommitSha": "6df373b792739844aae4e0878343d737c18a41e5", "parentsFromSample": true, "overlaidOnFullScan": true },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 200, "maxTokens": 4000000, "maxDollars": 0.5, "maxConcurrent": 8, "globalMaxDollars": 2.2015 },
+    "ms": 197078,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 32,
+    "inputTokens": 115795,
+    "outputTokens": 43745,
+    "costUsd": 0.088098,
+    "costEstimated": false,
+    "coverage": { "accepted": 32, "failed": 0, "notRun": 0, "belowCap": 1074, "inScope": 32 },
+    "byKind": {
+      "code": { "total": 1074, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 1074 },
+      "component": { "total": 30, "accepted": 30, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 1,
+    "parentsWithUnsettledChildren": 0
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 7300,
+    "outcome": "accepted",
+    "requests": 27,
+    "inputTokens": 63913,
+    "costUsd": 0.0026843,
+    "costEstimated": true,
+    "reservationEquivalentUsd": 0.081,
+    "rows": [
+      { "scopeId": "component:excalidraw-app-app-tsx", "claimId": "c6972a653e5516deb3c44", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:excalidraw-app-app-tsx", "claimId": "ca6e9fa33474c24a65080", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:excalidraw-app-app-tsx", "claimId": "c029bc3b0f6b266d9f7a4", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:excalidraw-app-app-tsx", "claimId": "ce4359c581aa511791950", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:excalidraw-app-app-tsx", "claimId": "c018f10b769ea75630661", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:excalidraw-app-app-tsx", "claimId": "c1db641282fd920ebf42f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:packages-common-src-colors-ts", "claimId": "c365245120e87a67c4808", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:packages-common-src-colors-ts", "claimId": "c2ae7b12f60b5454129a2", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:packages-common-src-colors-ts", "claimId": "c300b398e15e02d8033ae", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:packages-common-src-colors-ts", "claimId": "c084e94c522b1cd129589", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-common-src-colors-ts", "claimId": "cf5cbad9efcde5265ad93", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:packages-common-src-colors-ts", "claimId": "c8ba8b57598902a30a33e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.19 },
+      { "scopeId": "component:packages-common-src-constants-ts", "claimId": "c32f3b3e907f92ba8ee67", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-common-src-constants-ts", "claimId": "cbc76cf0b5ee289aa52f0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.68 },
+      { "scopeId": "component:packages-common-src-constants-ts", "claimId": "c8d7b3e8d576543bd7968", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-common-src-constants-ts", "claimId": "cbe9c2396a29d9c0a4a9e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:packages-common-src-constants-ts", "claimId": "c604261b8c0c4a0d26dc5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:packages-common-src-index-ts", "claimId": "c48639747b84a6941802d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-common-src-index-ts", "claimId": "cbe1379e43deed71dc7eb", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-common-src-index-ts", "claimId": "c1bdaf19136c00dd8d492", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-common-src-index-ts", "claimId": "c9ee8cba5018b4ff4ff14", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-common-src-keys-ts", "claimId": "c187e7dae05088d9d41c0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-common-src-keys-ts", "claimId": "c36ae870c278855847de0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.54 },
+      { "scopeId": "component:packages-common-src-keys-ts", "claimId": "ce6a486bf0279ad787e98", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:packages-common-src-keys-ts", "claimId": "c74f97334aae2f5d7526c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-common-src-utility-types-ts", "claimId": "c32a2bbeba72bd675e5b7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.46 },
+      { "scopeId": "component:packages-common-src-utility-types-ts", "claimId": "c427cb3252a245dd0ba2c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:packages-common-src-utility-types-ts", "claimId": "cd0270a82a3dd9e250ada", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.21 },
+      { "scopeId": "component:packages-common-src-utility-types-ts", "claimId": "ccaf8933d44742e23e858", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:packages-common-src-utils-ts", "claimId": "c738fec0f719b1ab84015", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-common-src-utils-ts", "claimId": "c275eef972d6aa2a99313", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:packages-common-src-utils-ts", "claimId": "cf1d3fbfbd88c92c7037e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-common-src-utils-ts", "claimId": "c4cb9b43809d8a1a41813", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:packages-common-src-utils-ts", "claimId": "c75d269a167f873bb9015", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:packages-common-src-utils-ts", "claimId": "c70bb367b4e936043cb4b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-common-src-utils-ts", "claimId": "cc5c9e0585c1ed9d6f0a1", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:packages-element-src-binding-ts", "claimId": "cbb067444bc20b886234f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-binding-ts", "claimId": "c2b7655eb930b30abdd1f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-binding-ts", "claimId": "cf5d81a3ba92829ee6b3b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-binding-ts", "claimId": "c82ccb82183e572ee46a0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:packages-element-src-binding-ts", "claimId": "ce04bd487435657eebcf0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:packages-element-src-binding-ts", "claimId": "c3fb79e26d81e7601730f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:packages-element-src-bounds-ts", "claimId": "c41cbf36dc7229c203e19", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-bounds-ts", "claimId": "cadbb87adf9232512e814", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-bounds-ts", "claimId": "ca356164c2364dba1cf29", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-bounds-ts", "claimId": "c855d8e8b82916ce1885d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-bounds-ts", "claimId": "cfd82acab645218689cf9", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-element-src-bounds-ts", "claimId": "cc407fbb9c8382861d865", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:packages-element-src-frame-ts", "claimId": "cfa6923e8c671c5f3fccb", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-frame-ts", "claimId": "c407741e8d96ae4e6f16b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-frame-ts", "claimId": "c011c1621ebe5ebcddd35", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-frame-ts", "claimId": "c74aae1b8ad623a185c35", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:packages-element-src-index-ts", "claimId": "c29275747cfc235ac682d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.54 },
+      { "scopeId": "component:packages-element-src-index-ts", "claimId": "cbccf410d1abbb9eca9d8", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:packages-element-src-index-ts", "claimId": "c93125cbe1fcfb2b0a85e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:packages-element-src-linear-element-editor-ts", "claimId": "cbfb6ca08bf154bb987e9", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-linear-element-editor-ts", "claimId": "c255e52ee0d5362ff435b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-linear-element-editor-ts", "claimId": "c64ec30bdf5fdc43102a5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-linear-element-editor-ts", "claimId": "c0ff56b71e335a8b794c1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-linear-element-editor-ts", "claimId": "c11b1e316163798e928bf", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-element-src-linear-element-editor-ts", "claimId": "cca7e019d8861ff45f1f3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.55 },
+      { "scopeId": "component:packages-element-src-mutate-element-ts", "claimId": "c5ae67de2a0763be47f81", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-mutate-element-ts", "claimId": "c29556fcd07f104d3e303", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-mutate-element-ts", "claimId": "c9e7be81647ee86a39ae6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:packages-element-src-mutate-element-ts", "claimId": "c28188b857af21ae913a0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:packages-element-src-mutate-element-ts", "claimId": "c006ed8ea7c7d6e17ae58", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-element-src-scene-ts", "claimId": "c788f5b262b6a0ea70bf0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-scene-ts", "claimId": "cca4cfba97a0287b31540", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-scene-ts", "claimId": "c6c8fd100ebf70924a1d6", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:packages-element-src-scene-ts", "claimId": "c5222cc6506387273e23a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:packages-element-src-scene-ts", "claimId": "c7004bac5532548d83fc8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:packages-element-src-scene-ts", "claimId": "c316b27d4faee296b4f86", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.63 },
+      { "scopeId": "component:packages-element-src-scene-ts", "claimId": "cc7d7dabe0c7d369f866c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-element-src-selection-ts", "claimId": "cee144da8bec239b0f5bd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-selection-ts", "claimId": "ccba9fb5dc7005ef0c932", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:packages-element-src-selection-ts", "claimId": "c3c5415082ff86e83ff99", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:packages-element-src-selection-ts", "claimId": "cbf40df5eba0dddfb1c71", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.32 },
+      { "scopeId": "component:packages-element-src-selection-ts", "claimId": "c7b6960d0fc87924e327f", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-element-src-selection-ts", "claimId": "c2ef7cd254f5111d36ac8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:packages-element-src-store-ts", "claimId": "cd5d9644fbe13db5b88ab", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-store-ts", "claimId": "c2c66d6a06a7c0298dfff", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-store-ts", "claimId": "c06f53ef9665de81ed837", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:packages-element-src-store-ts", "claimId": "c730cde2dea56e3f7a932", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.23 },
+      { "scopeId": "component:packages-element-src-store-ts", "claimId": "c52fb39caeb9333b8a687", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:packages-element-src-store-ts", "claimId": "c88fcd8a7486cd5df70d6", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:packages-element-src-text-element-ts", "claimId": "c2d5c79550050f969c5ab", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-text-element-ts", "claimId": "c47cfc12840b999d6b817", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-text-element-ts", "claimId": "c1ebf6aed7db3c6179fec", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-element-src-text-element-ts", "claimId": "cd92c70f450b8478016e4", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:packages-element-src-text-element-ts", "claimId": "c342f7ea48c5161e018de", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-element-src-type-checks-ts", "claimId": "c59ee06310306eb554c4e", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-element-src-type-checks-ts", "claimId": "c57c86ae9da9e8d0b6ab9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:packages-element-src-type-checks-ts", "claimId": "c2f7caeb99dbf79eb70d3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.39 },
+      { "scopeId": "component:packages-element-src-type-checks-ts", "claimId": "cadef26737628e5b23bb6", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-element-src-types-ts", "claimId": "c0c5dbccd1258c93a4135", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:packages-element-src-types-ts", "claimId": "cdc6cc05ade99509454cf", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:packages-element-src-types-ts", "claimId": "c520f3e620d4997b5a7f3", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:packages-element-src-types-ts", "claimId": "c9a8876ad025fc09181ec", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:packages-element-src-types-ts", "claimId": "c5fce33ef574b40c9b742", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.72 },
+      { "scopeId": "component:packages-element-src-types-ts", "claimId": "c44279f28f903ccbf13ee", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.27 },
+      { "scopeId": "component:packages-excalidraw-actions-action-properties-tsx", "claimId": "c49ff8df819737b4590c2", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-actions-action-properties-tsx", "claimId": "c3c0fe586c578aa11ef1f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-actions-action-properties-tsx", "claimId": "cb1393746b84f31d3aca5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-actions-action-properties-tsx", "claimId": "c5a7d6ad480d0e875cf8f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:packages-excalidraw-actions-action-properties-tsx", "claimId": "c0d27155a19ac02a317db", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:packages-excalidraw-actions-action-properties-tsx", "claimId": "cc9270c1e3aa1cf583a4c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:packages-excalidraw-actions-index-ts", "claimId": "cc6f12b7a0e8fce35afb9", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-actions-index-ts", "claimId": "ccfec4953d2beb6ad565a", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-actions-index-ts", "claimId": "c86221ab515df7b1736cf", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-actions-index-ts", "claimId": "c01df7e635ba19847afd0", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-components-app-tsx", "claimId": "c183efc0b7462fc2d43c0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-components-app-tsx", "claimId": "cb5a662c193f79228d4ea", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-excalidraw-components-app-tsx", "claimId": "cc40b95694440c14f72a4", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-excalidraw-components-app-tsx", "claimId": "c1512a73be55c655c0f08", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:packages-excalidraw-components-icons-tsx", "claimId": "c9b3bf6a94017757e4d0e", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:packages-excalidraw-components-icons-tsx", "claimId": "c061c09edc31b924b1fff", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.68 },
+      { "scopeId": "component:packages-excalidraw-components-icons-tsx", "claimId": "c239d8cc733e9a12dde30", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:packages-excalidraw-components-icons-tsx", "claimId": "c02a69b4a001dc1de3845", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-excalidraw-components-layer-ui-tsx", "claimId": "c30e0e380f72f29d24ae7", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-components-layer-ui-tsx", "claimId": "c9fd92b172a39da4cd677", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-components-layer-ui-tsx", "claimId": "c3aa16c5c3d7c62832274", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.54 },
+      { "scopeId": "component:packages-excalidraw-components-layer-ui-tsx", "claimId": "c706d07d9477de5f529d4", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.12 },
+      { "scopeId": "component:packages-excalidraw-components-layer-ui-tsx", "claimId": "c8bfc3884e19d54b9cb81", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:packages-excalidraw-components-layer-ui-tsx", "claimId": "c6fa4440d40d9c44f793e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:packages-excalidraw-components-layer-ui-tsx", "claimId": "cd21777e3dacfb8a3188d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:packages-excalidraw-i18n-ts", "claimId": "c654cbb292eb14868d38d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:packages-excalidraw-i18n-ts", "claimId": "c822ec9b63ec94e796531", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:packages-excalidraw-i18n-ts", "claimId": "cbe08c901ee8441e4dc70", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-excalidraw-i18n-ts", "claimId": "c49df9f63cc0680438f18", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-excalidraw-i18n-ts", "claimId": "ce328a78ef084654cf622", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:packages-excalidraw-i18n-ts", "claimId": "c229d43e73f359f81a57b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:packages-excalidraw-index-tsx", "claimId": "c1ef86281275a25f8338f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-index-tsx", "claimId": "cef12586567d989b02331", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-index-tsx", "claimId": "c8c67c1314e8f2fc27376", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.61 },
+      { "scopeId": "component:packages-excalidraw-index-tsx", "claimId": "ced5a31363a0462557068", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:packages-excalidraw-types-ts", "claimId": "cf018e181ea98b1333881", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-types-ts", "claimId": "ce8b8d7fb3c3fbd22cf2e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-types-ts", "claimId": "c43198dbfd80956e92791", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-excalidraw-types-ts", "claimId": "c99c235636a9ba1e2e107", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:packages-excalidraw-types-ts", "claimId": "c4cb87097a30e38ced5ac", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:packages-excalidraw-types-ts", "claimId": "c420fe7455d7b5016598c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:packages-math-src-index-ts", "claimId": "cb2a863bbc86ffa92d929", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-math-src-index-ts", "claimId": "c07d06d86fc7927e01a03", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-math-src-point-ts", "claimId": "c1f057649e98b03d8b195", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:packages-math-src-point-ts", "claimId": "c438340f07b6aee855a6c", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-math-src-point-ts", "claimId": "cb95e130efac9789ef9b5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:packages-math-src-point-ts", "claimId": "c0309448bd14c09d5f79f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:packages-math-src-types-ts", "claimId": "c25857019e13d9f58d88d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:packages-math-src-types-ts", "claimId": "cbf5b649a58f9e4cc28d5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:packages-math-src-types-ts", "claimId": "ccadfd7eeb559b963926b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:packages-math-src-types-ts", "claimId": "cc0b1667b1ccb07cd5a22", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-math-src-types-ts", "claimId": "c4ab3f46b296ddc56fa72", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "container:excalidraw-monorepo", "claimId": "cbd8343b14709eb8064ed", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" }
+    ],
+    "rateLimited": 0
+  },
+  "stageMs": { "claims": 18985, "ask": 35599, "blocks": 739 }
+}

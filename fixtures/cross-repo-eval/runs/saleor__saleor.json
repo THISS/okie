@@ -1,0 +1,302 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "saleor__saleor",
+  "repository": "saleor/saleor",
+  "commitSha": "58e2eb7cabb6ce37678062ff04b051ef58c5e479",
+  "preparedCommitSha": "1a2c0eefae3755ee7e3787ba0bafb5fa2b15a4ad",
+  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (CLAUDE.md): \"symlink/submodule is unsupported\".", "droppedPaths": 2 },
+  "scan": {
+    "asIs": { "revision": "58e2eb7cabb6ce37678062ff04b051ef58c5e479", "ok": false, "ms": 74, "error": "Committed source requires materialized files; symlink/submodule is unsupported: CLAUDE.md" },
+    "prepared": {
+      "revision": "1a2c0eefae3755ee7e3787ba0bafb5fa2b15a4ad",
+      "ok": true,
+      "ms": 1497,
+      "entities": 2,
+      "relations": 0,
+      "kinds": { "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:saleor", "name": "saleor", "components": 0 }
+      ],
+      "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Python" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:46.952Z",
+    "corpus": "scan",
+    "entityCount": 2,
+    "systemNames": ["saleor"],
+    "paths": ["README.md", "package.json"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "saleor-checkout-complete",
+        "question": "What happens when a customer finalizes their checkout and it turns into an order?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "saleor/checkout/complete_checkout.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "41cdeda63fa32ad929823b107581438398a05b8ed50ce87659b8d2ac14842f3d",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": ["system:saleor", "container:saleor"],
+          "packetSources": { "system:saleor": 0, "container:saleor": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search over the `saleor` system and container returned zero matching sections, and the selected scope packets (`system:saleor`, `container:saleor`) contain only naming/source metadata — no description of checkout finalization, order creation, or the code path connecting them. A more targeted search around checkout/order placement declarations would be needed to answer this.\", \"citations\": [\"system:saleor\", \"container:saleor\"]}",
+          "usage": { "promptTokens": 551, "completionTokens": 124, "totalTokens": 675, "costUsd": 0.000237229 },
+          "ms": 6983
+        }
+      },
+      {
+        "id": "saleor-stock-allocation",
+        "question": "When an order is placed, how does it decide which warehouse stock to reserve, and what happens if there is not enough?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "saleor/warehouse/management.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "f9bedc3aeb88ef57d88c365b427bb5bee00b2e097147f207dea23f03a79583b6",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": ["system:saleor", "container:saleor"],
+          "packetSources": { "system:saleor": 0, "container:saleor": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search over the `saleor` system and container returned zero matching sections, and the selected scope packets (`system:saleor`, `container:saleor`) carry only names and source files — no excerpts describing order placement, warehouse stock selection, or insufficient-stock behavior. I can't say how reservation targets are chosen or what happens on shortfalls without content from the relevant modules (e.g., order/checkout and stock allocation code), which did not appear in the search results.\",\"citations\": [\"system:saleor\", \"container:saleor\"]}",
+          "usage": { "promptTokens": 560, "completionTokens": 151, "totalTokens": 711, "costUsd": 0.00037497 },
+          "ms": 8436
+        }
+      },
+      {
+        "id": "saleor-webhook-delivery",
+        "question": "How are event notifications sent out to installed third-party apps, and how can the app verify them?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "saleor/webhook/transport/asynchronous/transport.py": false, "saleor/webhook/transport/utils.py": false, "saleor/webhook/transport/__init__.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "c2c447065a3b90f381d2f121c4f219ebcd3ab6c0fa8ce5a2f8f2fe9c1fb61964",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": ["system:saleor", "container:saleor"],
+          "packetSources": { "system:saleor": 0, "container:saleor": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned 0 sections, and the selected scope packets (`system:saleor`, `container:saleor`) contain only scope identity (name, kind, source file) with no content about event notifications, webhooks, or signature verification. No files, symbols, or delivery/verification mechanisms can be named from this evidence.\", \"citations\": [\"system:saleor\", \"container:saleor\"]}",
+          "usage": { "promptTokens": 555, "completionTokens": 197, "totalTokens": 752, "costUsd": 0.000412815 },
+          "ms": 6327
+        }
+      },
+      {
+        "id": "saleor-permissions",
+        "question": "How is access to staff-only API operations restricted?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "saleor/graphql/core/mutations.py": false, "saleor/permission/enums.py": false, "saleor/permission/utils.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "787069583706fa9a60512e88f3e9e985da074404744aa90a27b628540bbeb200",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": ["system:saleor", "container:saleor"],
+          "packetSources": { "system:saleor": 0, "container:saleor": 1 },
+          "content": "{\"answer\": \"Not in the evidence — the whole-atlas search over the `saleor` scope returned zero sections, and the selected scope packets (`system:saleor`, `container:saleor`) contain only names/kind/source metadata with no content about authorization or staff-only API restrictions. No mechanism (permissions, decorators, middleware, etc.) can be described from this evidence.\", \"citations\": [\"system:saleor\", \"container:saleor\"]}",
+          "usage": { "promptTokens": 545, "completionTokens": 114, "totalTokens": 659, "costUsd": 0.000225919 },
+          "ms": 6709
+        }
+      },
+      {
+        "id": "saleor-plugins",
+        "question": "How can I plug in custom behavior, such as a different tax calculation, without changing core code?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "saleor/plugins/base_plugin.py": false, "saleor/plugins/manager.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "5fce3d3d1eda549607778e376724b2a57e467997c2b76aa2a7cdf50ec5bb8984",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": ["system:saleor", "container:saleor"],
+          "packetSources": { "system:saleor": 0, "container:saleor": 1 },
+          "content": "{\"answer\": \"The answer is not in the evidence — the whole-atlas search returned no sections (sectionCount 0), and the selected scope packets (`system:saleor`, `container:saleor`) contain only name and source metadata, with no architectural detail about extension points, plugins, or tax calculation hooks.\\n\\nTo answer this, I'd need atlas sections covering extension mechanisms (e.g. plugins, webhooks, tax app interfaces, or app manifests) — none are present in the provided evidence.\", \"citations\": [\"system:saleor\", \"container:saleor\"]}",
+          "usage": { "promptTokens": 555, "completionTokens": 140, "totalTokens": 695, "costUsd": 0.000363225 },
+          "ms": 7338
+        }
+      },
+      {
+        "id": "saleor-env-config",
+        "question": "Which environment variables point the app at its database, read replica and background job broker?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 95,
+        "sectionCount": 1,
+        "ranked": [0],
+        "packets": [0, 1],
+        "sections": [
+          { "id": "system:saleor", "kind": "softwareSystem", "p": 0 }
+        ],
+        "expectedIndexed": { "saleor/settings.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 95, "sectionCount": 1, "ranked": [0] },
+          "double": { "byteBudget": 48000, "bytes": 95, "sectionCount": 1, "ranked": [0] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 95, "sectionCount": 1, "ranked": [0] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 95, "sectionCount": 1, "ranked": [0] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "8de8e5205913a80ff6bed23956257cc6d9c67ae25dd0ff36bf897184a78fa685",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": [],
+          "packetSources": {},
+          "content": "{\"answer\": \"not in the evidence\", \"citations\": []}",
+          "usage": { "promptTokens": 592, "completionTokens": 114, "totalTokens": 706, "costUsd": 0.000246364 },
+          "ms": 7423
+        }
+      },
+      {
+        "id": "saleor-giftcard-bearer",
+        "question": "Can anyone holding a gift card code spend it, or is it tied to one customer?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "docs/adr/0001-gift-cards-remain-bearer-instruments.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "061b405336c93b879302a654b700a4f3112f574f5a264aca4993f03c729b0c26",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": ["system:saleor", "container:saleor"],
+          "packetSources": { "system:saleor": 0, "container:saleor": 1 },
+          "content": "{\"answer\": \"This is not in the evidence. The whole-atlas search over `saleor` returned no sections (sectionCount 0), and the selected scope packets (`system:saleor`, `container:saleor`) only identify the system and container — they contain no details about gift card redemption, code ownership, or customer binding. To answer this, the atlas would need entries covering gift card models/resolvers (e.g., redemption or activation logic) or the gift card API surface.\",\"citations\": [\"system:saleor\", \"container:saleor\"]}",
+          "usage": { "promptTokens": 553, "completionTokens": 167, "totalTokens": 720, "costUsd": 0.000385845 },
+          "ms": 7903
+        }
+      },
+      {
+        "id": "saleor-api-endpoint",
+        "question": "Which URL do API requests arrive on, and what code processes them?",
+        "selectedId": "system:saleor",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [0, 1],
+        "sections": [],
+        "expectedIndexed": { "saleor/urls.py": false, "saleor/graphql/views.py": false, "saleor/graphql/api.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "809cfeaaaf76960c8576dd416bc8e021a68cda3d8fea59419b4e1f88c3bb8c03",
+          "allowedIdsCount": 2,
+          "allowedIdsSha256": "9739827f3875f538158b3ac665b5da21c2c62cee4a38765b4ae0824b58f18325",
+          "allowedIdsInContent": ["system:saleor", "container:saleor"],
+          "packetSources": { "system:saleor": 0, "container:saleor": 1 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search over the `saleor` scopes returned zero sections (`search.sectionCount: 0`), and the selected scope packets (`system:saleor`, `container:saleor`) carry only names, kinds, and source files (`README.md`, `package.json`) — no URL routes, entry points, or request-handling code.\\n\\nTo answer this, evidence would be needed from code declarations in the container (e.g. URL routing configuration or API handler symbols), which is not present in this evidence.\", \"citations\": [\"system:saleor\", \"container:saleor\"]}",
+          "usage": { "promptTokens": 549, "completionTokens": 256, "totalTokens": 805, "costUsd": 0.000461535 },
+          "ms": 9055
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "scan",
+    "nodes": [
+      {
+        "nodeId": "system:saleor",
+        "name": "saleor",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "children", "type": "children", "preview": "Children: 1 node — saleor (container)" }
+        ],
+        "defaultOrder": ["children"],
+        "jev": { "order": ["children"], "inputTokens": 604, "estimatedCostUsd": 0.0000254, "latencyMs": 238 }
+      },
+      {
+        "nodeId": "container:saleor",
+        "name": "saleor",
+        "kind": "container",
+        "candidates": [
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — saleor (softwareSystem)" }
+        ],
+        "defaultOrder": ["relations:parent"],
+        "jev": { "order": ["relations:parent"], "inputTokens": 606, "estimatedCostUsd": 0.0000255, "latencyMs": 228 }
+      }
+    ]
+  },
+  "enrichmentSkipped": { "reason": "skipped: scanner-blind (Python; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)" },
+  "stageMs": { "ask": 9060, "blocks": 467 }
+}

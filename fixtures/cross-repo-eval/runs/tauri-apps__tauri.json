@@ -1,0 +1,2059 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "tauri-apps__tauri",
+  "repository": "tauri-apps/tauri",
+  "commitSha": "d15cf9b1e481035a248227c791fde5740fcfe0ba",
+  "scan": {
+    "asIs": {
+      "revision": "d15cf9b1e481035a248227c791fde5740fcfe0ba",
+      "ok": true,
+      "ms": 96155,
+      "entities": 5233,
+      "relations": 10536,
+      "kinds": { "code": 4897, "component": 316, "container": 19, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:crates-tauri", "name": "tauri", "components": 67 },
+        { "id": "container:crates-tauri-build", "name": "tauri-build", "components": 7 },
+        { "id": "container:crates-tauri-bundler", "name": "tauri-bundler", "components": 28 },
+        { "id": "container:crates-tauri-cli", "name": "tauri-cli", "components": 103 },
+        { "id": "container:crates-tauri-codegen", "name": "tauri-codegen", "components": 6 },
+        { "id": "container:crates-tauri-driver", "name": "tauri-driver", "components": 4 },
+        { "id": "container:crates-tauri-macos-sign", "name": "tauri-macos-sign", "components": 5 },
+        { "id": "container:crates-tauri-macros", "name": "tauri-macros", "components": 8 },
+        { "id": "container:crates-tauri-plugin", "name": "tauri-plugin", "components": 4 },
+        { "id": "container:crates-tauri-runtime", "name": "tauri-runtime", "components": 7 },
+        { "id": "container:crates-tauri-runtime-wry", "name": "tauri-runtime-wry", "components": 16 },
+        { "id": "container:crates-tauri-schema-generator", "name": "tauri-schema-generator", "components": 2 },
+        { "id": "container:crates-tauri-schema-worker", "name": "tauri-schema-worker", "components": 0 },
+        { "id": "container:crates-tauri-schema-worker-2", "name": "tauri-schema-worker", "components": 2 },
+        { "id": "container:crates-tauri-utils", "name": "tauri-utils", "components": 26 },
+        { "id": "container:packages-api", "name": "@tauri-apps/api", "components": 21 },
+        { "id": "container:packages-api-e2e", "name": "@tauri-apps/api-e2e", "components": 5 },
+        { "id": "container:packages-cli", "name": "@tauri-apps/cli", "components": 2 },
+        { "id": "container:tooling", "name": "Build & fixture tooling", "components": 3 }
+      ],
+      "signals": { "entities": 5233, "containers": 19, "components": 316, "files": 335, "maxDepth": 8, "medianDepth": 4, "language": "Rust+TypeScript" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:13.262Z",
+    "corpus": "sampled-enriched",
+    "entityCount": 5233,
+    "systemNames": ["tauri"],
+    "paths": ["crates/tauri/src/webview/mod.rs", "crates/tauri-runtime/src/webview.rs", "crates/tauri/src/webview/webview_window.rs", "crates/tauri/src/manager/webview.rs", "crates/tauri-runtime/src/lib.rs", "crates/tauri-cli/src/interface/rust.rs", "crates/tauri-runtime-wry/src/lib.rs", "packages/api-e2e/test/helpers/index.ts", "crates/tauri/src/plugin.rs", "crates/tauri-utils/src/pattern/isolation.rs", "crates/tauri/src/app.rs", "crates/tauri-utils/src/config.rs", "packages/api/src/app.ts", "packages/api/src/core.ts", "crates/tauri-runtime-wry/src/webview.rs", "crates/tauri-cli/src/interface/rust/desktop.rs", "crates/tauri/src/manager/mod.rs", "packages/api/src/webview.ts", "crates/tauri-cli/src/interface/rust/manifest.rs", "crates/tauri-runtime/src/window.rs", "crates/tauri/src/protocol/isolation.rs", "crates/tauri-cli/src/info/packages_rust.rs", "packages/cli/src/lib.rs", "crates/tauri-cli/src/interface/rust/cargo_config.rs", "crates/tauri-runtime/src/dpi.rs", "crates/tauri/src/test/mock_runtime.rs", "packages/api/src/webviewWindow.ts", "packages/api/src/tray.ts", "crates/tauri-cli/src/interface/rust/installation.rs", "crates/tauri/src/event/listener.rs", "crates/tauri-cli/src/info/env_rust.rs", "crates/tauri-driver/src/webdriver.rs", "bench/src/utils.rs", "crates/tauri-macros/src/command/wrapper.rs", "packages/api/src/window.ts", "crates/tauri/src/path/android.rs", "crates/tauri-bundler/src/bundle/kmp/mod.rs", "packages/api-e2e/wdio.mobile.ts", "crates/tauri/src/lib.rs", "crates/tauri-runtime/src/webview_permissions.rs", "README.md", "crates/tauri", "crates/tauri-build", "crates/tauri-bundler", "crates/tauri-cli", "crates/tauri-codegen", "crates/tauri-driver", "crates/tauri-macos-sign", "crates/tauri-macros", "crates/tauri-plugin", "crates/tauri-runtime", "crates/tauri-runtime-wry", "crates/tauri-schema-generator", "crates/tauri-schema-worker", "crates/tauri-utils", "packages/api", "packages/api-e2e", "packages/cli", "scripts", "crates/tauri-macros/src/command/handler.rs", "crates/tauri-build/src/acl.rs", "crates/tauri-utils/src/acl/mod.rs", "packages/api/src/event.ts", "crates/tauri-utils/src/acl/build.rs", "crates/tauri-cli/src/dev.rs", "crates/tauri-utils/src/config_v1/mod.rs", "crates/tauri-cli/src/helpers/mod.rs", "crates/tauri-utils/src/acl/resolved.rs", "crates/tauri-macros/src/command/mod.rs", "packages/api-e2e/wdio.conf.ts", "crates/tauri/src/ipc/authority.rs", "crates/tauri-bundler/src/bundle/settings.rs", "crates/tauri-bundler/src/bundle/windows/sign.rs", "crates/tauri/src/window/mod.rs", "crates/tauri-cli/src/acl/permission/new.rs", "crates/tauri/src/ipc/command.rs", "crates/tauri-plugin/src/build/mod.rs", "crates/tauri-bundler/src/bundle/windows/nsis/mod.rs", "crates/tauri/src/window/plugin.rs", "crates/tauri-utils/src/acl/capability.rs", "crates/tauri-runtime-wry/src/dialog/windows.rs", "crates/tauri-macos-sign/src/lib.rs", "crates/tauri-cli/templates/plugin/src/commands.rs", "crates/tauri/src/plugin/mobile.rs", "crates/tauri-build/src/lib.rs", "crates/tauri-cli/src/lib.rs", "crates/tauri-utils/src/lib.rs", "crates/tauri/src/ipc/channel.rs", "crates/tauri-cli/src/migrate/migrations/v1/frontend.rs", "crates/tauri-cli/src/helpers/app_paths.rs", "crates/tauri/src/scope/mod.rs", "crates/tauri-bundler/src/bundle/platform.rs", "crates/tauri/src/scope/fs.rs", "crates/tauri-cli/src/info/mod.rs", "crates/tauri-bundler/src/utils/mod.rs", "crates/tauri-cli/src/migrate/migrations/v1/frontend/partial_loader/mod.rs", "crates/tauri/src/resources/mod.rs", "crates/tauri-cli/src/remove.rs", "crates/tauri-cli/src/migrate/migrations/v1/frontend/partial_loader/vue.rs", "crates/tauri/src/path/desktop.rs", "crates/tauri-cli/src/migrate/migrations/v1/frontend/partial_loader/svelte.rs", "crates/tauri-cli/src/mobile/mod.rs", "crates/tauri/src/path/mod.rs", "crates/tauri-plugin/src/runtime.rs", "crates/tauri-driver/src/server.rs", "crates/tauri-bundler/src/bundle/windows/util.rs", "crates/tauri/src/webview/plugin.rs", "crates/tauri-cli/src/dev/builtin_dev_server.rs", "crates/tauri-bundler/src/bundle/macos/sign.rs", "crates/tauri-bundler/src/error.rs", "crates/tauri-bundler/src/utils/http_utils.rs", "crates/tauri-cli/src/mobile/ios/build.rs", "crates/tauri-runtime-wry/src/webview_permissions.rs", "crates/tauri/src/error.rs", "crates/tauri-cli/src/mobile/android/build.rs", "crates/tauri-build/src/codegen/context.rs", "crates/tauri-bundler/src/bundle/linux/freedesktop/mod.rs", "packages/api/src/path.ts", "crates/tauri/src/path/plugin.rs", "crates/tauri-driver/src/main.rs", "crates/tauri-cli/templates/plugin/src/lib.rs", "crates/tauri-bundler/src/utils/fs_utils.rs", "crates/tauri-cli/src/acl/mod.rs", "crates/tauri-bundler/src/bundle/macos/app.rs", "crates/tauri-cli/src/acl/capability/new.rs", "crates/tauri-utils/src/config/parse.rs", "crates/tauri-macos-sign/src/keychain.rs", "crates/tauri-cli/src/acl/permission/rm.rs", "crates/tauri-utils/src/platform.rs", "crates/tauri-bundler/src/bundle/windows/msi/mod.rs", "crates/tauri-utils/src/config_v1/parse.rs", "crates/tauri-bundler/src/bundle/macos/ios.rs", "crates/tauri-runtime-wry/src/window/macos.rs", "crates/tauri-bundler/src/bundle/macos/icon.rs", "crates/tauri-bundler/src/bundle.rs", "crates/tauri-cli/src/error.rs", "crates/tauri-build/src/mobile.rs", "crates/tauri-cli/src/acl/capability/mod.rs", "crates/tauri/src/app/plugin.rs", "crates/tauri-runtime-wry/src/window/mod.rs", "crates/tauri-cli/src/helpers/npm.rs", "crates/tauri-cli/src/info/packages_nodejs.rs", "crates/tauri-cli/src/info/plugins.rs", "crates/tauri-cli/src/info/env_system.rs", "crates/tauri-cli/src/init.rs", "crates/tauri-cli/src/mobile/android/mod.rs", "crates/tauri-cli/src/migrate/migrations/v2_beta.rs", "crates/tauri/src/pattern.rs", "crates/tauri-utils/src/pattern/mod.rs", "crates/tauri-utils/src/html2.rs", "crates/tauri-codegen/src/context.rs", "crates/tauri-utils/src/html.rs", "crates/tauri-codegen/src/embedded_assets.rs", "crates/tauri/src/ipc/protocol.rs", "crates/tauri-build/src/manifest.rs", "crates/tauri-utils/src/assets.rs", "crates/tauri-utils/src/resources.rs", "crates/tauri-cli/src/migrate/migrations/v1/mod.rs", "packages/api/src/menu/submenu.ts", "crates/tauri-cli/src/helpers/framework.rs", "crates/tauri-macos-sign/src/certificate.rs", "crates/tauri/src/event/mod.rs", "crates/tauri-macros/src/lib.rs", "crates/tauri/src/manager/window.rs", "crates/tauri/src/event/plugin.rs", "crates/tauri/src/tray/mod.rs", "crates/tauri/src/event/event_name.rs", "packages/api/src/mocks.ts"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "tauri-invoke-ipc",
+        "question": "When the web page calls a Rust function from JavaScript, how does that call physically travel from the webview into Rust and how does the result come back?",
+        "selectedId": "system:tauri-workspace",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23889,
+        "sectionCount": 13,
+        "ranked": [0, 1, 2, 3, 4, 6, 7, 8, 9, 5, 10, 11, 12],
+        "packets": [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58],
+        "sections": [
+          {
+            "id": "component:crates-tauri-src-webview-mod-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-on-page-load", "name": "WebviewBuilder<R>::on_page_load" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-disable-javascript", "name": "WebviewBuilder<R>::disable_javascript" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-on-web-resource-request", "name": "WebviewBuilder<R>::on_web_resource_request" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-webview-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-webview-rs:webview-attributes", "name": "WebviewAttributes" },
+              { "id": "code:crates-tauri-runtime-src-webview-rs:pending-webview", "name": "PendingWebview" },
+              { "id": "code:crates-tauri-runtime-src-webview-rs:pending-webview-t-r-new", "name": "PendingWebview<T, R>::new" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-webview-window-rs",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-builder-a-r-m-on-page-load", "name": "WebviewWindowBuilder<'a, R, M>::on_page_load" },
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-builder-r-m-disable-javascript", "name": "WebviewWindowBuilder<'_, R, M>::disable_javascript" },
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-builder-a-r-m-on-web-resource-request", "name": "WebviewWindowBuilder<'a, R, M>::on_web_resource_request" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-manager-webview-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:crates-tauri-src-manager-webview-rs:webview-manager-r-attach-webview", "name": "WebviewManager<R>::attach_webview" },
+              { "id": "code:crates-tauri-src-manager-webview-rs:webview-manager", "name": "WebviewManager" },
+              { "id": "code:crates-tauri-src-manager-webview-rs:on-webview-event", "name": "on_webview_event" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-lib-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-lib-rs:webview-dispatch", "name": "WebviewDispatch" },
+              { "id": "code:crates-tauri-runtime-src-lib-rs:result", "name": "Result" },
+              { "id": "code:crates-tauri-runtime-src-lib-rs:webview", "name": "webview" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-wry-src-lib-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:create-webview", "name": "create_webview" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:webview-message", "name": "WebviewMessage" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:wry-t-create-webview", "name": "Wry<T>::create_webview" }
+            ]
+          },
+          {
+            "id": "component:packages-api-e2e-test-helpers-index-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:packages-api-e2e-test-helpers-index-ts:tauri-page-error", "name": "TauriPageError" },
+              { "id": "code:packages-api-e2e-test-helpers-index-ts:page-outcome", "name": "PageOutcome" },
+              { "id": "code:packages-api-e2e-test-helpers-index-ts:tauri", "name": "tauri" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-plugin-rs",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:crates-tauri-src-plugin-rs:plugin-store-r-on-page-load", "name": "PluginStore<R>::on_page_load" },
+              { "id": "code:crates-tauri-src-plugin-rs:tauri-plugin-r-c-on-page-load", "name": "TauriPlugin<R, C>::on_page_load" },
+              { "id": "code:crates-tauri-src-plugin-rs:builder-r-c-on-page-load", "name": "Builder<R, C>::on_page_load" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-pattern-isolation-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-runtime", "name": "IsolationJavascriptRuntime" },
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-codegen", "name": "IsolationJavascriptCodegen" },
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:aes-gcm-pair-fmt", "name": "AesGcmPair::fmt" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-interface-rust-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust", "name": "Rust" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust-watch", "name": "Rust::watch" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust-dev", "name": "Rust::dev" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-app-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:crates-tauri-src-app-rs:builder-r-on-page-load", "name": "Builder<R>::on_page_load" },
+              { "id": "code:crates-tauri-src-app-rs:builder-r-on-web-content-process-terminate", "name": "Builder<R>::on_web_content_process_terminate" },
+              { "id": "code:crates-tauri-src-app-rs:builder-r-on-webview-event", "name": "Builder<R>::on_webview_event" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-rs:webview-url-deserialize", "name": "WebviewUrl::deserialize" },
+              { "id": "code:crates-tauri-utils-src-config-rs:webview-install-mode", "name": "WebviewInstallMode" },
+              { "id": "code:crates-tauri-utils-src-config-rs:webview-url-fmt", "name": "WebviewUrl::fmt" }
+            ]
+          },
+          {
+            "id": "component:packages-api-src-app-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:packages-api-src-app-ts:on-back-button-press", "name": "onBackButtonPress" },
+              { "id": "code:packages-api-src-app-ts:on-back-button-press-payload", "name": "OnBackButtonPressPayload" },
+              { "id": "code:packages-api-src-app-ts:get-identifier", "name": "getIdentifier" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/tauri/scripts/ipc-protocol.js": false, "crates/tauri/src/ipc/protocol.rs": true, "packages/api/src/core.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11940, "sectionCount": 6, "ranked": [0, 1, 2, 3, 4, 5] },
+          "double": { "byteBudget": 48000, "bytes": 46999, "sectionCount": 40, "ranked": [0, 1, 2, 3, 4, 6, 7, 8, 9, 5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 46999, "sectionCount": 40, "ranked": [0, 1, 2, 3, 4, 6, 7, 8, 9, 5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35860, "sectionCount": 26, "ranked": [0, 1, 2, 3, 4, 6, 7, 8, 9, 5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "2abebd43e62043e0223f4d6c201596484a5b35ac1d01a37d0edafdf04922148d",
+          "allowedIdsCount": 72,
+          "allowedIdsSha256": "c43002d26d9e606df483cf84cc1d63514124b050a1092a4552bf3de0b855e16b",
+          "allowedIdsInContent": ["component:crates-tauri-runtime-src-webview-rs", "code:crates-tauri-runtime-src-webview-rs:webview-attributes", "code:crates-tauri-runtime-src-webview-rs:pending-webview", "code:crates-tauri-runtime-src-webview-rs:pending-webview-t-r-new", "component:crates-tauri-src-manager-webview-rs", "code:crates-tauri-src-manager-webview-rs:webview-manager-r-attach-webview", "code:crates-tauri-src-manager-webview-rs:webview-manager", "component:crates-tauri-runtime-src-lib-rs", "code:crates-tauri-runtime-src-lib-rs:webview-dispatch", "code:crates-tauri-runtime-src-lib-rs:webview", "component:crates-tauri-runtime-wry-src-lib-rs", "code:crates-tauri-runtime-wry-src-lib-rs:create-webview", "code:crates-tauri-runtime-wry-src-lib-rs:webview-message", "code:crates-tauri-runtime-wry-src-lib-rs:wry-t-create-webview"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The evidence shows the Rust half of the pipe: the callback travels as an `ipc_handler` carried on `PendingWebview`, which the WRY backend unwraps at webview creation and hands to the platform webview, so calls from the page land in that handler. The return path is not in the evidence.\\n\\n- `crates/tauri-runtime/src/webview.rs` — `PendingWebview` (`code:crates-tauri-runtime-src-webview-rs:pending-webview`, lines 201–239) bundles `label`, `url`, `ipc_handler` and `uri_scheme_protocols`; `PendingWebview::new` (`...pending-webview-t-r-new`) assembles it, alongside `WebviewAttributes` (`...webview-attributes`) which carries `initialization_scripts` run before `window.onload`.\\n- `crates/tauri-runtime-wry/src/lib.rs` — `create_webview` (`code:crates-tauri-runtime-wry-src-lib-rs:create-webview`) destructures `PendingWebview { webview_attributes, uri_scheme_protocols, label, ipc_handler, url, .. }`, i.e. the JS-call handler is bound to the native webview at creation time. `Wry<T>::create_webview` (`...wry-t-create-webview`) is the trait entry that calls it.\\n- `crates/tauri-runtime/src/lib.rs` — `WebviewDispatch` (`code:crates-tauri-runtime-src-lib-rs:webview-dispatch`) is the backend-agnostic surface (`on_webview_event`, `with_webview`, `run_on_main_thread`) every backend implements.\\n- `crates/tauri/src/manager/webview.rs` — `WebviewManager<R>::attach_webview` (`code:crates-tauri-src-manager-webview-rs:webview-manager-r-attach-webview`) wraps the detached webview and wires `on_webview_event` handlers.\\n\\nMissing from the evidence: the JS-side `invoke` implementation, the concrete WRY IPC registration (`with_ipc_handler` or equivalent), and how the response is posted back into the page.\",\"citations\":[\"component:crates-tauri-runtime-src-webview-rs\",\"code:crates-tauri-runtime-src-webview-rs:pending-webview\",\"code:crates-tauri-runtime-src-webview-rs:pending-webview-t-r-new\",\"code:crates-tauri-runtime-src-webview-rs:webview-attributes\",\"component:crates-tauri-runtime-wry-src-lib-rs\",\"code:crates-tauri-runtime-wry-src-lib-rs:create-webview\",\"code:crates-tauri-runtime-wry-src-lib-rs:wry-t-create-webview\",\"code:crates-tauri-runtime-wry-src-lib-rs:webview-message\",\"component:crates-tauri-runtime-src-lib-rs\",\"code:crates-tauri-runtime-src-lib-rs:webview-dispatch\",\"component:crates-tauri-src-manager-webview-rs\",\"code:crates-tauri-src-manager-webview-rs:webview-manager-r-attach-webview\"]}",
+          "usage": { "promptTokens": 10851, "completionTokens": 979, "totalTokens": 11830, "costUsd": 0.005571915 },
+          "ms": 23895
+        }
+      },
+      {
+        "id": "tauri-capability-check",
+        "question": "How does the app decide whether a particular window is allowed to call a given backend command?",
+        "selectedId": "system:tauri-workspace",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23986,
+        "sectionCount": 14,
+        "ranked": [59, 11, 60, 61, 0, 2, 63, 64, 19, 65, 66, 6, 67, 73],
+        "packets": [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58],
+        "sections": [
+          {
+            "id": "component:crates-tauri-macros-src-command-handler-rs",
+            "kind": "component",
+            "p": 59,
+            "symbols": [
+              { "id": "code:crates-tauri-macros-src-command-handler-rs:filter-unused-commands", "name": "filter_unused_commands" },
+              { "id": "code:crates-tauri-macros-src-command-handler-rs:command-def-parse", "name": "CommandDef::parse" },
+              { "id": "code:crates-tauri-macros-src-command-handler-rs:command-def", "name": "CommandDef" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-rs:window-config", "name": "WindowConfig" },
+              { "id": "code:crates-tauri-utils-src-config-rs:app-config", "name": "AppConfig" },
+              { "id": "code:crates-tauri-utils-src-config-rs:windows-config", "name": "WindowsConfig" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-build-src-acl-rs",
+            "kind": "component",
+            "p": 60,
+            "symbols": [
+              { "id": "code:crates-tauri-build-src-acl-rs:app-manifest-commands", "name": "AppManifest::commands" },
+              { "id": "code:crates-tauri-build-src-acl-rs:app-manifest-permissions", "name": "app_manifest_permissions" },
+              { "id": "code:crates-tauri-build-src-acl-rs:inlined-plugin-commands", "name": "InlinedPlugin::commands" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-acl-mod-rs",
+            "kind": "component",
+            "p": 61,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-acl-mod-rs:allowed-commands", "name": "AllowedCommands" },
+              { "id": "code:crates-tauri-utils-src-acl-mod-rs:read-allowed-commands", "name": "read_allowed_commands" },
+              { "id": "code:crates-tauri-utils-src-acl-mod-rs:allowed-commands-file-name", "name": "ALLOWED_COMMANDS_FILE_NAME" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-mod-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-mod-rs:new-window-response", "name": "NewWindowResponse" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-resolve-command-scope", "name": "Webview<R>::resolve_command_scope" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-allow-link-preview", "name": "WebviewBuilder<R>::allow_link_preview" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-webview-window-rs",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-r-from-command", "name": "WebviewWindow<R>::from_command" },
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-builder-a-r-m-allow-link-preview", "name": "WebviewWindowBuilder<'a, R, M>::allow_link_preview" },
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-r-resolve-command-scope", "name": "WebviewWindow<R>::resolve_command_scope" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-acl-build-rs",
+            "kind": "component",
+            "p": 63,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-acl-build-rs:generate-allowed-commands", "name": "generate_allowed_commands" },
+              { "id": "code:crates-tauri-utils-src-acl-build-rs:autogenerate-command-permissions", "name": "autogenerate_command_permissions" },
+              { "id": "code:crates-tauri-utils-src-acl-build-rs:autogenerated-permissions", "name": "AutogeneratedPermissions" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-dev-rs",
+            "kind": "component",
+            "p": 64,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-dev-rs:command", "name": "command" },
+              { "id": "code:crates-tauri-cli-src-dev-rs:command-internal", "name": "command_internal" },
+              { "id": "code:crates-tauri-cli-src-dev-rs:on-app-exit", "name": "on_app_exit" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-window-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-window-rs:window-event", "name": "WindowEvent" },
+              { "id": "code:crates-tauri-runtime-src-window-rs:window-builder", "name": "WindowBuilder" },
+              { "id": "code:crates-tauri-runtime-src-window-rs:pending-window", "name": "PendingWindow" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-v1-mod-rs",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-v1-mod-rs:shell-allowed-command", "name": "ShellAllowedCommand" },
+              { "id": "code:crates-tauri-utils-src-config-v1-mod-rs:shell-allowed-command-deserialize", "name": "ShellAllowedCommand::deserialize" },
+              { "id": "code:crates-tauri-utils-src-config-v1-mod-rs:window-allowlist-config", "name": "WindowAllowlistConfig" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-helpers-mod-rs",
+            "kind": "component",
+            "p": 66,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-helpers-mod-rs:cross-command", "name": "cross_command" },
+              { "id": "code:crates-tauri-cli-src-helpers-mod-rs:command-env", "name": "command_env" },
+              { "id": "code:crates-tauri-cli-src-helpers-mod-rs:app-paths", "name": "app_paths" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-wry-src-lib-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:create-window", "name": "create_window" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:window-event-wrapper-map-from-tao", "name": "WindowEventWrapper::map_from_tao" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:wry-t-create-window", "name": "Wry<T>::create_window" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-acl-resolved-rs",
+            "kind": "component",
+            "p": 67,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-acl-resolved-rs:resolved-command", "name": "ResolvedCommand" },
+              { "id": "code:crates-tauri-utils-src-acl-resolved-rs:resolve-command", "name": "resolve_command" },
+              { "id": "code:crates-tauri-utils-src-acl-resolved-rs:resolved-command-new", "name": "ResolvedCommand::new" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-window-mod-rs",
+            "kind": "component",
+            "p": 73,
+            "symbols": [
+              { "id": "code:crates-tauri-src-window-mod-rs:window-r-from-command", "name": "Window<R>::from_command" },
+              { "id": "code:crates-tauri-src-window-mod-rs:window-r-managed-app-handle", "name": "Window<R>::managed_app_handle" },
+              { "id": "code:crates-tauri-src-window-mod-rs:window-r-has-app-wide-menu", "name": "Window<R>::has_app_wide_menu" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/tauri/src/ipc/authority.rs": true, "crates/tauri-utils/src/acl/capability.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 12000, "sectionCount": 6, "ranked": [59, 11, 60, 61, 0, 62] },
+          "double": { "byteBudget": 48000, "bytes": 47921, "sectionCount": 39, "ranked": [59, 11, 60, 61, 0, 2, 63, 64, 19, 65, 66, 6, 67, 1, 38, 68, 69, 10, 34, 70, 71, 5, 72, 33, 73, 74, 12, 75, 76, 77, 62, 78, 79, 80, 16, 81, 82, 83, 26] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 50141, "sectionCount": 40, "ranked": [59, 11, 60, 61, 0, 2, 63, 64, 19, 65, 66, 6, 67, 1, 38, 68, 69, 10, 34, 70, 71, 5, 72, 33, 73, 74, 12, 75, 76, 77, 62, 78, 79, 80, 16, 81, 82, 84, 83, 7] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35825, "sectionCount": 25, "ranked": [59, 11, 60, 61, 0, 2, 63, 64, 19, 65, 66, 6, 67, 1, 38, 68, 69, 10, 34, 70, 71, 5, 72, 73, 74] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "60bdc3564ee26cc5cea92f36c4dfd122291169073af8e09c063bab9d16b5fab0",
+          "allowedIdsCount": 76,
+          "allowedIdsSha256": "a800ee88d8616e495414fd51deae467005dd6f547b00c08202a3147b1813a640",
+          "allowedIdsInContent": ["component:crates-tauri-macros-src-command-handler-rs", "code:crates-tauri-macros-src-command-handler-rs:filter-unused-commands", "component:crates-tauri-build-src-acl-rs", "code:crates-tauri-build-src-acl-rs:app-manifest-commands", "code:crates-tauri-build-src-acl-rs:app-manifest-permissions", "code:crates-tauri-build-src-acl-rs:inlined-plugin-commands", "component:crates-tauri-utils-src-acl-mod-rs", "code:crates-tauri-utils-src-acl-mod-rs:allowed-commands", "code:crates-tauri-utils-src-acl-mod-rs:read-allowed-commands", "component:crates-tauri-src-webview-mod-rs", "code:crates-tauri-src-webview-mod-rs:webview-r-resolve-command-scope", "component:crates-tauri-src-webview-webview-window-rs", "code:crates-tauri-src-webview-webview-window-rs:webview-window-r-resolve-command-scope", "component:crates-tauri-utils-src-acl-build-rs", "code:crates-tauri-utils-src-acl-build-rs:generate-allowed-commands", "code:crates-tauri-utils-src-acl-build-rs:autogenerate-command-permissions", "component:crates-tauri-utils-src-acl-resolved-rs", "code:crates-tauri-utils-src-acl-resolved-rs:resolved-command", "code:crates-tauri-utils-src-acl-resolved-rs:resolve-command", "code:crates-tauri-utils-src-acl-resolved-rs:resolved-command-new"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Tauri decides this at two levels: capabilities declare which commands are permitted and for which window labels, and the invoke layer matches the calling webview's label against the resolved window patterns before running the command.\\n\\n- **Build-time ACL resolution** — `resolve_command` in `crates/tauri-utils/src/acl/resolved.rs` records each `ResolvedCommand` with a `windows: Vec<glob::Pattern>` list taken from the capability that granted the permission; a command is only callable from windows whose label matches one of those patterns. `ResolvedCommand::new` carries the scope plus these window patterns (`component:crates-tauri-utils-src-acl-resolved-rs`).\\n- **Runtime lookup** — when a command is invoked, the caller's webview is resolved via `Webview<R>::resolve_command_scope` (`crates/tauri/src/webview/mod.rs`) or `WebviewWindow<R>::resolve_command_scope` (`crates/tauri/src/webview/webview_window.rs`), which consult that resolved ACL for the calling window's label.\\n- **Build-time allowed-command list** — separately, `filter_unused_commands` in `crates/tauri-macros/src/command/handler.rs` drops macro-generated commands not present in `read_allowed_commands()` (the `allowed-commands.json` produced by `generate_allowed_commands` in `crates/tauri-utils/src/acl/build.rs`), keyed as `plugin:<name>|<command>`; if there's no app ACL (`AllowedCommands::has_app_acl`), all app commands pass.\\n- **Capability source** — permissions/commands come from app manifests (`AppManifest::commands`, `app_manifest_permissions` in `crates/tauri-build/src/acl.rs`) and inlined plugins (`InlinedPlugin::commands`), plus autogen `allow-`/`deny-` permissions per command.\\n\\nNote: the exact runtime predicate comparing a window label to `ResolvedCommand.windows` isn't in the excerpts, so the final match step is inferred from those types.\", \"citations\": [\"component:crates-tauri-utils-src-acl-resolved-rs\", \"code:crates-tauri-utils-src-acl-resolved-rs:resolve-command\", \"code:crates-tauri-utils-src-acl-resolved-rs:resolved-command\", \"code:crates-tauri-utils-src-acl-resolved-rs:resolved-command-new\", \"component:crates-tauri-src-webview-mod-rs\", \"code:crates-tauri-src-webview-mod-rs:webview-r-resolve-command-scope\", \"component:crates-tauri-src-webview-webview-window-rs\", \"code:crates-tauri-src-webview-webview-window-rs:webview-window-r-resolve-command-scope\", \"component:crates-tauri-macros-src-command-handler-rs\", \"code:crates-tauri-macros-src-command-handler-rs:filter-unused-commands\", \"component:crates-tauri-utils-src-acl-mod-rs\", \"code:crates-tauri-utils-src-acl-mod-rs:read-allowed-commands\", \"code:crates-tauri-utils-src-acl-mod-rs:allowed-commands\", \"component:crates-tauri-utils-src-acl-build-rs\", \"code:crates-tauri-utils-src-acl-build-rs:generate-allowed-commands\", \"code:crates-tauri-utils-src-acl-build-rs:autogenerate-command-permissions\", \"component:crates-tauri-build-src-acl-rs\", \"code:crates-tauri-build-src-acl-rs:app-manifest-commands\", \"code:crates-tauri-build-src-acl-rs:app-manifest-permissions\", \"code:crates-tauri-build-src-acl-rs:inlined-plugin-commands\"]}",
+          "usage": { "promptTokens": 10938, "completionTokens": 903, "totalTokens": 11841, "costUsd": 0.00554364 },
+          "ms": 26192
+        }
+      },
+      {
+        "id": "tauri-arg-casing",
+        "question": "My Rust command takes a parameter called user_id, but the frontend has to send it as userId. Why, and can I change that?",
+        "selectedId": "system:tauri-workspace",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23916,
+        "sectionCount": 17,
+        "ranked": [6, 5, 4, 2, 85, 19, 75, 0, 86, 15, 38, 59, 67, 21, 83, 87, 90],
+        "packets": [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58],
+        "sections": [
+          {
+            "id": "component:crates-tauri-runtime-wry-src-lib-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:context-t-send-user-message", "name": "Context<T>::send_user_message" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:add-focus-change-listeners", "name": "add_focus_change_listeners" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:handle-user-message", "name": "handle_user_message" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-interface-rust-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust", "name": "Rust" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust-dev", "name": "Rust::dev" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust-run-dev-watcher", "name": "Rust::run_dev_watcher" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-lib-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-lib-rs:user-event", "name": "UserEvent" },
+              { "id": "code:crates-tauri-runtime-src-lib-rs:user-attention-type", "name": "UserAttentionType" },
+              { "id": "code:crates-tauri-runtime-src-lib-rs:webview-event-id", "name": "WebviewEventId" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-webview-window-rs",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-builder-r-m-user-agent", "name": "WebviewWindowBuilder<'_, R, M>::user_agent" },
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-r-from-command", "name": "WebviewWindow<R>::from_command" },
+              { "id": "code:crates-tauri-src-webview-webview-window-rs:webview-window-r-resolve-command-scope", "name": "WebviewWindow<R>::resolve_command_scope" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-lib-rs",
+            "kind": "component",
+            "p": 85,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-lib-rs:command-output-ok", "name": "Command::output_ok" },
+              { "id": "code:crates-tauri-cli-src-lib-rs:command-ext", "name": "CommandExt" },
+              { "id": "code:crates-tauri-cli-src-lib-rs:commands", "name": "Commands" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-window-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-window-rs:window-id", "name": "WindowId" },
+              { "id": "code:crates-tauri-runtime-src-window-rs:window-id-from", "name": "WindowId::from" },
+              { "id": "code:crates-tauri-runtime-src-window-rs:window-event", "name": "WindowEvent" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-ipc-command-rs",
+            "kind": "component",
+            "p": 75,
+            "symbols": [
+              { "id": "code:crates-tauri-src-ipc-command-rs:d-from-command", "name": "D::from_command" },
+              { "id": "code:crates-tauri-src-ipc-command-rs:command-item", "name": "CommandItem" },
+              { "id": "code:crates-tauri-src-ipc-command-rs:command-arg", "name": "CommandArg" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-mod-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-resolve-command-scope", "name": "Webview<R>::resolve_command_scope" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-user-agent", "name": "WebviewBuilder<R>::user_agent" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-from-command", "name": "Webview<R>::from_command" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-lib-rs",
+            "kind": "component",
+            "p": 86,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-lib-rs:write-if-changed", "name": "write_if_changed" },
+              { "id": "code:crates-tauri-utils-src-lib-rs:env", "name": "Env" },
+              { "id": "code:crates-tauri-utils-src-lib-rs:error", "name": "Error" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-interface-rust-desktop-rs",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-interface-rust-desktop-rs:cargo-command", "name": "cargo_command" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-desktop-rs:build-production-app", "name": "build_production_app" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-desktop-rs:run-dev", "name": "run_dev" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-lib-rs",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:crates-tauri-src-lib-rs:unsafe-send-t-take", "name": "UnsafeSend<T>::take" },
+              { "id": "code:crates-tauri-src-lib-rs:unsafe-send", "name": "UnsafeSend" },
+              { "id": "code:crates-tauri-src-lib-rs:x", "name": "_" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-macros-src-command-handler-rs",
+            "kind": "component",
+            "p": 59,
+            "symbols": [
+              { "id": "code:crates-tauri-macros-src-command-handler-rs:filter-unused-commands", "name": "filter_unused_commands" },
+              { "id": "code:crates-tauri-macros-src-command-handler-rs:command-def-parse", "name": "CommandDef::parse" },
+              { "id": "code:crates-tauri-macros-src-command-handler-rs:command-def", "name": "CommandDef" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-acl-resolved-rs",
+            "kind": "component",
+            "p": 67,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-acl-resolved-rs:resolved-resolve-with-base-scope-id", "name": "Resolved::resolve_with_base_scope_id" },
+              { "id": "code:crates-tauri-utils-src-acl-resolved-rs:resolve-command", "name": "resolve_command" },
+              { "id": "code:crates-tauri-utils-src-acl-resolved-rs:resolved-command", "name": "ResolvedCommand" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-packages-rust-rs",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:rust-section-item", "name": "rust_section_item" },
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:items", "name": "items" },
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:latest-version", "name": "latest_version" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-plugin-mobile-rs",
+            "kind": "component",
+            "p": 83,
+            "symbols": [
+              { "id": "code:crates-tauri-src-plugin-mobile-rs:pending-plugin-calls-id", "name": "PENDING_PLUGIN_CALLS_ID" },
+              { "id": "code:crates-tauri-src-plugin-mobile-rs:run-command", "name": "run_command" },
+              { "id": "code:crates-tauri-src-plugin-mobile-rs:run-command-2", "name": "run_command" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-ipc-channel-rs",
+            "kind": "component",
+            "p": 87,
+            "symbols": [
+              { "id": "code:crates-tauri-src-ipc-channel-rs:channel-t-send-from-command", "name": "Channel<TSend>::from_command" },
+              { "id": "code:crates-tauri-src-ipc-channel-rs:channel-t-send-new-with-id", "name": "Channel<TSend>::new_with_id" },
+              { "id": "code:crates-tauri-src-ipc-channel-rs:channel-t-send-id", "name": "Channel<TSend>::id" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-scope-mod-rs",
+            "kind": "component",
+            "p": 90,
+            "symbols": [
+              { "id": "code:crates-tauri-src-scope-mod-rs:scope-event-id", "name": "ScopeEventId" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/tauri-macros/src/command/wrapper.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11964, "sectionCount": 8, "ranked": [6, 5, 4, 2, 85, 19, 75, 15] },
+          "double": { "byteBudget": 48000, "bytes": 45810, "sectionCount": 40, "ranked": [6, 5, 4, 2, 85, 19, 75, 0, 86, 15, 38, 59, 67, 21, 83, 1, 87, 33, 30, 11, 16, 88, 73, 61, 18, 60, 81, 89, 90, 91, 68, 92, 93, 94, 10, 95, 63, 27, 23, 96] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 45810, "sectionCount": 40, "ranked": [6, 5, 4, 2, 85, 19, 75, 0, 86, 15, 38, 59, 67, 21, 83, 1, 87, 33, 30, 11, 16, 88, 73, 61, 18, 60, 81, 89, 90, 91, 68, 92, 93, 94, 10, 95, 63, 27, 23, 96] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35970, "sectionCount": 29, "ranked": [6, 5, 4, 2, 85, 19, 75, 0, 86, 15, 38, 59, 67, 21, 83, 1, 87, 33, 30, 11, 16, 88, 73, 61, 18, 60, 81, 90, 97] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "bac4fbffdf9fab5cc109a1479819b2d847c2696a6d5168113b94119a8e12590c",
+          "allowedIdsCount": 86,
+          "allowedIdsSha256": "900ad1b27781eecdcdb0db6ebb5d8e145ca3fd1fd25702307af02b758e35319d",
+          "allowedIdsInContent": ["component:crates-tauri-src-ipc-command-rs", "code:crates-tauri-src-ipc-command-rs:d-from-command", "code:crates-tauri-src-ipc-command-rs:command-item", "code:crates-tauri-src-ipc-command-rs:command-arg", "component:crates-tauri-macros-src-command-handler-rs", "code:crates-tauri-macros-src-command-handler-rs:command-def", "code:crates-tauri-src-ipc-channel-rs:channel-t-send-from-command", "container:crates-tauri", "container:crates-tauri-macros"],
+          "packetSources": { "container:crates-tauri": 41, "container:crates-tauri-macros": 48 },
+          "content": "{\"answer\": \"The evidence only shows *where* command arguments get looked up — not the `user_id` → `userId` renaming rule itself. From what's here: the frontend's invoke payload is matched by key against `CommandItem.key` in `crates/tauri/src/ipc/command.rs`, and `CommandArg`/`D::from_command` extract each argument using that key (`Channel<TSend>::from_command` in `crates/tauri/src/ipc/channel.rs` does the same). So whatever name the frontend sends must match the key the generated command code looks up.\\n\\n- `crates/tauri/src/ipc/command.rs` — `CommandItem`, `CommandArg`, `D::from_command`: the per-argument deserialization path.\\n- `crates/tauri/src/ipc/channel.rs` — `Channel<TSend>::from_command`: a concrete `CommandArg` implementation showing the same key-based lookup.\\n- `crates/tauri-macros/src/command/handler.rs` — `Handler`/`CommandDef`/`filter_unused_commands`: the macro side of command registration, but this excerpt only covers plugin-name resolution and ACL filtering, not argument naming.\\n\\nWhat's missing from the evidence: the actual camelCase conversion (where `user_id` is emitted/expected as `userId`) and whether it can be overridden or disabled (e.g. via a macro attribute). That logic presumably lives in the `#[tauri::command]` macro in `crates/tauri-macros`, but no excerpt in this search shows it. So I can't answer \\\"why exactly\\\" or \\\"can I change it\\\" from this evidence — a search over `crates/tauri-macros/src/command/` argument-handling code (or the `CommandItem` key construction) would be needed.\",\"citations\":[\"component:crates-tauri-src-ipc-command-rs\",\"code:crates-tauri-src-ipc-command-rs:command-item\",\"code:crates-tauri-src-ipc-command-rs:command-arg\",\"code:crates-tauri-src-ipc-command-rs:d-from-command\",\"code:crates-tauri-src-ipc-channel-rs:channel-t-send-from-command\",\"component:crates-tauri-macros-src-command-handler-rs\",\"code:crates-tauri-macros-src-command-handler-rs:command-def\",\"container:crates-tauri-macros\"]}",
+          "usage": { "promptTokens": 11537, "completionTokens": 915, "totalTokens": 12452, "costUsd": 0.005814645 },
+          "ms": 23989
+        }
+      },
+      {
+        "id": "tauri-embed-assets",
+        "question": "How do the built frontend files end up inside the final desktop executable, and how are they served to the webview at runtime?",
+        "selectedId": "container:crates-tauri-bundler",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23967,
+        "sectionCount": 16,
+        "ranked": [98, 95, 99, 100, 11, 101, 102, 104, 105, 106, 1, 0, 107, 108, 10, 120],
+        "packets": [43, 94, 110, 121],
+        "sections": [
+          {
+            "id": "component:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-vue-rs",
+            "kind": "component",
+            "p": 98,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-vue-rs:vue-partial-loader-a-parse-script", "name": "VuePartialLoader<'a>::parse_script" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-vue-rs:vue-partial-loader", "name": "VuePartialLoader" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-vue-rs:vue-partial-loader-a-new", "name": "VuePartialLoader<'a>::new" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs",
+            "kind": "component",
+            "p": 95,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs:script-end", "name": "SCRIPT_END" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs:java-script-source", "name": "JavaScriptSource" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs:find-script-closing-angle", "name": "find_script_closing_angle" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-path-desktop-rs",
+            "kind": "component",
+            "p": 99,
+            "symbols": [
+              { "id": "code:crates-tauri-src-path-desktop-rs:path-resolver-r-executable-dir", "name": "PathResolver<R>::executable_dir" },
+              { "id": "code:crates-tauri-src-path-desktop-rs:path-resolver-r-file-name", "name": "PathResolver<R>::file_name" },
+              { "id": "code:crates-tauri-src-path-desktop-rs:path-resolver-r-runtime-dir", "name": "PathResolver<R>::runtime_dir" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-svelte-rs",
+            "kind": "component",
+            "p": 100,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-svelte-rs:svelte-partial-loader-a-parse-script", "name": "SveltePartialLoader<'a>::parse_script" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-svelte-rs:svelte-partial-loader", "name": "SveltePartialLoader" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-svelte-rs:svelte-partial-loader-a-new", "name": "SveltePartialLoader<'a>::new" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-rs:file-association", "name": "FileAssociation" },
+              { "id": "code:crates-tauri-utils-src-config-rs:webview-install-mode", "name": "WebviewInstallMode" },
+              { "id": "code:crates-tauri-utils-src-config-rs:frontend-dist", "name": "FrontendDist" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-mobile-mod-rs",
+            "kind": "component",
+            "p": 101,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-mobile-mod-rs:write-options-server-file", "name": "write_options_server_file" },
+              { "id": "code:crates-tauri-cli-src-mobile-mod-rs:options-server-file", "name": "options_server_file" },
+              { "id": "code:crates-tauri-cli-src-mobile-mod-rs:options-server-info", "name": "OptionsServerInfo" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-path-mod-rs",
+            "kind": "component",
+            "p": 102,
+            "symbols": [
+              { "id": "code:crates-tauri-src-path-mod-rs:desktop", "name": "desktop" },
+              { "id": "code:crates-tauri-src-path-mod-rs:resolve-path", "name": "resolve_path" },
+              { "id": "code:crates-tauri-src-path-mod-rs:base-directory-variable", "name": "BaseDirectory::variable" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-driver-src-server-rs",
+            "kind": "component",
+            "p": 104,
+            "symbols": [
+              { "id": "code:crates-tauri-driver-src-server-rs:tauri-options-into-native-object-2", "name": "TauriOptions::into_native_object" },
+              { "id": "code:crates-tauri-driver-src-server-rs:run", "name": "run" },
+              { "id": "code:crates-tauri-driver-src-server-rs:tauri-options-2", "name": "TauriOptions" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-bundler-src-bundle-windows-util-rs",
+            "kind": "component",
+            "p": 105,
+            "symbols": [
+              { "id": "code:crates-tauri-bundler-src-bundle-windows-util-rs:vc-runtime-dlls", "name": "vc_runtime_dlls" },
+              { "id": "code:crates-tauri-bundler-src-bundle-windows-util-rs:vc-runtime-dir", "name": "vc_runtime_dir" },
+              { "id": "code:crates-tauri-bundler-src-bundle-windows-util-rs:vc-runtime-arch", "name": "vc_runtime_arch" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-plugin-rs",
+            "kind": "component",
+            "p": 106,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-plugin-rs:desktop-commands", "name": "desktop_commands" },
+              { "id": "code:crates-tauri-src-webview-plugin-rs:get-all-webviews", "name": "get_all_webviews" },
+              { "id": "code:crates-tauri-src-webview-plugin-rs:create-webview-window", "name": "create_webview_window" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-webview-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-webview-rs:pending-webview", "name": "PendingWebview" },
+              { "id": "code:crates-tauri-runtime-src-webview-rs:detached-webview", "name": "DetachedWebview" },
+              { "id": "code:crates-tauri-runtime-src-webview-rs:pending-webview-t-r-new", "name": "PendingWebview<T, R>::new" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-mod-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-runtime", "name": "Webview<R>::runtime" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-convert-file-src", "name": "Webview<R>::convert_file_src" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-into-pending-webview", "name": "WebviewBuilder<R>::into_pending_webview" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-dev-builtin-dev-server-rs",
+            "kind": "component",
+            "p": 107,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-dev-builtin-dev-server-rs:server-state", "name": "ServerState" },
+              { "id": "code:crates-tauri-cli-src-dev-builtin-dev-server-rs:start", "name": "start" },
+              { "id": "code:crates-tauri-cli-src-dev-builtin-dev-server-rs:handler", "name": "handler" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-bundler-src-bundle-macos-sign-rs",
+            "kind": "component",
+            "p": 108,
+            "symbols": [
+              { "id": "code:crates-tauri-bundler-src-bundle-macos-sign-rs:sign", "name": "sign" },
+              { "id": "code:crates-tauri-bundler-src-bundle-macos-sign-rs:notarize-auth", "name": "notarize_auth" },
+              { "id": "code:crates-tauri-bundler-src-bundle-macos-sign-rs:find-api-key", "name": "find_api_key" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-app-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:crates-tauri-src-app-rs:app-r-runtime", "name": "App<R>::runtime" },
+              { "id": "code:crates-tauri-src-app-rs:app-handle-r-runtime", "name": "AppHandle<R>::runtime" },
+              { "id": "code:crates-tauri-src-app-rs:webview-event-from", "name": "WebviewEvent::from" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-templates-plugin-src-lib-rs",
+            "kind": "component",
+            "p": 120,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-templates-plugin-src-lib-rs:desktop", "name": "desktop" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/tauri-codegen/src/embedded_assets.rs": true, "crates/tauri-codegen/src/context.rs": true, "crates/tauri/src/protocol/tauri.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11950, "sectionCount": 8, "ranked": [98, 95, 99, 100, 11, 101, 102, 103] },
+          "double": { "byteBudget": 48000, "bytes": 45013, "sectionCount": 40, "ranked": [98, 95, 99, 100, 11, 101, 102, 104, 105, 106, 1, 0, 107, 108, 10, 88, 39, 6, 13, 109, 3, 15, 4, 110, 14, 17, 111, 112, 113, 114, 115, 65, 116, 2, 19, 5, 64, 117, 118, 119] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 45013, "sectionCount": 40, "ranked": [98, 95, 99, 100, 11, 101, 102, 104, 105, 106, 1, 0, 107, 108, 10, 88, 39, 6, 13, 109, 3, 15, 4, 110, 14, 17, 111, 112, 113, 114, 115, 65, 116, 2, 19, 5, 64, 117, 118, 119] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35908, "sectionCount": 29, "ranked": [98, 95, 99, 100, 11, 101, 102, 104, 105, 106, 1, 0, 107, 108, 10, 88, 39, 6, 13, 109, 3, 15, 4, 110, 14, 17, 111, 112, 114] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "765dbf9f50210268e397fc6729a7bd025ffc17e8a1f125a249307d81f6daf062",
+          "allowedIdsCount": 94,
+          "allowedIdsSha256": "ff868ff24cb6ccdd3e80d51225d7b5d69d9dcda00e56a508cd86283d7cb81360",
+          "allowedIdsInContent": ["component:crates-tauri-utils-src-config-rs", "code:crates-tauri-utils-src-config-rs:frontend-dist", "component:crates-tauri-src-webview-mod-rs", "code:crates-tauri-src-webview-mod-rs:webview-r-convert-file-src", "component:crates-tauri-cli-src-dev-builtin-dev-server-rs", "code:crates-tauri-cli-src-dev-builtin-dev-server-rs:server-state", "code:crates-tauri-cli-src-dev-builtin-dev-server-rs:start", "code:crates-tauri-cli-src-dev-builtin-dev-server-rs:handler", "component:crates-tauri-src-app-rs"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The evidence only covers part of this: it shows how the frontend dist is configured and served in dev, but **not** how the built assets get compiled into the executable (that path, via codegen/macros, is missing from the evidence).\\n\\nWhat the evidence does show:\\n\\n- `crates/tauri-utils/src/config.rs` (`FrontendDist`) declares the `frontendDist` config value pointing at the built frontend; `WebviewUrl` defaults to `App(\\\"index.html\\\")`, i.e. a path served from the bundled assets.\\n- `crates/tauri/src/app.rs` — `AssetResolver` resolves frontend assets at runtime: `get_for_scheme` falls back to reading `frontendDist` under `dev`, and `get` picks the https scheme per webview.\\n- In dev, `crates/tauri-cli/src/dev/builtin_dev_server.rs` serves files from a directory: `ServerState` holds `dir`/`address`, `start` builds an axum `Router` with `handler` as the fallback, and `handler` serves requests from that dir.\\n- `crates/tauri/src/webview/mod.rs` (`Webview<R>::convert_file_src`) is the related asset-URL conversion path for file:// resources.\\n\\nMissing from the evidence: the compile-time embedding step (the codegen/macros side that packs `frontendDist` into the binary) and the runtime asset-protocol handler that reads from that embedded set.\",\"citations\":[\"component:crates-tauri-utils-src-config-rs\",\"code:crates-tauri-utils-src-config-rs:frontend-dist\",\"component:crates-tauri-src-app-rs\",\"component:crates-tauri-cli-src-dev-builtin-dev-server-rs\",\"code:crates-tauri-cli-src-dev-builtin-dev-server-rs:server-state\",\"code:crates-tauri-cli-src-dev-builtin-dev-server-rs:start\",\"code:crates-tauri-cli-src-dev-builtin-dev-server-rs:handler\",\"component:crates-tauri-src-webview-mod-rs\",\"code:crates-tauri-src-webview-mod-rs:webview-r-convert-file-src\"]}",
+          "usage": { "promptTokens": 15101, "completionTokens": 866, "totalTokens": 15967, "costUsd": 0.007322355 },
+          "ms": 24759
+        }
+      },
+      {
+        "id": "tauri-config-platform",
+        "question": "Can I keep separate app configuration overrides for macOS and Windows, and which file formats are accepted?",
+        "selectedId": "system:tauri-workspace",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23977,
+        "sectionCount": 16,
+        "ranked": [122, 102, 11, 89, 123, 124, 125, 126, 127, 0, 128, 74, 129, 71, 81, 34],
+        "packets": [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58],
+        "sections": [
+          {
+            "id": "component:crates-tauri-cli-src-acl-mod-rs",
+            "kind": "component",
+            "p": 122,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-acl-mod-rs:file-format", "name": "FileFormat" },
+              { "id": "code:crates-tauri-cli-src-acl-mod-rs:file-format-fmt", "name": "FileFormat::fmt" },
+              { "id": "code:crates-tauri-cli-src-acl-mod-rs:file-format-extension", "name": "FileFormat::extension" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-path-mod-rs",
+            "kind": "component",
+            "p": 102,
+            "symbols": [
+              { "id": "code:crates-tauri-src-path-mod-rs:path-resolver-r-app-directory-override", "name": "PathResolver<R>::app_directory_override" },
+              { "id": "code:crates-tauri-src-path-mod-rs:app-directory-root-override-subdirectory", "name": "AppDirectory::root_override_subdirectory" },
+              { "id": "code:crates-tauri-src-path-mod-rs:path-resolver-r-resolve-override-path", "name": "PathResolver<R>::resolve_override_path" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-rs:app-directory-overrides", "name": "AppDirectoryOverrides" },
+              { "id": "code:crates-tauri-utils-src-config-rs:validate-app-directory-override", "name": "validate_app_directory_override" },
+              { "id": "code:crates-tauri-utils-src-config-rs:app-directories-override", "name": "AppDirectoriesOverride" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-helpers-app-paths-rs",
+            "kind": "component",
+            "p": 89,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-helpers-app-paths-rs:env-tauri-app-path", "name": "ENV_TAURI_APP_PATH" },
+              { "id": "code:crates-tauri-cli-src-helpers-app-paths-rs:env-tauri-app-path-2", "name": "env_tauri_app_path" },
+              { "id": "code:crates-tauri-cli-src-helpers-app-paths-rs:resolve-tauri-dir", "name": "resolve_tauri_dir" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-bundler-src-bundle-macos-app-rs",
+            "kind": "component",
+            "p": 123,
+            "symbols": [
+              { "id": "code:crates-tauri-bundler-src-bundle-macos-app-rs:copy-custom-files-to-bundle", "name": "copy_custom_files_to_bundle" },
+              { "id": "code:crates-tauri-bundler-src-bundle-macos-app-rs:bundle-project", "name": "bundle_project" },
+              { "id": "code:crates-tauri-bundler-src-bundle-macos-app-rs:create-info-plist", "name": "create_info_plist" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-acl-capability-new-rs",
+            "kind": "component",
+            "p": 124,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-acl-capability-new-rs:options", "name": "Options" },
+              { "id": "code:crates-tauri-cli-src-acl-capability-new-rs:command", "name": "command" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-parse-rs",
+            "kind": "component",
+            "p": 125,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-parse-rs:is-configuration-file", "name": "is_configuration_file" },
+              { "id": "code:crates-tauri-utils-src-config-parse-rs:folder-has-configuration-file", "name": "folder_has_configuration_file" },
+              { "id": "code:crates-tauri-utils-src-config-parse-rs:config-format-into-platform-file-name", "name": "ConfigFormat::into_platform_file_name" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-macos-sign-src-keychain-rs",
+            "kind": "component",
+            "p": 126,
+            "symbols": [
+              { "id": "code:crates-tauri-macos-sign-src-keychain-rs:keychain-with-certificate-file", "name": "Keychain::with_certificate_file" },
+              { "id": "code:crates-tauri-macos-sign-src-keychain-rs:keychain", "name": "Keychain" },
+              { "id": "code:crates-tauri-macos-sign-src-keychain-rs:keychain-with-certificate", "name": "Keychain::with_certificate" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-acl-permission-rm-rs",
+            "kind": "component",
+            "p": 127,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-acl-permission-rm-rs:rm-permission-files", "name": "rm_permission_files" },
+              { "id": "code:crates-tauri-cli-src-acl-permission-rm-rs:parse-permission-file", "name": "parse_permission_file" },
+              { "id": "code:crates-tauri-cli-src-acl-permission-rm-rs:rm-permission-from-capabilities", "name": "rm_permission_from_capabilities" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-mod-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-mod-rs:new-window-response", "name": "NewWindowResponse" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-with-webview-configuration", "name": "WebviewBuilder<R>::with_webview_configuration" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-accept-first-mouse", "name": "WebviewBuilder<R>::accept_first_mouse" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-platform-rs",
+            "kind": "component",
+            "p": 128,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-platform-rs:windows-app-icon-resource-id", "name": "WINDOWS_APP_ICON_RESOURCE_ID" },
+              { "id": "code:crates-tauri-utils-src-platform-rs:resource-dir-from", "name": "resource_dir_from" },
+              { "id": "code:crates-tauri-utils-src-platform-rs:target-triple", "name": "target_triple" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-acl-permission-new-rs",
+            "kind": "component",
+            "p": 74,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-acl-permission-new-rs:options", "name": "Options" },
+              { "id": "code:crates-tauri-cli-src-acl-permission-new-rs:command", "name": "command" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-bundler-src-bundle-windows-msi-mod-rs",
+            "kind": "component",
+            "p": 129,
+            "symbols": [
+              { "id": "code:crates-tauri-bundler-src-bundle-windows-msi-mod-rs:resource-file", "name": "ResourceFile" },
+              { "id": "code:crates-tauri-bundler-src-bundle-windows-msi-mod-rs:build-wix-app-installer", "name": "build_wix_app_installer" },
+              { "id": "code:crates-tauri-bundler-src-bundle-windows-msi-mod-rs:resource-directory-add-file", "name": "ResourceDirectory::add_file" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-bundler-src-bundle-settings-rs",
+            "kind": "component",
+            "p": 71,
+            "symbols": [
+              { "id": "code:crates-tauri-bundler-src-bundle-settings-rs:windows-settings", "name": "WindowsSettings" },
+              { "id": "code:crates-tauri-bundler-src-bundle-settings-rs:app-image-settings", "name": "AppImageSettings" },
+              { "id": "code:crates-tauri-bundler-src-bundle-settings-rs:settings-file-associations", "name": "Settings::file_associations" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-macos-sign-src-lib-rs",
+            "kind": "component",
+            "p": 81,
+            "symbols": [
+              { "id": "code:crates-tauri-macos-sign-src-lib-rs:staple-app", "name": "staple_app" },
+              { "id": "code:crates-tauri-macos-sign-src-lib-rs:notarize-inner", "name": "notarize_inner" },
+              { "id": "code:crates-tauri-macos-sign-src-lib-rs:error", "name": "Error" }
+            ]
+          },
+          {
+            "id": "component:packages-api-src-window-ts",
+            "kind": "component",
+            "p": 34,
+            "symbols": [
+              { "id": "code:packages-api-src-window-ts:window", "name": "Window" },
+              { "id": "code:packages-api-src-window-ts:get-all-windows", "name": "getAllWindows" },
+              { "id": "code:packages-api-src-window-ts:window-options", "name": "WindowOptions" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/tauri-utils/src/config.rs": true, "crates/tauri-utils/src/config/parse.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11983, "sectionCount": 8, "ranked": [122, 102, 11, 89, 123, 124, 125, 126] },
+          "double": { "byteBudget": 48000, "bytes": 45940, "sectionCount": 40, "ranked": [122, 102, 11, 89, 123, 124, 125, 126, 127, 0, 128, 74, 129, 71, 81, 5, 130, 2, 131, 132, 99, 133, 34, 134, 135, 1, 65, 113, 136, 108, 6, 12, 10, 121, 17, 84, 137, 138, 139, 47] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 45940, "sectionCount": 40, "ranked": [122, 102, 11, 89, 123, 124, 125, 126, 127, 0, 128, 74, 129, 71, 81, 5, 130, 2, 131, 132, 99, 133, 34, 134, 135, 1, 65, 113, 136, 108, 6, 12, 10, 121, 17, 84, 137, 138, 139, 47] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35920, "sectionCount": 30, "ranked": [122, 102, 11, 89, 123, 124, 125, 126, 127, 0, 128, 74, 129, 71, 81, 5, 130, 2, 131, 132, 99, 133, 34, 134, 135, 1, 65, 113, 108, 137] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "4c0aa32b0dd878e3023014ba085eb9a871cdf2713b237bf1bbfd7bdee8d5d237",
+          "allowedIdsCount": 82,
+          "allowedIdsSha256": "ec2c370d3a68544a4bb83520d63bfd0c11b8c189c447d7136cfe0421dad6a0f1",
+          "allowedIdsInContent": ["component:crates-tauri-utils-src-config-parse-rs", "code:crates-tauri-utils-src-config-parse-rs:is-configuration-file", "code:crates-tauri-utils-src-config-parse-rs:config-format-into-platform-file-name"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Yes — per-platform config overrides are supported at the config-file level: `ConfigFormat::into_platform_file_name` in `crates/tauri-utils/src/config/parse.rs` derives platform-specific config file names, so a macOS-targeted file and a Windows-targeted file can be kept side by side and merged per target. The exact filenames aren't shown in the excerpts, only that this function builds them from a `ConfigFormat`.\\n\\nAccepted formats:\\n- App config: JSON and JSON5 (`folder_has_configuration_file` probes `ConfigFormat::Json` and `ConfigFormat::Json5` names; `is_configuration_file` recognizes config files the same way).\\n- ACL capability/permission files: JSON and TOML (`FileFormat` enum in `crates/tauri-cli/src/acl/mod.rs`, used as `--format` in `Options` of `src/acl/capability/new.rs` and `src/acl/permission/new.rs`).\\n\\nCaveat: if you meant the app *directory* overrides (`AppDirectoriesOverride` / `AppDirectoryOverrides` in `crates/tauri-utils/src/config.rs`), those are a single flat struct of `config`/`data`/`local_data`/`cache`/`log` paths with no per-platform variants in the evidence — `PathResolver::app_directory_override` in `crates/tauri/src/path/mod.rs` reads one value regardless of platform. You'd get per-platform behavior by putting those values in the per-platform config files above.\\n\\nMissing from evidence: the concrete platform file names (e.g. what `into_platform_file_name` returns for macOS vs Windows) and the merge order/precedence between base and platform config.\",\"citations\":[\"component:crates-tauri-utils-src-config-parse-rs\",\"code:crates-tauri-utils-src-config-parse-rs:config-format-into-platform-file-name\",\"code:crates-tauri-utils-src-config-parse-rs:is-configuration-file\",\"code:crates-tauri-utils-src-config-parse-rs:folder-has",
+          "usage": { "promptTokens": 11313, "completionTokens": 1024, "totalTokens": 12337, "costUsd": 0.005812035 },
+          "ms": 27438
+        }
+      },
+      {
+        "id": "tauri-two-clis",
+        "question": "Why are there both an npm package and a Rust crate for the command-line tool, and how are they related?",
+        "selectedId": "system:tauri-workspace",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23771,
+        "sectionCount": 16,
+        "ranked": [140, 141, 142, 66, 143, 15, 71, 85, 21, 91, 93, 97, 27, 144, 0, 145],
+        "packets": [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58],
+        "sections": [
+          {
+            "id": "component:crates-tauri-cli-src-helpers-npm-rs",
+            "kind": "component",
+            "p": 140,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-helpers-npm-rs:package-manager-cross-command", "name": "PackageManager::cross_command" },
+              { "id": "code:crates-tauri-cli-src-helpers-npm-rs:package-manager-current-package-versions", "name": "PackageManager::current_package_versions" },
+              { "id": "code:crates-tauri-cli-src-helpers-npm-rs:package-manager-current-package-version", "name": "PackageManager::current_package_version" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-packages-nodejs-rs",
+            "kind": "component",
+            "p": 141,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-packages-nodejs-rs:npm-latest-version", "name": "npm_latest_version" },
+              { "id": "code:crates-tauri-cli-src-info-packages-nodejs-rs:package-manager", "name": "package_manager" },
+              { "id": "code:crates-tauri-cli-src-info-packages-nodejs-rs:nodejs-section-item", "name": "nodejs_section_item" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-plugins-rs",
+            "kind": "component",
+            "p": 142,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-plugins-rs:installed-tauri-packages", "name": "installed_tauri_packages" },
+              { "id": "code:crates-tauri-cli-src-info-plugins-rs:check-mismatched-packages", "name": "check_mismatched_packages" },
+              { "id": "code:crates-tauri-cli-src-info-plugins-rs:installed-package", "name": "InstalledPackage" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-helpers-mod-rs",
+            "kind": "component",
+            "p": 66,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-helpers-mod-rs:cross-command", "name": "cross_command" },
+              { "id": "code:crates-tauri-cli-src-helpers-mod-rs:npm", "name": "npm" },
+              { "id": "code:crates-tauri-cli-src-helpers-mod-rs:command-env", "name": "command_env" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-env-system-rs",
+            "kind": "component",
+            "p": 143,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-env-system-rs:is-xcode-command-line-tools-installed", "name": "is_xcode_command_line_tools_installed" },
+              { "id": "code:crates-tauri-cli-src-info-env-system-rs:build-tools-version", "name": "build_tools_version" },
+              { "id": "code:crates-tauri-cli-src-info-env-system-rs:webview2-version", "name": "webview2_version" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-interface-rust-desktop-rs",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-interface-rust-desktop-rs:cargo-command", "name": "cargo_command" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-desktop-rs:build-production-app", "name": "build_production_app" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-desktop-rs:run-dev", "name": "run_dev" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-bundler-src-bundle-settings-rs",
+            "kind": "component",
+            "p": 71,
+            "symbols": [
+              { "id": "code:crates-tauri-bundler-src-bundle-settings-rs:settings-package-types", "name": "Settings::package_types" },
+              { "id": "code:crates-tauri-bundler-src-bundle-settings-rs:all-package-types", "name": "ALL_PACKAGE_TYPES" },
+              { "id": "code:crates-tauri-bundler-src-bundle-settings-rs:package-type-from-short-name", "name": "PackageType::from_short_name" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-lib-rs",
+            "kind": "component",
+            "p": 85,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-lib-rs:command-output-ok", "name": "Command::output_ok" },
+              { "id": "code:crates-tauri-cli-src-lib-rs:command-ext", "name": "CommandExt" },
+              { "id": "code:crates-tauri-cli-src-lib-rs:commands", "name": "Commands" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-packages-rust-rs",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:rust-section-item", "name": "rust_section_item" },
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:items", "name": "items" },
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:latest-version", "name": "latest_version" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-bundler-src-bundle-platform-rs",
+            "kind": "component",
+            "p": 91,
+            "symbols": [
+              { "id": "code:crates-tauri-bundler-src-bundle-platform-rs:parse-rust-cfg", "name": "parse_rust_cfg" },
+              { "id": "code:crates-tauri-bundler-src-bundle-platform-rs:rust-cfg", "name": "RustCfg" },
+              { "id": "code:crates-tauri-bundler-src-bundle-platform-rs:target-triple", "name": "target_triple" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-mod-rs",
+            "kind": "component",
+            "p": 93,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-mod-rs:packages-rust", "name": "packages_rust" },
+              { "id": "code:crates-tauri-cli-src-info-mod-rs:command", "name": "command" },
+              { "id": "code:crates-tauri-cli-src-info-mod-rs:env-rust", "name": "env_rust" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-remove-rs",
+            "kind": "component",
+            "p": 97,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-remove-rs:command", "name": "command" },
+              { "id": "code:crates-tauri-cli-src-remove-rs:lists-dependency", "name": "lists_dependency" },
+              { "id": "code:crates-tauri-cli-src-remove-rs:options", "name": "Options" }
+            ]
+          },
+          {
+            "id": "component:packages-api-src-tray-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:packages-api-src-tray-ts:rust-tray-icon-event", "name": "RustTrayIconEvent" },
+              { "id": "code:packages-api-src-tray-ts:map-event", "name": "mapEvent" },
+              { "id": "code:packages-api-src-tray-ts:tray-icon", "name": "TrayIcon" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-init-rs",
+            "kind": "component",
+            "p": 144,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-init-rs:default-build-command", "name": "default_build_command" },
+              { "id": "code:crates-tauri-cli-src-init-rs:default-dev-command", "name": "default_dev_command" },
+              { "id": "code:crates-tauri-cli-src-init-rs:command", "name": "command" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-mod-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-resolve-command-scope", "name": "Webview<R>::resolve_command_scope" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-builder-r-with-related-view", "name": "WebviewBuilder<R>::with_related_view" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-from-command", "name": "Webview<R>::from_command" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-mobile-android-mod-rs",
+            "kind": "component",
+            "p": 145,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-mobile-android-mod-rs:download-cmdline-tools", "name": "download_cmdline_tools" },
+              { "id": "code:crates-tauri-cli-src-mobile-android-mod-rs:command", "name": "command" },
+              { "id": "code:crates-tauri-cli-src-mobile-android-mod-rs:line-indentation", "name": "line_indentation" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "ARCHITECTURE.md": false, "packages/cli/src/lib.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11690, "sectionCount": 7, "ranked": [140, 141, 142, 66, 143, 15, 21] },
+          "double": { "byteBudget": 48000, "bytes": 46888, "sectionCount": 40, "ranked": [140, 141, 142, 66, 143, 15, 71, 85, 21, 91, 93, 97, 27, 144, 0, 94, 59, 145, 13, 72, 2, 5, 32, 75, 34, 146, 68, 33, 37, 88, 69, 133, 58, 7, 61, 109, 17, 22, 30, 60] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 46888, "sectionCount": 40, "ranked": [140, 141, 142, 66, 143, 15, 71, 85, 21, 91, 93, 97, 27, 144, 0, 94, 59, 145, 13, 72, 2, 5, 32, 75, 34, 146, 68, 33, 37, 88, 69, 133, 58, 7, 61, 109, 17, 22, 30, 60] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35923, "sectionCount": 29, "ranked": [140, 141, 142, 66, 143, 15, 71, 85, 21, 91, 93, 97, 27, 144, 0, 94, 59, 145, 13, 72, 2, 5, 32, 75, 34, 146, 68, 33, 37] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "d3b37adf20a86c8db9ede15dfb311d4b1a9f477ac32a7efce38d3169d1933f7d",
+          "allowedIdsCount": 84,
+          "allowedIdsSha256": "b27c6ebb494871eae533a661b42db3a82e990a4cdc3e5c06bee40974e54a4440",
+          "allowedIdsInContent": ["component:crates-tauri-cli-src-helpers-npm-rs", "code:crates-tauri-cli-src-helpers-npm-rs:package-manager-cross-command", "component:crates-tauri-cli-src-info-packages-nodejs-rs", "component:crates-tauri-cli-src-lib-rs", "code:crates-tauri-cli-src-lib-rs:command-output-ok", "code:crates-tauri-cli-src-lib-rs:command-ext", "code:crates-tauri-cli-src-lib-rs:commands", "system:tauri-workspace", "container:crates-tauri", "container:crates-tauri-cli", "container:packages-cli"],
+          "packetSources": { "system:tauri-workspace": 40, "container:crates-tauri": 41, "container:crates-tauri-cli": 44, "container:packages-cli": 57 },
+          "content": "{\"answer\": \"The Rust crate `tauri-cli` (`crates/tauri-cli`) is the actual command-line implementation, while `@tauri-apps/cli` (`packages/cli`) is the npm-packaged wrapper that ships that CLI to JavaScript users — one tool with two distribution channels inside the same workspace.\\n\\n- `container:crates-tauri-cli` holds the real CLI entry point `Commands` / `try_run` and all subcommands (`init`, `info`, `remove`, mobile) in `crates/tauri-cli/src/lib.rs`.\\n- `container:packages-cli` (`@tauri-apps/cli`) is the npm package in the same `system:tauri-workspace`, alongside `@tauri-apps/api`.\\n- The relationship is confirmed in `CommandExt::piped` (`code:crates-tauri-cli-src-lib-rs:command-ext`), whose comment says stdout/stderr are set \\\"to properly show the command output in the Node.js wrapper\\\" — i.e. the Rust crate is explicitly written to be driven by the Node wrapper.\\n- `Command::output_ok` (`code:crates-tauri-cli-src-lib-rs:command-output-ok`) is that child-process plumbing the wrapper depends on.\\n- The Rust CLI also speaks to the JS ecosystem: `crates/tauri-cli/src/helpers/npm.rs` (`PackageManager::cross_command`) and `crates/tauri-cli/src/info/packages_nodejs.rs` query npm/yarn/pnpm/bun/deno for JS package versions.\\n\\nWhat's missing from the evidence: no excerpts from `packages/cli` itself (e.g. its binary-launching or platform-distribution code), so the exact mechanism by which the npm package fetches/executes the Rust binary is not in the evidence.\",\"citations\":[\"container:crates-tauri-cli\",\"container:packages-cli\",\"system:tauri-workspace\",\"component:crates-tauri-cli-src-lib-rs\",\"code:crates-tauri-cli-src-lib-rs:command-ext\",\"code:crates-tauri-cli-src-lib-rs:command-output-ok\",\"code:crates-tauri-cli-src-lib-rs:commands\",\"component:crates-tauri-cli-src-helpers-npm-rs\",\"code:crates-tauri-cli-src-helpers-npm-rs:package-manager-cross-command\",\"component:crates-tauri-cli-src-info-packages-nodejs-rs\"]}",
+          "usage": { "promptTokens": 11314, "completionTokens": 826, "totalTokens": 12140, "costUsd": 0.00564021 },
+          "ms": 24382
+        }
+      },
+      {
+        "id": "tauri-isolation",
+        "question": "What is the isolation pattern and how does it protect messages coming from the frontend?",
+        "selectedId": "component:crates-tauri-macos-sign-src-certificate-rs",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23824,
+        "sectionCount": 19,
+        "ranked": [9, 147, 20, 148, 3, 149, 150, 11, 6, 113, 152, 153, 4, 151, 88, 95, 65, 154, 155],
+        "packets": [160, 47],
+        "sections": [
+          {
+            "id": "component:crates-tauri-utils-src-pattern-isolation-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-runtime", "name": "IsolationJavascriptRuntime" },
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-codegen", "name": "IsolationJavascriptCodegen" },
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:raw-isolation-payload", "name": "RawIsolationPayload" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-pattern-rs",
+            "kind": "component",
+            "p": 147,
+            "symbols": [
+              { "id": "code:crates-tauri-src-pattern-rs:pattern", "name": "Pattern" },
+              { "id": "code:crates-tauri-src-pattern-rs:pattern-object-from", "name": "PatternObject::from" },
+              { "id": "code:crates-tauri-src-pattern-rs:pattern-object", "name": "PatternObject" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-protocol-isolation-rs",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:crates-tauri-src-protocol-isolation-rs:get", "name": "get" },
+              { "id": "code:crates-tauri-src-protocol-isolation-rs:request-to-path", "name": "request_to_path" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-pattern-mod-rs",
+            "kind": "component",
+            "p": 148,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-pattern-mod-rs:isolation", "name": "isolation" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-manager-webview-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:crates-tauri-src-manager-webview-rs:isolation-javascript", "name": "IsolationJavascript" },
+              { "id": "code:crates-tauri-src-manager-webview-rs:process-ipc-message-fn", "name": "PROCESS_IPC_MESSAGE_FN" },
+              { "id": "code:crates-tauri-src-manager-webview-rs:webview-manager-r-prepare-pending-webview", "name": "WebviewManager<R>::prepare_pending_webview" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-html2-rs",
+            "kind": "component",
+            "p": 149,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-html2-rs:inject-codegen-isolation-script", "name": "inject_codegen_isolation_script" },
+              { "id": "code:crates-tauri-utils-src-html2-rs:inline-isolation", "name": "inline_isolation" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-codegen-src-context-rs",
+            "kind": "component",
+            "p": 150,
+            "symbols": [
+              { "id": "code:crates-tauri-codegen-src-context-rs:map-isolation", "name": "map_isolation" },
+              { "id": "code:crates-tauri-codegen-src-context-rs:context-codegen", "name": "context_codegen" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-rs:pattern-kind", "name": "PatternKind" },
+              { "id": "code:crates-tauri-utils-src-config-rs:frontend-dist", "name": "FrontendDist" },
+              { "id": "code:crates-tauri-utils-src-config-rs:frontend-dist-fmt", "name": "FrontendDist::fmt" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-wry-src-lib-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:handle-user-message", "name": "handle_user_message" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:context-t-send-user-message", "name": "Context<T>::send_user_message" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:wry-window-dispatcher-t-set-content-protected", "name": "WryWindowDispatcher<T>::set_content_protected" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-error-rs",
+            "kind": "component",
+            "p": 113,
+            "symbols": [
+              { "id": "code:crates-tauri-src-error-rs:error", "name": "Error" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-codegen-src-embedded-assets-rs",
+            "kind": "component",
+            "p": 152,
+            "symbols": [
+              { "id": "code:crates-tauri-codegen-src-embedded-assets-rs:asset-options-new", "name": "AssetOptions::new" },
+              { "id": "code:crates-tauri-codegen-src-embedded-assets-rs:asset-options", "name": "AssetOptions" },
+              { "id": "code:crates-tauri-codegen-src-embedded-assets-rs:embedded-assets-compression-settings", "name": "EmbeddedAssets::compression_settings" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-ipc-protocol-rs",
+            "kind": "component",
+            "p": 153,
+            "symbols": [
+              { "id": "code:crates-tauri-src-ipc-protocol-rs:message-handler", "name": "message_handler" },
+              { "id": "code:crates-tauri-src-ipc-protocol-rs:handle-ipc-message", "name": "handle_ipc_message" },
+              { "id": "code:crates-tauri-src-ipc-protocol-rs:parse-invoke-request", "name": "parse_invoke_request" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-lib-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-lib-rs:error", "name": "Error" },
+              { "id": "code:crates-tauri-runtime-src-lib-rs:runtime", "name": "Runtime" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-html-rs",
+            "kind": "component",
+            "p": 151,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-html-rs:pattern-object", "name": "PatternObject" },
+              { "id": "code:crates-tauri-utils-src-html-rs:pattern-object-from", "name": "PatternObject::from" },
+              { "id": "code:crates-tauri-utils-src-html-rs:inline-isolation", "name": "inline_isolation" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-migrate-migrations-v1-frontend-rs",
+            "kind": "component",
+            "p": 88,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-rs:migrate", "name": "migrate" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-rs:js-extensions", "name": "JS_EXTENSIONS" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-rs:migrate-imports", "name": "migrate_imports" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs",
+            "kind": "component",
+            "p": 95,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs:find-script-closing-angle", "name": "find_script_closing_angle" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs:java-script-source", "name": "JavaScriptSource" },
+              { "id": "code:crates-tauri-cli-src-migrate-migrations-v1-frontend-partial-loader-mod-rs:java-script-source-a-new", "name": "JavaScriptSource<'a>::new" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-config-v1-mod-rs",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-config-v1-mod-rs:pattern-kind", "name": "PatternKind" },
+              { "id": "code:crates-tauri-utils-src-config-v1-mod-rs:tauri-config", "name": "TauriConfig" },
+              { "id": "code:crates-tauri-utils-src-config-v1-mod-rs:nsis-config", "name": "NsisConfig" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-build-src-manifest-rs",
+            "kind": "component",
+            "p": 154,
+            "symbols": [
+              { "id": "code:crates-tauri-build-src-manifest-rs:check-features", "name": "check_features" },
+              { "id": "code:crates-tauri-build-src-manifest-rs:check", "name": "check" }
+            ]
+          },
+          { "id": "component:crates-tauri-utils-src-assets-rs", "kind": "component", "p": 155 }
+        ],
+        "expectedIndexed": { "crates/tauri-utils/src/pattern/isolation.js": false, "crates/tauri-utils/src/pattern/isolation.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11999, "sectionCount": 9, "ranked": [9, 147, 20, 148, 3, 149, 150, 11, 151] },
+          "double": { "byteBudget": 48000, "bytes": 42827, "sectionCount": 40, "ranked": [9, 147, 20, 148, 3, 149, 150, 11, 6, 113, 152, 153, 4, 151, 88, 95, 65, 98, 154, 38, 100, 25, 89, 155, 18, 2, 60, 73, 61, 105, 16, 84, 92, 36, 156, 157, 158, 54, 7, 159] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 42827, "sectionCount": 40, "ranked": [9, 147, 20, 148, 3, 149, 150, 11, 6, 113, 152, 153, 4, 151, 88, 95, 65, 98, 154, 38, 100, 25, 89, 155, 18, 2, 60, 73, 61, 105, 16, 84, 92, 36, 156, 157, 158, 54, 7, 159] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35901, "sectionCount": 32, "ranked": [9, 147, 20, 148, 3, 149, 150, 11, 6, 113, 152, 153, 4, 151, 88, 95, 65, 98, 154, 38, 100, 25, 89, 155, 18, 2, 60, 73, 61, 105, 16, 159] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "9989832d5d4ea93bf00ce1146196e3ac34dc2fef35c851aa953853f9c3793953",
+          "allowedIdsCount": 68,
+          "allowedIdsSha256": "c0569096458ff8e865f6ec70b338306a72977605e360575b7f34aebbc1d6ebe7",
+          "allowedIdsInContent": ["component:crates-tauri-utils-src-pattern-isolation-rs", "code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-runtime", "code:crates-tauri-utils-src-pattern-isolation-rs:raw-isolation-payload", "component:crates-tauri-src-pattern-rs", "code:crates-tauri-src-pattern-rs:pattern", "component:crates-tauri-src-protocol-isolation-rs", "code:crates-tauri-src-protocol-isolation-rs:get", "code:crates-tauri-src-manager-webview-rs:process-ipc-message-fn", "code:crates-tauri-src-manager-webview-rs:webview-manager-r-prepare-pending-webview", "component:crates-tauri-utils-src-html2-rs", "code:crates-tauri-utils-src-html2-rs:inject-codegen-isolation-script", "code:crates-tauri-utils-src-html2-rs:inline-isolation", "code:crates-tauri-codegen-src-context-rs:map-isolation", "code:crates-tauri-codegen-src-context-rs:context-codegen", "code:crates-tauri-utils-src-config-rs:pattern-kind", "code:crates-tauri-src-error-rs:error", "component:crates-tauri-src-ipc-protocol-rs", "code:crates-tauri-src-ipc-protocol-rs:handle-ipc-message", "code:crates-tauri-src-ipc-protocol-rs:parse-invoke-request", "code:crates-tauri-utils-src-html-rs:pattern-object", "code:crates-tauri-utils-src-html-rs:pattern-object-from"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The isolation pattern is Tauri's hardened alternative to \\\"brownfield\\\": a trusted isolation app (`isolation://index.html`) is embedded and served inside an iframe, and every frontend IPC message must be wrapped by it before the backend accepts it.\\n\\n- `Pattern::Isolation` (`crates/tauri/src/pattern.rs`) holds the isolation assets, the frame schema, a random `key` regenerated at runtime to prove the message actually passed through the frame, and `crypto_keys` (`Keys`) for encryption. It's configured via `PatternKind::Isolation` in `crates/tauri-utils/src/config.rs`.\\n- `get` in `crates/tauri/src/protocol/isolation.rs` serves `index.html` with a locked-down CSP (`default-src 'none'; frame-src <frame_src>`) and renders `IsolationJavascriptRuntime` into it, passing the `runtime_aes_gcm_key`, the expected `origin`, and `process_ipc_message_fn` — so the frame only accepts messages from the real app origin and shares an AES-GCM key only with Rust.\\n- The frontend's payload is encrypted into a `RawIsolationPayload` (`crates/tauri-utils/src/pattern/isolation.rs`); `parse_invoke_request`/`handle_ipc_message` in `crates/tauri/src/ipc/protocol.rs` are where those messages are decoded and dispatched, so a compromised frontend cannot forge plaintext commands — anything it produces is opaque until decrypted with the backend key.\\n- Injection plumbing: `IsolationJavascriptCodegen` is prepended by `inject_codegen_isolation_script`/`inline_isolation` (`crates/tauri-utils/src/html2.rs`), `PatternObject::from` selects the `IsolationSide` (`crates/tauri-utils/src/html.rs`), and `map_isolation` adds the iframe style CSP hash during `context_codegen` (`crates/tauri-codegen/src/context.rs`). `PROCESS_IPC_MESSAGE_FN` and `prepare_pending_webview` in `crates/tauri/src/manager/webview.rs` wire it into webview creation; errors surface as `Error::IsolationPattern` (`crates/tauri/src/error.rs`).\",\"citations\":[\"component:crates-tauri-src-pattern-rs\",\"code:crates-tauri-src-pattern-rs:pattern\",\"code:crates-tauri-utils-src-config-rs:pattern-kind\",\"component:crates-tauri-src-protocol-isolation-rs\",\"code:crates-tauri-src-protocol-isolation-rs:get\",\"component:crates-tauri-utils-src-pattern-isolation-rs\",\"code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-runtime\",\"code:crates-tauri-utils-src-pattern-isolation-rs:raw-isolation-payload\",\"component:crates-tauri-src-ipc-protocol-rs\",\"code:crates-tauri-src-ipc-protocol-rs:handle-ipc-message\",\"code:crates-tauri-src-ipc-protocol-rs:parse-invoke-request\",\"component:crates-tauri-utils-src-html2-rs\",\"code:crates-tauri-utils-src-html2-rs:inject-codegen-isolation-script\",\"code:crates-tauri-utils-src-html2-rs:inline-isolation\",\"code:crates-tauri-utils-src-html-rs:pattern-object-from\",\"code:crates-tauri-codegen-src-context-rs:map-isolation\",\"code:crates-tauri-codegen-src-context-rs:context-codegen\",\"code:crates-tauri-src-manager-webview-rs:process-ipc-message-fn\",\"code:crates-tauri-src-manager-webview-rs:webview-manager-r-prepare-pending-webview\",\"code:crates-tauri-src-error-rs:error\"]}",
+          "usage": { "promptTokens": 10307, "completionTokens": 995, "totalTokens": 11302, "costUsd": 0.005349195 },
+          "ms": 26642
+        }
+      },
+      {
+        "id": "tauri-events",
+        "question": "When Rust code broadcasts an event, how does it reach a listener that was registered in the page's JavaScript?",
+        "selectedId": "system:tauri-workspace",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23954,
+        "sectionCount": 20,
+        "ranked": [29, 10, 1, 161, 13, 0, 6, 16, 4, 163, 12, 5, 73, 62, 164, 165, 3, 9, 21, 30],
+        "packets": [40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58],
+        "sections": [
+          {
+            "id": "component:crates-tauri-src-event-listener-rs",
+            "kind": "component",
+            "p": 29,
+            "symbols": [
+              { "id": "code:crates-tauri-src-event-listener-rs:listeners-next-event-id", "name": "Listeners::next_event_id" },
+              { "id": "code:crates-tauri-src-event-listener-rs:listeners", "name": "Listeners" },
+              { "id": "code:crates-tauri-src-event-listener-rs:listeners-unlisten-js", "name": "Listeners::unlisten_js" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-app-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:crates-tauri-src-app-rs:global-webview-event-listener", "name": "GlobalWebviewEventListener" },
+              { "id": "code:crates-tauri-src-app-rs:global-window-event-listener", "name": "GlobalWindowEventListener" },
+              { "id": "code:crates-tauri-src-app-rs:global-menu-event-listener", "name": "GlobalMenuEventListener" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-webview-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-webview-rs:page-load-event", "name": "PageLoadEvent" },
+              { "id": "code:crates-tauri-runtime-src-webview-rs:on-page-load-handler", "name": "OnPageLoadHandler" },
+              { "id": "code:crates-tauri-runtime-src-webview-rs:pending-webview-t-r-register-uri-scheme-protocol", "name": "PendingWebview<T, R>::register_uri_scheme_protocol" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-event-mod-rs",
+            "kind": "component",
+            "p": 161,
+            "symbols": [
+              { "id": "code:crates-tauri-src-event-mod-rs:listen-js-script", "name": "listen_js_script" },
+              { "id": "code:crates-tauri-src-event-mod-rs:event-initialization-script", "name": "event_initialization_script" },
+              { "id": "code:crates-tauri-src-event-mod-rs:event", "name": "Event" }
+            ]
+          },
+          {
+            "id": "component:packages-api-src-core-ts",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:packages-api-src-core-ts:plugin-listener", "name": "PluginListener" },
+              { "id": "code:packages-api-src-core-ts:add-plugin-listener", "name": "addPluginListener" },
+              { "id": "code:packages-api-src-core-ts:channel", "name": "Channel" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-webview-mod-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-tauri-src-webview-mod-rs:page-load-payload-a-event", "name": "PageLoadPayload<'a>::event" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-listen-js", "name": "Webview<R>::listen_js" },
+              { "id": "code:crates-tauri-src-webview-mod-rs:webview-r-listen", "name": "Webview<R>::listen" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-wry-src-lib-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:webview-event-listeners", "name": "WebviewEventListeners" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:window-event-listeners", "name": "WindowEventListeners" },
+              { "id": "code:crates-tauri-runtime-wry-src-lib-rs:handle-event-loop", "name": "handle_event_loop" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-manager-mod-rs",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:crates-tauri-src-manager-mod-rs:app-manager-r-listen", "name": "AppManager<R>::listen" },
+              { "id": "code:crates-tauri-src-manager-mod-rs:app-manager-r-listeners", "name": "AppManager<R>::listeners" },
+              { "id": "code:crates-tauri-src-manager-mod-rs:app-manager-r-with-handlers", "name": "AppManager<R>::with_handlers" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-runtime-src-lib-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-tauri-runtime-src-lib-rs:run-event", "name": "RunEvent" },
+              { "id": "code:crates-tauri-runtime-src-lib-rs:device-event-filter", "name": "DeviceEventFilter" },
+              { "id": "code:crates-tauri-runtime-src-lib-rs:event-loop-proxy", "name": "EventLoopProxy" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-manager-window-rs",
+            "kind": "component",
+            "p": 163,
+            "symbols": [
+              { "id": "code:crates-tauri-src-manager-window-rs:on-window-event", "name": "on_window_event" },
+              { "id": "code:crates-tauri-src-manager-window-rs:window-r-has-js-listener", "name": "Window<R>::has_js_listener" },
+              { "id": "code:crates-tauri-src-manager-window-rs:drag-over-event", "name": "DRAG_OVER_EVENT" }
+            ]
+          },
+          {
+            "id": "component:packages-api-src-app-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:packages-api-src-app-ts:exit", "name": "exit" },
+              { "id": "code:packages-api-src-app-ts:on-back-button-press", "name": "onBackButtonPress" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-interface-rust-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust", "name": "Rust" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust-new", "name": "Rust::new" },
+              { "id": "code:crates-tauri-cli-src-interface-rust-rs:rust-run-dev-watcher", "name": "Rust::run_dev_watcher" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-window-mod-rs",
+            "kind": "component",
+            "p": 73,
+            "symbols": [
+              { "id": "code:crates-tauri-src-window-mod-rs:window-r-listen", "name": "Window<R>::listen" },
+              { "id": "code:crates-tauri-src-window-mod-rs:window-r-on-window-event", "name": "Window<R>::on_window_event" },
+              { "id": "code:crates-tauri-src-window-mod-rs:window-r-on-menu-event", "name": "Window<R>::on_menu_event" }
+            ]
+          },
+          {
+            "id": "component:packages-api-src-event-ts",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:packages-api-src-event-ts:event", "name": "Event" },
+              { "id": "code:packages-api-src-event-ts:listen", "name": "listen" },
+              { "id": "code:packages-api-src-event-ts:tauri-event", "name": "TauriEvent" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-event-plugin-rs",
+            "kind": "component",
+            "p": 164,
+            "symbols": [
+              { "id": "code:crates-tauri-src-event-plugin-rs:listen", "name": "listen" },
+              { "id": "code:crates-tauri-src-event-plugin-rs:init", "name": "init" },
+              { "id": "code:crates-tauri-src-event-plugin-rs:unlisten", "name": "unlisten" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-tray-mod-rs",
+            "kind": "component",
+            "p": 165,
+            "symbols": [
+              { "id": "code:crates-tauri-src-tray-mod-rs:tray-icon-r-register", "name": "TrayIcon<R>::register" },
+              { "id": "code:crates-tauri-src-tray-mod-rs:tray-icon-event", "name": "TrayIconEvent" },
+              { "id": "code:crates-tauri-src-tray-mod-rs:tray-icon-event-from", "name": "TrayIconEvent::from" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-src-manager-webview-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:crates-tauri-src-manager-webview-rs:on-webview-event", "name": "on_webview_event" },
+              { "id": "code:crates-tauri-src-manager-webview-rs:isolation-javascript", "name": "IsolationJavascript" },
+              { "id": "code:crates-tauri-src-manager-webview-rs:ipc-javascript", "name": "IpcJavascript" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-utils-src-pattern-isolation-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-runtime", "name": "IsolationJavascriptRuntime" },
+              { "id": "code:crates-tauri-utils-src-pattern-isolation-rs:isolation-javascript-codegen", "name": "IsolationJavascriptCodegen" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-packages-rust-rs",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:rust-section-item", "name": "rust_section_item" },
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:items", "name": "items" },
+              { "id": "code:crates-tauri-cli-src-info-packages-rust-rs:latest-version", "name": "latest_version" }
+            ]
+          },
+          {
+            "id": "component:crates-tauri-cli-src-info-env-rust-rs",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:crates-tauri-cli-src-info-env-rust-rs:items", "name": "items" },
+              { "id": "code:crates-tauri-cli-src-info-env-rust-rs:component-version", "name": "component_version" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/tauri/src/event/listener.rs": true, "crates/tauri/src/event/mod.rs": true, "packages/api/src/event.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11898, "sectionCount": 9, "ranked": [29, 10, 1, 161, 13, 0, 6, 12, 162] },
+          "double": { "byteBudget": 48000, "bytes": 37995, "sectionCount": 40, "ranked": [29, 10, 1, 161, 13, 0, 6, 16, 4, 163, 12, 5, 73, 62, 164, 165, 3, 9, 21, 166, 27, 7, 15, 2, 18, 38, 34, 23, 17, 92, 30, 8, 167, 123, 11, 28, 26, 20, 91, 19] },
+          "size-scaled": { "byteBudget": 54902, "bytes": 37995, "sectionCount": 40, "ranked": [29, 10, 1, 161, 13, 0, 6, 16, 4, 163, 12, 5, 73, 62, 164, 165, 3, 9, 21, 166, 27, 7, 15, 2, 18, 38, 34, 23, 17, 92, 30, 8, 167, 123, 11, 28, 26, 20, 91, 19] },
+          "depth-scaled": { "byteBudget": 36000, "bytes": 35982, "sectionCount": 38, "ranked": [29, 10, 1, 161, 13, 0, 6, 16, 4, 163, 12, 5, 73, 62, 164, 165, 3, 9, 21, 166, 27, 7, 15, 2, 18, 38, 34, 23, 17, 92, 30, 8, 167, 123, 11, 28, 26, 20] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "8b77b2c8a91228d4abe8ba162445a385dad84408807d2e45c9133699f5b53757",
+          "allowedIdsCount": 97,
+          "allowedIdsSha256": "e1bc3c3c4557c9073116913661bfb407b16cee85525eda4feb48dd3eec8e7971",
+          "allowedIdsInContent": ["code:crates-tauri-src-event-listener-rs:listeners-next-event-id", "code:crates-tauri-src-event-listener-rs:listeners", "code:crates-tauri-src-event-listener-rs:listeners-unlisten-js", "code:crates-tauri-src-event-mod-rs:listen-js-script", "code:crates-tauri-src-event-mod-rs:event-initialization-script", "code:crates-tauri-src-event-mod-rs:event", "code:crates-tauri-src-webview-mod-rs:webview-r-listen-js", "code:crates-tauri-src-webview-mod-rs:webview-r-listen", "code:crates-tauri-src-manager-mod-rs:app-manager-r-listen", "code:crates-tauri-src-manager-mod-rs:app-manager-r-listeners", "code:packages-api-src-event-ts:listen", "code:crates-tauri-src-event-plugin-rs:listen"],
+          "packetSources": {},
+          "content": "{\"answer\":\"A JS listener is registered by evaluating generated JavaScript that records a `{target, handlerId}` entry in a per-page listener table; Rust broadcasts then consult that table to decide how to reach the page.\\n\\n- `listen` (`packages/api/src/event.ts`) calls the event plugin; `listen` (`crates/tauri/src/event/plugin.rs`) forwards to `Webview<R>::listen_js` (`crates/tauri/src/webview/mod.rs`).\\n- `listen_js_script` (`crates/tauri/src/event/mod.rs`) emits the snippet that creates `window[listeners_object_name][event][event_id] = { target, handlerId }`; `event_initialization_script` (same file) is the init script that primes this object at page load, and `Listeners::unlisten_js` (`crates/tauri/src/event/listener.rs`) generates the matching removal JS.\\n- Rust-side, `AppManager<R>::listen` / `AppManager<R>::listeners` (`crates/tauri/src/manager/mod.rs`) own the shared `Listeners` registry, whose IDs come from `Listeners::next_event_id` (`crates/tauri/src/event/listener.rs`), so `EventId`s are shared between Rust and JS.\\n- On broadcast, `Window<R>::has_js_listener` (`crates/tauri/src/manager/window.rs`) checks the registry for a JS handler matching the event and target — e.g. `on_window_event` emits `WINDOW_RESIZED_EVENT` and only hits the page if a JS listener exists.\\n\\nNot in the evidence: the exact emit-side delivery step (the code that resolves the `handlerId` and invokes the JS callback over IPC/eval) — only the registration table and the `has_js_listener` gate are shown here.\",\"citations\":[\"code:packages-api-src-event-ts:listen\",\"code:crates-tauri-src-event-plugin-rs:listen\",\"code:crates-tauri-src-webview-mod-rs:webview-r-listen-js\",\"code:crates-tauri-src-event-mod-rs:listen-js-script\",\"code:crates-tauri-src-event-mod-rs:event-initialization-script\",\"code:crates-tauri-src-event-listener-rs:listeners-unlisten-js\",\"code:crates-tauri-src-event-listener-rs:listeners\",\"code:crates-tauri-src-event-listener-rs:listeners-next-event-id\",\"code:crates-tauri-src-manager-mod-rs:app-manager-r-listen\",\"code:crates-tauri-src-manager-mod-rs:app-manager-r-listeners\",\"code:crates-tauri-src-manager",
+          "usage": { "promptTokens": 11756, "completionTokens": 1024, "totalTokens": 12780, "costUsd": 0.00600474 },
+          "ms": 29557
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "sampled-enriched",
+    "nodes": [
+      {
+        "nodeId": "system:tauri-workspace",
+        "name": "tauri-workspace",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "This is the **Tauri** workspace: Rust runtime, build and codegen crates plus the TypeScript API and CLI packages. It turns app config, assets and permissions into a shippable binary, so changes here …" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read **tauri** first: `src/lib.rs` sets the public Rust surface; `src/manager/mod.rs` joins windows, assets, and CSP. | IPC seam: `invoke()` in `src/core.ts` of **@tauri-apps/api** is t…" },
+          { "id": "children", "type": "children", "preview": "Children: 19 nodes — @tauri-apps/api (container); @tauri-apps/api-e2e (container); @tauri-apps/cli (container); +16 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"], "inputTokens": 1681, "estimatedCostUsd": 0.0000706, "latencyMs": 228 }
+      },
+      {
+        "nodeId": "container:crates-tauri-cli",
+        "name": "tauri-cli",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**tauri-cli** is the Rust command-line container for Tauri projects. `src/lib.rs` dispatches subcommands, `error.rs` shapes every failure message, and `app_paths.rs` plus `helpers/mod.rs` supply the …" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `src/lib.rs` first: `try_run()` parses `Cli`/`Commands` and hands off to each subcommand's `Options`. | Gotcha: `resolve_dirs()` in `src/helpers/app_paths.rs` panics when no Tauri …" },
+          { "id": "nodeRefs:related", "type": "nodeRefs", "preview": "Related: 1 related node — @tauri-apps/api (depends on · dependsOn)" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — tauri-workspace (softwareSystem)" },
+          { "id": "relations:dependencies", "type": "relations", "preview": "Direct dependencies: 1 node — @tauri-apps/api (dependsOn)" },
+          { "id": "children", "type": "children", "preview": "Children: 103 nodes — build.rs (component); src/acl/capability/mod.rs (component); src/acl/capability/new.rs (component); +100 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "nodeRefs:related", "relations:parent", "relations:dependencies", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "relations:parent", "enrichment:keyPoints", "children", "relations:dependencies", "nodeRefs:related", "enrichment:evidence"], "inputTokens": 2598, "estimatedCostUsd": 0.0001091, "latencyMs": 262 }
+      },
+      {
+        "nodeId": "container:crates-tauri",
+        "name": "tauri",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "The **tauri** crate is the public Rust shell of the framework: lifecycle and error types up top, `AppManager` state and CSP in the middle, webview assembly at the bottom. Start with `src/lib.rs` for …" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `src/lib.rs`; its module block sets the crate's public surface and defines `Context`, `Assets`, `Runtime`. | `src/webview/mod.rs`'s `WebviewBuilder::from_config` and `into_pe…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — tauri-workspace (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 67 nodes — build.rs (component); src/app.rs (component); src/app/plugin.rs (component); +64 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "relations:parent", "children", "enrichment:keyPoints", "enrichment:evidence"], "inputTokens": 1973, "estimatedCostUsd": 0.0000829, "latencyMs": 430 }
+      },
+      {
+        "nodeId": "container:crates-tauri-bundler",
+        "name": "tauri-bundler",
+        "kind": "container",
+        "candidates": [
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — tauri-workspace (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 28 nodes — src/bundle.rs (component); src/bundle/category.rs (component); src/bundle/kmp/mod.rs (component); +25 more" }
+        ],
+        "defaultOrder": ["relations:parent", "children"],
+        "jev": { "order": ["relations:parent", "children"], "inputTokens": 935, "estimatedCostUsd": 0.0000393, "latencyMs": 373 }
+      },
+      {
+        "nodeId": "container:crates-tauri-utils",
+        "name": "tauri-utils",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**`tauri-utils`** is the Rust utility crate at `crates/tauri-utils`. It carries Tauri's config model, access control lists, and platform helpers, so it defines what an app may run and where its bundl…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start at `src/lib.rs` lines 23-45; it declares `acl`, `config`, `html`, `html2`, `config_v1`, `platform` alongside shared `PackageInfo` and `Error` types. | Security seam: `src/acl/mod.…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — tauri-workspace (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 26 nodes — src/acl/build.rs (component); src/acl/capability.rs (component); src/acl/identifier.rs (component); +23 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "relations:parent", "enrichment:keyPoints", "children", "enrichment:evidence"], "inputTokens": 1975, "estimatedCostUsd": 0.000083, "latencyMs": 266 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "sampled", "k": 5, "singleContainerK": 30, "componentsSampled": 77, "componentsFull": 316, "containers": 19, "droppedFiles": 239, "sampledCommitSha": "4379d7ace7c7557f8968e849ed3aa08038e5000b", "parentsFromSample": true, "overlaidOnFullScan": true },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 200, "maxTokens": 4000000, "maxDollars": 0.5, "maxConcurrent": 8, "globalMaxDollars": 2.1134 },
+    "ms": 389367,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 97,
+    "inputTokens": 214614,
+    "outputTokens": 123629,
+    "costUsd": 0.192905,
+    "costEstimated": false,
+    "coverage": { "accepted": 92, "failed": 5, "notRun": 0, "belowCap": 1784, "inScope": 97 },
+    "byKind": {
+      "code": { "total": 1784, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 1784 },
+      "component": { "total": 77, "accepted": 73, "failed": 4, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 19, "accepted": 18, "failed": 1, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 18,
+    "parentsWithUnsettledChildren": 0,
+    "failures": [
+      { "scopeId": "component:crates-tauri-cli-src-interface-rust-rs", "kind": "component", "class": "rejected-by-validator", "error": "malformed explanation: evidence is required" },
+      { "scopeId": "component:crates-tauri-codegen-src-vendor-blake3-reference-rs", "kind": "component", "class": "rejected-by-validator", "error": "malformed explanation: evidence is required" },
+      { "scopeId": "component:crates-tauri-macros-src-lib-rs", "kind": "component", "class": "rejected-by-validator", "error": "malformed explanation: evidence is required" },
+      { "scopeId": "component:packages-api-e2e-wdio-mobile-ts", "kind": "component", "class": "rejected-by-validator", "error": "rejected explanation: unknown evidence reference(s): code:packages-api-e2e-wdio-mobile-ts:android-targets packages/api-e2e/wdio-mobile.ts:269-275, code:packages-api-e2e-wdio-mobile-ts:ios-simulator pa" },
+      { "scopeId": "container:crates-tauri-bundler", "kind": "container", "class": "rejected-by-validator", "error": "rejected explanation: keyPoints[1] is 223 characters (limit 220)" }
+    ]
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 20193,
+    "outcome": "accepted",
+    "requests": 71,
+    "inputTokens": 152041,
+    "costUsd": 0.0063857,
+    "costEstimated": true,
+    "reservationEquivalentUsd": 0.213,
+    "rows": [
+      { "scopeId": "component:bench-src-build-benchmark-jsons-rs", "claimId": "ce1b202d7fd55cf26501f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bench-src-build-benchmark-jsons-rs", "claimId": "c56a18f6ccfa462562118", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bench-src-build-benchmark-jsons-rs", "claimId": "c8ca21c47f9f7bd86b2bc", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:bench-src-run-benchmark-rs", "claimId": "c9eaa6599b25f0ff8ffae", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bench-src-run-benchmark-rs", "claimId": "ca720d626b55dba12560b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bench-src-run-benchmark-rs", "claimId": "c5dadacccdeb12e7bf190", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bench-src-run-benchmark-rs", "claimId": "ce1edc1ffcfc5d88287cb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:bench-src-utils-rs", "claimId": "c43b244ec83b91ab41cde", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:bench-src-utils-rs", "claimId": "c0909a4c3fbd44b80d526", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bench-src-utils-rs", "claimId": "c2da5f6dd039ee9858693", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:bench-src-utils-rs", "claimId": "c06927e547cd3b26a26a0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:bench-src-utils-rs", "claimId": "cc883dbe717053da641f1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:crates-tauri-build-src-acl-rs", "claimId": "c61b89885f9b5146c8ff6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-acl-rs", "claimId": "cc8ec8a088d98c28bec69", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-acl-rs", "claimId": "cf3a0f4291e08ac3ffde6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-acl-rs", "claimId": "ca3d953da5a4a778bb461", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:crates-tauri-build-src-acl-rs", "claimId": "c9f0c49671bb04b8e7da7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-tauri-build-src-acl-rs", "claimId": "c9891bd8875d52269776d", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-build-src-codegen-context-rs", "claimId": "c04f042ed4b6fb67bca17", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-codegen-context-rs", "claimId": "c34da945556640126722f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-tauri-build-src-codegen-context-rs", "claimId": "c098580d144d67dccbdaa", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-build-src-codegen-context-rs", "claimId": "caaa45a6c65b5686053c8", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-build-src-codegen-mod-rs", "claimId": "cee2ccb3d39afe021d6e3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:crates-tauri-build-src-codegen-mod-rs", "claimId": "c0193f1cc54f09dc52afc", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:crates-tauri-build-src-lib-rs", "claimId": "c8c350560d9370748a421", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.27 },
+      { "scopeId": "component:crates-tauri-build-src-lib-rs", "claimId": "c8be2e7cc0066a98663b4", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.14 },
+      { "scopeId": "component:crates-tauri-build-src-lib-rs", "claimId": "cab3a410fda2671dedaa0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:crates-tauri-build-src-lib-rs", "claimId": "c3e00d200497f52b9814d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:crates-tauri-build-src-lib-rs", "claimId": "cf7b4f3f5ff6497a30ddd", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:crates-tauri-build-src-lib-rs", "claimId": "c2611b15d1790e301ea79", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-build-src-mobile-rs", "claimId": "cbd629d08f2167bb44741", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-mobile-rs", "claimId": "c7bcecc0fcab67c366075", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-mobile-rs", "claimId": "c155a57266068d2283bf7", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-mobile-rs", "claimId": "cb609a83933a9902cb2ac", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-build-src-mobile-rs", "claimId": "cee688bbeb4485c7e8124", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-build-src-mobile-rs", "claimId": "c958a03ba05bd3396f0a2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-rs", "claimId": "c5d0b72b2ee2cfc8d0470", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-rs", "claimId": "cde6f475d506ca69b760b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-rs", "claimId": "c0d334d95edc138996c6a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-rs", "claimId": "cfbcfd26e7c58de5c3358", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-rs", "claimId": "c5424e00b335479dec711", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-rs", "claimId": "c6aae73c60c3f66ed0dc2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-settings-rs", "claimId": "c88f74b90be180371725d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-settings-rs", "claimId": "c3edb2c6ef6a280a22cc9", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-settings-rs", "claimId": "cf2ceda37306fe52cf6f4", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-settings-rs", "claimId": "c7fcc29af0c426b65fc97", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-windows-nsis-mod-rs", "claimId": "c4af8f9691e973544c51a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-windows-nsis-mod-rs", "claimId": "cfc12153197c23650de34", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-windows-nsis-mod-rs", "claimId": "c57e2491de5e2edd042a0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-tauri-bundler-src-bundle-windows-nsis-mod-rs", "claimId": "cb0a099b79369b63198d1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:crates-tauri-bundler-src-error-rs", "claimId": "c177f330569f2a8d13e92", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-error-rs", "claimId": "c548933ccf46e154db9c1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-error-rs", "claimId": "c203da37f14fcdb7563c1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:crates-tauri-bundler-src-error-rs", "claimId": "c155ee8b05cf126b3f823", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.6 },
+      { "scopeId": "component:crates-tauri-bundler-src-utils-mod-rs", "claimId": "c95a3e165c31d0c86e81c", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-utils-mod-rs", "claimId": "c2628ba119e2f582fed1e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-bundler-src-utils-mod-rs", "claimId": "c666b12050ecc8141793f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.6 },
+      { "scopeId": "component:crates-tauri-bundler-src-utils-mod-rs", "claimId": "c3a1515757f9d32490a64", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:crates-tauri-bundler-src-utils-mod-rs", "claimId": "c4e104b677f19768c5423", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-tauri-bundler-src-utils-mod-rs", "claimId": "c8ce7f8c71b3d051d96a1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:crates-tauri-cli-src-error-rs", "claimId": "c2850f483ae705e8fd0fe", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:crates-tauri-cli-src-error-rs", "claimId": "c64fa39456870a6506b98", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:crates-tauri-cli-src-error-rs", "claimId": "c252f730f07920f3a64e0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-cli-src-error-rs", "claimId": "ccac6de4071230fac6b9c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-tauri-cli-src-error-rs", "claimId": "c78ecb2ab8eabf88325b7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:crates-tauri-cli-src-error-rs", "claimId": "c84cfab6620129e0b85b7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-app-paths-rs", "claimId": "c341696e4104c41796cbb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.63 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-app-paths-rs", "claimId": "c3d943536ca4ce7fe000c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-app-paths-rs", "claimId": "ca141f328e8c608188712", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-app-paths-rs", "claimId": "c7d2d8f5538befd40b5d5", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-mod-rs", "claimId": "c3c60cc90cbc984baaf53", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-mod-rs", "claimId": "cda29f9ef4f3a23149038", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-mod-rs", "claimId": "cf9c7da41bbd53685230d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-mod-rs", "claimId": "cce69ae5b05d5bde34bfc", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-mod-rs", "claimId": "c1aeed974ed02dcffa9fa", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-tauri-cli-src-helpers-mod-rs", "claimId": "cf74b6ac8fd873827e2d7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:crates-tauri-cli-src-lib-rs", "claimId": "cc3b2a7fceb4fb81b4732", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-cli-src-lib-rs", "claimId": "c170d10e674f312727841", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-cli-src-lib-rs", "claimId": "cf9e83ebae4760248ad37", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-cli-src-lib-rs", "claimId": "c25e28f842d19da6d9066", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-cli-src-lib-rs", "claimId": "ccee086a9f50926ad2ad9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.64 },
+      { "scopeId": "component:crates-tauri-cli-src-lib-rs", "claimId": "cceabf9ce9ac31f135091", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.38 },
+      { "scopeId": "component:crates-tauri-codegen-src-context-rs", "claimId": "c8ac7d6e5d7a3ce24a97a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-codegen-src-context-rs", "claimId": "cd1640568ea40cc14ae6c", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-codegen-src-context-rs", "claimId": "cfc55792e54eba69ec249", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-codegen-src-context-rs", "claimId": "c6792de564cda58170b4d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-codegen-src-context-rs", "claimId": "c57f4206cf34e88dfcbd3", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-codegen-src-context-rs", "claimId": "c3c962a32973fc9a805e2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:crates-tauri-codegen-src-embedded-assets-rs", "claimId": "c9b68333a3b5344d9e2c5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-codegen-src-embedded-assets-rs", "claimId": "ca1acbd68645e95fd12b6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-codegen-src-embedded-assets-rs", "claimId": "c13323102c7a858c92a86", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-tauri-codegen-src-embedded-assets-rs", "claimId": "c35a40b8979edcd078af6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:crates-tauri-codegen-src-embedded-assets-rs", "claimId": "c1f61d624eb538cc26d6c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:crates-tauri-codegen-src-embedded-assets-rs", "claimId": "cd6d392a94669300d02dd", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-codegen-src-image-rs", "claimId": "c8c1fb17a2449df38bb9f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:crates-tauri-codegen-src-image-rs", "claimId": "cb34a3d6e345a2d919e84", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:crates-tauri-codegen-src-image-rs", "claimId": "cb812d050c4d65046650a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:crates-tauri-codegen-src-image-rs", "claimId": "c7e1bb54d261e3ff1dcba", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:crates-tauri-codegen-src-image-rs", "claimId": "cca8a5ccd7e2a1cfcdfaf", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-tauri-codegen-src-image-rs", "claimId": "cc5e7e398b897066bfb69", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-codegen-src-image-rs", "claimId": "c39b0c4e43feb8b1ad081", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:crates-tauri-codegen-src-lib-rs", "claimId": "ce8dcd862418d21150136", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:crates-tauri-codegen-src-lib-rs", "claimId": "cb1fe296711a17ddce28e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-codegen-src-lib-rs", "claimId": "ce4790344d28e30e2cdc2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:crates-tauri-codegen-src-lib-rs", "claimId": "c56563c9d981e57d94772", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-tauri-codegen-src-lib-rs", "claimId": "cb53c8fc9048d51670406", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-driver-src-cli-rs", "claimId": "c87d68560133fc1d5c008", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-driver-src-cli-rs", "claimId": "cbe8c391b61e00869ed1e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:crates-tauri-driver-src-cli-rs", "claimId": "c15eaab4514b3caf9c267", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-tauri-driver-src-cli-rs", "claimId": "ce39c7da0a80af2f4e9f9", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-driver-src-cli-rs", "claimId": "ce123e23c33f4da788c25", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:crates-tauri-driver-src-main-rs", "claimId": "cad50fec05701538357a1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:crates-tauri-driver-src-main-rs", "claimId": "cd11fdc29c246ea16faa8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:crates-tauri-driver-src-main-rs", "claimId": "cd2139da8c9da9804e73a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-tauri-driver-src-main-rs", "claimId": "c7e0e28023f86fccf4726", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-tauri-driver-src-main-rs", "claimId": "cbc18b3f3bd512a3fd30b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:crates-tauri-driver-src-server-rs", "claimId": "c4c2bca93d40a880b89cd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-driver-src-server-rs", "claimId": "cf9462c9bfd901dc31e5e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:crates-tauri-driver-src-server-rs", "claimId": "cb7bfece81424ffe1124c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-driver-src-server-rs", "claimId": "c73eeffee522823cdc1cc", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-tauri-driver-src-webdriver-rs", "claimId": "cca1394dae0c37be435ec", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-driver-src-webdriver-rs", "claimId": "c8e278eae914790315e63", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:crates-tauri-driver-src-webdriver-rs", "claimId": "c709b279723f90c1ed392", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:crates-tauri-driver-src-webdriver-rs", "claimId": "c441d4eac9f2ed296249f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:crates-tauri-driver-src-webdriver-rs", "claimId": "c45880bfba21c101637c1", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-certificate-rs", "claimId": "c742a4a1fc7b8c4615741", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-certificate-rs", "claimId": "cebff50e6bed769d0e627", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-certificate-rs", "claimId": "c2ef61c628cc3e73467f8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-certificate-rs", "claimId": "c5c4f8602ce4ee81bc4eb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-identity-rs", "claimId": "c054f6777f9dcf6fb2197", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-identity-rs", "claimId": "c5bff9600b0d7f6b5f1a5", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-identity-rs", "claimId": "c437fd3f09e01f7b4421d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-identity-rs", "claimId": "c7045f9d5d327d8937082", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-identity-rs", "claimId": "c9a2361ccdae3ccf9fbb8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-identity-rs", "claimId": "cdfba2d43435e6de53dba", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-rs", "claimId": "cc1ee962d185b6481ae0f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-rs", "claimId": "c2544a60bab639fd2e1c1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-rs", "claimId": "c184d030441de3479d408", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-rs", "claimId": "c654ad08d5ff3efc0ac21", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-keychain-rs", "claimId": "cd1fbbac9b2abab89af56", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-lib-rs", "claimId": "c402a93905e2a4ec3f312", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macos-sign-src-lib-rs", "claimId": "c11f4e449628362313d77", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macos-sign-src-lib-rs", "claimId": "cc05b3876a27b37cc1126", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macos-sign-src-lib-rs", "claimId": "c72cbe6ea1087a4628115", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.2 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-lib-rs", "claimId": "c0f836060063501f52ff6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.27 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-provisioning-profile-rs", "claimId": "cb226e7146c9bd8596227", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-provisioning-profile-rs", "claimId": "cc0ffd60b52d7e20fe1c7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-macos-sign-src-provisioning-profile-rs", "claimId": "ca6fc36da3ad732f47759", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:crates-tauri-macros-src-command-handler-rs", "claimId": "cd7de7f487dde6c91132a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-command-handler-rs", "claimId": "c7ad73ad293ae8aa0780d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-command-handler-rs", "claimId": "c7b4655a2d78c37aca076", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-macros-src-command-handler-rs", "claimId": "c7e8286879ab5083e8cc0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-tauri-macros-src-command-handler-rs", "claimId": "c3408307d5b0a6fcac8ef", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-macros-src-command-handler-rs", "claimId": "c270c0939e93c51b6a925", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:crates-tauri-macros-src-command-mod-rs", "claimId": "cdb5591db89785869e2d1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-tauri-macros-src-command-mod-rs", "claimId": "c61cf82b9bb1b7a22fde0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:crates-tauri-macros-src-command-mod-rs", "claimId": "cb017dc7235f404b6a20d", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-macros-src-command-mod-rs", "claimId": "cf4e432bc1988d90c472e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:crates-tauri-macros-src-command-mod-rs", "claimId": "ca9130fa9e8311d421618", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:crates-tauri-macros-src-command-wrapper-rs", "claimId": "c34124cf6fcbba7c1776b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-command-wrapper-rs", "claimId": "c8e1e77ee22e2e1972cd5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-command-wrapper-rs", "claimId": "c9a4961221cdf6a08ccbd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-command-wrapper-rs", "claimId": "c784d935955d9c166a34a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-command-wrapper-rs", "claimId": "cb5478f30593e4bfd0c10", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-command-wrapper-rs", "claimId": "cc8f42d2e9a83bdad8374", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:crates-tauri-macros-src-context-rs", "claimId": "c9a314ebbabd80095f897", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-context-rs", "claimId": "ce21c4b5ad7241b5c185c", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-context-rs", "claimId": "cae0108fa919f489a1220", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-macros-src-context-rs", "claimId": "cef4151b5dafaabfea412", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:crates-tauri-macros-src-context-rs", "claimId": "c398b7298852669aa9c82", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-macros-src-context-rs", "claimId": "c57eeaa621ea03573cbd2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mobile-rs", "claimId": "c69755df5e64c89ed9f1e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mobile-rs", "claimId": "cb0288fa916a5645a8a34", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mobile-rs", "claimId": "cb478f99ffeeba4bd1da1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mobile-rs", "claimId": "cdb1ccb945d0dcbbd0b49", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mobile-rs", "claimId": "cb8400e73529557dbc772", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mod-rs", "claimId": "c116603345523842be7bb", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mod-rs", "claimId": "cda000f2a7c6f592694af", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mod-rs", "claimId": "c3d1cc7d0869c9dde163d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mod-rs", "claimId": "cee581475f8c81cd5f1ea", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mod-rs", "claimId": "cfa96453e50197564c45b", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-plugin-src-build-mod-rs", "claimId": "ce9e654fb6a19c9514ba6", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-tauri-plugin-src-lib-rs", "claimId": "c34335d8414a7ab837671", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:crates-tauri-plugin-src-lib-rs", "claimId": "c6df5be3d66578f65fac9", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:crates-tauri-plugin-src-lib-rs", "claimId": "cedcd6eb058b53a3dc3cb", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:crates-tauri-runtime-src-dpi-rs", "claimId": "c75c76d7cf7e94f605592", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:crates-tauri-runtime-src-dpi-rs", "claimId": "c09cee8cdfa849dc0d00c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:crates-tauri-runtime-src-dpi-rs", "claimId": "c7c59bbda6159ef211bef", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:crates-tauri-runtime-src-dpi-rs", "claimId": "cd179bed5905ec0aaf5a8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-runtime-src-dpi-rs", "claimId": "c6d49178755bbf7273d14", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-runtime-src-dpi-rs", "claimId": "c88f16b523478ed8c8c5e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-runtime-src-lib-rs", "claimId": "c4bee578f2a76e8c6df61", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-lib-rs", "claimId": "c87cdc5cc695bc6f04eb1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-lib-rs", "claimId": "c66953bfc0dcd43874301", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-lib-rs", "claimId": "ca2ba0b8bf9467fa1047c", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-lib-rs", "claimId": "cea9f1974ce7bcbcd1871", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-permissions-rs", "claimId": "c7aefcdafaaa6c3237071", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-permissions-rs", "claimId": "c3489ea04a35367382216", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.51 },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-permissions-rs", "claimId": "cd2f5aac0afc56e89d8b0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-permissions-rs", "claimId": "c2318d3dcb1b342548682", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-rs", "claimId": "ce511a6cff70ce94a4c1e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-rs", "claimId": "c6807e9b8ad31f9fa4b66", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-rs", "claimId": "c06b8efbdabb230a4e3a7", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-tauri-runtime-src-webview-rs", "claimId": "cf3666a85861ea1228b6b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:crates-tauri-runtime-src-window-rs", "claimId": "c90ca4320d006b2fbf9e4", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-window-rs", "claimId": "c492306cc4fc001b526d5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-window-rs", "claimId": "c209db82dbebe265ceaa5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-src-window-rs", "claimId": "c825bfdfe985b0455c83f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:crates-tauri-runtime-src-window-rs", "claimId": "c16e35024266720534fff", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-lib-rs", "claimId": "c890ad2a0a612ee747e61", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-lib-rs", "claimId": "c5b565a671dcf3bac0841", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-lib-rs", "claimId": "ce41199e45225009f3561", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-lib-rs", "claimId": "cb6d904de37996b35d52a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-macos-rs", "claimId": "c7dccd22097097053dbfe", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-macos-rs", "claimId": "c0a8d9f7ece77846ceb0c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.51 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-macos-rs", "claimId": "c86d88980cd7b7e087c4e", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-mod-rs", "claimId": "cf27f4f08366b6eab893f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-mod-rs", "claimId": "cf2d72f875f80d04033a2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-mod-rs", "claimId": "cbce78e0deedc912c55d9", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-mod-rs", "claimId": "ca8d1ad0c951cbd9de323", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.61 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-monitor-mod-rs", "claimId": "ca4e77fb1e0d86fc7c4a7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-macos-rs", "claimId": "c6aa460f6502eba5fee09", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-macos-rs", "claimId": "cbe8b4453960f0e296184", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.68 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-macos-rs", "claimId": "c26d6b9688c80dc603c6f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-macos-rs", "claimId": "cbff78f735fbdd30327b8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-macos-rs", "claimId": "ca9719b9aaffe5922a546", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-macos-rs", "claimId": "c5b8ec9ffd2c3a7eb0b53", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-mod-rs", "claimId": "ccdaddf0556bea4d4e855", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-mod-rs", "claimId": "cc5abb869f773a16ccb46", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:crates-tauri-runtime-wry-src-window-mod-rs", "claimId": "cd932846e8c2d75da51e2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-schema-generator-build-rs", "claimId": "c3ecb20cce38a716f853f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-schema-generator-build-rs", "claimId": "c2cc541c2248e05cb35f8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-tauri-schema-generator-build-rs", "claimId": "c8eec51354e8523a6b5c1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-schema-generator-build-rs", "claimId": "ccc03db4ae8a229e8ae3b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-tauri-schema-generator-build-rs", "claimId": "c7668ed9a35140f94e9b9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:crates-tauri-schema-generator-src-main-rs", "claimId": "c91a125e47cfb12dff252", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-schema-generator-src-main-rs", "claimId": "cd02517427e39a222187e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-schema-generator-src-main-rs", "claimId": "c896d13f75e7c62f5a682", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-config-rs", "claimId": "ce803267c85c296c2ed0d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-config-rs", "claimId": "c98eff24f2ed88eb6e5d7", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-config-rs", "claimId": "c2377c931d8a70f388d4a", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-config-rs", "claimId": "c88860c3d5af238be4e00", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-config-rs", "claimId": "c16a1a63e4361bd708bd9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-lib-rs", "claimId": "c6ee214b75fbfec42907f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-lib-rs", "claimId": "c819a919514c43080b950", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-lib-rs", "claimId": "cee5989f43c1fafc4c0ef", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-lib-rs", "claimId": "c429cca07c8f966a656a7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.46 },
+      { "scopeId": "component:crates-tauri-schema-worker-src-lib-rs", "claimId": "cca96daffb13e9b453625", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:crates-tauri-src-app-rs", "claimId": "cf9d4d6869906d79911e4", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-src-app-rs", "claimId": "c60b6bfb2857e0e0a4d09", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:crates-tauri-src-app-rs", "claimId": "cea9cc29805a689bc1084", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:crates-tauri-src-app-rs", "claimId": "ceaf9945a62f0734e17b4", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:crates-tauri-src-error-rs", "claimId": "c790a135009a61b6f7955", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-src-error-rs", "claimId": "c259db2fe0a7ec40d20e0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-src-error-rs", "claimId": "c2f9f04db9629380dd6f9", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:crates-tauri-src-error-rs", "claimId": "ca8af4d1e995bc97d2240", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:crates-tauri-src-error-rs", "claimId": "c2693bdfe4874bb9c12f1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-tauri-src-error-rs", "claimId": "c68bfb24c3089095b8926", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-tauri-src-lib-rs", "claimId": "c68c6c443c0fe074e0c5e", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-src-lib-rs", "claimId": "ce33072f5f2223233a86d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-src-lib-rs", "claimId": "cdcacb687757d374b0de0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:crates-tauri-src-lib-rs", "claimId": "c5d8182b63e4bc0b06a43", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-src-lib-rs", "claimId": "c6322b281017e42689bd8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-src-lib-rs", "claimId": "ccb4ae9f322e9f2e8a967", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:crates-tauri-src-manager-mod-rs", "claimId": "cdd560d50cb0381a4fe80", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-src-manager-mod-rs", "claimId": "c716730796f6cbf700e98", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-src-manager-mod-rs", "claimId": "c0c247539d738c2cea0ac", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-src-manager-mod-rs", "claimId": "c2e3fa1480e8bc49efb10", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:crates-tauri-src-manager-mod-rs", "claimId": "cfd39bda2a9abeb992e8f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-src-manager-mod-rs", "claimId": "c44f3b55cb0e7e6edd6a6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-tauri-src-webview-mod-rs", "claimId": "cbe8ed3adeac3362acb91", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-src-webview-mod-rs", "claimId": "ce5d9875ec860d1121cdb", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-tauri-src-webview-mod-rs", "claimId": "c40120eb176c73512d34f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:crates-tauri-src-webview-mod-rs", "claimId": "c153b05a856e95bf87cb0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-utils-src-acl-capability-rs", "claimId": "c369932fd48223dcff2c9", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-utils-src-acl-capability-rs", "claimId": "c9ed6a371315db9fc8e50", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-utils-src-acl-capability-rs", "claimId": "c3f77f38cd4e8fbb4e450", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-tauri-utils-src-acl-capability-rs", "claimId": "c9978469e688cf03a7188", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:crates-tauri-utils-src-acl-capability-rs", "claimId": "c3be1b8ae827a6df42e0a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-utils-src-acl-capability-rs", "claimId": "c34d0f08526cb48a17968", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:crates-tauri-utils-src-acl-mod-rs", "claimId": "cb97e3a228c0bc0c1eb6a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-utils-src-acl-mod-rs", "claimId": "ce2e364a01831642ad954", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-tauri-utils-src-acl-mod-rs", "claimId": "c446cb51d98036277e524", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:crates-tauri-utils-src-acl-mod-rs", "claimId": "c315c405347bbcee33165", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-tauri-utils-src-config-rs", "claimId": "cb2870ef1401120a27e8f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:crates-tauri-utils-src-config-rs", "claimId": "c57565fd2dd1d22bacd4d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:crates-tauri-utils-src-config-rs", "claimId": "cfd1070611dc424cbdd7d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:crates-tauri-utils-src-config-rs", "claimId": "c39bb5559b5373f20a5b3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-utils-src-config-rs", "claimId": "c50f0800a4ec5fe519b33", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:crates-tauri-utils-src-config-rs", "claimId": "c594f7dbccf96e01ef455", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-tauri-utils-src-lib-rs", "claimId": "c06aa42daf16629dc06fd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-utils-src-lib-rs", "claimId": "c33410032d9e072356a55", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:crates-tauri-utils-src-lib-rs", "claimId": "c4bd34374eaf8d00cfeeb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:crates-tauri-utils-src-lib-rs", "claimId": "c34f9172fd673afe6ff34", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-tauri-utils-src-lib-rs", "claimId": "c7920fbd5d2f009411896", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-tauri-utils-src-lib-rs", "claimId": "cc6aec26c824782f61c41", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-tauri-utils-src-platform-rs", "claimId": "c6e0d1247ab448a10e16b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-tauri-utils-src-platform-rs", "claimId": "c85adb10efa810e1d8270", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.1 },
+      { "scopeId": "component:crates-tauri-utils-src-platform-rs", "claimId": "c19be4dcf99a89b77e260", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-tauri-utils-src-platform-rs", "claimId": "c36e107dcb2fe87b9024a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:crates-tauri-utils-src-platform-rs", "claimId": "cd3f1dc6c186b0dd32afb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.68 },
+      { "scopeId": "component:packages-api-e2e-test-helpers-index-ts", "claimId": "c02d2491acfddb4e1348b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-e2e-test-helpers-index-ts", "claimId": "c08617420eff7f4cfbdfe", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:packages-api-e2e-test-helpers-index-ts", "claimId": "c51797b206af38465b462", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-api-e2e-test-helpers-index-ts", "claimId": "c4b883d1610b000cd5a10", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:packages-api-e2e-wdio-android-conf-ts", "claimId": "c04d5f09140b965a995a7", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-e2e-wdio-android-conf-ts", "claimId": "c9312fb66e16624d8137b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:packages-api-e2e-wdio-conf-ts", "claimId": "cb97a5bd8f38ef17072bd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-e2e-wdio-conf-ts", "claimId": "c0f5a6ea24e8f7bff3991", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-e2e-wdio-conf-ts", "claimId": "c5af46a7d289276743bea", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.08 },
+      { "scopeId": "component:packages-api-e2e-wdio-conf-ts", "claimId": "c3caf68b0dc41bac72490", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:packages-api-e2e-wdio-conf-ts", "claimId": "c50afcd3f33ed9bfafc0c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-api-e2e-wdio-ios-conf-ts", "claimId": "c3f120b94428abb695285", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:packages-api-src-core-ts", "claimId": "c5d99dcb491c6be17a9de", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-core-ts", "claimId": "c7cef3d58698f108deaa6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:packages-api-src-core-ts", "claimId": "ccc2b31e44bca2cac02a0", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:packages-api-src-core-ts", "claimId": "cc94708e32d9d1d570bf0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:packages-api-src-index-ts", "claimId": "c393676131e2796c8eb43", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-index-ts", "claimId": "c63e96c2a1175d0c0a085", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-index-ts", "claimId": "c7064c86df11f36eb22fd", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-index-ts", "claimId": "cf83a1ce4115cfbe0d70d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-base-ts", "claimId": "c3293ec2958af15e478ea", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-base-ts", "claimId": "c03bc5c911aff63c632e0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-base-ts", "claimId": "cfa38a13f4d06688f8bd9", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-base-ts", "claimId": "c2b560bc0a7922f0bc7e6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:packages-api-src-menu-base-ts", "claimId": "c47787ad31c431154dfb5", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:packages-api-src-menu-base-ts", "claimId": "cc18d4768aaeb2413aca1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.51 },
+      { "scopeId": "component:packages-api-src-menu-menu-ts", "claimId": "ca7f20062da3ddd916e84", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-menu-ts", "claimId": "c0d286580d8ff78ffabcf", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-menu-ts", "claimId": "cabe4a73cd500b9b892fd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-menu-ts", "claimId": "cccdd7e2a79915c1cbc55", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-menu-ts", "claimId": "cc7a435d33ed24c2e825a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:packages-api-src-menu-submenu-ts", "claimId": "c407822dc3fbc7e371b1d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-submenu-ts", "claimId": "c9765c4c0e99a775a5d97", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:packages-api-src-menu-submenu-ts", "claimId": "ca8cd5075b6f109c5df87", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-api-src-menu-submenu-ts", "claimId": "c77f5d28865828c3bb4f0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:packages-api-src-menu-submenu-ts", "claimId": "cea14138f2825e24a35f2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:packages-cli-build-rs", "claimId": "c1b75727e52b9a0b41619", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-cli-build-rs", "claimId": "cb4233f2e0230f8d608e6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:packages-cli-build-rs", "claimId": "c0f37ece97c7efdf0569b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:packages-cli-src-lib-rs", "claimId": "c5eedbe57a364dccf0cda", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:packages-cli-src-lib-rs", "claimId": "c41fff77ae32848476adb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:packages-cli-src-lib-rs", "claimId": "c9195d07752cab0095045", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:packages-cli-src-lib-rs", "claimId": "c641cb1bd6d1e3ebeb177", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:packages-cli-src-lib-rs", "claimId": "c461f101c8f0c46256a75", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.32 },
+      { "scopeId": "container:crates-tauri-macos-sign", "claimId": "c0cf6dce691059b71aea7", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-plugin", "claimId": "c3d41528a4cec77bc825e", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-generator", "claimId": "cbe8279206ba0a7e79952", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-generator", "claimId": "c3eddd4566bab65b74481", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-generator", "claimId": "c10f392d5631735217be6", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-generator", "claimId": "c1dfe323335e19501f9b0", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-generator", "claimId": "c6f50633fac115ea62487", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-generator", "claimId": "c308f496c7f8c0a101989", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-worker", "claimId": "c36ac74f2306f010312db", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-worker", "claimId": "c73c71335d2713c668aa9", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-worker-2", "claimId": "cc1dc3c14f66400de5b24", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-schema-worker-2", "claimId": "c274363e027489c710c84", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-utils", "claimId": "c725ac0ee811ddb539870", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-tauri-utils", "claimId": "c9b325013d768467776c9", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:packages-api", "claimId": "c455d51188574e2915f85", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" }
+    ],
+    "rateLimited": 0
+  },
+  "stageMs": { "claims": 39187, "ask": 34038, "blocks": 1648 }
+}
