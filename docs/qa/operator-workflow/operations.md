@@ -271,3 +271,145 @@ Only each slug's current publication is planned. Plans are cached in memory (LRU
 `id:type` set, question version and model. Each version's file is loaded into memory once and
 written atomically (temp file + rename). A cached plan never spends. To evaluate, run `node scripts/evaluate-block-planner.mjs --live --output=<path>`, or use
 `--replay`. The replay reads `fixtures/judgments/block-planner/replay.json`.
+
+## Incremental re-scans (CLA-271)
+
+An incremental run re-scans the repository deterministically at a new commit. It diffs the result against the
+baseline: the newest reviewable incremental draft chained on the current publication, else the publication, else the
+latest reviewable draft (see the contract). A chain of updates therefore builds on the last one instead of paying for
+the same change twice, and a manual publish restarts the chain. Only the scopes whose prompt input changed are
+re-enriched, in one batch-retry pass that uses the normal budget, rate limiter and install path. Every other
+explanation is carried over unchanged, with its version id and input hash. Removed scopes are dropped. A consumer whose
+dependency changed only internally is marked stale for a claim re-check (`staleReason: "dependency-internal"`) instead
+of being re-enriched. A scope whose evidence only moved lines is marked stale (`staleReason: "moved"`) instead of having
+its line refs rewritten, so its evidence is never silently wrong. An explained below-cap scope whose own source or
+relations changed, or that consumes a changed entity, is marked stale (`staleReason: "changed"` for its own change or a
+surface change of what it consumes, `"dependency-internal"` for an internal one), since the pass never re-enriches
+below the cap. Use Refresh to re-enrich any of these.
+
+**Chain carry.** On a chained update, the scopes the previous unpublished update left failed, not run, or stale without
+a reason are re-seeded (`carried` in the changelog; `dirty` is only what this commit changed). Gaps inherited from the
+publication itself are never re-seeded; use Refresh for those. Commit-caused scopes are admitted first; carried ones
+run in a second pass only when the first pass completed (a budget, cancelled or unavailable first pass admits nothing
+more). An update "failed" a scope when it attempted the scope and left it unfinished (an ancestor re-reduced but still
+held stale by an unfinished child counts). A scope two consecutive updates failed is dropped from the carry together
+with every ancestor it holds stale, so later updates make no calls for them; it stays unfinished (`dropped`) until a
+commit touches it again or the operator refreshes it.
+
+**Unfinished scopes.** A stale scope without an overlay reason, or a dropped one, is listed as unfinished in both
+changelog views, counted in the stale counts ("54 stale (52 unfinished)"), and never counted as reused from the
+publication. The scope list and detail show why: `pending` ("changed; not re-enriched (budget stop or failure)" — only
+for scopes this update selected, which the next update retries), `dropped` (Refresh it), or `inherited` (left
+unfinished before this update chain, for example in the publication; Refresh it). The run error of an incremental run uses the same numbers as the
+changelog outcome ("Update stopped at the run budget (OKIE_LLM_OPERATOR_*): 15 re-summarised, 19 not run, 52 kept stale
+(changed; not re-enriched)."), covering both passes. Without a gateway it reads "Update was not run: no enrichment
+gateway is configured: …"; any other pass error is kept verbatim after the counts.
+
+**Cumulative changelog.** The changelog also records the publication→head diff (publication commit, the chain of
+update steps, and cumulative counts and lists from the same diff function). The review panel defaults to this view
+("Published abc1234 → this draft def5678 (2 updates)"), with "This update only" as the secondary view. The count is
+"≥N updates" when the chain passes through a draft made before the chain was recorded, and the header is flagged "no
+longer the live publication" when another version was published since (auto-publish is then refused; a manual publish
+replaces the live version). Once this draft itself is published it reads "(live)" instead. `chain` lists the last 20 steps;
+`chainLength` holds the total. Explanations are
+split into "re-enriched since publication (unreviewed)" and "reused from publication"; stale overlays inherited from
+earlier updates stay listed as stale.
+
+Each update is
+its own run (`kind: "incremental"`), and its draft carries a changelog (see
+[operator-api-contract.md](../../architecture/operator-api-contract.md)).
+
+**Input hash.** Before CLA-271 every code scope's input hash, and its prompt at `OKIE_LLM_ENRICH_DEPTH=code`, changed
+on every commit even when its code had not. The scanner stamps the commit SHA into each excerpt's `frozenRevision` and
+each exposure's `evidence.source.commitSha`. Relation ids are also collision-numbered, so one new relation can renumber
+unrelated ones. Component, container and system hashes were already stable, because the symbol digest carries neither.
+Scope facts now leave out those three fields. Relationships are `(from, to, kind)`. Excerpt text, line numbers,
+exposure and paths stay in. A test scans one repository at two commits with identical content and asserts equal
+component and code hashes. Each incremental run also recomputes the hashes of reused explanations: `hashCheck` in the
+changelog and the `incremental.diff` event. Drafts made before this change show mismatches there. A mismatch is
+report-only: counted, never fails the run and never re-enriches; `PROMPT_VERSION` was not bumped.
+
+**Known limitation.** Excerpts are capped at 48 lines, and the scan artifacts carry no per-file content hash or blob SHA
+(`atlas.okie.json` holds source text only when `includeSource` is set, which operator runs do not). A change that
+falls entirely below an entity's excerpt cap is invisible to the diff, and its scopes are reused. A full run
+re-explains everything.
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `OKIE_INCREMENTAL_CRON_TOKEN` | unset (route 404) | Bearer token for `POST /api/operator/cron/incremental` (constant-time compare). |
+| `OKIE_GITHUB_WEBHOOK_SECRET` | unset (route 404) | HMAC secret for `POST /api/operator/webhooks/github`. |
+| `OKIE_INCREMENTAL_DEBOUNCE_MS` | `60000` | Per-repository quiet period before a push starts a run. |
+| `OKIE_INCREMENTAL_AUTO_PUBLISH` | off | `1` publishes a finished incremental draft only when it is fully accepted: 0 failed, 0 not run, 0 stale, every in-scope scope accepted, artifact valid, and the publication it started from still current (a newer manual publish wins: `stale_publication`). Cron and webhook starts follow only this variable and ignore a body `autoPublish`; the session-authenticated operator route alone accepts a per-request `autoPublish: true`. |
+
+Operators start an update with **Update to latest commit**, which calls
+`POST /api/operator/repositories/<repo:owner/name>/incremental` and takes an optional `ref` (branch, tag or SHA).
+The route returns 409 while any run for the repository is active; otherwise it queues a run and returns 202 at once.
+No trigger (operator route, cron, webhook) awaits GitHub or the scan inside the request: the runner resolves the ref,
+and a run whose HEAD equals the baseline commit ends `complete` with `incremental.upToDate` and no draft ("Already at the
+latest commit"). Only a full 40-character SHA equal to the baseline answers 200 `up_to_date` directly. Scans (full and
+incremental) run in a worker thread, so the server keeps answering requests, webhooks included, while a scan runs. At
+most `OKIE_SCAN_WORKER_CONCURRENCY` scans (default 1) run at once per process; the rest queue in order. Known
+limitation: cancelling a run does not stop its worker; the scan finishes and its result is discarded. Worker error
+messages are scrubbed of GitHub tokens. When a run finds HEAD at the baseline (up to date, no draft), the repository's
+earlier up-to-date no-op runs are deleted with their events, so cron ticks keep one such row per repository; only runs
+with no draft revision (hence no attempts or artifacts) are removed.
+
+GitHub read failures name what failed: "could not read the repository on GitHub (status N)" (with "rate limited" on a
+rate-limited 403/429, and "not found, or not public" on 404), "ref “x” could not be resolved on GitHub for owner/repo
+(status 422)", and "repository is not public" only when the read succeeded and the repository is private.
+
+Cron (no browser session; public repositories are read anonymously over HTTPS). Without a body, it updates every
+published repository:
+
+```sh
+# every 30 minutes
+*/30 * * * * curl -fsS -X POST -H "Authorization: Bearer $OKIE_INCREMENTAL_CRON_TOKEN" \
+  -H 'content-type: application/json' -d '{}' https://okie.example/api/operator/cron/incremental
+# one repository at an explicit ref
+curl -fsS -X POST -H "Authorization: Bearer $OKIE_INCREMENTAL_CRON_TOKEN" -H 'content-type: application/json' \
+  -d '{"repositoryId":"repo:acme/demo","ref":"main"}' https://okie.example/api/operator/cron/incremental
+```
+
+GitHub webhook: in the repository go to Settings → Webhooks → Add webhook. Set the payload URL to
+`https://<public origin>/api/operator/webhooks/github`, the content type to `application/json`, and the secret to
+`OKIE_GITHUB_WEBHOOK_SECRET`, and choose "Just the push event". The route accepts only signed `push` events to the
+default branch (`ref == refs/heads/<default_branch>`), for repositories that already have an operator run. The push
+is only a trigger: when the per-repository debounce fires, the start resolves the default branch's HEAD, so a burst of
+pushes becomes one run at the current HEAD and a late or out-of-order older push can never move a draft backwards.
+Redeliveries are dropped on `X-GitHub-Delivery` (a bounded in-memory LRU of signed deliveries). A push that arrives while
+a run is active leaves exactly one follow-up pending, and that follow-up starts after the active run ends. Pending
+pushes and the delivery LRU live in memory, so a restart drops them (the next push or cron tick catches up). Each
+debounced start is recorded as an `incremental.webhook_fire` event (`started`, `up_to_date`, `active`, or `failed` with a
+generic reason) on the repository's newest run, or logged server-side when the repository has no run. Both
+automation routes check the method and configuration (and the cron token) before reading a body, and refuse
+oversized bodies with 413.
+
+**Scan cost.** Operator scans (full and incremental) use a content-addressed rust-analyzer SCIP cache at
+`<store root>/cache/rust-scip`. Its key is `rust-analyzer --version`, `rustc -vV` (release and host, resolved in the
+tree), the exact invocation (host, or wasm32 with its config), and a sha256 over the sorted (relative path, content) of
+`*.rs`, `Cargo.toml`, `Cargo.lock`, `rust-toolchain*`, `rust-project.json`, `rust-analyzer.toml` and `.cargo/config*` at
+any depth, plus every file under each crate root (a directory whose `Cargo.toml` has `[package]`; `include!` and build
+scripts can read any of them). Symlinks are hashed by target. Only `.git` is skipped (a committed `target/` is content).
+A virtual workspace root is not a crate root, so a commit that touches no Rust input skips rust-analyzer entirely. A
+repository whose ROOT `Cargo.toml` has `[package]` makes the root a crate root: every file in the repository is then
+hashed, so any commit misses the cache (behaviour kept as is: correct, only slower). Entries are written atomically; a
+corrupt entry is a miss; a failed run is never stored. Build-script and proc-macro failure detection is best-effort
+only: rust-analyzer 1.87 `scip` prints nothing and exits 0 when a build script panics or a proc-macro fails to build, so
+an index that depends on the environment (for example a build script that panics without a system library) can be
+cached and reused for the same tree. Detecting that reliably is a follow-up. A hit refreshes the entry's mtime; after each write the directory is swept
+oldest-first to `OKIE_SCIP_CACHE_MAX_MB` (default 512), and temp files older than an hour are removed. It is safe to
+delete the directory at any time.
+
+**Latency.** An incremental run's enrichment time is dominated by the sequential leaf → container → system reduce, about
+20–85 s per call with the default model. Small commits therefore take about 2–3 minutes end to end, even though the scan
+is about 28 s and there are only 4–11 requests. This is expected; no design change is planned.
+
+**Errors.** A cron tick reports one generic message per repository ("could not start the incremental run"); the
+detail is logged server-side only. GitHub resolution errors surface on the run itself (it fails with the error). If queueing a started run fails, the run
+is marked failed ("The incremental run could not be queued.") so the repository is not left blocked.
+
+Measure a chain of updates offline with
+`node scripts/measure-incremental.mjs --repo <checkout> --from <A> --to <B>,<C>,<D>`. It is a dry run by default (fake
+gateway); only `--live` makes paid gateway calls. It always uses a scratch store, never `OKIE_SCAN_ROOT`, and keeps the
+SCIP cache inside it. Per step it prints commit-caused dirty and carried counts, requests, cost, scan and enrichment
+time, the per-level spans (leaf/container/system) and the enrichment critical path (first leaf start → last system end).

@@ -1,5 +1,4 @@
 import type { IncomingMessage } from "node:http";
-import { isDeepStrictEqual } from "node:util";
 import { authorizeOperator, authorizeOperatorMutation, operatorDenialBody, publicOperatorAccessView } from "./operatorAccess.js";
 import type { GithubAuthService } from "./githubOAuth.js";
 import { normalizeRepoInput } from "./repoUrl.js";
@@ -7,11 +6,13 @@ import { OperatorPublicationService } from "./operatorPublication.js";
 import { canonicalOperatorRepositoryId, OperatorStore } from "./operatorStore.js";
 import { OperatorWorkflow, type OperatorGlobalBudget, type OperatorWorkflowJob } from "./operatorWorkflow.js";
 import { resolveScanGithubAccess } from "./githubAccess.js";
-import { parsePortableAtlas } from "@okie/architecture";
+import { isPublishableArtifact } from "./operatorPublishCheck.js";
 import { MAX_CLAIM_CHECK_SCOPES } from "./claimChecks.js";
 import { resolveClaimCheckConfig } from "./llmGateway.js";
+import { startIncrementalRun, validIncrementalRef } from "./operatorIncremental.js";
+import { incrementalRouteResult, type IncrementalAutomation } from "./operatorIncrementalTriggers.js";
 
-export interface OperatorApiOptions { auth: GithubAuthService; allowedGithubIds: ReadonlySet<string>; publicOrigin: string; store: OperatorStore; publications: OperatorPublicationService; enqueue: (job: OperatorWorkflowJob) => void | Promise<void>; /** Process-wide operator ledger, when a global dollar cap is configured (shown as global remaining in run detail). */ globalBudget?: OperatorGlobalBudget; }
+export interface OperatorApiOptions { /** CLA-271 incremental triggers (cron, webhook, commit resolution); the operator route works without it. */ incremental?: IncrementalAutomation; auth: GithubAuthService; allowedGithubIds: ReadonlySet<string>; publicOrigin: string; store: OperatorStore; publications: OperatorPublicationService; enqueue: (job: OperatorWorkflowJob) => void | Promise<void>; /** Process-wide operator ledger, when a global dollar cap is configured (shown as global remaining in run detail). */ globalBudget?: OperatorGlobalBudget; }
 export interface OperatorApiResult { status: number; body: unknown; }
 /** Upper bound on one batch retry selection. */
 export const MAX_RETRY_SCOPES = 1024;
@@ -71,6 +72,22 @@ export async function handleOperatorApi(options: OperatorApiOptions, request: In
   if (!access.authorized) return { status: access.status, body: operatorDenialBody(access.reason) };
   if (pathname === "/api/operator/runs" && request.method === "GET") return { status: 200, body: { runs: options.store.snapshot().runs.slice().sort((a, b) => b.createdAt - a.createdAt).slice(0, 100) } };
   if (pathname === "/api/operator/runs" && request.method === "POST") { const value = record(body); const parsed = typeof value.url === "string" ? normalizeRepoInput(value.url) : undefined; if (!parsed || typeof value.idempotencyKey !== "string") return { status: 422, body: { error: "url and idempotencyKey required" } }; const owner = parsed.owner.toLowerCase(); const repo = parsed.repo.toLowerCase(); const created = options.store.createRun({ idempotencyKey: value.idempotencyKey, source: { repositoryId: canonicalOperatorRepositoryId(`repo:${owner}/${repo}`), owner, repo, slug: parsed.dirSlug, ...(parsed.ref ? { ref: parsed.ref } : {}) } }); if (!created.deduped) await workflow.enqueue({ kind: "run", runId: created.run.runId, githubAccess: resolveScanGithubAccess({ session: access.session }) }); return { status: 202, body: created }; }
+  // CLA-271 "Update to latest commit": an incremental run against the repository's baseline (202, queued without awaiting GitHub or the scan; the runner records up-to-date), 200 up_to_date only for a full SHA equal to the baseline, or 409 while a run is active.
+  const incremental = /^\/api\/operator\/repositories\/(.+)\/incremental$/.exec(pathname);
+  if (incremental && request.method === "POST") {
+    let raw: string; try { raw = decodeURIComponent(incremental[1]!); } catch { return { status: 404, body: { error: "not found" } }; }
+    const repositoryId = canonicalOperatorRepositoryId(raw.startsWith("repo:") ? raw : `repo:${raw}`);
+    if (!options.store.snapshot().runs.some(run => canonicalOperatorRepositoryId(run.source.repositoryId) === repositoryId)) return { status: 404, body: { error: "not found" } };
+    const value = record(body);
+    if (value.ref !== undefined && !validIncrementalRef(value.ref)) return { status: 422, body: { error: "ref must be a branch, tag or commit SHA" } };
+    const context = options.incremental?.context ?? { store: options.store, publications: options.publications, enqueue: options.enqueue };
+    try {
+      return incrementalRouteResult(await startIncrementalRun(context, { repositoryId, ...(typeof value.ref === "string" ? { ref: value.ref } : {}), trigger: "operator", githubAccess: resolveScanGithubAccess({ session: access.session }), autoPublish: value.autoPublish === true || options.incremental?.config.autoPublish === true }));
+    } catch {
+      // Starting never touches the network (the runner resolves the commit), so any failure here is ours: generic.
+      return { status: 500, body: { error: "could not start the incremental run" } };
+    }
+  }
   const runMatch = /^\/api\/operator\/runs\/([^/]+)(?:\/cancel)?$/.exec(pathname); if (runMatch) { const detail = workflow.runDetail(decodeURIComponent(runMatch[1]!)); if (!detail) return { status: 404, body: { error: "not found" } }; if (pathname.endsWith("/cancel") && request.method === "POST") return { status: 200, body: { run: options.store.updateRun(detail.run.runId, { state: "cancelled" }) } }; if (request.method === "GET") return { status: 200, body: detail }; }
   const draft = /^\/api\/operator\/drafts\/([^/]+)(?:\/(bundle|retry|refresh|publish|claim-checks))?$/.exec(pathname); if (!draft) return { status: 404, body: { error: "not found" } }; const id = decodeURIComponent(draft[1]!); const detail = workflow.draftDetail(id); if (!detail) return { status: 404, body: { error: "not found" } }; const action = draft[2]; if (!action && request.method === "GET") return { status: 200, body: detail }; if (action === "bundle" && request.method === "GET") return { status: 200, body: { bundle: workflow.bundle(id)?.toString("utf8") } }; const value = record(body); if ((action === "retry" || action === "refresh") && request.method === "POST") { const currentRun = options.store.snapshot().runs.find(run => run.runId === detail.draft.runId); if (currentRun?.state === "queued" || currentRun?.state === "running") return { status: 409, body: { error: "operator action already running", code: "run_active" } }; const currentDraftRevisionId = currentRun?.draftRevisionId; if (currentDraftRevisionId !== id) return { status: 409, body: { error: "draft is no longer current", code: "draft_superseded", ...(currentDraftRevisionId ? { currentDraftRevisionId } : {}) } }; let scopeIds: string[]; let batch = false; if (action === "retry") { const parsed = parseRetrySelection(value, detail.scopes); if ("error" in parsed) return { status: 422, body: { error: parsed.error } }; scopeIds = parsed.scopeIds; batch = parsed.batch; } else { scopeIds = Array.isArray(value.scopeIds) ? value.scopeIds.filter((v): v is string => typeof v === "string") : []; if (!scopeIds.length || scopeIds.some(scopeId => !detail.scopes.some(scope => scope.scopeId === scopeId))) return { status: 422, body: { error: "known scope id required" } }; } /* Refresh is one batch pass too (CLA-264): stale scopes and their shared ancestors re-reduce once. */ await workflow.enqueue({ kind: action, runId: detail.draft.runId, draftRevisionId: id, scopeIds, ...(batch || action === "refresh" ? { batch: true } : {}), githubAccess: resolveScanGithubAccess({ session: access.session }) }); return { status: 202, body: { run: detail.draft.runId, draftRevisionId: id } }; }
   if (action === "claim-checks" && request.method === "POST") {
@@ -86,26 +103,7 @@ export async function handleOperatorApi(options: OperatorApiOptions, request: In
     return { status: 202, body: { run: detail.draft.runId, draftRevisionId: id, scopes: parsed.scopeIds.length } };
   }
   if (action === "publish" && request.method === "POST") {
-    const required = ["atlas.okie.json", "snapshot.json", "view.json", "scene.json", "story.json", "stories.json", "timeline.json"];
-    const artifact = options.store.snapshot().artifacts.find(item => item.artifactRevisionId === detail.draft.artifactRevisionId);
-    const bundle = options.store.readArtifactFile(detail.draft.artifactRevisionId, "atlas.okie.json");
-    try {
-      if (!artifact || required.some(file => !artifact.files.includes(file)) || !bundle) throw new Error("missing public artifact");
-      const portable = parsePortableAtlas(bundle.toString("utf8"));
-      const original = JSON.parse(bundle.toString("utf8")) as { snapshot: unknown; view: unknown; story: unknown };
-      const repository = portable.repository.url ? normalizeRepoInput(portable.repository.url) : undefined;
-      if (!repository || repository.owner.toLowerCase() !== detail.source.owner.toLowerCase() ||
-          repository.repo.toLowerCase() !== detail.source.repo.toLowerCase() ||
-          artifact.sourceCommitSha !== portable.repository.commitSha ||
-          (detail.source.commitSha && detail.source.commitSha !== portable.repository.commitSha)) throw new Error("artifact source mismatch");
-      const read = (name: string): unknown => JSON.parse(options.store.readArtifactFile(artifact.artifactRevisionId, name)!.toString("utf8"));
-      // Semantic repository IDs are scanner-owned, distinct from the operator's
-      // owner/repo key. Compare the actual immutable contents instead.
-      if (!isDeepStrictEqual(read("snapshot.json"), original.snapshot) ||
-          !isDeepStrictEqual(read("view.json"), original.view) ||
-          !isDeepStrictEqual(read("story.json"), original.story)) throw new Error("mixed public artifacts");
-      for (const name of ["scene.json", "stories.json", "timeline.json"]) read(name);
-    } catch { return { status: 422, body: { error: "draft artifact is not publishable" } }; }
+    if (!isPublishableArtifact(options.store, detail.draft.artifactRevisionId, detail.source)) return { status: 422, body: { error: "draft artifact is not publishable" } };
     const result = options.publications.publishDraft({ repositoryId: detail.draft.repositoryId, draftRevisionId: id, ...(typeof value.expectedCurrentVersionId === "string" ? { expectedCurrentVersionId: value.expectedCurrentVersionId } : {}), acknowledgeCoverage: value.acknowledgeCoverage === true, coverage: detail.draft.coverage }); return result.ok ? { status: 200, body: result } : result.reason === "stale_publication" ? { status: 409, body: { ...result, code: "publication_stale" } } : { status: 422, body: result };
   }
   return { status: 404, body: { error: "not found" } };

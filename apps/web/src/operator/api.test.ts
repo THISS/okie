@@ -45,4 +45,26 @@ describe('operator API client', () => {
     expect(await operatorApi.runs().catch((cause: unknown) => cause)).toMatchObject({ status: 502, message: 'Request failed (502)', body: undefined });
     expect(new OperatorApiError(403, 'operator access required').body).toBeUndefined();
   });
+
+  it('posts "Update to latest commit" to the URL-encoded repository route and returns started / up to date as sent (CLA-271)', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'started', runId: 'run-9', baselineCommitSha: 'aaaaaaa1', commitSha: 'bbbbbbb2' }), { status: 202 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'up_to_date', commitSha: 'aaaaaaa1', baselineCommitSha: 'aaaaaaa1' })));
+    globalThis.fetch = fetch;
+    expect(await operatorApi.incremental('repo:acme/app')).toEqual({ status: 'started', runId: 'run-9', baselineCommitSha: 'aaaaaaa1', commitSha: 'bbbbbbb2' });
+    expect(await operatorApi.incremental('repo:acme/app', { ref: 'main' })).toMatchObject({ status: 'up_to_date' });
+    expect(fetch.mock.calls[0]![0]).toBe('/api/operator/repositories/repo%3Aacme%2Fapp/incremental');
+    expect(fetch.mock.calls[0]![1]).toMatchObject({ method: 'POST', body: '{}', credentials: 'same-origin' });
+    expect(fetch.mock.calls[1]![1]).toMatchObject({ body: JSON.stringify({ ref: 'main' }) });
+  });
+
+  it('resolves a 409 run_active to the active run and throws the other refusals with their code (CLA-271)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 'active', runId: 'run-7', code: 'run_active', error: 'operator action already running' }), { status: 409 }));
+    expect(await operatorApi.incremental('acme/app')).toEqual({ status: 'active', runId: 'run-7' });
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 'no_baseline', code: 'no_baseline', error: 'repository has no draft or publication to update' }), { status: 422 }));
+    expect(await operatorApi.incremental('acme/app').catch((cause: unknown) => cause)).toMatchObject({ status: 422, body: { code: 'no_baseline' } });
+    // A 409 without a run id (e.g. an older server) stays an error rather than inventing a target.
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 'run_active' }), { status: 409 }));
+    expect(await operatorApi.incremental('acme/app').catch((cause: unknown) => cause)).toMatchObject({ status: 409 });
+  });
 });

@@ -361,6 +361,10 @@ function acquisitionError(src: GithubSourceRef, result: { status: number; rateLi
   if (result.status === 404) {
     return new GithubAcquisitionError(`GitHub ${what} not found for ${src.owner}/${src.repo} (check the owner/repo/ref, or that the repo is public).`);
   }
+  // Name what failed: "ref “x” could not be resolved on GitHub (status 422)" rather than a bare status line.
+  if (result.status > 0 && /^GitHub API request failed \(status \d+\)\.$/.test(result.message)) {
+    return new GithubAcquisitionError(what.startsWith("ref ") ? `${what} could not be resolved on GitHub for ${src.owner}/${src.repo} (status ${result.status}).` : `could not read the ${what} ${src.owner}/${src.repo} on GitHub (status ${result.status}).`);
+  }
   return new GithubAcquisitionError(result.message);
 }
 

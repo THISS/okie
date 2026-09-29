@@ -22,6 +22,8 @@ import { createOperatorRunner } from "./operatorRunner.js";
 import { createOperatorBudgetLedger } from "./operatorBudget.js";
 import { createBlockPlanReplayStore, createBlockPlanService, publicationBlockPlanSource, resolveBlockPlannerConfig } from "./blockPlans.js";
 import { createJevProvider } from "./operatorJudgments.js";
+import { createIncrementalAutomation, resolveIncrementalTriggerConfig } from "./operatorIncrementalTriggers.js";
+import type { OperatorWorkflowJob } from "./operatorWorkflow.js";
 
 /**
  * Paste-a-repo scan process used by the hosted public atlas (CLA-30):
@@ -93,6 +95,16 @@ const operatorRunner = createOperatorRunner({
   ...(operatorGateway ? { gateway: operatorGateway } : {}),
 });
 
+const operatorEnqueue = (input: OperatorWorkflowJob): void => {
+  operatorStore.updateRun(input.runId, { state: "queued" });
+  void Promise.resolve().then(() => operatorRunner.enqueue(input)).catch(() => {
+    operatorStore.updateRun(input.runId, { state: "failed", error: "Operator job failed; review the recorded attempts." });
+  });
+};
+// CLA-271 incremental re-scans: cron (OKIE_INCREMENTAL_CRON_TOKEN) and GitHub push webhook (OKIE_GITHUB_WEBHOOK_SECRET)
+// are off unless configured; the operator "Update to latest commit" route is always available to operators.
+const incrementalAutomation = createIncrementalAutomation({ config: resolveIncrementalTriggerConfig(process.env), store: operatorStore, publications: operatorPublication, enqueue: operatorEnqueue });
+
 // CLA-149 Jev block planner: off unless OKIE_JEV_BLOCK_PLANNER=on, and refused unless OKIE_LLM_GLOBAL_MAX_DOLLARS
 // is set; every Jev request is admitted through the same durable global ledger first.
 const blockPlannerConfig = resolveBlockPlannerConfig();
@@ -122,12 +134,8 @@ const server = createScanHttpServer({
     store: operatorStore,
     publications: operatorPublication,
     ...(globalSpend.cap.maxDollars !== undefined || globalSpend.cap.maxTokens !== undefined ? { globalBudget: { ...(globalSpend.cap.maxDollars !== undefined ? { maxDollars: globalSpend.cap.maxDollars } : {}), ...(globalSpend.cap.maxTokens !== undefined ? { maxTokens: globalSpend.cap.maxTokens } : {}), ledger: operatorGlobalBudget } } : {}),
-    enqueue: input => {
-      operatorStore.updateRun(input.runId, { state: "queued" });
-      void Promise.resolve().then(() => operatorRunner.enqueue(input)).catch(() => {
-        operatorStore.updateRun(input.runId, { state: "failed", error: "Operator job failed; review the recorded attempts." });
-      });
-    },
+    enqueue: operatorEnqueue,
+    incremental: incrementalAutomation,
   },
 });
 
@@ -140,4 +148,5 @@ server.listen(port, bind, () => {
   log(`listening on http://${bind}:${port} (loopback default; ${authMode}; no operator gh)`);
   log(`scan root: ${scanRoot}`);
   log(`enrichment: ${describeEnrichmentMode(enrich, llm)}`);
+  log(`incremental: cron ${incrementalAutomation.config.cronToken ? "on" : "off"}, webhook ${incrementalAutomation.config.webhookSecret ? "on" : "off"}, auto-publish ${incrementalAutomation.config.autoPublish ? "on" : "off"}`);
 });

@@ -8,6 +8,7 @@ import Rust from "tree-sitter-rust";
 import { PositionEncoding, SymbolRole, type Occurrence } from "@scip-code/scip";
 import type { AnalysisDefinition, AnalysisExternalReference, AnalysisLocation, LanguageAnalysis } from "./language-analysis.js";
 import { decodeScipIndex } from "./scip.js";
+import { cachedScipIndex, rustcIdentity, rustInputDigest } from "./scip-cache.js";
 
 type Point = { row: number; column: number };
 type OccurrenceRange = { start: Point; end: Point };
@@ -239,7 +240,14 @@ function moduleTarget(path: string, text: string, allowed: ReadonlySet<string>):
  * Invoke rust-analyzer's SCIP exporter and retain only resolved, in-repository facts.
  * Import/file links are emitted separately; calls are established from the parsed call AST.
  */
-export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly string[]): LanguageAnalysis {
+export interface RustAnalysisOptions {
+  /** CLA-271: content-addressed SCIP index cache directory (see scip-cache.ts); absent = always run rust-analyzer. */
+  indexCacheDir?: string;
+  /** Test/measurement seam: reports whether each SCIP run was served from the cache. */
+  onIndex?: (variant: "host" | "wasm32", cache: "hit" | "miss" | "off") => void;
+}
+
+export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly string[], options: RustAnalysisOptions = {}): LanguageAnalysis {
   const root = resolve(sourceRoot);
   const allFiles = discoveredFiles ?? [];
   const allowed = new Set(allFiles.filter(path => path.endsWith(".rs")).map(path => path.split(sep).join("/")));
@@ -247,15 +255,30 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
   if (!allowed.size) return result;
   const temporary = mkdtempSync(join(tmpdir(), "okie-rust-scip-"));
   const indexPath = join(temporary, "index.scip");
-  const run = spawnSync("rust-analyzer", ["scip", root, "--output", indexPath, "--exclude-vendored-libraries"], { encoding: "utf8", timeout: 120_000 });
+  /** One rust-analyzer SCIP run through the optional cache; the variant names the invocation minus machine paths. */
+  const scip = (variant: "host" | "wasm32", args: readonly string[], output: string, config?: { path: string; content: string }) => {
+    const digest = options.indexCacheDir ? (inputDigest ??= rustInputDigest(root)) : undefined;
+    const toolchain = options.indexCacheDir ? (toolchainIdentity ??= rustcIdentity(root) ?? "") : undefined;
+    // The cache key names the arguments with the config file's content in place of its (temporary) path.
+    const keyArgs = args.map(arg => config && arg === config.path ? "<config>" : arg);
+    const result = cachedScipIndex({ ...(options.indexCacheDir ? { cacheDir: options.indexCacheDir } : {}), root, ...(digest ? { digest } : {}), ...(toolchain ? { toolchain } : {}), variant: JSON.stringify({ variant, args: keyArgs, config: config?.content ?? null }), run: () => {
+      const spawned = spawnSync("rust-analyzer", ["scip", root, "--output", output, ...args], { encoding: "utf8", timeout: 120_000 });
+      if (spawned.error || spawned.status !== 0 || !existsSync(output)) return { stderr: spawned.stderr ?? "", error: spawned.error?.message ?? (spawned.stderr?.trim() ?? "") };
+      return { bytes: readFileSync(output), stderr: spawned.stderr ?? "" };
+    } });
+    options.onIndex?.(variant, result.cache);
+    return result;
+  };
+  let inputDigest: string | undefined; let toolchainIdentity: string | undefined;
+  const run = scip("host", ["--exclude-vendored-libraries"], indexPath);
   const limitations = new Set<string>();
   try {
-    if (run.error || run.status !== 0 || !existsSync(indexPath)) {
-      limitations.add(run.error?.message ?? (run.stderr.trim() || "rust-analyzer SCIP indexing failed."));
+    if (!run.bytes) {
+      limitations.add(run.error || "rust-analyzer SCIP indexing failed.");
       result.coverage.push({ language: "rust", tool: "rust-analyzer", version: "unavailable", coverage: "unavailable", indexedFiles: [], limitations: canonical(limitations) });
       return result;
     }
-    const indexes = [decodeScipIndex(readFileSync(indexPath))];
+    const indexes = [decodeScipIndex(run.bytes)];
     // The browser facade is deliberately compiled only for the target used by the
     // repository's wasm-pack build. rust-analyzer otherwise omits it on a host scan.
     const needsWasmTarget = [...allowed].some(path => {
@@ -265,12 +288,13 @@ export function analyzeRust(sourceRoot: string, discoveredFiles?: readonly strin
     if (needsWasmTarget) {
       const wasmConfigPath = join(temporary, "wasm32.json");
       const wasmIndexPath = join(temporary, "wasm32.scip");
-      writeFileSync(wasmConfigPath, JSON.stringify({ cargo: { target: "wasm32-unknown-unknown", allTargets: false } }));
-      const wasmRun = spawnSync("rust-analyzer", ["scip", root, "--output", wasmIndexPath, "--config-path", wasmConfigPath, "--exclude-vendored-libraries"], { encoding: "utf8", timeout: 120_000 });
-      if (wasmRun.error || wasmRun.status !== 0 || !existsSync(wasmIndexPath)) {
-        limitations.add(`wasm32-unknown-unknown SCIP indexing failed: ${wasmRun.error?.message ?? (wasmRun.stderr.trim() || "rust-analyzer exited unsuccessfully.")}`);
+      const wasmConfig = JSON.stringify({ cargo: { target: "wasm32-unknown-unknown", allTargets: false } });
+      writeFileSync(wasmConfigPath, wasmConfig);
+      const wasmRun = scip("wasm32", ["--config-path", wasmConfigPath, "--exclude-vendored-libraries"], wasmIndexPath, { path: wasmConfigPath, content: wasmConfig });
+      if (!wasmRun.bytes) {
+        limitations.add(`wasm32-unknown-unknown SCIP indexing failed: ${wasmRun.error || "rust-analyzer exited unsuccessfully."}`);
       } else {
-        indexes.push(decodeScipIndex(readFileSync(wasmIndexPath)));
+        indexes.push(decodeScipIndex(wasmRun.bytes));
         limitations.add("Rust target coverage includes wasm32-unknown-unknown inferred from source cfg(target_arch = \"wasm32\"); other targets are not inferred.");
       }
       limitations.add("Rust feature coverage follows Cargo's default feature selection; optional features are not inferred.");

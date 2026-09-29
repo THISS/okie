@@ -60,3 +60,11 @@
 .operator-claim-attempts summary { cursor:pointer; font-size:12px; }
 /* Missing coverage (not checked / not run) reads quieter than review results. */
 .operator-shell .operator-claim-cue[data-claim-attention="5"] { color:var(--atlas-muted); }
+/* CLA-271: incremental updates — run label, inline update result and the changelog panel. */
+.operator-runs .operator-run-kind { color:var(--atlas-cyan); font-size:11px; }.operator-review>header .operator-run-kind { margin:2px 0 0; color:var(--atlas-cyan); font-size:12px; }
+.operator-update-result { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin:0 0 12px; }.operator-update-result p { margin:0; color:inherit!important; }.operator-shell .operator-update-result button { width:auto; margin:0; padding:4px 8px; font-size:12px; }
+.operator-changelog { margin:0 0 16px; border:1px solid rgba(121,223,212,.35); border-radius:9px; padding:12px 14px; }.operator-changelog>header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; }.operator-changelog>header p { margin:0; font-size:12px; }
+.operator-changelog-summary { margin:8px 0 0; color:var(--atlas-text)!important; overflow-wrap:anywhere; }.operator-changelog .operator-coverage { margin:10px 0; }
+.operator-changelog-lists { display:grid; gap:4px; }.operator-changelog-list summary { cursor:pointer; color:var(--atlas-muted); font-size:12px; }
+.operator-changelog-list ul { margin:4px 0 6px; padding-left:18px; max-height:clamp(96px,26vh,260px); overflow:auto; overscroll-behavior:contain; color:var(--atlas-muted); font-size:12px; }.operator-changelog-list li { padding:1px 0; overflow-wrap:anywhere; }.operator-changelog-name { color:var(--atlas-text); }
+.operator-changelog-views { display:flex; gap:4px; }.operator-changelog-views button { font-size:12px; padding:2px 8px; }.operator-changelog-views button[aria-pressed="true"] { border-color:rgba(121,223,212,.8); color:var(--atlas-text); }

@@ -2,7 +2,7 @@
 export type OperatorRunState = "queued" | "running" | "awaiting_review" | "complete" | "failed" | "cancelled" | "interrupted";
 export type OperatorDraftState = "open" | "frozen" | "superseded";
 export type OperatorAttemptState = "queued" | "running" | "accepted" | "failed" | "cancelled" | "interrupted";
-export type OperatorAttemptKind = "scan" | "enrichment" | "retry" | "refresh" | "judgment";
+export type OperatorAttemptKind = "scan" | "enrichment" | "retry" | "refresh" | "judgment" | "incremental";
 
 export interface OperatorRepository {
   repositoryId: string;
@@ -34,6 +34,27 @@ export interface OperatorRun {
   updatedAt: number;
   draftRevisionId?: string;
   error?: string;
+  /** CLA-271: absent on a full run; "incremental" re-scans at a new commit and re-enriches only what changed. */
+  kind?: "incremental";
+  incremental?: OperatorIncrementalRunInfo;
+}
+
+/** How an incremental run (CLA-271) was started and what it diffs against. */
+export interface OperatorIncrementalRunInfo {
+  /**
+   * The newest reviewable incremental draft chained on the current publication, else the publication's draft, else the
+   * repository's latest draft (no publication). `publicationVersionId` names the publication under the chain.
+   */
+  baseline: { runId: string; draftRevisionId: string; artifactRevisionId: string; publicationVersionId?: string; commitSha: string };
+  /** Explicit ref or SHA to scan; absent = the default branch HEAD. */
+  ref?: string;
+  trigger: "operator" | "cron" | "webhook" | "script";
+  /** Publish automatically when the run ends fully accepted (OKIE_INCREMENTAL_AUTO_PUBLISH=1 or per request). */
+  autoPublish?: boolean;
+  /** The resolved commit the run scans, set as soon as it is known (at start when resolvable, else when the run resolves it). */
+  targetCommitSha?: string;
+  /** Set when the run found the repository already at its baseline commit (it ends complete with no draft). */
+  upToDate?: { commitSha: string };
 }
 
 export interface OperatorDraftRevision {

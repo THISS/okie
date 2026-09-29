@@ -560,6 +560,18 @@ export function symbolDigest(symbols: readonly OperatorEnrichmentScope[]): { sym
   }
   return { symbols: digest, symbolCount: symbols.length, evidence };
 }
+/** The scope as its prompt sees it: a scope with below-cap (code) children carries their symbol digest and evidence. */
+export function preparedOperatorScope(definition: OperatorEnrichmentScope, belowCapChildren: readonly OperatorEnrichmentScope[]): OperatorEnrichmentScope {
+  const digest = belowCapChildren.length ? symbolDigest(belowCapChildren) : undefined;
+  return digest ? { ...definition, facts: { ...(isObject(definition.facts) ? definition.facts : { observed: definition.facts }), symbols: digest.symbols, symbolCount: digest.symbolCount }, allowedEvidence: [...definition.allowedEvidence, ...digest.evidence] } : definition;
+}
+/**
+ * One attempt's input hash: prompt version, model, leaf reasoning, the prepared scope's facts and allowed evidence, and every
+ * in-cap child with its state and explanation. Exported so an incremental run can cross-check a reused explanation (CLA-271).
+ */
+export function operatorInputHash(input: { modelId: string; reasoning: "off" | "provider-default"; scope: OperatorEnrichmentScope; children: readonly OperatorChildInput[] }): string {
+  return inputHash({ promptVersion: PROMPT_VERSION, modelId: input.modelId, reasoning: input.reasoning, facts: input.scope.facts, allowedEvidence: input.scope.allowedEvidence, children: input.children.map(child => ({ scopeId: child.scopeId, name: child.name, kind: child.kind, state: child.state, explanation: child.explanation })) });
+}
 /**
  * Fan out, then reduce (CLA-254). Every in-cap leaf is queued at once; a parent
  * is queued only when all of its in-cap children have settled (accepted or
@@ -627,14 +639,12 @@ export async function runOperatorEnrichment(options: OperatorEnrichmentRunOption
     if (reReduceOnly && !dirty.has(definition.scopeId)) { skippedScopes.push(definition.scopeId); return "skipped"; }
     if (await options.cancelled?.()) { halt("cancelled"); return "unrun"; }
     // Below-cap children are omitted unless they already carry a known state (retry of a code-level scope's parent).
-    const belowCap = (children.get(definition.scopeId) ?? []).map(scopeId => byId.get(scopeId)!).filter(child => !inCap(child));
-    const digest = belowCap.length ? symbolDigest(belowCap) : undefined;
-    const scope: OperatorEnrichmentScope = digest ? { ...definition, facts: { ...(isObject(definition.facts) ? definition.facts : { observed: definition.facts }), symbols: digest.symbols, symbolCount: digest.symbolCount }, allowedEvidence: [...definition.allowedEvidence, ...digest.evidence] } : definition;
+    const scope = preparedOperatorScope(definition, (children.get(definition.scopeId) ?? []).map(scopeId => byId.get(scopeId)!).filter(child => !inCap(child)));
     const childInputs = (await Promise.all((children.get(scope.scopeId) ?? []).map(async scopeId => { const latest = await options.store.latestAttempt(scopeId); const explanation = await options.store.getAcceptedExplanation(scopeId); if (!latest && !explanation && !inCap(byId.get(scopeId)!)) return undefined; const state: OperatorChildState = latest?.state ?? (explanation ? "accepted" : "not run"); const child = byId.get(scopeId)!; return { scopeId, name: child.name, kind: child.kind, state, ...(explanation ? { explanation } : {}) }; }))).filter((input): input is NonNullable<typeof input> => input !== undefined);
     // Incomplete-parent policy also holds for a re-reduce: a parent with a not-run child is not re-run.
     if (reReduceOnly && childInputs.some(input => input.state === "not run")) { skippedScopes.push(definition.scopeId); return "skipped"; }
     const reasoning = options.leafReasoning === "off" && childInputs.length === 0 ? "off" : "provider-default";
-    const hash = inputHash({ promptVersion: PROMPT_VERSION, modelId, reasoning, facts: scope.facts, allowedEvidence: scope.allowedEvidence, children: childInputs.map(input => ({ scopeId: input.scopeId, name: input.name, kind: input.kind, state: input.state, explanation: input.explanation })) });
+    const hash = operatorInputHash({ modelId, reasoning, scope, children: childInputs });
     const body = operatorRequestBody(modelId, scope, childInputs, reasoning === "off");
     // Admission before the attempt row: the run-level check and increment are synchronous so concurrent scopes cannot over-admit.
     // Admission errors propagate (the runner records a run error); only an explicit refusal is a limit stop.
