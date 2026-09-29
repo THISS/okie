@@ -9,7 +9,9 @@
     "build": "tsc --noEmit -p tsconfig.json && wrangler deploy --dry-run --containers-rollout=none --env='' --outdir dist",
     "dev": "wrangler dev --env='' --port 4196 --ip 127.0.0.1 --enable-containers=false",
     "deploy:staging": "node scripts/deploy.mjs staging",
-    "deploy:production": "node scripts/deploy.mjs production"
+    "deploy:production": "node scripts/deploy.mjs production",
+    "smoke:staging": "node scripts/smoke.mjs staging",
+    "smoke:production": "node scripts/smoke.mjs production"
   },
   "devDependencies": {
     "@cloudflare/containers": "0.3.7",
