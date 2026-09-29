@@ -13,15 +13,17 @@ import { installPublishedAtlasAttribution } from './atlasAttribution';
 import { hostedAtlasBootPlan } from './hostedAtlas';
 import { installPublicAtlasOembedDiscovery } from './oembed';
 import { readDemoQuery } from './renderer/query';
-import { parseAppRoute } from './renderer/route';
 import { setActiveScanFixture } from './renderer/fixtureBundle';
 import { compileScanFixture } from './renderer/scanFixture';
 import { PortableAtlasControls } from './portable/PortableAtlasControls';
 import { PortableAtlasOpenScreen } from './portable/PortableAtlasOpenScreen';
-import { isPortableMode, portableNavigationDiffers, portableReloadPath, setActivePortableAtlas } from './portable/runtime';
+import { portableNavigationDiffers, portableReloadPath, setActivePortableAtlas } from './portable/runtime';
 import { createIndexedDbPortableStore, createPortablePersistence, portableStorageKey } from './portable/storage';
 import { registerWebMcpFoundation } from './webmcp';
 import { applyPageMeta, SITE_NAME } from './siteMeta';
+import { bootPlan } from './bootPlan';
+import { MobileNotice, mobileNoticeCopy, readMobileGateInput } from './mobileGate';
+import { NotFoundScreen } from './siteFooter';
 import { readPortableFile, rememberPortableSession, forgetPortableSession } from './portable/session';
 import { OperatorWorkspace } from './operator/OperatorWorkspace';
 import { previewReturnSelection } from './operator/workspaceController';
@@ -267,7 +269,14 @@ async function bootPortableAtlas(): Promise<void> {
 async function boot() {
   // WebMCP is progressive enhancement (CLA-40). Missing APIs are a silent no-op.
   void registerWebMcpFoundation();
-  if (isPortableMode(window.location.search, portableMarkerEnabled())) {
+  // CLA-318: the whole mount decision (and its ordering) is bootPlan.ts, unit-tested.
+  const plan = bootPlan({
+    pathname: window.location.pathname,
+    search: window.location.search,
+    portableMarker: portableMarkerEnabled(),
+    gate: readMobileGateInput(),
+  });
+  if (plan.kind === 'portable') {
     // A self-hosted portable viewer is not a sourcefor.dev page: brand the tab only. applyPageMeta (and
     // its canonical) never runs here, and build-portable-viewer.mjs strips the shell's canonical/og/twitter tags.
     document.title = SITE_NAME;
@@ -276,8 +285,16 @@ async function boot() {
   }
   // CLA-318: per-route <title>, description and canonical (every route change is a full page load).
   applyPageMeta(document, window.location.pathname);
-  if (window.location.pathname === '/operator') {
+  if (plan.kind === 'operator') {
     await mountOperatorWorkspace();
+    return;
+  }
+  // A path the SPA does not route. The edge and Vite servers already answer these with the static
+  // 404 page (real status); this covers any other host that falls back to the shell.
+  if (plan.kind === 'notFound') {
+    document.title = `Page not found · ${SITE_NAME}`;
+    setDocumentPage(documentPageFor('landing'));
+    root.render(<StrictMode><NotFoundScreen /></StrictMode>);
     return;
   }
   // A scanned fixture is fetched, validated and compiled BEFORE App is imported,
@@ -290,12 +307,23 @@ async function boot() {
   //                                also falls back through the bundled self-scan
   //                                to the golden demo.
   //   ?fixture=scan[:<slug>]     → neighborhood fetch first, then the R3a glob
-  const route = parseAppRoute(window.location.pathname);
-  if (route.kind === 'landing') {
+  if (plan.kind === 'landing') {
     const { ScanLandingScreen } = await import('./scanLanding');
     setDocumentPage(documentPageFor('landing'));
     root.render(<StrictMode><ScanLandingScreen /></StrictMode>);
     return;
+  }
+  const { route } = plan;
+  // A touch-primary small screen gets a "best on a larger screen" notice before any atlas loads (never in
+  // embeds); "Continue anyway" carries on and is remembered for the session.
+  if (plan.kind === 'mobileNotice') {
+    setDocumentPage(documentPageFor('landing'));
+    const copy = mobileNoticeCopy(route);
+    await new Promise<void>(resolve => {
+      root.render(<StrictMode><MobileNotice description={copy.description} heading={copy.heading} onContinue={resolve} /></StrictMode>);
+    });
+    flushSync(() => root.render(null));
+    window.scrollTo(0, 0);
   }
   if (route.kind === 'repo') {
     // Public share URL (no login). oEmbed discovery points docs sites at /oembed.

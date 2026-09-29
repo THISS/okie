@@ -30,6 +30,7 @@ import {
   repoPageDescription,
   repoPageTitle,
 } from './siteMeta';
+import { notFoundHttpOutput, notFoundPageHtml } from './notFoundPage';
 
 /**
  * Open Graph for public `/r/<owner>/<repo>` share URLs (CLA-39).
@@ -45,20 +46,8 @@ export const OG_IMAGE_ROUTE_PREFIX = '/og';
 export const DEFAULT_LOCAL_SCAN_PORT = '4180';
 /** Default local scan origin; hosts configure theirs with {@link localScanOriginFromEnv}. */
 export const DEFAULT_LOCAL_SCAN_ORIGIN = `http://127.0.0.1:${DEFAULT_LOCAL_SCAN_PORT}`;
-export const ATLAS_NOT_FOUND_BODY = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="robots" content="noindex" />
-    <title>Atlas not found</title>
-  </head>
-  <body>
-    <main>
-      <h1>Atlas not found</h1>
-    </main>
-  </body>
-</html>
-`;
+/** CLA-318: the branded, self-contained 404 page (notFoundPage.ts), atlas wording. */
+export const ATLAS_NOT_FOUND_BODY = notFoundPageHtml('atlas');
 
 const SECRET_LEAK = /apiKey|OPENROUTER|GITHUB_TOKEN|GH_TOKEN|gho_|ghp_|sk-|Bearer /i;
 
@@ -338,16 +327,8 @@ export function openGraphLeaksSecrets(text: string): boolean {
   return SECRET_LEAK.test(text);
 }
 
-function notFound(): PublicAtlasHttpOutput {
-  return {
-    status: 404,
-    headers: {
-      ...CORS,
-      'cache-control': 'public, max-age=60',
-      'content-type': 'text/html; charset=utf-8',
-    },
-    body: ATLAS_NOT_FOUND_BODY,
-  };
+function notFound(method: string): PublicAtlasHttpOutput {
+  return notFoundHttpOutput(method, 'atlas', CORS);
 }
 
 function methodNotAllowed(): PublicAtlasHttpOutput {
@@ -373,12 +354,12 @@ export async function handleShareHtmlRequest(input: ShareHtmlInput): Promise<Pub
   }
   if (method !== 'GET' && method !== 'HEAD') return methodNotAllowed();
   const origin = sanitizeOembedOrigin(input.requestOrigin);
-  if (!origin || !isAllowedOembedRequestOrigin(origin, input.allowedOrigins ?? [])) return notFound();
+  if (!origin || !isAllowedOembedRequestOrigin(origin, input.allowedOrigins ?? [])) return notFound(method);
   const target = parseSharePath(input.pathname, origin, input.search ?? '', input.allowedOrigins);
-  if (!target || !(await isAllowedAtlas(target, input.isPublicAtlas))) return notFound();
+  if (!target || !(await isAllowedAtlas(target, input.isPublicAtlas))) return notFound(method);
   const tags = buildOpenGraphTags(target);
   const html = injectPublicAtlasOpenGraph(input.indexHtml, tags);
-  if (openGraphLeaksSecrets(html) || openGraphLeaksSecrets(tags.image)) return notFound();
+  if (openGraphLeaksSecrets(html) || openGraphLeaksSecrets(tags.image)) return notFound(method);
   return {
     status: 200,
     headers: {

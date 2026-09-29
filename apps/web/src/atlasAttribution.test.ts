@@ -67,7 +67,7 @@ describe('published atlas attribution (CLA-266)', () => {
       licenceLabel: 'MIT licence',
       licenceUrl: `https://github.com/pmndrs/zustand/blob/${SHA}/LICENSE`,
     });
-    expect(attributionText(attribution!)).toBe('Source For Atlas · zustand by pmndrs · commit 4f1c2a9 · MIT licence · source on GitHub');
+    expect(attributionText(attribution!)).toBe('Source For Atlas · zustand by pmndrs · commit 4f1c2a9 · MIT licence · source on GitHub · About');
   });
 
   it('renders nothing for rows that are not publications or are malformed', () => {
@@ -103,6 +103,8 @@ describe('published atlas attribution (CLA-266)', () => {
       ['4f1c2a9', `https://github.com/pmndrs/zustand/commit/${SHA}`, 'noopener noreferrer'],
       ['MIT licence', `https://github.com/pmndrs/zustand/blob/${SHA}/LICENSE`, 'noopener noreferrer'],
       ['source on GitHub', `https://github.com/pmndrs/zustand/tree/${SHA}`, 'noopener noreferrer'],
+      // CLA-318: the one site link, to the landing footer (GitHub, contact, licence note), same tab.
+      ['About', '/new#about', 'undefined'], // no rel: same tab
     ]);
     expect(page.root.attrs['data-atlas-attribution']).toBe('');
 

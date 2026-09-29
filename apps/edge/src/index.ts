@@ -1,8 +1,9 @@
+import { isKnownAppPath, notFoundHttpOutput } from '../../web/src/notFoundPage';
 import { handleApiRoute } from './api';
 import { selectBackend, type Backend } from './backend';
 import type { EdgeEnv } from './env';
 import { defaultGuards, type Guard } from './guards';
-import { notFoundJson } from './http';
+import { NOINDEX_ROBOTS_TXT, notFoundJson, ROBOTS_TAG } from './http';
 import { handleScanRoute } from './scan';
 import { handleShareRoute, isPublicAtlasRoutePath } from './share';
 import { DEV_STORE_PREFIX, handleStoreRead, storeKeyFromPath } from './store';
@@ -25,6 +26,9 @@ export { ContainerProxy } from '@cloudflare/containers';
  *   /api/*                    auth/me + Ask status answered here; with ASK_ENABLED=1, Ask + block-plan →
  *                             container behind guards (api.ts), else 404
  *   /__store/*                DEV_STORE_ROUTE=1 only (local mirror for a locally run apps/server)
+ *   /, /index.html, /operator the SPA shell (Static Assets)
+ *   anything else             a real static file (favicons, robots.txt, og-default.png) from Static
+ *                             Assets; otherwise the branded 404 page with a real 404 (CLA-318)
  */
 
 export type EdgeDeps = {
@@ -58,10 +62,6 @@ export function canonicalHostRedirect(url: URL, env: Pick<EdgeEnv, 'OKIE_PUBLIC_
     headers: { location: `${canonical.origin}${url.pathname}${url.search}`, 'cache-control': 'public, max-age=3600' },
   });
 }
-
-/** Staging-only crawler opt-out (`ROBOTS_NOINDEX=1`): robots.txt disallows everything. */
-export const NOINDEX_ROBOTS_TXT = 'User-agent: *\nDisallow: /\n';
-export const ROBOTS_TAG = 'noindex, nofollow';
 
 function noindex(env: Pick<EdgeEnv, 'ROBOTS_NOINDEX'>): boolean {
   return env.ROBOTS_NOINDEX?.trim() === '1';
@@ -133,7 +133,24 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     const shared = await handleShareRoute(request, env);
     if (shared) return shared;
   }
-  return env.ASSETS.fetch(request);
+  if (isKnownAppPath(pathname)) return env.ASSETS.fetch(request);
+  return serveStaticFileOr404(request, env);
+}
+
+/**
+ * A path the SPA does not route (CLA-318). Real files in apps/web/dist (favicons, robots.txt,
+ * og-default.png…) are served as-is; `_headers` is never served (Static Assets excludes it). Anything
+ * else would come back as the SPA shell with 200 (`not_found_handling: single-page-application`):
+ * dist has no HTML besides index.html, so an HTML answer here is that fallback, and it becomes the
+ * branded 404 page with a real status (short shared cache; HEAD without a body).
+ */
+async function serveStaticFileOr404(request: Request, env: EdgeEnv): Promise<Response> {
+  const response = await env.ASSETS.fetch(request);
+  const type = response.headers.get('content-type') ?? '';
+  // Any HTML status counts, like /assets/* (a 304 revalidating index.html's ETag included).
+  if (!/^text\/html\b/i.test(type)) return response;
+  const page = notFoundHttpOutput(request.method);
+  return new Response(page.body === '' ? null : page.body, { status: page.status, headers: page.headers });
 }
 
 export default {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pngDimensions, pngSignatureOk } from '../../web/src/atlasCard';
-import { NOINDEX_ROBOTS_TXT, canonicalHostRedirect } from '../src/index';
+import { NOINDEX_ROBOTS_TXT } from '../src/http';
+import { canonicalHostRedirect } from '../src/index';
 import { edgeFetch, seedAtlas, seedIndex } from './helpers';
 
 const ORIGIN = 'http://127.0.0.1:4196';
@@ -48,7 +49,7 @@ describe('share pages at the edge', () => {
   it('404s an unpublished slug with the generic body (dogfood THISS/okie is always public)', async () => {
     const response = await edgeFetch('/r/nobody/unpublished');
     expect(response.status).toBe(404);
-    expect(await response.text()).toContain('Atlas not found');
+    expect(await response.text()).toContain('<h1>Atlas not found</h1>');
     expect((await edgeFetch('/r/THISS/okie')).status).toBe(200);
     // A version written but not yet pointed to by latest.json is not public.
     await seedAtlas({ slug: 'acme__pending', versionId: 'v1', files: { 'snapshot.json': '{}' }, latest: false });
@@ -141,8 +142,9 @@ describe('share pages at the edge', () => {
     const revalidate = await edgeFetch('/assets/App-previousBuild.js', { init: { headers: { 'if-none-match': shellEtag! } } });
     expect(revalidate.status).toBe(404);
     expect(revalidate.headers.get('cache-control')).toBe('no-store');
-    // SPA routes outside /assets keep the fallback.
-    expect((await edgeFetch('/some/client/route')).status).toBe(200);
+    // Outside /assets, the SPA's own routes keep the shell; unknown paths are the branded 404 (CLA-318).
+    expect((await edgeFetch('/r/THISS/okie')).status).toBe(200);
+    expect((await edgeFetch('/some/client/route')).status).toBe(404);
   });
 
   it('staging (ROBOTS_NOINDEX=1): X-Robots-Tag on every response and a disallow-all robots.txt', async () => {

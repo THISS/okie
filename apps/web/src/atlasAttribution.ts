@@ -73,10 +73,13 @@ export function atlasAttributionFor(index: unknown, slug: string): PublishedAtla
 
 /** The strip's words, in order, as plain text (also its accessible description). */
 export function attributionText(attribution: PublishedAtlasAttribution): string {
-  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub`;
+  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub · About`;
 }
 
-type Part = string | { text: string; href: string; code?: boolean };
+type Part = string | { text: string; href: string; code?: boolean; internal?: boolean };
+
+/** CLA-318: the strip's one site link: the landing's footer (GitHub, contact, licence note). Keeps the canvas uncluttered. */
+export const ATTRIBUTION_ABOUT_HREF = '/new#about';
 
 function parts(attribution: PublishedAtlasAttribution): Part[] {
   return [
@@ -88,6 +91,8 @@ function parts(attribution: PublishedAtlasAttribution): Part[] {
     attribution.licenceUrl ? { text: attribution.licenceLabel, href: attribution.licenceUrl } : attribution.licenceLabel,
     ' · ',
     { text: 'source on GitHub', href: attribution.treeUrl },
+    ' · ',
+    { text: 'About', href: ATTRIBUTION_ABOUT_HREF, internal: true },
   ];
 }
 
@@ -108,8 +113,10 @@ export function renderAtlasAttribution(doc: Document, attribution: PublishedAtla
     }
     const link = doc.createElement('a');
     link.href = part.href;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
+    if (!part.internal) {
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+    }
     if (part.code) {
       const code = doc.createElement('code');
       code.textContent = part.text;
