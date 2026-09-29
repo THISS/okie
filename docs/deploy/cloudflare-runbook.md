@@ -85,8 +85,8 @@ print a one-line note if they found one.
    other tracker. In the dashboard (Analytics & Logs → Web Analytics → Add a site → `sourcefor.dev`), choose the
    **manual JS snippet install** and leave **automatic setup / JS snippet injection off** for the zone: the Worker
    injects the snippet itself, and Cloudflare's automatic injection on top would count every page view twice. Copy
-   the site token from the snippet's `data-cf-beacon` (it is public; it ships in every page). Add
-   `"WEB_ANALYTICS_TOKEN": "<token>"` to `env.production.vars` in `apps/edge/wrangler.jsonc`, then run `pnpm build`
+   the site token from the snippet's `data-cf-beacon` (it is public; it ships in every page). Put
+   `"WEB_ANALYTICS_TOKEN": "<token>"` in `env.production.vars` (sourcefor.dev's token is already there) in `apps/edge/wrangler.jsonc`, then run `pnpm build`
    and `deploy:production`. The Worker then adds the beacon just before `</body>` of every HTML page it serves: the
    home page `/`, the SPA shell, `/r/...` (oEmbed embeds included; `WEB_ANALYTICS_IN_EMBEDS` in `apps/edge/src/analytics.ts`
    turns that off) and the 404 pages. JSON, PNG, assets and the sitemap are never touched. A token that is not 16-64

@@ -101,12 +101,11 @@ describe('wrangler.jsonc', () => {
     }
   });
 
-  it('keeps Web Analytics off everywhere but (once the token is known) production', () => {
+  it('turns Web Analytics on in production only', () => {
     // Staging and local dev never report page views; production's token must be a plain site token.
     expect(config.vars?.WEB_ANALYTICS_TOKEN).toBeUndefined();
     expect(config.env.staging!.vars?.WEB_ANALYTICS_TOKEN).toBeUndefined();
-    const production = config.env.production!.vars?.WEB_ANALYTICS_TOKEN;
-    if (production !== undefined) expect(production).toMatch(WEB_ANALYTICS_TOKEN_PATTERN);
+    expect(config.env.production!.vars?.WEB_ANALYTICS_TOKEN).toMatch(WEB_ANALYTICS_TOKEN_PATTERN);
   });
 
   it('keeps local dev off Docker', () => {
