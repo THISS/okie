@@ -1,11 +1,15 @@
 import { isFramedBrowsingContext } from './embedCanvas';
 import { isEmbedChrome, isEmbedQueryFlag } from './embedChrome';
+import { publishedNamesFor, publishedRowForSlug } from './publishedNames';
+import { repoPageTitle } from './siteMeta';
 
 /**
  * CLA-266 attribution for published atlases. Every `/r/<owner>/<repo>` page whose atlas came from a
  * publication shows the upstream repository, the pinned commit and its licence, linked back to GitHub.
  * The data is the slug's row in `/scan/index.json` (the published index carries owner, repo, commitSha
  * and license {spdxId, name, url}); a row without a licence is not a publication, so nothing renders.
+ * Names and GitHub links use GitHub's casing (`ownerLogin`/`repoName`, CLA-318) when the row has it,
+ * else the stored owner/repo.
  *
  * Rendered as a small fixed strip outside the React root (main.tsx), so the atlas shell is untouched;
  * `html[data-atlas-attribution]` shrinks `#root` by the strip height so nothing overlaps the canvas
@@ -15,6 +19,8 @@ import { isEmbedChrome, isEmbedQueryFlag } from './embedChrome';
 export type PublishedAtlasAttribution = {
   owner: string;
   repo: string;
+  /** True when owner/repo are GitHub's own casing from the row (ownerLogin/repoName). */
+  canonicalNames: boolean;
   commitSha: string;
   shortSha: string;
   /** Repository tree at the pinned commit. */
@@ -24,7 +30,6 @@ export type PublishedAtlasAttribution = {
   licenceUrl?: string;
 };
 
-const GITHUB_NAME = /^[A-Za-z0-9._-]{1,100}$/;
 const COMMIT = /^[a-f0-9]{7,40}$/;
 
 function httpsUrl(value: unknown): string | undefined {
@@ -46,13 +51,12 @@ function licenceLabel(spdxId: string, name: string): string {
 
 /** The attribution for `slug` from a published index, or undefined when it is not a publication. */
 export function atlasAttributionFor(index: unknown, slug: string): PublishedAtlasAttribution | undefined {
-  const repos = (index as { repos?: unknown } | null)?.repos;
-  if (!Array.isArray(repos)) return undefined;
-  const row = repos.find(candidate => (candidate as { slug?: unknown } | null)?.slug === slug) as Record<string, unknown> | undefined;
+  const row = publishedRowForSlug(index, slug);
   if (!row) return undefined;
-  const { owner, repo, commitSha, license } = row;
-  if (typeof owner !== 'string' || typeof repo !== 'string' || typeof commitSha !== 'string') return undefined;
-  if (!GITHUB_NAME.test(owner) || !GITHUB_NAME.test(repo) || !COMMIT.test(commitSha)) return undefined;
+  const names = publishedNamesFor(row);
+  const { commitSha, license } = row;
+  if (!names || typeof commitSha !== 'string' || !COMMIT.test(commitSha)) return undefined;
+  const { owner, repo } = names;
   if (!license || typeof license !== 'object') return undefined;
   const spdxId = typeof (license as { spdxId?: unknown }).spdxId === 'string' ? (license as { spdxId: string }).spdxId.trim() : '';
   const name = typeof (license as { name?: unknown }).name === 'string' ? (license as { name: string }).name.trim() : '';
@@ -62,6 +66,7 @@ export function atlasAttributionFor(index: unknown, slug: string): PublishedAtla
   return {
     owner,
     repo,
+    canonicalNames: names.canonical,
     commitSha,
     shortSha: commitSha.slice(0, 7),
     treeUrl: `${base}/tree/${commitSha}`,
@@ -145,7 +150,13 @@ export async function installPublishedAtlasAttribution(
     const response = await fetchImpl('/scan/index.json', { headers: { accept: 'application/json' } });
     if (!response.ok) return undefined;
     const attribution = atlasAttributionFor(await response.json(), slug);
-    if (attribution) renderAtlasAttribution(options.doc ?? document, attribution);
+    if (attribution) {
+      const doc = options.doc ?? document;
+      renderAtlasAttribution(doc, attribution);
+      // The boot title came from the URL; the row's names (GitHub's casing, else the stored owner/repo) are known
+      // only now. They are the names the server put in the share HTML's <title>, so the tab keeps that title.
+      doc.title = repoPageTitle(attribution.owner, attribution.repo);
+    }
     return attribution;
   } catch {
     return undefined;

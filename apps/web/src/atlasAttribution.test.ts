@@ -60,6 +60,7 @@ describe('published atlas attribution (CLA-266)', () => {
     expect(attribution).toEqual({
       owner: 'pmndrs',
       repo: 'zustand',
+      canonicalNames: false,
       commitSha: SHA,
       shortSha: '4f1c2a9',
       treeUrl: `https://github.com/pmndrs/zustand/tree/${SHA}`,
@@ -114,6 +115,41 @@ describe('published atlas attribution (CLA-266)', () => {
     expect(embed.body.children).toHaveLength(0);
     const failing = vi.fn(async () => new Response('nope', { status: 404 })) as unknown as typeof fetch;
     expect(await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: failing, doc: embed.doc, search: '', framed: false })).toBeUndefined();
+  });
+
+  it('CLA-318: shows GitHub casing (ownerLogin/repoName) when the row has it, else the stored names', async () => {
+    const row = { ...INDEX.repos[0]!, slug: 'burnt-sushi__ripgrep', owner: 'burntsushi', repo: 'ripgrep' };
+    const canonical = atlasAttributionFor({ repos: [{ ...row, ownerLogin: 'BurntSushi', repoName: 'ripgrep' }] }, 'burnt-sushi__ripgrep');
+    expect(canonical).toMatchObject({
+      owner: 'BurntSushi',
+      repo: 'ripgrep',
+      canonicalNames: true,
+      treeUrl: `https://github.com/BurntSushi/ripgrep/tree/${SHA}`,
+      commitUrl: `https://github.com/BurntSushi/ripgrep/commit/${SHA}`,
+    });
+    expect(attributionText(canonical!)).toContain('ripgrep by BurntSushi');
+    // Missing fields: the stored (lower-case) names, as before.
+    const fallback = atlasAttributionFor({ repos: [row] }, 'burnt-sushi__ripgrep');
+    expect(fallback).toMatchObject({ owner: 'burntsushi', repo: 'ripgrep', canonicalNames: false, treeUrl: `https://github.com/burntsushi/ripgrep/tree/${SHA}` });
+    // Only one of the two, a different name, or an unsafe value never renames the atlas.
+    for (const patch of [{ ownerLogin: 'BurntSushi' }, { ownerLogin: 'Someone', repoName: 'ripgrep' }, { ownerLogin: 'Burnt/Sushi', repoName: 'ripgrep' }, { ownerLogin: 'BurntSushi', repoName: 42 }]) {
+      expect(atlasAttributionFor({ repos: [{ ...row, ...patch }] }, 'burnt-sushi__ripgrep')?.owner, JSON.stringify(patch)).toBe('burntsushi');
+    }
+    // Installing sets the tab title to GitHub's casing (the boot title came from the URL).
+    const page = fakeDocument();
+    const fetchIndex = vi.fn(async () => new Response(JSON.stringify({ repos: [{ ...row, ownerLogin: 'BurntSushi', repoName: 'ripgrep' }] }), { status: 200 })) as unknown as typeof fetch;
+    await installPublishedAtlasAttribution('burnt-sushi__ripgrep', { fetch: fetchIndex, doc: page.doc, search: '', framed: false });
+    expect((page.doc as unknown as { title?: string }).title).toBe('ripgrep by BurntSushi · Source For Atlas');
+    // Without GitHub names: the stored names, the same as the server's share title (not the URL's slug casing).
+    const stored = fakeDocument();
+    const storedIndex = vi.fn(async () => new Response(JSON.stringify({ repos: [row] }), { status: 200 })) as unknown as typeof fetch;
+    await installPublishedAtlasAttribution('burnt-sushi__ripgrep', { fetch: storedIndex, doc: stored.doc, search: '', framed: false });
+    expect((stored.doc as unknown as { title?: string }).title).toBe('ripgrep by burntsushi · Source For Atlas');
+    // No row: the boot title (from the URL) is left alone.
+    const none = fakeDocument();
+    (none.doc as unknown as { title: string }).title = 'boot title';
+    await installPublishedAtlasAttribution('nobody__here', { fetch: storedIndex, doc: none.doc, search: '', framed: false });
+    expect((none.doc as unknown as { title: string }).title).toBe('boot title');
   });
 
   it('reserves its height in the layout instead of overlapping the canvas controls', () => {

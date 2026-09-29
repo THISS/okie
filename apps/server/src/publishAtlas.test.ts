@@ -15,6 +15,7 @@ import {
   publishFixtureVersion,
 } from "./publishedAtlas.fixture.js";
 import {
+  backfillPublishedNames,
   buildPublishedVersion,
   createDirectoryStoreClient,
   createWranglerStoreClient,
@@ -23,6 +24,7 @@ import {
   preparePublishedVersion,
   PUBLISH_BUCKETS,
   publishBuiltVersion,
+  resolveGithubRepositoryNames,
   resolvePublishedLicense,
   setPublishedLatest,
   wranglerChildEnv,
@@ -357,4 +359,160 @@ test("CLA-266 publish: licence overrides accept SPDX expressions, normalised, an
     "MIT WITH", "MIT WITH Apache-2.0 WITH Foo", "NOASSERTION OR MIT", "MIT; rm -rf", "MIT <b>", "MIT/Apache-2.0",
     `MIT ${"OR MIT ".repeat(40)}`,
   ]) assert.equal(normalizeSpdxLicenseOverride(bad), undefined, JSON.stringify(bad));
+});
+
+/** GitHub stand-in: the licence endpoint and `GET /repos/<o>/<r>` answered separately; every URL is recorded. */
+function githubApi(repoAnswer: (url: string) => Response | Promise<Response>, urls: string[] = []): typeof fetch {
+  return (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    urls.push(url);
+    assert.equal(new Headers(init?.headers).get("authorization"), null, "never an operator token");
+    if (url.includes("/license?")) return new Response(JSON.stringify({ path: "LICENSE", license: { spdx_id: "MIT", name: "MIT License" } }), { status: 200 });
+    return repoAnswer(url);
+  }) as typeof fetch;
+}
+const repoJson = (login: string, name: string) => () => new Response(JSON.stringify({ name, owner: { login } }), { status: 200 });
+
+test("CLA-318 publish: GitHub's owner/repo casing is recorded in the index row; a failed lookup still publishes without it", async () => {
+  const urls: string[] = [];
+  assert.deepEqual(await resolveGithubRepositoryNames({ owner: "burntsushi", repo: "ripgrep", fetch: githubApi(repoJson("BurntSushi", "ripgrep"), urls) }), { ok: true, ownerLogin: "BurntSushi", repoName: "ripgrep" });
+  assert.equal(urls[0], "https://api.github.com/repos/burntsushi/ripgrep");
+  // Anything off is a reason, never a throw.
+  const reason = async (answer: () => Response | Promise<Response>) => {
+    const result = await resolveGithubRepositoryNames({ owner: "burntsushi", repo: "ripgrep", fetch: githubApi(answer) });
+    assert.equal(result.ok, false);
+    return (result as { reason: string }).reason;
+  };
+  assert.match(await reason(() => new Response("{}", { status: 404 })), /HTTP 404/);
+  assert.match(await reason(() => new Response("{}", { status: 403 })), /HTTP 403/);
+  assert.match(await reason(() => new Response("not json", { status: 200 })), /invalid JSON/);
+  assert.match(await reason(() => new Response(JSON.stringify({ name: "ripgrep" }), { status: 200 })), /no usable/);
+  assert.match(await reason(() => new Response(JSON.stringify({ name: "rip grep", owner: { login: "BurntSushi" } }), { status: 200 })), /no usable/);
+  assert.match(await reason(repoJson("SomeoneElse", "ripgrep")), /renamed or transferred/);
+  assert.match(await reason(() => { throw new Error("offline"); }), /lookup failed \(offline\)/);
+  assert.match((await resolveGithubRepositoryNames({ owner: "../x", repo: "y", fetch: githubApi(repoJson("x", "y")) }) as { reason: string }).reason, /cannot be looked up/);
+
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-names-"));
+  try {
+    createPublishedOperatorFixture(scanRoot);
+    const built = await preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: githubApi(repoJson("Acme", "Demo")) });
+    assert.deepEqual(built.githubNames, { ok: true, ownerLogin: "Acme", repoName: "Demo" });
+    assert.equal(built.indexEntry.owner, "acme");
+    assert.equal(built.indexEntry.ownerLogin, "Acme");
+    assert.equal(built.indexEntry.repoName, "Demo");
+    assert.equal(built.slug, FIXTURE_SLUG, "slugs never use GitHub's casing");
+    assert.equal("ownerLogin" in built.manifest, false, "the immutable manifest is unchanged (re-publishing a version stays byte-identical)");
+    const client = memoryStoreClient();
+    await publishBuiltVersion(built, client);
+    const row = (JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> }).repos[0]!;
+    assert.deepEqual([row.owner, row.repo, row.ownerLogin, row.repoName], ["acme", "demo", "Acme", "Demo"]);
+
+    // Lookup failure: the publish goes ahead, and the row keeps the names it already had.
+    const failed = await preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: githubApi(() => new Response("{}", { status: 500 })) });
+    assert.equal(failed.githubNames?.ok, false);
+    assert.equal("ownerLogin" in failed.indexEntry, false);
+    await publishBuiltVersion(failed, client);
+    const kept = (JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> }).repos[0]!;
+    assert.deepEqual([kept.ownerLogin, kept.repoName], ["Acme", "Demo"]);
+    // ...and so does a --set-latest row rebuilt from the manifest alone.
+    await setPublishedLatest({ repo: "acme/demo", versionId: built.versionId, client });
+    const rolled = (JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> }).repos[0]!;
+    assert.deepEqual([rolled.ownerLogin, rolled.repoName], ["Acme", "Demo"]);
+    // With no earlier row the failed lookup simply leaves the fields out.
+    const fresh = memoryStoreClient();
+    await publishBuiltVersion(failed, fresh);
+    const bare = (JSON.parse(fresh.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> }).repos[0]!;
+    assert.equal("ownerLogin" in bare, false);
+    // The licence is still the only hard refusal.
+    await assert.rejects(preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: async () => new Response("{}", { status: 404 }) }), /refusing to publish/);
+  } finally { rmSync(scanRoot, { recursive: true, force: true }); }
+});
+
+test("CLA-318 publish: --backfill-names fills missing names in index.json only; idempotent; dry run writes nothing; failures leave rows", async () => {
+  const row = (slug: string, owner: string, repo: string, extra: Record<string, unknown> = {}) => ({ slug, owner, repo, repositoryId: `repo:${slug}`, versionId: "v1", commitSha: FIXTURE_COMMIT, generatedAt: "g", entityCount: 1, publishedAt: "2026-09-30T00:00:00.000Z", license: FIXTURE_LICENSE, ...extra });
+  const original = {
+    schema: "okie.published-index/v1",
+    schemaVersion: 1,
+    repos: [
+      row("burnt-sushi__ripgrep", "burntsushi", "ripgrep"),
+      row("gone__repo", "gone", "repo"),
+      row("pmndrs__zustand", "pmndrs", "zustand", { ownerLogin: "pmndrs", repoName: "zustand" }),
+    ],
+  };
+  const client = memoryStoreClient();
+  client.objects.set(publishedIndexKey(), Buffer.from(`${JSON.stringify(original, null, 2)}\n`));
+  const urls: string[] = [];
+  const fetchImpl = githubApi(url => url.endsWith("/burntsushi/ripgrep") ? repoJson("BurntSushi", "ripgrep")() : new Response("{}", { status: 404 }), urls);
+
+  const dry = await backfillPublishedNames({ client, write: false, fetch: fetchImpl });
+  assert.deepEqual(dry.lines, [
+    "gone__repo: unchanged (GitHub answered HTTP 404)",
+    "pmndrs__zustand: already pmndrs/zustand",
+    "burnt-sushi__ripgrep: burntsushi/ripgrep → BurntSushi/ripgrep (dry run)",
+  ]);
+  assert.equal(dry.wrote, false);
+  assert.deepEqual(client.order, [], "a dry run writes nothing");
+  assert.deepEqual(urls, ["https://api.github.com/repos/burntsushi/ripgrep", "https://api.github.com/repos/gone/repo"], "rows that already have names are not looked up");
+
+  const first = await backfillPublishedNames({ client, write: true, fetch: fetchImpl });
+  assert.deepEqual([first.filled, first.alreadySet, first.failed, first.wrote], [1, 1, 1, true]);
+  assert.deepEqual(client.order, [publishedIndexKey()], "only index.json is written: no version, pointer or manifest");
+  const after = JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as typeof original & { repos: Array<Record<string, unknown>> };
+  assert.deepEqual(after.repos[0], { ...original.repos[0], ownerLogin: "BurntSushi", repoName: "ripgrep" });
+  assert.deepEqual(after.repos[1], original.repos[1], "a failed lookup leaves its row untouched");
+  assert.deepEqual(after.repos[2], original.repos[2]);
+  assert.equal(after.schema, original.schema);
+
+  // Idempotent: the second run looks up only the still-missing row and, with nothing new, does not rewrite.
+  client.order.length = 0;
+  urls.length = 0;
+  const second = await backfillPublishedNames({ client, write: true, fetch: fetchImpl });
+  assert.deepEqual([second.filled, second.alreadySet, second.failed, second.wrote], [0, 2, 1, false]);
+  assert.deepEqual(urls, ["https://api.github.com/repos/gone/repo"]);
+  assert.deepEqual(client.order, []);
+
+  // No index: nothing to do; a foreign index.json is refused, never rewritten.
+  assert.deepEqual((await backfillPublishedNames({ client: memoryStoreClient(), write: true, fetch: fetchImpl })).lines, ["no index.json in this store; nothing to backfill"]);
+  const foreign = memoryStoreClient();
+  foreign.objects.set(publishedIndexKey(), Buffer.from("{\"repos\":[]}"));
+  await assert.rejects(backfillPublishedNames({ client: foreign, write: true, fetch: fetchImpl }), /not a published index/);
+  assert.deepEqual(foreign.order, []);
+});
+
+test("CLA-318 publish: --backfill-names re-reads index.json before writing, so a publish during the lookups is kept", async () => {
+  const row = (slug: string, owner: string, repo: string, extra: Record<string, unknown> = {}) => ({ slug, owner, repo, repositoryId: `repo:${slug}`, versionId: "v1", commitSha: FIXTURE_COMMIT, generatedAt: "g", entityCount: 1, publishedAt: "2026-09-30T00:00:00.000Z", license: FIXTURE_LICENSE, ...extra });
+  const indexOf = (repos: unknown[]) => Buffer.from(`${JSON.stringify({ schema: "okie.published-index/v1", schemaVersion: 1, repos }, null, 2)}\n`);
+  const client = memoryStoreClient();
+  client.objects.set(publishedIndexKey(), indexOf([
+    row("burnt-sushi__ripgrep", "burntsushi", "ripgrep"),
+    row("sharkdp__bat", "sharkdp", "bat"),
+    row("sharkdp__fd", "sharkdp", "fd"),
+  ]));
+  // While GitHub is being asked, a concurrent publish lands: a new version of ripgrep, a brand-new atlas, bat re-published
+  // under a different owner spelling, and fd gains names from a newer publish.
+  let lookups = 0;
+  const fetchImpl = githubApi(url => {
+    lookups += 1;
+    if (lookups === 1) {
+      client.objects.set(publishedIndexKey(), indexOf([
+        row("burnt-sushi__ripgrep", "burntsushi", "ripgrep", { versionId: "v2" }),
+        row("new__atlas", "new", "atlas"),
+        row("sharkdp__bat", "SharkDP", "bat"),
+        row("sharkdp__fd", "sharkdp", "fd", { ownerLogin: "sharkdp", repoName: "fd", versionId: "v9" }),
+      ]));
+    }
+    const [, owner, repo] = /repos\/([^/]+)\/([^/]+)$/.exec(url)!;
+    return repoJson(owner === "burntsushi" ? "BurntSushi" : owner!, repo!)();
+  });
+  const result = await backfillPublishedNames({ client, write: true, fetch: fetchImpl });
+  assert.equal(result.wrote, true);
+  assert.equal(result.filled, 1);
+  const after = JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> };
+  assert.deepEqual(after.repos.map(value => value.slug), ["burnt-sushi__ripgrep", "new__atlas", "sharkdp__bat", "sharkdp__fd"], "the concurrently published row is kept");
+  assert.deepEqual(after.repos[0], { ...row("burnt-sushi__ripgrep", "burntsushi", "ripgrep", { versionId: "v2" }), ownerLogin: "BurntSushi", repoName: "ripgrep" }, "names land on the fresh row (new version kept)");
+  assert.equal("ownerLogin" in after.repos[1]!, false, "a row that was never looked up is untouched");
+  assert.equal("ownerLogin" in after.repos[2]!, false, "a row whose owner changed is not given stale names");
+  assert.equal(after.repos[3]!.versionId, "v9", "a row that gained names meanwhile is kept as is");
+  assert.ok(result.lines.includes("sharkdp__bat: skipped (the row changed or gained names during the backfill)"));
+  assert.ok(result.lines.includes("sharkdp__fd: skipped (the row changed or gained names during the backfill)"));
 });

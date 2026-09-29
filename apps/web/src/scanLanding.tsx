@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { SourceForMark } from './icons';
+import { publishedNamesFor } from './publishedNames';
 import { SiteFooter } from './siteFooter';
 import { enrichmentStageDetail, scanEntityCountCopy, type PublicEnrichment } from './scanJobEnrichment';
 import {
@@ -32,7 +33,14 @@ type PublicJob = {
   atlasPath: string;
 };
 
-type ManifestRepo = { slug: string; commitSha: string; entityCount: number };
+/** A row of /scan/index.json: a local ScanManifest entry, or a published row (owner/repo, and GitHub's casing since CLA-318). */
+type ManifestRepo = { slug: string; commitSha: string; entityCount: number; owner?: string; repo?: string; ownerLogin?: string; repoName?: string };
+
+/** `owner/repo` as the list shows it: GitHub's casing when the row has it, the stored names, else the slug. */
+export function publishedListLabel(row: ManifestRepo): string {
+  const names = publishedNamesFor(row);
+  return names ? `${names.owner}/${names.repo}` : row.slug.replace('__', '/');
+}
 
 const page: React.CSSProperties = {
   maxWidth: '680px',
@@ -388,7 +396,7 @@ export function ScanLandingScreen() {
               return (
                 <li key={repo.slug}>
                   {href
-                    ? <a href={href} style={{ color: '#79dfd4' }}>{repo.slug.replace('__', '/')}</a>
+                    ? <a href={href} style={{ color: '#79dfd4' }}>{publishedListLabel(repo)}</a>
                     : <span style={mutedStyle}>{repo.slug}</span>}
                   <span style={{ ...mutedStyle, fontSize: '0.85rem' }}> · {scanEntityCountCopy(repo.entityCount)} · {repo.commitSha.slice(0, 10)}</span>
                 </li>

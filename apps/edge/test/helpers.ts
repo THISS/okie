@@ -19,6 +19,7 @@ import type { Backend } from '../src/backend';
 import type { EdgeEnv } from '../src/env';
 import type { Guard } from '../src/guards';
 import { handleEdgeRequest, type EdgeDeps } from '../src/index';
+import { resetPublishedIndexCache } from '../src/publishedIndexCache';
 
 export const edgeEnv = env as unknown as EdgeEnv;
 
@@ -44,10 +45,13 @@ export type EdgeFetchOptions = {
   env?: Partial<EdgeEnv>;
   fetch?: typeof fetch;
   cache?: Cache | undefined;
+  /** Keep the per-isolate index.json cache from earlier requests (default: each request starts cold, as tests rewrite the bucket). */
+  keepIndexCache?: boolean;
 };
 
 export async function edgeFetch(input: string | Request, options: EdgeFetchOptions = {}): Promise<Response> {
   const request = typeof input === 'string' ? new Request(new URL(input, 'http://127.0.0.1:4196'), options.init) : input;
+  if (!options.keepIndexCache) resetPublishedIndexCache();
   const ctx = createExecutionContext();
   const deps: EdgeDeps = {
     backend: 'backend' in options ? options.backend : recordingBackend().backend,

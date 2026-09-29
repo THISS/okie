@@ -66,6 +66,18 @@ print a one-line note if they found one.
    build, asked for by a page loaded before a deploy) answers 404 `no-store` rather than the SPA shell. The cost is one
    Worker invocation per asset request (a pass-through; negligible on Workers Paid). Staging sets
    `ROBOTS_NOINDEX=1`: `X-Robots-Tag: noindex, nofollow` on every response and a disallow-all `/robots.txt`.
+   The Worker also sets the security headers on every response (CLA-318, `apps/web/src/securityHeaders.ts`):
+   `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` everywhere, and a
+   `Content-Security-Policy` on HTML only. Pages under `/r/...` have no `frame-ancestors`, because oEmbed iframes them
+   with `?embed=1` and `*` would still block file:, data:, blob: and sandboxed parents. Every other page has
+   `frame-ancestors 'self'`. There is no `X-Frame-Options`. The CSP already allows Cloudflare Web Analytics
+   (`static.cloudflareinsights.com` script, `cloudflareinsights.com` beacon). `vite preview` mirrors the headers;
+   `vite dev` never gets the CSP, because Vite's HMR uses inline scripts.
+   `/sitemap.xml` lists `/`, `/new` and every published atlas's canonical `/r/<slug owner>/<slug repo>` on
+   `OKIE_PUBLIC_ORIGIN`, with `lastmod` from `publishedAt`. It is served with `cache-control: public, max-age=300`.
+   The Worker builds it from `index.json`, which each Worker isolate reads from R2 at most once a minute (the same
+   cache serves the `/r` titles). A new publish can therefore take about a minute to appear in the sitemap, and up to
+   5 more minutes in shared caches. Production's `robots.txt` points to it.
 8. **First-deploy lessons (fresh account):**
    - Error **10063**: the account has no workers.dev subdomain yet. Open Workers & Pages in the dashboard once to
      create it, then deploy again.
@@ -90,6 +102,22 @@ pnpm publish:atlas --repo thiss/okie --env production --scan-root ~/sites/okie/f
   CC-BY-4.0"` (code MIT, docs CC-BY, e.g. facebook/docusaurus), `--license-override "Unlicense OR MIT"` (dual
   licence, e.g. BurntSushi/ripgrep). The attribution strip shows an expression as `licence: <expression>`. A version is
   immutable, so changing the licence of a published atlas needs a new operator publication (a new version id).
+- GitHub's casing: the publish also asks `GET api.github.com/repos/<owner>/<repo>` (unauthenticated) and records
+  `ownerLogin` / `repoName` in the index row (`BurntSushi` where `owner` is `burntsushi`). The attribution strip, the
+  `/new` list, and the `/r` title, oEmbed title and card text show that casing. Without it they show the stored names.
+  URLs keep the slug form. A failed lookup doesn't stop the publish: the row keeps the names it already had, or goes
+  without. To fill rows published before CLA-318, run the one-off backfill. It rewrites `index.json` only: no new
+  versions, pointers or manifests. Rows that already have both names are skipped, and a failed lookup leaves its
+  row unchanged:
+
+  ```sh
+  pnpm publish:atlas --env staging --backfill-names --dry-run   # reads the env's index.json, prints one line per row, writes nothing
+  pnpm publish:atlas --env staging --backfill-names
+  pnpm publish:atlas --env production --backfill-names --yes
+  ```
+
+  `--env local [--persist-to <dir>]` runs against the local bucket, and `--dry-run --out <dir>` runs against a
+  directory store. Don't publish while it runs: it reads, then rewrites `index.json`.
 - Share URLs: `/r/<owner>/<repo>` resolves through the scan slugger (`BurntSushi` → `burnt-sushi`). A URL that misses
   but matches a published row once case and punctuation are ignored (`/r/burntsushi/ripgrep`) 301s to the canonical
   `/r/<slug owner>/<slug repo>`.
@@ -125,6 +153,12 @@ Then run the smoke checks against staging:
   `/oembed?url=https://staging.sourcefor.dev/r/<owner>/<repo>`.
 - On `/r/<owner>/<repo>`: no Ask button, panel or ⌘↵ shortcut; no account menu; the attribution strip at the bottom
   shows the repository, commit and licence, linking to GitHub (it is hidden in embeds).
+- Headers: `curl -sI <origin>/ | grep -iE 'content-security|x-content-type|referrer-policy'` shows all three
+  with `frame-ancestors 'self'`. `curl -sI <origin>/r/<owner>/<repo>` shows a CSP without `frame-ancestors`. A JSON or asset
+  response has `nosniff` and no CSP. In a browser, the console on `/`, `/new` and `/r/<owner>/<repo>` (and in an embed)
+  shows no `Refused to …` CSP errors.
+- `curl -s <origin>/sitemap.xml` lists `/`, `/new` and each published atlas (`content-type: application/xml`).
+  Production's `/robots.txt` ends with `Sitemap: https://sourcefor.dev/sitemap.xml`.
 - `/scan/index.json`, `/api/auth/me` (`{ mode: "public", ask: false }`), `/api/ask` (`{ connected: false }`).
 - `curl -s -o /dev/null -w '%{http_code}' <origin>/assets/missing.js` answers `404`, and `curl -sI` on a real chunk
   from the page (`<origin>/assets/index-<hash>.js`) still shows `cache-control: public, max-age=31536000, immutable`
@@ -133,6 +167,9 @@ Then run the smoke checks against staging:
   production serves the allow-all `robots.txt` from the web build.
 - `curl -sI -H 'accept-encoding: gzip' '<origin>/scan/<slug>/neighborhood.json'`: `content-encoding: gzip`,
   `vary: Accept-Encoding`.
+  The pack must be decompressed exactly once:
+  `curl -s --compressed '<origin>/scan/<slug>/neighborhood.json' | node -e 'JSON.parse(require("fs").readFileSync(0, "utf8")); console.log("ok")'`
+  prints `ok`. A double-gzipped body fails to parse.
 - Open "View full source" in the inspector once. `source.json` fetches the file from GitHub raw at the pinned commit
   and caches the raw file in the Cache API (a year, keyed by repo + commit + path). When GitHub is down or
   rate-limiting, an uncached file answers 502 "Historical source is unavailable right now. The saved excerpt remains

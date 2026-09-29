@@ -326,6 +326,8 @@ function drawMapPreview(
 export type AtlasCardInput = {
   owner: string;
   repo: string;
+  /** CLA-318: names printed on the card (GitHub's casing); `owner`/`repo` still seed the map preview. */
+  label?: { owner: string; repo: string };
 };
 
 /**
@@ -339,7 +341,8 @@ export function atlasCardLayout(input: AtlasCardInput): {
   width: number;
   height: number;
 } {
-  const title = `${input.owner}/${input.repo}`;
+  const shown = input.label ?? input;
+  const title = `${shown.owner}/${shown.repo}`;
   return {
     brand: 'SOURCE FOR',
     title: title.length > 22 ? `${title.slice(0, 21)}…` : title,
