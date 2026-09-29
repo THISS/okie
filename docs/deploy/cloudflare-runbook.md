@@ -85,8 +85,14 @@ pnpm publish:atlas --repo thiss/okie --env production --scan-root ~/sites/okie/f
 - The operator store is read-only here: the script never takes the lock and never writes.
 - Licence first: it asks the GitHub licence API for the repository at the published commit (unauthenticated) and records
   `{ spdxId, name, url }` in the manifest and the index row. No licence file, GitHub's `NOASSERTION`, or a failed lookup
-  refuses the publish. After checking the repository's terms by hand, pass `--license-override <SPDX id>` (no lookup,
-  no URL).
+  refuses the publish. After checking the repository's terms by hand, pass `--license-override` with an SPDX id or an
+  SPDX expression (no lookup, no URL). Quote expressions and use upper-case operators: `--license-override "MIT AND
+  CC-BY-4.0"` (code MIT, docs CC-BY, e.g. facebook/docusaurus), `--license-override "Unlicense OR MIT"` (dual
+  licence, e.g. BurntSushi/ripgrep). The attribution strip shows an expression as `licence: <expression>`. A version is
+  immutable, so changing the licence of a published atlas needs a new operator publication (a new version id).
+- Share URLs: `/r/<owner>/<repo>` resolves through the scan slugger (`BurntSushi` → `burnt-sushi`). A URL that misses
+  but matches a published row once case and punctuation are ignored (`/r/burntsushi/ripgrep`) 301s to the canonical
+  `/r/<slug owner>/<slug repo>`.
 - It uploads the version's `public/` files, `private/operator-explanations.json`, the packs,
   `packs/source-paths.json` (the paths the pinned source view may fetch) and `manifest.json`, then moves `latest.json`,
   then rewrites `index.json`. An unreadable remote `index.json` fails the publish before anything is uploaded.

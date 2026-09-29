@@ -2,7 +2,7 @@
 // CLA-266: publish one repository's CURRENT operator publication to the published-atlas R2 store.
 //
 //   pnpm publish:atlas --repo owner/name --env staging|production|local [--scan-root <dir>] [--dry-run [--out <dir>]]
-//                      [--persist-to <dir>] [--license-override <SPDX>] [--yes]
+//                      [--persist-to <dir>] [--license-override <SPDX id or expression>] [--yes]
 //   pnpm publish:atlas --repo owner/name --env <env> --set-latest <versionId> [--out <dir>] [--persist-to <dir>] [--yes]
 //
 // Reads the operator store read-only (never takes its lock, never writes). Looks up the upstream licence (GitHub
@@ -23,7 +23,7 @@ const dist = join(repoRoot, "apps/server/dist");
 
 function usage(message) {
   if (message) process.stderr.write(`publish:atlas: ${message}\n`);
-  process.stderr.write("usage: pnpm publish:atlas --repo owner/name --env staging|production|local [--scan-root <dir>] [--dry-run [--out <dir>]] [--persist-to <dir>] [--license-override <SPDX>] [--yes]\n");
+  process.stderr.write("usage: pnpm publish:atlas --repo owner/name --env staging|production|local [--scan-root <dir>] [--dry-run [--out <dir>]] [--persist-to <dir>] [--license-override <SPDX id or expression>] [--yes]\n");
   process.stderr.write("       pnpm publish:atlas --repo owner/name --env staging|production|local --set-latest <versionId> [--dry-run --out <dir>] [--persist-to <dir>] [--yes]\n");
   process.exit(2);
 }

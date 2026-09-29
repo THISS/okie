@@ -19,6 +19,7 @@ import {
   createDirectoryStoreClient,
   createWranglerStoreClient,
   gzipMember,
+  normalizeSpdxLicenseOverride,
   preparePublishedVersion,
   PUBLISH_BUCKETS,
   publishBuiltVersion,
@@ -224,6 +225,8 @@ test("CLA-266 publish: licence from the GitHub licence API at the pinned commit,
   assert.deepEqual(await resolvePublishedLicense({ ...at, override: "NOASSERTION", fetch: github(404, {}) }), { spdxId: "NOASSERTION", name: "NOASSERTION" });
   assert.equal(requests.length, before, "an override skips the lookup");
   await assert.rejects(resolvePublishedLicense({ ...at, override: "MIT; rm -rf" }), /SPDX id/);
+  assert.deepEqual(await resolvePublishedLicense({ ...at, override: "  MIT   AND CC-BY-4.0 " }), { spdxId: "MIT AND CC-BY-4.0", name: "MIT AND CC-BY-4.0" });
+  await assert.rejects(resolvePublishedLicense({ ...at, override: "MIT and CC-BY-4.0" }), /SPDX expression/);
 
   // End to end: the resolved licence lands in the manifest and the index row.
   const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-license-"));
@@ -335,4 +338,23 @@ test("CLA-266 publish: an ambiguous wrangler get never reads as missing, so inde
   // Exit 0 without a downloaded file is not "missing" either.
   const noFile = createWranglerStoreClient({ env: "staging", run: async () => ({ code: 0, stdout: "", stderr: "" }), childEnv: {} });
   await assert.rejects(noFile.get("atlas/v1/index.json"), /no file written/);
+});
+
+test("CLA-266 publish: licence overrides accept SPDX expressions, normalised, and nothing else", () => {
+  const ok: Array<[string, string]> = [
+    ["MIT", "MIT"],
+    ["NOASSERTION", "NOASSERTION"],
+    ["MIT AND CC-BY-4.0", "MIT AND CC-BY-4.0"],
+    ["Unlicense OR MIT", "Unlicense OR MIT"],
+    ["( MIT  OR Apache-2.0 )AND CC-BY-4.0", "(MIT OR Apache-2.0) AND CC-BY-4.0"],
+    ["GPL-2.0-only WITH Classpath-exception-2.0", "GPL-2.0-only WITH Classpath-exception-2.0"],
+    ["LicenseRef-Custom OR MIT", "LicenseRef-Custom OR MIT"],
+    ["( (MIT) )", "((MIT))"],
+  ];
+  for (const [raw, want] of ok) assert.equal(normalizeSpdxLicenseOverride(raw), want, raw);
+  for (const bad of [
+    "", "   ", "MIT and Apache-2.0", "MIT OR", "AND MIT", "MIT AND AND Apache-2.0", "(MIT", "MIT)", "()",
+    "MIT WITH", "MIT WITH Apache-2.0 WITH Foo", "NOASSERTION OR MIT", "MIT; rm -rf", "MIT <b>", "MIT/Apache-2.0",
+    `MIT ${"OR MIT ".repeat(40)}`,
+  ]) assert.equal(normalizeSpdxLicenseOverride(bad), undefined, JSON.stringify(bad));
 });

@@ -60,7 +60,10 @@ export interface PublishedFileEntry { bytes: number; sha256: string }
 
 /** Upstream licence recorded at publish time (GitHub licence API at the pinned commit), shown as attribution. */
 export interface PublishedLicense {
-  /** SPDX id, e.g. "MIT"; "NOASSERTION" only when the operator explicitly overrode a missing licence. */
+  /**
+   * SPDX id, e.g. "MIT", or (operator override only) an SPDX expression such as "MIT AND CC-BY-4.0";
+   * "NOASSERTION" only when the operator explicitly overrode a missing licence.
+   */
   spdxId: string;
   name: string;
   /** Licence file URL pinned to the published commit. */

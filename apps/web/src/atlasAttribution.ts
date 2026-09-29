@@ -38,6 +38,8 @@ function httpsUrl(value: unknown): string | undefined {
 }
 
 function licenceLabel(spdxId: string, name: string): string {
+  // An SPDX expression ("MIT AND CC-BY-4.0", "Unlicense OR MIT") reads as a list, not an adjective.
+  if (spdxId && /\s/.test(spdxId)) return `licence: ${spdxId}`;
   if (spdxId && spdxId !== 'NOASSERTION') return `${spdxId} licence`;
   return name ? name : 'Licence not asserted';
 }
