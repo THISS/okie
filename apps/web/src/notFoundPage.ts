@@ -1,5 +1,5 @@
 import { parseAppRoute } from './renderer/route';
-import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, GITHUB_REPO_URL, PRODUCT_NAME, SITE_NAME } from './siteMeta';
+import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, GITHUB_REPO_URL, PRODUCT_NAME, SITE_HOME_HREF, SITE_HOME_LABEL, SITE_NAME } from './siteMeta';
 
 /**
  * Branded 404 (CLA-318). One self-contained HTML page (inline CSS and SVG, no script, noindex) that
@@ -51,7 +51,29 @@ export function siteFooterHtml(): string {
   return `<footer class="site-footer" id="about" aria-label="About ${SITE_NAME}">
       <p>${ATLAS_LICENCE_NOTE.replace('’', '&rsquo;')}</p>
       <p><a href="${GITHUB_REPO_URL}" rel="noopener noreferrer">${SITE_NAME} on GitHub</a> · Contact <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
+      ${SITE_CREDIT_HTML}
     </footer>`;
+}
+
+/**
+ * CLA-269 fine-print credit (static pages; siteFooter.tsx renders the same). #97a5a0 on the #070a0b
+ * page ground is 7.76:1 (WCAG AA for small text needs 4.5:1); the link inherits it and is underlined.
+ * Pages that use siteFooterHtml include {@link SITE_FOOTER_CSS}.
+ */
+export const SITE_CREDIT_HTML = `<p class="site-credit">${CREDIT_LEAD}<a href="${CREDIT_URL}" rel="${CREDIT_REL}">${CREDIT_LINK_TEXT}</a></p>`;
+
+/** Shared static-page CSS for the brand home link's focus ring and the footer credit. */
+export const SITE_FOOTER_CSS = '.site-footer a:focus-visible,a.brand:focus-visible{outline:2px solid #79dfd4;outline-offset:2px;border-radius:4px}'
+  + '.site-footer .site-credit{margin:.35rem 0 0;color:#97a5a0;font-size:.72rem;line-height:1.5}'
+  + '.site-footer .site-credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}';
+
+/**
+ * The brand mark + wordmark as a link home (static pages). `current` marks it on the home page itself:
+ * there it has no aria-label, so its name is the visible wordmark and `aria-current` says it is home.
+ */
+export function siteBrandLinkHtml(className: string, current = false): string {
+  const naming = current ? ' aria-current="page"' : ` aria-label="${SITE_HOME_LABEL}"`;
+  return `<a class="${className}" href="${SITE_HOME_HREF}"${naming}>${SOURCE_FOR_MARK_SVG}<span><strong>${BRAND_NAME}</strong> <span>${PRODUCT_NAME}</span></span></a>`;
 }
 
 export function notFoundPageHtml(kind: NotFoundKind = 'page'): string {
@@ -81,11 +103,12 @@ export function notFoundPageHtml(kind: NotFoundKind = 'page'): string {
       nav a:hover{border-color:#79dfd4}
       .site-footer{max-width:640px;margin:0 auto;padding:1.5rem 1.5rem 3rem;border-top:1px solid #1d2a28;font-size:.85rem;display:grid;gap:.4rem}
       .site-footer a{color:#79dfd4}
+      ${SITE_FOOTER_CSS}
     </style>
   </head>
   <body>
     <main data-not-found="${kind}">
-      <a class="brand" href="/" aria-label="${SITE_NAME} home">${SOURCE_FOR_MARK_SVG}<span><strong>${BRAND_NAME}</strong> <span>${PRODUCT_NAME}</span></span></a>
+      ${siteBrandLinkHtml('brand')}
       <p class="code">404</p>
       <h1>${copy.heading}</h1>
       <p>${copy.body}</p>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { SourceForMark } from './icons';
 import { publishedNamesFor } from './publishedNames';
 import { SiteFooter } from './siteFooter';
+import { SITE_HOME_HREF, SITE_HOME_LABEL } from './siteMeta';
 import { enrichmentStageDetail, scanEntityCountCopy, type PublicEnrichment } from './scanJobEnrichment';
 import {
   bindScanLandingActions,
@@ -268,7 +269,7 @@ export function ScanLandingScreen() {
   return (
     <>
     <main data-auth-state={auth ? (signedIn ? 'signed-in' : 'signed-out') : 'unknown'} data-public-mode={chrome.publicMode ? 'true' : undefined} style={page}>
-      <a aria-label="Source For Atlas home" data-testid="site-brand" href="/" style={brandStyle}>
+      <a aria-label={SITE_HOME_LABEL} data-testid="site-brand" href={SITE_HOME_HREF} style={brandStyle}>
         <SourceForMark size={30}/>
         <span><strong style={{ fontWeight: 600 }}>Source For</strong> <span style={{ color: '#97a5a0' }}>Atlas</span></span>
       </a>

@@ -2,10 +2,10 @@ import { readdirSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
-import { isKnownAppPath, NOT_FOUND_CACHE_CONTROL, notFoundHttpOutput, notFoundPageHtml } from './notFoundPage';
+import { isKnownAppPath, NOT_FOUND_CACHE_CONTROL, notFoundHttpOutput, notFoundPageHtml, SITE_CREDIT_HTML, SITE_FOOTER_CSS, siteBrandLinkHtml, siteFooterHtml } from './notFoundPage';
 import { handlePublicAtlasRoute } from './publicAtlasRoutes';
 import { scrollToLocationHash } from './scanLanding';
-import { NotFoundScreen, SiteFooter } from './siteFooter';
+import { NotFoundScreen, SiteBrand, SiteFooter } from './siteFooter';
 import { ATLAS_LICENCE_NOTE, CONTACT_EMAIL, GITHUB_REPO_URL } from './siteMeta';
 
 describe('CLA-318 route classification', () => {
@@ -101,5 +101,62 @@ describe('CLA-318 /new#about', () => {
     expect(scrollToLocationHash(doc, '#')).toBe(false);
     expect(scrollToLocationHash(doc, '#%E0%A4%A')).toBe(false);
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('CLA-269 brand home link and footer credit', () => {
+  const brandLink = /<a class="brand" href="\/" aria-label="Source For Atlas — home"><svg aria-hidden="true"/;
+  const credit = 'Brought to you by the guy who made <a href="https://clabrate.com" rel="noopener"';
+
+  it('static 404: the brand links home (not marked current) and the footer carries the credit', () => {
+    const html = notFoundPageHtml();
+    expect(html).toMatch(brandLink);
+    expect(html).not.toContain('aria-current');
+    expect(html).toContain(credit);
+    expect(html).toContain('a.brand:focus-visible');
+    expect(html).toContain('.site-footer .site-credit{margin:.35rem 0 0;color:#97a5a0;font-size:.72rem');
+  });
+
+  it('static brand link: labelled "— home" off the home page; on home, named by its wordmark and marked current', () => {
+    expect(siteBrandLinkHtml('brand')).toMatch(/^<a class="brand" href="\/" aria-label="Source For Atlas — home"><svg /);
+    const home = siteBrandLinkHtml('brand', true);
+    expect(home).toMatch(/^<a class="brand" href="\/" aria-current="page"><svg /);
+    expect(home).not.toContain('aria-label');
+    // Accessible name from content: the SVG is aria-hidden, so the text is the wordmark.
+    expect(home).toContain('<svg aria-hidden="true"');
+    expect(home.replace(/<svg[\s\S]*?<\/svg>/, '').replace(/<[^>]+>/g, '')).toBe('Source For Atlas');
+  });
+
+  it('static footer: exact credit wording, link and rel', () => {
+    expect(SITE_CREDIT_HTML).toBe('<p class="site-credit">Brought to you by the guy who made <a href="https://clabrate.com" rel="noopener">clabrate.com</a></p>');
+    expect(siteFooterHtml()).toContain(SITE_CREDIT_HTML);
+  });
+
+  it('React footer: same credit, muted fine print, underlined link', () => {
+    const html = renderToStaticMarkup(createElement(SiteFooter));
+    expect(html).toContain('<p class="site-credit" data-testid="site-credit" style="margin:0.35rem 0 0;color:#97a5a0;font-size:0.72rem;line-height:1.5">Brought to you by the guy who made <a href="https://clabrate.com" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:2px">clabrate.com</a></p>');
+  });
+
+  it('React brand (in-app 404, mobile notice) links home with the home label', () => {
+    const html = renderToStaticMarkup(createElement(SiteBrand));
+    expect(html).toMatch(/^<a aria-label="Source For Atlas — home" data-testid="site-brand" href="\/" style="[^"]*text-decoration:none"><svg aria-hidden="true"/);
+    expect(renderToStaticMarkup(createElement(NotFoundScreen))).toContain('aria-label="Source For Atlas — home" data-testid="site-brand" href="/"');
+  });
+
+  it('the credit colour meets WCAG AA for small text on the page ground', () => {
+    const luminance = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    // Read both colours from what the pages ship: the static 404's page ground and the shared credit CSS,
+    // plus the React footer's inline credit colour.
+    const ground = notFoundPageHtml().match(/html,body\{[^}]*background:(#[0-9a-f]{6})/)?.[1];
+    const staticCredit = SITE_FOOTER_CSS.match(/\.site-credit\{[^}]*color:(#[0-9a-f]{6})/)?.[1];
+    const reactCredit = renderToStaticMarkup(createElement(SiteFooter)).match(/class="site-credit"[^>]*color:(#[0-9a-f]{6})/)?.[1];
+    expect(ground).toBeDefined();
+    expect(staticCredit).toBeDefined();
+    expect(reactCredit).toBe(staticCredit);
+    const ratio = (luminance(staticCredit!) + 0.05) / (luminance(ground!) + 0.05);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 });

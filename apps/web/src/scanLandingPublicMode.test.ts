@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { loadLandingSession, ScanLandingScreen, scanLandingChrome } from './scanLanding';
-import { CONTACT_EMAIL, GITHUB_REPO_URL } from './siteMeta';
+import { CONTACT_EMAIL, CREDIT_URL, GITHUB_REPO_URL } from './siteMeta';
 
 describe('scan landing hosted public mode (CLA-266)', () => {
   it('hides scanning, sign-in and operator chrome when /api/auth/me says mode "public"', () => {
@@ -41,5 +41,11 @@ describe('scan landing hosted public mode (CLA-266)', () => {
     expect(html).toContain(`href="${GITHUB_REPO_URL}"`);
     expect(html).toContain(CONTACT_EMAIL);
     expect(html).toContain('under its own licence');
+    expect(html).toContain(`href="${CREDIT_URL}"`);
+  });
+
+  it('links the brand mark and wordmark home (CLA-269)', () => {
+    const html = renderToStaticMarkup(createElement(ScanLandingScreen));
+    expect(html).toMatch(/<a aria-label="Source For Atlas — home" data-testid="site-brand" href="\/"[^>]*><svg aria-hidden="true"/);
   });
 });

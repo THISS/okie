@@ -7,10 +7,12 @@ import {
   WEBGPU_ADAPTER_TIMEOUT_MS,
   withDeadline,
 } from '../embedCanvas';
-import { initialInspectorOpen, isEmbedChrome, isEmbedQueryFlag } from '../embedChrome';
+// Also App.tsx's import point for the embed-chrome helpers (brandHomeLinkProps, initialInspectorOpen, isEmbedChrome, ...).
+import { brandHomeLinkProps, initialInspectorOpen, isEmbedChrome, isEmbedQueryFlag } from '../embedChrome';
 
 export {
   autoGpuAttemptOrder,
+  brandHomeLinkProps,
   EMBED_FRAME_IDLE_KICK_MS,
   initialInspectorOpen,
   isEmbedChrome,

@@ -1,7 +1,7 @@
 import { isFramedBrowsingContext } from './embedCanvas';
 import { isEmbedChrome, isEmbedQueryFlag } from './embedChrome';
 import { publishedNamesFor, publishedRowForSlug } from './publishedNames';
-import { repoPageTitle } from './siteMeta';
+import { CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, repoPageTitle } from './siteMeta';
 
 /**
  * CLA-266 attribution for published atlases. Every `/r/<owner>/<repo>` page whose atlas came from a
@@ -78,10 +78,11 @@ export function atlasAttributionFor(index: unknown, slug: string): PublishedAtla
 
 /** The strip's words, in order, as plain text (also its accessible description). */
 export function attributionText(attribution: PublishedAtlasAttribution): string {
-  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub · About`;
+  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub · About · ${CREDIT_LEAD}${CREDIT_LINK_TEXT}`;
 }
 
-type Part = string | { text: string; href: string; code?: boolean; internal?: boolean };
+type Link = { text: string; href: string; code?: boolean; internal?: boolean; rel?: string };
+type Part = string | Link | { credit: Part[] };
 
 /** CLA-318: the strip's one site link: the home page's footer (GitHub, contact, licence note; CLA-269). Keeps the canvas uncluttered. */
 export const ATTRIBUTION_ABOUT_HREF = '/#about';
@@ -98,7 +99,42 @@ function parts(attribution: PublishedAtlasAttribution): Part[] {
     { text: 'source on GitHub', href: attribution.treeUrl },
     ' · ',
     { text: 'About', href: ATTRIBUTION_ABOUT_HREF, internal: true },
+    ' · ',
+    // CLA-269: the site footer's fine-print credit (same words, href and rel), trailing the strip's one line.
+    { credit: [CREDIT_LEAD, { text: CREDIT_LINK_TEXT, href: CREDIT_URL, rel: CREDIT_REL }] },
   ];
+}
+
+export const ATTRIBUTION_CREDIT_CLASS = 'atlas-attribution-credit';
+
+function appendParts(doc: Document, parent: HTMLElement, list: readonly Part[]): void {
+  for (const part of list) {
+    if (typeof part === 'string') {
+      parent.append(doc.createTextNode(part));
+      continue;
+    }
+    if ('credit' in part) {
+      const credit = doc.createElement('span');
+      credit.className = ATTRIBUTION_CREDIT_CLASS;
+      appendParts(doc, credit, part.credit);
+      parent.append(credit);
+      continue;
+    }
+    const link = doc.createElement('a');
+    link.href = part.href;
+    if (!part.internal) {
+      link.target = '_blank';
+      link.rel = part.rel ?? 'noopener noreferrer';
+    }
+    if (part.code) {
+      const code = doc.createElement('code');
+      code.textContent = part.text;
+      link.append(code);
+    } else {
+      link.textContent = part.text;
+    }
+    parent.append(link);
+  }
 }
 
 export const ATTRIBUTION_ATTRIBUTE = 'data-atlas-attribution';
@@ -111,26 +147,7 @@ export function renderAtlasAttribution(doc: Document, attribution: PublishedAtla
   footer.setAttribute('aria-label', 'Atlas attribution');
   footer.dataset.testid = 'atlas-attribution';
   const line = doc.createElement('p');
-  for (const part of parts(attribution)) {
-    if (typeof part === 'string') {
-      line.append(doc.createTextNode(part));
-      continue;
-    }
-    const link = doc.createElement('a');
-    link.href = part.href;
-    if (!part.internal) {
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-    }
-    if (part.code) {
-      const code = doc.createElement('code');
-      code.textContent = part.text;
-      link.append(code);
-    } else {
-      link.textContent = part.text;
-    }
-    line.append(link);
-  }
+  appendParts(doc, line, parts(attribution));
   footer.append(line);
   doc.body.append(footer);
   doc.documentElement.setAttribute(ATTRIBUTION_ATTRIBUTE, '');

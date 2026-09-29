@@ -68,7 +68,7 @@ describe('published atlas attribution (CLA-266)', () => {
       licenceLabel: 'MIT licence',
       licenceUrl: `https://github.com/pmndrs/zustand/blob/${SHA}/LICENSE`,
     });
-    expect(attributionText(attribution!)).toBe('Source For Atlas · zustand by pmndrs · commit 4f1c2a9 · MIT licence · source on GitHub · About');
+    expect(attributionText(attribution!)).toBe('Source For Atlas · zustand by pmndrs · commit 4f1c2a9 · MIT licence · source on GitHub · About · Brought to you by the guy who made clabrate.com');
   });
 
   it('renders nothing for rows that are not publications or are malformed', () => {
@@ -106,7 +106,15 @@ describe('published atlas attribution (CLA-266)', () => {
       ['source on GitHub', `https://github.com/pmndrs/zustand/tree/${SHA}`, 'noopener noreferrer'],
       // CLA-318: the one site link, to the home page's footer (GitHub, contact, licence note; CLA-269), same tab.
       ['About', '/#about', 'undefined'], // no rel: same tab
+      // CLA-269: the site footer's credit, same words, href and rel.
+      ['clabrate.com', 'https://clabrate.com', 'noopener'],
     ]);
+    expect(page.text(footer as never)).toMatch(/ · About · Brought to you by the guy who made clabrate\.com$/);
+    const line = (footer as unknown as { children: Array<{ children: Array<{ tag?: string; className?: string }> }> }).children[0]!;
+    const credit = line.children.at(-1)!;
+    expect(credit).toMatchObject({ tag: 'span', className: 'atlas-attribution-credit' });
+    expect(page.text(credit as never)).toBe('Brought to you by the guy who made clabrate.com');
+    expect(page.links(credit as never)).toEqual([{ text: 'clabrate.com', href: 'https://clabrate.com', rel: 'noopener' }]);
     expect(page.root.attrs['data-atlas-attribution']).toBe('');
 
     const embed = fakeDocument();
@@ -150,6 +158,31 @@ describe('published atlas attribution (CLA-266)', () => {
     (none.doc as unknown as { title: string }).title = 'boot title';
     await installPublishedAtlasAttribution('nobody__here', { fetch: storedIndex, doc: none.doc, search: '', framed: false });
     expect((none.doc as unknown as { title: string }).title).toBe('boot title');
+  });
+
+  it('CLA-269 credit: muted fine print on the strip, AA contrast on its real background, never widens the page', () => {
+    const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
+    const tokens = readFileSync(new URL('../../../packages/theme/src/tokens.css', import.meta.url), 'utf8');
+    const rule = (selector: string) => css.match(new RegExp(`(?:^|\\n)${selector.replace(/\./g, '\\.')} \\{([^}]*)\\}`))?.[1] ?? '';
+    const token = (name: string) => tokens.match(new RegExp(`--${name}: (#[0-9a-f]{6});`))?.[1];
+    const strip = rule('.atlas-attribution');
+    const credit = rule('.atlas-attribution-credit');
+    expect(credit).toContain('color: var(--atlas-muted);');
+    expect(rule('.atlas-attribution .atlas-attribution-credit a')).toContain('color: inherit;');
+    // The strip's own background and the credit's colour, read from the tokens the page uses.
+    const bg = strip.match(/background: var\(--([a-z-]+)\);/)?.[1];
+    const fg = credit.match(/color: var\(--([a-z-]+)\);/)?.[1];
+    expect(bg).toBe('atlas-bg-raised');
+    const luminance = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+    };
+    const ratio = (luminance(token(fg!)!) + 0.05) / (luminance(token(bg!)!) + 0.05);
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+    // Narrow widths: the one line scrolls inside the strip (nowrap + overflow-x), the strip is pinned to both edges.
+    expect(rule('.atlas-attribution p')).toMatch(/min-width: 0;.*overflow-x: auto; white-space: nowrap;/);
+    expect(strip).toMatch(/right: 0; bottom: 0; left: 0;/);
+    expect(credit).not.toMatch(/white-space|width/);
   });
 
   it('reserves its height in the layout instead of overlapping the canvas controls', () => {

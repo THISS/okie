@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { SourceForMark } from './icons';
 import { NOT_FOUND_COPY, type NotFoundKind } from './notFoundPage';
-import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, GITHUB_REPO_URL, PRODUCT_NAME, SITE_NAME } from './siteMeta';
+import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, GITHUB_REPO_URL, PRODUCT_NAME, SITE_HOME_HREF, SITE_HOME_LABEL, SITE_NAME } from './siteMeta';
 
 /**
  * Site footer / about (CLA-318) for the document-style pages (the `/new` landing, the in-app 404).
@@ -23,6 +23,9 @@ const footerStyle: CSSProperties = {
   overflowWrap: 'anywhere',
 };
 const linkStyle: CSSProperties = { color: '#79dfd4' };
+/** CLA-269 fine print: #97a5a0 on the #070a0b page ground is 7.76:1 (AA small text needs 4.5:1). Focus ring: app.css a:focus-visible. */
+const creditStyle: CSSProperties = { margin: '0.35rem 0 0', color: '#97a5a0', fontSize: '0.72rem', lineHeight: 1.5 };
+const creditLinkStyle: CSSProperties = { color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' };
 
 export function SiteFooter() {
   return <footer aria-label={`About ${SITE_NAME}`} data-testid="site-footer" id="about" style={footerStyle}>
@@ -32,11 +35,15 @@ export function SiteFooter() {
       {' · Contact '}
       <a href={`mailto:${CONTACT_EMAIL}`} style={linkStyle}>{CONTACT_EMAIL}</a>
     </p>
+    <p className="site-credit" data-testid="site-credit" style={creditStyle}>
+      {CREDIT_LEAD}<a href={CREDIT_URL} rel={CREDIT_REL} style={creditLinkStyle}>{CREDIT_LINK_TEXT}</a>
+    </p>
   </footer>;
 }
 
+/** The brand mark + wordmark, linking home (CLA-269). */
 export function SiteBrand({ size = 30 }: { size?: number }) {
-  return <a aria-label={`${SITE_NAME} home`} data-testid="site-brand" href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', color: '#f1f7f4', fontSize: '1rem', letterSpacing: '-0.02em', textDecoration: 'none' }}>
+  return <a aria-label={SITE_HOME_LABEL} data-testid="site-brand" href={SITE_HOME_HREF} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', color: '#f1f7f4', fontSize: '1rem', letterSpacing: '-0.02em', textDecoration: 'none' }}>
     <SourceForMark size={size}/>
     <span><strong style={{ fontWeight: 600 }}>{BRAND_NAME}</strong> <span style={{ color: '#97a5a0' }}>{PRODUCT_NAME}</span></span>
   </a>;
