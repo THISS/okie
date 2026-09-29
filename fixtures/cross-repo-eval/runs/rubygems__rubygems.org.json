@@ -1,0 +1,619 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "rubygems__rubygems.org",
+  "repository": "rubygems/rubygems.org",
+  "commitSha": "fd828b37546d331f1104d44c1824e8ad2fcdb96f",
+  "preparedCommitSha": "cd36d273c34b53c75186f7127eab18d9b76cef09",
+  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (.claude/skills): \"symlink/submodule is unsupported\".", "droppedPaths": 21 },
+  "scan": {
+    "asIs": { "revision": "fd828b37546d331f1104d44c1824e8ad2fcdb96f", "ok": false, "ms": 46, "error": "Committed source requires materialized files; symlink/submodule is unsupported: .claude/skills" },
+    "prepared": {
+      "revision": "cd36d273c34b53c75186f7127eab18d9b76cef09",
+      "ok": true,
+      "ms": 17648,
+      "entities": 251,
+      "relations": 284,
+      "kinds": { "code": 211, "component": 38, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:rubygems-rubygems-org", "name": "rubygems_rubygems.org", "components": 38 }
+      ],
+      "signals": { "entities": 251, "containers": 1, "components": 38, "files": 40, "maxDepth": 3, "medianDepth": 3, "language": "Ruby" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:11:00.024Z",
+    "corpus": "sampled-enriched",
+    "entityCount": 251,
+    "systemNames": ["rubygems.org"],
+    "paths": ["app/javascript/controllers/gem_scope_controller.js", "app/javascript/controllers/application.js", "vendor/javascript/@hotwired--stimulus.js", "vendor/javascript/jquery.js", "vendor/javascript/@rails--ujs.js", "vendor/javascript/local-time.js", "app/javascript/controllers/stats_controller.js", "app/javascript/src/transitive_dependencies.js", "app/javascript/controllers/dropdown_controller.js", "app/javascript/controllers/search_controller.js", "rubygems-rubygems-org", "README.md", "app/javascript/controllers/confirm_remove_self_controller.js", "app/javascript/controllers/onboarding_name_controller.js", "app/javascript/controllers/dump_controller.js", "app/javascript/controllers/autocomplete_controller.js", "vendor/javascript/github-buttons.js", "app/javascript/controllers/avatar_controller.js", "app/javascript/src/webauthn.js", "app/javascript/controllers/recovery_controller.js", "app/javascript/src/oidc_api_key_role_form.js", "app/javascript/controllers/password_strength_controller.js", "app/javascript/application.js", "app/javascript/controllers/exclusive_checkbox_controller.js", "app/javascript/controllers/reveal_controller.js", "app/javascript/controllers/dialog_controller.js", "app/javascript/controllers/reveal_search_controller.js", "app/javascript/controllers/scroll_controller.js", "app/javascript/controllers/counter_controller.js", "app/javascript/controllers/index.js"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "rubygems-push",
+        "question": "What happens on the server when someone publishes a new gem release from the command line?",
+        "selectedId": "system:rubygems-rubygems-org",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 10206,
+        "sectionCount": 11,
+        "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "packets": [11, 10],
+        "sections": [
+          { "id": "component:app-javascript-controllers-gem-scope-controller-js", "kind": "component", "p": 0 },
+          { "id": "component:app-javascript-controllers-application-js", "kind": "component", "p": 1 },
+          { "id": "component:vendor-javascript-hotwired-stimulus-js", "kind": "component", "p": 2 },
+          { "id": "component:vendor-javascript-jquery-js", "kind": "component", "p": 3 },
+          { "id": "component:vendor-javascript-rails-ujs-js", "kind": "component", "p": 4 },
+          { "id": "component:vendor-javascript-local-time-js", "kind": "component", "p": 5 },
+          { "id": "component:app-javascript-controllers-stats-controller-js", "kind": "component", "p": 6 },
+          {
+            "id": "component:app-javascript-src-transitive-dependencies-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:app-javascript-src-transitive-dependencies-js:scope-display", "name": "scope_display" }
+            ]
+          },
+          { "id": "component:app-javascript-controllers-dropdown-controller-js", "kind": "component", "p": 8 },
+          { "id": "component:app-javascript-controllers-search-controller-js", "kind": "component", "p": 9 },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 }
+        ],
+        "expectedIndexed": { "app/models/pusher.rb": false, "app/controllers/api/v1/rubygems_controller.rb": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 10206, "sectionCount": 11, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+          "double": { "byteBudget": 48000, "bytes": 10206, "sectionCount": 11, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 10206, "sectionCount": 11, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 10206, "sectionCount": 11, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "2cee2fb5979f594c858494af900d077184e90355876b9b1cda31e21cb40f40df",
+          "allowedIdsCount": 13,
+          "allowedIdsSha256": "5c1d12a0e52fcb6e1f29e414a81bb90b37ea3fb9f25b03572c811e516d1a8d79",
+          "allowedIdsInContent": ["component:app-javascript-controllers-gem-scope-controller-js", "component:app-javascript-controllers-application-js", "component:vendor-javascript-hotwired-stimulus-js", "component:vendor-javascript-jquery-js", "component:vendor-javascript-rails-ujs-js", "component:vendor-javascript-local-time-js", "component:app-javascript-controllers-stats-controller-js", "component:app-javascript-src-transitive-dependencies-js", "component:app-javascript-controllers-dropdown-controller-js", "component:app-javascript-controllers-search-controller-js", "container:rubygems-rubygems-org", "system:rubygems-rubygems-org"],
+          "packetSources": { "system:rubygems-rubygems-org": 11, "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned 11 sections, but every one is browser-side JavaScript for rubygems.org — Stimulus controllers (`gem_scope_controller.js`, `dropdown_controller.js`, `search_controller.js`, `stats_controller.js`), a frontend module (`transitive_dependencies.js`), and vendored libraries (Stimulus, jQuery, Rails UJS, local-time). None of them describe the server-side path a `gem push` takes (API authentication, version/dependency validation, storage, or webhooks), and no server-side files were modeled in the searched scope.\\n\\n- The only container in evidence (`rubygems-rubygems-org`) explicitly holds \\\"all browser-side JavaScript\\\", so publishing logic is outside what's indexed here.\\n- To answer this, the atlas would need server-side scopes (e.g. the API push endpoint, version/`Gemcutter`-style services, and storage/job code), which are not present in these sections or the selected-scope packets.\",\"citations\":[\"container:rubygems-rubygems-org\",\"system:rubygems-rubygems-org\",\"component:app-javascript-controllers-gem-scope-controller-js\",\"component:app-javascript-controllers-dropdown-controller-js\",\"component:app-javascript-controllers-search-controller-js\",\"component:app-javascript-controllers-stats-controller-js\",\"component:app-javascript-src-transitive-dependencies-js\",\"component:app-javascript-controllers-application-js\",\"component:vendor-javascript-hotwired-stimulus-js\",\"component:vendor-javascript-jquery-js\",\"component:vendor-javascript-rails-ujs-js\",\"component:vendor-javascript-local-time-js\"]}",
+          "usage": { "promptTokens": 3295, "completionTokens": 395, "totalTokens": 3690, "costUsd": 0.001666639 },
+          "ms": 15361
+        }
+      },
+      {
+        "id": "rubygems-yank",
+        "question": "Can an author take down a release they already published, and are there limits on which releases can be removed?",
+        "selectedId": "system:rubygems-rubygems-org",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 4714,
+        "sectionCount": 5,
+        "ranked": [12, 2, 10, 3, 1],
+        "packets": [11, 10],
+        "sections": [
+          { "id": "component:app-javascript-controllers-confirm-remove-self-controller-js", "kind": "component", "p": 12 },
+          {
+            "id": "component:vendor-javascript-hotwired-stimulus-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:dom-ready", "name": "domReady" }
+            ]
+          },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 },
+          { "id": "component:vendor-javascript-jquery-js", "kind": "component", "p": 3 },
+          { "id": "component:app-javascript-controllers-application-js", "kind": "component", "p": 1 }
+        ],
+        "expectedIndexed": { "app/models/deletion.rb": false, "app/controllers/api/v1/deletions_controller.rb": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 4714, "sectionCount": 5, "ranked": [12, 2, 10, 3, 1] },
+          "double": { "byteBudget": 48000, "bytes": 4714, "sectionCount": 5, "ranked": [12, 2, 10, 3, 1] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 4714, "sectionCount": 5, "ranked": [12, 2, 10, 3, 1] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 4714, "sectionCount": 5, "ranked": [12, 2, 10, 3, 1] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "1f6b989e18b42ceb1be68b394338ec3028ec2b44b2dd7810337ec0b778c674d6",
+          "allowedIdsCount": 7,
+          "allowedIdsSha256": "34169a7cc06b6c7b61a31f7d675710d6cb0a1e21bc1a6b5080bed49270177b61",
+          "allowedIdsInContent": ["component:app-javascript-controllers-confirm-remove-self-controller-js", "component:vendor-javascript-hotwired-stimulus-js", "container:rubygems-rubygems-org", "component:app-javascript-controllers-application-js"],
+          "packetSources": { "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned five sections, but all of them cover frontend JavaScript only (Stimulus controllers, jQuery, controller startup) and none describe publishing, yanking, or removing releases. There is no information here about whether an author can take down a published release or what limits apply.\\n\\nWhat was found instead:\\n- `app/javascript/controllers/confirm_remove_self_controller.js` — a UI confirm-then-remove-itself controller; its name is the closest textual match to \\\"remove,\\\" but it is a DOM behavior, not release takedown logic.\\n- `app/javascript/controllers/application.js` and `vendor/javascript/@hotwired--stimulus.js` — controller runtime/startup only.\\n\\nPart missing: all of the actual answer — release removal/yank semantics, permissions, and any restrictions on which releases can be removed. Backend/domain code covering release lifecycle was not present in the searched scope (`rubygems_rubygems.org`, a JavaScript container).\", \"citations\": [\"component:app-javascript-controllers-confirm-remove-self-controller-js\", \"container:rubygems-rubygems-org\", \"component:app-javascript-controllers-application-js\", \"component:vendor-javascript-hotwired-stimulus-js\"]}",
+          "usage": { "promptTokens": 1860, "completionTokens": 349, "totalTokens": 2209, "costUsd": 0.00111273 },
+          "ms": 10553
+        }
+      },
+      {
+        "id": "rubygems-typosquat",
+        "question": "How does the site stop people publishing a name that looks like a misspelling of a popular gem?",
+        "selectedId": "system:rubygems-rubygems-org",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 11691,
+        "sectionCount": 13,
+        "ranked": [4, 2, 0, 13, 14, 1, 12, 5, 10, 15, 16, 17, 3],
+        "packets": [11, 10],
+        "sections": [
+          {
+            "id": "component:vendor-javascript-rails-ujs-js",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:vendor-javascript-rails-ujs-js:stop-everything", "name": "stopEverything" }
+            ]
+          },
+          {
+            "id": "component:vendor-javascript-hotwired-stimulus-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:get-default-event-name-for-element", "name": "getDefaultEventNameForElement" }
+            ]
+          },
+          { "id": "component:app-javascript-controllers-gem-scope-controller-js", "kind": "component", "p": 0 },
+          { "id": "component:app-javascript-controllers-onboarding-name-controller-js", "kind": "component", "p": 13 },
+          { "id": "component:app-javascript-controllers-dump-controller-js", "kind": "component", "p": 14 },
+          { "id": "component:app-javascript-controllers-application-js", "kind": "component", "p": 1 },
+          { "id": "component:app-javascript-controllers-confirm-remove-self-controller-js", "kind": "component", "p": 12 },
+          { "id": "component:vendor-javascript-local-time-js", "kind": "component", "p": 5 },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 },
+          { "id": "component:app-javascript-controllers-autocomplete-controller-js", "kind": "component", "p": 15 },
+          { "id": "component:vendor-javascript-github-buttons-js", "kind": "component", "p": 16 },
+          { "id": "component:app-javascript-controllers-avatar-controller-js", "kind": "component", "p": 17 },
+          { "id": "component:vendor-javascript-jquery-js", "kind": "component", "p": 3 }
+        ],
+        "expectedIndexed": { "app/models/gem_typo.rb": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11691, "sectionCount": 13, "ranked": [4, 2, 0, 13, 14, 1, 12, 5, 10, 15, 16, 17, 3] },
+          "double": { "byteBudget": 48000, "bytes": 11691, "sectionCount": 13, "ranked": [4, 2, 0, 13, 14, 1, 12, 5, 10, 15, 16, 17, 3] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 11691, "sectionCount": 13, "ranked": [4, 2, 0, 13, 14, 1, 12, 5, 10, 15, 16, 17, 3] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 11691, "sectionCount": 13, "ranked": [4, 2, 0, 13, 14, 1, 12, 5, 10, 15, 16, 17, 3] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "c53aed87a0235e3e4a1bb6ff71c51f6c921562a0f36917220cfc51e4275b2189",
+          "allowedIdsCount": 16,
+          "allowedIdsSha256": "4a6da0be3704cce6a2e8df7d9c3beeaa69f85288f9e3fc738304e643c3a0e887",
+          "allowedIdsInContent": ["component:app-javascript-controllers-gem-scope-controller-js", "component:app-javascript-controllers-onboarding-name-controller-js", "container:rubygems-rubygems-org", "system:rubygems-rubygems-org"],
+          "packetSources": { "system:rubygems-rubygems-org": 11, "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"Nothing in this evidence describes misspelling/typosquat checks for gem names. The only name-related surface here is the onboarding name step's client-side controller, so any name-vs-popular-gem comparison must live in server-side or validation code that isn't in the searched sections.\\n\\n- `app/javascript/controllers/onboarding_name_controller.js` — the onboarding step where a name is entered; it's the only name-entry component recorded, and its section says nothing about spelling or similarity rules.\\n- `app/javascript/controllers/gem_scope_controller.js` — gem-related scope UI, no name validation behaviour recorded.\\n- `container:rubygems-rubygems-org` / `system:rubygems-rubygems-org` — the whole container summary covers only browser-side JavaScript (Stimulus controllers, `app/javascript/src/`, `vendor/javascript/`); no Ruby-side model/controller or validation layer is present in the atlas entries here.\\n\\nMissing part: the actual misspelling/typo-detection logic (e.g. edit-distance or reserved/similar-name checks) is not in the evidence — you'd need the Ruby app's gem-name validation code to answer that.\", \"citations\": [\"component:app-javascript-controllers-onboarding-name-controller-js\", \"component:app-javascript-controllers-gem-scope-controller-js\", \"container:rubygems-rubygems-org\", \"system:rubygems-rubygems-org\"]}",
+          "usage": { "promptTokens": 3662, "completionTokens": 510, "totalTokens": 4172, "costUsd": 0.00203667 },
+          "ms": 20109
+        }
+      },
+      {
+        "id": "rubygems-webhooks",
+        "question": "How are subscribers told when a new version of a gem is released?",
+        "selectedId": "component:vendor-javascript-jquery-js",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 5982,
+        "sectionCount": 6,
+        "ranked": [0, 10, 7, 18, 1, 19],
+        "packets": [3, 10],
+        "sections": [
+          { "id": "component:app-javascript-controllers-gem-scope-controller-js", "kind": "component", "p": 0 },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 },
+          {
+            "id": "component:app-javascript-src-transitive-dependencies-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:app-javascript-src-transitive-dependencies-js:scope-display", "name": "scope_display" }
+            ]
+          },
+          { "id": "component:app-javascript-src-webauthn-js", "kind": "component", "p": 18 },
+          { "id": "component:app-javascript-controllers-application-js", "kind": "component", "p": 1 },
+          { "id": "component:app-javascript-controllers-recovery-controller-js", "kind": "component", "p": 19 }
+        ],
+        "expectedIndexed": { "app/models/version.rb": false, "app/models/web_hook.rb": false, "app/jobs/notify_web_hook_job.rb": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 5982, "sectionCount": 6, "ranked": [0, 10, 7, 18, 1, 19] },
+          "double": { "byteBudget": 48000, "bytes": 5982, "sectionCount": 6, "ranked": [0, 10, 7, 18, 1, 19] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 5982, "sectionCount": 6, "ranked": [0, 10, 7, 18, 1, 19] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 5982, "sectionCount": 6, "ranked": [0, 10, 7, 18, 1, 19] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "a7c8afc5dd0015d1dddd2356e9bb936c940110c4df98d62b5af0510836f1a67b",
+          "allowedIdsCount": 11,
+          "allowedIdsSha256": "9d47466e80fa5d273a2f5f435a30e879cfe5a4ff23f6bc69e2e2b59525332088",
+          "allowedIdsInContent": ["component:app-javascript-controllers-gem-scope-controller-js", "container:rubygems-rubygems-org", "component:app-javascript-src-transitive-dependencies-js", "component:app-javascript-src-webauthn-js", "component:app-javascript-controllers-application-js", "component:app-javascript-controllers-recovery-controller-js"],
+          "packetSources": { "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned six sections, but all of them are browser-side JavaScript in `rubygems-rubygems-org` — Stimulus controllers (`gem_scope_controller.js`, `recovery_controller.js`, `application.js`), plain frontend modules (`webauthn.js`, `transitive_dependencies.js`), and vendored jQuery. None describe subscription, notification, webhook, or email delivery for new gem releases, so how subscribers are notified about a new version is not covered here.\\n\\nWhat is missing: any server-side or messaging component handling subscriptions/notifications (e.g. mailers, webhooks, or a publish pipeline). Those would need to be searched outside the `rubygems_rubygems.org` frontend scope before this can be answered.\", \"citations\": [\"container:rubygems-rubygems-org\", \"component:app-javascript-controllers-gem-scope-controller-js\", \"component:app-javascript-controllers-recovery-controller-js\", \"component:app-javascript-controllers-application-js\", \"component:app-javascript-src-webauthn-js\", \"component:app-javascript-src-transitive-dependencies-js\"]}",
+          "usage": { "promptTokens": 2432, "completionTokens": 351, "totalTokens": 2783, "costUsd": 0.0012528516 },
+          "ms": 10359
+        }
+      },
+      {
+        "id": "rubygems-trusted-publishing",
+        "question": "How can a CI pipeline publish a gem without a long-lived stored API key?",
+        "selectedId": "component:app-javascript-controllers-stats-controller-js",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 7660,
+        "sectionCount": 8,
+        "ranked": [20, 0, 2, 4, 10, 18, 5, 1],
+        "packets": [6, 10],
+        "sections": [
+          { "id": "component:app-javascript-src-oidc-api-key-role-form-js", "kind": "component", "p": 20 },
+          { "id": "component:app-javascript-controllers-gem-scope-controller-js", "kind": "component", "p": 0 },
+          {
+            "id": "component:vendor-javascript-hotwired-stimulus-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:string-map-observer", "name": "StringMapObserver" },
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:write-string", "name": "writeString" },
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:parse-action-descriptor-string", "name": "parseActionDescriptorString" }
+            ]
+          },
+          {
+            "id": "component:vendor-javascript-rails-ujs-js",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:vendor-javascript-rails-ujs-js:stop-everything", "name": "stopEverything" }
+            ]
+          },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 },
+          { "id": "component:app-javascript-src-webauthn-js", "kind": "component", "p": 18 },
+          { "id": "component:vendor-javascript-local-time-js", "kind": "component", "p": 5 },
+          { "id": "component:app-javascript-controllers-application-js", "kind": "component", "p": 1 }
+        ],
+        "expectedIndexed": { "app/controllers/api/v1/oidc/trusted_publisher_controller.rb": false, "app/models/oidc/trusted_publisher/github_action.rb": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 7660, "sectionCount": 8, "ranked": [20, 0, 2, 4, 10, 18, 5, 1] },
+          "double": { "byteBudget": 48000, "bytes": 7660, "sectionCount": 8, "ranked": [20, 0, 2, 4, 10, 18, 5, 1] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 7660, "sectionCount": 8, "ranked": [20, 0, 2, 4, 10, 18, 5, 1] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 7660, "sectionCount": 8, "ranked": [20, 0, 2, 4, 10, 18, 5, 1] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "5040c7b879a99fb1200ca5670751b8b973e6bae0fd77e477a5153a4c0f0e3609",
+          "allowedIdsCount": 13,
+          "allowedIdsSha256": "2225aed1915c485015bdedcd11c79e4c09f3219bf9eb940750a7ff5d2a23a32d",
+          "allowedIdsInContent": ["component:app-javascript-src-oidc-api-key-role-form-js", "component:app-javascript-controllers-gem-scope-controller-js", "container:rubygems-rubygems-org"],
+          "packetSources": { "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"The evidence points to OIDC-managed API keys as the no-stored-key path: `app/javascript/src/oidc_api_key_role_form.js` collects the role selection for OIDC-managed keys, and `app/javascript/controllers/gem_scope_controller.js` scopes those credentials to specific gems — so a CI pipeline would request an OIDC-backed key bound to a role and gem scope rather than storing a long-lived API key.\\n\\n- `app/javascript/src/oidc_api_key_role_form.js` — UI for choosing which role an OIDC API key gets; the chosen role defines the resulting access.\\n- `app/javascript/controllers/gem_scope_controller.js` — Stimulus controller governing gem scoping for the key.\\n- `container:rubygems-rubygems-org` — the browser-side container holding both; all its contents are frontend JS (`app/javascript/src/`, `app/javascript/controllers/`, `vendor/javascript/`).\\n\\nMissing from the evidence: the server-side OIDC token exchange (how the CI presents a GitHub/other provider identity token and receives a usable credential), the roles' permission model, and any Ruby/Rails or API endpoints involved. The searched atlas covers only `rubygems_rubygems.org`'s JavaScript container, so the publishing/exchange flow itself is not in the evidence.\",\"citations\":[\"component:app-javascript-src-oidc-api-key-role-form-js\",\"component:app-javascript-controllers-gem-scope-controller-js\",\"container:rubygems-rubygems-org\"]}",
+          "usage": { "promptTokens": 2829, "completionTokens": 483, "totalTokens": 3312, "costUsd": 0.001540489 },
+          "ms": 18047
+        }
+      },
+      {
+        "id": "rubygems-throttling",
+        "question": "Where are the request rate limits (for logins, pushes, yanks) defined?",
+        "selectedId": "system:rubygems-rubygems-org",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 15096,
+        "sectionCount": 18,
+        "ranked": [4, 1, 20, 3, 21, 22, 23, 10, 14, 24, 11, 25, 5, 8, 17, 9, 16, 19],
+        "packets": [11, 10],
+        "sections": [
+          { "id": "component:vendor-javascript-rails-ujs-js", "kind": "component", "p": 4 },
+          { "id": "component:app-javascript-controllers-application-js", "kind": "component", "p": 1 },
+          { "id": "component:app-javascript-src-oidc-api-key-role-form-js", "kind": "component", "p": 20 },
+          { "id": "component:vendor-javascript-jquery-js", "kind": "component", "p": 3 },
+          { "id": "component:app-javascript-controllers-password-strength-controller-js", "kind": "component", "p": 21 },
+          { "id": "component:app-javascript-application-js", "kind": "component", "p": 22 },
+          { "id": "component:app-javascript-controllers-exclusive-checkbox-controller-js", "kind": "component", "p": 23 },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 },
+          { "id": "component:app-javascript-controllers-dump-controller-js", "kind": "component", "p": 14 },
+          { "id": "component:app-javascript-controllers-reveal-controller-js", "kind": "component", "p": 24 },
+          { "id": "system:rubygems-rubygems-org", "kind": "softwareSystem", "p": 11 },
+          { "id": "component:app-javascript-controllers-dialog-controller-js", "kind": "component", "p": 25 },
+          { "id": "component:vendor-javascript-local-time-js", "kind": "component", "p": 5 },
+          { "id": "component:app-javascript-controllers-dropdown-controller-js", "kind": "component", "p": 8 },
+          { "id": "component:app-javascript-controllers-avatar-controller-js", "kind": "component", "p": 17 },
+          { "id": "component:app-javascript-controllers-search-controller-js", "kind": "component", "p": 9 },
+          { "id": "component:vendor-javascript-github-buttons-js", "kind": "component", "p": 16 },
+          { "id": "component:app-javascript-controllers-recovery-controller-js", "kind": "component", "p": 19 }
+        ],
+        "expectedIndexed": { "config/initializers/rack_attack.rb": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11693, "sectionCount": 14, "ranked": [4, 1, 20, 3, 21, 22, 23, 10, 14, 24, 11, 25, 5, 8] },
+          "double": { "byteBudget": 48000, "bytes": 15096, "sectionCount": 18, "ranked": [4, 1, 20, 3, 21, 22, 23, 10, 14, 24, 11, 25, 5, 8, 17, 9, 16, 19] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 11693, "sectionCount": 14, "ranked": [4, 1, 20, 3, 21, 22, 23, 10, 14, 24, 11, 25, 5, 8] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 15096, "sectionCount": 18, "ranked": [4, 1, 20, 3, 21, 22, 23, 10, 14, 24, 11, 25, 5, 8, 17, 9, 16, 19] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "360f88e1f5ee041a5a414f3ba19add73cc122138be4a909acc0f9073f5d3ad2b",
+          "allowedIdsCount": 18,
+          "allowedIdsSha256": "e582dcff40419a75a5d330e028d9caa29ff9a048ccd988f5606520bf8c2ef1ba",
+          "allowedIdsInContent": ["container:rubygems-rubygems-org", "system:rubygems-rubygems-org"],
+          "packetSources": { "system:rubygems-rubygems-org": 11, "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned 18 sections, but all of them cover the rubygems.org browser-side JavaScript container (Stimulus controllers under `app/javascript/controllers/`, frontend modules, and vendored libs like `vendor/javascript/@rails--ujs.js`); none mention request rate limits, throttling, or limits for logins, pushes, or yanks.\\n\\n- The closest related scopes are `system:rubygems-rubygems-org` and `container:rubygems-rubygems-org`, which model only client-side UI behaviour — no server-side rate-limit configuration is recorded there.\\n- Rate limits for logins, pushes, and yanks are typically server-side (Rails/Rack), which does not appear to be modelled in this atlas's searched scope. A search over server-side code (Ruby app/config) is the missing part.\",\"citations\":[\"system:rubygems-rubygems-org\",\"container:rubygems-rubygems-org\"]}",
+          "usage": { "promptTokens": 4420, "completionTokens": 310, "totalTokens": 4730, "costUsd": 0.0020819616 },
+          "ms": 12606
+        }
+      },
+      {
+        "id": "rubygems-api-routes",
+        "question": "Where are the versioned API paths mapped to the controllers that serve them?",
+        "selectedId": "system:rubygems-rubygems-org",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 20390,
+        "sectionCount": 24,
+        "ranked": [2, 1, 20, 8, 9, 25, 21, 18, 10, 19, 11, 15, 17, 26, 6, 14, 0, 24, 27, 12, 28, 23, 13, 29],
+        "packets": [11, 10],
+        "sections": [
+          {
+            "id": "component:vendor-javascript-hotwired-stimulus-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:class-map", "name": "ClassMap" },
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:data-map", "name": "DataMap" },
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:string-map-observer", "name": "StringMapObserver" }
+            ]
+          },
+          {
+            "id": "component:app-javascript-controllers-application-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:app-javascript-controllers-application-js:application", "name": "application" }
+            ]
+          },
+          { "id": "component:app-javascript-src-oidc-api-key-role-form-js", "kind": "component", "p": 20 },
+          { "id": "component:app-javascript-controllers-dropdown-controller-js", "kind": "component", "p": 8 },
+          { "id": "component:app-javascript-controllers-search-controller-js", "kind": "component", "p": 9 },
+          { "id": "component:app-javascript-controllers-dialog-controller-js", "kind": "component", "p": 25 },
+          { "id": "component:app-javascript-controllers-password-strength-controller-js", "kind": "component", "p": 21 },
+          { "id": "component:app-javascript-src-webauthn-js", "kind": "component", "p": 18 },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 },
+          { "id": "component:app-javascript-controllers-recovery-controller-js", "kind": "component", "p": 19 },
+          { "id": "system:rubygems-rubygems-org", "kind": "softwareSystem", "p": 11 },
+          { "id": "component:app-javascript-controllers-autocomplete-controller-js", "kind": "component", "p": 15 },
+          { "id": "component:app-javascript-controllers-avatar-controller-js", "kind": "component", "p": 17 },
+          { "id": "component:app-javascript-controllers-reveal-search-controller-js", "kind": "component", "p": 26 },
+          { "id": "component:app-javascript-controllers-stats-controller-js", "kind": "component", "p": 6 },
+          { "id": "component:app-javascript-controllers-dump-controller-js", "kind": "component", "p": 14 },
+          { "id": "component:app-javascript-controllers-gem-scope-controller-js", "kind": "component", "p": 0 },
+          { "id": "component:app-javascript-controllers-reveal-controller-js", "kind": "component", "p": 24 },
+          { "id": "component:app-javascript-controllers-scroll-controller-js", "kind": "component", "p": 27 },
+          { "id": "component:app-javascript-controllers-confirm-remove-self-controller-js", "kind": "component", "p": 12 },
+          { "id": "component:app-javascript-controllers-counter-controller-js", "kind": "component", "p": 28 },
+          { "id": "component:app-javascript-controllers-exclusive-checkbox-controller-js", "kind": "component", "p": 23 },
+          { "id": "component:app-javascript-controllers-onboarding-name-controller-js", "kind": "component", "p": 13 },
+          { "id": "component:app-javascript-controllers-index-js", "kind": "component", "p": 29 }
+        ],
+        "expectedIndexed": { "config/routes.rb": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11838, "sectionCount": 13, "ranked": [2, 1, 20, 8, 9, 25, 21, 18, 10, 19, 11, 15, 17] },
+          "double": { "byteBudget": 48000, "bytes": 20390, "sectionCount": 24, "ranked": [2, 1, 20, 8, 9, 25, 21, 18, 10, 19, 11, 15, 17, 26, 6, 14, 0, 24, 27, 12, 28, 23, 13, 29] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 11838, "sectionCount": 13, "ranked": [2, 1, 20, 8, 9, 25, 21, 18, 10, 19, 11, 15, 17] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 20390, "sectionCount": 24, "ranked": [2, 1, 20, 8, 9, 25, 21, 18, 10, 19, 11, 15, 17, 26, 6, 14, 0, 24, 27, 12, 28, 23, 13, 29] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "a6d846ff57c60a032298db320a68421c68ee9de36b777f6344ea8e048c53a20a",
+          "allowedIdsCount": 28,
+          "allowedIdsSha256": "85a0c7b2de04073989acf4e860726cf2179e3049a503e87a7d7f508b916787d1",
+          "allowedIdsInContent": ["component:app-javascript-controllers-application-js", "container:rubygems-rubygems-org", "system:rubygems-rubygems-org", "component:app-javascript-controllers-index-js"],
+          "packetSources": { "system:rubygems-rubygems-org": 11, "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"Not in the evidence. The 24 matched sections and the selected scope cover only browser-side JavaScript for rubygems.org — Stimulus UI controllers, plain frontend modules, and vendored libraries — and none of them describe versioned API paths or the server-side controllers that serve them.\\n\\n- `container:rubygems-rubygems-org` explicitly defines the container as holding \\\"all browser-side JavaScript\\\" (`app/javascript/`, `vendor/javascript/`), and `system:rubygems-rubygems-org` says the same at the system level — so the API routing layer is outside what was captured here.\\n- The \\\"controllers\\\" in these sections are Stimulus UI controllers (`app/javascript/controllers/*_controller.js`) registered at `app/javascript/controllers/index.js` on the shared `application` instance from `app/javascript/controllers/application.js` (`Application.start()`); these are DOM-behavior controllers, not HTTP/API controllers.\\n- Missing part: the routing definition that maps versioned API paths (e.g. `config/routes.rb` or equivalent) to its API controllers is not in the evidence — no such file or declaration appears in any section or selected packet.\", \"citations\": [\"container:rubygems-rubygems-org\", \"system:rubygems-rubygems-org\", \"component:app-javascript-controllers-index-js\", \"component:app-javascript-controllers-application-js\"]}",
+          "usage": { "promptTokens": 5831, "completionTokens": 661, "totalTokens": 6492, "costUsd": 0.003111555 },
+          "ms": 21659
+        }
+      },
+      {
+        "id": "rubygems-maintenance-docs",
+        "question": "What rules should I follow when writing a one-off data backfill task?",
+        "selectedId": "system:rubygems-rubygems-org",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 13688,
+        "sectionCount": 15,
+        "ranked": [2, 4, 20, 1, 12, 19, 13, 22, 10, 15, 11, 26, 5, 23, 0],
+        "packets": [11, 10],
+        "sections": [
+          {
+            "id": "component:vendor-javascript-hotwired-stimulus-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:write-json", "name": "writeJSON" },
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:write-string", "name": "writeString" },
+              { "id": "code:vendor-javascript-hotwired-stimulus-js:data-map", "name": "DataMap" }
+            ]
+          },
+          {
+            "id": "component:vendor-javascript-rails-ujs-js",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:vendor-javascript-rails-ujs-js:get-data", "name": "getData" },
+              { "id": "code:vendor-javascript-rails-ujs-js:set-data", "name": "setData" }
+            ]
+          },
+          { "id": "component:app-javascript-src-oidc-api-key-role-form-js", "kind": "component", "p": 20 },
+          { "id": "component:app-javascript-controllers-application-js", "kind": "component", "p": 1 },
+          { "id": "component:app-javascript-controllers-confirm-remove-self-controller-js", "kind": "component", "p": 12 },
+          { "id": "component:app-javascript-controllers-recovery-controller-js", "kind": "component", "p": 19 },
+          { "id": "component:app-javascript-controllers-onboarding-name-controller-js", "kind": "component", "p": 13 },
+          { "id": "component:app-javascript-application-js", "kind": "component", "p": 22 },
+          { "id": "container:rubygems-rubygems-org", "kind": "container", "p": 10 },
+          { "id": "component:app-javascript-controllers-autocomplete-controller-js", "kind": "component", "p": 15 },
+          { "id": "system:rubygems-rubygems-org", "kind": "softwareSystem", "p": 11 },
+          { "id": "component:app-javascript-controllers-reveal-search-controller-js", "kind": "component", "p": 26 },
+          { "id": "component:vendor-javascript-local-time-js", "kind": "component", "p": 5 },
+          { "id": "component:app-javascript-controllers-exclusive-checkbox-controller-js", "kind": "component", "p": 23 },
+          { "id": "component:app-javascript-controllers-gem-scope-controller-js", "kind": "component", "p": 0 }
+        ],
+        "expectedIndexed": { "doc/maintenance-tasks.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11315, "sectionCount": 12, "ranked": [2, 4, 20, 1, 12, 19, 13, 22, 10, 15, 11, 26] },
+          "double": { "byteBudget": 48000, "bytes": 13688, "sectionCount": 15, "ranked": [2, 4, 20, 1, 12, 19, 13, 22, 10, 15, 11, 26, 5, 23, 0] },
+          "size-scaled": { "byteBudget": 12024, "bytes": 11315, "sectionCount": 12, "ranked": [2, 4, 20, 1, 12, 19, 13, 22, 10, 15, 11, 26] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 13688, "sectionCount": 15, "ranked": [2, 4, 20, 1, 12, 19, 13, 22, 10, 15, 11, 26, 5, 23, 0] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "ee4ace4dfd3597450eacf6f8b0d86d06c03f8c821934998882f07aa823af33c3",
+          "allowedIdsCount": 20,
+          "allowedIdsSha256": "2d5c5367dfa65dc0b4b949f775cef84412a40069f942a4a56dc5c0592c77fe6b",
+          "allowedIdsInContent": ["container:rubygems-rubygems-org", "system:rubygems-rubygems-org"],
+          "packetSources": { "system:rubygems-rubygems-org": 11, "container:rubygems-rubygems-org": 10 },
+          "content": "{\"answer\": \"Not in the evidence. The atlas coverage for this repository is limited to the browser-side JavaScript container (`container:rubygems-rubygems-org`) — Stimulus controllers, frontend modules, and vendored libraries — and none of the returned sections or selected scopes mention data backfills, migrations, rake tasks, or data-maintenance conventions. Any backfill rules would live in backend/Ruby code or contributor docs that aren't present in this evidence, so I can't state them without inventing content.\",\"citations\": [\"container:rubygems-rubygems-org\", \"system:rubygems-rubygems-org\"]}",
+          "usage": { "promptTokens": 4274, "completionTokens": 271, "totalTokens": 4545, "costUsd": 0.00209496 },
+          "ms": 10461
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "sampled-enriched",
+    "nodes": [
+      {
+        "nodeId": "system:rubygems-rubygems-org",
+        "name": "Rubygems_rubygems.org",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "This is the **rubygems.org** software system, and its browser-side JavaScript lives in the single container **rubygems_rubygems.org**. That container holds Stimulus UI controllers, plain frontend mod…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `app/javascript/controllers/index.js` first; it registers every Stimulus controller for the app. | Seam: `app/javascript/controllers/application.js` calls `Application.start()`, so…" },
+          { "id": "children", "type": "children", "preview": "Children: 1 node — rubygems_rubygems.org (container)" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"],
+        "jev": {
+          "order": ["enrichment:summary", "enrichment:keyPoints", "enrichment:evidence"],
+          "omitted": [
+            { "id": "children", "why": "jev-omit" }
+          ],
+          "inputTokens": 1638,
+          "estimatedCostUsd": 0.0000688,
+          "latencyMs": 229
+        }
+      },
+      {
+        "nodeId": "container:rubygems-rubygems-org",
+        "name": "rubygems_rubygems.org",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "This container holds all browser-side JavaScript for rubygems.org: Stimulus UI controllers, plain frontend modules, and vendored libraries. Read `app/javascript/controllers/index.js` first, then let …" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `app/javascript/controllers/index.js` first: it is where controllers get registered for the whole app. | Seam: `app/javascript/controllers/application.js` creates the shared `appli…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — Rubygems_rubygems.org (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 38 nodes — app/javascript/application.js (component); app/javascript/avo.custom.js (component); app/javascript/controllers/application.… (component); +35 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "relations:parent", "children", "enrichment:keyPoints", "enrichment:evidence"], "inputTokens": 1944, "estimatedCostUsd": 0.0000816, "latencyMs": 311 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "sampled", "k": 5, "singleContainerK": 30, "componentsSampled": 30, "componentsFull": 38, "containers": 1, "droppedFiles": 8, "sampledCommitSha": "bacca8677fb3da308e71ce8ff0af4f0c7ab50f71", "parentsFromSample": true, "overlaidOnFullScan": true },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 200, "maxTokens": 4000000, "maxDollars": 0.5, "maxConcurrent": 8, "globalMaxDollars": 1.5745 },
+    "ms": 267020,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 32,
+    "inputTokens": 45199,
+    "outputTokens": 24518,
+    "costUsd": 0.033996,
+    "costEstimated": false,
+    "coverage": { "accepted": 31, "failed": 1, "notRun": 0, "belowCap": 198, "inScope": 32 },
+    "byKind": {
+      "code": { "total": 198, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 198 },
+      "component": { "total": 30, "accepted": 29, "failed": 1, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 1,
+    "parentsWithUnsettledChildren": 0,
+    "failures": [
+      { "scopeId": "component:app-javascript-src-pages-js", "kind": "component", "class": "rejected-by-validator", "error": "rejected explanation: 1 keyPoints (allowed 2-5)" }
+    ]
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 507,
+    "outcome": "accepted",
+    "requests": 2,
+    "inputTokens": 3955,
+    "costUsd": 0.0001661,
+    "costEstimated": true,
+    "reservationEquivalentUsd": 0.006,
+    "rows": [
+      { "scopeId": "component:app-javascript-application-js", "claimId": "ce11dc9682834f17a71ee", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-avo-custom-js", "claimId": "ce3df06079707b865aaa2", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-avo-custom-js", "claimId": "c2f0f962c7815ff49eb65", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-avo-custom-js", "claimId": "cb4968c2b59efb9901d99", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-application-js", "claimId": "cb5bc4fbb143a77c4c1d8", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:app-javascript-controllers-application-js", "claimId": "cecd425c6ec106a2b4080", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:app-javascript-controllers-application-js", "claimId": "ce226c685c0e1d99c6c58", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:app-javascript-controllers-autocomplete-controller-js", "claimId": "c1a41dd1fd5cb3d090c87", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-autocomplete-controller-js", "claimId": "c1899a043eea3f5835421", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-avatar-controller-js", "claimId": "c80081f4dfc106d77e10d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-avatar-controller-js", "claimId": "ce5a759bf79264348ffa8", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-confirm-remove-self-controller-js", "claimId": "c56c5db28522d90afa130", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-confirm-remove-self-controller-js", "claimId": "ca6452e2c5d702f3e43a4", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-confirm-remove-self-controller-js", "claimId": "c5ef62a213196b72b95f4", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-counter-controller-js", "claimId": "cef759d5629980ce86d5b", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-dropdown-controller-js", "claimId": "c03d421b391ed19bc71cf", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-dropdown-controller-js", "claimId": "c41f198991433c388846c", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-dump-controller-js", "claimId": "cef1218177fdc672d81af", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-dump-controller-js", "claimId": "cc96a6b5f4b726b4162a8", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-dump-controller-js", "claimId": "c5c0ace355a36fa0e993c", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-exclusive-checkbox-controller-js", "claimId": "c1853662958f894caf59b", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-exclusive-checkbox-controller-js", "claimId": "c550f7539f675c90eed23", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-exclusive-checkbox-controller-js", "claimId": "cfb42ad3f3ab1598e96fe", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-gem-scope-controller-js", "claimId": "c492566492da0c9a9b026", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-gem-scope-controller-js", "claimId": "cbc8c042e5b67306859ac", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-gem-scope-controller-js", "claimId": "ccddfa42a8b95694bbce1", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-gem-scope-controller-js", "claimId": "c028f797d728c86f75e1f", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-index-js", "claimId": "cea42843dedc5557fe91e", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-index-js", "claimId": "c9dded1f7663bae8c56a8", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-index-js", "claimId": "c40e53ebf18873f85d6e7", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-onboarding-name-controller-js", "claimId": "cf4a9563f7b3744ec3f55", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-onboarding-name-controller-js", "claimId": "cd091e056843f48c3c005", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-onboarding-name-controller-js", "claimId": "c6d8c9921cfdfee1e6b53", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-password-strength-controller-js", "claimId": "c30287a36460baa85ff47", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-password-strength-controller-js", "claimId": "c5df1c85c9b5870ee9dc4", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-recovery-controller-js", "claimId": "c5b8c0872d467e61266f0", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-reveal-controller-js", "claimId": "cd2516de4838bf3aa4e08", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-reveal-controller-js", "claimId": "cfad1fc876aab0bf34f8d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-reveal-search-controller-js", "claimId": "ce95ed75894e547e5b5af", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-reveal-search-controller-js", "claimId": "cbe5b95b0fa19654dafbd", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-scroll-controller-js", "claimId": "ca5586d1439018c75085f", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-scroll-controller-js", "claimId": "cfd571e486d00ab9f566e", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-search-controller-js", "claimId": "c29c1e6c6d67ba157e699", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-search-controller-js", "claimId": "c8d58d7036a0ffdbeb644", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-controllers-search-controller-js", "claimId": "cc2169e26e14fb65b8ba1", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-src-transitive-dependencies-js", "claimId": "c8ac2d3fb767914f0a00d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:app-javascript-src-transitive-dependencies-js", "claimId": "c5fe4257f15a3ec10e2b3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.38 },
+      { "scopeId": "component:app-javascript-src-transitive-dependencies-js", "claimId": "cf8a1f48334b396156238", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:app-javascript-src-transitive-dependencies-js", "claimId": "c67cf2c241d9b2b8a16a3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:app-javascript-src-transitive-dependencies-js", "claimId": "c07aba60e87a5cc4f81c8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:app-javascript-src-transitive-dependencies-js", "claimId": "c2022bffbcaed583879a4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:app-javascript-src-webauthn-js", "claimId": "c7503733704af3a2cb1f3", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-src-webauthn-js", "claimId": "c1fa47cf92898c7470176", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-src-webauthn-js", "claimId": "cabba17f6893e42f7ab44", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-javascript-src-webauthn-js", "claimId": "cbf643c8c96de684f796c", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-hotwired-stimulus-js", "claimId": "cd53daa654a4fcf7fd449", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-hotwired-stimulus-js", "claimId": "c1b95a53e43645826e96c", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-hotwired-stimulus-js", "claimId": "c71b50b783e360affbdb7", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-hotwired-stimulus-js", "claimId": "c04190d6c18b2299b71ac", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-jquery-js", "claimId": "c117b043df84d0c17db65", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-jquery-js", "claimId": "c1d03e30f4109d8cb2f12", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-jquery-js", "claimId": "cfa9b8f70356e73efb401", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-local-time-js", "claimId": "c30ce82e21fa91a746252", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-local-time-js", "claimId": "c7be38e18f0e840792ab6", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-local-time-js", "claimId": "c63d5241ccbabcfea2f51", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-local-time-js", "claimId": "c58a6abdf5c58f4d5e919", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-local-time-js", "claimId": "ca8fdfd3073455ea7baa2", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-rails-ujs-js", "claimId": "c552a5d7d34dcdc1b4766", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-rails-ujs-js", "claimId": "c13c3e9eaf95d377e7738", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-rails-ujs-js", "claimId": "c95a3fa28863bdbed52f1", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:vendor-javascript-rails-ujs-js", "claimId": "ca989c8720d9ee4aa81d4", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" }
+    ],
+    "rateLimited": 0
+  },
+  "stageMs": { "claims": 7815, "ask": 21715, "blocks": 545 }
+}

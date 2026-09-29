@@ -36,6 +36,9 @@ apps/web/dist-portable/
 
 # Per-orb portal metadata is not repository configuration.
 .amp/portals/*
+
+# CLA-289 cross-repo eval: the live-run spend lock (held only while a --live process runs).
+fixtures/cross-repo-eval/spend.json.lock
 # QA evidence screenshots live on the qa-screenshots release, not in git history.
 docs/qa/**/*.png
 docs/qa/**/*.jpg

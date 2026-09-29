@@ -1,0 +1,1970 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "go-gitea__gitea",
+  "repository": "go-gitea/gitea",
+  "commitSha": "fba8d7eaceeed3f8bbc364386d2a35aa672285a2",
+  "scan": {
+    "asIs": {
+      "revision": "fba8d7eaceeed3f8bbc364386d2a35aa672285a2",
+      "ok": true,
+      "ms": 4899,
+      "entities": 1195,
+      "relations": 2532,
+      "kinds": { "code": 1011, "component": 182, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:go-gitea-gitea", "name": "go-gitea_gitea", "components": 182 }
+      ],
+      "signals": { "entities": 1195, "containers": 1, "components": 182, "files": 184, "maxDepth": 4, "medianDepth": 3, "language": "Go+TypeScript" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:52.485Z",
+    "corpus": "sampled-enriched",
+    "entityCount": 1195,
+    "systemNames": ["gitea"],
+    "paths": ["web_src/js/types.ts", "web_src/js/features/notification.ts", "web_src/js/utils.ts", "web_src/js/features/repo-legacy.ts", "tests/e2e/utils.ts", "web_src/js/features/repo-issue-sidebar.ts", "web_src/js/markup/content.ts", "web_src/js/modules/observer.ts", "web_src/js/modules/fetch.ts", "web_src/js/features/common-page.ts", "web_src/js/utils/dom.ts", "web_src/js/features/repo-issue.ts", "web_src/js/external-render-helper.ts", "web_src/js/features/comp/TextExpander.ts", "web_src/js/features/user-auth-webauthn.ts", "web_src/js/features/repo-issue-pull.ts", "web_src/js/features/repo-new.ts", "web_src/js/external-render-frontend.ts", "web_src/js/markup/render-iframe.ts", "web_src/js/features/common-actions-permissions.ts", "web_src/js/index.ts", "web_src/js/features/repo-common.ts", "web_src/js/user-events.sharedworker.ts", "web_src/js/features/repo-commit.ts", "web_src/js/features/repo-actions.ts", "web_src/js/utils/match.ts", "web_src/js/features/repo-findfile.ts", "web_src/js/features/repo-diff.ts", "web_src/js/features/common-issue-list.ts", "web_src/js/features/comp/SearchRepoBox.ts", "web_src/js/modules/worker.ts", "web_src/js/features/user-auth.ts", "web_src/js/features/repo-projects.ts", "web_src/js/features/repo-code.ts", "web_src/js/features/repo-issue-list.ts", "README.md", "package.json", "web_src/js/features/repo-settings-branches.ts", "web_src/js/features/org-team.ts", "web_src/js/features/repo-settings.ts", "web_src/js/features/repo-branch.ts", "web_src/js/modules/search.ts", "web_src/js/features/repo-diff-commit.ts", "web_src/js/svg.ts", "web_src/js/modules/codeeditor/command-palette.ts", "web_src/js/modules/codeeditor/context-menu.ts", "web_src/js/modules/gitea-actions.ts", "web_src/js/features/repo-switcher.ts", "web_src/js/modules/fomantic/modal.ts", "web_src/js/components/ActionRunView.ts", "web_src/js/features/repo-graph.ts", "web_src/js/features/repo-editor.ts", "web_src/js/features/admin/common.ts", "web_src/js/modules/codeeditor/main.ts", "web_src/js/utils/url.ts", "web_src/js/modules/errors.ts", "web_src/js/modules/fetch-action.ts", "web_src/js/features/repo-issue-edit.ts", "web_src/js/features/comp/EditorMarkdown.ts", "web_src/js/modules/codeeditor/utils.ts", "web_src/js/features/code-frequency.ts", "web_src/js/features/dropzone.ts", "web_src/js/features/comp/EditorUpload.ts", "vite.config.ts", "web_src/js/features/common-button.ts", "web_src/js/render/swagger.ts", "web_src/js/features/repo-migration.ts", "web_src/js/swagger.ts", "tools/shared.ts", "web_src/js/modules/tippy.ts", "tools/ci-tools.ts", "web_src/js/modules/favicon-status.ts", "eslint.config.ts", "web_src/js/modules/fomantic/dropdown.ts", "web_src/js/modules/init.ts", "web_src/js/utils/func.ts", "web_src/js/markup/html2markdown.ts", "tools/generate-svg.ts", "web_src/js/features/comp/ComboMarkdownEditor.ts", "web_src/js/features/install.ts", "web_src/js/features/repo-issue-content.ts", "web_src/js/modules/are-you-sure.ts", "web_src/js/features/common-organization.ts", "web_src/js/webcomponents/index.ts", "web_src/js/features/comp/WebHookEditor.ts", "web_src/js/features/repo-release.ts", "web_src/js/render/ansi.ts", "web_src/js/components/ActionRunArtifacts.ts", "web_src/js/utils/html.ts", "web_src/js/modules/user-settings.ts", "web_src/js/modules/devtest.ts", "web_src/js/modules/i18n.ts", "web_src/js/utils/testhelper.ts", "web_src/js/modules/diff-file.ts", "web_src/js/features/user-settings.ts", "web_src/js/features/heatmap.ts", "web_src/js/features/admin/users.ts", "web_src/js/features/comp/SearchUserBox.ts", "web_src/js/features/contributors.ts", "web_src/js/features/citation.ts", "web_src/js/features/stopwatch.ts", "web_src/js/features/colorpicker.ts", "web_src/js/features/emoji.ts"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "gitea-webhook-delivery",
+        "question": "After a push, how are the external URLs a repo owner registered notified, and how can the receiver tell the request is genuine?",
+        "selectedId": "system:go-gitea-gitea",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23911,
+        "sectionCount": 15,
+        "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        "packets": [35, 36],
+        "sections": [
+          {
+            "id": "component:web-src-js-types-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:web-src-js-types-ts:repo-owner-path-info", "name": "RepoOwnerPathInfo" },
+              { "id": "code:web-src-js-types-ts:request-opts", "name": "RequestOpts" },
+              { "id": "code:web-src-js-types-ts:request-data", "name": "RequestData" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-notification-ts",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:web-src-js-features-notification-ts:update-notification-table", "name": "updateNotificationTable" },
+              { "id": "code:web-src-js-features-notification-ts:init-notification-count", "name": "initNotificationCount" },
+              { "id": "code:web-src-js-features-notification-ts:update-notification-count-with-callback", "name": "updateNotificationCountWithCallback" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:parse-repo-owner-path-info", "name": "parseRepoOwnerPathInfo" },
+              { "id": "code:web-src-js-utils-ts:decode-url-encoded-base64", "name": "decodeURLEncodedBase64" },
+              { "id": "code:web-src-js-utils-ts:encode-url-encoded-base64", "name": "encodeURLEncodedBase64" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-legacy-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-repository", "name": "initRepository" },
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-repo-branch-tag-selector", "name": "initRepoBranchTagSelector" },
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-branch-selector-tabs", "name": "initBranchSelectorTabs" }
+            ]
+          },
+          {
+            "id": "component:tests-e2e-utils-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:tests-e2e-utils-ts:api-delete-repo", "name": "apiDeleteRepo" },
+              { "id": "code:tests-e2e-utils-ts:api-create-repo", "name": "apiCreateRepo" },
+              { "id": "code:tests-e2e-utils-ts:base-url", "name": "baseUrl" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-issue-sidebar-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-pull-request-allow-maintainer-edit", "name": "initRepoPullRequestAllowMaintainerEdit" },
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-issue-sidebar-dependency", "name": "initRepoIssueSidebarDependency" },
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-issue-branch-selector", "name": "initRepoIssueBranchSelector" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-markup-content-ts",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:web-src-js-markup-content-ts:init-markup-content", "name": "initMarkupContent" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-observer-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:web-src-js-modules-observer-ts:register-global-selector-func", "name": "registerGlobalSelectorFunc" },
+              { "id": "code:web-src-js-modules-observer-ts:register-global-init-func", "name": "registerGlobalInitFunc" },
+              { "id": "code:web-src-js-modules-observer-ts:register-global-event-func", "name": "registerGlobalEventFunc" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fetch-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-ts:request", "name": "request" },
+              { "id": "code:web-src-js-modules-fetch-ts:get", "name": "GET" },
+              { "id": "code:web-src-js-modules-fetch-ts:delete", "name": "DELETE" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-common-page-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:web-src-js-features-common-page-ts:check-app-url", "name": "checkAppUrl" },
+              { "id": "code:web-src-js-features-common-page-ts:check-app-url-scheme", "name": "checkAppUrlScheme" },
+              { "id": "code:web-src-js-features-common-page-ts:init-global-component", "name": "initGlobalComponent" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:is-document-fragment-or-element-node", "name": "isDocumentFragmentOrElementNode" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-issue-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-issue-ts:init-repo-pull-request-review", "name": "initRepoPullRequestReview" },
+              { "id": "code:web-src-js-features-repo-issue-ts:init-repo-issue-reference-issue", "name": "initRepoIssueReferenceIssue" },
+              { "id": "code:web-src-js-features-repo-issue-ts:init-repo-issue-comments", "name": "initRepoIssueComments" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-external-render-helper-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:web-src-js-external-render-helper-ts:query-params", "name": "queryParams" },
+              { "id": "code:web-src-js-external-render-helper-ts:this-script-elem", "name": "thisScriptElem" },
+              { "id": "code:web-src-js-external-render-helper-ts:background-color", "name": "backgroundColor" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-comp-text-expander-ts",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:web-src-js-features-comp-text-expander-ts:init-text-expander", "name": "initTextExpander" },
+              { "id": "code:web-src-js-features-comp-text-expander-ts:fetch-issue-suggestions", "name": "fetchIssueSuggestions" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-user-auth-webauthn-ts",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:web-src-js-features-user-auth-webauthn-ts:web-authn-register-request", "name": "webAuthnRegisterRequest" },
+              { "id": "code:web-src-js-features-user-auth-webauthn-ts:init-user-auth-web-authn-register", "name": "initUserAuthWebAuthnRegister" },
+              { "id": "code:web-src-js-features-user-auth-webauthn-ts:webauthn-registered", "name": "webauthnRegistered" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "services/webhook/webhook.go": false, "services/webhook/deliver.go": false, "services/webhook/notifier.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11291, "sectionCount": 7, "ranked": [0, 1, 2, 3, 4, 5, 6] },
+          "double": { "byteBudget": 48000, "bytes": 38673, "sectionCount": 35, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 26116, "sectionCount": 18, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29724, "sectionCount": 22, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "b5046bab71a6265d5c88b741832adcdd3d0725f4dcf4acae9c86eb087e35b10b",
+          "allowedIdsCount": 57,
+          "allowedIdsSha256": "3131ded37020fc5fe700814daff76c07ead9eb4a126bf26793906a22c455f3ae",
+          "allowedIdsInContent": ["component:web-src-js-features-notification-ts", "code:web-src-js-features-notification-ts:update-notification-table", "code:web-src-js-features-notification-ts:init-notification-count", "component:web-src-js-external-render-helper-ts", "code:web-src-js-external-render-helper-ts:query-params", "code:web-src-js-external-render-helper-ts:this-script-elem", "container:go-gitea-gitea"],
+          "packetSources": { "container:go-gitea-gitea": 36 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned 15 sections, but none cover push-triggered webhooks to externally registered URLs or how a receiver verifies such requests (e.g. signature/HMAC headers). The closest hits are unrelated: `web_src/js/features/notification.ts` (`updateNotificationTable`, `initNotificationCount`) handles the in-app notification UI polling `/notifications`, and `web_src/js/external-render-helper.ts` (`queryParams`, `thisScriptElem`) is about embedded rendering iframes — neither delivers outbound HTTP callbacks nor authenticates them.\\n\\nWhat's missing: the server-side webhook dispatch code (registration of repo hooks, payload delivery after push, and any signing/secret verification mechanism) is absent from the atlas evidence. A search scoped to Go backend modules covering webhooks/hook delivery would be needed.\",\"citations\":[\"component:web-src-js-features-notification-ts\",\"code:web-src-js-features-notification-ts:update-notification-table\",\"code:web-src-js-features-notification-ts:init-notification-count\",\"component:web-src-js-external-render-helper-ts\",\"code:web-src-js-external-render-helper-ts:query-params\",\"code:web-src-js-external-render-helper-ts:this-script-elem\",\"container:go-gitea-gitea\"]}",
+          "usage": { "promptTokens": 8791, "completionTokens": 350, "totalTokens": 9141, "costUsd": 0.004128585 },
+          "ms": 12110
+        }
+      },
+      {
+        "id": "gitea-protected-branch",
+        "question": "What stops someone from force-pushing to a branch the team has locked down?",
+        "selectedId": "system:go-gitea-gitea",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23883,
+        "sectionCount": 21,
+        "ranked": [37, 38, 10, 39, 3, 40, 2, 20, 42, 43, 4, 5, 7, 44, 41, 45, 46, 47, 48, 24, 50],
+        "packets": [35, 36],
+        "sections": [
+          {
+            "id": "component:web-src-js-features-repo-settings-branches-ts",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-settings-branches-ts:init-repo-settings-branches-drag", "name": "initRepoSettingsBranchesDrag" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-org-team-ts",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:web-src-js-features-org-team-ts:init-org-team-settings", "name": "initOrgTeamSettings" },
+              { "id": "code:web-src-js-features-org-team-ts:init-org-team", "name": "initOrgTeam" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:toggle-elem-class", "name": "toggleElemClass" },
+              { "id": "code:web-src-js-utils-dom-ts:toggle-elem", "name": "toggleElem" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer-options", "name": "ActivePageTimerOptions" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-settings-ts",
+            "kind": "component",
+            "p": 39,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-settings-ts:init-repo-settings-search-team-box", "name": "initRepoSettingsSearchTeamBox" },
+              { "id": "code:web-src-js-features-repo-settings-ts:init-repo-settings-branches", "name": "initRepoSettingsBranches" },
+              { "id": "code:web-src-js-features-repo-settings-ts:team-search-response", "name": "TeamSearchResponse" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-legacy-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-branch-selector-tabs", "name": "initBranchSelectorTabs" },
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-repo-branch-tag-selector", "name": "initRepoBranchTagSelector" },
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-repository", "name": "initRepository" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-branch-ts",
+            "kind": "component",
+            "p": 40,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-branch-ts:init-repo-rename-branch-button", "name": "initRepoRenameBranchButton" },
+              { "id": "code:web-src-js-features-repo-branch-ts:init-repo-create-branch-button", "name": "initRepoCreateBranchButton" },
+              { "id": "code:web-src-js-features-repo-branch-ts:init-repo-branch-button", "name": "initRepoBranchButton" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:key-symbols", "name": "keySymbols" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-index-ts",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:web-src-js-index-ts:init-performance-tracer", "name": "initPerformanceTracer" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-diff-commit-ts",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-diff-commit-ts:add-branches", "name": "addBranches" },
+              { "id": "code:web-src-js-features-repo-diff-commit-ts:load-branches-and-tags", "name": "loadBranchesAndTags" },
+              { "id": "code:web-src-js-features-repo-diff-commit-ts:init-repo-diff-commit-branches-and-tags", "name": "initRepoDiffCommitBranchesAndTags" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-svg-ts",
+            "kind": "component",
+            "p": 43,
+            "symbols": [
+              { "id": "code:web-src-js-svg-ts:svgs", "name": "svgs" }
+            ]
+          },
+          {
+            "id": "component:tests-e2e-utils-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:tests-e2e-utils-ts:api-create-team", "name": "apiCreateTeam" },
+              { "id": "code:tests-e2e-utils-ts:api-create-files", "name": "apiCreateFiles" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-issue-sidebar-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-issue-branch-selector", "name": "initRepoIssueBranchSelector" },
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-issue-sidebar", "name": "initRepoIssueSidebar" },
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-issue-sidebar-dependency", "name": "initRepoIssueSidebarDependency" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-observer-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:web-src-js-modules-observer-ts:register-global-selector-func", "name": "registerGlobalSelectorFunc" },
+              { "id": "code:web-src-js-modules-observer-ts:init-global-selector-observer", "name": "initGlobalSelectorObserver" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-codeeditor-command-palette-ts",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:web-src-js-modules-codeeditor-command-palette-ts:command-palette", "name": "commandPalette" }
+            ]
+          },
+          { "id": "component:web-src-js-modules-search-ts", "kind": "component", "p": 41 },
+          {
+            "id": "component:web-src-js-modules-codeeditor-context-menu-ts",
+            "kind": "component",
+            "p": 45,
+            "symbols": [
+              { "id": "code:web-src-js-modules-codeeditor-context-menu-ts:create-menu-element", "name": "createMenuElement" },
+              { "id": "code:web-src-js-modules-codeeditor-context-menu-ts:select-all-occurrences", "name": "selectAllOccurrences" },
+              { "id": "code:web-src-js-modules-codeeditor-context-menu-ts:collect-symbols", "name": "collectSymbols" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-gitea-actions-ts",
+            "kind": "component",
+            "p": 46,
+            "symbols": [
+              { "id": "code:web-src-js-modules-gitea-actions-ts:actions-run", "name": "ActionsRun" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-switcher-ts",
+            "kind": "component",
+            "p": 47,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-switcher-ts:repo-icon", "name": "repoIcon" }
+            ]
+          },
+          { "id": "component:web-src-js-modules-fomantic-modal-ts", "kind": "component", "p": 48 },
+          {
+            "id": "component:web-src-js-features-repo-actions-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-actions-ts:init-workflow-badge-form", "name": "initWorkflowBadgeForm" },
+              { "id": "code:web-src-js-features-repo-actions-ts:update-workflow-badge-fields", "name": "updateWorkflowBadgeFields" },
+              { "id": "code:web-src-js-features-repo-actions-ts:init-repository-actions-view", "name": "initRepositoryActionsView" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-graph-ts",
+            "kind": "component",
+            "p": 50,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-graph-ts:init-repo-graph-git", "name": "initRepoGraphGit" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "routers/private/hook_pre_receive.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11900, "sectionCount": 9, "ranked": [37, 38, 10, 39, 3, 40, 2, 20, 41] },
+          "double": { "byteBudget": 48000, "bytes": 28809, "sectionCount": 26, "ranked": [37, 38, 10, 39, 3, 40, 2, 20, 42, 43, 4, 5, 7, 44, 41, 45, 46, 47, 48, 24, 11, 49, 33, 0, 50, 51] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 26160, "sectionCount": 23, "ranked": [37, 38, 10, 39, 3, 40, 2, 20, 42, 43, 4, 5, 7, 44, 41, 45, 46, 47, 48, 24, 11, 49, 33] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 28809, "sectionCount": 26, "ranked": [37, 38, 10, 39, 3, 40, 2, 20, 42, 43, 4, 5, 7, 44, 41, 45, 46, 47, 48, 24, 11, 49, 33, 0, 50, 51] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "2fb1aa223315e376e3a1720bf5193355f31726f8eb47e5f7b3439fdccef90141",
+          "allowedIdsCount": 61,
+          "allowedIdsSha256": "89b5f4c7dec570293aa1a874d6eceba960a5b563adb81a6f9ffa4adf67b36ed6",
+          "allowedIdsInContent": ["component:web-src-js-features-repo-settings-branches-ts", "code:web-src-js-features-repo-settings-branches-ts:init-repo-settings-branches-drag", "code:web-src-js-features-repo-settings-ts:init-repo-settings-branches", "code:web-src-js-features-repo-branch-ts:init-repo-rename-branch-button", "code:tests-e2e-utils-ts:api-create-files", "container:go-gitea-gitea"],
+          "packetSources": { "container:go-gitea-gitea": 36 },
+          "content": "{\"answer\": \"The evidence doesn't contain the enforcement logic for force-push on protected branches — only frontend code for managing branch protection rules. What it does show is that a repo can carry a `#protected-branches-list` whose rules have a priority, re-ordered by drag-and-drop in `initRepoSettingsBranchesDrag` (`web_src/js/features/repo-settings-branches.ts`), which POSTs the new `ids` order to `data-update-priority-url`. So the UI models ordered, per-branch protection rules, but the actual server-side check that rejects a force push is not in the evidence.\\n\\nRelated bits found:\\n- `initRepoSettingsBranches` (`web_src/js/features/repo-settings.ts`) is the settings-page initializer for branch config; nothing in its excerpt enforces push rules.\\n- `initRepoRenameBranchButton` (`web_src/js/features/repo-branch.ts`) only toggles a `.default-branch-warning` modal text — no protection check.\\n- `apiCreateFiles` (`tests/e2e/utils.ts`) pushes files to a branch in tests, with no mention of force-push or protection handling.\\n\\nIf you need the enforcement path (hook/receive-side rejection, permission checks), it lives in Go server code that this whole-atlas search did not surface.\", \"citations\": [\"component:web-src-js-features-repo-settings-branches-ts\", \"code:web-src-js-features-repo-settings-branches-ts:init-repo-settings-branches-drag\", \"code:web-src-js-features-repo-settings-ts:init-repo-settings-branches\", \"code:web-src-js-features-repo-branch-ts:init-repo-rename-branch-button\", \"code:tests-e2e-utils-ts:api-create-files\", \"container:go-gitea-gitea\"]}",
+          "usage": { "promptTokens": 9042, "completionTokens": 566, "totalTokens": 9608, "costUsd": 0.00442569 },
+          "ms": 14643
+        }
+      },
+      {
+        "id": "gitea-web-routes",
+        "question": "Where are the browser page URLs connected to the code that handles them?",
+        "selectedId": "system:go-gitea-gitea",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23352,
+        "sectionCount": 12,
+        "ranked": [9, 52, 10, 53, 54, 33, 31, 2, 55, 56, 0, 6],
+        "packets": [35, 36],
+        "sections": [
+          {
+            "id": "component:web-src-js-features-common-page-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:web-src-js-features-common-page-ts:check-app-url", "name": "checkAppUrl" },
+              { "id": "code:web-src-js-features-common-page-ts:check-app-url-scheme", "name": "checkAppUrlScheme" },
+              { "id": "code:web-src-js-features-common-page-ts:init-commm-page-components", "name": "initCommmPageComponents" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-admin-common-ts",
+            "kind": "component",
+            "p": 52,
+            "symbols": [
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-authentication", "name": "initAdminAuthentication" },
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-notice", "name": "initAdminNotice" },
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-user", "name": "initAdminUser" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer", "name": "ActivePageTimer" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer-refresh", "name": "activePageTimerRefresh" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer-options", "name": "ActivePageTimerOptions" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-codeeditor-main-ts",
+            "kind": "component",
+            "p": 53,
+            "symbols": [
+              { "id": "code:web-src-js-modules-codeeditor-main-ts:create-code-editor", "name": "createCodeEditor" },
+              { "id": "code:web-src-js-modules-codeeditor-main-ts:code-editor-config-default", "name": "codeEditorConfigDefault" },
+              { "id": "code:web-src-js-modules-codeeditor-main-ts:code-editor-config", "name": "CodeEditorConfig" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-url-ts",
+            "kind": "component",
+            "p": 54,
+            "symbols": [
+              { "id": "code:web-src-js-utils-url-ts:trim-url-punctuation", "name": "trimUrlPunctuation" },
+              { "id": "code:web-src-js-utils-url-ts:url-query-escape", "name": "urlQueryEscape" },
+              { "id": "code:web-src-js-utils-url-ts:url-raw-regex", "name": "urlRawRegex" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-code-ts",
+            "kind": "component",
+            "p": 33,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-code-ts:init-repo-code-view", "name": "initRepoCodeView" },
+              { "id": "code:web-src-js-features-repo-code-ts:select-range", "name": "selectRange" },
+              { "id": "code:web-src-js-features-repo-code-ts:show-line-button", "name": "showLineButton" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-user-auth-ts",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:web-src-js-features-user-auth-ts:init-user-check-app-url", "name": "initUserCheckAppUrl" },
+              { "id": "code:web-src-js-features-user-auth-ts:init-user-external-logins", "name": "initUserExternalLogins" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:parse-issue-page-info", "name": "parseIssuePageInfo" },
+              { "id": "code:web-src-js-utils-ts:decode-url-encoded-base64", "name": "decodeURLEncodedBase64" },
+              { "id": "code:web-src-js-utils-ts:encode-url-encoded-base64", "name": "encodeURLEncodedBase64" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-errors-ts",
+            "kind": "component",
+            "p": 55,
+            "symbols": [
+              { "id": "code:web-src-js-modules-errors-ts:is-gitea-error", "name": "isGiteaError" },
+              { "id": "code:web-src-js-modules-errors-ts:process-window-error-event", "name": "processWindowErrorEvent" },
+              { "id": "code:web-src-js-modules-errors-ts:show-global-error-message", "name": "showGlobalErrorMessage" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fetch-action-ts",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-action-ts:build-fetch-action-url", "name": "buildFetchActionUrl" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:handle-fetch-action-error", "name": "handleFetchActionError" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:handle-fetch-action-success", "name": "handleFetchActionSuccess" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-types-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:web-src-js-types-ts:issue-page-info", "name": "IssuePageInfo" },
+              { "id": "code:web-src-js-types-ts:user-event-message", "name": "UserEventMessage" },
+              { "id": "code:web-src-js-types-ts:request-data", "name": "RequestData" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-markup-content-ts",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:web-src-js-markup-content-ts:init-markup-content", "name": "initMarkupContent" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "routers/web/web.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11765, "sectionCount": 5, "ranked": [9, 52, 10, 53, 54] },
+          "double": { "byteBudget": 48000, "bytes": 41303, "sectionCount": 31, "ranked": [9, 52, 10, 53, 54, 33, 31, 2, 55, 56, 0, 11, 57, 51, 7, 6, 14, 39, 58, 59, 27, 22, 20, 60, 61, 18, 62, 63, 8, 30, 64] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 26205, "sectionCount": 13, "ranked": [9, 52, 10, 53, 54, 33, 31, 2, 55, 56, 0, 11, 7] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29720, "sectionCount": 15, "ranked": [9, 52, 10, 53, 54, 33, 31, 2, 55, 56, 0, 11, 57, 51, 7] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "08ded0b8abee8a2543a30d3ed164c18c6477f249f0f5aa5fe20f11784fa15d8c",
+          "allowedIdsCount": 47,
+          "allowedIdsSha256": "1fbc0998115bfd81ff7b9d26b57b2ede2f8306e54582f46244f97a99a48fefc5",
+          "allowedIdsInContent": ["component:web-src-js-features-common-page-ts", "code:web-src-js-features-common-page-ts:check-app-url", "code:web-src-js-features-common-page-ts:check-app-url-scheme", "code:web-src-js-features-common-page-ts:init-commm-page-components", "component:web-src-js-utils-url-ts", "component:web-src-js-features-repo-code-ts", "code:web-src-js-features-repo-code-ts:init-repo-code-view", "code:web-src-js-features-repo-code-ts:select-range", "component:web-src-js-features-user-auth-ts", "code:web-src-js-features-user-auth-ts:init-user-check-app-url", "component:web-src-js-utils-ts", "component:web-src-js-modules-fetch-action-ts", "code:web-src-js-modules-fetch-action-ts:build-fetch-action-url"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The evidence only covers the frontend side of URL→code binding; the Go-side router that maps server routes to handlers is not in the evidence.\\n\\nWhat is present:\\n- `web_src/js/features/user-auth.ts` — `initUserCheckAppUrl()` gates `checkAppUrlScheme()` on the sign-in/sign-up/link-account page markers (`.page-content.user.signin`, `.signup`, `.link-account`), so page identity is decided by DOM classes rendered per URL.\\n- `web_src/js/features/common-page.ts` — `checkAppUrl()` compares `window.location.href` against the configured `appUrl` and warns on ROOT_URL mismatches; `checkAppUrlScheme()` flags `http:` pages with an `https:` appUrl. `initCommmPageComponents()` is the page-level entry point.\\n- `web_src/js/features/repo-code.ts` — `initRepoCodeView()` reacts to the URL hash (`window.location.hash`, `hashchange`) to select line ranges via `selectRange()`, the clearest example of URL state driving code.\\n- `web_src/js/modules/fetch-action.ts` — `buildFetchActionUrl()` turns element/option values into request URLs for declarative actions.\\n- `web_src/js/utils/url.ts` (`trimUrlPunctuation`, `urlQueryEscape`) and `web_src/js/utils.ts` (`parseIssuePageInfo`) parse/normalize URL-derived values.\\n\\nMissing: the router/route-table code that binds page URLs to server handlers (e.g. Go route registration) did not appear in the 12 searched sections, so that mapping is not in the evidence.\",\"citations\":[\"component:web-src-js-features-user-auth-ts\",\"code:web-src-js-features-user-auth-ts:init-user-check-app-url\",\"component:web-src-js-features-common-page-ts\",\"code:web-src-js-features-common-page-ts:check-app-url\",\"code:web-src-js-features-common-page-ts:check-app-url-scheme\",\"code:web-src-js-features-common-page-ts:init-commm-page-components\",\"component:web-src-js-features-repo-code-ts\",\"code:web-src-js-features-repo-code-ts:init-repo-code-view\",\"code:web-src-js-features-repo-code-ts:select-range\",\"component:web-src-js-modules-fetch-action-ts\",\"code:web-src-js-modules-fetch-action-ts:build-fetch-action-url\",\"component:web-src-js-utils-url-ts\",\"component:web-src-js-utils-ts\"]}",
+          "usage": { "promptTokens": 8142, "completionTokens": 652, "totalTokens": 8794, "costUsd": 0.00410901 },
+          "ms": 17108
+        }
+      },
+      {
+        "id": "gitea-api-token",
+        "question": "How does a script calling the REST API prove who it is with a personal token?",
+        "selectedId": "component:tools-generate-svg-ts",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23805,
+        "sectionCount": 23,
+        "ranked": [4, 10, 65, 66, 67, 68, 12, 69, 70, 71, 72, 7, 2, 55, 0, 73, 19, 56, 74, 54, 52, 75, 26],
+        "packets": [77, 36],
+        "sections": [
+          {
+            "id": "component:tests-e2e-utils-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:tests-e2e-utils-ts:api-create-user", "name": "apiCreateUser" },
+              { "id": "code:tests-e2e-utils-ts:api-create-issue", "name": "apiCreateIssue" },
+              { "id": "code:tests-e2e-utils-ts:api-delete-org", "name": "apiDeleteOrg" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:elements-call", "name": "elementsCall" },
+              { "id": "code:web-src-js-utils-dom-ts:protect-morph-elements", "name": "protectMorphElements" },
+              { "id": "code:web-src-js-utils-dom-ts:add-delegated-event-listener", "name": "addDelegatedEventListener" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-render-swagger-ts",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:web-src-js-render-swagger-ts:sync-dark-mode-class", "name": "syncDarkModeClass" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-migration-ts",
+            "kind": "component",
+            "p": 66,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-migration-ts:token", "name": "token" },
+              { "id": "code:web-src-js-features-repo-migration-ts:check-items", "name": "checkItems" },
+              { "id": "code:web-src-js-features-repo-migration-ts:init-repo-migration", "name": "initRepoMigration" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-swagger-ts",
+            "kind": "component",
+            "p": 67,
+            "symbols": [
+              { "id": "code:web-src-js-swagger-ts:init-gitea-api-viewer", "name": "initGiteaAPIViewer" }
+            ]
+          },
+          {
+            "id": "component:tools-shared-ts",
+            "kind": "component",
+            "p": 68,
+            "symbols": [
+              { "id": "code:tools-shared-ts:vue-defines", "name": "vueDefines" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-external-render-helper-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:web-src-js-external-render-helper-ts:this-script-elem", "name": "thisScriptElem" },
+              { "id": "code:web-src-js-external-render-helper-ts:is-valid-css-color", "name": "isValidCssColor" },
+              { "id": "code:web-src-js-external-render-helper-ts:query-string", "name": "queryString" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-tippy-ts",
+            "kind": "component",
+            "p": 69,
+            "symbols": [
+              { "id": "code:web-src-js-modules-tippy-ts:show-temporary-tooltip", "name": "showTemporaryTooltip" },
+              { "id": "code:web-src-js-modules-tippy-ts:available-size-for-placement", "name": "availableSizeForPlacement" },
+              { "id": "code:web-src-js-modules-tippy-ts:attach-tooltip", "name": "attachTooltip" }
+            ]
+          },
+          {
+            "id": "component:tools-ci-tools-ts",
+            "kind": "component",
+            "p": 70,
+            "symbols": [
+              { "id": "code:tools-ci-tools-ts:set-pr-labels", "name": "setPrLabels" },
+              { "id": "code:tools-ci-tools-ts:type-labels", "name": "typeLabels" },
+              { "id": "code:tools-ci-tools-ts:allowed-types", "name": "allowedTypes" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-favicon-status-ts",
+            "kind": "component",
+            "p": 71,
+            "symbols": [
+              { "id": "code:web-src-js-modules-favicon-status-ts:color-probe", "name": "colorProbe" },
+              { "id": "code:web-src-js-modules-favicon-status-ts:reset-action-favicon", "name": "resetActionFavicon" },
+              { "id": "code:web-src-js-modules-favicon-status-ts:resolve-tailwind-text-color", "name": "resolveTailwindTextColor" }
+            ]
+          },
+          {
+            "id": "component:eslint-config-ts",
+            "kind": "component",
+            "p": 72,
+            "symbols": [
+              { "id": "code:eslint-config-ts:restricted-globals", "name": "restrictedGlobals" },
+              { "id": "code:eslint-config-ts:restricted-properties", "name": "restrictedProperties" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-observer-ts",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:web-src-js-modules-observer-ts:call-global-init-func", "name": "callGlobalInitFunc" },
+              { "id": "code:web-src-js-modules-observer-ts:register-global-init-func", "name": "registerGlobalInitFunc" },
+              { "id": "code:web-src-js-modules-observer-ts:init-global-selector-observer", "name": "initGlobalSelectorObserver" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:strip-tags", "name": "stripTags" },
+              { "id": "code:web-src-js-utils-ts:is-object", "name": "isObject" },
+              { "id": "code:web-src-js-utils-ts:is-mac", "name": "isMac" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-errors-ts",
+            "kind": "component",
+            "p": 55,
+            "symbols": [
+              { "id": "code:web-src-js-modules-errors-ts:process-window-error-event", "name": "processWindowErrorEvent" },
+              { "id": "code:web-src-js-modules-errors-ts:is-gitea-error", "name": "isGiteaError" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-types-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:web-src-js-types-ts:fomantic-api-response", "name": "FomanticApiResponse" },
+              { "id": "code:web-src-js-types-ts:promisable", "name": "Promisable" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fomantic-dropdown-ts",
+            "kind": "component",
+            "p": 73,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fomantic-dropdown-ts:delegate-dropdown-module", "name": "delegateDropdownModule" },
+              { "id": "code:web-src-js-modules-fomantic-dropdown-ts:aria-dropdown-fn", "name": "ariaDropdownFn" },
+              { "id": "code:web-src-js-modules-fomantic-dropdown-ts:attach-init-elements", "name": "attachInitElements" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-common-actions-permissions-ts",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:web-src-js-features-common-actions-permissions-ts:init-actions-override-owner-config", "name": "initActionsOverrideOwnerConfig" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fetch-action-ts",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-action-ts:reset-form-error-fields", "name": "resetFormErrorFields" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:handle-fetch-action-error", "name": "handleFetchActionError" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:handle-fetch-action-success", "name": "handleFetchActionSuccess" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-init-ts",
+            "kind": "component",
+            "p": 74,
+            "symbols": [
+              { "id": "code:web-src-js-modules-init-ts:call-init-functions", "name": "callInitFunctions" },
+              { "id": "code:web-src-js-modules-init-ts:init-performance-tracer", "name": "InitPerformanceTracer" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-url-ts",
+            "kind": "component",
+            "p": 54,
+            "symbols": [
+              { "id": "code:web-src-js-utils-url-ts:url-query-escape", "name": "urlQueryEscape" },
+              { "id": "code:web-src-js-utils-url-ts:path-escape", "name": "pathEscape" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-admin-common-ts",
+            "kind": "component",
+            "p": 52,
+            "symbols": [
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-authentication", "name": "initAdminAuthentication" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-func-ts",
+            "kind": "component",
+            "p": 75,
+            "symbols": [
+              { "id": "code:web-src-js-utils-func-ts:create-timed", "name": "createTimed" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-findfile-ts",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-findfile-ts:str-sub-match", "name": "strSubMatch" },
+              { "id": "code:web-src-js-features-repo-findfile-ts:filter-repo-files-weighted", "name": "filterRepoFilesWeighted" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "services/auth/oauth2.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11943, "sectionCount": 11, "ranked": [4, 10, 65, 66, 67, 68, 12, 69, 70, 71, 72] },
+          "double": { "byteBudget": 48000, "bytes": 27377, "sectionCount": 27, "ranked": [4, 10, 65, 66, 67, 68, 12, 69, 70, 71, 72, 7, 2, 55, 0, 73, 19, 56, 74, 54, 52, 75, 26, 36, 76, 58, 48] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 26097, "sectionCount": 26, "ranked": [4, 10, 65, 66, 67, 68, 12, 69, 70, 71, 72, 7, 2, 55, 0, 73, 19, 56, 74, 54, 52, 75, 26, 36, 76, 58] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 27377, "sectionCount": 27, "ranked": [4, 10, 65, 66, 67, 68, 12, 69, 70, 71, 72, 7, 2, 55, 0, 73, 19, 56, 74, 54, 52, 75, 26, 36, 76, 58, 48] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "57950ff5edc4368f56816ce062859dfff6dc27f8124151575cf8e613c8821157",
+          "allowedIdsCount": 83,
+          "allowedIdsSha256": "d719ac05c94755405527635fd94813dae0e549c9cea22f5f385f0f832a68af68",
+          "allowedIdsInContent": ["component:tests-e2e-utils-ts", "code:tests-e2e-utils-ts:api-create-user", "code:tests-e2e-utils-ts:api-create-issue", "code:tests-e2e-utils-ts:api-delete-org", "code:web-src-js-features-repo-migration-ts:token", "code:tools-ci-tools-ts:set-pr-labels"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The evidence shows scripts authenticating to the REST API by attaching shared request headers built by `apiHeaders()` on each call, but the actual token header format (e.g. `Authorization: token ...`) is **not in the evidence**.\\n\\n- In `tests/e2e/utils.ts`, the e2e API helpers pass `headers: apiHeaders()` on every request to `/api/v1/...` — see `apiCreateUser` (line 144), `apiCreateIssue` (line 182), `apiDeleteOrg` (line 131).\\n- `apiCreateIssue` and `apiDeleteOrg` are the two-argument retry-wrapped calls (`apiRetry(() => requestContext.post(...))`), so credentials are injected uniformly via `apiHeaders()` rather than per call.\\n- The definition of `apiHeaders()` itself is not included in the returned sections, so I cannot confirm which header name/key it uses or where a personal access token is read from (env var, etc.).\\n- Unrelated tokens in the evidence (`code:web-src-js-features-repo-migration-ts:token`, `code:tools-ci-tools-ts:set-pr-labels`) concern the repo-migration `#auth_token` input field and a GitHub Actions `GITHUB_TOKEN`, not Gitea personal-token API auth.\",\"citations\":[\"component:tests-e2e-utils-ts\",\"code:tests-e2e-utils-ts:api-create-user\",\"code:tests-e2e-utils-ts:api-create-issue\",\"code:tests-e2e-utils-ts:api-delete-org\"]}",
+          "usage": { "promptTokens": 10461, "completionTokens": 445, "totalTokens": 10906, "costUsd": 0.004937685 },
+          "ms": 15636
+        }
+      },
+      {
+        "id": "gitea-listen-port",
+        "question": "How do I change which port the web server listens on?",
+        "selectedId": "system:go-gitea-gitea",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23692,
+        "sectionCount": 14,
+        "ranked": [63, 22, 0, 10, 30, 56, 62, 2, 51, 20, 21, 78, 66, 27],
+        "packets": [35, 36],
+        "sections": [
+          {
+            "id": "component:vite-config-ts",
+            "kind": "component",
+            "p": 63,
+            "symbols": [
+              { "id": "code:vite-config-ts:vite-dev-server-port-plugin", "name": "viteDevServerPortPlugin" },
+              { "id": "code:vite-config-ts:vite-dev-server-port", "name": "viteDevServerPort" },
+              { "id": "code:vite-config-ts:vite-dev-port-file-path", "name": "viteDevPortFilePath" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-user-events-sharedworker-ts",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:web-src-js-user-events-sharedworker-ts:sources-by-port", "name": "sourcesByPort" },
+              { "id": "code:web-src-js-user-events-sharedworker-ts:is-server-event-message", "name": "isServerEventMessage" },
+              { "id": "code:web-src-js-user-events-sharedworker-ts:source", "name": "Source" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-types-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:web-src-js-types-ts:server-user-event-types", "name": "serverUserEventTypes" },
+              { "id": "code:web-src-js-types-ts:server-user-event-message", "name": "ServerUserEventMessage" },
+              { "id": "code:web-src-js-types-ts:user-event-message", "name": "UserEventMessage" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:add-delegated-event-listener", "name": "addDelegatedEventListener" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer", "name": "ActivePageTimer" },
+              { "id": "code:web-src-js-utils-dom-ts:load-elem", "name": "loadElem" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-worker-ts",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:web-src-js-modules-worker-ts:init", "name": "init" },
+              { "id": "code:web-src-js-modules-worker-ts:on-user-event", "name": "onUserEvent" },
+              { "id": "code:web-src-js-modules-worker-ts:dispatch", "name": "dispatch" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fetch-action-ts",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-action-ts:init-fetch-action-trigger", "name": "initFetchActionTrigger" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:init-global-fetch-action", "name": "initGlobalFetchAction" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:fetch-action-trigger-type", "name": "FetchActionTriggerType" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-comp-editor-upload-ts",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:web-src-js-features-comp-editor-upload-ts:event-upload-state-changed", "name": "EventUploadStateChanged" },
+              { "id": "code:web-src-js-features-comp-editor-upload-ts:trigger-upload-state-changed", "name": "triggerUploadStateChanged" },
+              { "id": "code:web-src-js-features-comp-editor-upload-ts:init-textarea-events", "name": "initTextareaEvents" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:blob-to-data-uri", "name": "blobToDataURI" },
+              { "id": "code:web-src-js-utils-ts:convert-image", "name": "convertImage" },
+              { "id": "code:web-src-js-utils-ts:basename", "name": "basename" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-editor-ts",
+            "kind": "component",
+            "p": 51,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-editor-ts:init-repo-editor", "name": "initRepoEditor" },
+              { "id": "code:web-src-js-features-repo-editor-ts:init-edit-preview-tab", "name": "initEditPreviewTab" },
+              { "id": "code:web-src-js-features-repo-editor-ts:render-preview-panel-content", "name": "renderPreviewPanelContent" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-index-ts",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:web-src-js-index-ts:init-performance-tracer", "name": "initPerformanceTracer" },
+              { "id": "code:web-src-js-index-ts:init-dur", "name": "initDur" },
+              { "id": "code:web-src-js-index-ts:init-start-time", "name": "initStartTime" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-common-ts",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-common-ts:init-repo-archive-links", "name": "initRepoArchiveLinks" },
+              { "id": "code:web-src-js-features-repo-common-ts:on-download-archive", "name": "onDownloadArchive" },
+              { "id": "code:web-src-js-features-repo-common-ts:init-repo-activity-top-authors-chart", "name": "initRepoActivityTopAuthorsChart" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-comp-combo-markdown-editor-ts",
+            "kind": "component",
+            "p": 78,
+            "symbols": [
+              { "id": "code:web-src-js-features-comp-combo-markdown-editor-ts:combo-markdown-editor", "name": "ComboMarkdownEditor" },
+              { "id": "code:web-src-js-features-comp-combo-markdown-editor-ts:get-combo-markdown-editor", "name": "getComboMarkdownEditor" },
+              { "id": "code:web-src-js-features-comp-combo-markdown-editor-ts:apply-monospace-to-all-editors", "name": "applyMonospaceToAllEditors" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-migration-ts",
+            "kind": "component",
+            "p": 66,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-migration-ts:init-repo-migration", "name": "initRepoMigration" },
+              { "id": "code:web-src-js-features-repo-migration-ts:check-auth", "name": "checkAuth" },
+              { "id": "code:web-src-js-features-repo-migration-ts:check-items", "name": "checkItems" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-diff-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-diff-ts:on-location-hash-change", "name": "onLocationHashChange" },
+              { "id": "code:web-src-js-features-repo-diff-ts:on-diff-file-body-change", "name": "onDiffFileBodyChange" },
+              { "id": "code:web-src-js-features-repo-diff-ts:init-repo-diff-view", "name": "initRepoDiffView" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "custom/conf/app.example.ini": false, "modules/setting/server.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11888, "sectionCount": 7, "ranked": [63, 22, 0, 10, 30, 56, 62] },
+          "double": { "byteBudget": 48000, "bytes": 32372, "sectionCount": 25, "ranked": [63, 22, 0, 10, 30, 56, 62, 2, 51, 20, 21, 78, 66, 27, 19, 79, 80, 58, 57, 81, 52, 82, 83, 33, 84] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 26003, "sectionCount": 16, "ranked": [63, 22, 0, 10, 30, 56, 62, 2, 51, 20, 21, 78, 66, 27, 19, 79] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29882, "sectionCount": 20, "ranked": [63, 22, 0, 10, 30, 56, 62, 2, 51, 20, 21, 78, 66, 27, 19, 79, 80, 58, 57, 82] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "8791dc1c4c84857af5ef02d7520d34c5869cdc127a45cecd6a5921747c2d09ff",
+          "allowedIdsCount": 58,
+          "allowedIdsSha256": "04b900e70154c36434b7e0e76fa64a89cf46cc5f732ac2b91700e370641a2247",
+          "allowedIdsInContent": ["component:vite-config-ts", "code:vite-config-ts:vite-dev-server-port-plugin", "code:vite-config-ts:vite-dev-server-port", "code:vite-config-ts:vite-dev-port-file-path", "system:go-gitea-gitea", "container:go-gitea-gitea"],
+          "packetSources": { "system:go-gitea-gitea": 35, "container:go-gitea-gitea": 36 },
+          "content": "{\"answer\":\"The evidence only covers the **Vite dev server**, not the Gitea web server's listen port: `vite.config.ts` registers `viteDevServerPortPlugin`, which hooks `configureServer` and, once `server.httpServer` emits `listening`, writes the actually bound `addr.port` to `viteDevPortFilePath` (`viteDevServerPort`, `viteDevPortFilePath`) so other tooling can discover it. So changing a dev port would go through Vite's own server settings, and whatever picks up the port reads that file rather than a hardcoded value.\\n\\n- `vite.config.ts` — `viteDevServerPortPlugin` (apply: `serve`), `viteDevServerPort`, `viteDevPortFilePath`: resolves the *effective* port at runtime and persists it; it does not set the port.\\n- Nothing in the evidence shows a port setting for the actual Gitea web server (no `HTTP_PORT`/`[server]`/listen-address config or `ListenAndServe` call is present). That part of the question is not covered by these sections — it would live in the Go server/config side, which isn't in the evidence here.\",\"citations\":[\"component:vite-config-ts\",\"code:vite-config-ts:vite-dev-server-port-plugin\",\"code:vite-config-ts:vite-dev-server-port\",\"code:vite-config-ts:vite-dev-port-file-path\",\"container:go-gitea-gitea\",\"system:go-gitea-gitea\"]}",
+          "usage": { "promptTokens": 8663, "completionTokens": 512, "totalTokens": 9175, "costUsd": 0.004213845 },
+          "ms": 19543
+        }
+      },
+      {
+        "id": "gitea-schema-upgrades",
+        "question": "When upgrading to a newer release, where are the database schema changes applied?",
+        "selectedId": "system:go-gitea-gitea",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23795,
+        "sectionCount": 18,
+        "ranked": [85, 10, 27, 78, 20, 56, 81, 62, 31, 9, 64, 2, 83, 58, 80, 79, 57, 24],
+        "packets": [35, 36],
+        "sections": [
+          {
+            "id": "component:web-src-js-features-repo-release-ts",
+            "kind": "component",
+            "p": 85,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-release-ts:init-repo-release-new", "name": "initRepoReleaseNew" },
+              { "id": "code:web-src-js-features-repo-release-ts:init-generate-release-notes", "name": "initGenerateReleaseNotes" },
+              { "id": "code:web-src-js-features-repo-release-ts:get-release-form-existing-tags", "name": "getReleaseFormExistingTags" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:apply-elems-callback", "name": "applyElemsCallback" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer", "name": "ActivePageTimer" },
+              { "id": "code:web-src-js-utils-dom-ts:morph-element-with-protection", "name": "morphElementWithProtection" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-diff-ts",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-diff-ts:on-location-hash-change", "name": "onLocationHashChange" },
+              { "id": "code:web-src-js-features-repo-diff-ts:on-diff-file-body-change", "name": "onDiffFileBodyChange" },
+              { "id": "code:web-src-js-features-repo-diff-ts:diff-load-more-files", "name": "diffLoadMoreFiles" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-comp-combo-markdown-editor-ts",
+            "kind": "component",
+            "p": 78,
+            "symbols": [
+              { "id": "code:web-src-js-features-comp-combo-markdown-editor-ts:apply-monospace-to-all-editors", "name": "applyMonospaceToAllEditors" },
+              { "id": "code:web-src-js-features-comp-combo-markdown-editor-ts:combo-markdown-editor", "name": "ComboMarkdownEditor" }
+            ]
+          },
+          { "id": "component:web-src-js-index-ts", "kind": "component", "p": 20 },
+          {
+            "id": "component:web-src-js-modules-fetch-action-ts",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-action-ts:init-fetch-action-trigger", "name": "initFetchActionTrigger" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:fetch-action-trigger-type", "name": "FetchActionTriggerType" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:handle-fetch-action-success", "name": "handleFetchActionSuccess" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-are-you-sure-ts",
+            "kind": "component",
+            "p": 81,
+            "symbols": [
+              { "id": "code:web-src-js-modules-are-you-sure-ts:apply-are-you-sure", "name": "applyAreYouSure" },
+              { "id": "code:web-src-js-modules-are-you-sure-ts:are-you-sure-state", "name": "AreYouSureState" },
+              { "id": "code:web-src-js-modules-are-you-sure-ts:set-dirty", "name": "setDirty" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-comp-editor-upload-ts",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:web-src-js-features-comp-editor-upload-ts:event-upload-state-changed", "name": "EventUploadStateChanged" },
+              { "id": "code:web-src-js-features-comp-editor-upload-ts:trigger-upload-state-changed", "name": "triggerUploadStateChanged" },
+              { "id": "code:web-src-js-features-comp-editor-upload-ts:code-mirror-editor", "name": "CodeMirrorEditor" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-user-auth-ts",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:web-src-js-features-user-auth-ts:init-user-check-app-url", "name": "initUserCheckAppUrl" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-common-page-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:web-src-js-features-common-page-ts:check-app-url-scheme", "name": "checkAppUrlScheme" },
+              { "id": "code:web-src-js-features-common-page-ts:apply-auto-focus", "name": "applyAutoFocus" },
+              { "id": "code:web-src-js-features-common-page-ts:init-footer-theme-selector", "name": "initFooterThemeSelector" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-common-button-ts",
+            "kind": "component",
+            "p": 64,
+            "symbols": [
+              { "id": "code:web-src-js-features-common-button-ts:init-global-buttons", "name": "initGlobalButtons" },
+              { "id": "code:web-src-js-features-common-button-ts:on-hide-panel-click", "name": "onHidePanelClick" },
+              { "id": "code:web-src-js-features-common-button-ts:on-show-panel-click", "name": "onShowPanelClick" }
+            ]
+          },
+          { "id": "component:web-src-js-utils-ts", "kind": "component", "p": 2 },
+          {
+            "id": "component:web-src-js-webcomponents-index-ts",
+            "kind": "component",
+            "p": 83,
+            "symbols": [
+              { "id": "code:web-src-js-webcomponents-index-ts:init-page-theme-dark-light", "name": "initPageThemeDarkLight" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-comp-editor-markdown-ts",
+            "kind": "component",
+            "p": 58,
+            "symbols": [
+              { "id": "code:web-src-js-features-comp-editor-markdown-ts:event-editor-content-changed", "name": "EventEditorContentChanged" },
+              { "id": "code:web-src-js-features-comp-editor-markdown-ts:trigger-editor-content-changed", "name": "triggerEditorContentChanged" },
+              { "id": "code:web-src-js-features-comp-editor-markdown-ts:replace-textarea-selection", "name": "replaceTextareaSelection" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-issue-content-ts",
+            "kind": "component",
+            "p": 80,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-issue-content-ts:show-content-history-menu", "name": "showContentHistoryMenu" },
+              { "id": "code:web-src-js-features-repo-issue-content-ts:show-content-history-detail", "name": "showContentHistoryDetail" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-install-ts",
+            "kind": "component",
+            "p": 79,
+            "symbols": [
+              { "id": "code:web-src-js-features-install-ts:init-pre-install", "name": "initPreInstall" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-issue-edit-ts",
+            "kind": "component",
+            "p": 57,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-issue-edit-ts:try-on-edit-content", "name": "tryOnEditContent" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-actions-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-actions-ts:init-workflow-badge-form", "name": "initWorkflowBadgeForm" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "modelmigration/migrations.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11827, "sectionCount": 7, "ranked": [85, 10, 27, 78, 20, 56, 31] },
+          "double": { "byteBudget": 48000, "bytes": 29658, "sectionCount": 26, "ranked": [85, 10, 27, 78, 20, 56, 81, 62, 31, 9, 64, 2, 83, 58, 80, 79, 57, 8, 52, 51, 24, 65, 33, 55, 86, 7] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 25921, "sectionCount": 20, "ranked": [85, 10, 27, 78, 20, 56, 81, 62, 31, 9, 64, 2, 83, 58, 80, 79, 57, 8, 52, 51] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29658, "sectionCount": 26, "ranked": [85, 10, 27, 78, 20, 56, 81, 62, 31, 9, 64, 2, 83, 58, 80, 79, 57, 8, 52, 51, 24, 65, 33, 55, 86, 7] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "028a658edda0835541374918a08aa4646e66835829559b84a97bb957d33695f0",
+          "allowedIdsCount": 56,
+          "allowedIdsSha256": "3ad0a4ed1756bcd7182d7c1a578a4e53c2fcbdf55f3a93ed8f6498e2b0f82f3a",
+          "allowedIdsInContent": ["component:web-src-js-features-repo-release-ts", "component:web-src-js-features-install-ts", "code:web-src-js-features-install-ts:init-pre-install", "container:go-gitea-gitea"],
+          "packetSources": { "container:go-gitea-gitea": 36 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search (`go-gitea_gitea`, 18 sections) returned only frontend TypeScript modules — nothing about database migrations, schema versioning, or an upgrade path that applies schema changes.\\n\\nWhat's closest but doesn't answer it:\\n- `web_src/js/features/install.ts` (`initPreInstall`) only fills in default DB host/user/name fields on the install page — install-time form defaults, not schema migration on upgrade.\\n- `web_src/js/features/repo-release.ts` is about repository releases (tags, release notes), not server version upgrades.\\n\\nNo migration runner, schema file, or admin upgrade entry point appears in the search results, so where database schema changes are applied on upgrade is not in the evidence.\", \"citations\": [\"component:web-src-js-features-install-ts\", \"code:web-src-js-features-install-ts:init-pre-install\", \"component:web-src-js-features-repo-release-ts\", \"container:go-gitea-gitea\"]}",
+          "usage": { "promptTokens": 8675, "completionTokens": 445, "totalTokens": 9120, "costUsd": 0.0040503366 },
+          "ms": 9725
+        }
+      },
+      {
+        "id": "gitea-run-one-test",
+        "question": "How do I run just one backend test locally?",
+        "selectedId": "system:go-gitea-gitea",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23639,
+        "sectionCount": 20,
+        "ranked": [49, 56, 46, 87, 4, 52, 10, 2, 86, 54, 88, 89, 90, 24, 41, 91, 92, 71, 17, 44],
+        "packets": [35, 36],
+        "sections": [
+          {
+            "id": "component:web-src-js-components-action-run-view-ts",
+            "kind": "component",
+            "p": 49,
+            "symbols": [
+              { "id": "code:web-src-js-components-action-run-view-ts:create-action-run-view-store", "name": "createActionRunViewStore" },
+              { "id": "code:web-src-js-components-action-run-view-ts:create-empty-actions-run", "name": "createEmptyActionsRun" },
+              { "id": "code:web-src-js-components-action-run-view-ts:action-run-view-store", "name": "ActionRunViewStore" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fetch-action-ts",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-action-ts:fetch-action-do-redirect", "name": "fetchActionDoRedirect" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:init-global-fetch-action", "name": "initGlobalFetchAction" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:handle-fetch-action-error", "name": "handleFetchActionError" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-gitea-actions-ts",
+            "kind": "component",
+            "p": 46,
+            "symbols": [
+              { "id": "code:web-src-js-modules-gitea-actions-ts:actions-run", "name": "ActionsRun" },
+              { "id": "code:web-src-js-modules-gitea-actions-ts:actions-run-attempt", "name": "ActionsRunAttempt" },
+              { "id": "code:web-src-js-modules-gitea-actions-ts:actions-status", "name": "ActionsStatus" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-components-action-run-artifacts-ts",
+            "kind": "component",
+            "p": 87,
+            "symbols": [
+              { "id": "code:web-src-js-components-action-run-artifacts-ts:build-artifact-tooltip-html", "name": "buildArtifactTooltipHtml" }
+            ]
+          },
+          {
+            "id": "component:tests-e2e-utils-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:tests-e2e-utils-ts:test-user-password", "name": "testUserPassword" },
+              { "id": "code:tests-e2e-utils-ts:api-headers", "name": "apiHeaders" },
+              { "id": "code:tests-e2e-utils-ts:login", "name": "login" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-admin-common-ts",
+            "kind": "component",
+            "p": 52,
+            "symbols": [
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-runner-bulk", "name": "initAdminRunnerBulk" },
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-user", "name": "initAdminUser" },
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-common", "name": "initAdminCommon" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:query-single-visible-elem", "name": "querySingleVisibleElem" },
+              { "id": "code:web-src-js-utils-dom-ts:is-elem-visible", "name": "isElemVisible" },
+              { "id": "code:web-src-js-utils-dom-ts:add-delegated-event-listener", "name": "addDelegatedEventListener" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:get-current-locale", "name": "getCurrentLocale" },
+              { "id": "code:web-src-js-utils-ts:translate-day", "name": "translateDay" },
+              { "id": "code:web-src-js-utils-ts:translate-month", "name": "translateMonth" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-render-ansi-ts",
+            "kind": "component",
+            "p": 86,
+            "symbols": [
+              { "id": "code:web-src-js-render-ansi-ts:ansi-run", "name": "AnsiRun" },
+              { "id": "code:web-src-js-render-ansi-ts:ansi-line-renderer", "name": "AnsiLineRenderer" },
+              { "id": "code:web-src-js-render-ansi-ts:overwrite-columns", "name": "overwriteColumns" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-url-ts",
+            "kind": "component",
+            "p": 54,
+            "symbols": [
+              { "id": "code:web-src-js-utils-url-ts:path-escape", "name": "pathEscape" },
+              { "id": "code:web-src-js-utils-url-ts:url-query-escape", "name": "urlQueryEscape" },
+              { "id": "code:web-src-js-utils-url-ts:path-escape-segments", "name": "pathEscapeSegments" }
+            ]
+          },
+          { "id": "component:web-src-js-utils-html-ts", "kind": "component", "p": 88 },
+          {
+            "id": "component:web-src-js-modules-user-settings-ts",
+            "kind": "component",
+            "p": 89,
+            "symbols": [
+              { "id": "code:web-src-js-modules-user-settings-ts:get-local-storage-user-setting", "name": "getLocalStorageUserSetting" },
+              { "id": "code:web-src-js-modules-user-settings-ts:local-user-settings", "name": "localUserSettings" },
+              { "id": "code:web-src-js-modules-user-settings-ts:set-local-storage-user-setting", "name": "setLocalStorageUserSetting" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-devtest-ts",
+            "kind": "component",
+            "p": 90,
+            "symbols": [
+              { "id": "code:web-src-js-modules-devtest-ts:init-devtest-page", "name": "initDevtestPage" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-actions-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-actions-ts:init-action-runs-list", "name": "initActionRunsList" },
+              { "id": "code:web-src-js-features-repo-actions-ts:init-repository-actions-view", "name": "initRepositoryActionsView" },
+              { "id": "code:web-src-js-features-repo-actions-ts:init-repository-actions", "name": "initRepositoryActions" }
+            ]
+          },
+          { "id": "component:web-src-js-modules-search-ts", "kind": "component", "p": 41 },
+          {
+            "id": "component:web-src-js-modules-i18n-ts",
+            "kind": "component",
+            "p": 91,
+            "symbols": [
+              { "id": "code:web-src-js-modules-i18n-ts:tr-n", "name": "trN" },
+              { "id": "code:web-src-js-modules-i18n-ts:tr-string", "name": "trString" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-testhelper-ts",
+            "kind": "component",
+            "p": 92,
+            "symbols": [
+              { "id": "code:web-src-js-utils-testhelper-ts:normalize-test-html", "name": "normalizeTestHtml" },
+              { "id": "code:web-src-js-utils-testhelper-ts:capture-navigations", "name": "captureNavigations" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-favicon-status-ts",
+            "kind": "component",
+            "p": 71,
+            "symbols": [
+              { "id": "code:web-src-js-modules-favicon-status-ts:sync-action-run-favicon", "name": "syncActionRunFavicon" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-external-render-frontend-ts",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:web-src-js-external-render-frontend-ts:init-frontend-external-render", "name": "initFrontendExternalRender" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-codeeditor-command-palette-ts",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:web-src-js-modules-codeeditor-command-palette-ts:command-palette", "name": "commandPalette" },
+              { "id": "code:web-src-js-modules-codeeditor-command-palette-ts:palette-command", "name": "PaletteCommand" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "docs/testing.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11914, "sectionCount": 7, "ranked": [49, 56, 46, 87, 4, 52, 2] },
+          "double": { "byteBudget": 48000, "bytes": 25391, "sectionCount": 22, "ranked": [49, 56, 46, 87, 4, 52, 10, 2, 86, 54, 88, 89, 90, 24, 41, 91, 92, 71, 17, 44, 7, 93] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 25391, "sectionCount": 22, "ranked": [49, 56, 46, 87, 4, 52, 10, 2, 86, 54, 88, 89, 90, 24, 41, 91, 92, 71, 17, 44, 7, 93] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 25391, "sectionCount": 22, "ranked": [49, 56, 46, 87, 4, 52, 10, 2, 86, 54, 88, 89, 90, 24, 41, 91, 92, 71, 17, 44, 7, 93] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "9ad83c2ee986b136e708f557cd656a2ad2bb223824e236bee70a0dd7ac77bde8",
+          "allowedIdsCount": 65,
+          "allowedIdsSha256": "efff3e231b16e1ffa3f7c9166674a038adeae614c7b7bec09beadbda352a05c4",
+          "allowedIdsInContent": ["component:web-src-js-utils-url-ts", "code:web-src-js-utils-url-ts:path-escape", "code:web-src-js-utils-url-ts:url-query-escape", "system:go-gitea-gitea", "container:go-gitea-gitea"],
+          "packetSources": { "system:go-gitea-gitea": 35, "container:go-gitea-gitea": 36 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search (`go-gitea_gitea`, 20 sections) returned only frontend TypeScript modules and test helpers — nothing describing how to invoke backend/Go tests, no `make` targets, `go test` commands, or test docs. The closest tangential hit is `web_src/js/utils/url.ts`, whose `pathEscape` / `urlQueryEscape` comments only point at existing backend test names (`TestPathEscape`, `TestQueryEscape`) — they tell you which tests exist, not how to run them. Nothing in the selected scope packets (`system:go-gitea-gitea`, `container:go-gitea-gitea`) covers test execution either. To answer this, the atlas would need coverage of backend build/test tooling (e.g. a Makefile, CI config, or contributor docs), which was not surfaced by this search.\", \"citations\": [\"component:web-src-js-utils-url-ts\", \"code:web-src-js-utils-url-ts:path-escape\", \"code:web-src-js-utils-url-ts:url-query-escape\", \"container:go-gitea-gitea\", \"system:go-gitea-gitea\"]}",
+          "usage": { "promptTokens": 9014, "completionTokens": 489, "totalTokens": 9503, "costUsd": 0.00434652 },
+          "ms": 17068
+        }
+      },
+      {
+        "id": "gitea-heatmap",
+        "question": "How is the contribution calendar on a user's profile page drawn?",
+        "selectedId": "system:go-gitea-gitea",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23834,
+        "sectionCount": 21,
+        "ranked": [9, 31, 94, 10, 20, 4, 52, 0, 95, 22, 14, 96, 89, 2, 97, 34, 30, 3, 71, 55, 98],
+        "packets": [35, 36],
+        "sections": [
+          {
+            "id": "component:web-src-js-features-common-page-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:web-src-js-features-common-page-ts:init-commm-page-components", "name": "initCommmPageComponents" },
+              { "id": "code:web-src-js-features-common-page-ts:check-app-url-scheme", "name": "checkAppUrlScheme" },
+              { "id": "code:web-src-js-features-common-page-ts:check-app-url", "name": "checkAppUrl" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-user-auth-ts",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:web-src-js-features-user-auth-ts:init-user-check-app-url", "name": "initUserCheckAppUrl" },
+              { "id": "code:web-src-js-features-user-auth-ts:init-user-external-logins", "name": "initUserExternalLogins" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-user-settings-ts",
+            "kind": "component",
+            "p": 94,
+            "symbols": [
+              { "id": "code:web-src-js-features-user-settings-ts:init-user-settings", "name": "initUserSettings" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer-refresh", "name": "activePageTimerRefresh" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer", "name": "ActivePageTimer" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer-options", "name": "ActivePageTimerOptions" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-index-ts",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:web-src-js-index-ts:init-performance-tracer", "name": "initPerformanceTracer" }
+            ]
+          },
+          {
+            "id": "component:tests-e2e-utils-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:tests-e2e-utils-ts:login-user", "name": "loginUser" },
+              { "id": "code:tests-e2e-utils-ts:api-create-user", "name": "apiCreateUser" },
+              { "id": "code:tests-e2e-utils-ts:api-delete-user", "name": "apiDeleteUser" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-admin-common-ts",
+            "kind": "component",
+            "p": 52,
+            "symbols": [
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-user", "name": "initAdminUser" },
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-authentication", "name": "initAdminAuthentication" },
+              { "id": "code:web-src-js-features-admin-common-ts:init-admin-notice", "name": "initAdminNotice" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-types-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:web-src-js-types-ts:user-event-type", "name": "UserEventType" },
+              { "id": "code:web-src-js-types-ts:user-event-message", "name": "UserEventMessage" },
+              { "id": "code:web-src-js-types-ts:server-user-event-types", "name": "serverUserEventTypes" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-heatmap-ts",
+            "kind": "component",
+            "p": 95,
+            "symbols": [
+              { "id": "code:web-src-js-features-heatmap-ts:init-heatmap", "name": "initHeatmap" },
+              { "id": "code:web-src-js-features-heatmap-ts:heatmap-response", "name": "HeatmapResponse" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-user-events-sharedworker-ts",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:web-src-js-user-events-sharedworker-ts:post-user-event-message", "name": "postUserEventMessage" },
+              { "id": "code:web-src-js-user-events-sharedworker-ts:is-server-event-message", "name": "isServerEventMessage" },
+              { "id": "code:web-src-js-user-events-sharedworker-ts:ws-source", "name": "WsSource" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-user-auth-webauthn-ts",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:web-src-js-features-user-auth-webauthn-ts:init-user-auth-web-authn", "name": "initUserAuthWebAuthn" },
+              { "id": "code:web-src-js-features-user-auth-webauthn-ts:init-user-auth-web-authn-register", "name": "initUserAuthWebAuthnRegister" },
+              { "id": "code:web-src-js-features-user-auth-webauthn-ts:login-passkey", "name": "loginPasskey" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-admin-users-ts",
+            "kind": "component",
+            "p": 96,
+            "symbols": [
+              { "id": "code:web-src-js-features-admin-users-ts:init-admin-user-list-search-form", "name": "initAdminUserListSearchForm" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-user-settings-ts",
+            "kind": "component",
+            "p": 89,
+            "symbols": [
+              { "id": "code:web-src-js-modules-user-settings-ts:local-user-settings", "name": "localUserSettings" },
+              { "id": "code:web-src-js-modules-user-settings-ts:get-local-storage-user-setting", "name": "getLocalStorageUserSetting" },
+              { "id": "code:web-src-js-modules-user-settings-ts:set-local-storage-user-setting", "name": "setLocalStorageUserSetting" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:parse-issue-page-info", "name": "parseIssuePageInfo" },
+              { "id": "code:web-src-js-utils-ts:toggle-full-screen", "name": "toggleFullScreen" },
+              { "id": "code:web-src-js-utils-ts:is-mac", "name": "isMac" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-comp-search-user-box-ts",
+            "kind": "component",
+            "p": 97,
+            "symbols": [
+              { "id": "code:web-src-js-features-comp-search-user-box-ts:init-comp-search-user-box", "name": "initCompSearchUserBox" },
+              { "id": "code:web-src-js-features-comp-search-user-box-ts:user-search-response", "name": "UserSearchResponse" },
+              { "id": "code:web-src-js-features-comp-search-user-box-ts:looks-like-email-address-check", "name": "looksLikeEmailAddressCheck" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-issue-list-ts",
+            "kind": "component",
+            "p": 34,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-issue-list-ts:init-dropdown-user-remote-search", "name": "initDropdownUserRemoteSearch" },
+              { "id": "code:web-src-js-features-repo-issue-list-ts:init-repo-issue-list", "name": "initRepoIssueList" },
+              { "id": "code:web-src-js-features-repo-issue-list-ts:init-issue-pin-sort", "name": "initIssuePinSort" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-worker-ts",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:web-src-js-modules-worker-ts:on-user-event", "name": "onUserEvent" },
+              { "id": "code:web-src-js-modules-worker-ts:init", "name": "init" },
+              { "id": "code:web-src-js-modules-worker-ts:subscriber", "name": "Subscriber" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-legacy-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-repository", "name": "initRepository" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-favicon-status-ts",
+            "kind": "component",
+            "p": 71,
+            "symbols": [
+              { "id": "code:web-src-js-modules-favicon-status-ts:badge-draw-size", "name": "badgeDrawSize" },
+              { "id": "code:web-src-js-modules-favicon-status-ts:badge-center", "name": "badgeCenter" },
+              { "id": "code:web-src-js-modules-favicon-status-ts:badge-ring-radius", "name": "badgeRingRadius" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-errors-ts",
+            "kind": "component",
+            "p": 55,
+            "symbols": [
+              { "id": "code:web-src-js-modules-errors-ts:show-global-error-message", "name": "showGlobalErrorMessage" },
+              { "id": "code:web-src-js-modules-errors-ts:process-window-error-event", "name": "processWindowErrorEvent" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-contributors-ts",
+            "kind": "component",
+            "p": 98,
+            "symbols": [
+              { "id": "code:web-src-js-features-contributors-ts:init-repo-contributors", "name": "initRepoContributors" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "web_src/js/features/heatmap.ts": true, "web_src/js/components/ActivityHeatmap.vue": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11355, "sectionCount": 9, "ranked": [9, 31, 94, 10, 20, 4, 52, 0, 95] },
+          "double": { "byteBudget": 48000, "bytes": 29404, "sectionCount": 26, "ranked": [9, 31, 94, 10, 20, 4, 52, 0, 95, 22, 14, 96, 89, 2, 97, 34, 30, 3, 71, 55, 98, 56, 80, 90, 5, 99] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 25765, "sectionCount": 23, "ranked": [9, 31, 94, 10, 20, 4, 52, 0, 95, 22, 14, 96, 89, 2, 97, 34, 30, 3, 71, 55, 98, 56, 99] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29404, "sectionCount": 26, "ranked": [9, 31, 94, 10, 20, 4, 52, 0, 95, 22, 14, 96, 89, 2, 97, 34, 30, 3, 71, 55, 98, 56, 80, 90, 5, 99] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "ee6b262749a0c96fb404ca2f3711f2963f359a6481f92ece04fdce42e11c1ee1",
+          "allowedIdsCount": 73,
+          "allowedIdsSha256": "a4372e9dac3dd9f465be46d6cf9b39bd017f24ef54e76afd40402bd471c1481d",
+          "allowedIdsInContent": ["component:web-src-js-index-ts", "code:web-src-js-index-ts:init-performance-tracer", "component:web-src-js-features-heatmap-ts", "code:web-src-js-features-heatmap-ts:init-heatmap", "code:web-src-js-features-heatmap-ts:heatmap-response"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The profile contribution calendar is driven by `initHeatmap` in `web_src/js/features/heatmap.ts`: it fetches contribution data, aggregates counts per day, and is registered as a startup initializer from `web_src/js/index.ts`.\\n\\n- `web_src/js/features/heatmap.ts` — `initHeatmap` (lines 11–57) turns the fetched data into a `Record<string, number>` heatmap by converting each unix timestamp to the user's timezone (`new Date(timestamp * 1000).toDateString()`) and summing contributions per date.\\n- `web_src/js/features/heatmap.ts` — `HeatmapResponse` (lines 6–9) is the API shape: `heatmapData: Array<[number, number]>` (e.g. `[[1617235200, 2]]` = `[unix timestamp, count]`) plus `totalContributions`.\\n- `web_src/js/index.ts` — `initPerformanceTracer` (line 73) lists `initHeatmap` among the page initializers run at boot, so the calendar setup runs on page load alongside other page features.\\n\\nWhat's missing: the evidence excerpts stop at the aggregation step — the actual rendering (chart/canvas library, DOM element, tooltip/config) inside `initHeatmap` is not shown, so the precise drawing mechanism isn't in the evidence.\",\"citations\":[\"component:web-src-js-features-heatmap-ts\",\"code:web-src-js-features-heatmap-ts:init-heatmap\",\"code:web-src-js-features-heatmap-ts:heatmap-response\",\"component:web-src-js-index-ts\",\"code:web-src-js-index-ts:init-performance-tracer\"]}",
+          "usage": { "promptTokens": 9298, "completionTokens": 478, "totalTokens": 9776, "costUsd": 0.00446049 },
+          "ms": 13471
+        }
+      },
+      {
+        "id": "gitea-notification-badge",
+        "question": "How does the unread-notifications badge in the header update without reloading the page?",
+        "selectedId": "component:web-src-js-features-emoji-ts",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23726,
+        "sectionCount": 17,
+        "ranked": [1, 10, 24, 9, 100, 20, 8, 30, 56, 88, 0, 71, 5, 2, 4, 61, 3],
+        "packets": [102, 36],
+        "sections": [
+          {
+            "id": "component:web-src-js-features-notification-ts",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:web-src-js-features-notification-ts:update-notification-count-with-callback", "name": "updateNotificationCountWithCallback" },
+              { "id": "code:web-src-js-features-notification-ts:update-notification-table", "name": "updateNotificationTable" },
+              { "id": "code:web-src-js-features-notification-ts:update-notification-count", "name": "updateNotificationCount" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-dom-ts",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer-refresh", "name": "activePageTimerRefresh" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer", "name": "ActivePageTimer" },
+              { "id": "code:web-src-js-utils-dom-ts:active-page-timer-options", "name": "ActivePageTimerOptions" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-actions-ts",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-actions-ts:update-workflow-badge-fields", "name": "updateWorkflowBadgeFields" },
+              { "id": "code:web-src-js-features-repo-actions-ts:init-workflow-badge-form", "name": "initWorkflowBadgeForm" },
+              { "id": "code:web-src-js-features-repo-actions-ts:init-repository-actions", "name": "initRepositoryActions" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-common-page-ts",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:web-src-js-features-common-page-ts:init-commm-page-components", "name": "initCommmPageComponents" },
+              { "id": "code:web-src-js-features-common-page-ts:init-head-navbar-content-toggle", "name": "initHeadNavbarContentToggle" },
+              { "id": "code:web-src-js-features-common-page-ts:init-footer-theme-selector", "name": "initFooterThemeSelector" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-stopwatch-ts",
+            "kind": "component",
+            "p": 100,
+            "symbols": [
+              { "id": "code:web-src-js-features-stopwatch-ts:update-stopwatch-with-callback", "name": "updateStopwatchWithCallback" },
+              { "id": "code:web-src-js-features-stopwatch-ts:update-stopwatch-time", "name": "updateStopwatchTime" },
+              { "id": "code:web-src-js-features-stopwatch-ts:update-stopwatch", "name": "updateStopwatch" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-index-ts",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:web-src-js-index-ts:init-performance-tracer", "name": "initPerformanceTracer" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fetch-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-ts:request", "name": "request" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-worker-ts",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:web-src-js-modules-worker-ts:init", "name": "init" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-fetch-action-ts",
+            "kind": "component",
+            "p": 56,
+            "symbols": [
+              { "id": "code:web-src-js-modules-fetch-action-ts:fetch-action-reload-outdated-elements", "name": "fetchActionReloadOutdatedElements" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:init-global-fetch-action", "name": "initGlobalFetchAction" },
+              { "id": "code:web-src-js-modules-fetch-action-ts:perform-fetch-action-request", "name": "performFetchActionRequest" }
+            ]
+          },
+          { "id": "component:web-src-js-utils-html-ts", "kind": "component", "p": 88 },
+          {
+            "id": "component:web-src-js-types-ts",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:web-src-js-types-ts:issue-page-info", "name": "IssuePageInfo" },
+              { "id": "code:web-src-js-types-ts:server-user-event-types", "name": "serverUserEventTypes" },
+              { "id": "code:web-src-js-types-ts:server-user-event-message", "name": "ServerUserEventMessage" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-modules-favicon-status-ts",
+            "kind": "component",
+            "p": 71,
+            "symbols": [
+              { "id": "code:web-src-js-modules-favicon-status-ts:badge-x", "name": "badgeX" },
+              { "id": "code:web-src-js-modules-favicon-status-ts:badge-y", "name": "badgeY" },
+              { "id": "code:web-src-js-modules-favicon-status-ts:badge-scale", "name": "badgeScale" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-issue-sidebar-ts",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-issue-branch-selector", "name": "initRepoIssueBranchSelector" },
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-issue-sidebar-dependency", "name": "initRepoIssueSidebarDependency" },
+              { "id": "code:web-src-js-features-repo-issue-sidebar-ts:init-repo-pull-request-allow-maintainer-edit", "name": "initRepoPullRequestAllowMaintainerEdit" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-utils-ts",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:web-src-js-utils-ts:parse-issue-page-info", "name": "parseIssuePageInfo" },
+              { "id": "code:web-src-js-utils-ts:toggle-full-screen", "name": "toggleFullScreen" }
+            ]
+          },
+          {
+            "id": "component:tests-e2e-utils-ts",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:tests-e2e-utils-ts:api-headers", "name": "apiHeaders" },
+              { "id": "code:tests-e2e-utils-ts:api-user-headers", "name": "apiUserHeaders" },
+              { "id": "code:tests-e2e-utils-ts:api-auth-header", "name": "apiAuthHeader" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-dropzone-ts",
+            "kind": "component",
+            "p": 61,
+            "symbols": [
+              { "id": "code:web-src-js-features-dropzone-ts:dropzone-custom-event-reload-files", "name": "DropzoneCustomEventReloadFiles" }
+            ]
+          },
+          {
+            "id": "component:web-src-js-features-repo-legacy-ts",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:web-src-js-features-repo-legacy-ts:init-repository", "name": "initRepository" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "web_src/js/features/notification.ts": true, "web_src/js/user-events.sharedworker.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11670, "sectionCount": 8, "ranked": [1, 10, 24, 9, 100, 20, 8, 30] },
+          "double": { "byteBudget": 48000, "bytes": 31643, "sectionCount": 25, "ranked": [1, 10, 24, 9, 100, 20, 8, 30, 56, 88, 0, 71, 5, 2, 4, 61, 3, 11, 27, 73, 36, 93, 78, 32, 101] },
+          "size-scaled": { "byteBudget": 26236, "bytes": 25743, "sectionCount": 19, "ranked": [1, 10, 24, 9, 100, 20, 8, 30, 56, 88, 0, 71, 5, 2, 4, 61, 3, 11, 73] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29772, "sectionCount": 23, "ranked": [1, 10, 24, 9, 100, 20, 8, 30, 56, 88, 0, 71, 5, 2, 4, 61, 3, 11, 27, 73, 36, 93, 78] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "430e77942b3ce165dde868f918eee12866e8f56b3fc37e262bc5fbef35b3a6a0",
+          "allowedIdsCount": 61,
+          "allowedIdsSha256": "2909e256a7055add11ae18250f481a9e154f58fce9f77a6e634f5580bbd6793d",
+          "allowedIdsInContent": ["component:web-src-js-features-notification-ts", "code:web-src-js-features-notification-ts:update-notification-count-with-callback", "code:web-src-js-features-notification-ts:update-notification-table", "code:web-src-js-features-notification-ts:update-notification-count", "code:web-src-js-utils-dom-ts:active-page-timer-refresh", "code:web-src-js-utils-dom-ts:active-page-timer", "code:web-src-js-utils-dom-ts:active-page-timer-options", "code:web-src-js-index-ts:init-performance-tracer", "code:web-src-js-modules-worker-ts:init", "code:web-src-js-types-ts:server-user-event-types", "code:web-src-js-types-ts:server-user-event-message"],
+          "packetSources": {},
+          "content": "{\"answer\": \"The badge is kept fresh by client-side polling plus server push events — no page reload is involved. `initNotificationCount` is registered in the startup init list in `web_src/js/index.ts`, and from there `updateNotificationCountWithCallback` runs a self-rescheduling loop: it compares the cached count (`getCurrentCount`) with the server's, calls `updateNotificationCount()` to fetch the new value when stale, rewrites the badge DOM in `updateNotificationTable()`, and re-invokes itself via its callback with a backoff timeout (Min/Max/Step) so polling slows down when nothing changes.\\n\\n- `web_src/js/features/notification.ts` — `updateNotificationCountWithCallback`, `updateNotificationCount`, `updateNotificationTable`: fetch + DOM update + backoff scheduling.\\n- `web_src/js/utils/dom.ts` — `ActivePageTimer` / `ActivePageTimerOptions` / `activePageTimerRefresh`: the page-aware timer helper that drives such refreshes.\\n- `web_src/js/types.ts` — `ServerUserEventMessage`, `serverUserEventTypes` (includes `'notification-count'`): the event protocol that can push count updates to the client.\\n- `web_src/js/modules/worker.ts` — `init`: the SharedWorker/WebSocket transport carrying those server user events, with fallback signalling when unsupported.\\n- `web_src/js/index.ts` — `initPerformanceTracer`: the ordered init list that wires `initNotificationCount` into every page load.\\n\\nNot covered in the evidence: the exact `initNotificationCount` body and how the `'notification-count'` event is dispatched into the badge DOM.\", \"citations\": [\"component:web-src-js-features-notification-ts\", \"code:web-src-js-features-notification-ts:update-notification-count-with-callback\", \"code:web-src-js-features-notification-ts:update-notification-table\", \"code:web-src-js-features-notification-ts:update-notification-count\", \"code:web-src-js-utils-dom-ts:active-page-timer\", \"code:web-src-js-utils-dom-ts:active-page-timer-options\", \"code:web-src-js-utils-dom-ts:active-page-timer-refresh\", \"code:web-src-js-types-ts:server-user-event-message\", \"code:web-src-js-types-ts:server-user-event-types\", \"code:web-src-js-modules-worker-ts:init\", \"code:web-src-js-index-ts:init-performance-tracer\"]}",
+          "usage": { "promptTokens": 9244, "completionTokens": 612, "totalTokens": 9856, "costUsd": 0.00455358 },
+          "ms": 15915
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "sampled-enriched",
+    "nodes": [
+      {
+        "nodeId": "system:go-gitea-gitea",
+        "name": "Go-gitea_gitea",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**Go-gitea_gitea** is the TypeScript web frontend behind Gitea's repository, issue, and release pages. Start with `web_src/js/index.ts`; its ordered init list boots every page feature. Wiring lives i…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `web_src/js/index.ts`; init ordering is deliberate and boots every page feature. | `web_src/js/modules/observer.ts` is the seam: `registerGlobalSelectorFunc`, `registerGlobal…" },
+          { "id": "children", "type": "children", "preview": "Children: 1 node — go-gitea_gitea (container)" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:keyPoints", "enrichment:evidence", "children"], "inputTokens": 1660, "estimatedCostUsd": 0.0000697, "latencyMs": 281 }
+      },
+      {
+        "nodeId": "container:go-gitea-gitea",
+        "name": "go-gitea_gitea",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "The frontend stack is declared in `package.json`: CodeMirror, TypeScript, Vue and jQuery. This is the Gitea web frontend container, the TypeScript layer behind repository, issue, and release pages. S…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `web_src/js/index.ts`; its ordered init list boots every page feature, so ordering is deliberate. | `web_src/js/modules/observer.ts` is the wiring seam: `registerGlobalSelect…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — Go-gitea_gitea (softwareSystem)" },
+          { "id": "enrichment:diagram", "type": "mermaid", "preview": "Diagram: go-gitea_gitea at a glance" },
+          { "id": "children", "type": "children", "preview": "Children: 182 nodes — eslint.config.ts (component); eslint.json.config.ts (component); playwright.config.ts (component); +179 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "enrichment:diagram", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:diagram", "relations:parent", "enrichment:keyPoints", "children", "enrichment:evidence"], "inputTokens": 2269, "estimatedCostUsd": 0.0000953, "latencyMs": 287 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "sampled", "k": 5, "singleContainerK": 30, "componentsSampled": 30, "componentsFull": 182, "containers": 1, "droppedFiles": 152, "sampledCommitSha": "7bf992d50b09de2b130b7cc0559d6b01dd9be6d9", "parentsFromSample": true, "overlaidOnFullScan": true },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 200, "maxTokens": 4000000, "maxDollars": 0.5, "maxConcurrent": 8, "globalMaxDollars": 1.6371 },
+    "ms": 194325,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 32,
+    "inputTokens": 84727,
+    "outputTokens": 32170,
+    "costUsd": 0.06253,
+    "costEstimated": false,
+    "coverage": { "accepted": 32, "failed": 0, "notRun": 0, "belowCap": 312, "inScope": 32 },
+    "byKind": {
+      "code": { "total": 312, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 312 },
+      "component": { "total": 30, "accepted": 30, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 1,
+    "parentsWithUnsettledChildren": 0
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 8225,
+    "outcome": "accepted",
+    "requests": 30,
+    "inputTokens": 72476,
+    "costUsd": 0.003044,
+    "costEstimated": true,
+    "reservationEquivalentUsd": 0.09,
+    "rows": [
+      { "scopeId": "component:web-src-js-features-common-page-ts", "claimId": "ca3b3fdfa4ab2e879b1d4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-features-common-page-ts", "claimId": "c06de8385959e8145edda", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-common-page-ts", "claimId": "c9789850fe2ea33d9b2a6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:web-src-js-features-common-page-ts", "claimId": "cdf7af4e2807b9595215d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:web-src-js-features-comp-combo-markdown-editor-ts", "claimId": "c6443c845af8b4b3a48e1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-comp-combo-markdown-editor-ts", "claimId": "c2c6921481b0df1ab83d7", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-comp-combo-markdown-editor-ts", "claimId": "c06a64a02d3c5b70a241f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:web-src-js-features-comp-combo-markdown-editor-ts", "claimId": "c808712266e27c0e6657e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:web-src-js-features-comp-combo-markdown-editor-ts", "claimId": "c9b429ba3e5fcae434d13", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:web-src-js-features-comp-combo-markdown-editor-ts", "claimId": "c06a974c000e991394816", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:web-src-js-features-comp-text-expander-ts", "claimId": "ce14bd564400584feface", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-comp-text-expander-ts", "claimId": "ce6324d871afc543186b5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-comp-text-expander-ts", "claimId": "cb3db0bb2382bd50b932c", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-comp-text-expander-ts", "claimId": "cff2b39b906aeabf07310", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:web-src-js-features-dropzone-ts", "claimId": "cbae588efa231e3833b94", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-dropzone-ts", "claimId": "c1eebd7ca8a8bc2a2844c", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-dropzone-ts", "claimId": "c0a9a7caccebfbeecbc6d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-features-dropzone-ts", "claimId": "cb53290f97e2d8c7dba75", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:web-src-js-features-repo-common-ts", "claimId": "c19a42ccea8b20bd81ed6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-common-ts", "claimId": "c8ad0d9dfb2166e4b4a0d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:web-src-js-features-repo-common-ts", "claimId": "c1cd3eb334de412fc4f90", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:web-src-js-features-repo-common-ts", "claimId": "c50322ed75d09ec7190b7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.55 },
+      { "scopeId": "component:web-src-js-features-repo-diff-ts", "claimId": "cdb2def6f2497063d72d1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-diff-ts", "claimId": "c61e20b461b885112e78b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-diff-ts", "claimId": "c66096cca50526bdfaf84", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-diff-ts", "claimId": "cdb4ce8ff4174b5754fb2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:web-src-js-features-repo-diff-ts", "claimId": "c050d8b94cf16565c7a4c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-features-repo-editor-ts", "claimId": "c02386be2a78efc1420ab", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-editor-ts", "claimId": "c641ba04f8d202774a0de", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:web-src-js-features-repo-editor-ts", "claimId": "cf33ec985782254726e82", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-features-repo-issue-content-ts", "claimId": "c1a3c74eb6ab076ba5827", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-issue-content-ts", "claimId": "ccbb5fddf41ac67076bd2", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-repo-issue-content-ts", "claimId": "c59867ee9a7e811e632c4", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-repo-issue-content-ts", "claimId": "c2b869fd5d0ad231c92f0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:web-src-js-features-repo-issue-edit-ts", "claimId": "c008737a298477957b98d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-issue-edit-ts", "claimId": "c2387101a579a882b06ca", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-features-repo-issue-edit-ts", "claimId": "c3a52032a91de7c1c0bb8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:web-src-js-features-repo-issue-sidebar-ts", "claimId": "c370251a3878a444be32d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.14 },
+      { "scopeId": "component:web-src-js-features-repo-issue-sidebar-ts", "claimId": "c59a68490797afeb7ebbc", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:web-src-js-features-repo-issue-sidebar-ts", "claimId": "c749f43b64652ec894f59", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-features-repo-issue-sidebar-ts", "claimId": "c357435fbecbeb8d29ca7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:web-src-js-features-repo-issue-sidebar-ts", "claimId": "c045b89b6e1471415119c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.17 },
+      { "scopeId": "component:web-src-js-features-repo-issue-ts", "claimId": "cc4175fa14918dd424507", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-issue-ts", "claimId": "c9e2c47608f4cf74ec378", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-issue-ts", "claimId": "c40ab18ae6dbf2afee157", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-issue-ts", "claimId": "c8e99f503bca97b18b4f8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:web-src-js-features-repo-legacy-ts", "claimId": "c91c53b6f7e407ad8118e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:web-src-js-features-repo-legacy-ts", "claimId": "c6765f5033641c632be85", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-features-repo-legacy-ts", "claimId": "c07ed2e2e1e692cc821e3", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-repo-legacy-ts", "claimId": "cb8e01b460f84da16e34a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:web-src-js-features-repo-legacy-ts", "claimId": "c6b9dd5511fb5c6f96c9c", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-repo-projects-ts", "claimId": "c4c338eadd9297add2ffe", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-projects-ts", "claimId": "c332c7c74d98b399b7d11", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.1 },
+      { "scopeId": "component:web-src-js-features-repo-projects-ts", "claimId": "c8d66a4e789eeeaea818e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:web-src-js-features-repo-projects-ts", "claimId": "cef136d51296668f8e45f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:web-src-js-features-repo-projects-ts", "claimId": "cef44a314c85cf3573e7b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:web-src-js-features-repo-projects-ts", "claimId": "c55f5ec92b11a1137b14b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-features-repo-release-ts", "claimId": "c270c716709fe6345a58a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-features-repo-release-ts", "claimId": "c3ecd4a143b59f47fa41a", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-features-repo-release-ts", "claimId": "c2a928d1c072dd85d4707", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:web-src-js-features-repo-release-ts", "claimId": "c60d0d2f99b232b064634", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-index-ts", "claimId": "cb53e8441fc16dbd3e454", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-index-ts", "claimId": "c245a2c11888d94b4a44b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:web-src-js-modules-codeeditor-main-ts", "claimId": "c952c3c1ffd15d34173bf", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-modules-codeeditor-main-ts", "claimId": "cb167c68bddb2143d3579", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-modules-codeeditor-main-ts", "claimId": "c3f6a75bf799bdad6a00b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:web-src-js-modules-codeeditor-main-ts", "claimId": "c7222d3f26a43052b5257", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-modules-codeeditor-main-ts", "claimId": "c88f8a2921e7b8442bc86", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-modules-devtest-ts", "claimId": "c540e3d58d36acd88aa7c", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-modules-devtest-ts", "claimId": "c95b48702a77cd704df19", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:web-src-js-modules-devtest-ts", "claimId": "c0681b7f83624443a3916", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-modules-devtest-ts", "claimId": "cd0d1ece6d23676b02999", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-modules-errors-ts", "claimId": "cfd3bab1cc8bd63a39fec", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-modules-errors-ts", "claimId": "c0f0a070541bdd9b6e622", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:web-src-js-modules-errors-ts", "claimId": "c30695f283177ee43bfc7", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-modules-errors-ts", "claimId": "c6921ea5d5a801a4fa074", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:web-src-js-modules-fetch-action-ts", "claimId": "c8a249b4207b1b20aca78", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.55 },
+      { "scopeId": "component:web-src-js-modules-fetch-action-ts", "claimId": "c686fff81455a8bcf7f07", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.61 },
+      { "scopeId": "component:web-src-js-modules-fetch-action-ts", "claimId": "c00332b3c766f184eb4ef", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:web-src-js-modules-fetch-action-ts", "claimId": "c6dd958d47e56e7328cec", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-modules-fetch-action-ts", "claimId": "c4be13a104f56eccc1a68", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:web-src-js-modules-fetch-action-ts", "claimId": "c93fea925e818d86184ec", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:web-src-js-modules-fetch-ts", "claimId": "cae88c009599db3c28f2d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:web-src-js-modules-fetch-ts", "claimId": "c118995dc90dc30a39e0c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:web-src-js-modules-fetch-ts", "claimId": "c6386ee4d072989e8da8e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:web-src-js-modules-fomantic-base-ts", "claimId": "cd2f23ace7934d14c6a03", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:web-src-js-modules-fomantic-base-ts", "claimId": "c3ca3f11d0ad14797a4d7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:web-src-js-modules-fomantic-base-ts", "claimId": "c907b7ae8463395dec3fb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:web-src-js-modules-fomantic-base-ts", "claimId": "c773bf8e7c716ece458a6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:web-src-js-modules-fomantic-base-ts", "claimId": "c55b031565da839f2ef52", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.72 },
+      { "scopeId": "component:web-src-js-modules-fomantic-modal-ts", "claimId": "c235f156a489b143e3c12", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-modules-fomantic-modal-ts", "claimId": "c849c93577f4831e41af8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.18 },
+      { "scopeId": "component:web-src-js-modules-fomantic-modal-ts", "claimId": "cfc23809f4ffc750dd5d0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-modules-fomantic-modal-ts", "claimId": "cf5d109d23683f2ebad39", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-modules-observer-ts", "claimId": "c823389332608f4f47d8e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.1 },
+      { "scopeId": "component:web-src-js-modules-observer-ts", "claimId": "ce95be4dcbf677a0fcdde", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:web-src-js-modules-observer-ts", "claimId": "c020c0936ee3c0600a389", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-modules-observer-ts", "claimId": "c5bd30070a4aacff88d4a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:web-src-js-modules-tippy-ts", "claimId": "cb02755e49ab44dafb5ae", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-modules-tippy-ts", "claimId": "c07b935481401e4ab6cb1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-modules-tippy-ts", "claimId": "c11e097bfc9991af8dfd5", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:web-src-js-modules-tippy-ts", "claimId": "c111b8dc889cabbe96575", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-modules-tippy-ts", "claimId": "cde77dabd43754a6a40d3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:web-src-js-modules-toast-ts", "claimId": "ca4e625dd0fc8f07585e9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:web-src-js-modules-toast-ts", "claimId": "c9ef5813cfd194dfd5fc2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:web-src-js-modules-toast-ts", "claimId": "ca50deeea2585873633d0", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:web-src-js-modules-toast-ts", "claimId": "c3eb77e678cfb1cc5e9bc", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:web-src-js-svg-ts", "claimId": "c652b5e3607018a4faeb5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-svg-ts", "claimId": "c8e629f6afe4fb82fe9eb", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-svg-ts", "claimId": "c5b9e175268ec6983a7e1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-svg-ts", "claimId": "c1d82e48a26aa545275cf", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:web-src-js-svg-ts", "claimId": "c16270a2fcb07773377f7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:web-src-js-svg-ts", "claimId": "c1b33429e124fc023ad0f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-types-ts", "claimId": "c68d5686209bc5b66aae8", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-types-ts", "claimId": "c31697f824d2edf34bf72", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:web-src-js-types-ts", "claimId": "cf139fa907d88dd44c50a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:web-src-js-types-ts", "claimId": "c0855698923a0cd96ba13", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-types-ts", "claimId": "cbae7f3cccea5660577dd", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-utils-dom-ts", "claimId": "cc18a48c26fc7672d339d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-utils-dom-ts", "claimId": "c7487f0449de68aa1b8e8", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:web-src-js-utils-dom-ts", "claimId": "cecaed52fb19a4697dd82", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:web-src-js-utils-dom-ts", "claimId": "c7f943cae14197e4eda93", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:web-src-js-utils-dom-ts", "claimId": "cd7d32de97cdd929e3b3e", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:web-src-js-utils-html-ts", "claimId": "c4a136fc9f51394c4888a", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:web-src-js-utils-html-ts", "claimId": "c8a96ba8b8f9c1f3f7fb8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:web-src-js-utils-html-ts", "claimId": "c668c70cbb8cb74203248", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:web-src-js-utils-html-ts", "claimId": "ca66a84419986f5f755e8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:web-src-js-utils-html-ts", "claimId": "c0139c36ed56a9bcd3a3d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:web-src-js-utils-ts", "claimId": "cd58a674922ad84e7dfc5", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:web-src-js-utils-ts", "claimId": "c7caf5c3ba70e77bb2f49", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.46 },
+      { "scopeId": "component:web-src-js-utils-ts", "claimId": "cb090ad4455be9f65637e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:web-src-js-utils-ts", "claimId": "cec0e3b5ed2addb68a1ce", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "container:go-gitea-gitea", "claimId": "c8d6570e8e578d995a502", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" }
+    ],
+    "rateLimited": 0
+  },
+  "stageMs": { "claims": 15138, "ask": 20061, "blocks": 591 }
+}

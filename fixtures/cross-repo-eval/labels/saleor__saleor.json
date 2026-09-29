@@ -1,0 +1,204 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "saleor/saleor",
+  "commitSha": "58e2eb7cabb6ce37678062ff04b051ef58c5e479",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "saleor-checkout-complete",
+      "family": "saleor-checkout-complete",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "What happens when a customer finalizes their checkout and it turns into an order?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "saleor/checkout/complete_checkout.py"
+      ],
+      "mustMention": [
+        "order",
+        "payment|transaction",
+        "stock|allocat"
+      ],
+      "answerNote": "complete_checkout dispatches to complete_checkout_with_transaction (transactions flow: create_order_from_checkout) or complete_checkout_with_payment (pre-payment validation, gateway process/confirm, then _create_order); order creation copies lines/discounts/voucher usage, allocates stock and fires post-commit events."
+    },
+    {
+      "id": "saleor-stock-allocation",
+      "family": "saleor-stock-allocation",
+      "status": "draft",
+      "category": "locate",
+      "question": "When an order is placed, how does it decide which warehouse stock to reserve, and what happens if there is not enough?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "saleor/warehouse/management.py"
+      ],
+      "mustMention": [
+        "allocate_stocks|allocat",
+        "InsufficientStock|insufficient"
+      ],
+      "answerNote": "allocate_stocks locks the relevant Stock rows for the variants in the shipping country/channel (or collection point), allocates line quantities across stocks in order, and raises InsufficientStock when not enough is available; only track_inventory variants are allocated."
+    },
+    {
+      "id": "saleor-webhook-delivery",
+      "family": "saleor-webhook-delivery",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How are event notifications sent out to installed third-party apps, and how can the app verify them?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "saleor/webhook/transport/asynchronous/transport.py",
+        "saleor/webhook/transport/utils.py",
+        "saleor/webhook/transport/__init__.py"
+      ],
+      "mustMention": [
+        "celery|task",
+        "signature|HMAC|JWS",
+        "retry|retries"
+      ],
+      "answerNote": "trigger_webhooks_async creates EventDelivery rows and queues the Celery task send_webhook_request_async (retry_backoff, max 5 retries); send_webhook_using_scheme_method signs the body (signature_for_payload: HMAC-SHA256 with the secret key, else a JWS from the JWT manager) and dispatches by URL scheme (http(s), SQS, Pub/Sub)."
+    },
+    {
+      "id": "saleor-permissions",
+      "family": "saleor-permissions",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "How is access to staff-only API operations restricted?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "saleor/graphql/core/mutations.py",
+        "saleor/permission/enums.py",
+        "saleor/permission/utils.py"
+      ],
+      "mustMention": [
+        "permission",
+        "PermissionDenied|denied"
+      ],
+      "answerNote": "Mutations declare Meta.permissions (enums in saleor/permission/enums.py, e.g. MANAGE_ORDERS); BaseMutation.mutate calls check_permissions -> one_of_permissions_or_auth_filter_required / all_permissions_required and raises PermissionDenied. Query fields use PermissionsField."
+    },
+    {
+      "id": "saleor-plugins",
+      "family": "saleor-plugins",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "How can I plug in custom behavior, such as a different tax calculation, without changing core code?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "saleor/plugins/base_plugin.py",
+        "saleor/plugins/manager.py"
+      ],
+      "mustMention": [
+        "plugin",
+        "previous_value|manager"
+      ],
+      "answerNote": "Subclass BasePlugin and override hook methods; PluginsManager runs each hook across plugins in order, passing previous_value along the chain. Plugins are listed in settings PLUGINS = BUILTIN_PLUGINS + EXTERNAL_PLUGINS (e.g. avatax). External apps + webhooks are the newer alternative."
+    },
+    {
+      "id": "saleor-env-config",
+      "family": "saleor-env-config",
+      "status": "draft",
+      "category": "config",
+      "question": "Which environment variables point the app at its database, read replica and background job broker?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "saleor/settings.py"
+      ],
+      "mustMention": [
+        "DATABASE_URL",
+        "CELERY_BROKER_URL"
+      ],
+      "answerNote": "settings.py: DATABASES from DATABASE_URL (dj_database_url) and DATABASE_URL_REPLICA; CELERY_BROKER_URL (falls back to CLOUDAMQP_URL; tasks run eagerly when unset); CACHE_URL/REDIS_URL for cache."
+    },
+    {
+      "id": "saleor-giftcard-bearer",
+      "family": "saleor-giftcard-bearer",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "Can anyone holding a gift card code spend it, or is it tied to one customer?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "docs/adr/0001-gift-cards-remain-bearer-instruments.md"
+      ],
+      "mustMention": [
+        "bearer",
+        "assign"
+      ],
+      "answerNote": "ADR 0001: gift cards are bearer instruments by default (anyone with the code, incl. guest checkout); customer assignment is a separate opt-in restriction, distinct from deprecated used_by, and rejection must not leak who it is assigned to."
+    },
+    {
+      "id": "saleor-api-endpoint",
+      "family": "saleor-api-endpoint",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "Which URL do API requests arrive on, and what code processes them?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:saleor"
+      },
+      "expectedFiles": [
+        "saleor/urls.py",
+        "saleor/graphql/views.py",
+        "saleor/graphql/api.py"
+      ],
+      "mustMention": [
+        "graphql/",
+        "GraphQLView"
+      ],
+      "answerNote": "saleor/urls.py maps ^graphql/$ to GraphQLView (saleor/graphql/views.py: handle_query/execute_graphql_request) with the federated schema built in saleor/graphql/api.py."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "Saleor is a Django + GraphQL monolith organised app-per-domain (checkout, order, payment, product, warehouse, webhook, plugins ...) with a mirrored saleor/graphql/<domain> API layer and Celery workers. After symlink-stripping the scan yields just one system and one container named after the root package.json (which only exists for release/tooling scripts), and zero components or code - the entire Python codebase is invisible.",
+    "expectedContainers": [
+      "API server (Django/GraphQL: saleor/graphql, saleor/urls.py, saleor/asgi)",
+      "Celery workers (saleor/celeryconf.py, */tasks.py, webhook transport)",
+      "PostgreSQL (+ read replica) and Redis/Valkey cache/broker",
+      "Components per domain app: checkout, order, payment, product, warehouse, discount, giftcard, account, webhook, plugins"
+    ],
+    "problems": [
+      "No components or code entities at all (Python not extracted)",
+      "The only container is keyed on package.json, which is tooling, not the application",
+      "Web vs worker process split (Celery) and datastores not represented",
+      "As-is scan fails on committed symlinks (CLAUDE.md, saleor/graphql/CLAUDE.md); only the symlink-stripped tree scans"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:saleor",
+      "status": "draft",
+      "order": [
+        "children"
+      ],
+      "note": "Python scan yields nothing; the container link is the only block."
+    },
+    {
+      "nodeId": "container:saleor",
+      "status": "draft",
+      "order": [
+        "relations:parent"
+      ],
+      "note": "Only a back-link to the system is available; kept so the panel is not blank."
+    }
+  ]
+}

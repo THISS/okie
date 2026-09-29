@@ -1,0 +1,205 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "vercel/commerce",
+  "commitSha": "3761e52e60df9c6a316e067dbfd7032e494d3634",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "commerce-cart-add",
+      "family": "commerce-cart-add",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "What happens on the server when a shopper hits the button to put a product in their basket?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:vercel-commerce"
+      },
+      "expectedFiles": [
+        "components/cart/actions.ts",
+        "lib/shopify/index.ts"
+      ],
+      "mustMention": [
+        "cartLinesAdd|addToCart",
+        "cartId"
+      ],
+      "answerNote": "Form calls the addItem server action (useActionState); addItem calls addToCart, which reads the cartId cookie and sends the cartLinesAdd GraphQL mutation via shopifyFetch, then updateTag(TAGS.cart) refreshes cached cart data. Client-side cart-context applies an optimistic update first."
+    },
+    {
+      "id": "commerce-webhook-refresh",
+      "family": "commerce-webhook-refresh",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When a merchant edits a product in their store admin, how does the website stop showing the stale version?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:components-carousel-tsx"
+      },
+      "expectedFiles": [
+        "app/api/revalidate/route.ts",
+        "lib/shopify/index.ts"
+      ],
+      "mustMention": [
+        "webhook|x-shopify-topic",
+        "secret|SHOPIFY_REVALIDATION_SECRET",
+        "revalidateTag"
+      ],
+      "answerNote": "Shopify webhooks POST to /api/revalidate; revalidate() checks the ?secret against SHOPIFY_REVALIDATION_SECRET, reads the x-shopify-topic header and calls revalidateTag for the products or collections cache tag. Always answers 200 so Shopify doesn't retry."
+    },
+    {
+      "id": "commerce-product-route",
+      "family": "commerce-product-route",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "Which file renders the page for a single item when someone opens its link?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:vercel-commerce"
+      },
+      "expectedFiles": [
+        "app/product/[handle]/page.tsx"
+      ],
+      "mustMention": [
+        "handle",
+        "getProduct"
+      ],
+      "answerNote": "App Router dynamic segment app/product/[handle]/page.tsx: awaits params.handle, calls getProduct(handle), notFound() if missing, renders gallery + description and JSON-LD; generateMetadata sets SEO/robots from the product."
+    },
+    {
+      "id": "commerce-cms-pages",
+      "family": "commerce-cms-pages",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "Where do plain content pages like 'About' or 'Terms' come from — are they written in the repo?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:vercel-commerce"
+      },
+      "expectedFiles": [
+        "app/[page]/page.tsx",
+        "lib/shopify/index.ts"
+      ],
+      "mustMention": [
+        "getPage",
+        "Shopify"
+      ],
+      "answerNote": "Not in the repo: the catch-all app/[page]/page.tsx fetches the page body from Shopify via getPage(handle) (pageByHandle query) and renders its HTML with Prose."
+    },
+    {
+      "id": "commerce-env-setup",
+      "family": "commerce-env-setup",
+      "status": "draft",
+      "category": "config",
+      "question": "What settings do I need to supply to connect this storefront to my own shop?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:vercel-commerce"
+      },
+      "expectedFiles": [
+        ".env.example",
+        "lib/utils.ts"
+      ],
+      "mustMention": [
+        "SHOPIFY_STORE_DOMAIN",
+        "SHOPIFY_STOREFRONT_ACCESS_TOKEN"
+      ],
+      "answerNote": ".env.example lists COMPANY_NAME, SITE_NAME, SHOPIFY_REVALIDATION_SECRET, SHOPIFY_STOREFRONT_ACCESS_TOKEN, SHOPIFY_STORE_DOMAIN; validateEnvironmentVariables in lib/utils.ts throws if the two Shopify vars are missing or the domain still contains brackets."
+    },
+    {
+      "id": "commerce-swap-provider",
+      "family": "commerce-swap-provider",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "Can I run this against a different ecommerce platform instead, and what would I need to replace?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:vercel-commerce"
+      },
+      "expectedFiles": [
+        "README.md"
+      ],
+      "mustMention": [
+        "lib/shopify"
+      ],
+      "answerNote": "README 'Providers' section: Vercel only maintains Shopify; other providers fork and swap out the lib/shopify implementation while leaving the rest of the template mostly unchanged (lists BigCommerce, Medusa, Saleor, etc.)."
+    },
+    {
+      "id": "commerce-sort-options",
+      "family": "commerce-sort-options",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "Where are the sort choices like 'price low to high' or 'latest arrivals' defined?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:vercel-commerce"
+      },
+      "expectedFiles": [
+        "lib/constants.ts"
+      ],
+      "mustMention": [
+        "sorting",
+        "sortKey"
+      ],
+      "answerNote": "lib/constants.ts exports the sorting list (Relevance, Trending=BEST_SELLING, Latest arrivals=CREATED_AT reverse, Price asc/desc) with URL slugs; search pages map the ?sort slug to sortKey/reverse."
+    },
+    {
+      "id": "commerce-variant-pick",
+      "family": "commerce-variant-pick",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When a shopper chooses a size or colour, how does the site work out which exact version of the product gets added?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:vercel-commerce"
+      },
+      "expectedFiles": [
+        "components/product/variant-selector.tsx",
+        "components/cart/add-to-cart.tsx"
+      ],
+      "mustMention": [
+        "searchParams|search params|URL",
+        "selectedOptions"
+      ],
+      "answerNote": "VariantSelector writes each chosen option into the URL query string (router.replace) and disables unavailable combos; AddToCart finds the variant whose selectedOptions all match the search params (or the only variant) and submits its id."
+    }
+  ],
+  "c4Note": {
+    "verdict": "partly",
+    "note": "One container for a single Next.js app is right, but the component level is just a flat list of 66 one-file components with no grouping, so the atlas never shows the three things a maintainer would name: App Router routes (app/), UI components (components/, with cart as its own feature), and the Shopify provider adapter (lib/shopify). The commerce backend (Shopify Storefront API) is the key external dependency and is absent. Config files show up as architecture components.",
+    "expectedContainers": [
+      "storefront web app (Next.js, repo root)",
+      "external: Shopify Storefront API (GraphQL) + Shopify webhooks"
+    ],
+    "problems": [
+      "66 components, one per file, under a single container; no directory grouping (app/, components/cart, components/layout, lib/shopify)",
+      "lib/shopify split into 13 file components (fragments/, queries/, mutations/, types) instead of one 'Shopify adapter' component",
+      "next.config.ts and postcss.config.mjs modelled as components",
+      "no external system for Shopify even though every data call goes through shopifyFetch to the Storefront GraphQL endpoint",
+      ".env.example and README (config + provider-swap guidance) invisible to the model"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:vercel-commerce",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary states what it is (Next.js + Shopify) and the app/components/lib split; key points point at the Shopify gateway; single-container children is only navigation."
+    },
+    {
+      "nodeId": "container:vercel-commerce",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary names lib/shopify as the gateway; key points add the cart hand-off and revalidate gotcha; 66 route/component files are real but mostly thin; parent is redundant."
+    }
+  ]
+}

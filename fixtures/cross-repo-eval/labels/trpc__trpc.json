@@ -1,0 +1,278 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "trpc/trpc",
+  "commitSha": "fa78a1be7c276e48d806f33ad8352b007fe5cc1e",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "trpc-request-batching",
+      "family": "trpc-request-batching",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When several queries fire at the same moment in the browser, how do they end up as a single HTTP request?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "packages/client/src/links/httpBatchLink.ts",
+        "packages/client/src/internals/dataLoader.ts"
+      ],
+      "mustMention": [
+        "setTimeout|same tick",
+        "maxURLLength|maxItems",
+        "comma|,"
+      ],
+      "answerNote": "httpBatchLink keeps one dataLoader per operation type (query/mutation). dataLoader.load() queues the operation and schedules dispatch with setTimeout, so all calls made in the same tick are collected; groupItems splits them using validate() (maxItems, and maxURLLength computed from the joined URL). Each group is sent as one request whose path is the comma-joined procedure paths with indexed inputs, and the array response is fanned back out to each promise."
+    },
+    {
+      "id": "trpc-mixed-batch-status",
+      "family": "trpc-mixed-batch-status",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "If one call in a batched request fails and another succeeds, what HTTP status does the combined response get?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "packages/server/src/unstable-core-do-not-import/http/getHTTPStatusCode.ts"
+      ],
+      "mustMention": [
+        "207",
+        "httpStatus|JSONRPC2_TO_HTTP_CODE"
+      ],
+      "answerNote": "getHTTPStatusCode maps each response item to a status (200 for results; for errors the error's data.httpStatus or the JSONRPC2_TO_HTTP_CODE mapping, e.g. NOT_FOUND -> 404, UNAUTHORIZED -> 401, unknown -> 500). If the set of statuses has more than one value the whole response is 207 Multi-Status, otherwise that single status."
+    },
+    {
+      "id": "trpc-auth-guard",
+      "family": "trpc-auth-guard",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "How should I restrict a group of endpoints so that only signed-in users can call them?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "www/docs/server/authorization.md",
+        "packages/server/src/unstable-core-do-not-import/middleware.ts"
+      ],
+      "mustMention": [
+        "createContext|ctx",
+        "middleware|protectedProcedure",
+        "UNAUTHORIZED"
+      ],
+      "answerNote": "createContext runs per request and decodes the user from headers into ctx. Either check ctx.user in the resolver and throw new TRPCError({ code: 'UNAUTHORIZED' }), or (preferred) create a middleware via t.middleware/.use() that throws UNAUTHORIZED when there is no user and calls next({ ctx: { user } }) to narrow the context type, then build a reusable protectedProcedure = t.procedure.use(isAuthed)."
+    },
+    {
+      "id": "trpc-dates-over-wire",
+      "family": "trpc-dates-over-wire",
+      "status": "draft",
+      "category": "config",
+      "question": "How can I send Date or Map values between server and client without them turning into plain strings?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "www/docs/server/data-transformers.md",
+        "packages/server/src/unstable-core-do-not-import/transformer.ts"
+      ],
+      "mustMention": [
+        "superjson",
+        "transformer",
+        "both|client and server"
+      ],
+      "answerNote": "Configure a data transformer: initTRPC.create({ transformer: superjson }) on the server and the same transformer on each client link (httpLink/httpBatchLink/wsLink). transformer.ts defines the DataTransformer / CombinedDataTransformer (separate input/output serialize/deserialize) interface; the default transformer is identity."
+    },
+    {
+      "id": "trpc-realtime-sse",
+      "family": "trpc-realtime-sse",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How do live subscriptions work over plain HTTP without WebSockets, and how does a client resume after a dropped connection?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "packages/server/src/unstable-core-do-not-import/stream/sse.ts",
+        "packages/client/src/links/httpSubscriptionLink.ts"
+      ],
+      "mustMention": [
+        "EventSource|text/event-stream|Server-Sent",
+        "lastEventId|tracked",
+        "ping|reconnect"
+      ],
+      "answerNote": "httpSubscriptionLink opens an EventSource (pluggable ponyfill) to the subscription procedure; the server's sseStreamProducer turns the async iterable into SSE, optionally interleaving ping comments (must be shorter than the client's reconnectAfterInactivityMs). Values yielded with tracked(id, data) carry an event id; sseStreamConsumer records lastEventId so a reconnect resends it and the procedure can resume from that point."
+    },
+    {
+      "id": "trpc-express-mount",
+      "family": "trpc-express-mount",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "How do I plug the API into an existing Express server?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "packages/server/src/adapters/express.ts",
+        "packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts"
+      ],
+      "mustMention": [
+        "createExpressMiddleware",
+        "app.use|middleware",
+        "nodeHTTPRequestHandler|node-http"
+      ],
+      "answerNote": "Mount createExpressMiddleware({ router, createContext }) on a path with app.use('/trpc', ...). The adapter takes the last path segment as the procedure path and delegates to the generic node-http adapter (nodeHTTPRequestHandler), which converts the Node request into a Fetch Request and calls resolveResponse."
+    },
+    {
+      "id": "trpc-core-folder",
+      "family": "trpc-core-folder",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "What is the server package's unstable-core-do-not-import folder, and why is it named that way?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "packages/server/src/unstable-core-do-not-import.ts"
+      ],
+      "mustMention": [
+        "glue|internal",
+        "inferred type|TypeScript",
+        "issue"
+      ],
+      "answerNote": "It is the internal core (router, procedure builder, middleware, errors, HTTP resolveResponse, streaming, transformers) re-exported from one barrel purely as glue between the official @trpc/* packages and so TypeScript can name inferred types ('The inferred type ... cannot be named'). It is exported as the @trpc/server/unstable-core-do-not-import subpath but apps should not import it; the header says to open an issue instead."
+    },
+    {
+      "id": "trpc-react-codemod",
+      "family": "trpc-react-codemod",
+      "status": "draft",
+      "category": "locate",
+      "question": "Is there an automated tool to move my React code from the old hooks-style integration to the new TanStack Query style?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:root"
+      },
+      "expectedFiles": [
+        "packages/upgrade/src/bin/index.ts",
+        "packages/upgrade/src/transforms/hooksToOptions.ts",
+        "www/docs/client/tanstack-react-query/migrating.mdx"
+      ],
+      "mustMention": [
+        "@trpc/upgrade|trpc-upgrade",
+        "codemod|jscodeshift",
+        "hooksToOptions|provider"
+      ],
+      "answerNote": "npx @trpc/upgrade (packages/upgrade) is an interactive CLI that lets you pick jscodeshift transforms, runs the provider-migration transform first, then hooksToOptions which rewrites trpc.x.useQuery-style calls into useQuery(trpc.x.queryOptions()) form, and can install @trpc/tanstack-react-query. The migration doc calls the codemod work-in-progress."
+    },
+    {
+      "id": "trpc-request-pipeline",
+      "family": "trpc-request-pipeline",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "Once an adapter hands over an incoming HTTP request, where is it decoded, run against the right procedure, and turned back into a response?",
+      "selection": {
+        "level": "L2 container",
+        "selectedId": "container:packages-openapi"
+      },
+      "expectedFiles": [
+        "packages/server/src/unstable-core-do-not-import/http/resolveResponse.ts",
+        "packages/server/src/adapters/fetch/fetchRequestHandler.ts"
+      ],
+      "mustMention": [
+        "resolveResponse",
+        "createContext",
+        "batch|isBatchCall"
+      ],
+      "answerNote": "Adapters (fetch, node-http, etc.) normalise to a Fetch Request and call resolveResponse, which parses the request via the content-type handler into calls (single or batch), creates the context once, looks up each procedure by path and invokes it, then serializes results with the transformer, choosing JSON, JSONL streaming (httpBatchStreamLink) or SSE (subscriptions), and sets the status via getHTTPStatusCode."
+    }
+  ],
+  "c4Note": {
+    "verdict": "partly",
+    "note": "Written by the lead from the prepared (heyapi-dropped) scan after freeze; the questions were already frozen. Package-per-container follows pnpm-workspace.yaml and matches how maintainers describe tRPC (server core, client, react/tanstack adapters, next, openapi, upgrade codemod, www docs site). The as-is scan fails outright, and within the prepared scan one container is dominated by generated test fixtures.",
+    "expectedContainers": [
+      "@trpc/server (packages/server)",
+      "@trpc/client (packages/client)",
+      "@trpc/react-query + @trpc/tanstack-react-query (adapters)",
+      "@trpc/next (packages/next)",
+      "@trpc/openapi (packages/openapi/src)",
+      "@trpc/upgrade (codemod CLI)",
+      "www (docs site; optional)",
+      "tests/examples as non-product"
+    ],
+    "problems": [
+      "as-is scan fails: 5 duplicate-relation ids between generated heyapi files exceed 192 characters, so the whole scan is rejected",
+      "system named 'root' (root package.json name) instead of tRPC",
+      "@trpc/openapi has 184 components of which 171 are generated test router fixtures under packages/openapi/test/routers, swamping its 5 real source files",
+      "@trpc/tests (integration suite) is a peer container of the product packages",
+      "'Build & fixture tooling' container keyed on scripts/"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:root",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "children",
+        "enrichment:keyPoints",
+        "enrichment:evidence"
+      ],
+      "note": "Summary says server core -> typed clients -> adapters and to read @trpc/server first; the 11 package containers are the map; key points trace the link/hook seams."
+    },
+    {
+      "nodeId": "container:packages-server",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "relations:dependents",
+        "enrichment:diagram",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Core package: summary, then 8 dependents show it is the hub everything consumes; diagram + key points for router/procedure internals; related duplicates dependents."
+    },
+    {
+      "nodeId": "container:packages-openapi",
+      "status": "draft",
+      "order": [
+        "children",
+        "relations:dependencies",
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:evidence"
+      ],
+      "note": "Enrichment fixated on test fixtures and misses the real cli.ts/generate.ts surface, so the children list (which leads with them) and the server dependency come first; related duplicates."
+    },
+    {
+      "nodeId": "container:packages-upgrade",
+      "status": "draft",
+      "order": [
+        "children",
+        "relations:dependencies",
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:evidence"
+      ],
+      "note": "Summary calls it test scaffolding, but children show the codemod CLI (src/bin, lib/ast); lead with children + dependencies, demote the misleading narrative; diagram of test helpers omitted."
+    },
+    {
+      "nodeId": "container:www",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Website: summary + key points name the home page and Button typing gotcha; 42 files for browsing; parent redundant."
+    }
+  ]
+}

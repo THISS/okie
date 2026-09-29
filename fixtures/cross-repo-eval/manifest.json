@@ -1,0 +1,244 @@
+{
+  "schema": "cross-repo-eval-manifest/v1",
+  "note": "Public repos pinned to one commit each. Sources are fetched by scripts/cross-repo-eval.mjs into a scratch dir and never committed. evalPrepare lists eval-only tree edits (a local derivative commit) applied only after the as-is scan outcome is recorded, so downstream rules can still be measured on repos the scanner rejects as-is.",
+  "repos": [
+    {
+      "slug": "vercel__commerce",
+      "repository": "vercel/commerce",
+      "url": "https://github.com/vercel/commerce",
+      "commitSha": "3761e52e60df9c6a316e067dbfd7032e494d3634",
+      "license": "MIT",
+      "shape": "nextjs-app",
+      "language": "TypeScript",
+      "notes": "Next.js App Router storefront; structure by framework convention (app/ routes, lib/)",
+      "size": {
+        "trackedFiles": 78,
+        "checkoutMB": 0.7
+      }
+    },
+    {
+      "slug": "pmndrs__zustand",
+      "repository": "pmndrs/zustand",
+      "url": "https://github.com/pmndrs/zustand",
+      "commitSha": "b57db4f86ef179285da216eeb291266da82c361c",
+      "license": "MIT",
+      "shape": "library",
+      "language": "TypeScript",
+      "notes": "Small state-management library with middleware",
+      "size": {
+        "trackedFiles": 144,
+        "checkoutMB": 2.4
+      }
+    },
+    {
+      "slug": "hagopj13__node-express-boilerplate",
+      "repository": "hagopj13/node-express-boilerplate",
+      "url": "https://github.com/hagopj13/node-express-boilerplate",
+      "commitSha": "179ae84efec61b14206d0305d941daed6c6d07f9",
+      "license": "MIT",
+      "shape": "service",
+      "language": "JavaScript",
+      "notes": "Express REST API; generic dirs (utils/, services/, controllers/, middlewares/)",
+      "size": {
+        "trackedFiles": 78,
+        "checkoutMB": 0.7
+      }
+    },
+    {
+      "slug": "trpc__trpc",
+      "repository": "trpc/trpc",
+      "url": "https://github.com/trpc/trpc",
+      "commitSha": "fa78a1be7c276e48d806f33ad8352b007fe5cc1e",
+      "license": "MIT",
+      "shape": "library-monorepo",
+      "language": "TypeScript",
+      "notes": "Library monorepo with many packages, examples and a large test suite",
+      "size": {
+        "trackedFiles": 1647,
+        "checkoutMB": 11.4
+      },
+      "evalPrepare": {
+        "dropPaths": [
+          "packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi"
+        ],
+        "why": "As-is scan fails validation: 5 relation ids exceed 192 characters, all between generated heyapi client files under packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi (the longest router name). Dropping only that generated test client dir lets the rest of the monorepo scan."
+      }
+    },
+    {
+      "slug": "facebook__docusaurus",
+      "repository": "facebook/docusaurus",
+      "url": "https://github.com/facebook/docusaurus",
+      "commitSha": "baaa9069324a8dbff1ff8e3ffcd4598d5242332a",
+      "license": "MIT",
+      "shape": "docs-heavy-monorepo",
+      "language": "TypeScript",
+      "notes": "40+ package monorepo whose website/ is mostly Markdown docs",
+      "size": {
+        "trackedFiles": 4275,
+        "checkoutMB": 70.9
+      }
+    },
+    {
+      "slug": "excalidraw__excalidraw",
+      "repository": "excalidraw/excalidraw",
+      "url": "https://github.com/excalidraw/excalidraw",
+      "commitSha": "5a406e51875157bece389b9bc92d41ff241d5f3d",
+      "license": "MIT",
+      "shape": "app-monorepo",
+      "language": "TypeScript",
+      "notes": "App + packages via yarn/npm workspaces (no pnpm-workspace.yaml)",
+      "size": {
+        "trackedFiles": 1307,
+        "checkoutMB": 56.8
+      }
+    },
+    {
+      "slug": "tauri-apps__tauri",
+      "repository": "tauri-apps/tauri",
+      "url": "https://github.com/tauri-apps/tauri",
+      "commitSha": "d15cf9b1e481035a248227c791fde5740fcfe0ba",
+      "license": "Apache-2.0 OR MIT",
+      "shape": "polyglot-monorepo",
+      "language": "Rust+TypeScript",
+      "notes": "Rust crates + TypeScript API packages in one repo",
+      "size": {
+        "trackedFiles": 1086,
+        "checkoutMB": 24.1
+      }
+    },
+    {
+      "slug": "BurntSushi__ripgrep",
+      "repository": "BurntSushi/ripgrep",
+      "url": "https://github.com/BurntSushi/ripgrep",
+      "commitSha": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+      "license": "Unlicense OR MIT",
+      "shape": "rust-cli-workspace",
+      "language": "Rust",
+      "notes": "Rust CLI split into abbreviated crates (crates/cli, grep-*)",
+      "size": {
+        "trackedFiles": 237,
+        "checkoutMB": 3.7
+      },
+      "evalPrepare": {
+        "dropSymlinks": true,
+        "why": "As-is scan aborts on a committed symlink (HomebrewFormula): \"Committed source requires materialized files; symlink/submodule is unsupported\"."
+      }
+    },
+    {
+      "slug": "tokio-rs__axum",
+      "repository": "tokio-rs/axum",
+      "url": "https://github.com/tokio-rs/axum",
+      "commitSha": "d775cb202bea5f86d7b5f5cd3b36717944635858",
+      "license": "MIT",
+      "shape": "rust-library-workspace",
+      "language": "Rust",
+      "notes": "Rust web framework library; many example crates (noise)",
+      "size": {
+        "trackedFiles": 503,
+        "checkoutMB": 3.3
+      },
+      "evalPrepare": {
+        "dropSymlinks": true,
+        "why": "As-is scan aborts on committed symlinks (README.md and others): \"symlink/submodule is unsupported\"."
+      }
+    },
+    {
+      "slug": "microsoft__TypeScript",
+      "repository": "microsoft/TypeScript",
+      "url": "https://github.com/microsoft/TypeScript",
+      "commitSha": "21b3aeb3bd376eb1c3ea89963dc8fd7ee341988a",
+      "license": "Apache-2.0",
+      "shape": "scale-50k",
+      "language": "Go+TypeScript",
+      "notes": "66k tracked files, ~61k of them generated test baselines/tests; Go port + TS packages",
+      "size": {
+        "trackedFiles": 66763,
+        "checkoutMB": 412.5
+      },
+      "evalPrepare": {
+        "dropPaths": [
+          "tsc/testdata"
+        ],
+        "why": "As-is scan fails with \"spawnSync git ENOBUFS\": every blob is read through one 128 MB git buffer; tsc/testdata holds ~61k generated baselines."
+      }
+    },
+    {
+      "slug": "GoogleCloudPlatform__microservices-demo",
+      "repository": "GoogleCloudPlatform/microservices-demo",
+      "url": "https://github.com/GoogleCloudPlatform/microservices-demo",
+      "commitSha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
+      "license": "Apache-2.0",
+      "shape": "microservices",
+      "language": "Polyglot",
+      "notes": "11 services in Go, C#, Node.js, Python, Java; generated protobuf stubs",
+      "size": {
+        "trackedFiles": 364,
+        "checkoutMB": 13.0
+      }
+    },
+    {
+      "slug": "go-gitea__gitea",
+      "repository": "go-gitea/gitea",
+      "url": "https://github.com/go-gitea/gitea",
+      "commitSha": "fba8d7eaceeed3f8bbc364386d2a35aa672285a2",
+      "license": "MIT",
+      "shape": "go-monolith",
+      "language": "Go+TypeScript",
+      "notes": "Go monolith (models/, routers/, services/, modules/) + TS/Vue web_src",
+      "size": {
+        "trackedFiles": 6349,
+        "checkoutMB": 48.9
+      }
+    },
+    {
+      "slug": "saleor__saleor",
+      "repository": "saleor/saleor",
+      "url": "https://github.com/saleor/saleor",
+      "commitSha": "58e2eb7cabb6ce37678062ff04b051ef58c5e479",
+      "license": "BSD-3-Clause",
+      "shape": "django-monolith",
+      "language": "Python",
+      "notes": "Django + GraphQL e-commerce monolith, app-per-domain",
+      "size": {
+        "trackedFiles": 4675,
+        "checkoutMB": 67.3
+      },
+      "evalPrepare": {
+        "dropSymlinks": true,
+        "why": "As-is scan aborts on a committed symlink (CLAUDE.md): \"symlink/submodule is unsupported\"."
+      }
+    },
+    {
+      "slug": "rubygems__rubygems.org",
+      "repository": "rubygems/rubygems.org",
+      "url": "https://github.com/rubygems/rubygems.org",
+      "commitSha": "fd828b37546d331f1104d44c1824e8ad2fcdb96f",
+      "license": "MIT",
+      "shape": "rails-mvc",
+      "language": "Ruby",
+      "notes": "Rails app structured by MVC convention (app/models, app/controllers, app/jobs)",
+      "size": {
+        "trackedFiles": 1861,
+        "checkoutMB": 10.6
+      },
+      "evalPrepare": {
+        "dropSymlinks": true,
+        "why": "As-is scan aborts on a committed symlink (.claude/skills): \"symlink/submodule is unsupported\"."
+      }
+    },
+    {
+      "slug": "spring-projects__spring-petclinic",
+      "repository": "spring-projects/spring-petclinic",
+      "url": "https://github.com/spring-projects/spring-petclinic",
+      "commitSha": "818c4136ea971c21674525f9053de0d9c7ad8cfe",
+      "license": "Apache-2.0",
+      "shape": "java-deep-nesting",
+      "language": "Java",
+      "notes": "Spring Boot app with deep Java package nesting (src/main/java/org/springframework/samples/petclinic/...)",
+      "size": {
+        "trackedFiles": 132,
+        "checkoutMB": 1.7
+      }
+    }
+  ]
+}

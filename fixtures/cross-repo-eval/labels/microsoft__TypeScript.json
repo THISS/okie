@@ -1,0 +1,221 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "microsoft/TypeScript",
+  "commitSha": "21b3aeb3bd376eb1c3ea89963dc8fd7ee341988a",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "ts-npm-launcher",
+      "family": "ts-npm-launcher",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "After installing the typescript npm package, what actually runs when I type tsc — is the compiler JavaScript?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:typescript-repo"
+      },
+      "expectedFiles": [
+        "packages/typescript/lib/tsc.js",
+        "packages/typescript/lib/getExePath.js"
+      ],
+      "mustMention": [
+        "native|Go|executable",
+        "@typescript/|platform package",
+        "execve|execFileSync"
+      ],
+      "answerNote": "No: bin/tsc imports lib/tsc.js, which resolves a native executable with getExePath() and replaces the Node process with it (process.execve on newer Node, otherwise execFileSync with stdio inherited, propagating the exit code). getExePath looks for the per-platform package @typescript/typescript-<platform>-<arch> (or built/local when run from the repo) and its lib/tsc binary; the compiler itself is the Go program under tsc/."
+    },
+    {
+      "id": "ts-api-bridge",
+      "family": "ts-api-bridge",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "If the compiler is a native binary, how does a Node program ask it questions like 'what is the type of this node'?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:typescript-repo"
+      },
+      "expectedFiles": [
+        "packages/typescript/src/api/sync/client.ts",
+        "tsc/cmd/tsc/api.go",
+        "tsc/internal/api/session.go"
+      ],
+      "mustMention": [
+        "--api",
+        "msgpack|MessagePack",
+        "JSON-RPC|stdio|pipe"
+      ],
+      "answerNote": "The TS API client spawns the native executable in API mode (tsc --api ...) and talks to it over stdio (or a named pipe/socket): the sync client uses a MessagePack RPC channel, the async client JSON-RPC (--async). Optional --callbacks let the Go side call back into JS for a virtual filesystem. On the Go side api.go parses the flags and starts the stdio server; session.go dispatches methods (initialize, snapshots, batched requests, etc.)."
+    },
+    {
+      "id": "ts-assignability",
+      "family": "ts-assignability",
+      "status": "draft",
+      "category": "locate",
+      "question": "Where is the logic that decides whether a value of one type can be assigned to a variable of another type?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:packages-typescript-src-enums-syntax-kind-ts"
+      },
+      "expectedFiles": [
+        "tsc/internal/checker/relater.go"
+      ],
+      "mustMention": [
+        "isTypeAssignableTo|assignableRelation",
+        "isTypeRelatedTo"
+      ],
+      "answerNote": "In the Go checker: tsc/internal/checker/relater.go. isTypeAssignableTo calls isTypeRelatedTo(source, target, c.assignableRelation); the same machinery handles subtype, strict-subtype and comparable relations, with fresh literal types regularized first and structural comparison done by the relater."
+    },
+    {
+      "id": "ts-parallel-checking",
+      "family": "ts-parallel-checking",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "Does the compiler type-check files in parallel, and how does it decide which files share a checker?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:typescript-repo"
+      },
+      "expectedFiles": [
+        "tsc/internal/compiler/checkerpool.go"
+      ],
+      "mustMention": [
+        "checkers|pool",
+        "FENNEL|partition",
+        "import"
+      ],
+      "answerNote": "Yes: the program owns a pool of several checkers, each with its own symbol/type caches and a mutex so it is used exclusively. Files are assigned to checkers by treating it as balanced graph partitioning over resolved imports, using a weighted streaming FENNEL heuristic (affinity to already-assigned importers minus a load penalty, with empirically tuned constants and a deliberate stream order) so related files share caches without lengthening the parallel critical path."
+    },
+    {
+      "id": "ts-tsconfig-extends",
+      "family": "ts-tsconfig-extends",
+      "status": "draft",
+      "category": "config",
+      "question": "When a project config inherits from another via 'extends', where is that merged, and where is the full list of allowed options declared?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:typescript-repo"
+      },
+      "expectedFiles": [
+        "tsc/internal/tsoptions/tsconfigparsing.go",
+        "tsc/internal/tsoptions/declscompiler.go"
+      ],
+      "mustMention": [
+        "extends",
+        "OptionsDeclarations|CommandLineOption"
+      ],
+      "answerNote": "tsconfigparsing.go (ParseJsonSourceFileConfigFileContent / parseConfig / getExtendsConfigPath...) resolves the extends chain (paths or package names, arrays allowed) and merges base options before the child's. Every option's name, short name, kind, category, description and default is a CommandLineOption entry in OptionsDeclarations in declscompiler.go (build/watch/typeAcquisition options in sibling decls*.go files)."
+    },
+    {
+      "id": "ts-accept-baselines",
+      "family": "ts-accept-baselines",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "I changed compiler behaviour and a lot of expected-output test files now differ. How do I review and accept the new outputs?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:typescript-repo"
+      },
+      "expectedFiles": [
+        ".github/skills/compiler-and-fourslash-tests/SKILL.md",
+        "Herebyfile.mjs"
+      ],
+      "mustMention": [
+        "hereby test",
+        "baseline-accept",
+        "baselines/local|baselines/reference"
+      ],
+      "answerNote": "Run npx hereby test (clears stale output and writes new results to tsc/testdata/baselines/local), diff local against tsc/testdata/baselines/reference, then npx hereby baseline-accept, which copies local into reference and deletes files marked .delete. Only accept right after a fresh hereby test run. Tasks are defined in Herebyfile.mjs."
+    },
+    {
+      "id": "ts-fourslash",
+      "family": "ts-fourslash",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "What are the thousands of tests in the fourslash folder testing, and how is one written?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:typescript-repo"
+      },
+      "expectedFiles": [
+        "tsc/internal/fourslash/fourslash.go",
+        "tsc/internal/fourslash/test_parser.go"
+      ],
+      "mustMention": [
+        "language server|LSP|editor",
+        "marker",
+        "baseline"
+      ],
+      "answerNote": "Fourslash tests exercise editor/language-service features (completions, hover/quick info, go-to-definition, references, rename, code fixes, formatting) through the LSP server. Each is a Go test in fourslash/tests that embeds TypeScript source containing /*marker*/ positions, [|ranges|] and // @Filename: sections; test_parser.go parses that, NewFourslash spins up an in-memory LSP session, and the test calls f.GoToMarker/Insert/Verify* helpers, many of which write baselines."
+    },
+    {
+      "id": "ts-lsp-startup",
+      "family": "ts-lsp-startup",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How does the editor language server start up, and where does an incoming request like 'go to definition' get routed?",
+      "selection": {
+        "level": "L3 component",
+        "selectedId": "component:herebyfile-mjs"
+      },
+      "expectedFiles": [
+        "tsc/cmd/tsc/main.go",
+        "tsc/cmd/tsc/lsp.go",
+        "tsc/internal/lsp/server.go"
+      ],
+      "mustMention": [
+        "--lsp",
+        "stdio",
+        "registerRequestHandler|handler"
+      ],
+      "answerNote": "main.go switches on --lsp and calls runLSP (lsp.go), which only supports --stdio and builds lsp.NewServer with stdin/stdout. Server.Run starts read, dispatch and write loops; handleRequestOrNotification looks the method up in a handler table populated with registerRequestHandler (e.g. TextDocumentDefinition, Completion, Rename) and runs it against the project session."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "At the pin the repo is the native (Go) TypeScript compiler: ~900 non-test Go files in tsc/ (checker, parser, binder, emitter, lsp, api, project system) plus npm packages that wrap it. The scan (prepared tree without tsc/testdata) sees only TS/JS, so it produced one container '@typescript/repo' from the root package.json with 158 components: packages/typescript's API client and generated enum files, the VS Code extension, tools/scripts and a few .mts generator scripts inside tsc/. The npm workspaces (packages/*) were collapsed into that single container, and the actual compiler is entirely invisible.",
+    "expectedContainers": [
+      "native compiler CLI (tsc/cmd/tsc: tsc, --lsp, --api entry points)",
+      "compiler core (tsc/internal: scanner/parser/binder/checker/transformers/printer/compiler)",
+      "language server + project system (tsc/internal/lsp, ls, project)",
+      "native API server (tsc/internal/api)",
+      "typescript npm package (packages/typescript: launcher + TS API client)",
+      "VS Code extension (packages/vscode-typescript, packages/vscode-typescript-nightly)",
+      "build/dev tooling (Herebyfile.mjs, tools/)",
+      "test harness (tsc/internal/testrunner, fourslash, tsc/testdata)"
+    ],
+    "problems": [
+      "Go is not extracted, so the entire compiler (tsc/internal/*, tsc/cmd) has no components; answers to most questions live there",
+      "npm workspaces packages/* collapsed into one root container '@typescript/repo' (sourceRef package.json)",
+      "packages/typescript/lib/tsc.js and getExePath.js (the npm launcher) skipped as '.js in a TypeScript repo' while lib/version.cjs and Herebyfile.mjs are included — inconsistent JS handling",
+      "the only tsc/ components are four codegen .mts scripts (tsc/internal/lsp/lsproto/_generate, stringutil/_scripts), which misrepresent tsc/ as tooling",
+      "dozens of generated enum files (packages/typescript/src/enums/*.enum.ts and *.ts) shown as individual architecture components",
+      "as-is scan fails with git ENOBUFS (all blobs read into a 128 MB buffer); only the prepared tree without tsc/testdata scans"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:typescript-repo",
+      "status": "draft",
+      "order": [
+        "enrichment:keyPoints",
+        "enrichment:summary",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Scanner-blind (Go compiler invisible): key points at least surface that Herebyfile builds the Go tsc; the summary omits the compiler entirely, so it follows; children is one collapsed container."
+    },
+    {
+      "nodeId": "container:typescript-repo",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "enrichment:evidence",
+        "children"
+      ],
+      "note": "Summary names Herebyfile and the Go tsc build then the API seams; key points add the frozen AST layout gotcha; 158 children are mostly generated/version files so last; parent redundant."
+    }
+  ]
+}

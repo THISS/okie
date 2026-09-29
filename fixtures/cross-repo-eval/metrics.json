@@ -1,0 +1,2410 @@
+{
+  "schema": "cross-repo-eval-metrics/v1",
+  "repos": [
+    {
+      "slug": "vercel__commerce",
+      "repository": "vercel/commerce",
+      "language": "TypeScript",
+      "shape": "nextjs-app",
+      "perQuestion": [
+        {
+          "id": "commerce-cart-add",
+          "family": "commerce-cart-add",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 0.5, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "commerce-webhook-refresh",
+          "family": "commerce-webhook-refresh",
+          "category": "how-it-works",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1429, "invalid": false, "declined": false, "correct": false, "mentions": 2, "mustMention": 3 }
+        },
+        {
+          "id": "commerce-product-route",
+          "family": "commerce-product-route",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "commerce-cms-pages",
+          "family": "commerce-cms-pages",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 1, "size-scaled": 0.5, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.2, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "commerce-env-setup",
+          "family": "commerce-env-setup",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.25, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "commerce-swap-provider",
+          "family": "commerce-swap-provider",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 1, "mustMention": 1 }
+        },
+        {
+          "id": "commerce-sort-options",
+          "family": "commerce-sort-options",
+          "category": "generic-dir",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.1667, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "commerce-variant-pick",
+          "family": "commerce-variant-pick",
+          "category": "how-it-works",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 1, "size-scaled": 0.5, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 2553, "entities": 256 },
+        "signals": { "entities": 256, "containers": 1, "components": 66, "files": 68, "maxDepth": 4, "medianDepth": 2, "language": "TypeScript" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "partly"
+      },
+      "retrieval": { "corpus": "enriched", "questions": 8, "stale": 0, "recall5": 0.25, "recall10": 0.375, "recallFull": 0.75, "indexedExpected": 0.9375, "meanBytes": 22873.875, "meanSections": 16.125 },
+      "variants": {
+        "default": { "recallFull": 0.75, "meanBytes": 22873.875, "meanSections": 16.125 },
+        "depth-scaled": { "recallFull": 0.75, "meanBytes": 22873.875, "meanSections": 16.125 },
+        "double": { "recallFull": 0.875, "meanBytes": 31795.125, "meanSections": 25.5 },
+        "half": { "recallFull": 0.4375, "meanBytes": 11735.25, "meanSections": 7.75 },
+        "size-scaled": { "recallFull": 0.5, "meanBytes": 11859.875, "meanSections": 7.625 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0.625, "citationPrecision": 0.1783, "invalidRate": 0, "declinedRate": 0, "correctness": 0.75, "costUsd": 0.0312 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 1 },
+        "jevCostUsd": 0.0002
+      },
+      "claims": {
+        "checked": 246,
+        "judged": 243,
+        "byState": { "supported": 96, "uncertain": 75, "insufficient-context": 55, "insufficient": 16, "unavailable": 3, "contradicted": 1 },
+        "insufficientContextByReason": { "missing-capture": 11, "truncated-capture": 44 },
+        "unavailableByReason": { "invalid-response": 3 },
+        "failedCheckByReason": {},
+        "unavailableRate": 0.0122,
+        "insufficientContextRate": 0.2263,
+        "insufficientRate": 0.0658,
+        "notEnoughEvidenceRate": 0.2922,
+        "supportedRate": 0.3951,
+        "costUsd": 0.0042,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.168
+      },
+      "cost": {
+        "stageMs": { "blocks": 844 },
+        "enrichScope": "full",
+        "enrichMaxConcurrent": 4,
+        "jevReservationEquivalentUsd": 0.174,
+        "scanMs": 2553,
+        "enrichMs": 507699,
+        "enrichUsd": 0.0712,
+        "enrichRequests": 68,
+        "enrichAccepted": 68,
+        "enrichFailed": 0,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0312,
+        "jevUsd": 0.0044
+      }
+    },
+    {
+      "slug": "pmndrs__zustand",
+      "repository": "pmndrs/zustand",
+      "language": "TypeScript",
+      "shape": "library",
+      "perQuestion": [
+        {
+          "id": "zustand-notify",
+          "family": "zustand-notify",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 1, "size-scaled": 0.5, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.25, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "zustand-saved-shape-change",
+          "family": "zustand-saved-shape-change",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.5, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "zustand-pick-many-rerender",
+          "family": "zustand-pick-many-rerender",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1429, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "zustand-split-store",
+          "family": "zustand-split-store",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 1, "mustMention": 1 }
+        },
+        {
+          "id": "zustand-browser-debug",
+          "family": "zustand-browser-debug",
+          "category": "locate",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.5, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "zustand-build-formats",
+          "family": "zustand-build-formats",
+          "category": "config",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.6667, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "zustand-reset",
+          "family": "zustand-reset",
+          "category": "docs-answer",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.2, "invalid": false, "declined": false, "correct": true, "mentions": 1, "mustMention": 1 }
+        },
+        {
+          "id": "zustand-custom-equality",
+          "family": "zustand-custom-equality",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.2, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 10049, "entities": 173 },
+        "signals": { "entities": 173, "containers": 1, "components": 30, "files": 32, "maxDepth": 4, "medianDepth": 2, "language": "TypeScript" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "partly"
+      },
+      "retrieval": { "corpus": "enriched", "questions": 8, "stale": 0, "recall5": 0.25, "recall10": 0.5, "recallFull": 0.625, "indexedExpected": 0.625, "meanBytes": 21524, "meanSections": 17.25 },
+      "variants": {
+        "default": { "recallFull": 0.625, "meanBytes": 21524, "meanSections": 17.25 },
+        "depth-scaled": { "recallFull": 0.625, "meanBytes": 21524, "meanSections": 17.25 },
+        "double": { "recallFull": 0.625, "meanBytes": 23719.625, "meanSections": 20 },
+        "half": { "recallFull": 0.5, "meanBytes": 11787.125, "meanSections": 8.875 },
+        "size-scaled": { "recallFull": 0.5, "meanBytes": 11787.125, "meanSections": 8.875 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0.625, "citationPrecision": 0.3074, "invalidRate": 0, "declinedRate": 0, "correctness": 0.875, "costUsd": 0.0317 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 1 },
+        "jevCostUsd": 0.0002
+      },
+      "claims": {
+        "checked": 98,
+        "judged": 92,
+        "byState": { "insufficient-context": 38, "uncertain": 29, "supported": 24, "insufficient": 1, "unavailable": 6 },
+        "insufficientContextByReason": { "missing-capture": 34, "truncated-capture": 4 },
+        "unavailableByReason": { "invalid-response": 6 },
+        "failedCheckByReason": {},
+        "unavailableRate": 0.0612,
+        "insufficientContextRate": 0.413,
+        "insufficientRate": 0.0109,
+        "notEnoughEvidenceRate": 0.4239,
+        "supportedRate": 0.2609,
+        "costUsd": 0.0014,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.045
+      },
+      "cost": {
+        "stageMs": { "blocks": 741 },
+        "enrichScope": "full",
+        "enrichFailuresByClass": { "rejected-by-validator": 1 },
+        "enrichMaxConcurrent": 4,
+        "jevReservationEquivalentUsd": 0.051,
+        "scanMs": 10049,
+        "enrichMs": 232797,
+        "enrichUsd": 0.0384,
+        "enrichRequests": 32,
+        "enrichAccepted": 31,
+        "enrichFailed": 1,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0317,
+        "jevUsd": 0.0016
+      }
+    },
+    {
+      "slug": "hagopj13__node-express-boilerplate",
+      "repository": "hagopj13/node-express-boilerplate",
+      "language": "JavaScript",
+      "shape": "service",
+      "perQuestion": [
+        {
+          "id": "nodeexpress-login",
+          "family": "nodeexpress-login",
+          "category": "how-it-works",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.1538, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-admin-rights",
+          "family": "nodeexpress-admin-rights",
+          "category": "cross-cutting",
+          "recall5": 0.5,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.1538, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-errors",
+          "family": "nodeexpress-errors",
+          "category": "cross-cutting",
+          "recall5": 0.5,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.2857, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-async-wrapper",
+          "family": "nodeexpress-async-wrapper",
+          "category": "generic-dir",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.1429, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-required-env",
+          "family": "nodeexpress-required-env",
+          "category": "config",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.25, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-login-flood",
+          "family": "nodeexpress-login-flood",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0.5,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 0, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1111, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-api-docs",
+          "family": "nodeexpress-api-docs",
+          "category": "framework-convention",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 1, "size-scaled": 0.5, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.5, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-paging",
+          "family": "nodeexpress-paging",
+          "category": "generic-dir",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.1111, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "nodeexpress-prod-run",
+          "family": "nodeexpress-prod-run",
+          "category": "config",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1667, "invalid": false, "declined": false, "correct": true, "mentions": 1, "mustMention": 1 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 17943, "entities": 253 },
+        "signals": { "entities": 253, "containers": 1, "components": 43, "files": 45, "maxDepth": 3, "medianDepth": 2, "language": "JavaScript" }
+      },
+      "labels": {
+        "questions": 9,
+        "byStatus": { "draft": 9 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "partly"
+      },
+      "retrieval": { "corpus": "enriched", "questions": 9, "stale": 0, "recall5": 0.6111, "recall10": 0.7222, "recallFull": 0.8333, "indexedExpected": 0.8889, "meanBytes": 22157.3333, "meanSections": 17.7778 },
+      "variants": {
+        "default": { "recallFull": 0.8333, "meanBytes": 22157.3333, "meanSections": 17.7778 },
+        "depth-scaled": { "recallFull": 0.8333, "meanBytes": 22157.3333, "meanSections": 17.7778 },
+        "double": { "recallFull": 0.8889, "meanBytes": 24331.1111, "meanSections": 20.2222 },
+        "half": { "recallFull": 0.7222, "meanBytes": 11804.1111, "meanSections": 9 },
+        "size-scaled": { "recallFull": 0.7222, "meanBytes": 11829.4444, "meanSections": 9 }
+      },
+      "answers": { "answered": 9, "citedRecall": 0.8333, "citationPrecision": 0.2084, "invalidRate": 0, "declinedRate": 0, "correctness": 0.8889, "costUsd": 0.0346 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 0.9, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jevCostUsd": 0.0002
+      },
+      "claims": {
+        "checked": 174,
+        "judged": 174,
+        "byState": { "insufficient-context": 20, "supported": 65, "uncertain": 55, "insufficient": 31, "contradicted": 3 },
+        "insufficientContextByReason": { "missing-capture": 14, "truncated-capture": 6 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.1149,
+        "insufficientRate": 0.1782,
+        "notEnoughEvidenceRate": 0.2931,
+        "supportedRate": 0.3736,
+        "costUsd": 0.0032,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.105
+      },
+      "cost": {
+        "stageMs": { "blocks": 957 },
+        "enrichScope": "full",
+        "enrichFailuresByClass": { "rejected-by-validator": 2 },
+        "enrichMaxConcurrent": 4,
+        "jevReservationEquivalentUsd": 0.111,
+        "scanMs": 17943,
+        "enrichMs": 472289,
+        "enrichUsd": 0.061,
+        "enrichRequests": 45,
+        "enrichAccepted": 43,
+        "enrichFailed": 2,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0346,
+        "jevUsd": 0.0033
+      }
+    },
+    {
+      "slug": "trpc__trpc",
+      "repository": "trpc/trpc",
+      "language": "TypeScript",
+      "shape": "library-monorepo",
+      "perQuestion": [
+        {
+          "id": "trpc-request-batching",
+          "family": "trpc-request-batching",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0.5,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.125, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "trpc-mixed-batch-status",
+          "family": "trpc-mixed-batch-status",
+          "category": "cross-cutting",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.2, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "trpc-auth-guard",
+          "family": "trpc-auth-guard",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "trpc-dates-over-wire",
+          "family": "trpc-dates-over-wire",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 3 }
+        },
+        {
+          "id": "trpc-realtime-sse",
+          "family": "trpc-realtime-sse",
+          "category": "how-it-works",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1429, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "trpc-express-mount",
+          "family": "trpc-express-mount",
+          "category": "framework-convention",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.2, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "trpc-core-folder",
+          "family": "trpc-core-folder",
+          "category": "generic-dir",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "trpc-react-codemod",
+          "family": "trpc-react-codemod",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0.3333,
+          "indexedExpected": 0.6667,
+          "variants": { "half": 0, "double": 0.3333, "size-scaled": 0.3333, "depth-scaled": 0.3333 },
+          "answer": { "citedRecall": 0.3333, "citationPrecision": 0.1667, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "trpc-request-pipeline",
+          "family": "trpc-request-pipeline",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.25, "invalid": false, "declined": false, "correct": false, "mentions": 2, "mustMention": 3 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": false, "ms": 25035, "error": "Invalid architecture extraction:\nrelations[3968].id: must not exceed 192 characters\nrelations[3982].id: must not exceed 192 characters\nrelations[3987].id: must not exceed 192 characters" },
+        "prepared": { "ok": true, "ms": 24791, "entities": 3897, "containers": 11, "components": 485 },
+        "evalPrepare": { "dropPaths": ["packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi"], "why": "As-is scan fails validation: 5 relation ids exceed 192 characters, all between generated heyapi client files under packages/openapi/test/routers/defaultErrorFormatterRouter-heyapi (the longest router name). Dropping only that generated test client dir lets the rest of the monorepo scan.", "droppedPaths": 16 },
+        "signals": { "entities": 3897, "containers": 11, "components": 485, "files": 497, "maxDepth": 6, "medianDepth": 5, "language": "TypeScript" }
+      },
+      "labels": {
+        "questions": 9,
+        "byStatus": { "draft": 9 },
+        "overviews": 5,
+        "overviewsByStatus": { "draft": 5 },
+        "c4Verdict": "partly"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 9, "stale": 0, "recall5": 0.2222, "recall10": 0.2222, "recallFull": 0.4259, "indexedExpected": 0.8519, "meanBytes": 23929.3333, "meanSections": 18 },
+      "variants": {
+        "default": { "recallFull": 0.4259, "meanBytes": 23929.3333, "meanSections": 18 },
+        "depth-scaled": { "recallFull": 0.537, "meanBytes": 40977.3333, "meanSections": 38.7778 },
+        "double": { "recallFull": 0.537, "meanBytes": 42282.6667, "meanSections": 40 },
+        "half": { "recallFull": 0.2222, "meanBytes": 11844.1111, "meanSections": 7.8889 },
+        "size-scaled": { "recallFull": 0.537, "meanBytes": 42282.6667, "meanSections": 40 }
+      },
+      "answers": { "answered": 9, "citedRecall": 0.4259, "citationPrecision": 0.1205, "invalidRate": 0, "declinedRate": 0.2222, "correctness": 0.4444, "costUsd": 0.0493 },
+      "blocks": {
+        "labeled": 5,
+        "default": { "tau": 0.48, "top1": 0.6, "top3": 0.8, "top1Unrestricted": 0.6, "omittedRendered": 8, "keptDropped": 0 },
+        "jev": { "nodes": 5, "unavailable": 0, "tau": 0.6, "top1": 0.6, "top3": 0.9333, "top1Unrestricted": 0.6, "omittedRendered": 8, "keptDropped": 0 },
+        "jevCostUsd": 0.0005
+      },
+      "claims": {
+        "checked": 234,
+        "judged": 229,
+        "byState": { "supported": 63, "insufficient": 18, "insufficient-context": 88, "uncertain": 59, "contradicted": 1, "unavailable": 5 },
+        "insufficientContextByReason": { "missing-capture": 48, "truncated-capture": 40 },
+        "unavailableByReason": { "invalid-response": 5 },
+        "failedCheckByReason": {},
+        "unavailableRate": 0.0214,
+        "insufficientContextRate": 0.3843,
+        "insufficientRate": 0.0786,
+        "notEnoughEvidenceRate": 0.4629,
+        "supportedRate": 0.2751,
+        "costUsd": 0.0036,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.129
+      },
+      "cost": {
+        "stageMs": { "claims": 11681, "ask": 32065, "blocks": 1812 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=5 (55/485 components)",
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.144,
+        "scanMs": 25035,
+        "preparedScanMs": 24791,
+        "enrichMs": 325636,
+        "enrichUsd": 0.1216,
+        "enrichRequests": 67,
+        "enrichAccepted": 67,
+        "enrichFailed": 0,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0493,
+        "jevUsd": 0.0041
+      }
+    },
+    {
+      "slug": "facebook__docusaurus",
+      "repository": "facebook/docusaurus",
+      "language": "TypeScript",
+      "shape": "docs-heavy-monorepo",
+      "perQuestion": [
+        {
+          "id": "docusaurus-override-ui",
+          "family": "docusaurus-override-ui",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "docusaurus-cut-version",
+          "family": "docusaurus-cut-version",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "docusaurus-auto-sidebar",
+          "family": "docusaurus-auto-sidebar",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "docusaurus-broken-links",
+          "family": "docusaurus-broken-links",
+          "category": "cross-cutting",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.2, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "docusaurus-blog-excerpt",
+          "family": "docusaurus-blog-excerpt",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": true, "mentions": 1, "mustMention": 1 }
+        },
+        {
+          "id": "docusaurus-new-site",
+          "family": "docusaurus-new-site",
+          "category": "locate",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.1, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "docusaurus-edit-link",
+          "family": "docusaurus-edit-link",
+          "category": "generic-dir",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.4, "invalid": false, "declined": false, "correct": true, "mentions": 1, "mustMention": 1 }
+        },
+        {
+          "id": "docusaurus-node-version",
+          "family": "docusaurus-node-version",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 1 }
+        },
+        {
+          "id": "docusaurus-site-translations",
+          "family": "docusaurus-site-translations",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 39401, "entities": 3681 },
+        "signals": { "entities": 3681, "containers": 42, "components": 770, "files": 814, "maxDepth": 8, "medianDepth": 4, "language": "TypeScript" }
+      },
+      "labels": {
+        "questions": 9,
+        "byStatus": { "draft": 9 },
+        "overviews": 5,
+        "overviewsByStatus": { "draft": 5 },
+        "c4Verdict": "partly"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 9, "stale": 0, "recall5": 0.1667, "recall10": 0.2222, "recallFull": 0.3333, "indexedExpected": 0.6667, "meanBytes": 23903.3333, "meanSections": 17.8889 },
+      "variants": {
+        "default": { "recallFull": 0.3333, "meanBytes": 23903.3333, "meanSections": 17.8889 },
+        "depth-scaled": { "recallFull": 0.3889, "meanBytes": 35904.2222, "meanSections": 32.8889 },
+        "double": { "recallFull": 0.3889, "meanBytes": 41767.6667, "meanSections": 39.8889 },
+        "half": { "recallFull": 0.1667, "meanBytes": 11864.4444, "meanSections": 8.2222 },
+        "size-scaled": { "recallFull": 0.3889, "meanBytes": 41558.8889, "meanSections": 39.6667 }
+      },
+      "answers": { "answered": 9, "citedRecall": 0.3333, "citationPrecision": 0.1148, "invalidRate": 0, "declinedRate": 0.2222, "correctness": 0.6667, "costUsd": 0.0601 },
+      "blocks": {
+        "labeled": 5,
+        "default": { "tau": 0.8229, "top1": 1, "top3": 0.8667, "top1Unrestricted": 1, "omittedRendered": 8, "keptDropped": 0 },
+        "jev": { "nodes": 5, "unavailable": 0, "tau": 0.7219, "top1": 1, "top3": 0.8, "top1Unrestricted": 1, "omittedRendered": 8, "keptDropped": 0 },
+        "jevCostUsd": 0.0006
+      },
+      "claims": {
+        "checked": 477,
+        "judged": 477,
+        "byState": { "supported": 164, "uncertain": 139, "insufficient": 34, "insufficient-context": 136, "contradicted": 4 },
+        "insufficientContextByReason": { "missing-capture": 74, "truncated-capture": 62 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.2851,
+        "insufficientRate": 0.0713,
+        "notEnoughEvidenceRate": 0.3564,
+        "supportedRate": 0.3438,
+        "costUsd": 0.0082,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.282
+      },
+      "cost": {
+        "stageMs": { "enrich": 385676, "claims": 27254, "ask": 33558, "blocks": 1367 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=3 (115/770 components)",
+        "enrichFailuresByClass": { "invalid-output": 1, "rejected-by-validator": 2 },
+        "enrichMaxConcurrent": 32,
+        "jevReservationEquivalentUsd": 0.297,
+        "scanMs": 39401,
+        "enrichMs": 333235,
+        "enrichUsd": 0.2426,
+        "enrichRequests": 159,
+        "enrichAccepted": 156,
+        "enrichFailed": 3,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0601,
+        "jevUsd": 0.0088
+      }
+    },
+    {
+      "slug": "excalidraw__excalidraw",
+      "repository": "excalidraw/excalidraw",
+      "language": "TypeScript",
+      "shape": "app-monorepo",
+      "perQuestion": [
+        {
+          "id": "excalidraw-share-link",
+          "family": "excalidraw-share-link",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-concurrent-edits",
+          "family": "excalidraw-concurrent-edits",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-autosave",
+          "family": "excalidraw-autosave",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-undo",
+          "family": "excalidraw-undo",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.1667, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-sketchy-look",
+          "family": "excalidraw-sketchy-look",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-language-list",
+          "family": "excalidraw-language-list",
+          "category": "config",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.25, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-embed",
+          "family": "excalidraw-embed",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-backend-servers",
+          "family": "excalidraw-backend-servers",
+          "category": "config",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1429, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "excalidraw-frame-throttle",
+          "family": "excalidraw-frame-throttle",
+          "category": "generic-dir",
+          "recall5": 0,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 1, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 85250, "entities": 4163 },
+        "signals": { "entities": 4163, "containers": 1, "components": 523, "files": 525, "maxDepth": 5, "medianDepth": 3, "language": "TypeScript" }
+      },
+      "labels": {
+        "questions": 9,
+        "byStatus": { "draft": 9 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 9, "stale": 0, "recall5": 0.1111, "recall10": 0.2222, "recallFull": 0.3333, "indexedExpected": 0.7778, "meanBytes": 23845.7778, "meanSections": 18.4444 },
+      "variants": {
+        "default": { "recallFull": 0.3333, "meanBytes": 23845.7778, "meanSections": 18.4444 },
+        "depth-scaled": { "recallFull": 0.5556, "meanBytes": 29682.7778, "meanSections": 26.4444 },
+        "double": { "recallFull": 0.5556, "meanBytes": 35359.4444, "meanSections": 34 },
+        "half": { "recallFull": 0.2222, "meanBytes": 11836.4444, "meanSections": 8.3333 },
+        "size-scaled": { "recallFull": 0.5556, "meanBytes": 35359.4444, "meanSections": 34 }
+      },
+      "answers": { "answered": 9, "citedRecall": 0.3333, "citationPrecision": 0.1733, "invalidRate": 0, "declinedRate": 0.1111, "correctness": 0.4444, "costUsd": 0.0427 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 0.8333, "top1": 1, "top3": 0.8333, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 0.8333, "top1": 1, "top3": 0.8333, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 2 },
+        "jevCostUsd": 0.0002
+      },
+      "claims": {
+        "checked": 153,
+        "judged": 153,
+        "byState": { "insufficient-context": 53, "supported": 35, "uncertain": 46, "insufficient": 18, "contradicted": 1 },
+        "insufficientContextByReason": { "missing-capture": 15, "truncated-capture": 38 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.3464,
+        "insufficientRate": 0.1176,
+        "notEnoughEvidenceRate": 0.4641,
+        "supportedRate": 0.2288,
+        "costUsd": 0.0027,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.081
+      },
+      "cost": {
+        "stageMs": { "claims": 18985, "ask": 35599, "blocks": 739 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=30 (30/523 components)",
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.087,
+        "scanMs": 85250,
+        "enrichMs": 197078,
+        "enrichUsd": 0.0881,
+        "enrichRequests": 32,
+        "enrichAccepted": 32,
+        "enrichFailed": 0,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0427,
+        "jevUsd": 0.0028
+      }
+    },
+    {
+      "slug": "tauri-apps__tauri",
+      "repository": "tauri-apps/tauri",
+      "language": "Rust+TypeScript",
+      "shape": "polyglot-monorepo",
+      "perQuestion": [
+        {
+          "id": "tauri-invoke-ipc",
+          "family": "tauri-invoke-ipc",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.6667,
+          "variants": { "half": 0, "double": 0.3333, "size-scaled": 0.3333, "depth-scaled": 0.3333 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "tauri-capability-check",
+          "family": "tauri-capability-check",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "tauri-arg-casing",
+          "family": "tauri-arg-casing",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "tauri-embed-assets",
+          "family": "tauri-embed-assets",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "tauri-config-platform",
+          "family": "tauri-config-platform",
+          "category": "config",
+          "recall5": 0.5,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "tauri-two-clis",
+          "family": "tauri-two-clis",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 2, "mustMention": 3 }
+        },
+        {
+          "id": "tauri-isolation",
+          "family": "tauri-isolation",
+          "category": "cross-cutting",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1, "invalid": false, "declined": false, "correct": false, "mentions": 2, "mustMention": 3 }
+        },
+        {
+          "id": "tauri-events",
+          "family": "tauri-events",
+          "category": "how-it-works",
+          "recall5": 0.6667,
+          "recall10": 0.6667,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0.6667, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.4286, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 96155, "entities": 5233 },
+        "signals": { "entities": 5233, "containers": 19, "components": 316, "files": 335, "maxDepth": 8, "medianDepth": 4, "language": "Rust+TypeScript" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 5,
+        "overviewsByStatus": { "draft": 5 },
+        "c4Verdict": "partly"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 8, "stale": 0, "recall5": 0.2083, "recall10": 0.2708, "recallFull": 0.3125, "indexedExpected": 0.8333, "meanBytes": 23910.5, "meanSections": 16.375 },
+      "variants": {
+        "default": { "recallFull": 0.3125, "meanBytes": 23910.5, "meanSections": 16.375 },
+        "depth-scaled": { "recallFull": 0.5417, "meanBytes": 35911.125, "meanSections": 29.75 },
+        "double": { "recallFull": 0.6667, "meanBytes": 44924.125, "meanSections": 39.875 },
+        "half": { "recallFull": 0.2708, "meanBytes": 11928, "meanSections": 7.625 },
+        "size-scaled": { "recallFull": 0.6667, "meanBytes": 45201.625, "meanSections": 40 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0.3125, "citationPrecision": 0.1077, "invalidRate": 0, "declinedRate": 0, "correctness": 0.375, "costUsd": 0.0471 },
+      "blocks": {
+        "labeled": 5,
+        "default": { "tau": 0.4933, "top1": 0.8, "top3": 0.9333, "top1Unrestricted": 0.8, "omittedRendered": 4, "keptDropped": 0 },
+        "jev": { "nodes": 5, "unavailable": 0, "tau": 0.4667, "top1": 0.8, "top3": 1, "top1Unrestricted": 0.8, "omittedRendered": 4, "keptDropped": 0 },
+        "jevCostUsd": 0.0004
+      },
+      "claims": {
+        "checked": 360,
+        "judged": 360,
+        "byState": { "insufficient-context": 112, "insufficient": 36, "uncertain": 95, "supported": 113, "contradicted": 4 },
+        "insufficientContextByReason": { "missing-capture": 26, "truncated-capture": 86 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.3111,
+        "insufficientRate": 0.1,
+        "notEnoughEvidenceRate": 0.4111,
+        "supportedRate": 0.3139,
+        "costUsd": 0.0064,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.213
+      },
+      "cost": {
+        "stageMs": { "claims": 39187, "ask": 34038, "blocks": 1648 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=5 (77/316 components)",
+        "enrichFailuresByClass": { "rejected-by-validator": 5 },
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.228,
+        "scanMs": 96155,
+        "enrichMs": 389367,
+        "enrichUsd": 0.1929,
+        "enrichRequests": 97,
+        "enrichAccepted": 92,
+        "enrichFailed": 5,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0471,
+        "jevUsd": 0.0068
+      }
+    },
+    {
+      "slug": "BurntSushi__ripgrep",
+      "repository": "BurntSushi/ripgrep",
+      "language": "Rust",
+      "shape": "rust-cli-workspace",
+      "perQuestion": [
+        {
+          "id": "rg-ignore-precedence",
+          "family": "rg-ignore-precedence",
+          "category": "how-it-works",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "rg-binary-files",
+          "family": "rg-binary-files",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1111, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "rg-compressed-search",
+          "family": "rg-compressed-search",
+          "category": "how-it-works",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.6667, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "rg-config-file",
+          "family": "rg-config-file",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "rg-exit-codes",
+          "family": "rg-exit-codes",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 4 }
+        },
+        {
+          "id": "rg-add-flag",
+          "family": "rg-add-flag",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 0.5, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "rg-index-status",
+          "family": "rg-index-status",
+          "category": "generic-dir",
+          "recall5": 0.3333,
+          "recall10": 0.6667,
+          "recallFull": 0.6667,
+          "indexedExpected": 1,
+          "variants": { "half": 0.3333, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 0.6667, "citationPrecision": 0.1818, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "rg-lowargs-hiargs",
+          "family": "rg-lowargs-hiargs",
+          "category": "how-it-works",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": false, "ms": 30, "error": "Committed source requires materialized files; symlink/submodule is unsupported: HomebrewFormula" },
+        "prepared": { "ok": true, "ms": 20155, "entities": 2831, "containers": 11, "components": 88 },
+        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (HomebrewFormula): \"Committed source requires materialized files; symlink/submodule is unsupported\".", "droppedPaths": 1 },
+        "signals": { "entities": 2831, "containers": 11, "components": 88, "files": 100, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 5,
+        "overviewsByStatus": { "draft": 5 },
+        "c4Verdict": "partly"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 8, "stale": 0, "recall5": 0.3542, "recall10": 0.5833, "recallFull": 0.6458, "indexedExpected": 0.875, "meanBytes": 23780.25, "meanSections": 14.5 },
+      "variants": {
+        "default": { "recallFull": 0.6458, "meanBytes": 23780.25, "meanSections": 14.5 },
+        "depth-scaled": { "recallFull": 0.6875, "meanBytes": 29930.875, "meanSections": 20.75 },
+        "double": { "recallFull": 0.8125, "meanBytes": 45499.5, "meanSections": 36.625 },
+        "half": { "recallFull": 0.3542, "meanBytes": 11789.625, "meanSections": 6.75 },
+        "size-scaled": { "recallFull": 0.75, "meanBytes": 39468, "meanSections": 30.5 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0.6458, "citationPrecision": 0.2449, "invalidRate": 0, "declinedRate": 0, "correctness": 0.375, "costUsd": 0.0452 },
+      "blocks": {
+        "labeled": 5,
+        "default": { "tau": 0.7695, "top1": 1, "top3": 0.8, "top1Unrestricted": 1, "omittedRendered": 7, "keptDropped": 0 },
+        "jev": { "nodes": 5, "unavailable": 0, "tau": 0.6724, "top1": 1, "top3": 0.6667, "top1Unrestricted": 1, "omittedRendered": 7, "keptDropped": 0 },
+        "jevCostUsd": 0.0005
+      },
+      "claims": {
+        "checked": 238,
+        "judged": 238,
+        "byState": { "uncertain": 79, "supported": 73, "insufficient": 38, "insufficient-context": 48 },
+        "insufficientContextByReason": { "missing-capture": 20, "truncated-capture": 28 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.2017,
+        "insufficientRate": 0.1597,
+        "notEnoughEvidenceRate": 0.3613,
+        "supportedRate": 0.3067,
+        "costUsd": 0.0049,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.129
+      },
+      "cost": {
+        "stageMs": { "claims": 27184, "ask": 26599, "blocks": 1558 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=5 (44/88 components)",
+        "enrichFailuresByClass": { "invalid-output": 1 },
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.144,
+        "scanMs": 30,
+        "preparedScanMs": 20155,
+        "enrichMs": 397455,
+        "enrichUsd": 0.1375,
+        "enrichRequests": 56,
+        "enrichAccepted": 55,
+        "enrichFailed": 1,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0452,
+        "jevUsd": 0.0055
+      }
+    },
+    {
+      "slug": "tokio-rs__axum",
+      "repository": "tokio-rs/axum",
+      "language": "Rust",
+      "shape": "rust-library-workspace",
+      "perQuestion": [
+        {
+          "id": "axum-route-matching",
+          "family": "axum-route-matching",
+          "category": "how-it-works",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "axum-json-rejection",
+          "family": "axum-json-rejection",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "axum-body-limit",
+          "family": "axum-body-limit",
+          "category": "config",
+          "recall5": 0.5,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.4, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "axum-shared-state",
+          "family": "axum-shared-state",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 2, "mustMention": 3 }
+        },
+        {
+          "id": "axum-handler-type-error",
+          "family": "axum-handler-type-error",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.1429, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "axum-middleware-order",
+          "family": "axum-middleware-order",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "axum-graceful-shutdown",
+          "family": "axum-graceful-shutdown",
+          "category": "how-it-works",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.5, "invalid": false, "declined": false, "correct": false, "mentions": 2, "mustMention": 3 }
+        },
+        {
+          "id": "axum-signed-cookies",
+          "family": "axum-signed-cookies",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 0, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": false, "mentions": 2, "mustMention": 3 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": false, "ms": 35, "error": "Committed source requires materialized files; symlink/submodule is unsupported: README.md" },
+        "prepared": { "ok": true, "ms": 141738, "entities": 1428, "containers": 1, "components": 116 },
+        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on committed symlinks (README.md and others): \"symlink/submodule is unsupported\".", "droppedPaths": 5 },
+        "signals": { "entities": 1428, "containers": 1, "components": 116, "files": 117, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 8, "stale": 0, "recall5": 0.25, "recall10": 0.375, "recallFull": 0.5, "indexedExpected": 0.75, "meanBytes": 23117.125, "meanSections": 17.375 },
+      "variants": {
+        "default": { "recallFull": 0.5, "meanBytes": 23117.125, "meanSections": 17.375 },
+        "depth-scaled": { "recallFull": 0.5, "meanBytes": 28317.25, "meanSections": 24.125 },
+        "double": { "recallFull": 0.5, "meanBytes": 31489, "meanSections": 28.125 },
+        "half": { "recallFull": 0.375, "meanBytes": 11682.625, "meanSections": 8.375 },
+        "size-scaled": { "recallFull": 0.5, "meanBytes": 27224.875, "meanSections": 22.5 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0.5, "citationPrecision": 0.2137, "invalidRate": 0, "declinedRate": 0.125, "correctness": 0.375, "costUsd": 0.04 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 0.8, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jevCostUsd": 0.0001
+      },
+      "claims": {
+        "checked": 139,
+        "judged": 134,
+        "byState": { "uncertain": 54, "insufficient": 23, "supported": 47, "insufficient-context": 10, "unavailable": 5 },
+        "insufficientContextByReason": { "missing-capture": 3, "truncated-capture": 7 },
+        "unavailableByReason": { "invalid-response": 5 },
+        "failedCheckByReason": {},
+        "unavailableRate": 0.036,
+        "insufficientContextRate": 0.0746,
+        "insufficientRate": 0.1716,
+        "notEnoughEvidenceRate": 0.2463,
+        "supportedRate": 0.3507,
+        "costUsd": 0.0031,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.084
+      },
+      "cost": {
+        "stageMs": { "blocks": 529, "claims": 27677, "ask": 26067 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=30 (30/116 components)",
+        "enrichFailuresByClass": { "invalid-output": 1, "rejected-by-validator": 1 },
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.09,
+        "scanMs": 35,
+        "preparedScanMs": 141738,
+        "enrichMs": 234939,
+        "enrichUsd": 0.0685,
+        "enrichRequests": 32,
+        "enrichAccepted": 30,
+        "enrichFailed": 2,
+        "enrichNotRun": 0,
+        "systemExplained": false,
+        "askUsd": 0.04,
+        "jevUsd": 0.0032
+      }
+    },
+    {
+      "slug": "microsoft__TypeScript",
+      "repository": "microsoft/TypeScript",
+      "language": "Go+TypeScript",
+      "shape": "scale-50k",
+      "perQuestion": [
+        {
+          "id": "ts-npm-launcher",
+          "family": "ts-npm-launcher",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "ts-api-bridge",
+          "family": "ts-api-bridge",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0.3333,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "ts-assignability",
+          "family": "ts-assignability",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "ts-parallel-checking",
+          "family": "ts-parallel-checking",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "ts-tsconfig-extends",
+          "family": "ts-tsconfig-extends",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "ts-accept-baselines",
+          "family": "ts-accept-baselines",
+          "category": "docs-answer",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.25, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "ts-fourslash",
+          "family": "ts-fourslash",
+          "category": "generic-dir",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "ts-lsp-startup",
+          "family": "ts-lsp-startup",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": false, "ms": 858, "error": "spawnSync git ENOBUFS" },
+        "prepared": { "ok": true, "ms": 39119, "entities": 3267, "containers": 1, "components": 158 },
+        "evalPrepare": { "dropPaths": ["tsc/testdata"], "why": "As-is scan fails with \"spawnSync git ENOBUFS\": every blob is read through one 128 MB git buffer; tsc/testdata holds ~61k generated baselines.", "droppedPaths": 61117 },
+        "signals": { "entities": 3267, "containers": 1, "components": 158, "files": 160, "maxDepth": 5, "medianDepth": 4, "language": "Go+TypeScript" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 8, "stale": 0, "recall5": 0.0625, "recall10": 0.0625, "recallFull": 0.0625, "indexedExpected": 0.1042, "meanBytes": 23657.375, "meanSections": 13.875 },
+      "variants": {
+        "default": { "recallFull": 0.0625, "meanBytes": 23657.375, "meanSections": 13.875 },
+        "depth-scaled": { "recallFull": 0.0625, "meanBytes": 33980.375, "meanSections": 24 },
+        "double": { "recallFull": 0.0625, "meanBytes": 37462.375, "meanSections": 26.875 },
+        "half": { "recallFull": 0.0625, "meanBytes": 11647.375, "meanSections": 6.375 },
+        "size-scaled": { "recallFull": 0.0625, "meanBytes": 36832.75, "meanSections": 26.375 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0.0625, "citationPrecision": 0.0313, "invalidRate": 0, "declinedRate": 0.375, "correctness": 0, "costUsd": 0.0351 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 0.6667, "top1": 0.5, "top3": 0.8333, "top1Unrestricted": 0.5, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": -0.1667, "top1": 0.5, "top3": 0.8333, "top1Unrestricted": 0.5, "omittedRendered": 1, "keptDropped": 2 },
+        "jevCostUsd": 0.0002
+      },
+      "claims": {
+        "checked": 139,
+        "judged": 139,
+        "byState": { "insufficient": 18, "supported": 33, "insufficient-context": 57, "uncertain": 31 },
+        "insufficientContextByReason": { "missing-capture": 12, "truncated-capture": 45 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.4101,
+        "insufficientRate": 0.1295,
+        "notEnoughEvidenceRate": 0.5396,
+        "supportedRate": 0.2374,
+        "costUsd": 0.0023,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.072
+      },
+      "cost": {
+        "stageMs": { "claims": 18530, "ask": 25042, "blocks": 707 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=30 (30/158 components)",
+        "enrichFailuresByClass": { "rejected-by-validator": 1 },
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.078,
+        "scanMs": 858,
+        "preparedScanMs": 39119,
+        "enrichMs": 167174,
+        "enrichUsd": 0.0774,
+        "enrichRequests": 32,
+        "enrichAccepted": 31,
+        "enrichFailed": 1,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0351,
+        "jevUsd": 0.0024
+      }
+    },
+    {
+      "slug": "GoogleCloudPlatform__microservices-demo",
+      "repository": "GoogleCloudPlatform/microservices-demo",
+      "language": "Polyglot",
+      "shape": "microservices",
+      "perQuestion": [
+        {
+          "id": "msdemo-place-order",
+          "family": "msdemo-place-order",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "msdemo-card-charge",
+          "family": "msdemo-card-charge",
+          "category": "how-it-works",
+          "recall5": 1,
+          "recall10": 1,
+          "recallFull": 1,
+          "indexedExpected": 1,
+          "variants": { "half": 1, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
+          "answer": { "citedRecall": 1, "citationPrecision": 0.25, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+        },
+        {
+          "id": "msdemo-currency-convert",
+          "family": "msdemo-currency-convert",
+          "category": "how-it-works",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.2, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "msdemo-cart-storage",
+          "family": "msdemo-cart-storage",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "msdemo-session",
+          "family": "msdemo-session",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "msdemo-recommendations",
+          "family": "msdemo-recommendations",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "msdemo-ads",
+          "family": "msdemo-ads",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "msdemo-add-service",
+          "family": "msdemo-add-service",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "msdemo-service-contracts",
+          "family": "msdemo-service-contracts",
+          "category": "generic-dir",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 1841, "entities": 55 },
+        "signals": { "entities": 55, "containers": 1, "components": 6, "files": 8, "maxDepth": 2, "medianDepth": 2, "language": "Polyglot" }
+      },
+      "labels": {
+        "questions": 9,
+        "byStatus": { "draft": 9 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "scan", "questions": 9, "stale": 0, "recall5": 0.1667, "recall10": 0.1667, "recallFull": 0.1667, "indexedExpected": 0.1667, "meanBytes": 3231.5556, "meanSections": 4.4444 },
+      "variants": {
+        "default": { "recallFull": 0.1667, "meanBytes": 3231.5556, "meanSections": 4.4444 },
+        "depth-scaled": { "recallFull": 0.1667, "meanBytes": 3231.5556, "meanSections": 4.4444 },
+        "double": { "recallFull": 0.1667, "meanBytes": 3231.5556, "meanSections": 4.4444 },
+        "half": { "recallFull": 0.1667, "meanBytes": 3231.5556, "meanSections": 4.4444 },
+        "size-scaled": { "recallFull": 0.1667, "meanBytes": 3231.5556, "meanSections": 4.4444 }
+      },
+      "answers": { "answered": 9, "citedRecall": 0.1667, "citationPrecision": 0.05, "invalidRate": 0, "declinedRate": 0.6667, "correctness": 0.2222, "costUsd": 0.0111 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": -1, "top1": 0.5, "top3": 1, "top1Unrestricted": 0.5, "omittedRendered": 0, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 0, "keptDropped": 0 },
+        "jevCostUsd": 0.0001
+      },
+      "cost": {
+        "stageMs": { "ask": 17597, "blocks": 459 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "jevReservationEquivalentUsd": 0.006,
+        "enrichSkipped": "skipped: scanner-blind (Polyglot; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 6 components and 47 code entities)",
+        "scanMs": 1841,
+        "askUsd": 0.0111,
+        "jevUsd": 0.0001
+      }
+    },
+    {
+      "slug": "go-gitea__gitea",
+      "repository": "go-gitea/gitea",
+      "language": "Go+TypeScript",
+      "shape": "go-monolith",
+      "perQuestion": [
+        {
+          "id": "gitea-webhook-delivery",
+          "family": "gitea-webhook-delivery",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "gitea-protected-branch",
+          "family": "gitea-protected-branch",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "gitea-web-routes",
+          "family": "gitea-web-routes",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "gitea-api-token",
+          "family": "gitea-api-token",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "gitea-listen-port",
+          "family": "gitea-listen-port",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "gitea-schema-upgrades",
+          "family": "gitea-schema-upgrades",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "gitea-run-one-test",
+          "family": "gitea-run-one-test",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "gitea-heatmap",
+          "family": "gitea-heatmap",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.5, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "gitea-notification-badge",
+          "family": "gitea-notification-badge",
+          "category": "how-it-works",
+          "recall5": 0.5,
+          "recall10": 0.5,
+          "recallFull": 0.5,
+          "indexedExpected": 1,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.2, "invalid": false, "declined": false, "correct": true, "mentions": 2, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 4899, "entities": 1195 },
+        "signals": { "entities": 1195, "containers": 1, "components": 182, "files": 184, "maxDepth": 4, "medianDepth": 3, "language": "Go+TypeScript" }
+      },
+      "labels": {
+        "questions": 9,
+        "byStatus": { "draft": 9 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 9, "stale": 0, "recall5": 0.0556, "recall10": 0.1111, "recallFull": 0.1111, "indexedExpected": 0.1667, "meanBytes": 23737.4444, "meanSections": 17.8889 },
+      "variants": {
+        "default": { "recallFull": 0.1111, "meanBytes": 23737.4444, "meanSections": 17.8889 },
+        "depth-scaled": { "recallFull": 0.1111, "meanBytes": 28859.6667, "meanSections": 23 },
+        "double": { "recallFull": 0.1111, "meanBytes": 31625.5556, "meanSections": 27 },
+        "half": { "recallFull": 0.1111, "meanBytes": 11728.1111, "meanSections": 7.7778 },
+        "size-scaled": { "recallFull": 0.1111, "meanBytes": 25933.4444, "meanSections": 20 }
+      },
+      "answers": { "answered": 9, "citedRecall": 0.1111, "citationPrecision": 0.0778, "invalidRate": 0, "declinedRate": 0.5556, "correctness": 0.1111, "costUsd": 0.0392 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 0.7333, "top1": 0.5, "top3": 1, "top1Unrestricted": 0.5, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 0.4667, "top1": 0.5, "top3": 0.8333, "top1Unrestricted": 0.5, "omittedRendered": 1, "keptDropped": 0 },
+        "jevCostUsd": 0.0002
+      },
+      "claims": {
+        "checked": 133,
+        "judged": 133,
+        "byState": { "supported": 77, "insufficient-context": 30, "uncertain": 23, "insufficient": 3 },
+        "insufficientContextByReason": { "missing-capture": 4, "truncated-capture": 26 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.2256,
+        "insufficientRate": 0.0226,
+        "notEnoughEvidenceRate": 0.2481,
+        "supportedRate": 0.5789,
+        "costUsd": 0.003,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.09
+      },
+      "cost": {
+        "stageMs": { "claims": 15138, "ask": 20061, "blocks": 591 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=30 (30/182 components)",
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.096,
+        "scanMs": 4899,
+        "enrichMs": 194325,
+        "enrichUsd": 0.0625,
+        "enrichRequests": 32,
+        "enrichAccepted": 32,
+        "enrichFailed": 0,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0392,
+        "jevUsd": 0.0032
+      }
+    },
+    {
+      "slug": "saleor__saleor",
+      "repository": "saleor/saleor",
+      "language": "Python",
+      "shape": "django-monolith",
+      "perQuestion": [
+        {
+          "id": "saleor-checkout-complete",
+          "family": "saleor-checkout-complete",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "saleor-stock-allocation",
+          "family": "saleor-stock-allocation",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "saleor-webhook-delivery",
+          "family": "saleor-webhook-delivery",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "saleor-permissions",
+          "family": "saleor-permissions",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "saleor-plugins",
+          "family": "saleor-plugins",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "saleor-env-config",
+          "family": "saleor-env-config",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": null, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "saleor-giftcard-bearer",
+          "family": "saleor-giftcard-bearer",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "saleor-api-endpoint",
+          "family": "saleor-api-endpoint",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": false, "ms": 74, "error": "Committed source requires materialized files; symlink/submodule is unsupported: CLAUDE.md" },
+        "prepared": { "ok": true, "ms": 1497, "entities": 2, "containers": 1, "components": 0 },
+        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (CLAUDE.md): \"symlink/submodule is unsupported\".", "droppedPaths": 2 },
+        "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Python" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "scan", "questions": 8, "stale": 0, "recall5": 0, "recall10": 0, "recallFull": 0, "indexedExpected": 0, "meanBytes": 11.875, "meanSections": 0.125 },
+      "variants": {
+        "default": { "recallFull": 0, "meanBytes": 11.875, "meanSections": 0.125 },
+        "depth-scaled": { "recallFull": 0, "meanBytes": 11.875, "meanSections": 0.125 },
+        "double": { "recallFull": 0, "meanBytes": 11.875, "meanSections": 0.125 },
+        "half": { "recallFull": 0, "meanBytes": 11.875, "meanSections": 0.125 },
+        "size-scaled": { "recallFull": 0, "meanBytes": 11.875, "meanSections": 0.125 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0, "citationPrecision": 0, "invalidRate": 0, "declinedRate": 1, "correctness": 0, "costUsd": 0.0027 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": null, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 0, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": null, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 0, "keptDropped": 0 },
+        "jevCostUsd": 0.0001
+      },
+      "cost": {
+        "stageMs": { "ask": 9060, "blocks": 467 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "jevReservationEquivalentUsd": 0.006,
+        "enrichSkipped": "skipped: scanner-blind (Python; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)",
+        "scanMs": 74,
+        "preparedScanMs": 1497,
+        "askUsd": 0.0027,
+        "jevUsd": 0.0001
+      }
+    },
+    {
+      "slug": "rubygems__rubygems.org",
+      "repository": "rubygems/rubygems.org",
+      "language": "Ruby",
+      "shape": "rails-mvc",
+      "perQuestion": [
+        {
+          "id": "rubygems-push",
+          "family": "rubygems-push",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "rubygems-yank",
+          "family": "rubygems-yank",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "rubygems-typosquat",
+          "family": "rubygems-typosquat",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "rubygems-webhooks",
+          "family": "rubygems-webhooks",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 3 }
+        },
+        {
+          "id": "rubygems-trusted-publishing",
+          "family": "rubygems-trusted-publishing",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": false, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "rubygems-throttling",
+          "family": "rubygems-throttling",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "rubygems-api-routes",
+          "family": "rubygems-api-routes",
+          "category": "framework-convention",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "rubygems-maintenance-docs",
+          "family": "rubygems-maintenance-docs",
+          "category": "docs-answer",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 3 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": false, "ms": 46, "error": "Committed source requires materialized files; symlink/submodule is unsupported: .claude/skills" },
+        "prepared": { "ok": true, "ms": 17648, "entities": 251, "containers": 1, "components": 38 },
+        "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (.claude/skills): \"symlink/submodule is unsupported\".", "droppedPaths": 21 },
+        "signals": { "entities": 251, "containers": 1, "components": 38, "files": 40, "maxDepth": 3, "medianDepth": 3, "language": "Ruby" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "sampled-enriched", "questions": 8, "stale": 0, "recall5": 0, "recall10": 0, "recallFull": 0, "indexedExpected": 0, "meanBytes": 11178.375, "meanSections": 12.5 },
+      "variants": {
+        "default": { "recallFull": 0, "meanBytes": 11178.375, "meanSections": 12.5 },
+        "depth-scaled": { "recallFull": 0, "meanBytes": 11178.375, "meanSections": 12.5 },
+        "double": { "recallFull": 0, "meanBytes": 11178.375, "meanSections": 12.5 },
+        "half": { "recallFull": 0, "meanBytes": 9387.375, "meanSections": 10.25 },
+        "size-scaled": { "recallFull": 0, "meanBytes": 9387.375, "meanSections": 10.25 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0, "citationPrecision": 0, "invalidRate": 0, "declinedRate": 0.75, "correctness": 0, "costUsd": 0.0149 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": 1, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": 0.8333, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 1, "keptDropped": 1 },
+        "jevCostUsd": 0.0002
+      },
+      "claims": {
+        "checked": 71,
+        "judged": 71,
+        "byState": { "insufficient-context": 62, "insufficient": 2, "uncertain": 3, "supported": 4 },
+        "insufficientContextByReason": { "missing-capture": 62 },
+        "unavailableByReason": {},
+        "failedCheckByReason": {},
+        "unavailableRate": 0,
+        "insufficientContextRate": 0.8732,
+        "insufficientRate": 0.0282,
+        "notEnoughEvidenceRate": 0.9014,
+        "supportedRate": 0.0563,
+        "costUsd": 0.0002,
+        "costEstimated": true,
+        "reservationEquivalentUsd": 0.006
+      },
+      "cost": {
+        "stageMs": { "claims": 7815, "ask": 21715, "blocks": 545 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "enrichScope": "sampled k=30 (30/38 components)",
+        "enrichFailuresByClass": { "rejected-by-validator": 1 },
+        "enrichMaxConcurrent": 8,
+        "jevReservationEquivalentUsd": 0.012,
+        "scanMs": 46,
+        "preparedScanMs": 17648,
+        "enrichMs": 267020,
+        "enrichUsd": 0.034,
+        "enrichRequests": 32,
+        "enrichAccepted": 31,
+        "enrichFailed": 1,
+        "enrichNotRun": 0,
+        "systemExplained": true,
+        "askUsd": 0.0149,
+        "jevUsd": 0.0003
+      }
+    },
+    {
+      "slug": "spring-projects__spring-petclinic",
+      "repository": "spring-projects/spring-petclinic",
+      "language": "Java",
+      "shape": "java-deep-nesting",
+      "perQuestion": [
+        {
+          "id": "petclinic-owner-search",
+          "family": "petclinic-owner-search",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "petclinic-pet-rules",
+          "family": "petclinic-pet-rules",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 3 }
+        },
+        {
+          "id": "petclinic-vet-cache",
+          "family": "petclinic-vet-cache",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        },
+        {
+          "id": "petclinic-switch-db",
+          "family": "petclinic-switch-db",
+          "category": "config",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0.5,
+          "indexedExpected": 0.5,
+          "variants": { "half": 0.5, "double": 0.5, "size-scaled": 0.5, "depth-scaled": 0.5 },
+          "answer": { "citedRecall": 0.5, "citationPrecision": 0.5, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 3 }
+        },
+        {
+          "id": "petclinic-language",
+          "family": "petclinic-language",
+          "category": "cross-cutting",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 2, "mustMention": 2 }
+        },
+        {
+          "id": "petclinic-error-demo",
+          "family": "petclinic-error-demo",
+          "category": "locate",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "petclinic-schema",
+          "family": "petclinic-schema",
+          "category": "generic-dir",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 0, "mustMention": 2 }
+        },
+        {
+          "id": "petclinic-visit-date",
+          "family": "petclinic-visit-date",
+          "category": "how-it-works",
+          "recall5": 0,
+          "recall10": 0,
+          "recallFull": 0,
+          "indexedExpected": 0,
+          "variants": { "half": 0, "double": 0, "size-scaled": 0, "depth-scaled": 0 },
+          "answer": { "citedRecall": 0, "citationPrecision": 0, "invalid": false, "declined": true, "correct": false, "mentions": 1, "mustMention": 2 }
+        }
+      ],
+      "scan": {
+        "asIs": { "ok": true, "ms": 81, "entities": 2 },
+        "signals": { "entities": 2, "containers": 1, "components": 0, "files": 2, "maxDepth": 0, "medianDepth": 0, "language": "Java" }
+      },
+      "labels": {
+        "questions": 8,
+        "byStatus": { "draft": 8 },
+        "overviews": 2,
+        "overviewsByStatus": { "draft": 2 },
+        "c4Verdict": "wrong"
+      },
+      "retrieval": { "corpus": "scan", "questions": 8, "stale": 0, "recall5": 0, "recall10": 0, "recallFull": 0.0625, "indexedExpected": 0.0625, "meanBytes": 0, "meanSections": 0 },
+      "variants": {
+        "default": { "recallFull": 0.0625, "meanBytes": 0, "meanSections": 0 },
+        "depth-scaled": { "recallFull": 0.0625, "meanBytes": 0, "meanSections": 0 },
+        "double": { "recallFull": 0.0625, "meanBytes": 0, "meanSections": 0 },
+        "half": { "recallFull": 0.0625, "meanBytes": 0, "meanSections": 0 },
+        "size-scaled": { "recallFull": 0.0625, "meanBytes": 0, "meanSections": 0 }
+      },
+      "answers": { "answered": 8, "citedRecall": 0.0625, "citationPrecision": 0.0625, "invalidRate": 0, "declinedRate": 1, "correctness": 0, "costUsd": 0.0024 },
+      "blocks": {
+        "labeled": 2,
+        "default": { "tau": null, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 0, "keptDropped": 0 },
+        "jev": { "nodes": 2, "unavailable": 0, "tau": null, "top1": 1, "top3": 1, "top1Unrestricted": 1, "omittedRendered": 0, "keptDropped": 0 },
+        "jevCostUsd": 0.0001
+      },
+      "cost": {
+        "stageMs": { "ask": 10282, "blocks": 482 },
+        "rateLimited": { "enrich": 0, "claims": 0, "ask": 0 },
+        "jevReservationEquivalentUsd": 0.006,
+        "enrichSkipped": "skipped: scanner-blind (Java; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 0 components and 0 code entities)",
+        "scanMs": 81,
+        "askUsd": 0.0024,
+        "jevUsd": 0.0001
+      }
+    }
+  ],
+  "overall": {
+    "repos": 15,
+    "scannedAsIs": 9,
+    "scannedPrepared": 15,
+    "aggregation": { "retrieval.recall*": "mean of per-family means, families pooled across repos (a repo counts by its number of families)", "retrieval.perRepoMean": "mean over repos of each repo's family-mean (every repo weighs the same)", "retrieval.byCategory": "mean of per-family means within the category, pooled across repos", "answers.*": "mean of per-family means over answered questions, pooled across repos", "answers.perRepoMean": "mean over answered repos of each repo's family-mean", "blocks.default/jev": "mean over labeled nodes pooled across repos (tau/top-k on shared candidates: nodes where it is undefined, e.g. one shared block, are skipped); omittedRendered = sum over nodes of rendered blocks missing from the hand order; keptDropped = sum over nodes of hand-kept candidate blocks the order does not render", "blocks.perRepoMean": "mean over repos of each repo's per-node mean", "claims.*": "pooled claim rows across repos; rates over judged (= checked − unavailable), unavailableRate over checked", "spendUsd.*": "sum over repos (jevReservationEquivalent = $0.003 per Jev request: claim checks + block planner)", "labels": "items with status \"rejected\" are excluded from every score; draft and checked both count", "rateLimited": "sum of live 429s across repos and stages (backed off + retried, never silently dropped)", "stageMs.*": "sum of each repo's last-pass wall time (repos may have run in parallel)" },
+    "retrieval": {
+      "questions": 126,
+      "recall5": 0.1825,
+      "recall10": 0.2566,
+      "recallFull": 0.3452,
+      "indexedExpected": 0.5172,
+      "perRepoMean": { "repos": 15, "recall5": 0.1806, "recall10": 0.2556, "recallFull": 0.3441 },
+      "byCategory": {
+        "config": { "questions": 17, "recallFull": 0.3529 },
+        "cross-cutting": { "questions": 17, "recallFull": 0.3529 },
+        "docs-answer": { "questions": 15, "recallFull": 0.2 },
+        "framework-convention": { "questions": 12, "recallFull": 0.25 },
+        "generic-dir": { "questions": 10, "recallFull": 0.5667 },
+        "how-it-works": { "questions": 40, "recallFull": 0.4125 },
+        "locate": { "questions": 15, "recallFull": 0.2222 }
+      }
+    },
+    "answers": {
+      "answered": 126,
+      "citedRecall": 0.3373,
+      "citationPrecision": 0.127,
+      "invalidRate": 0,
+      "declinedRate": 0.3333,
+      "correctness": 0.373,
+      "perRepoMean": { "repos": 15, "citedRecall": 0.3358, "citationPrecision": 0.126, "declinedRate": 0.3352, "correctness": 0.3685 }
+    },
+    "blocks": {
+      "labeled": 42,
+      "jevNodes": 42,
+      "default": { "tau": 0.7026, "top1": 0.8571, "top3": 0.9127, "top1Unrestricted": 0.8571, "omittedRendered": 35, "keptDropped": 0 },
+      "jev": { "tau": 0.6622, "top1": 0.881, "top3": 0.9048, "top1Unrestricted": 0.881, "omittedRendered": 35, "keptDropped": 7 },
+      "perRepoMean": {
+        "repos": 15,
+        "default": { "tau": 0.6768, "top1": 0.86, "top3": 0.9378, "top1Unrestricted": 0.86 },
+        "jev": { "tau": 0.7021, "top1": 0.8933, "top3": 0.9267, "top1Unrestricted": 0.8933 }
+      }
+    },
+    "claims": {
+      "checked": 2462,
+      "judged": 2443,
+      "unavailableRate": 0.0077,
+      "insufficientContextRate": 0.2902,
+      "insufficientRate": 0.0974,
+      "supportedRate": 0.325,
+      "insufficientContextByReason": { "missing-capture": 323, "truncated-capture": 386 },
+      "unavailableByReason": { "invalid-response": 19 }
+    },
+    "spendUsd": { "enrich": 1.1958, "ask": 0.4873, "jev": 0.0466, "jevReservationEquivalent": 1.53 },
+    "stageMs": { "total": 884256, "blocks": 13446, "claims": 193451, "ask": 291683, "enrich": 385676 },
+    "rateLimited": 0
+  },
+  "adaptive": {
+    "default": { "description": "product default (24 KB)", "recallFull": 0.3452, "meanBytes": 18057.2102, "helpsIn": [], "hurtsIn": [] },
+    "half": { "description": "12 KB for every repo (cheaper prompts)", "recallFull": 0.246, "meanBytes": 9485.2019, "helpsIn": [], "hurtsIn": ["vercel__commerce", "pmndrs__zustand", "hagopj13__node-express-boilerplate", "trpc__trpc", "facebook__docusaurus", "excalidraw__excalidraw", "tauri-apps__tauri", "BurntSushi__ripgrep", "tokio-rs__axum"] },
+    "double": { "description": "48 KB for every repo", "recallFull": 0.418, "meanBytes": 26978.5333, "helpsIn": ["vercel__commerce", "hagopj13__node-express-boilerplate", "trpc__trpc", "facebook__docusaurus", "excalidraw__excalidraw", "tauri-apps__tauri", "BurntSushi__ripgrep"], "hurtsIn": [] },
+    "size-scaled": { "description": "24 KB x clamp(sqrt(entities / 1000), 0.5, 3)", "recallFull": 0.3704, "meanBytes": 22797.9296, "helpsIn": ["trpc__trpc", "facebook__docusaurus", "excalidraw__excalidraw", "tauri-apps__tauri", "BurntSushi__ripgrep"], "hurtsIn": ["vercel__commerce", "pmndrs__zustand", "hagopj13__node-express-boilerplate"] },
+    "depth-scaled": { "description": "24 KB x clamp(1 + (median component depth - 2) / 4, 1, 2): deep paths spend bytes on names", "recallFull": 0.3902, "meanBytes": 22969.3759, "helpsIn": ["trpc__trpc", "facebook__docusaurus", "excalidraw__excalidraw", "tauri-apps__tauri", "BurntSushi__ripgrep"], "hurtsIn": [] }
+  }
+}

@@ -1,0 +1,228 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "GoogleCloudPlatform/microservices-demo",
+  "commitSha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "msdemo-place-order",
+      "family": "msdemo-place-order",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "What happens, step by step, when a shopper completes checkout?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:google-cloud-platform-microservices-demo"
+      },
+      "expectedFiles": [
+        "src/checkoutservice/main.go"
+      ],
+      "mustMention": [
+        "charge|payment",
+        "ship",
+        "email|confirmation"
+      ],
+      "answerNote": "checkoutservice PlaceOrder (Go): fetches the cart, converts item prices + shipping quote to the user currency, sums the total, charges the card via paymentservice, ships via shippingservice, empties the cart, then sends the confirmation email via emailservice (email failure is only logged)."
+    },
+    {
+      "id": "msdemo-card-charge",
+      "family": "msdemo-card-charge",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "Which credit cards does the shop accept, and how is a card checked before it is charged?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:google-cloud-platform-microservices-demo"
+      },
+      "expectedFiles": [
+        "src/paymentservice/charge.js"
+      ],
+      "mustMention": [
+        "visa",
+        "mastercard",
+        "expir"
+      ],
+      "answerNote": "Node paymentservice charge(): validates number with simple-card-validator, only VISA/MasterCard accepted (UnacceptedCreditCard otherwise), rejects expired cards, logs and returns a random uuid transaction id (no real charge). Scanner-visible (JS)."
+    },
+    {
+      "id": "msdemo-currency-convert",
+      "family": "msdemo-currency-convert",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How are prices shown in a different currency, and where do the exchange rates come from?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:google-cloud-platform-microservices-demo"
+      },
+      "expectedFiles": [
+        "src/currencyservice/server.js",
+        "src/currencyservice/data/currency_conversion.json"
+      ],
+      "mustMention": [
+        "EUR|euro",
+        "currency_conversion|json"
+      ],
+      "answerNote": "Node currencyservice convert(): loads static rates from data/currency_conversion.json, converts from_currency -> EUR -> to_currency with unit/nanos carrying. Rates are a fixed file, not live. Scanner-visible (JS)."
+    },
+    {
+      "id": "msdemo-cart-storage",
+      "family": "msdemo-cart-storage",
+      "status": "draft",
+      "category": "config",
+      "question": "Where is a shopper's basket kept between requests, and can it be backed by something other than Redis?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:src-currencyservice-client-js"
+      },
+      "expectedFiles": [
+        "src/cartservice/src/Startup.cs",
+        "src/cartservice/src/cartstore/RedisCartStore.cs"
+      ],
+      "mustMention": [
+        "REDIS_ADDR",
+        "Spanner|AlloyDB"
+      ],
+      "answerNote": "C# cartservice Startup picks an ICartStore from config: REDIS_ADDR -> RedisCartStore (distributed cache), SPANNER_* -> SpannerCartStore, ALLOYDB_PRIMARY_IP -> AlloyDBCartStore, else an in-memory cache via RedisCartStore. Selection deliberately starts from an unrelated JS component."
+    },
+    {
+      "id": "msdemo-session",
+      "family": "msdemo-session",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "How does the site recognize a returning visitor when nobody logs in?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:google-cloud-platform-microservices-demo"
+      },
+      "expectedFiles": [
+        "src/frontend/middleware.go"
+      ],
+      "mustMention": [
+        "cookie",
+        "session"
+      ],
+      "answerNote": "Go frontend middleware ensureSessionID: reads shop_session-id cookie, else mints a uuid (or a fixed shared id when ENABLE_SINGLE_SHARED_SESSION=true), sets a 48h cookie and puts the id on the request context; that id is the cart user id."
+    },
+    {
+      "id": "msdemo-recommendations",
+      "family": "msdemo-recommendations",
+      "status": "draft",
+      "category": "locate",
+      "question": "How are the 'you may also like' products chosen?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:src-paymentservice-logger-js"
+      },
+      "expectedFiles": [
+        "src/recommendationservice/recommendation_server.py"
+      ],
+      "mustMention": [
+        "random",
+        "catalog|ListProducts"
+      ],
+      "answerNote": "Python recommendationservice ListRecommendations: fetches all products from productcatalogservice, removes ones already in the request, returns a random sample of up to 5 ids. No ML. Selection starts from an unrelated JS component."
+    },
+    {
+      "id": "msdemo-ads",
+      "family": "msdemo-ads",
+      "status": "draft",
+      "category": "locate",
+      "question": "Where does the advert shown on product pages come from, and how many are returned?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:google-cloud-platform-microservices-demo"
+      },
+      "expectedFiles": [
+        "src/adservice/src/main/java/hipstershop/AdService.java"
+      ],
+      "mustMention": [
+        "category|context",
+        "random",
+        "MAX_ADS_TO_SERVE|2 ads|two"
+      ],
+      "answerNote": "Java adservice getAds: returns ads matching the context keys (product categories) from a hard-coded multimap; if none match returns MAX_ADS_TO_SERVE=2 random ads."
+    },
+    {
+      "id": "msdemo-add-service",
+      "family": "msdemo-add-service",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "What steps do I follow to add another service to the shop?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:google-cloud-platform-microservices-demo"
+      },
+      "expectedFiles": [
+        "docs/adding-new-microservice.md"
+      ],
+      "mustMention": [
+        "kustomize",
+        "skaffold",
+        "helm"
+      ],
+      "answerNote": "Doc steps: new src/<svc> dir + code + Dockerfile, kustomize/components manifests, update root kustomization.yaml, skaffold.yaml, the Helm chart, and docs."
+    },
+    {
+      "id": "msdemo-service-contracts",
+      "family": "msdemo-service-contracts",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "Where are the requests and responses that the services exchange with each other defined?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:google-cloud-platform-microservices-demo"
+      },
+      "expectedFiles": [
+        "protos/demo.proto"
+      ],
+      "mustMention": [
+        "proto|protobuf",
+        "gRPC|service"
+      ],
+      "answerNote": "protos/demo.proto is the shared gRPC/protobuf contract (CartService, CheckoutService, PaymentService, CurrencyService, ...); each service has generated stubs (genproto/, demo_pb2.py) or loads a copied proto at runtime."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "The repo is 11 independently deployed services in 5 languages, and the architecture is exactly those services talking gRPC. The scan produces one synthetic container for the whole repo with 6 components, all single JS files from the two Node services (currencyservice, paymentservice); the Go/C#/Python/Java services (frontend, checkout, cart, catalog, shipping, email, recommendation, ad, loadgenerator) are invisible. A maintainer would draw one container per src/<service> directory plus Redis for the cart.",
+    "expectedContainers": [
+      "frontend (src/frontend, Go HTTP)",
+      "checkoutservice (src/checkoutservice, Go)",
+      "cartservice (src/cartservice, C#) + Redis/Spanner/AlloyDB store",
+      "productcatalogservice (src/productcatalogservice, Go)",
+      "currencyservice (src/currencyservice, Node)",
+      "paymentservice (src/paymentservice, Node)",
+      "shippingservice (src/shippingservice, Go)",
+      "emailservice (src/emailservice, Python)",
+      "recommendationservice (src/recommendationservice, Python)",
+      "adservice (src/adservice, Java)",
+      "loadgenerator (src/loadgenerator, Python/Locust)"
+    ],
+    "problems": [
+      "Single container for 11 deployable services; src/<service>/ boundaries (each with its own Dockerfile + k8s manifest) are ignored",
+      "Only 6 components, all per-file JS in currencyservice/paymentservice; 9 of 11 services have zero entities",
+      "Node components are one-per-file (client.js, server.js, logger.js, index.js) rather than one per service",
+      "protos/demo.proto (the actual inter-service contract) and kubernetes-manifests/ are not reflected as relations"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:google-cloud-platform-microservices-demo",
+      "status": "draft",
+      "order": [
+        "children"
+      ],
+      "note": "Scan-only and scanner-blind (Go/C#/Python/Java services invisible); the lone container link is the only thing to show."
+    },
+    {
+      "nodeId": "container:google-cloud-platform-microservices-demo",
+      "status": "draft",
+      "order": [
+        "children",
+        "relations:parent"
+      ],
+      "note": "Children list only the two Node services' files, a partial but concrete view; parent is a back-link only."
+    }
+  ]
+}

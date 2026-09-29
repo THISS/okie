@@ -1,0 +1,210 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "rubygems/rubygems.org",
+  "commitSha": "fd828b37546d331f1104d44c1824e8ad2fcdb96f",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "rubygems-push",
+      "family": "rubygems-push",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "What happens on the server when someone publishes a new gem release from the command line?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:rubygems-rubygems-org"
+      },
+      "expectedFiles": [
+        "app/models/pusher.rb",
+        "app/controllers/api/v1/rubygems_controller.rb"
+      ],
+      "mustMention": [
+        "Pusher",
+        "owner|owns",
+        "MFA|multi-factor"
+      ],
+      "answerNote": "Api::V1::RubygemsController#create checks the API key can push, then Pusher#process: pull_spec (validate package) -> find -> authorize (reserved names, ownership / trusted publisher) -> verify_gem_scope -> verify_mfa_requirement -> validate (signatures, sigstore) -> save (write gem to storage, purge cache, AfterVersionWriteJob, Rstuf job)."
+    },
+    {
+      "id": "rubygems-yank",
+      "family": "rubygems-yank",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "Can an author take down a release they already published, and are there limits on which releases can be removed?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:rubygems-rubygems-org"
+      },
+      "expectedFiles": [
+        "app/models/deletion.rb",
+        "app/controllers/api/v1/deletions_controller.rb"
+      ],
+      "mustMention": [
+        "30 days",
+        "100,000|100000|100_000"
+      ],
+      "answerNote": "Deletion (yank) marks the version unindexed and yanked_at, removes from storage/index, purges Fastly and mails owners; eligibility rejects versions older than 30 days or with more than 100,000 downloads (unless forced by admin)."
+    },
+    {
+      "id": "rubygems-typosquat",
+      "family": "rubygems-typosquat",
+      "status": "draft",
+      "category": "locate",
+      "question": "How does the site stop people publishing a name that looks like a misspelling of a popular gem?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:rubygems-rubygems-org"
+      },
+      "expectedFiles": [
+        "app/models/gem_typo.rb"
+      ],
+      "mustMention": [
+        "protected",
+        "10,000|10_000|downloads"
+      ],
+      "answerNote": "GemTypo#protected_typo? compares names case-insensitively ignoring - and _; a match blocks the push only if the existing gem is protected (>= 10,000 downloads or released within 5 years) and not owned by the pusher, with GemTypoException overrides. Called from Rubygem validation and pending trusted publishers."
+    },
+    {
+      "id": "rubygems-webhooks",
+      "family": "rubygems-webhooks",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "How are subscribers told when a new version of a gem is released?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:vendor-javascript-jquery-js"
+      },
+      "expectedFiles": [
+        "app/models/version.rb",
+        "app/models/web_hook.rb",
+        "app/jobs/notify_web_hook_job.rb"
+      ],
+      "mustMention": [
+        "web hook|webhook",
+        "HookRelay|hook relay",
+        "Authorization|SHA"
+      ],
+      "answerNote": "Version#enqueue_web_hook_jobs fires every enabled gem-specific and global WebHook; WebHook#fire enqueues NotifyWebHookJob, which POSTs the payload through HookRelay with an Authorization header = SHA256(gem name + version + owner api key). Selection starts from an unrelated vendored JS component."
+    },
+    {
+      "id": "rubygems-trusted-publishing",
+      "family": "rubygems-trusted-publishing",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "How can a CI pipeline publish a gem without a long-lived stored API key?",
+      "selection": {
+        "level": "component",
+        "selectedId": "component:app-javascript-controllers-stats-controller-js"
+      },
+      "expectedFiles": [
+        "app/controllers/api/v1/oidc/trusted_publisher_controller.rb",
+        "app/models/oidc/trusted_publisher/github_action.rb"
+      ],
+      "mustMention": [
+        "OIDC|JWT|id token",
+        "15 minutes|short-lived|expires"
+      ],
+      "answerNote": "Trusted publishing: CI exchanges its OIDC JWT at api/v1/oidc/trusted_publisher/exchange_token; controller verifies the JWT signature against the provider JWKS and claims, finds the matching trusted publisher (GitHubAction.for_claims matches repository + workflow file from the claims), and mints an API key expiring in 15 minutes."
+    },
+    {
+      "id": "rubygems-throttling",
+      "family": "rubygems-throttling",
+      "status": "draft",
+      "category": "config",
+      "question": "Where are the request rate limits (for logins, pushes, yanks) defined?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:rubygems-rubygems-org"
+      },
+      "expectedFiles": [
+        "config/initializers/rack_attack.rb"
+      ],
+      "mustMention": [
+        "Rack::Attack|rack_attack|rack attack",
+        "throttle"
+      ],
+      "answerNote": "config/initializers/rack_attack.rb defines Rack::Attack throttles: clearance/ip, exponential backoff levels for API/login/push, api/push/ip, yank/ip, webhook_fire, password reset, etc."
+    },
+    {
+      "id": "rubygems-api-routes",
+      "family": "rubygems-api-routes",
+      "status": "draft",
+      "category": "framework-convention",
+      "question": "Where are the versioned API paths mapped to the controllers that serve them?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:rubygems-rubygems-org"
+      },
+      "expectedFiles": [
+        "config/routes.rb"
+      ],
+      "mustMention": [
+        "namespace|api/v1",
+        "routes"
+      ],
+      "answerNote": "Rails convention: config/routes.rb namespace :api / namespace :v1 maps resources (rubygems, deletions, owners, web_hooks, oidc/trusted_publisher/exchange_token, ...) to app/controllers/api/v1/*."
+    },
+    {
+      "id": "rubygems-maintenance-docs",
+      "family": "rubygems-maintenance-docs",
+      "status": "draft",
+      "category": "docs-answer",
+      "question": "What rules should I follow when writing a one-off data backfill task?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:rubygems-rubygems-org"
+      },
+      "expectedFiles": [
+        "doc/maintenance-tasks.md"
+      ],
+      "mustMention": [
+        "collection",
+        "process",
+        "rerun|re-run"
+      ],
+      "answerNote": "doc/maintenance-tasks.md: limit collection, one record per process call, handle concurrent app writes (conditional update or lock+reload), decide on deleted records, make reruns safe, minimal tests."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "rubygems.org is a Rails MVC app: app/controllers (web + api/v1), app/models (Pusher, Deletion, Version, Rubygem, OIDC), app/jobs (GoodJob/Shoryuken background work), lib/ (compact index, Fastly, gemcutter), plus Postgres, S3 gem storage, Fastly CDN and Elasticsearch/OpenSearch. The scan (symlink-stripped tree) sees only JavaScript: one container with 38 components, all Stimulus controllers under app/javascript and vendored libraries under vendor/javascript (jquery, rails-ujs, stimulus) plus config/tailwind and prettier config. The Ruby application - every model, controller and job - is invisible.",
+    "expectedContainers": [
+      "Rails web + API app (app/controllers, app/models, app/views, config/routes.rb)",
+      "Background jobs worker (app/jobs via GoodJob; lib/shoryuken SQS consumer)",
+      "PostgreSQL, S3 gem storage, Fastly CDN, search index (external)",
+      "Components along domain lines: push/yank (Pusher, Deletion), ownership/orgs, OIDC trusted publishing, webhooks, compact index"
+    ],
+    "problems": [
+      "No Ruby entities: controllers, models, jobs and lib/ are absent",
+      "Vendored third-party JS (vendor/javascript/jquery.js, @hotwired--stimulus.js, rails-ujs...) promoted to first-class components",
+      "Config files (config/tailwind.config.js, prettier.config.js) are components next to product code",
+      "Single container; web vs job worker split not represented",
+      "As-is scan fails on committed symlinks (.claude/skills, config/deploy/*, server/gems)"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:rubygems-rubygems-org",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Scanner-blind but the summary is honest that only the browser-side JS container is mapped, so it can lead; key points are Stimulus-specific; children is one container."
+    },
+    {
+      "nodeId": "container:rubygems-rubygems-org",
+      "status": "draft",
+      "order": [
+        "enrichment:summary",
+        "enrichment:keyPoints",
+        "children",
+        "enrichment:evidence"
+      ],
+      "note": "Summary and key points give the Stimulus registration entry and shared application seam; 38 real JS files are a small browsable list; parent redundant."
+    }
+  ]
+}

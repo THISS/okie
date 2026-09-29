@@ -1,0 +1,1466 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "vercel__commerce",
+  "repository": "vercel/commerce",
+  "commitSha": "3761e52e60df9c6a316e067dbfd7032e494d3634",
+  "scan": {
+    "asIs": {
+      "revision": "3761e52e60df9c6a316e067dbfd7032e494d3634",
+      "ok": true,
+      "ms": 2553,
+      "entities": 256,
+      "relations": 481,
+      "kinds": { "code": 188, "component": 66, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:vercel-commerce", "name": "vercel_commerce", "components": 66 }
+      ],
+      "signals": { "entities": 256, "containers": 1, "components": 66, "files": 68, "maxDepth": 4, "medianDepth": 2, "language": "TypeScript" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T01:57:58.646Z",
+    "corpus": "enriched",
+    "entityCount": 256,
+    "systemNames": ["commerce"],
+    "paths": ["components/cart/modal.tsx", "app/product/[handle]/page.tsx", "components/cart/add-to-cart.tsx", "components/cart/delete-item-button.tsx", "components/cart/edit-item-quantity-button.tsx", "app/page.tsx", "components/loading-dots.tsx", "components/carousel.tsx", "lib/shopify/index.ts", "components/product/product-description.tsx", "components/product/gallery.tsx", "lib/shopify/types.ts", "components/cart/actions.ts", "lib/shopify/fragments/product.ts", "lib/constants.ts", "lib/shopify/queries/product.ts", "components/cart/cart-context.tsx", "components/grid/tile.tsx", "components/layout/product-grid-items.tsx", "components/product/variant-selector.tsx", "app/search/page.tsx", "components/grid/three-items.tsx", "components/layout/navbar/index.tsx", "lib/shopify/queries/collection.ts", "package.json", "components/cart/open-cart.tsx", "components/layout/search/collections.tsx", "README.md", "lib/utils.ts", "lib/shopify/fragments/seo.ts", "lib/shopify/queries/page.ts", "lib/shopify/mutations/cart.ts", "app/sitemap.ts", "lib/shopify/fragments/cart.ts", "lib/shopify/queries/menu.ts", "app/search/[collection]/page.tsx", "components/layout/footer.tsx", "components/layout/footer-menu.tsx", "components/price.tsx", "components/label.tsx", "components/layout/navbar/mobile-menu.tsx", "app/search/layout.tsx", "components/opengraph-image.tsx", "app/[page]/layout.tsx", "app/layout.tsx", "components/layout/search/filter/index.tsx", "app/[page]/opengraph-image.tsx", "app/[page]/page.tsx", "app/search/children-wrapper.tsx", "components/layout/search/filter/item.tsx", "components/layout/search/filter/dropdown.tsx", "components/grid/index.tsx", "components/icons/logo.tsx", "app/search/[collection]/opengraph-image.tsx", "lib/type-guards.ts", "next.config.ts", "components/prose.tsx", "postcss.config.mjs", "components/welcome-toast.tsx", "components/layout/navbar/search.tsx", "components/logo-square.tsx", "app/search/loading.tsx"],
+    "questions": [
+      {
+        "id": "commerce-cart-add",
+        "question": "What happens on the server when a shopper hits the button to put a product in their basket?",
+        "selectedId": "system:vercel-commerce",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23952,
+        "sectionCount": 14,
+        "ranked": [0, 1, 2, 3, 4, 7, 8, 9, 5, 10, 11, 12, 13, 14],
+        "packets": [27, 24],
+        "sections": [
+          {
+            "id": "component:components-cart-modal-tsx",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:components-cart-modal-tsx:checkout-button", "name": "CheckoutButton" },
+              { "id": "code:components-cart-modal-tsx:cart-modal", "name": "CartModal" },
+              { "id": "code:components-cart-modal-tsx:close-cart", "name": "CloseCart" }
+            ]
+          },
+          {
+            "id": "component:app-product-handle-page-tsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:app-product-handle-page-tsx:related-products", "name": "RelatedProducts" },
+              { "id": "code:app-product-handle-page-tsx:product-page", "name": "ProductPage" },
+              { "id": "code:app-product-handle-page-tsx:generate-metadata", "name": "generateMetadata" }
+            ]
+          },
+          {
+            "id": "component:components-cart-add-to-cart-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:components-cart-add-to-cart-tsx:submit-button", "name": "SubmitButton" },
+              { "id": "code:components-cart-add-to-cart-tsx:add-to-cart", "name": "AddToCart" }
+            ]
+          },
+          {
+            "id": "component:components-cart-delete-item-button-tsx",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:components-cart-delete-item-button-tsx:delete-item-button", "name": "DeleteItemButton" }
+            ]
+          },
+          {
+            "id": "component:components-cart-edit-item-quantity-button-tsx",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:components-cart-edit-item-quantity-button-tsx:edit-item-quantity-button", "name": "EditItemQuantityButton" },
+              { "id": "code:components-cart-edit-item-quantity-button-tsx:submit-button", "name": "SubmitButton" }
+            ]
+          },
+          {
+            "id": "component:components-carousel-tsx",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:components-carousel-tsx:carousel", "name": "Carousel" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-index-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:lib-shopify-index-ts:reshape-products", "name": "reshapeProducts" },
+              { "id": "code:lib-shopify-index-ts:reshape-product", "name": "reshapeProduct" },
+              { "id": "code:lib-shopify-index-ts:get-product-recommendations", "name": "getProductRecommendations" }
+            ]
+          },
+          {
+            "id": "component:components-product-product-description-tsx",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:components-product-product-description-tsx:product-description", "name": "ProductDescription" }
+            ]
+          },
+          { "id": "component:app-page-tsx", "kind": "component", "p": 5 },
+          {
+            "id": "component:components-product-gallery-tsx",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:components-product-gallery-tsx:gallery", "name": "Gallery" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-types-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:lib-shopify-types-ts:shopify-product-recommendations-operation", "name": "ShopifyProductRecommendationsOperation" },
+              { "id": "code:lib-shopify-types-ts:product", "name": "Product" },
+              { "id": "code:lib-shopify-types-ts:shopify-product-operation", "name": "ShopifyProductOperation" }
+            ]
+          },
+          { "id": "component:components-cart-actions-ts", "kind": "component", "p": 12 },
+          {
+            "id": "component:lib-shopify-fragments-product-ts",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:lib-shopify-fragments-product-ts:product-fragment", "name": "productFragment" }
+            ]
+          },
+          {
+            "id": "component:lib-constants-ts",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:lib-constants-ts:hidden-product-tag", "name": "HIDDEN_PRODUCT_TAG" },
+              { "id": "code:lib-constants-ts:tags", "name": "TAGS" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "components/cart/actions.ts": true, "lib/shopify/index.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11850, "sectionCount": 7, "ranked": [0, 1, 2, 3, 4, 5, 6] },
+          "double": { "byteBudget": 48000, "bytes": 37091, "sectionCount": 27, "ranked": [0, 1, 2, 3, 4, 7, 8, 9, 5, 10, 11, 12, 13, 14, 15, 6, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 12085, "sectionCount": 6, "ranked": [0, 1, 2, 3, 4, 8] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23952, "sectionCount": 14, "ranked": [0, 1, 2, 3, 4, 7, 8, 9, 5, 10, 11, 12, 13, 14] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "f8739d97f36a5cb61db5b76073dfd909e48fb3af1bdf2612ab3c2c17626dc925",
+          "allowedIdsCount": 39,
+          "allowedIdsSha256": "402182f2c23f0f1ad68a37ef60e949ba281c479120e6866aa447e80b7b1f2526",
+          "allowedIdsInContent": ["component:components-cart-add-to-cart-tsx", "code:components-cart-add-to-cart-tsx:submit-button", "code:components-cart-add-to-cart-tsx:add-to-cart", "component:lib-shopify-index-ts", "code:lib-shopify-index-ts:reshape-products", "code:lib-shopify-index-ts:reshape-product", "component:lib-shopify-types-ts", "component:components-cart-actions-ts", "component:lib-constants-ts", "code:lib-constants-ts:hidden-product-tag", "code:lib-constants-ts:tags"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Hitting the button doesn't touch the server directly in the component: `AddToCart` in `components/cart/add-to-cart.tsx` renders `SubmitButton`, which is gated on `availableForSale` and `selectedVariantId` (variant comes from `useSearchParams()`), and dispatches a cart action rather than doing any fetching itself. On the server the request lands in the cart server-actions module, `components/cart/actions.ts`, where `addItem` accepts `selectedVariantId: string | undefined` and is the entry point that actually mutates cart state.\\n\\nFrom there the Shopify layer takes over:\\n\\n- `components/cart/actions.ts` — `addItem` (plus `updateItemQuantity`, `removeItem`, `redirectToCheckout`); `createCartAndSetCookie` calls `createCart()` and persists the new cart by writing the `cartId` cookie, so a first-time shopper gets cart identity here.\\n- `lib/shopify/index.ts` — `addToCart`/`updateCart`/`removeFromCart` send the Storefront GraphQL mutations through `shopifyFetch`; they read `cartId` from cookies with a non-null assertion, so a missing cookie throws. Responses go through the `reshape*` helpers (`reshapeProduct`/`reshapeProducts`) which drop products tagged `HIDDEN_PRODUCT_TAG` (`lib/constants.ts`).\\n- `lib/shopify/types.ts` — `Cart`/`Product` are the reshaped contracts returned to the UI; note `CartItem.id` is `string | undefined`.\\n\\nNot in the evidence: the exact body of `addItem`, the GraphQL cart mutation names, and any `revalidateTag(TAGS.cart)` call — the search returned no symbol-level section for `components/cart/actions.ts` or the cart mutations in `lib/shopify/index.ts`.\", \"citations\": [\"component:components-cart-add-to-cart-tsx\", \"code:components-cart-add-to-cart-tsx:add-to-cart\", \"code:components-cart-add-to-cart-tsx:submit-button\", \"component:components-cart-actions-ts\", \"component:lib-shopify-index-ts\", \"code:lib-shopify-index-ts:reshape-product\", \"code:lib-shopify-index-ts:reshape-products\", \"component:lib-shopify-types-ts\", \"component:lib-constants-ts\", \"code:lib-constants-ts:hidden-product-tag\", \"code:lib-constants-ts:tags\"]}",
+          "usage": { "promptTokens": 7959, "completionTokens": 760, "totalTokens": 8719, "costUsd": 0.004123365 },
+          "ms": 28338
+        }
+      },
+      {
+        "id": "commerce-webhook-refresh",
+        "question": "When a merchant edits a product in their store admin, how does the website stop showing the stale version?",
+        "selectedId": "component:components-carousel-tsx",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23939,
+        "sectionCount": 16,
+        "ranked": [5, 8, 28, 4, 29, 14, 30, 9, 13, 20, 1, 18, 11, 21, 7, 0],
+        "packets": [7, 24],
+        "sections": [
+          {
+            "id": "component:app-page-tsx",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:app-page-tsx:metadata", "name": "metadata" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-index-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:lib-shopify-index-ts:reshape-products", "name": "reshapeProducts" },
+              { "id": "code:lib-shopify-index-ts:reshape-product", "name": "reshapeProduct" },
+              { "id": "code:lib-shopify-index-ts:get-product-recommendations", "name": "getProductRecommendations" }
+            ]
+          },
+          {
+            "id": "component:lib-utils-ts",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:lib-utils-ts:validate-environment-variables", "name": "validateEnvironmentVariables" }
+            ]
+          },
+          {
+            "id": "component:components-cart-edit-item-quantity-button-tsx",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:components-cart-edit-item-quantity-button-tsx:edit-item-quantity-button", "name": "EditItemQuantityButton" },
+              { "id": "code:components-cart-edit-item-quantity-button-tsx:submit-button", "name": "SubmitButton" }
+            ]
+          },
+          { "id": "component:lib-shopify-fragments-seo-ts", "kind": "component", "p": 29 },
+          {
+            "id": "component:lib-constants-ts",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:lib-constants-ts:hidden-product-tag", "name": "HIDDEN_PRODUCT_TAG" },
+              { "id": "code:lib-constants-ts:tags", "name": "TAGS" }
+            ]
+          },
+          { "id": "component:lib-shopify-queries-page-ts", "kind": "component", "p": 30 },
+          {
+            "id": "component:components-product-product-description-tsx",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:components-product-product-description-tsx:product-description", "name": "ProductDescription" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-fragments-product-ts",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:lib-shopify-fragments-product-ts:product-fragment", "name": "productFragment" }
+            ]
+          },
+          {
+            "id": "component:app-search-page-tsx",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:app-search-page-tsx:search-page", "name": "SearchPage" },
+              { "id": "code:app-search-page-tsx:metadata", "name": "metadata" }
+            ]
+          },
+          {
+            "id": "component:app-product-handle-page-tsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:app-product-handle-page-tsx:related-products", "name": "RelatedProducts" },
+              { "id": "code:app-product-handle-page-tsx:product-page", "name": "ProductPage" },
+              { "id": "code:app-product-handle-page-tsx:generate-metadata", "name": "generateMetadata" }
+            ]
+          },
+          {
+            "id": "component:components-layout-product-grid-items-tsx",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:components-layout-product-grid-items-tsx:product-grid-items", "name": "ProductGridItems" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-types-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:lib-shopify-types-ts:shopify-product-recommendations-operation", "name": "ShopifyProductRecommendationsOperation" },
+              { "id": "code:lib-shopify-types-ts:product", "name": "Product" },
+              { "id": "code:lib-shopify-types-ts:shopify-product-operation", "name": "ShopifyProductOperation" }
+            ]
+          },
+          {
+            "id": "component:components-grid-three-items-tsx",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:components-grid-three-items-tsx:three-item-grid", "name": "ThreeItemGrid" },
+              { "id": "code:components-grid-three-items-tsx:three-item-grid-item", "name": "ThreeItemGridItem" }
+            ]
+          },
+          {
+            "id": "component:components-carousel-tsx",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:components-carousel-tsx:carousel", "name": "Carousel" }
+            ]
+          },
+          {
+            "id": "component:components-cart-modal-tsx",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:components-cart-modal-tsx:cart-modal", "name": "CartModal" },
+              { "id": "code:components-cart-modal-tsx:close-cart", "name": "CloseCart" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "app/api/revalidate/route.ts": true, "lib/shopify/index.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11450, "sectionCount": 8, "ranked": [5, 8, 28, 4, 29, 14, 30, 9] },
+          "double": { "byteBudget": 48000, "bytes": 36849, "sectionCount": 29, "ranked": [5, 8, 28, 4, 29, 14, 30, 9, 13, 20, 1, 18, 11, 21, 7, 0, 15, 31, 32, 2, 19, 23, 12, 33, 34, 17, 10, 35, 16] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 11450, "sectionCount": 8, "ranked": [5, 8, 28, 4, 29, 14, 30, 9] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23939, "sectionCount": 16, "ranked": [5, 8, 28, 4, 29, 14, 30, 9, 13, 20, 1, 18, 11, 21, 7, 0] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "7237f4c08c99e6376219ace297f46c8573891e22014f41cdf7c955513eba4651",
+          "allowedIdsCount": 42,
+          "allowedIdsSha256": "c071b3e12de636e978030bf110156fbd0769f70427350004197ab3cc967bfc8e",
+          "allowedIdsInContent": ["component:lib-shopify-index-ts", "code:lib-shopify-index-ts:reshape-products", "code:lib-shopify-index-ts:reshape-product", "component:lib-constants-ts", "code:lib-constants-ts:tags", "code:components-product-product-description-tsx:product-description", "code:app-product-handle-page-tsx:product-page", "container:vercel-commerce"],
+          "packetSources": { "container:vercel-commerce": 24 },
+          "content": "{\"answer\":\"Stale product data is cleared via Shopify webhook-driven revalidation: when a merchant edits a product, Shopify pings the `revalidate` handler in `lib/shopify/index.ts`, which invalidates the cached render output and always answers 200 so Shopify stops retrying. The product views are server components (`ProductPage` in `app/product/[handle]/page.tsx`, `Carousel`, `ProductDescription`) that fetch on render, so once the cache entry is dropped the next request re-fetches fresh data from the Storefront API and reshapes it via `reshapeProduct`/`reshapeProducts`.\\n\\n- `component:lib-shopify-index-ts` — `revalidate` is the webhook entry point in `lib/shopify/index.ts`; per its notes it returns 200 even for unmatched topics so Shopify stops retrying.\\n- `code:lib-constants-ts:tags` (`component:lib-constants-ts`) — `TAGS` fixes the `collections`, `products`, `cart` tag names, which are the cache tags this invalidation keys on; the notes say to keep these strings stable.\\n- `code:app-product-handle-page-tsx:product-page` / `code:components-product-product-description-tsx:product-description` — the rendering side that re-fetches and shows the updated product after invalidation.\\n- `code:lib-shopify-index-ts:reshape-product` — where the refreshed GraphQL payload becomes the app `Product` shape.\\n\\nNote: the evidence only gives the summary of `revalidate` (lines noted but not excerpted), so the exact `revalidateTag`/`revalidatePath` calls and the route file that wires Shopify's webhook to `revalidate` are not shown in these excerpts.\",\"citations\":[\"component:lib-shopify-index-ts\",\"code:lib-constants-ts:tags\",\"component:lib-constants-ts\",\"code:app-product-handle-page-tsx:product-page\",\"code:components-product-product-description-tsx:product-description\",\"code:lib-shopify-index-ts:reshape-product\",\"code:lib-shopify-index-ts:reshape-products\",\"container:vercel-commerce\"]}",
+          "usage": { "promptTokens": 8113, "completionTokens": 760, "totalTokens": 8873, "costUsd": 0.004190355 },
+          "ms": 23621
+        }
+      },
+      {
+        "id": "commerce-product-route",
+        "question": "Which file renders the page for a single item when someone opens its link?",
+        "selectedId": "system:vercel-commerce",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23983,
+        "sectionCount": 15,
+        "ranked": [36, 5, 37, 0, 25, 22, 38, 21, 17, 35, 39, 18, 11, 41, 44],
+        "packets": [27, 24],
+        "sections": [
+          {
+            "id": "component:components-layout-footer-tsx",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:components-layout-footer-tsx:footer", "name": "Footer" }
+            ]
+          },
+          {
+            "id": "component:app-page-tsx",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:app-page-tsx:home-page", "name": "HomePage" },
+              { "id": "code:app-page-tsx:metadata", "name": "metadata" }
+            ]
+          },
+          {
+            "id": "component:components-layout-footer-menu-tsx",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:components-layout-footer-menu-tsx:footer-menu-item", "name": "FooterMenuItem" },
+              { "id": "code:components-layout-footer-menu-tsx:footer-menu", "name": "FooterMenu" }
+            ]
+          },
+          {
+            "id": "component:components-cart-modal-tsx",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:components-cart-modal-tsx:cart-modal", "name": "CartModal" },
+              { "id": "code:components-cart-modal-tsx:close-cart", "name": "CloseCart" }
+            ]
+          },
+          {
+            "id": "component:components-cart-open-cart-tsx",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:components-cart-open-cart-tsx:open-cart", "name": "OpenCart" }
+            ]
+          },
+          {
+            "id": "component:components-layout-navbar-index-tsx",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:components-layout-navbar-index-tsx:navbar", "name": "Navbar" }
+            ]
+          },
+          { "id": "component:components-price-tsx", "kind": "component", "p": 38 },
+          {
+            "id": "component:components-grid-three-items-tsx",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:components-grid-three-items-tsx:three-item-grid", "name": "ThreeItemGrid" },
+              { "id": "code:components-grid-three-items-tsx:three-item-grid-item", "name": "ThreeItemGridItem" }
+            ]
+          },
+          {
+            "id": "component:components-grid-tile-tsx",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:components-grid-tile-tsx:grid-tile-image", "name": "GridTileImage" }
+            ]
+          },
+          {
+            "id": "component:app-search-collection-page-tsx",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:app-search-collection-page-tsx:category-page", "name": "CategoryPage" },
+              { "id": "code:app-search-collection-page-tsx:generate-metadata", "name": "generateMetadata" }
+            ]
+          },
+          {
+            "id": "component:components-label-tsx",
+            "kind": "component",
+            "p": 39,
+            "symbols": [
+              { "id": "code:components-label-tsx:label", "name": "Label" }
+            ]
+          },
+          {
+            "id": "component:components-layout-product-grid-items-tsx",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:components-layout-product-grid-items-tsx:product-grid-items", "name": "ProductGridItems" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-types-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:lib-shopify-types-ts:shopify-pages-operation", "name": "ShopifyPagesOperation" },
+              { "id": "code:lib-shopify-types-ts:shopify-page-operation", "name": "ShopifyPageOperation" },
+              { "id": "code:lib-shopify-types-ts:page", "name": "Page" }
+            ]
+          },
+          { "id": "component:app-search-layout-tsx", "kind": "component", "p": 41 },
+          { "id": "component:app-layout-tsx", "kind": "component", "p": 44 }
+        ],
+        "expectedIndexed": { "app/product/[handle]/page.tsx": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11995, "sectionCount": 7, "ranked": [36, 5, 37, 0, 25, 38, 17] },
+          "double": { "byteBudget": 48000, "bytes": 45640, "sectionCount": 37, "ranked": [36, 5, 37, 0, 25, 22, 38, 21, 17, 35, 39, 18, 11, 1, 40, 41, 42, 20, 43, 44, 45, 46, 47, 48, 27, 7, 9, 49, 8, 50, 51, 52, 3, 26, 53, 24, 16] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 11995, "sectionCount": 7, "ranked": [36, 5, 37, 0, 25, 38, 17] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23983, "sectionCount": 15, "ranked": [36, 5, 37, 0, 25, 22, 38, 21, 17, 35, 39, 18, 11, 41, 44] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "afc4368b3ad798188d6902e63b6203e4654c2b29962fb72ca7093d86ad115bb8",
+          "allowedIdsCount": 36,
+          "allowedIdsSha256": "ac9538884e958e63519486636f45a5dbde2c5c70685fb392fe1f044e0caf681f",
+          "allowedIdsInContent": ["component:components-grid-tile-tsx", "code:components-grid-tile-tsx:grid-tile-image", "component:app-search-collection-page-tsx", "code:app-search-collection-page-tsx:category-page", "component:components-layout-product-grid-items-tsx", "code:components-layout-product-grid-items-tsx:product-grid-items", "component:lib-shopify-types-ts", "code:lib-shopify-types-ts:shopify-page-operation", "code:lib-shopify-types-ts:page"],
+          "packetSources": {},
+          "content": "{\"answer\": \"The evidence shows the item link target but not the file that renders it. `ProductGridItems` in `components/layout/product-grid-items.tsx` links each item to ``/product/${product.handle}``, so the single-item page is the App Router route under `/product/[handle]` — but no product page file (e.g. `app/product/[handle]/page.tsx`) appears in the search results or selected scopes, so I can't name it from this evidence.\\n\\nWhat the evidence does cover:\\n- `components/layout/product-grid-items.tsx` → `ProductGridItems` builds the per-item link (`/product/${product.handle}`) from a Shopify `Product`, using `GridTileImage`.\\n- `components/grid/tile.tsx` → `GridTileImage` renders the tile image/label shown in those grids.\\n- `app/search/[collection]/page.tsx` → `CategoryPage` shows the pattern a dynamic route page follows here (await `params`, fetch data, render), which the product page likely mirrors — but that file is for collections, not single items.\\n- `lib/shopify/types.ts` → `Page`, `ShopifyPageOperation`, `ShopifyPagesOperation` define the single-page data contract (`pageByHandle`, `handle`), used for CMS-style pages rather than products.\\n\\nMissing from the evidence: the actual product/item detail page component and its `generateMetadata`. Re-run the search scoped to the product route to confirm the file name.\",\"citations\":[\"component:components-layout-product-grid-items-tsx\",\"code:components-layout-product-grid-items-tsx:product-grid-items\",\"component:components-grid-tile-tsx\",\"code:components-grid-tile-tsx:grid-tile-image\",\"component:app-search-collection-page-tsx\",\"code:app-search-collection-page-tsx:category-page\",\"component:lib-shopify-types-ts\",\"code:lib-shopify-types-ts:shopify-page-operation\",\"code:lib-shopify-types-ts:page\"]}",
+          "usage": { "promptTokens": 7870, "completionTokens": 653, "totalTokens": 8523, "costUsd": 0.00399156 },
+          "ms": 17552
+        }
+      },
+      {
+        "id": "commerce-cms-pages",
+        "question": "Where do plain content pages like 'About' or 'Terms' come from — are they written in the repo?",
+        "selectedId": "system:vercel-commerce",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23787,
+        "sectionCount": 20,
+        "ranked": [1, 5, 54, 11, 43, 41, 30, 47, 46, 36, 9, 35, 8, 48, 27, 20, 7, 21, 32, 56],
+        "packets": [27, 24],
+        "sections": [
+          {
+            "id": "component:app-product-handle-page-tsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:app-product-handle-page-tsx:product-page", "name": "ProductPage" },
+              { "id": "code:app-product-handle-page-tsx:generate-metadata", "name": "generateMetadata" },
+              { "id": "code:app-product-handle-page-tsx:related-products", "name": "RelatedProducts" }
+            ]
+          },
+          {
+            "id": "component:app-page-tsx",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:app-page-tsx:home-page", "name": "HomePage" },
+              { "id": "code:app-page-tsx:metadata", "name": "metadata" }
+            ]
+          },
+          {
+            "id": "component:lib-type-guards-ts",
+            "kind": "component",
+            "p": 54,
+            "symbols": [
+              { "id": "code:lib-type-guards-ts:shopify-error-like", "name": "ShopifyErrorLike" },
+              { "id": "code:lib-type-guards-ts:is-shopify-error", "name": "isShopifyError" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-types-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:lib-shopify-types-ts:shopify-pages-operation", "name": "ShopifyPagesOperation" },
+              { "id": "code:lib-shopify-types-ts:shopify-page-operation", "name": "ShopifyPageOperation" },
+              { "id": "code:lib-shopify-types-ts:page", "name": "Page" }
+            ]
+          },
+          {
+            "id": "component:app-page-layout-tsx",
+            "kind": "component",
+            "p": 43,
+            "symbols": [
+              { "id": "code:app-page-layout-tsx:layout", "name": "Layout" }
+            ]
+          },
+          { "id": "component:app-search-layout-tsx", "kind": "component", "p": 41 },
+          {
+            "id": "component:lib-shopify-queries-page-ts",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:lib-shopify-queries-page-ts:get-pages-query", "name": "getPagesQuery" },
+              { "id": "code:lib-shopify-queries-page-ts:get-page-query", "name": "getPageQuery" },
+              { "id": "code:lib-shopify-queries-page-ts:page-fragment", "name": "pageFragment" }
+            ]
+          },
+          {
+            "id": "component:app-page-page-tsx",
+            "kind": "component",
+            "p": 47,
+            "symbols": [
+              { "id": "code:app-page-page-tsx:page", "name": "Page" },
+              { "id": "code:app-page-page-tsx:generate-metadata", "name": "generateMetadata" }
+            ]
+          },
+          {
+            "id": "component:app-page-opengraph-image-tsx",
+            "kind": "component",
+            "p": 46,
+            "symbols": [
+              { "id": "code:app-page-opengraph-image-tsx:image", "name": "Image" }
+            ]
+          },
+          { "id": "component:components-layout-footer-tsx", "kind": "component", "p": 36 },
+          { "id": "component:components-product-product-description-tsx", "kind": "component", "p": 9 },
+          {
+            "id": "component:app-search-collection-page-tsx",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:app-search-collection-page-tsx:category-page", "name": "CategoryPage" },
+              { "id": "code:app-search-collection-page-tsx:generate-metadata", "name": "generateMetadata" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-index-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:lib-shopify-index-ts:get-pages", "name": "getPages" },
+              { "id": "code:lib-shopify-index-ts:get-page", "name": "getPage" },
+              { "id": "code:lib-shopify-index-ts:shopify-fetch", "name": "shopifyFetch" }
+            ]
+          },
+          { "id": "component:app-search-children-wrapper-tsx", "kind": "component", "p": 48 },
+          { "id": "system:vercel-commerce", "kind": "softwareSystem", "p": 27 },
+          {
+            "id": "component:app-search-page-tsx",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:app-search-page-tsx:search-page", "name": "SearchPage" },
+              { "id": "code:app-search-page-tsx:metadata", "name": "metadata" }
+            ]
+          },
+          {
+            "id": "component:components-carousel-tsx",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:components-carousel-tsx:carousel", "name": "Carousel" }
+            ]
+          },
+          {
+            "id": "component:components-grid-three-items-tsx",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:components-grid-three-items-tsx:three-item-grid", "name": "ThreeItemGrid" }
+            ]
+          },
+          {
+            "id": "component:app-sitemap-ts",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:app-sitemap-ts:sitemap", "name": "sitemap" }
+            ]
+          },
+          { "id": "component:components-prose-tsx", "kind": "component", "p": 56 }
+        ],
+        "expectedIndexed": { "app/[page]/page.tsx": true, "lib/shopify/index.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11984, "sectionCount": 9, "ranked": [1, 5, 54, 11, 43, 41, 30, 47, 55] },
+          "double": { "byteBudget": 48000, "bytes": 28657, "sectionCount": 26, "ranked": [1, 5, 54, 11, 43, 41, 30, 47, 46, 36, 9, 35, 8, 48, 27, 20, 7, 21, 32, 56, 42, 55, 29, 57, 24, 26] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 12092, "sectionCount": 9, "ranked": [1, 5, 54, 11, 43, 41, 30, 47, 56] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23787, "sectionCount": 20, "ranked": [1, 5, 54, 11, 43, 41, 30, 47, 46, 36, 9, 35, 8, 48, 27, 20, 7, 21, 32, 56] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "6e8b0354ec45652acc0a454c82b696ebe7bd3b2ca2452d3fdf79a8ea0973bcab",
+          "allowedIdsCount": 48,
+          "allowedIdsSha256": "0ea7e7cab39866852051b637adb503e459da0072b9e0699d7e11f0587b8e35b1",
+          "allowedIdsInContent": ["component:lib-shopify-types-ts", "code:lib-shopify-types-ts:shopify-pages-operation", "code:lib-shopify-types-ts:shopify-page-operation", "code:lib-shopify-types-ts:page", "component:app-page-layout-tsx", "code:app-page-layout-tsx:layout", "component:lib-shopify-queries-page-ts", "code:lib-shopify-queries-page-ts:get-pages-query", "code:lib-shopify-queries-page-ts:get-page-query", "code:lib-shopify-queries-page-ts:page-fragment", "component:app-page-page-tsx", "code:app-page-page-tsx:page", "code:app-page-page-tsx:generate-metadata", "component:app-page-opengraph-image-tsx", "code:app-page-opengraph-image-tsx:image", "component:components-layout-footer-tsx", "component:lib-shopify-index-ts", "code:lib-shopify-index-ts:get-pages", "code:lib-shopify-index-ts:get-page", "code:lib-shopify-index-ts:shopify-fetch", "component:components-prose-tsx"],
+          "packetSources": {},
+          "content": "{\"answer\":\"No — plain content pages like \\\"About\\\" or \\\"Terms\\\" are **not written in the repo**. They are CMS pages authored in Shopify and fetched at request time over the Storefront API; the repo only supplies the route shell and the GraphQL queries.\\n\\n- `app/[page]/page.tsx` (`Page`, `generateMetadata`) takes the URL segment and calls `getPage` to load the page, returning `notFound()` if Shopify has no match — so page existence is decided by Shopify content, not by files in the repo.\\n- `lib/shopify/index.ts` (`getPage`, `getPages`, `shopifyFetch`) performs the actual fetch and returns the `Page` record (`title`, `seo`, body) straight from the API.\\n- `lib/shopify/queries/page.ts` (`getPageQuery`, `getPagesQuery`, `pageFragment`) holds the GraphQL that pulls `pageByHandle` / `pages(first: 100)`; `pageFragment` defines which fields (title, seo, body) come back.\\n- `lib/shopify/types.ts` (`Page`, `ShopifyPageOperation`, `ShopifyPagesOperation`) types that content contract.\\n- The rendering shell is in-repo only: `app/[page]/layout.tsx` (`Layout`) wraps children plus `Footer`, `components/prose.tsx` (`Prose`) renders the fetched HTML verbatim, and `app/[page]/opengraph-image.tsx` (`Image`) titles the OG image from `page.seo?.title || page.title`.\\n\\nTo change an About/Terms page's text or SEO, edit it in Shopify admin — the only in-repo levers are the query fields in `pageFragment` and the layout/prose presentation.\",\"citations\":[\"component:app-page-page-tsx\",\"code:app-page-page-tsx:page\",\"code:app-page-page-tsx:generate-metadata\",\"component:lib-shopify-index-ts\",\"code:lib-shopify-index-ts:get-page\",\"code:lib-shopify-index-ts:get-pages\",\"code:lib-shopify-index-ts:shopify-fetch\",\"component:lib-shopify-queries-page-ts\",\"code:lib-shopify-queries-page-ts:get-page-query\",\"code:lib-shopify-queries-page-ts:get-pages-query\",\"code:lib-shopify-queries-page-ts:page-fragment\",\"component:lib-shopify-types-ts\",\"code:lib-shopify-types-ts:page\",\"code:lib-shopify-types-ts:shopify-page-operation\",\"code:lib-shopify-types-ts:shopify-pages-operation\",\"component:app-page-layout-tsx\",\"code:app-page-layout-tsx:layout\",\"component:components-layout-footer-tsx\",\"component:components-prose-tsx\",\"component:app-page-opengraph-image-tsx\",\"code:app-page-opengraph-image-tsx:image\"]}",
+          "usage": { "promptTokens": 8186, "completionTokens": 625, "totalTokens": 8811, "costUsd": 0.00410466 },
+          "ms": 19595
+        }
+      },
+      {
+        "id": "commerce-env-setup",
+        "question": "What settings do I need to supply to connect this storefront to my own shop?",
+        "selectedId": "system:vercel-commerce",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23866,
+        "sectionCount": 18,
+        "ranked": [8, 24, 16, 11, 1, 12, 44, 0, 40, 37, 58, 2, 27, 10, 36, 22, 56, 28],
+        "packets": [27, 24],
+        "sections": [
+          {
+            "id": "component:lib-shopify-index-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:lib-shopify-index-ts:shopify-fetch", "name": "shopifyFetch" },
+              { "id": "code:lib-shopify-index-ts:key", "name": "key" },
+              { "id": "code:lib-shopify-index-ts:remove-edges-and-nodes", "name": "removeEdgesAndNodes" }
+            ]
+          },
+          { "id": "container:vercel-commerce", "kind": "container", "p": 24 },
+          {
+            "id": "component:components-cart-cart-context-tsx",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:components-cart-cart-context-tsx:cart-context", "name": "CartContext" },
+              { "id": "code:components-cart-cart-context-tsx:cart-context-type", "name": "CartContextType" },
+              { "id": "code:components-cart-cart-context-tsx:use-cart", "name": "useCart" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-types-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:lib-shopify-types-ts:connection", "name": "Connection" },
+              { "id": "code:lib-shopify-types-ts:shopify-product", "name": "ShopifyProduct" },
+              { "id": "code:lib-shopify-types-ts:shopify-pages-operation", "name": "ShopifyPagesOperation" }
+            ]
+          },
+          {
+            "id": "component:app-product-handle-page-tsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:app-product-handle-page-tsx:product-page", "name": "ProductPage" }
+            ]
+          },
+          {
+            "id": "component:components-cart-actions-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:components-cart-actions-ts:create-cart-and-set-cookie", "name": "createCartAndSetCookie" }
+            ]
+          },
+          {
+            "id": "component:app-layout-tsx",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:app-layout-tsx:root-layout", "name": "RootLayout" }
+            ]
+          },
+          {
+            "id": "component:components-cart-modal-tsx",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:components-cart-modal-tsx:cart-modal", "name": "CartModal" }
+            ]
+          },
+          {
+            "id": "component:components-layout-navbar-mobile-menu-tsx",
+            "kind": "component",
+            "p": 40,
+            "symbols": [
+              { "id": "code:components-layout-navbar-mobile-menu-tsx:mobile-menu", "name": "MobileMenu" }
+            ]
+          },
+          {
+            "id": "component:components-layout-footer-menu-tsx",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:components-layout-footer-menu-tsx:footer-menu-item", "name": "FooterMenuItem" }
+            ]
+          },
+          {
+            "id": "component:components-welcome-toast-tsx",
+            "kind": "component",
+            "p": 58,
+            "symbols": [
+              { "id": "code:components-welcome-toast-tsx:welcome-toast", "name": "WelcomeToast" }
+            ]
+          },
+          { "id": "component:components-cart-add-to-cart-tsx", "kind": "component", "p": 2 },
+          { "id": "system:vercel-commerce", "kind": "softwareSystem", "p": 27 },
+          {
+            "id": "component:components-product-gallery-tsx",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:components-product-gallery-tsx:gallery", "name": "Gallery" }
+            ]
+          },
+          { "id": "component:components-layout-footer-tsx", "kind": "component", "p": 36 },
+          { "id": "component:components-layout-navbar-index-tsx", "kind": "component", "p": 22 },
+          { "id": "component:components-prose-tsx", "kind": "component", "p": 56 },
+          {
+            "id": "component:lib-utils-ts",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:lib-utils-ts:validate-environment-variables", "name": "validateEnvironmentVariables" }
+            ]
+          }
+        ],
+        "expectedIndexed": { ".env.example": false, "lib/utils.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11500, "sectionCount": 7, "ranked": [8, 24, 16, 11, 1, 12, 44] },
+          "double": { "byteBudget": 48000, "bytes": 29446, "sectionCount": 25, "ranked": [8, 24, 16, 11, 1, 12, 44, 0, 40, 37, 58, 2, 27, 10, 36, 22, 56, 28, 20, 34, 14, 54, 23, 59, 60] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 11500, "sectionCount": 7, "ranked": [8, 24, 16, 11, 1, 12, 44] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23866, "sectionCount": 18, "ranked": [8, 24, 16, 11, 1, 12, 44, 0, 40, 37, 58, 2, 27, 10, 36, 22, 56, 28] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "b57943568983375026829afc2896ef5d85b7dfd51673a4b2c3ec545b48cf1b72",
+          "allowedIdsCount": 36,
+          "allowedIdsSha256": "bd690dea2bf82ec4b56af820f8df95c8c7bc6a3f990c84f0dd4bc048cdb63079",
+          "allowedIdsInContent": ["component:lib-shopify-index-ts", "code:lib-shopify-index-ts:shopify-fetch", "code:lib-shopify-index-ts:key", "container:vercel-commerce", "system:vercel-commerce", "component:lib-utils-ts", "code:lib-utils-ts:validate-environment-variables"],
+          "packetSources": { "system:vercel-commerce": 27, "container:vercel-commerce": 24 },
+          "content": "{\"answer\":\"To point this storefront at your own shop, you supply Shopify environment variables: `SHOPIFY_STORE_DOMAIN` and `SHOPIFY_STOREFRONT_ACCESS_TOKEN`. They're checked at startup and then used to build every Storefront API request.\\n\\n- `lib/utils.ts` — `validateEnvironmentVariables` (lines 22–51) enumerates the required Shopify variables and fails startup if they're missing.\\n- `lib/shopify/index.ts` — `shopifyFetch` (lines 71–123) throws if `SHOPIFY_STORE_DOMAIN` is unset (it builds `endpoint`) and sends the token via the `X-Shopify-Storefront-Access-Token` header, with `key` (line 65) holding the access token value.\\n- The system is a Next.js storefront backed by Shopify's Storefront API (`system:vercel-commerce`, `container:vercel-commerce`), with `lib/shopify/index.ts` as the single data gateway.\\n- Related but not shop credentials: `lib/utils.ts` `baseUrl` uses `VERCEL_PROJECT_PRODUCTION_URL` with a localhost fallback.\\n\\nNote: the evidence shows these two names but not the full checked list inside `validateEnvironmentVariables`, so any additional variables it enforces are not in the evidence.\",\"citations\":[\"system:vercel-commerce\",\"container:vercel-commerce\",\"component:lib-utils-ts\",\"code:lib-utils-ts:validate-environment-variables\",\"component:lib-shopify-index-ts\",\"code:lib-shopify-index-ts:shopify-fetch\",\"code:lib-shopify-index-ts:key\"]}",
+          "usage": { "promptTokens": 7747, "completionTokens": 405, "totalTokens": 8152, "costUsd": 0.003722295 },
+          "ms": 11919
+        }
+      },
+      {
+        "id": "commerce-swap-provider",
+        "question": "Can I run this against a different ecommerce platform instead, and what would I need to replace?",
+        "selectedId": "system:vercel-commerce",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 16405,
+        "sectionCount": 17,
+        "ranked": [5, 8, 37, 7, 36, 11, 61, 22, 32, 51, 31, 14, 34, 33, 17, 28, 19],
+        "packets": [27, 24],
+        "sections": [
+          {
+            "id": "component:app-page-tsx",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:app-page-tsx:metadata", "name": "metadata" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-index-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:lib-shopify-index-ts:get-menu", "name": "getMenu" }
+            ]
+          },
+          { "id": "component:components-layout-footer-menu-tsx", "kind": "component", "p": 37 },
+          {
+            "id": "component:components-carousel-tsx",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:components-carousel-tsx:carousel", "name": "Carousel" }
+            ]
+          },
+          { "id": "component:components-layout-footer-tsx", "kind": "component", "p": 36 },
+          { "id": "component:lib-shopify-types-ts", "kind": "component", "p": 11 },
+          { "id": "component:app-search-loading-tsx", "kind": "component", "p": 61 },
+          { "id": "component:components-layout-navbar-index-tsx", "kind": "component", "p": 22 },
+          { "id": "component:app-sitemap-ts", "kind": "component", "p": 32 },
+          { "id": "component:components-grid-index-tsx", "kind": "component", "p": 51 },
+          { "id": "component:lib-shopify-mutations-cart-ts", "kind": "component", "p": 31 },
+          { "id": "component:lib-constants-ts", "kind": "component", "p": 14 },
+          { "id": "component:lib-shopify-queries-menu-ts", "kind": "component", "p": 34 },
+          { "id": "component:lib-shopify-fragments-cart-ts", "kind": "component", "p": 33 },
+          { "id": "component:components-grid-tile-tsx", "kind": "component", "p": 17 },
+          { "id": "component:lib-utils-ts", "kind": "component", "p": 28 },
+          {
+            "id": "component:components-product-variant-selector-tsx",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:components-product-variant-selector-tsx:variant-selector", "name": "VariantSelector" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "README.md": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11492, "sectionCount": 11, "ranked": [5, 8, 37, 7, 36, 11, 61, 22, 32, 51, 31] },
+          "double": { "byteBudget": 48000, "bytes": 16405, "sectionCount": 17, "ranked": [5, 8, 37, 7, 36, 11, 61, 22, 32, 51, 31, 14, 34, 33, 17, 28, 19] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 11492, "sectionCount": 11, "ranked": [5, 8, 37, 7, 36, 11, 61, 22, 32, 51, 31] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 16405, "sectionCount": 17, "ranked": [5, 8, 37, 7, 36, 11, 61, 22, 32, 51, 31, 14, 34, 33, 17, 28, 19] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "74b6ed6ae8ebff8d302f36cafa4579991b74f9c579c7155d77b843158dce4c8d",
+          "allowedIdsCount": 23,
+          "allowedIdsSha256": "692e85c0de873c95b4233d83cf365ba4eab77aa80a2d4c24eb89957948b005a6",
+          "allowedIdsInContent": ["component:app-page-tsx", "code:app-page-tsx:metadata", "component:lib-shopify-index-ts", "code:lib-shopify-index-ts:get-menu", "component:components-layout-footer-menu-tsx", "component:components-carousel-tsx", "code:components-carousel-tsx:carousel", "component:lib-shopify-types-ts", "component:components-layout-navbar-index-tsx", "component:app-sitemap-ts", "component:components-grid-index-tsx", "component:lib-shopify-mutations-cart-ts", "component:lib-constants-ts", "component:lib-shopify-queries-menu-ts", "component:lib-shopify-fragments-cart-ts", "component:components-grid-tile-tsx", "component:lib-utils-ts", "component:components-product-variant-selector-tsx", "code:components-product-variant-selector-tsx:variant-selector"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Yes — the app is built so Shopify lives behind one integration layer, so you could target another platform, but you'd rewrite that layer and a handful of hardcoded Shopify assumptions in the UI.\\n\\n**Replace wholesale:**\\n- `lib/shopify/index.ts` — `shopifyFetch`, the `reshape*` helpers, `getMenu`, cart mutations, and webhook `revalidate` (`component:lib-shopify-index-ts`, `code:lib-shopify-index-ts:get-menu`).\\n- `lib/shopify/types.ts` — the `Cart`/`Product`/`Collection` and `Shopify*Operation` contract every page renders against (`component:lib-shopify-types-ts`).\\n- The GraphQL strings: `lib/shopify/queries/menu.ts` (`getMenuQuery`), `lib/shopify/mutations/cart.ts`, `lib/shopify/fragments/cart.ts` (`component:lib-shopify-queries-menu-ts`, `component:lib-shopify-mutations-cart-ts`, `component:lib-shopify-fragments-cart-ts`).\\n- Env validation in `lib/utils.ts` (`validateEnvironmentVariables` checks `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_STOREFRONT_ACCESS_TOKEN`), used by `app/sitemap.ts` (`component:lib-utils-ts`, `component:app-sitemap-ts`).\\n\\n**Then fix Shopify-flavoured assumptions:**\\n- `lib/constants.ts`: `HIDDEN_PRODUCT_TAG` (\\\"nextjs-frontend-hidden\\\") and `TAGS` (`component:lib-constants-ts`).\\n- `components/layout/navbar/index.tsx` hardcodes menu handle `next-js-frontend-header-menu`; `components/carousel.tsx` hardcodes collection `hidden-homepage-carousel` (`code:components-carousel-tsx:carousel`); `getMenu` rewrites `/collections`→`/search` URLs (`code:lib-shopify-index-ts:get-menu`).\\n- `components/product/variant-selector.tsx` assumes Shopify's option/variant model (`code:components-product-variant-selector-tsx:variant-selector`).\\n- Cosmetic: `metadata` in `app/page.tsx` mentions Shopify (`code:app-page-tsx:metadata`).\\n\\nPresentation components (`components/grid/index.tsx`, `components/grid/tile.tsx`, `components/layout/footer-menu.tsx`) are platform-agnostic and can stay. Missing from the evidence: product/page/query files beyond menu and cart.\", \"citations\": [\"component:lib-shopify-index-ts\", \"code:lib-shopify-index-ts:get-menu\", \"component:lib-shopify-types-ts\", \"component:lib-shopify-queries-menu-ts\", \"component:lib-shopify-mutations-cart-ts\", \"component:lib-shopify-fragments-cart-ts\", \"component:lib-utils-ts\", \"component:app-sitemap-ts\", \"component:lib-constants-ts\", \"component:components-layout-navbar-index-tsx\", \"component:components-carousel-tsx\", \"code:components-carousel-tsx:carousel\", \"component:components-product-variant-selector-tsx\", \"code:components-product-variant-selector-tsx:variant-selector\", \"component:app-page-tsx\", \"code:app-page-tsx:metadata\", \"component:components-grid-index-tsx\", \"component:components-grid-tile-tsx\", \"component:components-layout-footer-menu-tsx\"]}",
+          "usage": { "promptTokens": 5242, "completionTokens": 965, "totalTokens": 6207, "costUsd": 0.00311982 },
+          "ms": 31002
+        }
+      },
+      {
+        "id": "commerce-sort-options",
+        "question": "Where are the sort choices like 'price low to high' or 'latest arrivals' defined?",
+        "selectedId": "system:vercel-commerce",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23226,
+        "sectionCount": 15,
+        "ranked": [14, 41, 35, 20, 23, 38, 8, 13, 49, 11, 29, 54, 15, 1, 24],
+        "packets": [27, 24],
+        "sections": [
+          {
+            "id": "component:lib-constants-ts",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:lib-constants-ts:sorting", "name": "sorting" },
+              { "id": "code:lib-constants-ts:sort-filter-item", "name": "SortFilterItem" },
+              { "id": "code:lib-constants-ts:default-sort", "name": "defaultSort" }
+            ]
+          },
+          {
+            "id": "component:app-search-layout-tsx",
+            "kind": "component",
+            "p": 41,
+            "symbols": [
+              { "id": "code:app-search-layout-tsx:search-layout", "name": "SearchLayout" }
+            ]
+          },
+          {
+            "id": "component:app-search-collection-page-tsx",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:app-search-collection-page-tsx:category-page", "name": "CategoryPage" }
+            ]
+          },
+          {
+            "id": "component:app-search-page-tsx",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:app-search-page-tsx:search-page", "name": "SearchPage" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-queries-collection-ts",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:lib-shopify-queries-collection-ts:get-collection-products-query", "name": "getCollectionProductsQuery" },
+              { "id": "code:lib-shopify-queries-collection-ts:get-collections-query", "name": "getCollectionsQuery" }
+            ]
+          },
+          {
+            "id": "component:components-price-tsx",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:components-price-tsx:price", "name": "Price" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-index-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:lib-shopify-index-ts:get-collection-products", "name": "getCollectionProducts" },
+              { "id": "code:lib-shopify-index-ts:get-products", "name": "getProducts" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-fragments-product-ts",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:lib-shopify-fragments-product-ts:product-fragment", "name": "productFragment" }
+            ]
+          },
+          {
+            "id": "component:components-layout-search-filter-item-tsx",
+            "kind": "component",
+            "p": 49,
+            "symbols": [
+              { "id": "code:components-layout-search-filter-item-tsx:sort-filter-item", "name": "SortFilterItem" },
+              { "id": "code:components-layout-search-filter-item-tsx:filter-item", "name": "FilterItem" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-types-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:lib-shopify-types-ts:shopify-product", "name": "ShopifyProduct" },
+              { "id": "code:lib-shopify-types-ts:product-variant", "name": "ProductVariant" },
+              { "id": "code:lib-shopify-types-ts:shopify-products-operation", "name": "ShopifyProductsOperation" }
+            ]
+          },
+          { "id": "component:lib-shopify-fragments-seo-ts", "kind": "component", "p": 29 },
+          {
+            "id": "component:lib-type-guards-ts",
+            "kind": "component",
+            "p": 54,
+            "symbols": [
+              { "id": "code:lib-type-guards-ts:shopify-error-like", "name": "ShopifyErrorLike" },
+              { "id": "code:lib-type-guards-ts:is-shopify-error", "name": "isShopifyError" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-queries-product-ts",
+            "kind": "component",
+            "p": 15,
+            "symbols": [
+              { "id": "code:lib-shopify-queries-product-ts:get-products-query", "name": "getProductsQuery" }
+            ]
+          },
+          {
+            "id": "component:app-product-handle-page-tsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:app-product-handle-page-tsx:product-page", "name": "ProductPage" },
+              { "id": "code:app-product-handle-page-tsx:related-products", "name": "RelatedProducts" }
+            ]
+          },
+          { "id": "container:vercel-commerce", "kind": "container", "p": 24 }
+        ],
+        "expectedIndexed": { "lib/constants.ts": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11874, "sectionCount": 7, "ranked": [14, 41, 35, 20, 23, 38, 13] },
+          "double": { "byteBudget": 48000, "bytes": 25045, "sectionCount": 17, "ranked": [14, 41, 35, 20, 23, 38, 8, 13, 49, 11, 29, 54, 15, 1, 24, 45, 39] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 12122, "sectionCount": 7, "ranked": [14, 41, 35, 20, 23, 38, 8] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23226, "sectionCount": 15, "ranked": [14, 41, 35, 20, 23, 38, 8, 13, 49, 11, 29, 54, 15, 1, 24] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "663e5d9accb96d689f812ee0e410fdef7deffedf8f5df3d267c9f6c903d48d5f",
+          "allowedIdsCount": 38,
+          "allowedIdsSha256": "0fc9eb8008299458412174f85e990c83cec6ab404e1f0ff12a899bafae9c7e52",
+          "allowedIdsInContent": ["component:lib-constants-ts", "code:lib-constants-ts:sorting", "code:lib-constants-ts:sort-filter-item", "code:lib-constants-ts:default-sort", "code:app-search-layout-tsx:search-layout", "code:app-search-collection-page-tsx:category-page", "code:app-search-page-tsx:search-page", "code:lib-shopify-index-ts:get-collection-products", "code:lib-shopify-index-ts:get-products", "code:components-layout-search-filter-item-tsx:sort-filter-item"],
+          "packetSources": {},
+          "content": "{\"answer\": \"The sort choices like \\\"Price: Low to high\\\" and \\\"Latest arrivals\\\" are defined in **`lib/constants.ts`**, in the `sorting` array (`SortFilterItem[]`), with `defaultSort` as its first entry (Relevance, `slug: null`).\\n\\n- `sorting` (`code:lib-constants-ts:sorting`) lists each option as `{ title, slug, sortKey, reverse }` — e.g. `Latest arrivals` (`latest-desc`, `CREATED_AT`, reverse) and `Price: Low to high` (`price-asc`, `PRICE`).\\n- The `SortFilterItem` type (`code:lib-constants-ts:sort-filter-item`) constrains `sortKey` to `RELEVANCE | BEST_SELLING | CREATED_AT | PRICE`; `defaultSort` (`code:lib-constants-ts:default-sort`) is the fallback.\\n- Consumers: `app/search/layout.tsx` renders them via `<FilterList list={sorting} title=\\\"Sort by\\\" />` (`code:app-search-layout-tsx:search-layout`), and `app/search/page.tsx` (`code:app-search-page-tsx:search-page`) / `app/search/[collection]/page.tsx` (`code:app-search-collection-page-tsx:category-page`) resolve the `sort` query param against `sorting` and fall back to `defaultSort`.\\n- The active row UI is `SortFilterItem` in `components/layout/search/filter/item.tsx` (`code:components-layout-search-filter-item-tsx:sort-filter-item`), matching `searchParams.get(\\\"sort\\\")` to `item.slug`.\\n- The chosen `sortKey`/`reverse` flow into Shopify via `getProducts`/`getCollectionProducts` (`code:lib-shopify-index-ts:get-products`, `code:lib-shopify-index-ts:get-collection-products`), which map `CREATED_AT` → `CREATED` for collections.\", \"citations\": [\"component:lib-constants-ts\", \"code:lib-constants-ts:sorting\", \"code:lib-constants-ts:sort-filter-item\", \"code:lib-constants-ts:default-sort\", \"code:app-search-layout-tsx:search-layout\", \"code:app-search-page-tsx:search-page\", \"code:app-search-collection-page-tsx:category-page\", \"code:components-layout-search-filter-item-tsx:sort-filter-item\", \"code:lib-shopify-index-ts:get-products\", \"code:lib-shopify-index-ts:get-collection-products\"]}",
+          "usage": { "promptTokens": 7851, "completionTokens": 557, "totalTokens": 8408, "costUsd": 0.003899775 },
+          "ms": 11007
+        }
+      },
+      {
+        "id": "commerce-variant-pick",
+        "question": "When a shopper chooses a size or colour, how does the site work out which exact version of the product gets added?",
+        "selectedId": "system:vercel-commerce",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23833,
+        "sectionCount": 14,
+        "ranked": [2, 12, 8, 9, 1, 21, 11, 13, 60, 52, 16, 14, 19, 44],
+        "packets": [27, 24],
+        "sections": [
+          {
+            "id": "component:components-cart-add-to-cart-tsx",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:components-cart-add-to-cart-tsx:add-to-cart", "name": "AddToCart" },
+              { "id": "code:components-cart-add-to-cart-tsx:submit-button", "name": "SubmitButton" }
+            ]
+          },
+          {
+            "id": "component:components-cart-actions-ts",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:components-cart-actions-ts:add-item", "name": "addItem" },
+              { "id": "code:components-cart-actions-ts:update-item-quantity", "name": "updateItemQuantity" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-index-ts",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:lib-shopify-index-ts:reshape-products", "name": "reshapeProducts" },
+              { "id": "code:lib-shopify-index-ts:reshape-product", "name": "reshapeProduct" },
+              { "id": "code:lib-shopify-index-ts:get-product-recommendations", "name": "getProductRecommendations" }
+            ]
+          },
+          {
+            "id": "component:components-product-product-description-tsx",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:components-product-product-description-tsx:product-description", "name": "ProductDescription" }
+            ]
+          },
+          {
+            "id": "component:app-product-handle-page-tsx",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:app-product-handle-page-tsx:related-products", "name": "RelatedProducts" },
+              { "id": "code:app-product-handle-page-tsx:product-page", "name": "ProductPage" },
+              { "id": "code:app-product-handle-page-tsx:generate-metadata", "name": "generateMetadata" }
+            ]
+          },
+          {
+            "id": "component:components-grid-three-items-tsx",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:components-grid-three-items-tsx:three-item-grid", "name": "ThreeItemGrid" },
+              { "id": "code:components-grid-three-items-tsx:three-item-grid-item", "name": "ThreeItemGridItem" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-types-ts",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:lib-shopify-types-ts:shopify-product-recommendations-operation", "name": "ShopifyProductRecommendationsOperation" },
+              { "id": "code:lib-shopify-types-ts:product", "name": "Product" },
+              { "id": "code:lib-shopify-types-ts:shopify-product-operation", "name": "ShopifyProductOperation" }
+            ]
+          },
+          {
+            "id": "component:lib-shopify-fragments-product-ts",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:lib-shopify-fragments-product-ts:product-fragment", "name": "productFragment" }
+            ]
+          },
+          {
+            "id": "component:components-logo-square-tsx",
+            "kind": "component",
+            "p": 60,
+            "symbols": [
+              { "id": "code:components-logo-square-tsx:logo-square", "name": "LogoSquare" }
+            ]
+          },
+          {
+            "id": "component:components-icons-logo-tsx",
+            "kind": "component",
+            "p": 52,
+            "symbols": [
+              { "id": "code:components-icons-logo-tsx:logo-icon", "name": "LogoIcon" }
+            ]
+          },
+          {
+            "id": "component:components-cart-cart-context-tsx",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:components-cart-cart-context-tsx:create-or-update-cart-item", "name": "createOrUpdateCartItem" },
+              { "id": "code:components-cart-cart-context-tsx:use-cart", "name": "useCart" },
+              { "id": "code:components-cart-cart-context-tsx:cart-action", "name": "CartAction" }
+            ]
+          },
+          {
+            "id": "component:lib-constants-ts",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:lib-constants-ts:hidden-product-tag", "name": "HIDDEN_PRODUCT_TAG" },
+              { "id": "code:lib-constants-ts:tags", "name": "TAGS" }
+            ]
+          },
+          {
+            "id": "component:components-product-variant-selector-tsx",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:components-product-variant-selector-tsx:variant-selector", "name": "VariantSelector" },
+              { "id": "code:components-product-variant-selector-tsx:combination", "name": "Combination" }
+            ]
+          },
+          {
+            "id": "component:app-layout-tsx",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:app-layout-tsx:metadata", "name": "metadata" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "components/product/variant-selector.tsx": true, "components/cart/add-to-cart.tsx": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11737, "sectionCount": 6, "ranked": [2, 12, 8, 9, 1, 11] },
+          "double": { "byteBudget": 48000, "bytes": 35228, "sectionCount": 26, "ranked": [2, 12, 8, 9, 1, 21, 11, 13, 60, 52, 16, 14, 19, 44, 29, 31, 15, 5, 33, 10, 50, 7, 23, 18, 22, 24] },
+          "size-scaled": { "byteBudget": 12143, "bytes": 12143, "sectionCount": 6, "ranked": [2, 12, 8, 9, 1, 21] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23833, "sectionCount": 14, "ranked": [2, 12, 8, 9, 1, 21, 11, 13, 60, 52, 16, 14, 19, 44] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "d3e2ee45ba6da29db5afcfc4e2077575279c0fe5735e230a91cbc1add59fa904",
+          "allowedIdsCount": 43,
+          "allowedIdsSha256": "51265bbd0d7e50d089d6480665e577c8bd2bbe39fdb7898309e56b8ef79e96bf",
+          "allowedIdsInContent": ["component:components-cart-add-to-cart-tsx", "code:components-cart-add-to-cart-tsx:add-to-cart", "code:components-cart-add-to-cart-tsx:submit-button", "component:components-cart-actions-ts", "code:components-cart-actions-ts:add-item", "component:components-product-product-description-tsx", "code:components-product-product-description-tsx:product-description", "component:lib-shopify-types-ts", "code:lib-shopify-types-ts:product", "component:lib-shopify-fragments-product-ts", "code:lib-shopify-fragments-product-ts:product-fragment", "component:components-product-variant-selector-tsx", "code:components-product-variant-selector-tsx:variant-selector", "code:components-product-variant-selector-tsx:combination"],
+          "packetSources": {},
+          "content": "{\"answer\":\"The chosen size/colour is written into the URL, and `AddToCart` resolves it to a Shopify variant ID before adding anything.\\n\\n- `components/product/variant-selector.tsx` — `VariantSelector` and `Combination` render the option choices and push the picked option values into the query string (`useSearchParams`/`useRouter`), so the selection lives in the URL rather than component state.\\n- `components/cart/add-to-cart.tsx` — `AddToCart` reads those query params and finds the variant whose `selectedOptions` all match (`option.value === searchParams.get(option.name.toLowerCase())`); it falls back to `variants[0].id` when the product has only one variant, producing `selectedVariantId`, then looks up `finalVariant` by id.\\n- `components/cart/add-to-cart.tsx` — `SubmitButton` gates the form on `availableForSale` and `selectedVariantId`.\\n- `components/cart/actions.ts` — `addItem` receives that `selectedVariantId` as `merchandiseId` and calls `addToCart([{ merchandiseId, quantity: 1 }])`, erroring if no variant was resolved.\\n- `components/product/product-description.tsx` — `ProductDescription` wires it together: it renders `VariantSelector` with `product.options`/`product.variants` and then `AddToCart`.\\n- `lib/shopify/fragments/product.ts` — `productFragment` supplies `options { name, values }` and `variants { id, selectedOptions, availableForSale }`, which is what matching depends on.\\n\\nProduct shape (`Product`, `ProductVariant`) comes from `lib/shopify/types.ts` (`Product`). Nothing in the evidence describes how the option values are formatted into URL slugs inside `VariantSelector` beyond the `searchParams.get(option.name.toLowerCase())` read.\",\"citations\":[\"component:components-product-variant-selector-tsx\",\"code:components-product-variant-selector-tsx:variant-selector\",\"code:components-product-variant-selector-tsx:combination\",\"component:components-cart-add-to-cart-tsx\",\"code:components-cart-add-to-cart-tsx:add-to-cart\",\"code:components-cart-add-to-cart-tsx:submit-button\",\"component:components-cart-actions-ts\",\"code:components-cart-actions-ts:add-item\",\"component:components-product-product-description-tsx\",\"code:components-product-product-description-tsx:product-description\",\"component:lib-shopify-fragments-product-ts\",\"code:lib-shopify-fragments-product-ts:product-fragment\",\"component:lib-shopify-types-ts\",\"code:lib-shopify-types-ts:product\"]}",
+          "usage": { "promptTokens": 8165, "completionTokens": 595, "totalTokens": 8760, "costUsd": 0.004069425 },
+          "ms": 14671
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "enriched",
+    "nodes": [
+      {
+        "nodeId": "system:vercel-commerce",
+        "name": "Vercel_commerce",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**Vercel_commerce** is a Next.js storefront system written in JavaScript and TypeScript, backed by Shopify's Storefront API. Its single container, **vercel_commerce**, holds everything: `app/` for ro…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with the **vercel_commerce** container; `lib/shopify/index.ts` funnels every Shopify GraphQL call and reshapes responses. | Route files under `app/` are thin passthroughs; real wo…" },
+          { "id": "children", "type": "children", "preview": "Children: 1 node — vercel_commerce (container)" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"],
+        "jev": {
+          "order": ["enrichment:summary", "enrichment:keyPoints", "enrichment:evidence"],
+          "omitted": [
+            { "id": "children", "why": "jev-omit" }
+          ],
+          "inputTokens": 1639,
+          "estimatedCostUsd": 0.0000688,
+          "latencyMs": 391
+        }
+      },
+      {
+        "nodeId": "container:vercel-commerce",
+        "name": "vercel_commerce",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**vercel_commerce** is a Next.js storefront backed by Shopify's Storefront API. `app/` holds route and page entries, `components/` the UI, and `lib/shopify/index.ts` is the single data gateway, so st…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `lib/shopify/index.ts` first: `shopifyFetch` funnels every GraphQL call and `reshape*` converts Shopify shapes. | Hand-off: `components/cart/actions.ts` mutates the cart and `creat…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — Vercel_commerce (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 66 nodes — app/[page]/layout.tsx (component); app/[page]/opengraph-image.tsx (component); app/[page]/page.tsx (component); +63 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "children", "enrichment:evidence"], "inputTokens": 1989, "estimatedCostUsd": 0.0000835, "latencyMs": 316 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "full" },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 80, "maxTokens": 4000000, "maxDollars": 0.35, "maxConcurrent": 4, "globalMaxDollars": 0.9 },
+    "ms": 507699,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 68,
+    "inputTokens": 102559,
+    "outputTokens": 53284,
+    "costUsd": 0.071197,
+    "costEstimated": false,
+    "coverage": { "accepted": 68, "failed": 0, "notRun": 0, "belowCap": 188, "inScope": 68 },
+    "byKind": {
+      "code": { "total": 188, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 188 },
+      "component": { "total": 66, "accepted": 66, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 1,
+    "parentsWithUnsettledChildren": 0
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 14940,
+    "outcome": "accepted",
+    "stopped": "failed",
+    "requests": 56,
+    "inputTokens": 100053,
+    "costUsd": 0.0042022,
+    "costEstimated": true,
+    "rows": [
+      { "scopeId": "component:app-api-revalidate-route-ts", "claimId": "cea0456a00a703a144a2c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:app-error-tsx", "claimId": "c9be85ca474c3db712e81", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:app-error-tsx", "claimId": "ceb203e28e292d5274d7d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:app-error-tsx", "claimId": "cca639655b6511686aa64", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:app-layout-tsx", "claimId": "ce3ab1beb9cead12e5d71", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:app-layout-tsx", "claimId": "c71197620fb37cce70f3b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:app-layout-tsx", "claimId": "c3b4ca593d50e374e5588", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:app-layout-tsx", "claimId": "c7fc973c4c4af6b097bf2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:app-layout-tsx", "claimId": "c8d8d5871b9eb7cd2f7cd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:app-opengraph-image-tsx", "claimId": "c828522f1b7e64424590a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:app-opengraph-image-tsx", "claimId": "cc4a95412276afc58d3be", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:app-opengraph-image-tsx", "claimId": "c83fb51a45108c832f0a3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:app-opengraph-image-tsx", "claimId": "c65985d10cbed1ba03f8a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:app-page-layout-tsx", "claimId": "c0d3aec35f2346e45ef43", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-page-layout-tsx", "claimId": "c9296b2017b587bf81e9c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:app-page-layout-tsx", "claimId": "c73e322ef939bfd6ef6cc", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:app-page-layout-tsx", "claimId": "cd216837790a189b0975b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.54 },
+      { "scopeId": "component:app-page-opengraph-image-tsx", "claimId": "cea40a67ea795839e54fb", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:app-page-opengraph-image-tsx", "claimId": "c29ac036339567ac6fd33", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:app-page-opengraph-image-tsx", "claimId": "c13ec2850b7ff4514183c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:app-page-opengraph-image-tsx", "claimId": "c0e062dfbca033e0d3b2d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.61 },
+      { "scopeId": "component:app-page-page-tsx", "claimId": "c7f1ca97f6ef6cc4272c6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:app-page-page-tsx", "claimId": "c04e2d684af530b1af492", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:app-page-page-tsx", "claimId": "cc3e44055fbefd4416a97", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:app-page-page-tsx", "claimId": "c313f8d3656f351fc5edd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:app-page-tsx", "claimId": "cae6c05cf17ebe4dbd37d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:app-page-tsx", "claimId": "c0e064c6838a42270dd71", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:app-product-handle-page-tsx", "claimId": "c3352426a9f7dcb05836c", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:app-product-handle-page-tsx", "claimId": "c01d8148bd41cd5d38439", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:app-product-handle-page-tsx", "claimId": "c7ab61acc2b6b8171547c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:app-robots-ts", "claimId": "c5b9250cc59fff709f219", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:app-robots-ts", "claimId": "c311f089151567a4d742b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:app-robots-ts", "claimId": "c5aa2f7920c3870ab85e3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:app-search-children-wrapper-tsx", "claimId": "c2e9386fe278183d169a2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.51 },
+      { "scopeId": "component:app-search-children-wrapper-tsx", "claimId": "cd99048e42a5655c6dc90", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.14 },
+      { "scopeId": "component:app-search-children-wrapper-tsx", "claimId": "ce3b626c1e8597db22832", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:app-search-collection-opengraph-image-tsx", "claimId": "c0742c5cdb53de3770f54", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:app-search-collection-opengraph-image-tsx", "claimId": "c9f4ba3a92735a09f6df1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:app-search-collection-opengraph-image-tsx", "claimId": "c2aa1aaa41fee054478f1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:app-search-collection-page-tsx", "claimId": "c2da77379350d64792cfb", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:app-search-collection-page-tsx", "claimId": "ce83cbc894cece8bf52e9", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:app-search-collection-page-tsx", "claimId": "c6a3065b5ebf47b0513a6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:app-search-layout-tsx", "claimId": "c3ba6a32701cba4a15821", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.21 },
+      { "scopeId": "component:app-search-layout-tsx", "claimId": "c2d898ccd7e3b0e911825", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:app-search-layout-tsx", "claimId": "c04ba4a9baf14298b9083", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.18 },
+      { "scopeId": "component:app-search-loading-tsx", "claimId": "c124113798acf92132405", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:app-search-loading-tsx", "claimId": "cbb7412b531853588a761", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:app-search-page-tsx", "claimId": "ce53ee59673a80cb8e6c8", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:app-search-page-tsx", "claimId": "ced786bba203600597c55", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:app-search-page-tsx", "claimId": "c13b5563f142a0dc70187", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:app-sitemap-ts", "claimId": "ca8cb0bb430dfb3b72c89", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:app-sitemap-ts", "claimId": "c2d5d384878b2adbd3ec2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:app-sitemap-ts", "claimId": "ca07a39ae6d1c6dfc894f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:app-sitemap-ts", "claimId": "c8e62661be218b9160bcd", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:app-sitemap-ts", "claimId": "cbaf459078b3dbdfb94c6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:app-sitemap-ts", "claimId": "c018bc6710e132869e6b4", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:components-carousel-tsx", "claimId": "c37c9012fff9842903afd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.39 },
+      { "scopeId": "component:components-carousel-tsx", "claimId": "c70dc1b67621ae81db3c1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:components-carousel-tsx", "claimId": "cc0c118e1fc3d5b93307e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:components-carousel-tsx", "claimId": "cd563e36c809908623654", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:components-carousel-tsx", "claimId": "ce496ee385d724e71629e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.6 },
+      { "scopeId": "component:components-cart-actions-ts", "claimId": "c3a5e498446e7d79fd769", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:components-cart-actions-ts", "claimId": "cfa72ff919e6b161b3333", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:components-cart-actions-ts", "claimId": "c58713254c4ec85596be4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:components-cart-actions-ts", "claimId": "c12ce5f79e1e07033ca97", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:components-cart-add-to-cart-tsx", "claimId": "c9c396aac97b0b6ddc87a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:components-cart-add-to-cart-tsx", "claimId": "c84bd638d13d8aba6e08b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:components-cart-add-to-cart-tsx", "claimId": "c363650fc668ab329f8b5", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:components-cart-add-to-cart-tsx", "claimId": "c6de15881661fc740a35d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:components-cart-add-to-cart-tsx", "claimId": "cf69dc4486619b666f3d3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.55 },
+      { "scopeId": "component:components-cart-cart-context-tsx", "claimId": "c54bbc9d8aa51dff110c6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-cart-cart-context-tsx", "claimId": "c04a94c212554d19df089", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-cart-cart-context-tsx", "claimId": "c98e29e087d2b81123a8c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.08 },
+      { "scopeId": "component:components-cart-cart-context-tsx", "claimId": "cabf153831c11ce3e7ab1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:components-cart-cart-context-tsx", "claimId": "c41fff1fa13bf332d3d2f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:components-cart-cart-context-tsx", "claimId": "c03a4bafb2c9688164247", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.06 },
+      { "scopeId": "component:components-cart-cart-context-tsx", "claimId": "c3c2951d074a354345d38", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:components-cart-delete-item-button-tsx", "claimId": "c84e1257dd08ae315561f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.43 },
+      { "scopeId": "component:components-cart-delete-item-button-tsx", "claimId": "c449da4ce273c43cc23ea", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:components-cart-delete-item-button-tsx", "claimId": "c5ef3415226213bb55ddd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:components-cart-delete-item-button-tsx", "claimId": "c4f3ffd31c4df2e29408e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:components-cart-edit-item-quantity-button-tsx", "claimId": "c12eb2f9998d7b2a44ade", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:components-cart-edit-item-quantity-button-tsx", "claimId": "c82bfe0d7181dfb25310f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.32 },
+      { "scopeId": "component:components-cart-edit-item-quantity-button-tsx", "claimId": "ca3fb1d196fc05e29086f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:components-cart-edit-item-quantity-button-tsx", "claimId": "c75c73f629d3d28659290", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:components-cart-modal-tsx", "claimId": "c9de414c0dc505f945e75", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-cart-modal-tsx", "claimId": "c5eb5682706eb5b90e5d7", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-cart-modal-tsx", "claimId": "cdd4ef2f5a24427469718", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-cart-modal-tsx", "claimId": "c064b71a6f8574647af35", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-cart-modal-tsx", "claimId": "c275f8f00b5614f37a9dd", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:components-cart-modal-tsx", "claimId": "c04ac763078a39daf9a3d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:components-cart-open-cart-tsx", "claimId": "cd60a19f1e6c8a7e581a8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:components-cart-open-cart-tsx", "claimId": "c59e45ef30992f6b28aab", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:components-cart-open-cart-tsx", "claimId": "c2c35dcb40159cbd75dde", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:components-cart-open-cart-tsx", "claimId": "c744435e4e39e09215095", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:components-grid-index-tsx", "claimId": "ce8ffc400ded9d942824f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:components-grid-index-tsx", "claimId": "c619a0ce5df9b52e92225", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:components-grid-three-items-tsx", "claimId": "c900b7a06082dc40198d7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:components-grid-three-items-tsx", "claimId": "c82b8c647c4542c61d81f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:components-grid-three-items-tsx", "claimId": "c2f6b0cb89d952aacecb1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:components-grid-three-items-tsx", "claimId": "cf9fa6017138f1e6a4c27", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:components-grid-tile-tsx", "claimId": "c8f0cc69bc09688f0df36", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:components-grid-tile-tsx", "claimId": "ca09b54835afa5b803ab1", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:components-grid-tile-tsx", "claimId": "ca194c47e5b1c65f3c499", "state": "unavailable", "source": "jev", "reason": "invalid-response", "kind": "component" },
+      { "scopeId": "component:components-icons-logo-tsx", "claimId": "cec36fadfefa4081bd13b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:components-icons-logo-tsx", "claimId": "c3066fcbefaad1d186875", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:components-icons-logo-tsx", "claimId": "cac7af6c6f2b7ef3e8924", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:components-icons-logo-tsx", "claimId": "cdd1ee788b3982a64012b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:components-label-tsx", "claimId": "ce7d888990377b0c4f668", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.12 },
+      { "scopeId": "component:components-label-tsx", "claimId": "ca04bd36af7b8255b49e1", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:components-label-tsx", "claimId": "c62f5972a621a90ebbfa9", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:components-layout-footer-menu-tsx", "claimId": "ccd4b0a362b2201f78881", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:components-layout-footer-menu-tsx", "claimId": "cbd654dfbefcab5f17ecc", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:components-layout-footer-tsx", "claimId": "ccf69ac2b0630e5a10bdd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-footer-tsx", "claimId": "cf44cf2d7a77242336e72", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-footer-tsx", "claimId": "c52e3145736cf27850f36", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-footer-tsx", "claimId": "c65a3cee5f4c0011ce327", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-footer-tsx", "claimId": "cbbe403a8fccdce00ee4a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-index-tsx", "claimId": "cd631a027bdf61b914105", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-index-tsx", "claimId": "c4e2e5eb355146be203a0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-index-tsx", "claimId": "cebccd4b5fe6a1127a944", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-index-tsx", "claimId": "c1ab9dbc18de34aa6843d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-mobile-menu-tsx", "claimId": "ccb66cab5fc6214b358c6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-mobile-menu-tsx", "claimId": "ce2b08783754855023a8a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-mobile-menu-tsx", "claimId": "ceacfa24975ccc9d1733d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-mobile-menu-tsx", "claimId": "cc5ff9c2526bb906a8c2d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-mobile-menu-tsx", "claimId": "c01ac46162e7166c81c6e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-search-tsx", "claimId": "c694dd1c3bfaad64d9cf8", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-navbar-search-tsx", "claimId": "c146e318ce6ca391e665b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.64 },
+      { "scopeId": "component:components-layout-navbar-search-tsx", "claimId": "ca7bce950ded1fb6a019d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:components-layout-navbar-search-tsx", "claimId": "c60d98eb519cb6748365d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:components-layout-product-grid-items-tsx", "claimId": "c70a8f15881385145eac6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:components-layout-product-grid-items-tsx", "claimId": "c96412c71183e2c02308d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:components-layout-search-collections-tsx", "claimId": "c48dfdca56d16a8d6c98d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:components-layout-search-collections-tsx", "claimId": "cbc47ebe8f7066d5295df", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:components-layout-search-collections-tsx", "claimId": "cc715f13e038c0eaa643a", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:components-layout-search-collections-tsx", "claimId": "cdfbe1bef05f7d64d6732", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:components-layout-search-filter-dropdown-tsx", "claimId": "c155070fcc0ed71f5311d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-search-filter-dropdown-tsx", "claimId": "c2137ad1bb3fd1c9b88b6", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-search-filter-dropdown-tsx", "claimId": "c3bd685c3f1e950516de0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-search-filter-index-tsx", "claimId": "ccec876fd4a94ceeb1313", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:components-layout-search-filter-index-tsx", "claimId": "c378bc5b94d9c983a09c7", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:components-layout-search-filter-index-tsx", "claimId": "c0744b3e0ced976c5e9e8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:components-layout-search-filter-index-tsx", "claimId": "c90763ad2e81ae811bf8b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:components-layout-search-filter-index-tsx", "claimId": "c7736554d0d0e2255f685", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:components-layout-search-filter-index-tsx", "claimId": "ce6132382b7c7ae0ba4a6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:components-layout-search-filter-item-tsx", "claimId": "ce5d4aee1c08d4f7463c4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:components-layout-search-filter-item-tsx", "claimId": "cce367a7d0f860d6ffe47", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:components-layout-search-filter-item-tsx", "claimId": "c192e10821882d7b01892", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:components-layout-search-filter-item-tsx", "claimId": "c14b8d91ff88c727fc5da", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:components-loading-dots-tsx", "claimId": "c2e525b1361acc2bfe664", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:components-loading-dots-tsx", "claimId": "c7f836fe8959895c68fda", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:components-loading-dots-tsx", "claimId": "c323fe4ea12708ef40060", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:components-loading-dots-tsx", "claimId": "c694fd6682ea9cbbe7380", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:components-logo-square-tsx", "claimId": "cf00c6cbe80709716d8c7", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:components-logo-square-tsx", "claimId": "c2c39beaeaf8e7ea8ce2e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.2 },
+      { "scopeId": "component:components-logo-square-tsx", "claimId": "caba1b34bf8852ca62cba", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:components-opengraph-image-tsx", "claimId": "c76424b364727f44125e5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:components-opengraph-image-tsx", "claimId": "c5d22915d5a4e10fc0f47", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:components-opengraph-image-tsx", "claimId": "c13aa3285353067e8e835", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:components-price-tsx", "claimId": "c3bba3bbed585833a876b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:components-price-tsx", "claimId": "c0ecdd3279dc233d9e4c6", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:components-price-tsx", "claimId": "c9113b9b8dc4bf4aa3093", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:components-product-gallery-tsx", "claimId": "cead49b10c75cac3ebf96", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-product-gallery-tsx", "claimId": "ca21f54df139040b1cccc", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-product-gallery-tsx", "claimId": "c4babb9e27afa46b908da", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-product-gallery-tsx", "claimId": "cc9dfab583feead6a2cfb", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-product-gallery-tsx", "claimId": "c522007477f01203b9411", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-product-product-description-tsx", "claimId": "c6d74002d1bca25660848", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:components-product-variant-selector-tsx", "claimId": "cf55c71b856d31bff6de1", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-product-variant-selector-tsx", "claimId": "c23292e6a2dbf8bd6e250", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-product-variant-selector-tsx", "claimId": "cb54fa4070ba371b67028", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:components-product-variant-selector-tsx", "claimId": "c9cde829c5ed6032f8183", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:components-prose-tsx", "claimId": "c981b38ecdf6f5ea77256", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-prose-tsx", "claimId": "cb762387660f357f4732a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-prose-tsx", "claimId": "cef3dc122854bf45f76dd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-prose-tsx", "claimId": "c8a80470a65948a5adc50", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:components-welcome-toast-tsx", "claimId": "cc81ad37f8b554769699b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:components-welcome-toast-tsx", "claimId": "c73c75399181048c8ce2a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:components-welcome-toast-tsx", "claimId": "cd4fffbdbcee009f639a2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:components-welcome-toast-tsx", "claimId": "c750dda3778ec773803fb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:components-welcome-toast-tsx", "claimId": "c69a37b017a5cf7815a09", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:lib-constants-ts", "claimId": "cf636bf1c534966486eda", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:lib-constants-ts", "claimId": "ce87be3c41803c903854b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:lib-constants-ts", "claimId": "c2679880ee8d2b3f2ae8c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:lib-constants-ts", "claimId": "c92058254fde66a604270", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:lib-constants-ts", "claimId": "ca14e4cd18eda5068f783", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:lib-shopify-fragments-cart-ts", "claimId": "c5ad0f9e3d06620d7c004", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-fragments-cart-ts", "claimId": "c9791e23c58df80545b7f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-fragments-image-ts", "claimId": "c782c128407463614a5df", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:lib-shopify-fragments-image-ts", "claimId": "c30fea117db9c8f5a1144", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:lib-shopify-fragments-image-ts", "claimId": "c67c94baf846a28dc5165", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:lib-shopify-fragments-product-ts", "claimId": "c9043a10253c18f774214", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-fragments-product-ts", "claimId": "c655de5d623370ada8d77", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-fragments-product-ts", "claimId": "c4de3ca9388599618ad5d", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-fragments-product-ts", "claimId": "c65d86c39490d8c1c2ac8", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-fragments-product-ts", "claimId": "ceee1c3e122465c4ffc18", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-fragments-seo-ts", "claimId": "c6328dbd9957f32c07427", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.38 },
+      { "scopeId": "component:lib-shopify-fragments-seo-ts", "claimId": "c66514e0bdbb1486f74d2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:lib-shopify-index-ts", "claimId": "cb53f4d606cb02e886a18", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-index-ts", "claimId": "c9694fa65a77973c842a5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-index-ts", "claimId": "cd120d07d3d5c96abc456", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-index-ts", "claimId": "c6593fd1d22504a62e15a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:lib-shopify-index-ts", "claimId": "cf6ac220e374065b347f2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:lib-shopify-index-ts", "claimId": "c4dd28aea7b4b05a18689", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:lib-shopify-index-ts", "claimId": "c79d3728bc3f4b53700ee", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:lib-shopify-mutations-cart-ts", "claimId": "c2a2a85b1ea45cd627a76", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:lib-shopify-mutations-cart-ts", "claimId": "c81e58fb11d8207dd2945", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:lib-shopify-mutations-cart-ts", "claimId": "c02edfc4e0e684f349de3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:lib-shopify-mutations-cart-ts", "claimId": "c786c82d56678bba9759f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:lib-shopify-queries-cart-ts", "claimId": "c1a7427b853cb8321ec15", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:lib-shopify-queries-cart-ts", "claimId": "c5d09e504cc4f8f3718e2", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:lib-shopify-queries-cart-ts", "claimId": "cd2e924ff9fbc1115d5d1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:lib-shopify-queries-collection-ts", "claimId": "cc3f6c7927b8d57f4af27", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:lib-shopify-queries-collection-ts", "claimId": "c7d11ff8aeba1b210b79c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:lib-shopify-queries-collection-ts", "claimId": "cb1d6d45f6500d164672f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:lib-shopify-queries-collection-ts", "claimId": "ce3b7fbb1bde50a94c502", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:lib-shopify-queries-menu-ts", "claimId": "c7c8b73d5fb12b930609e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.27 },
+      { "scopeId": "component:lib-shopify-queries-menu-ts", "claimId": "cc1f55a6809f77e23ab7c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:lib-shopify-queries-page-ts", "claimId": "cc8298bc5320c63c2602a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:lib-shopify-queries-page-ts", "claimId": "cf33357919eafd3979397", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:lib-shopify-queries-page-ts", "claimId": "c1c9d73c842db807e2ef1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:lib-shopify-queries-page-ts", "claimId": "c39483697c0fe08437e9a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:lib-shopify-queries-product-ts", "claimId": "c5ac3a19bba6fee64c3c2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:lib-shopify-queries-product-ts", "claimId": "c06a864b36a8133744d9d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:lib-shopify-queries-product-ts", "claimId": "c2ac8dd33cd65468081eb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:lib-shopify-queries-product-ts", "claimId": "c3192b00ebc40060ec66e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:lib-shopify-types-ts", "claimId": "c8ae45be03ae6e353c131", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:lib-shopify-types-ts", "claimId": "c7e2156f82d0cae03ac03", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:lib-shopify-types-ts", "claimId": "cace2f33bf9f0212c0d63", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:lib-shopify-types-ts", "claimId": "c622f29da1b927441ccd3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:lib-shopify-types-ts", "claimId": "c1dbea84afed55574e2dc", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:lib-type-guards-ts", "claimId": "c2d4d4b786711499fa422", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:lib-type-guards-ts", "claimId": "caac9b93a0f5e429a0c3b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:lib-type-guards-ts", "claimId": "cef5fa38b98a8b0dbd528", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:lib-type-guards-ts", "claimId": "ce65577c83f19fb2dffda", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:lib-type-guards-ts", "claimId": "c7d078a65a91a0e930ab1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:lib-utils-ts", "claimId": "c91bd140dfc3adeac9bc8", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:lib-utils-ts", "claimId": "cf20fe1e4b70aaa581602", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:lib-utils-ts", "claimId": "c8ebd07c6237f6e8bf6dd", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:lib-utils-ts", "claimId": "c9b9d76b8a47006b82e9c", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:next-config-ts", "claimId": "cac5d1529ab20b05a654d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:next-config-ts", "claimId": "c92e2c958e8b4e3fe5de6", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:postcss-config-mjs", "claimId": "c22086251c4648a56d60e", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:postcss-config-mjs", "claimId": "c73eb3697b530e925b1b2", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:postcss-config-mjs", "claimId": "c355d3f1cea18798ee008", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" }
+    ]
+  },
+  "stageMs": { "blocks": 844 }
+}

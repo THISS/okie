@@ -1,0 +1,1724 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "BurntSushi__ripgrep",
+  "repository": "BurntSushi/ripgrep",
+  "commitSha": "3fce3b5bb0236da2df6d99672afb8a719642eca7",
+  "preparedCommitSha": "fa7b8f13b610f5b90ed5e0ecbd5824cb69d90f47",
+  "evalPrepare": { "dropSymlinks": true, "why": "As-is scan aborts on a committed symlink (HomebrewFormula): \"Committed source requires materialized files; symlink/submodule is unsupported\".", "droppedPaths": 1 },
+  "scan": {
+    "asIs": { "revision": "3fce3b5bb0236da2df6d99672afb8a719642eca7", "ok": false, "ms": 30, "error": "Committed source requires materialized files; symlink/submodule is unsupported: HomebrewFormula" },
+    "prepared": {
+      "revision": "fa7b8f13b610f5b90ed5e0ecbd5824cb69d90f47",
+      "ok": true,
+      "ms": 20155,
+      "entities": 2831,
+      "relations": 5332,
+      "kinds": { "code": 2731, "component": 88, "container": 11, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:burnt-sushi-ripgrep", "name": "BurntSushi_ripgrep", "components": 25 },
+        { "id": "container:crates-cli", "name": "cli", "components": 8 },
+        { "id": "container:crates-globset", "name": "globset", "components": 5 },
+        { "id": "container:crates-grep", "name": "grep", "components": 1 },
+        { "id": "container:crates-ignore", "name": "ignore", "components": 9 },
+        { "id": "container:crates-index", "name": "index", "components": 3 },
+        { "id": "container:crates-matcher", "name": "matcher", "components": 2 },
+        { "id": "container:crates-pcre2", "name": "pcre2", "components": 3 },
+        { "id": "container:crates-printer", "name": "printer", "components": 13 },
+        { "id": "container:crates-regex", "name": "regex", "components": 9 },
+        { "id": "container:crates-searcher", "name": "searcher", "components": 10 }
+      ],
+      "signals": { "entities": 2831, "containers": 11, "components": 88, "files": 100, "maxDepth": 4, "medianDepth": 3, "language": "Rust" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:37.890Z",
+    "corpus": "sampled-enriched",
+    "entityCount": 2831,
+    "systemNames": ["ripgrep"],
+    "paths": ["crates/ignore/src/gitignore.rs", "crates/core/flags/defs.rs", "crates/ignore/src/dir.rs", "crates/ignore/src/walk.rs", "crates/core/flags/lowargs.rs", "crates/ignore/src/lib.rs", "crates/core/flags/mod.rs", "crates/ignore/src/pathutil.rs", "crates/ignore/src/overrides.rs", "crates/searcher/src/testutil.rs", "crates/ignore/src/types.rs", "crates/core/flags/hiargs.rs", "crates/ignore/src/incremental.rs", "crates/cli/src/decompress.rs", "crates/ignore", "crates/globset/src/glob.rs", "crates/core/messages.rs", "crates/printer/src/summary.rs", "crates/index/src/index.rs", "crates/globset/src/lib.rs", "crates/searcher/src/line_buffer.rs", "crates/core/flags/doc/man.rs", "crates/core/flags/doc/help.rs", "crates/searcher/src/searcher/mod.rs", "burnt-sushi-ripgrep", "crates/searcher/src/searcher/core.rs", "crates/searcher/src/searcher/glue.rs", "crates/printer/src/hyperlink/mod.rs", "crates/core/main.rs", "crates/globset/src/pathutil.rs", "crates/matcher/src/lib.rs", "crates/regex/src/matcher.rs", "crates/ignore/src/default_types.rs", "crates/printer/src/hyperlink/aliases.rs", "crates/pcre2", "crates/pcre2/src/matcher.rs", "crates/core/search.rs", "crates/printer/src/standard.rs", "crates/searcher/src/sink.rs", "crates/printer/src/json.rs", "crates/regex/src/literal.rs", "crates/cli/src/process.rs", "crates/index/src/literal.rs", "crates/printer/src/lib.rs", "crates/regex/src/config.rs", "crates/searcher", "crates/regex/src/non_matching.rs", "crates/searcher/src/searcher/mmap.rs", "build.rs", "crates/searcher/src/lib.rs", "crates/core/flags/complete/fish.rs", "crates/core/flags/complete/bash.rs", "README.md", "crates/cli", "crates/globset", "crates/grep", "crates/index", "crates/matcher", "crates/printer", "crates/regex", "crates/matcher/src/interpolate.rs", "crates/printer/src/util.rs", "crates/core/flags/parse.rs", "crates/cli/src/lib.rs", "crates/pcre2/src/error.rs", "crates/searcher/src/lines.rs", "crates/regex/src/strip.rs", "crates/printer/src/color.rs", "crates/core/flags/complete/powershell.rs", "crates/core/flags/complete/zsh.rs", "crates/core/flags/doc/mod.rs", "crates/core/flags/doc/version.rs", "crates/printer/src/path.rs", "crates/regex/src/error.rs", "crates/cli/src/hostname.rs", "crates/cli/src/pattern.rs", "crates/regex/src/ban.rs", "crates/printer/src/stats.rs", "crates/printer/src/counter.rs", "crates/printer/src/jsont.rs", "crates/searcher/src/macros.rs", "crates/core/index/disabled.rs", "crates/core/index/enabled.rs", "crates/index/src/lib.rs", "crates/core/index/mod.rs", "crates/cli/src/wtr.rs", "crates/core/haystack.rs"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "rg-ignore-precedence",
+        "question": "If a file is excluded by .gitignore but another ignore file in a subfolder re-includes it, which rule wins, and in what order are the different ignore sources consulted?",
+        "selectedId": "container:crates-pcre2",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23530,
+        "sectionCount": 14,
+        "ranked": [0, 1, 2, 3, 4, 6, 5, 7, 8, 9, 10, 11, 12, 14],
+        "packets": [34, 35],
+        "sections": [
+          {
+            "id": "component:crates-ignore-src-gitignore-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-ignore-src-gitignore-rs:parse-excludes-file", "name": "parse_excludes_file" },
+              { "id": "code:crates-ignore-src-gitignore-rs:excludes-file-default", "name": "excludes_file_default" },
+              { "id": "code:crates-ignore-src-gitignore-rs:gitignore-num-ignores", "name": "Gitignore::num_ignores" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-defs-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-core-flags-defs-rs:ignore-file-doc-long", "name": "IgnoreFile::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:ignore-file", "name": "IgnoreFile" },
+              { "id": "code:crates-core-flags-defs-rs:ignore-file-update", "name": "IgnoreFile::update" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-dir-rs",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:crates-ignore-src-dir-rs:ignore-collect-ignore-files", "name": "Ignore::collect_ignore_files" },
+              { "id": "code:crates-ignore-src-dir-rs:ignore-add-child-path-with-found-ignore-files", "name": "Ignore::add_child_path_with_found_ignore_files" },
+              { "id": "code:crates-ignore-src-dir-rs:ignore-has-any-ignore-rules", "name": "Ignore::has_any_ignore_rules" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-walk-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:crates-ignore-src-walk-rs:walk-builder-add-ignore", "name": "WalkBuilder::add_ignore" },
+              { "id": "code:crates-ignore-src-walk-rs:dir-entry-inner-file-type", "name": "DirEntryInner::file_type" },
+              { "id": "code:crates-ignore-src-walk-rs:walk-builder-add-custom-ignore-filename", "name": "WalkBuilder::add_custom_ignore_filename" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-lowargs-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-core-flags-lowargs-rs:pattern-source", "name": "PatternSource" },
+              { "id": "code:crates-core-flags-lowargs-rs:mode", "name": "Mode" },
+              { "id": "code:crates-core-flags-lowargs-rs:search-mode", "name": "SearchMode" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-mod-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-core-flags-mod-rs:category", "name": "Category" },
+              { "id": "code:crates-core-flags-mod-rs:completion-type", "name": "CompletionType" },
+              { "id": "code:crates-core-flags-mod-rs:flag", "name": "Flag" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-lib-rs",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:crates-ignore-src-lib-rs:match-t-is-ignore", "name": "Match<T>::is_ignore" },
+              { "id": "code:crates-ignore-src-lib-rs:partial-error-builder-maybe-push-ignore-io", "name": "PartialErrorBuilder::maybe_push_ignore_io" },
+              { "id": "code:crates-ignore-src-lib-rs:gitignore", "name": "gitignore" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-pathutil-rs",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:crates-ignore-src-pathutil-rs:file-name", "name": "file_name" },
+              { "id": "code:crates-ignore-src-pathutil-rs:is-file-name", "name": "is_file_name" },
+              { "id": "code:crates-ignore-src-pathutil-rs:is-hidden-entry", "name": "is_hidden_entry" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-overrides-rs",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:crates-ignore-src-overrides-rs:override-num-ignores", "name": "Override::num_ignores" },
+              { "id": "code:crates-ignore-src-overrides-rs:override", "name": "Override" },
+              { "id": "code:crates-ignore-src-overrides-rs:glob-inner", "name": "GlobInner" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-testutil-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:crates-searcher-src-testutil-rs:searcher-tester-include", "name": "SearcherTester::include" },
+              { "id": "code:crates-searcher-src-testutil-rs:searcher-tester-minimal-heap-limit", "name": "SearcherTester::minimal_heap_limit" },
+              { "id": "code:crates-searcher-src-testutil-rs:searcher-tester-test", "name": "SearcherTester::test" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-types-rs",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:crates-ignore-src-types-rs:glob-a-file-type-def", "name": "Glob<'a>::file_type_def" },
+              { "id": "code:crates-ignore-src-types-rs:file-type-def", "name": "FileTypeDef" },
+              { "id": "code:crates-ignore-src-types-rs:file-type-def-globs", "name": "FileTypeDef::globs" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-hiargs-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-walk-builder", "name": "HiArgs::walk_builder" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args", "name": "HiArgs" },
+              { "id": "code:crates-core-flags-hiargs-rs:paths-from-low-args", "name": "Paths::from_low_args" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-incremental-rs",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:crates-ignore-src-incremental-rs:incremental-ignore-root-ignore", "name": "IncrementalIgnore::root_ignore" },
+              { "id": "code:crates-ignore-src-incremental-rs:incremental-ignore-new", "name": "IncrementalIgnore::new" },
+              { "id": "code:crates-ignore-src-incremental-rs:incremental-ignore-matched-with-errors-impl", "name": "IncrementalIgnore::matched_with_errors_impl" }
+            ]
+          },
+          { "id": "container:crates-ignore", "kind": "container", "p": 14 }
+        ],
+        "expectedIndexed": { "crates/ignore/src/dir.rs": true, "crates/core/flags/hiargs.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11771, "sectionCount": 6, "ranked": [0, 1, 2, 3, 4, 5] },
+          "double": { "byteBudget": 48000, "bytes": 44156, "sectionCount": 34, "ranked": [0, 1, 2, 3, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 40137, "sectionCount": 30, "ranked": [0, 1, 2, 3, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 32] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 30000, "sectionCount": 20, "ranked": [0, 1, 2, 3, 4, 6, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 25] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "4b4f8c8a6d32bd6b42a3fca6ec11cd6f390e3e3306cd8254e673587923854a09",
+          "allowedIdsCount": 85,
+          "allowedIdsSha256": "e9948010c446cd7f4d59714ff1c0c765427ced179e030594f525e6555d66b097",
+          "allowedIdsInContent": ["component:crates-ignore-src-dir-rs", "code:crates-ignore-src-dir-rs:ignore-collect-ignore-files", "code:crates-ignore-src-dir-rs:ignore-add-child-path-with-found-ignore-files", "component:crates-ignore-src-lib-rs", "container:crates-ignore"],
+          "packetSources": {},
+          "content": "{\"answer\": \"The evidence pins down the layering machinery and the CLI-side precedence, but not an explicit \\\"deeper file beats parent\\\" rule. What it does show: `Ignore::matched_ignore` (in `crates/ignore/src/dir.rs`) is the decision seam holding precedence across overrides, gitignores, types, and hidden filtering; the winner is whichever `Match` survives `Match<T>::or`, which keeps `self` unless it is `Match::None` — so call order sets glob precedence (`crates/ignore/src/lib.rs`).\\n\\n- Per-directory sources are discovered by `Ignore::collect_ignore_files` (`.ignore`, `.gitignore`, `.git`, `.jj`, plus custom filenames) and stacked for children via `Ignore::add_child_path_with_found_ignore_files`, so each subfolder's ignore files join the matcher chain as the walk descends.\\n- CLI-supplied `--ignore-file` rules explicitly rank *below* the automatically found `.gitignore`/`.rgignore`/`.ignore` files, and among multiple `--ignore-file`s, later files outrank earlier ones (`IgnoreFile::doc_long`, `crates/core/flags/defs.rs`).\\n- VCS/global toggles are wired in `HiArgs::walk_builder` (`git_global`, `git_ignore`, `git_exclude`, `require_git`), and global gitignore files enter via `WalkBuilder::add_ignore` (`crates/ignore/src/walk.rs`).\\n\\nMissing from the evidence: the exact tie-break between a parent `.gitignore` exclusion and a subfolder re-include (`!pattern`) — the atlas describes the precedence seam but no excerpt states that ordering directly. Given `Match::or` semantics, whichever matcher is consulted first wins; confirming the subfolder-first consult order would need `Ignore::matched_ignore`'s body, which is not in these sections.\",\"citations\":[\"container:crates-ignore\",\"component:crates-ignore-src-dir-rs\",\"code:crates-ignore-src-dir-rs:ignore-collect-ignore-files\",\"code:crates-ignore-src-dir-rs:ignore-add-child-path-with-found-ignore-files\",\"component:crates-ignore-src-lib-rs\",\"code",
+          "usage": { "promptTokens": 14406, "completionTokens": 1024, "totalTokens": 15430, "costUsd": 0.00715749 },
+          "ms": 25220
+        }
+      },
+      {
+        "id": "rg-binary-files",
+        "question": "Why does rg sometimes stop searching a file partway through and warn that it looks binary, and how do I make it search such files anyway?",
+        "selectedId": "system:burnt-sushi-ripgrep",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23721,
+        "sectionCount": 13,
+        "ranked": [1, 23, 26, 36, 20, 11, 37, 9, 4, 25, 17, 13, 38],
+        "packets": [52, 24, 53, 54, 55, 14, 56, 57, 34, 58, 59, 45],
+        "sections": [
+          {
+            "id": "component:crates-core-flags-defs-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-core-flags-defs-rs:binary-doc-long", "name": "Binary::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:files-with-matches-doc-long", "name": "FilesWithMatches::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:search-zip-doc-long", "name": "SearchZip::doc_long" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-searcher-mod-rs",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-mod-rs:searcher-search-file-maybe-path", "name": "Searcher::search_file_maybe_path" },
+              { "id": "code:crates-searcher-src-searcher-mod-rs:searcher-search-file", "name": "Searcher::search_file" },
+              { "id": "code:crates-searcher-src-searcher-mod-rs:searcher-fill-multi-line-buffer-from-file", "name": "Searcher::fill_multi_line_buffer_from_file" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-searcher-glue-rs",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-glue-rs:read-by-line-s-m-r-s-should-binary-quit", "name": "ReadByLine<'s, M, R, S>::should_binary_quit" },
+              { "id": "code:crates-searcher-src-searcher-glue-rs:slice-by-line-s-m-s-run", "name": "SliceByLine<'s, M, S>::run" },
+              { "id": "code:crates-searcher-src-searcher-glue-rs:multi-line-s-m-s-run", "name": "MultiLine<'s, M, S>::run" }
+            ]
+          },
+          {
+            "id": "component:crates-core-search-rs",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:crates-core-search-rs:search-worker-builder-binary-detection-explicit", "name": "SearchWorkerBuilder::binary_detection_explicit" },
+              { "id": "code:crates-core-search-rs:search-worker-builder-binary-detection-implicit", "name": "SearchWorkerBuilder::binary_detection_implicit" },
+              { "id": "code:crates-core-search-rs:search-worker", "name": "SearchWorker" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-line-buffer-rs",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:crates-searcher-src-line-buffer-rs:binary-detection", "name": "BinaryDetection" },
+              { "id": "code:crates-searcher-src-line-buffer-rs:line-buffer-set-binary-detection", "name": "LineBuffer::set_binary_detection" },
+              { "id": "code:crates-searcher-src-line-buffer-rs:line-buffer-builder-binary-detection", "name": "LineBufferBuilder::binary_detection" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-hiargs-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-core-flags-hiargs-rs:binary-detection-from-low-args", "name": "BinaryDetection::from_low_args" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-search-worker", "name": "HiArgs::search_worker" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-searcher", "name": "HiArgs::searcher" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-standard-rs",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:crates-printer-src-standard-rs:standard-impl-a-m-w-write-binary-message", "name": "StandardImpl<'a, M, W>::write_binary_message" },
+              { "id": "code:crates-printer-src-standard-rs:standard-sink-p-s-m-w-binary-data", "name": "StandardSink<'p, 's, M, W>::binary_data" },
+              { "id": "code:crates-printer-src-standard-rs:standard-impl-a-m-w-write-search-prelude", "name": "StandardImpl<'a, M, W>::write_search_prelude" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-testutil-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:crates-searcher-src-testutil-rs:searcher-tester-binary-detection", "name": "SearcherTester::binary_detection" },
+              { "id": "code:crates-searcher-src-testutil-rs:searcher-tester-new", "name": "SearcherTester::new" },
+              { "id": "code:crates-searcher-src-testutil-rs:tester-config-search-reader", "name": "TesterConfig::search_reader" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-lowargs-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-core-flags-lowargs-rs:binary-mode", "name": "BinaryMode" },
+              { "id": "code:crates-core-flags-lowargs-rs:search-mode", "name": "SearchMode" },
+              { "id": "code:crates-core-flags-lowargs-rs:mode", "name": "Mode" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-searcher-core-rs",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-detect-binary", "name": "Core<'s, M, S>::detect_binary" },
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-binary-data", "name": "Core<'s, M, S>::binary_data" },
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-binary-byte-offset", "name": "Core<'s, M, S>::binary_byte_offset" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-summary-rs",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:crates-printer-src-summary-rs:summary-sink-p-s-m-w-binary-data", "name": "SummarySink<'p, 's, M, W>::binary_data" },
+              { "id": "code:crates-printer-src-summary-rs:summary-sink-p-s-m-w-binary-byte-offset", "name": "SummarySink<'p, 's, M, W>::binary_byte_offset" },
+              { "id": "code:crates-printer-src-summary-rs:summary-sink-p-s-m-w-finish", "name": "SummarySink<'p, 's, M, W>::finish" }
+            ]
+          },
+          {
+            "id": "component:crates-cli-src-decompress-rs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:crates-cli-src-decompress-rs:resolve-binary", "name": "resolve_binary" },
+              { "id": "code:crates-cli-src-decompress-rs:try-resolve-binary", "name": "try_resolve_binary" },
+              { "id": "code:crates-cli-src-decompress-rs:decompression-reader-new-passthru", "name": "DecompressionReader::new_passthru" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-sink-rs",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:crates-searcher-src-sink-rs:a-mut-s-binary-data", "name": "&'a mut S::binary_data" },
+              { "id": "code:crates-searcher-src-sink-rs:box-s-binary-data", "name": "Box<S>::binary_data" },
+              { "id": "code:crates-searcher-src-sink-rs:sink-finish-binary-byte-offset", "name": "SinkFinish::binary_byte_offset" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "GUIDE.md": false, "crates/core/flags/hiargs.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11778, "sectionCount": 7, "ranked": [1, 23, 26, 36, 20, 9, 21] },
+          "double": { "byteBudget": 48000, "bytes": 47784, "sectionCount": 36, "ranked": [1, 23, 26, 36, 20, 11, 37, 9, 4, 25, 17, 13, 38, 6, 39, 40, 41, 42, 5, 28, 43, 44, 45, 30, 46, 47, 2, 48, 3, 24, 0, 49, 50, 10, 51, 7] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 40378, "sectionCount": 28, "ranked": [1, 23, 26, 36, 20, 11, 37, 9, 4, 25, 17, 13, 38, 6, 39, 40, 41, 42, 5, 28, 43, 44, 45, 30, 46, 47, 2, 48] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29858, "sectionCount": 18, "ranked": [1, 23, 26, 36, 20, 11, 37, 9, 4, 25, 17, 13, 38, 6, 39, 40, 41, 46] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "130f3cb41a20f4f282fe2f145fd516ca9bc21c65913c88cb764559f82013fb88",
+          "allowedIdsCount": 64,
+          "allowedIdsSha256": "ecbf631e620d3c5bf34088b6c6e0280b8a99bc1f6950e30a0b1146da0f9aabf1",
+          "allowedIdsInContent": ["component:crates-core-flags-defs-rs", "code:crates-core-flags-defs-rs:binary-doc-long", "code:crates-searcher-src-searcher-glue-rs:read-by-line-s-m-r-s-should-binary-quit", "code:crates-core-search-rs:search-worker-builder-binary-detection-explicit", "code:crates-core-search-rs:search-worker-builder-binary-detection-implicit", "code:crates-core-search-rs:search-worker", "code:crates-searcher-src-line-buffer-rs:binary-detection", "code:crates-core-flags-hiargs-rs:binary-detection-from-low-args", "code:crates-printer-src-standard-rs:standard-impl-a-m-w-write-binary-message", "code:crates-printer-src-standard-rs:standard-sink-p-s-m-w-binary-data", "code:crates-core-flags-lowargs-rs:binary-mode", "code:crates-searcher-src-searcher-core-rs:core-s-m-s-detect-binary", "code:crates-searcher-src-searcher-core-rs:core-s-m-s-binary-data", "code:crates-searcher-src-sink-rs:a-mut-s-binary-data"],
+          "packetSources": {},
+          "content": "{\"answer\":\"ripgrep treats a file as binary when it sees a NUL byte: with default detection (`BinaryDetection::quit(b'\\\\x00')`), the line buffer pretends it hit EOF at that byte, so the search stops mid-file and the printer emits `WARNING: stopped searching binary file after match` when a match preceded the NUL. To search such files anyway, use `--binary` (keep searching past NUL, stopping only at a match or EOF) or `--text` (no NUL handling at all, may print binary bytes).\\n\\n- `crates/core/flags/defs.rs` — `Binary::doc_long` documents the NUL heuristic and the `--binary` / `--text` behaviour.\\n- `crates/core/flags/lowargs.rs` — `BinaryMode` (`Auto` = skip binary, `AsText`, `SearchAndSuppress`), `crates/core/flags/hiargs.rs` — `BinaryDetection::from_low_args` maps these to `quit`/`convert`/`none` and distinguishes explicit vs implicit detection (`crates/core/search.rs` — `SearchWorkerBuilder::binary_detection_explicit` / `_implicit`).\\n- `crates/searcher/src/line_buffer.rs` — `BinaryDetection::{None, Quit, Convert}`; `Quit` makes the buffer act as EOF and hides the byte.\\n- `crates/searcher/src/searcher/core.rs` — `Core::detect_binary` / `binary_data`, `crates/searcher/src/searcher/glue.rs` — `ReadByLine::should_binary_quit` stops the read loop.\\n- `crates/printer/src/standard.rs` — `StandardSink::binary_data`, `StandardImpl::write_binary_message` produce the warning; `crates/searcher/src/sink.rs` — `Sink::binary_data` is the callback contract.\",\"citations\":[\"component:crates-core-flags-defs-rs\",\"code:crates-core-flags-defs-rs:binary-doc-long\",\"code:crates-core-flags-lowargs-rs:binary-mode\",\"code:crates-core-flags-hiargs-rs:binary-detection-from-low-args\",\"code:crates-core-search-rs:search-worker-builder-binary-detection-explicit\",\"code:crates-core-search-rs:search-worker-builder-binary-detection-implicit\",\"code:crates-searcher-src-line-buffer-rs:binary-detection\",\"code:crates-searcher-src-searcher-core-rs:core-s-m-s-detect-binary\",\"code:crates-searcher-src-searcher-core-rs:core-s-m-s-binary-data\",\"code:crates-searcher-src-searcher-glue-rs:read-by-line-s-m-r-s-should-binary-quit\",\"code:crates-printer-src-standard-rs:standard-sink-p-s-m-w-binary-data\",\"code:crates-printer-src-standard-rs:standard-impl-a-m-w-write-binary-message\",\"code:crates-searcher-src-sink-rs:a-mut-s-binary-data\"]}",
+          "usage": { "promptTokens": 10446, "completionTokens": 718, "totalTokens": 11164, "costUsd": 0.00516867 },
+          "ms": 15289
+        }
+      },
+      {
+        "id": "rg-compressed-search",
+        "question": "How can rg find matches inside .gz or .xz archives, and does it decompress them itself?",
+        "selectedId": "component:crates-printer-src-color-rs",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23634,
+        "sectionCount": 14,
+        "ranked": [13, 36, 30, 19, 31, 35, 60, 9, 1, 25, 61, 62, 63, 50],
+        "packets": [67, 58],
+        "sections": [
+          {
+            "id": "component:crates-cli-src-decompress-rs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:crates-cli-src-decompress-rs:decompression-reader-builder-matcher", "name": "DecompressionReaderBuilder::matcher" },
+              { "id": "code:crates-cli-src-decompress-rs:decompression-matcher", "name": "DecompressionMatcher" },
+              { "id": "code:crates-cli-src-decompress-rs:decompression-reader-builder-get-matcher", "name": "DecompressionReaderBuilder::get_matcher" }
+            ]
+          },
+          {
+            "id": "component:crates-core-search-rs",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:crates-core-search-rs:pattern-matcher", "name": "PatternMatcher" },
+              { "id": "code:crates-core-search-rs:search-worker-w-should-decompress", "name": "SearchWorker<W>::should_decompress" },
+              { "id": "code:crates-core-search-rs:search-result-has-match", "name": "SearchResult::has_match" }
+            ]
+          },
+          {
+            "id": "component:crates-matcher-src-lib-rs",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:crates-matcher-src-lib-rs:matcher", "name": "Matcher" },
+              { "id": "code:crates-matcher-src-lib-rs:line-match-kind", "name": "LineMatchKind" },
+              { "id": "code:crates-matcher-src-lib-rs:a-m-find-iter", "name": "&'a M::find_iter" }
+            ]
+          },
+          {
+            "id": "component:crates-globset-src-lib-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:crates-globset-src-lib-rs:regex-set-strategy-find-matches", "name": "RegexSetStrategy::find_matches" },
+              { "id": "code:crates-globset-src-lib-rs:glob-set-match-strategy-matches-into", "name": "GlobSetMatchStrategy::matches_into" },
+              { "id": "code:crates-globset-src-lib-rs:glob-set-match-strategy-is-match", "name": "GlobSetMatchStrategy::is_match" }
+            ]
+          },
+          {
+            "id": "component:crates-regex-src-matcher-rs",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:crates-regex-src-matcher-rs:regex-matcher-try-find-iter", "name": "RegexMatcher::try_find_iter" },
+              { "id": "code:crates-regex-src-matcher-rs:regex-matcher-find-candidate-line", "name": "RegexMatcher::find_candidate_line" },
+              { "id": "code:crates-regex-src-matcher-rs:regex-matcher-find-at", "name": "RegexMatcher::find_at" }
+            ]
+          },
+          {
+            "id": "component:crates-pcre2-src-matcher-rs",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:crates-pcre2-src-matcher-rs:regex-matcher-try-find-iter", "name": "RegexMatcher::try_find_iter" },
+              { "id": "code:crates-pcre2-src-matcher-rs:regex-matcher-find-at", "name": "RegexMatcher::find_at" },
+              { "id": "code:crates-pcre2-src-matcher-rs:regex-matcher-builder-build-many", "name": "RegexMatcherBuilder::build_many" }
+            ]
+          },
+          {
+            "id": "component:crates-matcher-src-interpolate-rs",
+            "kind": "component",
+            "p": 60,
+            "symbols": [
+              { "id": "code:crates-matcher-src-interpolate-rs:find-cap-ref", "name": "find_cap_ref" },
+              { "id": "code:crates-matcher-src-interpolate-rs:interpolate", "name": "interpolate" },
+              { "id": "code:crates-matcher-src-interpolate-rs:is-valid-cap-letter", "name": "is_valid_cap_letter" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-testutil-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:crates-searcher-src-testutil-rs:regex-matcher-find-candidate-line", "name": "RegexMatcher::find_candidate_line" },
+              { "id": "code:crates-searcher-src-testutil-rs:regex-matcher-find-at", "name": "RegexMatcher::find_at" },
+              { "id": "code:crates-searcher-src-testutil-rs:regex-matcher-new", "name": "RegexMatcher::new" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-defs-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-core-flags-defs-rs:invert-match-doc-long", "name": "InvertMatch::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:count-matches-doc-long", "name": "CountMatches::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:field-match-separator-doc-long", "name": "FieldMatchSeparator::doc_long" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-searcher-core-rs",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-match-by-line-fast-invert", "name": "Core<'s, M, S>::match_by_line_fast_invert" },
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-match-by-line-slow", "name": "Core<'s, M, S>::match_by_line_slow" },
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-find-by-line-fast", "name": "Core<'s, M, S>::find_by_line_fast" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-util-rs",
+            "kind": "component",
+            "p": 61,
+            "symbols": [
+              { "id": "code:crates-printer-src-util-rs:find-iter-at-in-context", "name": "find_iter_at_in_context" },
+              { "id": "code:crates-printer-src-util-rs:sunk-a-from-sink-match", "name": "Sunk<'a>::from_sink_match" },
+              { "id": "code:crates-printer-src-util-rs:sunk-a-matches", "name": "Sunk<'a>::matches" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-parse-rs",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:crates-core-flags-parse-rs:parser-find-long", "name": "Parser::find_long" },
+              { "id": "code:crates-core-flags-parse-rs:parser-find-short", "name": "Parser::find_short" },
+              { "id": "code:crates-core-flags-parse-rs:flag-map-find", "name": "FlagMap::find" }
+            ]
+          },
+          {
+            "id": "component:crates-cli-src-lib-rs",
+            "kind": "component",
+            "p": 63,
+            "symbols": [
+              { "id": "code:crates-cli-src-lib-rs:decompress", "name": "decompress" },
+              { "id": "code:crates-cli-src-lib-rs:is-readable-stdin", "name": "is_readable_stdin" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-complete-fish-rs",
+            "kind": "component",
+            "p": 50,
+            "symbols": [
+              { "id": "code:crates-core-flags-complete-fish-rs:generate", "name": "generate" },
+              { "id": "code:crates-core-flags-complete-fish-rs:template-negated", "name": "TEMPLATE_NEGATED" },
+              { "id": "code:crates-core-flags-complete-fish-rs:template", "name": "TEMPLATE" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/cli/src/decompress.rs": true, "crates/core/search.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11740, "sectionCount": 6, "ranked": [13, 36, 30, 19, 31, 35] },
+          "double": { "byteBudget": 48000, "bytes": 47927, "sectionCount": 37, "ranked": [13, 36, 30, 19, 31, 35, 60, 9, 1, 25, 61, 62, 63, 37, 26, 27, 2, 50, 53, 12, 51, 64, 17, 57, 39, 15, 21, 46, 11, 65, 5, 40, 38, 59, 34, 20, 66] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 40252, "sectionCount": 30, "ranked": [13, 36, 30, 19, 31, 35, 60, 9, 1, 25, 61, 62, 63, 37, 26, 27, 2, 50, 53, 12, 51, 64, 17, 57, 39, 15, 21, 46, 11, 20] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29992, "sectionCount": 18, "ranked": [13, 36, 30, 19, 31, 35, 60, 9, 1, 25, 61, 62, 63, 37, 26, 27, 2, 51] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "627be3e38107ce4d23e964908b4774b4cb3383c8f2e8fa655cff87b8ce3ccc63",
+          "allowedIdsCount": 81,
+          "allowedIdsSha256": "a8a076d22b2709c5a357e370fb36d24ad5fc080953a2b7551a5b06c76241178d",
+          "allowedIdsInContent": ["component:crates-cli-src-decompress-rs", "code:crates-cli-src-decompress-rs:decompression-reader-builder-matcher", "code:crates-cli-src-decompress-rs:decompression-matcher", "code:crates-cli-src-decompress-rs:decompression-reader-builder-get-matcher", "code:crates-core-search-rs:pattern-matcher", "code:crates-core-search-rs:search-worker-w-should-decompress", "code:crates-matcher-src-lib-rs:matcher", "code:crates-matcher-src-lib-rs:a-m-find-iter"],
+          "packetSources": {},
+          "content": "{\"answer\":\"rg does **not** decompress archives in-process. `crates/cli/src/decompress.rs` maps file globs to *out-of-process* decompression commands: a `DecompressionMatcher` decides whether a path matches a glob (built via `DecompressionReaderBuilder::matcher` / `get_matcher`), and the reader spawns the external decompressor and pipes its stdout to the searcher.\\n\\n- `DecompressionMatcher` (`crates/cli/src/decompress.rs`) holds the glob-to-command associations; `DecompressionMatcherBuilder::build()` merges your globs with built-in defaults, and `command()` takes the *last* matching glob, so later associations win.\\n- The resulting `DecompressionReader` stores `rdr: Result<CommandReader, File>` — `Ok` streams from the spawned decompressor process, `Err` is plain passthrough from disk (`new_passthru()`). Binary lookup goes through `resolve_binary()` / `try_resolve_binary()`, which are cfg-split for Windows.\\n- Whether an input gets this treatment is gated in `crates/core/search.rs`: `SearchWorker<W>::search()` dispatches to decompressed search, and `SearchWorker<W>::should_decompress` returns false when `decomp_builder` is `None` — i.e. archive support is controlled by `Config`/`search_zip`, not automatic.\\n- Once decompressed, the byte stream is searched like any file via `PatternMatcher` (Rust regex or PCRE2), through the shared `Matcher` trait (`find_at`, `find_iter`) in `crates/matcher/src/lib.rs`.\\n\\nWhat's missing from the evidence: which specific globs/commands cover `.gz` vs `.xz` by default (the default rule table isn't shown).\",\"citations\":[\"component:crates-cli-src-decompress-rs\",\"code:crates-cli-src-decompress-rs:decompression-matcher\",\"code:crates-cli-src-decompress-rs:decompression-reader-builder-matcher\",\"code:crates-cli-src-decompress-rs:decompression-reader-builder-get-matcher\",\"code:crates-core-search-rs:search-worker-w-should-decompress\",\"code:crates-core-search-rs:pattern-matcher\",\"code:crates-matcher-src-lib-rs:matcher\",\"code:crates-matcher-src-lib-rs:a-m-find-iter\"]}",
+          "usage": { "promptTokens": 14461, "completionTokens": 590, "totalTokens": 15051, "costUsd": 0.006803835 },
+          "ms": 14967
+        }
+      },
+      {
+        "id": "rg-config-file",
+        "question": "Can I make rg always apply my favourite flags without typing them each time? Where does it look for that?",
+        "selectedId": "system:burnt-sushi-ripgrep",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23802,
+        "sectionCount": 13,
+        "ranked": [1, 4, 11, 6, 40, 61, 50, 39, 42, 51, 44, 43, 65],
+        "packets": [52, 24, 53, 54, 55, 14, 56, 57, 34, 58, 59, 45],
+        "sections": [
+          {
+            "id": "component:crates-core-flags-defs-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-core-flags-defs-rs:low-args-indexing-unsupported-flag", "name": "LowArgs::indexing_unsupported_flag" },
+              { "id": "code:crates-core-flags-defs-rs:files-without-match-update", "name": "FilesWithoutMatch::update" },
+              { "id": "code:crates-core-flags-defs-rs:flags", "name": "FLAGS" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-lowargs-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-core-flags-lowargs-rs:color-choice", "name": "ColorChoice" },
+              { "id": "code:crates-core-flags-lowargs-rs:special-mode", "name": "SpecialMode" },
+              { "id": "code:crates-core-flags-lowargs-rs:search-mode", "name": "SearchMode" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-hiargs-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-sort", "name": "HiArgs::sort" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-printer", "name": "HiArgs::printer" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-from-low-args", "name": "HiArgs::from_low_args" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-mod-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-core-flags-mod-rs:flag", "name": "Flag" },
+              { "id": "code:crates-core-flags-mod-rs:flag-value", "name": "FlagValue" },
+              { "id": "code:crates-core-flags-mod-rs:flag-value-unwrap-switch", "name": "FlagValue::unwrap_switch" }
+            ]
+          },
+          {
+            "id": "component:crates-regex-src-literal-rs",
+            "kind": "component",
+            "p": 40,
+            "symbols": [
+              { "id": "code:crates-regex-src-literal-rs:t-seq-make-inexact", "name": "TSeq::make_inexact" },
+              { "id": "code:crates-regex-src-literal-rs:t-seq-make-infinite", "name": "TSeq::make_infinite" },
+              { "id": "code:crates-regex-src-literal-rs:t-seq-make-not-prefix", "name": "TSeq::make_not_prefix" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-util-rs",
+            "kind": "component",
+            "p": 61,
+            "symbols": [
+              { "id": "code:crates-printer-src-util-rs:find-iter-at-in-context", "name": "find_iter_at_in_context" },
+              { "id": "code:crates-printer-src-util-rs:replacer-m-replace-all", "name": "Replacer<M>::replace_all" },
+              { "id": "code:crates-printer-src-util-rs:nice-duration", "name": "NiceDuration" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-complete-fish-rs",
+            "kind": "component",
+            "p": 50,
+            "symbols": [
+              { "id": "code:crates-core-flags-complete-fish-rs:generate", "name": "generate" },
+              { "id": "code:crates-core-flags-complete-fish-rs:template-negated", "name": "TEMPLATE_NEGATED" },
+              { "id": "code:crates-core-flags-complete-fish-rs:template", "name": "TEMPLATE" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-json-rs",
+            "kind": "component",
+            "p": 39,
+            "symbols": [
+              { "id": "code:crates-printer-src-json-rs:json-builder-always-begin-end", "name": "JSONBuilder::always_begin_end" },
+              { "id": "code:crates-printer-src-json-rs:json-sink-p-s-m-w-begin", "name": "JSONSink<'p, 's, M, W>::begin" },
+              { "id": "code:crates-printer-src-json-rs:config", "name": "Config" }
+            ]
+          },
+          {
+            "id": "component:crates-index-src-literal-rs",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:crates-index-src-literal-rs:analysis-make-inexact", "name": "Analysis::make_inexact" },
+              { "id": "code:crates-index-src-literal-rs:analysis-concat", "name": "Analysis::concat" },
+              { "id": "code:crates-index-src-literal-rs:gram-query-builder-b", "name": "GramQueryBuilder::b" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-complete-bash-rs",
+            "kind": "component",
+            "p": 51,
+            "symbols": [
+              { "id": "code:crates-core-flags-complete-bash-rs:generate", "name": "generate" },
+              { "id": "code:crates-core-flags-complete-bash-rs:template-full", "name": "TEMPLATE_FULL" },
+              { "id": "code:crates-core-flags-complete-bash-rs:template-case", "name": "TEMPLATE_CASE" }
+            ]
+          },
+          {
+            "id": "component:crates-regex-src-config-rs",
+            "kind": "component",
+            "p": 44,
+            "symbols": [
+              { "id": "code:crates-regex-src-config-rs:configured-hir-into-word", "name": "ConfiguredHIR::into_word" },
+              { "id": "code:crates-regex-src-config-rs:configured-hir-line-anchor-end", "name": "ConfiguredHIR::line_anchor_end" },
+              { "id": "code:crates-regex-src-config-rs:configured-hir-line-anchor-start", "name": "ConfiguredHIR::line_anchor_start" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-lib-rs",
+            "kind": "component",
+            "p": 43,
+            "symbols": [
+              { "id": "code:crates-printer-src-lib-rs:max-look-ahead", "name": "MAX_LOOK_AHEAD" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-lines-rs",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:crates-searcher-src-lines-rs:without-terminator", "name": "without_terminator" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/core/flags/config.rs": true, "GUIDE.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11554, "sectionCount": 6, "ranked": [1, 4, 11, 6, 40, 56] },
+          "double": { "byteBudget": 48000, "bytes": 46451, "sectionCount": 40, "ranked": [1, 4, 11, 6, 40, 61, 50, 39, 42, 51, 44, 43, 65, 30, 21, 25, 17, 46, 68, 62, 20, 69, 13, 22, 2, 70, 37, 28, 31, 27, 71, 24, 19, 15, 59, 56, 23, 48, 9, 7] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 40169, "sectionCount": 32, "ranked": [1, 4, 11, 6, 40, 61, 50, 39, 42, 51, 44, 43, 65, 30, 21, 25, 17, 46, 68, 62, 20, 69, 13, 22, 2, 70, 37, 28, 31, 27, 71, 56] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29969, "sectionCount": 19, "ranked": [1, 4, 11, 6, 40, 61, 50, 39, 42, 51, 44, 43, 65, 30, 21, 25, 17, 46, 68] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "4445b8993c446079ba12b6afdb6d26a28f59b0cf195c458c5506f5b991bd6bf1",
+          "allowedIdsCount": 60,
+          "allowedIdsSha256": "fd0550848eabdb5f87a18878363f992681235c3e01ad01edeaa207c6999b6370",
+          "allowedIdsInContent": ["component:crates-core-flags-defs-rs", "code:crates-core-flags-defs-rs:low-args-indexing-unsupported-flag", "code:crates-core-flags-defs-rs:files-without-match-update", "code:crates-core-flags-defs-rs:flags", "component:crates-core-flags-lowargs-rs", "component:crates-core-flags-hiargs-rs", "code:crates-core-flags-hiargs-rs:hi-args-from-low-args", "component:crates-core-flags-mod-rs", "code:crates-core-flags-mod-rs:flag", "code:crates-core-flags-mod-rs:flag-value", "code:crates-core-flags-mod-rs:flag-value-unwrap-switch"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Nothing in the evidence shows a mechanism for persisting default flags (e.g. a config file or environment variable) or where rg would look for one — that part is missing from the atlas. What the evidence does cover is the flags layer itself: every flag is a struct implementing the `Flag` trait (`is_switch`, `name_short`, `name_long`, `aliases`, negated names) in `crates/core/flags/mod.rs`, and the full ordered table of flags lives in `FLAGS` in `crates/core/flags/defs.rs`, where each flag's `update()` mutates `LowArgs` directly. Parsed flags then flow through `HiArgs::from_low_args` in `crates/core/flags/hiargs.rs`.\\n\\nSo if you wanted to make flags stick by default, the code to touch would be:\\n- `crates/core/flags/mod.rs` — `Flag`, `FlagValue` (`FlagValue::unwrap_switch`), the trait all flags implement.\\n- `crates/core/flags/defs.rs` — `FLAGS` table plus each flag's `update()` (e.g. `FilesWithoutMatch::update`); note `LowArgs::indexing_unsupported_flag` shows which flags are incompatible with indexing.\\n- `crates/core/flags/hiargs.rs` — `HiArgs::from_low_args`, the single conversion point from parsed `LowArgs`.\\n\\nWhether ripgrep reads a per-user config file or similar, and from which paths, is not in the evidence.\",\"citations\":[\"component:crates-core-flags-mod-rs\",\"code:crates-core-flags-mod-rs:flag\",\"code:crates-core-flags-mod-rs:flag-value\",\"code:crates-core-flags-mod-rs:flag-value-unwrap-switch\",\"component:crates-core-flags-defs-rs\",\"code:crates-core-flags-defs-rs:flags\",\"code:crates-core-flags-defs-rs:files-without-match-update\",\"code:crates-core-flags-defs-rs:low-args-indexing-unsupported-flag\",\"component:crates-core-flags-hiargs-rs\",\"code:crates-core-flags-hiargs-rs:hi-args-from-low-args\",\"component:crates-core-flags-lowargs-rs\"]}",
+          "usage": { "promptTokens": 10237, "completionTokens": 728, "totalTokens": 10965, "costUsd": 0.005086455 },
+          "ms": 19640
+        }
+      },
+      {
+        "id": "rg-exit-codes",
+        "question": "What exit status does rg return when it finds nothing versus when something goes wrong, and why doesn't piping into head produce an error?",
+        "selectedId": "system:burnt-sushi-ripgrep",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23988,
+        "sectionCount": 15,
+        "ranked": [26, 30, 62, 37, 25, 16, 23, 1, 64, 28, 31, 17, 35, 27, 74],
+        "packets": [52, 24, 53, 54, 55, 14, 56, 57, 34, 58, 59, 45],
+        "sections": [
+          {
+            "id": "component:crates-searcher-src-searcher-glue-rs",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-glue-rs:multi-line-s-m-s-find", "name": "MultiLine<'s, M, S>::find" },
+              { "id": "code:crates-searcher-src-searcher-glue-rs:read-by-line-s-m-r-s-fill", "name": "ReadByLine<'s, M, R, S>::fill" },
+              { "id": "code:crates-searcher-src-searcher-glue-rs:multi-line-s-m-s-sink-matched-inverted", "name": "MultiLine<'s, M, S>::sink_matched_inverted" }
+            ]
+          },
+          {
+            "id": "component:crates-matcher-src-lib-rs",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:crates-matcher-src-lib-rs:std-io-error-from", "name": "std::io::Error::from" },
+              { "id": "code:crates-matcher-src-lib-rs:a-m-find", "name": "&'a M::find" },
+              { "id": "code:crates-matcher-src-lib-rs:a-m-find-at", "name": "&'a M::find_at" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-parse-rs",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:crates-core-flags-parse-rs:parser-find-short", "name": "Parser::find_short" },
+              { "id": "code:crates-core-flags-parse-rs:parser-find-long", "name": "Parser::find_long" },
+              { "id": "code:crates-core-flags-parse-rs:flag-map-find", "name": "FlagMap::find" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-standard-rs",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:crates-printer-src-standard-rs:standard-builder-heading", "name": "StandardBuilder::heading" },
+              { "id": "code:crates-printer-src-standard-rs:prelude-writer-a-m-w-write-path", "name": "PreludeWriter<'a, M, W>::write_path" },
+              { "id": "code:crates-printer-src-standard-rs:standard-w-needs-match-granularity", "name": "Standard<W>::needs_match_granularity" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-searcher-core-rs",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-find-by-line-fast", "name": "Core<'s, M, S>::find_by_line_fast" },
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-find", "name": "Core<'s, M, S>::find" },
+              { "id": "code:crates-searcher-src-searcher-core-rs:core-s-m-s-match-by-line-fast", "name": "Core<'s, M, S>::match_by_line_fast" }
+            ]
+          },
+          {
+            "id": "component:crates-core-messages-rs",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:crates-core-messages-rs:errored", "name": "errored" },
+              { "id": "code:crates-core-messages-rs:set-errored", "name": "set_errored" },
+              { "id": "code:crates-core-messages-rs:errored-2", "name": "ERRORED" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-searcher-mod-rs",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-mod-rs:config-error-fmt", "name": "ConfigError::fmt" },
+              { "id": "code:crates-searcher-src-searcher-mod-rs:config-error", "name": "ConfigError" },
+              { "id": "code:crates-searcher-src-searcher-mod-rs:searcher-fill-multi-line-buffer-from-reader", "name": "Searcher::fill_multi_line_buffer_from_reader" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-defs-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-core-flags-defs-rs:heading-doc-long", "name": "Heading::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:heading", "name": "Heading" },
+              { "id": "code:crates-core-flags-defs-rs:heading-update", "name": "Heading::update" }
+            ]
+          },
+          {
+            "id": "component:crates-pcre2-src-error-rs",
+            "kind": "component",
+            "p": 64,
+            "symbols": [
+              { "id": "code:crates-pcre2-src-error-rs:error", "name": "Error" },
+              { "id": "code:crates-pcre2-src-error-rs:error-regex", "name": "Error::regex" },
+              { "id": "code:crates-pcre2-src-error-rs:error-kind-2", "name": "ErrorKind" }
+            ]
+          },
+          {
+            "id": "component:crates-core-main-rs",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:crates-core-main-rs:eprint-nothing-searched", "name": "eprint_nothing_searched" },
+              { "id": "code:crates-core-main-rs:main", "name": "main" },
+              { "id": "code:crates-core-main-rs:run", "name": "run" }
+            ]
+          },
+          {
+            "id": "component:crates-regex-src-matcher-rs",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:crates-regex-src-matcher-rs:regex-matcher-try-find-iter", "name": "RegexMatcher::try_find_iter" },
+              { "id": "code:crates-regex-src-matcher-rs:regex-matcher-find-at", "name": "RegexMatcher::find_at" },
+              { "id": "code:crates-regex-src-matcher-rs:regex-matcher-find-candidate-line", "name": "RegexMatcher::find_candidate_line" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-summary-rs",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:crates-printer-src-summary-rs:summary-sink-p-s-m-w-matched", "name": "SummarySink<'p, 's, M, W>::matched" },
+              { "id": "code:crates-printer-src-summary-rs:summary-sink-p-s-m-w-begin", "name": "SummarySink<'p, 's, M, W>::begin" },
+              { "id": "code:crates-printer-src-summary-rs:summary-kind", "name": "SummaryKind" }
+            ]
+          },
+          {
+            "id": "component:crates-pcre2-src-matcher-rs",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:crates-pcre2-src-matcher-rs:regex-matcher-try-find-iter", "name": "RegexMatcher::try_find_iter" },
+              { "id": "code:crates-pcre2-src-matcher-rs:regex-matcher-find-at", "name": "RegexMatcher::find_at" },
+              { "id": "code:crates-pcre2-src-matcher-rs:regex-matcher-captures-at", "name": "RegexMatcher::captures_at" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-hyperlink-mod-rs",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:crates-printer-src-hyperlink-mod-rs:interpolator-status-inactive", "name": "InterpolatorStatus::inactive" },
+              { "id": "code:crates-printer-src-hyperlink-mod-rs:hyperlink-format-error-kind", "name": "HyperlinkFormatErrorKind" },
+              { "id": "code:crates-printer-src-hyperlink-mod-rs:hyperlink-format-error", "name": "HyperlinkFormatError" }
+            ]
+          },
+          {
+            "id": "component:crates-cli-src-hostname-rs",
+            "kind": "component",
+            "p": 74,
+            "symbols": [
+              { "id": "code:crates-cli-src-hostname-rs:hostname", "name": "hostname" },
+              { "id": "code:crates-cli-src-hostname-rs:gethostname", "name": "gethostname" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/core/main.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11928, "sectionCount": 9, "ranked": [26, 30, 62, 37, 25, 16, 23, 72, 56] },
+          "double": { "byteBudget": 48000, "bytes": 47943, "sectionCount": 36, "ranked": [26, 30, 62, 37, 25, 16, 23, 1, 64, 28, 31, 17, 35, 27, 11, 41, 42, 72, 9, 60, 73, 19, 5, 3, 38, 74, 61, 51, 15, 6, 13, 12, 75, 65, 48, 2] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 40336, "sectionCount": 30, "ranked": [26, 30, 62, 37, 25, 16, 23, 1, 64, 28, 31, 17, 35, 27, 11, 41, 42, 72, 9, 60, 73, 19, 5, 3, 38, 74, 61, 51, 12, 76] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29850, "sectionCount": 21, "ranked": [26, 30, 62, 37, 25, 16, 23, 1, 64, 28, 31, 17, 35, 27, 11, 41, 42, 72, 9, 74, 48] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "9a4a6a8790eef711900a4b331530f591379a963a5622c32350abbf225d5e00c6",
+          "allowedIdsCount": 71,
+          "allowedIdsSha256": "09fbacdca191cf68d89914466707b0ddc3ba1fea089370333947bfe4bc1ffa9d",
+          "allowedIdsInContent": ["code:crates-core-messages-rs:errored", "code:crates-core-messages-rs:set-errored", "code:crates-core-messages-rs:errored-2", "code:crates-searcher-src-searcher-mod-rs:config-error-fmt", "code:crates-searcher-src-searcher-mod-rs:config-error", "component:crates-core-main-rs", "code:crates-core-main-rs:eprint-nothing-searched", "code:crates-core-main-rs:main", "code:crates-core-main-rs:run"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Only part of this is in the evidence. The piping case is answered: `main()` in `crates/core/main.rs` explicitly looks for a **broken pipe** error and exits \\\"gracefully\\\" with a **success exit code**, matching existing Unix convention — so piping `rg` into `head` (which closes the pipe early) is not treated as a failure. Related error plumbing: `ERRORED`/`errored()`/`set_errored()` in `crates/core/messages.rs` are the global error latch, and `eprint_nothing_searched()` in `crates/core/main.rs` prints a warning when filters exclude all files — its key points note it \\\"looks like failure but is a warning.\\\"\\n\\nThe concrete numeric exit statuses for \\\"no match found\\\" versus \\\"something went wrong\\\" are **not in the evidence** — the `main`/`run` excerpts show the broken-pipe branch but not the exit-code values returned for match-found vs. no-match vs. error paths.\\n\\n- `crates/core/main.rs` — `main` (broken-pipe handling → success exit code), `run` (mode dispatch), `eprint_nothing_searched` (no files searched warning)\\n- `crates/core/messages.rs` — `ERRORED`, `errored`, `set_errored` (global error flag)\\n- `crates/searcher/src/searcher/mod.rs` — `ConfigError` / `ConfigError::fmt`, an error path that would funnel into `main()`'s error handling\",\"citations\":[\"code:crates-core-main-rs:main\",\"code:crates-core-main-rs:run\",\"code:crates-core-main-rs:eprint-nothing-searched\",\"code:crates-core-messages-rs:errored\",\"code:crates-core-messages-rs:set-errored\",\"code:crates-core-messages-rs:errored-2\",\"component:crates-core-main-rs\",\"code:crates-searcher-src-searcher-mod-rs:config-error\",\"code:crates-searcher-src-searcher-mod-rs:config-error-fmt\"]}",
+          "usage": { "promptTokens": 10845, "completionTokens": 596, "totalTokens": 11441, "costUsd": 0.005236095 },
+          "ms": 18134
+        }
+      },
+      {
+        "id": "rg-add-flag",
+        "question": "I want to add a new command-line option. Where is each option declared, and where does its value end up?",
+        "selectedId": "system:burnt-sushi-ripgrep",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23922,
+        "sectionCount": 14,
+        "ranked": [37, 0, 65, 41, 36, 8, 30, 19, 2, 27, 13, 3, 11, 39],
+        "packets": [52, 24, 53, 54, 55, 14, 56, 57, 34, 58, 59, 45],
+        "sections": [
+          {
+            "id": "component:crates-printer-src-standard-rs",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:crates-printer-src-standard-rs:standard-impl-a-m-w-end-line-highlight", "name": "StandardImpl<'a, M, W>::end_line_highlight" },
+              { "id": "code:crates-printer-src-standard-rs:standard-impl-a-m-w-sink-slow-multi-line-only-matching", "name": "StandardImpl<'a, M, W>::sink_slow_multi_line_only_matching" },
+              { "id": "code:crates-printer-src-standard-rs:standard-impl-a-m-w-write-exceeded-line", "name": "StandardImpl<'a, M, W>::write_exceeded_line" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-gitignore-rs",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:crates-ignore-src-gitignore-rs:gitignore-builder-add-line", "name": "GitignoreBuilder::add_line" },
+              { "id": "code:crates-ignore-src-gitignore-rs:gitignore-builder-add", "name": "GitignoreBuilder::add" },
+              { "id": "code:crates-ignore-src-gitignore-rs:gitignore-new", "name": "Gitignore::new" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-lines-rs",
+            "kind": "component",
+            "p": 65,
+            "symbols": [
+              { "id": "code:crates-searcher-src-lines-rs:line-step-new", "name": "LineStep::new" },
+              { "id": "code:crates-searcher-src-lines-rs:line-iter-b-new", "name": "LineIter<'b>::new" },
+              { "id": "code:crates-searcher-src-lines-rs:line-step-next-impl", "name": "LineStep::next_impl" }
+            ]
+          },
+          {
+            "id": "component:crates-cli-src-process-rs",
+            "kind": "component",
+            "p": 41,
+            "symbols": [
+              { "id": "code:crates-cli-src-process-rs:command-reader-new", "name": "CommandReader::new" },
+              { "id": "code:crates-cli-src-process-rs:command-reader-builder-new", "name": "CommandReaderBuilder::new" },
+              { "id": "code:crates-cli-src-process-rs:command-reader-builder-build", "name": "CommandReaderBuilder::build" }
+            ]
+          },
+          {
+            "id": "component:crates-core-search-rs",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:crates-core-search-rs:search-worker-builder-new", "name": "SearchWorkerBuilder::new" },
+              { "id": "code:crates-core-search-rs:search-worker", "name": "SearchWorker" },
+              { "id": "code:crates-core-search-rs:search-worker-w-search-preprocessor", "name": "SearchWorker<W>::search_preprocessor" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-overrides-rs",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:crates-ignore-src-overrides-rs:override-builder-add", "name": "OverrideBuilder::add" },
+              { "id": "code:crates-ignore-src-overrides-rs:override-builder-new", "name": "OverrideBuilder::new" }
+            ]
+          },
+          {
+            "id": "component:crates-matcher-src-lib-rs",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:crates-matcher-src-lib-rs:match-with-end", "name": "Match::with_end" },
+              { "id": "code:crates-matcher-src-lib-rs:line-terminator-imp", "name": "LineTerminatorImp" },
+              { "id": "code:crates-matcher-src-lib-rs:line-match-kind", "name": "LineMatchKind" }
+            ]
+          },
+          {
+            "id": "component:crates-globset-src-lib-rs",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:crates-globset-src-lib-rs:glob-set-new", "name": "GlobSet::new" },
+              { "id": "code:crates-globset-src-lib-rs:new-regex", "name": "new_regex" },
+              { "id": "code:crates-globset-src-lib-rs:new-regex-set", "name": "new_regex_set" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-dir-rs",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:crates-ignore-src-dir-rs:ignore-add-parents", "name": "Ignore::add_parents" },
+              { "id": "code:crates-ignore-src-dir-rs:ignore-builder-new", "name": "IgnoreBuilder::new" },
+              { "id": "code:crates-ignore-src-dir-rs:ignore-add-child", "name": "Ignore::add_child" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-hyperlink-mod-rs",
+            "kind": "component",
+            "p": 27,
+            "symbols": [
+              { "id": "code:crates-printer-src-hyperlink-mod-rs:values-a-line", "name": "Values<'a>::line" },
+              { "id": "code:crates-printer-src-hyperlink-mod-rs:values-a-new", "name": "Values<'a>::new" },
+              { "id": "code:crates-printer-src-hyperlink-mod-rs:values", "name": "Values" }
+            ]
+          },
+          {
+            "id": "component:crates-cli-src-decompress-rs",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:crates-cli-src-decompress-rs:default-decompression-commands", "name": "default_decompression_commands" },
+              { "id": "code:crates-cli-src-decompress-rs:decompression-matcher-command", "name": "DecompressionMatcher::command" },
+              { "id": "code:crates-cli-src-decompress-rs:decompression-command", "name": "DecompressionCommand" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-walk-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:crates-ignore-src-walk-rs:walk-builder-add-ignore", "name": "WalkBuilder::add_ignore" },
+              { "id": "code:crates-ignore-src-walk-rs:work-add-parents", "name": "Work::add_parents" },
+              { "id": "code:crates-ignore-src-walk-rs:stack-new-for-each-thread", "name": "Stack::new_for_each_thread" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-hiargs-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-core-flags-hiargs-rs:state-new", "name": "State::new" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-matcher-rust", "name": "HiArgs::matcher_rust" },
+              { "id": "code:crates-core-flags-hiargs-rs:hostname", "name": "hostname" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-json-rs",
+            "kind": "component",
+            "p": 39,
+            "symbols": [
+              { "id": "code:crates-printer-src-json-rs:sub-matches-a-new", "name": "SubMatches<'a>::new" },
+              { "id": "code:crates-printer-src-json-rs:json-builder-always-begin-end", "name": "JSONBuilder::always_begin_end" },
+              { "id": "code:crates-printer-src-json-rs:json-w-new", "name": "JSON<W>::new" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/core/flags/defs.rs": true, "crates/core/flags/lowargs.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11784, "sectionCount": 7, "ranked": [37, 0, 65, 41, 36, 8, 30] },
+          "double": { "byteBudget": 48000, "bytes": 47955, "sectionCount": 37, "ranked": [37, 0, 65, 41, 36, 8, 30, 19, 2, 27, 13, 3, 11, 26, 39, 25, 20, 31, 61, 5, 1, 44, 15, 17, 6, 23, 77, 35, 4, 72, 12, 9, 78, 79, 10, 40, 67] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 40336, "sectionCount": 28, "ranked": [37, 0, 65, 41, 36, 8, 30, 19, 2, 27, 13, 3, 11, 26, 39, 25, 20, 31, 61, 5, 1, 44, 15, 17, 6, 23, 77, 78] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29807, "sectionCount": 20, "ranked": [37, 0, 65, 41, 36, 8, 30, 19, 2, 27, 13, 3, 11, 26, 39, 25, 20, 31, 77, 78] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "372aa29f2e2e8d4e568a640e6d536921888390fd469df1956de6edc810d68a25",
+          "allowedIdsCount": 67,
+          "allowedIdsSha256": "c5bfd65189dc2bef38a910c09bae1ba559fd90f39392305a7f392e50d1f4048f",
+          "allowedIdsInContent": ["component:crates-printer-src-standard-rs", "code:crates-printer-src-standard-rs:standard-impl-a-m-w-end-line-highlight", "component:crates-ignore-src-gitignore-rs", "code:crates-ignore-src-gitignore-rs:gitignore-builder-add-line", "code:crates-ignore-src-gitignore-rs:gitignore-builder-add", "component:crates-cli-src-process-rs", "code:crates-cli-src-process-rs:command-reader-builder-new", "component:crates-core-search-rs", "code:crates-core-search-rs:search-worker-builder-new", "code:crates-core-search-rs:search-worker", "component:crates-ignore-src-overrides-rs", "code:crates-ignore-src-overrides-rs:override-builder-add", "component:crates-ignore-src-dir-rs", "code:crates-ignore-src-dir-rs:ignore-builder-new", "component:crates-printer-src-hyperlink-mod-rs", "code:crates-printer-src-hyperlink-mod-rs:values-a-new", "code:crates-printer-src-hyperlink-mod-rs:values", "component:crates-cli-src-decompress-rs", "code:crates-cli-src-decompress-rs:default-decompression-commands", "component:crates-ignore-src-walk-rs", "code:crates-ignore-src-walk-rs:walk-builder-add-ignore", "component:crates-core-flags-hiargs-rs", "code:crates-core-flags-hiargs-rs:state-new", "code:crates-core-flags-hiargs-rs:hi-args-matcher-rust", "code:crates-core-flags-hiargs-rs:hostname", "component:crates-printer-src-json-rs", "code:crates-printer-src-json-rs:json-builder-always-begin-end", "container:burnt-sushi-ripgrep"],
+          "packetSources": { "container:burnt-sushi-ripgrep": 24 },
+          "content": "{\"answer\":\"Only half of this is in the evidence: I can show where option values end up, but not where each CLI option is *declared* (no flag-definition/parse table surfaced in the search).\\n\\nWhere values end up:\\n- `crates/core/flags/hiargs.rs` is the single funnel: `HiArgs::from_low_args` converts raw parsed args (`LowArgs`) into validated `HiArgs`, and per-option resolution lives in methods like `HiArgs::matcher_rust` (regex engine / crlf / line terminator), `State::new`, and `hostname`.\\n- From `HiArgs`, values are handed to builder-style setters in the downstream crates:\\n- `crates/printer/src/standard.rs` — `StandardBuilder` has one setter per `Config` field (colors, separators, columns, byte offsets); `build()` clones the config into `Standard<W>`.\\n- `crates/printer/src/json.rs` — `JSONBuilder::always_begin_end` sets a config knob on `JSON<W>`.\\n- `crates/printer/src/hyperlink/mod.rs` — `HyperlinkFormat::from_str` / `Values` consume hyperlink template options.\\n- `crates/core/search.rs` — `SearchWorkerBuilder::new` builds a `Config` (preprocessor, globs, `search_zip`) plus a `CommandReaderBuilder`.\\n- `crates/ignore/src/{walk,dir,overrides,gitignore}.rs` — `WalkBuilder::add_ignore`, `IgnoreBuilder::new`, `OverrideBuilder::add`, `GitignoreBuilder::add_line` receive ignore/glob options.\\n- `crates/cli/src/decompress.rs` — `DecompressionMatcherBuilder` merges user globs with `default_decompression_commands`; `crates/cli/src/process.rs` (`CommandReaderBuilder`) wraps spawned decompressor commands.\\n\\nMissing: the file where the new option would be declared/registered for parsing (the `LowArgs`/flag-definition side of `HiArgs::from_low_args`). That is not in the evidence — a search over `crates/core/flags` for the arg declaration table would be needed.\",\"citations\":[\"component:crates-core-flags-hiargs-rs\",\"code:crates-core-flags-hiargs-rs:state-new\",\"code:crates-core-flags-hiargs-rs:hi-args-matcher-rust\",\"code:crates-core-flags-hiargs-rs:hostname\",\"component:crates-printer-src-standard-rs\",\"code:crates-printer-src-standard-rs:standard-impl-a-m-w-end-line-highlight\",\"component:crates-printer-src-json-rs\",\"code:crates-printer-src-json-rs:json-builder-always-begin-end\",\"component:crates-printer-src-hyperlink-mod-rs\",\"code:crates-printer-src-hyperlink-mod-rs:values-a-new\",\"component:crates-core-search-rs\",\"code:crates-core-search-rs:search-worker-builder-new\",\"component:crates-ignore-src-walk-rs\",\"code:crates-ignore-src-walk-rs:walk-builder-add-ignore\",\"component:crates-ignore-src-dir-rs\",\"code:crates-ignore-src-dir-rs:ignore-builder-new\",\"component:crates-ignore-src-overrides-rs\",\"code:crates-ignore-src-overrides-rs:override-builder-add\",\"component:crates-ignore-src-gitignore-rs\",\"code:crates-ignore-src-gitignore-rs:gitignore-builder-add-line\",\"component:crates-cli-src-decompress-rs\",\"code:crates-cli-src-decompress-rs:default-decompression-commands\",\"component:crates-cli-src-process-rs\",\"code:crates-cli-src-process-rs:command-reader-builder-new\",\"container:burnt-sushi-ripgrep\"]}",
+          "usage": { "promptTokens": 10609, "completionTokens": 935, "totalTokens": 11544, "costUsd": 0.005428365 },
+          "ms": 16103
+        }
+      },
+      {
+        "id": "rg-index-status",
+        "question": "There's an index crate in the tree — can ripgrep actually build and use a search index today?",
+        "selectedId": "system:burnt-sushi-ripgrep",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23803,
+        "sectionCount": 15,
+        "ranked": [18, 23, 11, 42, 28, 36, 9, 1, 41, 81, 20, 37, 4, 56, 84],
+        "packets": [52, 24, 53, 54, 55, 14, 56, 57, 34, 58, 59, 45],
+        "sections": [
+          {
+            "id": "component:crates-index-src-index-rs",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:crates-index-src-index-rs:index-builder-build-open", "name": "IndexBuilder::build_open" },
+              { "id": "code:crates-index-src-index-rs:index-builder-build-create", "name": "IndexBuilder::build_create" },
+              { "id": "code:crates-index-src-index-rs:index-builder", "name": "Index::builder" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-searcher-mod-rs",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:crates-searcher-src-searcher-mod-rs:searcher-builder-build", "name": "SearcherBuilder::build" },
+              { "id": "code:crates-searcher-src-searcher-mod-rs:searcher-builder-default", "name": "SearcherBuilder::default" },
+              { "id": "code:crates-searcher-src-searcher-mod-rs:searcher-builder-new", "name": "SearcherBuilder::new" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-hiargs-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-searcher", "name": "HiArgs::searcher" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-search-worker", "name": "HiArgs::search_worker" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-walk-builder", "name": "HiArgs::walk_builder" }
+            ]
+          },
+          {
+            "id": "component:crates-index-src-literal-rs",
+            "kind": "component",
+            "p": 42,
+            "symbols": [
+              { "id": "code:crates-index-src-literal-rs:gram-query-builder-build", "name": "GramQueryBuilder::build" },
+              { "id": "code:crates-index-src-literal-rs:gram-query-builder-default", "name": "GramQueryBuilder::default" },
+              { "id": "code:crates-index-src-literal-rs:gram-query-builder-new", "name": "GramQueryBuilder::new" }
+            ]
+          },
+          {
+            "id": "component:crates-core-main-rs",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:crates-core-main-rs:search-parallel", "name": "search_parallel" },
+              { "id": "code:crates-core-main-rs:search-2", "name": "search" },
+              { "id": "code:crates-core-main-rs:eprint-nothing-searched", "name": "eprint_nothing_searched" }
+            ]
+          },
+          {
+            "id": "component:crates-core-search-rs",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:crates-core-search-rs:search-worker-builder-build", "name": "SearchWorkerBuilder::build" },
+              { "id": "code:crates-core-search-rs:search-worker-builder-new", "name": "SearchWorkerBuilder::new" },
+              { "id": "code:crates-core-search-rs:search-worker-builder", "name": "SearchWorkerBuilder" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-testutil-rs",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:crates-searcher-src-testutil-rs:searcher-tester-configs", "name": "SearcherTester::configs" },
+              { "id": "code:crates-searcher-src-testutil-rs:tester-config-search-reader", "name": "TesterConfig::search_reader" },
+              { "id": "code:crates-searcher-src-testutil-rs:tester-config-search-slice", "name": "TesterConfig::search_slice" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-defs-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-core-flags-defs-rs:index-doc-long", "name": "Index::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:index-crud-doc-long", "name": "IndexCrud::doc_long" },
+              { "id": "code:crates-core-flags-defs-rs:index-update", "name": "Index::update" }
+            ]
+          },
+          {
+            "id": "component:crates-cli-src-process-rs",
+            "kind": "component",
+            "p": 41,
+            "symbols": [
+              { "id": "code:crates-cli-src-process-rs:command-reader-builder-new", "name": "CommandReaderBuilder::new" },
+              { "id": "code:crates-cli-src-process-rs:command-reader-builder-build", "name": "CommandReaderBuilder::build" },
+              { "id": "code:crates-cli-src-process-rs:command-reader-builder", "name": "CommandReaderBuilder" }
+            ]
+          },
+          {
+            "id": "component:crates-core-index-disabled-rs",
+            "kind": "component",
+            "p": 81,
+            "symbols": [
+              { "id": "code:crates-core-index-disabled-rs:read", "name": "read" },
+              { "id": "code:crates-core-index-disabled-rs:write", "name": "write" }
+            ]
+          },
+          {
+            "id": "component:crates-searcher-src-line-buffer-rs",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:crates-searcher-src-line-buffer-rs:line-buffer-builder-new", "name": "LineBufferBuilder::new" },
+              { "id": "code:crates-searcher-src-line-buffer-rs:line-buffer-builder-build", "name": "LineBufferBuilder::build" },
+              { "id": "code:crates-searcher-src-line-buffer-rs:line-buffer-builder", "name": "LineBufferBuilder" }
+            ]
+          },
+          {
+            "id": "component:crates-printer-src-standard-rs",
+            "kind": "component",
+            "p": 37,
+            "symbols": [
+              { "id": "code:crates-printer-src-standard-rs:standard-builder-separator-search", "name": "StandardBuilder::separator_search" },
+              { "id": "code:crates-printer-src-standard-rs:standard-impl-a-m-w-write-search-prelude", "name": "StandardImpl<'a, M, W>::write_search_prelude" },
+              { "id": "code:crates-printer-src-standard-rs:standard-builder-build-no-color", "name": "StandardBuilder::build_no_color" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-lowargs-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-core-flags-lowargs-rs:index-mode", "name": "IndexMode" },
+              { "id": "code:crates-core-flags-lowargs-rs:search-mode", "name": "SearchMode" },
+              { "id": "code:crates-core-flags-lowargs-rs:low-args", "name": "LowArgs" }
+            ]
+          },
+          { "id": "container:crates-index", "kind": "container", "p": 56 },
+          {
+            "id": "component:crates-core-index-mod-rs",
+            "kind": "component",
+            "p": 84,
+            "symbols": [
+              { "id": "code:crates-core-index-mod-rs:imp", "name": "imp" },
+              { "id": "code:crates-core-index-mod-rs:imp-2", "name": "imp" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "crates/core/index/disabled.rs": true, "crates/core/index/enabled.rs": true, "crates/index/src/index.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11893, "sectionCount": 7, "ranked": [18, 23, 11, 42, 28, 56, 80] },
+          "double": { "byteBudget": 48000, "bytes": 47845, "sectionCount": 36, "ranked": [18, 23, 11, 42, 28, 36, 9, 1, 41, 81, 20, 37, 19, 4, 56, 82, 13, 83, 31, 35, 30, 6, 45, 3, 38, 22, 26, 17, 10, 25, 27, 21, 84, 47, 15, 0] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 40201, "sectionCount": 29, "ranked": [18, 23, 11, 42, 28, 36, 9, 1, 41, 81, 20, 37, 19, 4, 56, 82, 13, 83, 31, 35, 30, 6, 45, 3, 38, 22, 26, 25, 21] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29995, "sectionCount": 20, "ranked": [18, 23, 11, 42, 28, 36, 9, 1, 41, 81, 20, 37, 19, 4, 56, 82, 13, 83, 31, 22] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "f7dc1d020bb1cb9269ff0edca1fcd4e2fe28a22592d7e179d6761e10e7f2452d",
+          "allowedIdsCount": 66,
+          "allowedIdsSha256": "4d6a7f76baa31585245d49a81c18e0a223c4c4d2eab598731831e024875935a9",
+          "allowedIdsInContent": ["component:crates-index-src-index-rs", "code:crates-index-src-index-rs:index-builder-build-open", "code:crates-index-src-index-rs:index-builder-build-create", "code:crates-index-src-index-rs:index-builder", "component:crates-searcher-src-searcher-mod-rs", "code:crates-searcher-src-searcher-mod-rs:searcher-builder-build", "component:crates-core-flags-hiargs-rs", "code:crates-core-flags-hiargs-rs:hi-args-searcher", "code:crates-core-flags-hiargs-rs:hi-args-search-worker", "code:crates-core-flags-hiargs-rs:hi-args-walk-builder", "component:crates-index-src-literal-rs", "code:crates-index-src-literal-rs:gram-query-builder-build", "component:crates-core-main-rs", "code:crates-core-main-rs:search-parallel", "code:crates-core-main-rs:search-2", "component:crates-core-search-rs", "code:crates-core-search-rs:search-worker-builder-build", "code:crates-core-search-rs:search-worker-builder", "component:crates-core-flags-defs-rs", "code:crates-core-flags-defs-rs:index-doc-long", "code:crates-core-flags-defs-rs:index-crud-doc-long", "code:crates-core-flags-defs-rs:index-update", "component:crates-core-index-disabled-rs", "code:crates-core-index-disabled-rs:read", "code:crates-core-index-disabled-rs:write", "component:crates-core-flags-lowargs-rs", "code:crates-core-flags-lowargs-rs:index-mode", "container:crates-index", "component:crates-core-index-mod-rs", "code:crates-core-index-mod-rs:imp", "code:crates-core-index-mod-rs:imp-2"],
+          "packetSources": { "container:crates-index": 56 },
+          "content": "{\"answer\":\"Not really — the machinery is in the tree, but the CLI's index path is stubbed out. `crates/index` is a real crate: `Index::builder` / `IndexBuilder` create or open an on-disk `index.db` (redb) read-write or read-only, and `crates/index/src/literal.rs` turns regex literals into `GramQuery` n-gram filters. But `crates/core/index/mod.rs` has two `imp` declarations (cfg-gated), and the one in `crates/core/index/disabled.rs` makes both `write` and `read` bail with \\\"indexing not enabled in this build of ripgrep\\\".\\n\\n- CLI surface exists anyway: `IndexMode::Crud`, `Index::update`, `Index::doc_long`, `IndexCrud::doc_long` in `crates/core/flags/defs.rs` and `lowargs.rs` document `RIPGREP_INDEX_PATH` and index operands, so the flags parse and dispatch to `crates/core/index`.\\n- Search itself is index-free: `HiArgs::searcher`/`search_worker`/`walk_builder` in `hiargs.rs` build a `SearcherBuilder` + walker, and `search_parallel`/`search` in `crates/core/main.rs` run `SearchWorker::search` per haystack via `SearchWorkerBuilder::build` — nothing consults an index.\\n- Build side of the crate is functional: `IndexBuilder::build_open` (with a TODO to retry when the DB is already open) and `build_create`.\\n\\nSo today you can build the `index` crate and its `IndexBuilder`, but a stock ripgrep build will refuse to index or query. Which cargo feature (or cfg) swaps `disabled.rs` for a working `imp` is not in the evidence.\",\"citations\":[\"component:crates-index-src-index-rs\",\"code:crates-index-src-index-rs:index-builder-build-open\",\"code:crates-index-src-index-rs:index-builder-build-create\",\"code:crates-index-src-index-rs:index-builder\",\"container:crates-index\",\"component:crates-index-src-literal-rs\",\"code:crates-index-src-literal-rs:gram-query-builder-build\",\"component:crates-core-index-mod-rs\",\"code:crates-core-index-mod-rs:imp\",\"code:crates-core-index-mod-rs:imp-2\",\"component:crates-core-index-disabled-rs\",\"code:crates-core-index-disabled-rs:read\",\"code:crates-core-index-disabled-rs:write\",\"component:crates-core-flags-lowargs-rs\",\"code:crates-core-flags-lowargs-rs:index-mode\",\"component:crates-core-flags-defs-rs\",\"code:crates-core-flags-defs-rs:index-doc-long\",\"code:crates-core-flags-defs-rs:index-crud-doc-long\",\"code:crates-core-flags-defs-rs:index-update\",\"component:crates-core-flags-hiargs-rs\",\"code:crates-core-flags-hiargs-rs:hi-args-searcher\",\"code:crates-core-flags-hiargs-rs:hi-args-search-worker\",\"code:crates-core-flags-hiargs-rs:hi-args-walk-builder\",\"component:crates-core-main-rs\",\"code:crates-core-main-rs:search-parallel\",\"code:crates-core-main-rs:search-2\",\"component:crates-core-search-rs\",\"code:crates-core-search-rs:search-worker-builder-build\",\"component:crates-searcher-src-searcher-mod-rs\",\"code:crates-searcher-src-searcher-mod-rs:searcher-builder-build\"]}",
+          "usage": { "promptTokens": 10224, "completionTokens": 952, "totalTokens": 11176, "costUsd": 0.00527568 },
+          "ms": 21676
+        }
+      },
+      {
+        "id": "rg-lowargs-hiargs",
+        "question": "What is the difference between LowArgs and HiArgs in the flag handling code?",
+        "selectedId": "system:burnt-sushi-ripgrep",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23842,
+        "sectionCount": 18,
+        "ranked": [11, 4, 28, 62, 6, 18, 1, 3, 77, 10, 41, 16, 81, 24, 63, 17, 67, 36],
+        "packets": [52, 24, 53, 54, 55, 14, 56, 57, 34, 58, 59, 45],
+        "sections": [
+          {
+            "id": "component:crates-core-flags-hiargs-rs",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-from-low-args", "name": "HiArgs::from_low_args" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args", "name": "HiArgs" },
+              { "id": "code:crates-core-flags-hiargs-rs:hi-args-index", "name": "HiArgs::index" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-lowargs-rs",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:crates-core-flags-lowargs-rs:low-args", "name": "LowArgs" },
+              { "id": "code:crates-core-flags-lowargs-rs:special-mode", "name": "SpecialMode" },
+              { "id": "code:crates-core-flags-lowargs-rs:pattern-source", "name": "PatternSource" }
+            ]
+          },
+          {
+            "id": "component:crates-core-main-rs",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:crates-core-main-rs:flags", "name": "flags" },
+              { "id": "code:crates-core-main-rs:main", "name": "main" },
+              { "id": "code:crates-core-main-rs:special", "name": "special" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-parse-rs",
+            "kind": "component",
+            "p": 62,
+            "symbols": [
+              { "id": "code:crates-core-flags-parse-rs:flag-info", "name": "FlagInfo" },
+              { "id": "code:crates-core-flags-parse-rs:flag-info-kind", "name": "FlagInfoKind" },
+              { "id": "code:crates-core-flags-parse-rs:flag-lookup", "name": "FlagLookup" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-mod-rs",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:crates-core-flags-mod-rs:flag", "name": "Flag" },
+              { "id": "code:crates-core-flags-mod-rs:flag-value", "name": "FlagValue" },
+              { "id": "code:crates-core-flags-mod-rs:flag-value-unwrap-switch", "name": "FlagValue::unwrap_switch" }
+            ]
+          },
+          {
+            "id": "component:crates-index-src-index-rs",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:crates-index-src-index-rs:handle-fmt", "name": "Handle::fmt" },
+              { "id": "code:crates-index-src-index-rs:handle-read-write", "name": "Handle::read_write" },
+              { "id": "code:crates-index-src-index-rs:handle-begin-read", "name": "Handle::begin_read" }
+            ]
+          },
+          {
+            "id": "component:crates-core-flags-defs-rs",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:crates-core-flags-defs-rs:low-args-indexing-unsupported-flag", "name": "LowArgs::indexing_unsupported_flag" },
+              { "id": "code:crates-core-flags-defs-rs:flags", "name": "FLAGS" },
+              { "id": "code:crates-core-flags-defs-rs:count-doc-long", "name": "Count::doc_long" }
+            ]
+          },
+          {
+            "id": "component:crates-ignore-src-walk-rs",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:crates-ignore-src-walk-rs:stdout-handle", "name": "stdout_handle" },
+              { "id": "code:crates-ignore-src-walk-rs:walk", "name": "Walk" },
+              { "id": "code:crates-ignore-src-walk-rs:path-equals", "name": "path_equals" }
+            ]
+          },
+          { "id": "component:crates-printer-src-stats-rs", "kind": "component", "p": 77 },
+          { "id": "component:crates-ignore-src-types-rs", "kind": "component", "p": 10 },
+          {
+            "id": "component:crates-cli-src-process-rs",
+            "kind": "component",
+            "p": 41,
+            "symbols": [
+              { "id": "code:crates-cli-src-process-rs:stderr-reader-read-to-end", "name": "StderrReader::read_to_end" },
+              { "id": "code:crates-cli-src-process-rs:stderr-reader-r-async", "name": "StderrReader::r#async" },
+              { "id": "code:crates-cli-src-process-rs:stderr-reader", "name": "StderrReader" }
+            ]
+          },
+          {
+            "id": "component:crates-core-messages-rs",
+            "kind": "component",
+            "p": 16,
+            "symbols": [
+              { "id": "code:crates-core-messages-rs:eprintln-locked", "name": "eprintln_locked" }
+            ]
+          },
+          {
+            "id": "component:crates-core-index-disabled-rs",
+            "kind": "component",
+            "p": 81,
+            "symbols": [
+              { "id": "code:crates-core-index-disabled-rs:write", "name": "write" },
+              { "id": "code:crates-core-index-disabled-rs:read", "name": "read" }
+            ]
+          },
+          { "id": "container:burnt-sushi-ripgrep", "kind": "container", "p": 24 },
+          { "id": "component:crates-cli-src-lib-rs", "kind": "component", "p": 63 },
+          { "id": "component:crates-printer-src-summary-rs", "kind": "component", "p": 17 },
+          { "id": "component:crates-printer-src-color-rs", "kind": "component", "p": 67 },
+          { "id": "component:crates-core-search-rs", "kind": "component", "p": 36 }
+        ],
+        "expectedIndexed": { "crates/core/flags/lowargs.rs": true, "crates/core/flags/hiargs.rs": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11869, "sectionCount": 6, "ranked": [11, 4, 28, 62, 6, 18] },
+          "double": { "byteBudget": 48000, "bytes": 33935, "sectionCount": 37, "ranked": [11, 4, 28, 62, 6, 18, 1, 3, 77, 10, 41, 16, 81, 24, 63, 17, 67, 36, 27, 23, 85, 8, 37, 86, 31, 47, 39, 20, 56, 22, 66, 79, 21, 30, 68, 52, 82] },
+          "size-scaled": { "byteBudget": 40381, "bytes": 33935, "sectionCount": 37, "ranked": [11, 4, 28, 62, 6, 18, 1, 3, 77, 10, 41, 16, 81, 24, 63, 17, 67, 36, 27, 23, 85, 8, 37, 86, 31, 47, 39, 20, 56, 22, 66, 79, 21, 30, 68, 52, 82] },
+          "depth-scaled": { "byteBudget": 30000, "bytes": 29976, "sectionCount": 30, "ranked": [11, 4, 28, 62, 6, 18, 1, 3, 77, 10, 41, 16, 81, 24, 63, 17, 67, 36, 27, 23, 85, 8, 37, 86, 31, 47, 39, 20, 56, 22] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "84c0b7a5c4694359f3573729794660b15d45bab6deae9c888df9bc7fbf0a92a3",
+          "allowedIdsCount": 59,
+          "allowedIdsSha256": "ba5181c1cff1816cd6b5a1c33cacf49cca0b2007c10cdadeb138f4abf131093f",
+          "allowedIdsInContent": ["component:crates-core-flags-hiargs-rs", "code:crates-core-flags-hiargs-rs:hi-args-from-low-args", "code:crates-core-flags-hiargs-rs:hi-args", "component:crates-core-flags-lowargs-rs", "code:crates-core-flags-lowargs-rs:low-args", "code:crates-core-flags-lowargs-rs:special-mode", "code:crates-core-flags-lowargs-rs:pattern-source", "component:crates-core-main-rs", "code:crates-core-main-rs:special", "component:crates-core-flags-parse-rs", "code:crates-core-flags-parse-rs:flag-info", "component:crates-core-flags-mod-rs", "code:crates-core-flags-mod-rs:flag", "component:crates-core-flags-defs-rs", "code:crates-core-flags-defs-rs:low-args-indexing-unsupported-flag", "code:crates-core-flags-defs-rs:flags"],
+          "packetSources": {},
+          "content": "{\"answer\": \"`LowArgs` is the raw, unvalidated shape produced by flag parsing — a flat bag of typed fields — while `HiArgs` is the validated, resolved form that the rest of ripgrep consumes, built by a single conversion step.\\n\\n- **`LowArgs`** (`crates/core/flags/lowargs.rs`, `LowArgs`) mirrors CLI input directly: `special: Option<SpecialMode>`, `mode: Mode`, `positional`, `patterns: Vec<PatternSource>`, plus raw scalars and lists (`crlf`, `invert_match`, `globs`, `engine`, etc.) — mostly booleans, `Option`s and `Vec<String>`.\\n- **`HiArgs`** (`crates/core/flags/hiargs.rs`, `HiArgs`) holds ready-to-use objects: matchers, searchers, printers and walkers, i.e. flag semantics are actually resolved here.\\n- The only hand-off is **`HiArgs::from_low_args`** (`crates/core/flags/hiargs.rs`). It asserts `low.special` is `None` (special modes must short-circuit before conversion), checks `sort` support, rejects flags via `LowArgs::indexing_unsupported_flag` when indexing is active, and rewrites `low.mode` in place (e.g. `-v --count-matches` becomes `-v --count`) before building `HiArgs`.\\n- Flag definitions (`crates/core/flags/defs.rs`, `FLAGS`, each flag's `update`) mutate `LowArgs` during parsing; `crates/core/flags/parse.rs` (`FlagInfo`, `FlagLookup`) and `crates/core/flags/mod.rs` (`Flag`, `FlagValue`) drive that parsing layer.\\n- `crates/core/main.rs` dispatches on `flags::ParseResult`, handling `special` modes separately (`special`) since they never reach `HiArgs`.\\n\\nThe evidence does not enumerate every field of `HiArgs` itself (only the `from_low_args` excerpt is present), so field-by-field mapping beyond the examples above is not in the evidence.\",\"citations\":[\"component:crates-core-flags-lowargs-rs\",\"code:crates-core-flags-lowargs-rs:low-args\",\"code:crates-core-flags-lowargs-rs:special-mode\",\"code:crates-core-flags-lowargs-rs:pattern-source\",\"component:crates-core-flags-hiargs-rs\",\"code:crates-core-flags-hiargs-rs:hi-args\",\"code:crates-core-flags-hiargs-rs:hi-args-from-low-args\",\"component:crates-core-flags-defs-rs\",\"code:crates-core-flags-defs-rs:flags\",\"code:crates-core-flags-defs-rs:low-args-indexing-unsupported-flag\",\"component:crates-core-flags-parse-rs\",\"code:crates-core-flags-parse-rs:flag-info\",\"component:crates-core-flags-mod-rs\",\"code:crates-core-flags-mod-rs:flag\",\"component:crates-core-main-rs\",\"code:crates-core-main-rs:special\"]}",
+          "usage": { "promptTokens": 10147, "completionTokens": 722, "totalTokens": 10869, "costUsd": 0.005042085 },
+          "ms": 20280
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "sampled-enriched",
+    "nodes": [
+      {
+        "nodeId": "system:burnt-sushi-ripgrep",
+        "name": "BurntSushi_ripgrep",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**ripgrep** is a Rust codebase: the core CLI parses flags into `HiArgs`, dispatches a mode in `main.rs`, then searches via layered crates. Start with `crates/core/flags/defs.rs`; its `FLAGS` table dr…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read the **BurntSushi_ripgrep** container first: `crates/core/flags/defs.rs` and `main.rs` set the whole pipeline. | `HiArgs::from_low_args` in `crates/core/flags/hiargs.rs` is the sing…" },
+          { "id": "children", "type": "children", "preview": "Children: 11 nodes — BurntSushi_ripgrep (container); cli (container); globset (container); +8 more" },
+          { "id": "enrichment:diagram", "type": "mermaid", "preview": "Diagram: BurntSushi_ripgrep at a glance" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:diagram", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:diagram", "children", "enrichment:keyPoints", "enrichment:evidence"], "inputTokens": 1985, "estimatedCostUsd": 0.0000834, "latencyMs": 239 }
+      },
+      {
+        "nodeId": "container:burnt-sushi-ripgrep",
+        "name": "BurntSushi_ripgrep",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**ripgrep's core CLI** parses flags, resolves them into `HiArgs`, dispatches a mode in `main.rs`, then searches haystacks one at a time in `search.rs`. Start with `crates/core/flags/defs.rs`; flag de…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `crates/core/flags/defs.rs` first; its `FLAGS` table drives parsing and everything downstream. | `HiArgs::from_low_args` in `crates/core/flags/hiargs.rs` is the single hand-off fro…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — BurntSushi_ripgrep (softwareSystem)" },
+          { "id": "enrichment:diagram", "type": "mermaid", "preview": "Diagram: BurntSushi_ripgrep at a glance" },
+          { "id": "children", "type": "children", "preview": "Children: 25 nodes — build.rs (component); crates/core/flags/complete/bash.rs (component); crates/core/flags/complete/fish.rs (component); +22 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "enrichment:diagram", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:diagram", "children", "relations:parent", "enrichment:keyPoints", "enrichment:evidence"], "inputTokens": 2281, "estimatedCostUsd": 0.0000958, "latencyMs": 461 }
+      },
+      {
+        "nodeId": "container:crates-printer",
+        "name": "printer",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**printer** is the Rust container at `crates/printer` that turns ripgrep search matches into terminal output. Read `src/standard.rs` first, then `src/util.rs`, which sits between the searcher sink AP…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `src/standard.rs` first: `Config` at line 36 holds every display option, and `StandardBuilder` sets one field per method. | Hand-off seam: `Replacer::replace_all` and `Sunk` in `sr…" },
+          { "id": "nodeRefs:related", "type": "nodeRefs", "preview": "Related: 3 related nodes — grep (used by · dependsOn); matcher (depends on · dependsOn); searcher (depends on · dependsOn)" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — BurntSushi_ripgrep (softwareSystem)" },
+          { "id": "relations:dependencies", "type": "relations", "preview": "Direct dependencies: 2 nodes — matcher (dependsOn); searcher (dependsOn)" },
+          { "id": "relations:dependents", "type": "relations", "preview": "Direct dependents: 1 node — grep (dependsOn)" },
+          { "id": "children", "type": "children", "preview": "Children: 13 nodes — src/color.rs (component); src/counter.rs (component); src/hyperlink/aliases.rs (component); +10 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "nodeRefs:related", "relations:parent", "relations:dependencies", "relations:dependents", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "relations:parent", "enrichment:keyPoints", "relations:dependencies", "relations:dependents", "children", "nodeRefs:related", "enrichment:evidence"], "inputTokens": 2900, "estimatedCostUsd": 0.0001218, "latencyMs": 228 }
+      },
+      {
+        "nodeId": "container:crates-searcher",
+        "name": "searcher",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**Searcher** is the Rust crate that runs byte-level search: line splitting, the search drivers, and the `Sink` callback contract for results. Read `src/searcher/mod.rs` for configuration, then `src/s…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `SearcherBuilder` in `src/searcher/mod.rs`; `build()` clones `Config` and silently drops `before_context` when `passthru` is set. | `src/searcher/glue.rs` holds the three dri…" },
+          { "id": "nodeRefs:related", "type": "nodeRefs", "preview": "Related: 3 related nodes — grep (used by · dependsOn); matcher (depends on · dependsOn); printer (used by · dependsOn)" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — BurntSushi_ripgrep (softwareSystem)" },
+          { "id": "relations:dependencies", "type": "relations", "preview": "Direct dependencies: 1 node — matcher (dependsOn)" },
+          { "id": "relations:dependents", "type": "relations", "preview": "Direct dependents: 2 nodes — grep (dependsOn); printer (dependsOn)" },
+          { "id": "enrichment:diagram", "type": "mermaid", "preview": "Diagram: searcher at a glance" },
+          { "id": "children", "type": "children", "preview": "Children: 10 nodes — src/lib.rs (component); src/line_buffer.rs (component); src/lines.rs (component); +7 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "nodeRefs:related", "relations:parent", "relations:dependencies", "relations:dependents", "enrichment:diagram", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "relations:parent", "enrichment:diagram", "enrichment:keyPoints", "relations:dependents", "children", "relations:dependencies", "nodeRefs:related", "enrichment:evidence"], "inputTokens": 3199, "estimatedCostUsd": 0.0001344, "latencyMs": 230 }
+      },
+      {
+        "nodeId": "container:crates-ignore",
+        "name": "ignore",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "The **ignore** crate implements gitignore-style filtering: it parses ignore rules, matches paths, and drives recursive walking. Read `src/lib.rs` first for `Error` and `Match<T>`; `src/dir.rs` then h…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `src/lib.rs`: `Error` wrapping variants and `Match<T>::or` shape errors and precedence crate-wide. | `src/dir.rs` is the decision seam: `Ignore::matched_ignore` layers overri…" },
+          { "id": "nodeRefs:related", "type": "nodeRefs", "preview": "Related: 1 related node — globset (depends on · dependsOn)" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — BurntSushi_ripgrep (softwareSystem)" },
+          { "id": "relations:dependencies", "type": "relations", "preview": "Direct dependencies: 1 node — globset (dependsOn)" },
+          { "id": "children", "type": "children", "preview": "Children: 9 nodes — src/default_types.rs (component); src/dir.rs (component); src/gitignore.rs (component); +6 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "nodeRefs:related", "relations:parent", "relations:dependencies", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "relations:parent", "children", "nodeRefs:related", "enrichment:keyPoints", "relations:dependencies", "enrichment:evidence"], "inputTokens": 2573, "estimatedCostUsd": 0.0001081, "latencyMs": 346 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "sampled", "k": 5, "singleContainerK": 30, "componentsSampled": 44, "componentsFull": 88, "containers": 11, "droppedFiles": 44, "sampledCommitSha": "01f8c4ea6ca697e27747e2ab47e08f8052c02576", "parentsFromSample": true, "overlaidOnFullScan": true },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 200, "maxTokens": 4000000, "maxDollars": 0.5, "maxConcurrent": 8, "globalMaxDollars": 1.9205 },
+    "ms": 397455,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 56,
+    "inputTokens": 169098,
+    "outputTokens": 81808,
+    "costUsd": 0.137519,
+    "costEstimated": false,
+    "coverage": { "accepted": 55, "failed": 1, "notRun": 0, "belowCap": 2253, "inScope": 56 },
+    "byKind": {
+      "code": { "total": 2253, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 2253 },
+      "component": { "total": 44, "accepted": 44, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 11, "accepted": 10, "failed": 1, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 10,
+    "parentsWithUnsettledChildren": 0,
+    "failures": [
+      { "scopeId": "container:crates-index", "kind": "container", "class": "invalid-output", "error": "llm gateway response content is not JSON" }
+    ]
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 11634,
+    "outcome": "accepted",
+    "requests": 43,
+    "inputTokens": 117621,
+    "costUsd": 0.0049401,
+    "costEstimated": true,
+    "reservationEquivalentUsd": 0.129,
+    "rows": [
+      { "scopeId": "component:crates-cli-src-decompress-rs", "claimId": "cf9564c098b2029373e35", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:crates-cli-src-decompress-rs", "claimId": "c6a3a5a934b158e4957dd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:crates-cli-src-decompress-rs", "claimId": "cdad3749278b692ec3a99", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:crates-cli-src-decompress-rs", "claimId": "c5a93337ef0a21feff4bd", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-cli-src-decompress-rs", "claimId": "c6375a43357c5617c9865", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.38 },
+      { "scopeId": "component:crates-cli-src-decompress-rs", "claimId": "c9fbddd547ba20e379567", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-cli-src-escape-rs", "claimId": "c8c4ddab631b7a89f0fbd", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:crates-cli-src-escape-rs", "claimId": "c7e7ed3603eca96ba3152", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-cli-src-escape-rs", "claimId": "c9ccbe89744077a7fa69d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-cli-src-escape-rs", "claimId": "cb92ef74a766d5b311e23", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-cli-src-escape-rs", "claimId": "c6b0b3ef2fa84cb550a07", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:crates-cli-src-lib-rs", "claimId": "c5f897696f8ca6fdd3722", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-cli-src-lib-rs", "claimId": "c67f6161b469b8ae0cd2e", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-cli-src-lib-rs", "claimId": "c53345529616b3cf199ab", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-cli-src-pattern-rs", "claimId": "c14d911d384462a59aa85", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.46 },
+      { "scopeId": "component:crates-cli-src-pattern-rs", "claimId": "cb34d0c0be3faebc9cb44", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:crates-cli-src-pattern-rs", "claimId": "cbee3505fc44f53ae4cb7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-cli-src-pattern-rs", "claimId": "cbdcc841922df5e9b68b8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:crates-cli-src-pattern-rs", "claimId": "c78eaa484e40abb61082f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-cli-src-process-rs", "claimId": "c987f45e1e2de8d41cbaf", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.61 },
+      { "scopeId": "component:crates-cli-src-process-rs", "claimId": "cfe66f27dfa374cb8883a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:crates-cli-src-process-rs", "claimId": "c6658b20863c77bd56a99", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:crates-cli-src-process-rs", "claimId": "c84a3e8fe82ea6d1753ef", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:crates-cli-src-process-rs", "claimId": "cfffe7e8d0bdf1f187f49", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.66 },
+      { "scopeId": "component:crates-cli-src-process-rs", "claimId": "c437b645774306ba49396", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:crates-core-flags-defs-rs", "claimId": "cbe5ae1251ba1072728b5", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-defs-rs", "claimId": "cd1c3bfa789ec8253407f", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-defs-rs", "claimId": "cd60a79326a9b134646e3", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-core-flags-defs-rs", "claimId": "c8f7186b07ce07a8efe15", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-core-flags-defs-rs", "claimId": "c53ea73afbb74fae5a166", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:crates-core-flags-defs-rs", "claimId": "c31e0b19d7bf31d1c7645", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-core-flags-hiargs-rs", "claimId": "c809d668c5e3bf8ec2077", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-hiargs-rs", "claimId": "c9b386dbbe2960cda71ec", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-hiargs-rs", "claimId": "cff341439069b9024e958", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-hiargs-rs", "claimId": "cc3ada484f4406282ab52", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:crates-core-flags-hiargs-rs", "claimId": "c95f8d3ce15b862e98299", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:crates-core-flags-hiargs-rs", "claimId": "c3047cc4221413c9a4c75", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-core-flags-mod-rs", "claimId": "c738030f8582c6fef43dd", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-mod-rs", "claimId": "c9e9c4bd7534a35d17a4a", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-mod-rs", "claimId": "cd6b83e663a68c46105db", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-flags-mod-rs", "claimId": "c7d1f6732ffcd055328b8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-core-flags-mod-rs", "claimId": "cafd3f4a2cb5cfef12668", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.34 },
+      { "scopeId": "component:crates-core-flags-mod-rs", "claimId": "c7b07aff1ccc673aca4cd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:crates-core-main-rs", "claimId": "cf496581bd56fb92cf1fb", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-core-main-rs", "claimId": "c304196500a3845ecde4a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.47 },
+      { "scopeId": "component:crates-core-main-rs", "claimId": "c92450e272d01e3c8adc2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:crates-core-main-rs", "claimId": "c1f40d7eeed9418ea8360", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:crates-core-main-rs", "claimId": "ca744f72ed381a0e24cea", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-core-main-rs", "claimId": "c8387c852905048b8275d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:crates-core-search-rs", "claimId": "cafd392dd16ebd3bec2ca", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:crates-core-search-rs", "claimId": "c3032a25e6d6e3dec2e9d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.13 },
+      { "scopeId": "component:crates-core-search-rs", "claimId": "c0861b49006697effba7c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:crates-core-search-rs", "claimId": "cc0cd0e41a5c360e48d98", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:crates-core-search-rs", "claimId": "c104d73682ed16f9e9312", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-core-search-rs", "claimId": "c7e76fbf9f5fb431fd9f5", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-globset-src-fnv-rs", "claimId": "c71c8678af685bd7805e2", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:crates-globset-src-fnv-rs", "claimId": "c1db9a4f8467292f7e903", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-globset-src-fnv-rs", "claimId": "cf710fd08cb3260ed0071", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.18 },
+      { "scopeId": "component:crates-globset-src-fnv-rs", "claimId": "c25b48c5cb71209d8e360", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-globset-src-fnv-rs", "claimId": "c2407ed30cf2976187d1d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-globset-src-fnv-rs", "claimId": "c087aab09b52fd9ccdfb9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:crates-globset-src-glob-rs", "claimId": "c663119dac799ea06c46f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-globset-src-glob-rs", "claimId": "ccedc27e5bb4f184c6d1b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:crates-globset-src-glob-rs", "claimId": "c2733958ffe29b783e668", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-globset-src-glob-rs", "claimId": "cc52be7ae2cd63b33c619", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-globset-src-glob-rs", "claimId": "cb1ca7f0a0899cf896427", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-globset-src-glob-rs", "claimId": "cfd314f22998f5addf156", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.16 },
+      { "scopeId": "component:crates-globset-src-lib-rs", "claimId": "c90415aef558c527ad9d8", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-globset-src-lib-rs", "claimId": "cfeed3b2bc9fc1becf29e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-globset-src-lib-rs", "claimId": "cdd95ed7dc467b063216e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-globset-src-lib-rs", "claimId": "c7fecf5c74864aa5e889f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:crates-globset-src-lib-rs", "claimId": "c46d0c0750cf3c5b161a6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:crates-globset-src-lib-rs", "claimId": "c630477c25b8615ce8397", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:crates-globset-src-pathutil-rs", "claimId": "c706fbb1482c9175e8221", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-globset-src-pathutil-rs", "claimId": "ca156c191c7d9ba442514", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.23 },
+      { "scopeId": "component:crates-globset-src-pathutil-rs", "claimId": "cc2c3918058c013fb63c2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:crates-globset-src-pathutil-rs", "claimId": "c181e97d8abf67fff9964", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:crates-globset-src-pathutil-rs", "claimId": "cf1a5083b3f4c277c298c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:crates-globset-src-pathutil-rs", "claimId": "c13cdd61e1730aa492c8a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-globset-src-serde-impl-rs", "claimId": "c1da001a5e603f70f2708", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.61 },
+      { "scopeId": "component:crates-globset-src-serde-impl-rs", "claimId": "c0af437d414b71531b900", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:crates-globset-src-serde-impl-rs", "claimId": "c879e8b98fe1840a0b262", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:crates-grep-src-lib-rs", "claimId": "c889828dd4d9350576820", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-grep-src-lib-rs", "claimId": "c44e516bc27fc4a005691", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-dir-rs", "claimId": "c3d17edaa87905b70cff3", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-dir-rs", "claimId": "cf4a7912ec5b6d3ce9176", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-dir-rs", "claimId": "c39d8a8a4ff509955e19c", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-dir-rs", "claimId": "c108934207f889938fb4b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-dir-rs", "claimId": "c35c80192e98228ff746a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-ignore-src-dir-rs", "claimId": "c70a28a6bfebea8e2fb5c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:crates-ignore-src-gitignore-rs", "claimId": "cc6b6cb9c3d93f8ebb3d0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-gitignore-rs", "claimId": "c7682cf096f0ba809bd8e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-gitignore-rs", "claimId": "c0b163559065f9082aa6a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-ignore-src-gitignore-rs", "claimId": "c15128d552326e13a8a70", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-ignore-src-gitignore-rs", "claimId": "cdcb32cfa3d67b429634b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-ignore-src-lib-rs", "claimId": "cb71f0b13b778a80eb5b2", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-ignore-src-lib-rs", "claimId": "c1bb77cbfb5d9159bf3a3", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:crates-ignore-src-lib-rs", "claimId": "c5c28c2f629468e39aa6c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:crates-ignore-src-lib-rs", "claimId": "cf7703eafa7c396d42605", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:crates-ignore-src-types-rs", "claimId": "cd25f0674deab9439742e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.35 },
+      { "scopeId": "component:crates-ignore-src-types-rs", "claimId": "cab91e9bddcac0ce31ef0", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:crates-ignore-src-types-rs", "claimId": "cae4a6d910a38c9d04657", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:crates-ignore-src-types-rs", "claimId": "cfde87c72b26786fef1c3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:crates-ignore-src-types-rs", "claimId": "c586fd7cb7404c195ad5e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-ignore-src-types-rs", "claimId": "c7f1f7e59e41670da9a0a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:crates-ignore-src-walk-rs", "claimId": "ccb613a28397f67e13a60", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:crates-ignore-src-walk-rs", "claimId": "c1fc00ea211b29ddf570d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:crates-ignore-src-walk-rs", "claimId": "c501c0e5fc0d7990043b9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:crates-ignore-src-walk-rs", "claimId": "c21276875dd19c508aa18", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:crates-ignore-src-walk-rs", "claimId": "c37fa6fc87e94d24bc62a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-index-src-index-rs", "claimId": "cbdedcc4407138e57ca5f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:crates-index-src-index-rs", "claimId": "c8190bbe238d8023e7e88", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:crates-index-src-index-rs", "claimId": "cd238ac33399f21596e06", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:crates-index-src-index-rs", "claimId": "c19a2cf5b8a5ed335b937", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-index-src-index-rs", "claimId": "cea7f2a99ccaae9874835", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-index-src-index-rs", "claimId": "cc39b2b75ada7ba762809", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-index-src-lib-rs", "claimId": "cbc8617c98e1f36cd1d81", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:crates-index-src-lib-rs", "claimId": "cc4d771dc39584c1088a9", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:crates-index-src-literal-rs", "claimId": "ce0293cb6d17818bc44fa", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-index-src-literal-rs", "claimId": "c0412db1e15c19260c739", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:crates-index-src-literal-rs", "claimId": "c0f3316a16c134c1350f0", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-index-src-literal-rs", "claimId": "cfd95049a5d208e4174dd", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:crates-index-src-literal-rs", "claimId": "cdff53227983e661aec3a", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-matcher-src-interpolate-rs", "claimId": "c978584fddc601df2f026", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-matcher-src-interpolate-rs", "claimId": "c827dfa20ee55bec4aee4", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-matcher-src-interpolate-rs", "claimId": "c44c34c0e90b8053f25ac", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-matcher-src-interpolate-rs", "claimId": "cc0f9233fe66c320893a4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:crates-matcher-src-lib-rs", "claimId": "c4538040e915c093a9b82", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-matcher-src-lib-rs", "claimId": "ce1d489708728347cc471", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-matcher-src-lib-rs", "claimId": "c9cabc29e17196f847cf3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-matcher-src-lib-rs", "claimId": "c15f237db2ecb5ae616d6", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-matcher-src-lib-rs", "claimId": "cc9aad1d3857a1d2d1dad", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-matcher-src-lib-rs", "claimId": "cb2ab6a03d7f3f68e4b2a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.61 },
+      { "scopeId": "component:crates-pcre2-src-error-rs", "claimId": "c7a602e0a8332be2ed52f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:crates-pcre2-src-error-rs", "claimId": "c74d70ec063eaa3a54db4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-pcre2-src-error-rs", "claimId": "c375e7536deaf2e9ebce7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-pcre2-src-error-rs", "claimId": "c33cc8c4726c12ade051f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:crates-pcre2-src-error-rs", "claimId": "cbca29122639c633d7a2f", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-pcre2-src-lib-rs", "claimId": "c95de2c25f2792375bc6c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.55 },
+      { "scopeId": "component:crates-pcre2-src-lib-rs", "claimId": "cb0a6c7984d7bfd853fad", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:crates-pcre2-src-matcher-rs", "claimId": "c1824d2751705ed126640", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:crates-pcre2-src-matcher-rs", "claimId": "c616d20a20f1dea810469", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-pcre2-src-matcher-rs", "claimId": "ca41eb3d2dfaaad17d093", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.13 },
+      { "scopeId": "component:crates-pcre2-src-matcher-rs", "claimId": "c98f67bb2fba246bde328", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-pcre2-src-matcher-rs", "claimId": "c45c449d7be1df266e544", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-printer-src-hyperlink-mod-rs", "claimId": "cf60d35297a0f775faeb2", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-printer-src-hyperlink-mod-rs", "claimId": "cfcc24a40e826c4577334", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-printer-src-hyperlink-mod-rs", "claimId": "c13424f7c387c4270993f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-printer-src-hyperlink-mod-rs", "claimId": "c45073ad55ff46b1ab15f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-printer-src-hyperlink-mod-rs", "claimId": "c5137a1f6a6d6de1e22e5", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-printer-src-hyperlink-mod-rs", "claimId": "c0a0dfefb3dd933319849", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:crates-printer-src-hyperlink-mod-rs", "claimId": "caf07a755f8de8c22c8ec", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.72 },
+      { "scopeId": "component:crates-printer-src-lib-rs", "claimId": "ce70cdae1ce141d27d7d6", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.77 },
+      { "scopeId": "component:crates-printer-src-lib-rs", "claimId": "c83176b79af2cff05b3db", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:crates-printer-src-lib-rs", "claimId": "c22d4f174258f51940a4d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:crates-printer-src-standard-rs", "claimId": "ce707af8f00786dfa1160", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.67 },
+      { "scopeId": "component:crates-printer-src-standard-rs", "claimId": "cc6a0b5df2dff1be98699", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:crates-printer-src-standard-rs", "claimId": "ccf349d70cf0f170ed6f5", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:crates-printer-src-standard-rs", "claimId": "c8028a26247464d8c5d1d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:crates-printer-src-standard-rs", "claimId": "cd73a5cb52118a29620a5", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-printer-src-standard-rs", "claimId": "c9a1d3ba964eaddf2c601", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:crates-printer-src-standard-rs", "claimId": "cd64e90fcece0a9a3e00f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.71 },
+      { "scopeId": "component:crates-printer-src-summary-rs", "claimId": "c1e0ce78082d52aecb9cc", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:crates-printer-src-summary-rs", "claimId": "c74253edd0b26da5cef8e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.46 },
+      { "scopeId": "component:crates-printer-src-summary-rs", "claimId": "cb6f158e84f438d0a9a58", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-printer-src-summary-rs", "claimId": "c84aebdaf929ab1abbced", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:crates-printer-src-summary-rs", "claimId": "c00ad8f1f771aba089694", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:crates-printer-src-summary-rs", "claimId": "c76eb94b47a862dd7cfe5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:crates-printer-src-util-rs", "claimId": "c8a4952d0d948ed693faa", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-printer-src-util-rs", "claimId": "cd545bddfc7078f8d39d1", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-printer-src-util-rs", "claimId": "c2b2b9da39833b84cb213", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.65 },
+      { "scopeId": "component:crates-printer-src-util-rs", "claimId": "c57acffbaeb74490c864d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-regex-src-config-rs", "claimId": "c364bff18e5c96c2b26c0", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-regex-src-config-rs", "claimId": "c111fab7c0db4e268819a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:crates-regex-src-config-rs", "claimId": "c32a7919f55d87cefb5c8", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:crates-regex-src-config-rs", "claimId": "caab26ef6f6ca8b5969f7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-regex-src-config-rs", "claimId": "c4433c328a54f65247c85", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-regex-src-config-rs", "claimId": "cc108e38e88ac55594a36", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-regex-src-error-rs", "claimId": "cc9143d5a9b25eb39d3ff", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-regex-src-error-rs", "claimId": "c7473eb1bc56875ad18ac", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-regex-src-error-rs", "claimId": "c7f6918334d2c1e730911", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:crates-regex-src-error-rs", "claimId": "ca5bf5e755918ea6360a5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:crates-regex-src-lib-rs", "claimId": "cf6e225842c146f4f5c69", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-regex-src-lib-rs", "claimId": "c5e932c3e9fa9949d9335", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-regex-src-lib-rs", "claimId": "c4abb3bde280a619abb90", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:crates-regex-src-lib-rs", "claimId": "c1d508c2357609bfd2a9d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:crates-regex-src-literal-rs", "claimId": "cb7ddfb60000315fa3230", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:crates-regex-src-literal-rs", "claimId": "ca860bcdcf44e5e7b2431", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.23 },
+      { "scopeId": "component:crates-regex-src-literal-rs", "claimId": "cc2b26aa1e6538a597acf", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-regex-src-literal-rs", "claimId": "cde23a641a84f931758de", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-regex-src-literal-rs", "claimId": "cfe9eb55b3313080efeca", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.63 },
+      { "scopeId": "component:crates-regex-src-literal-rs", "claimId": "c6df03ac3d8f85076520e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:crates-regex-src-literal-rs", "claimId": "c87bf476529577b340fce", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:crates-regex-src-matcher-rs", "claimId": "ce21f51c1869547042c11", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-regex-src-matcher-rs", "claimId": "c7cd746252fce68c46260", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:crates-regex-src-matcher-rs", "claimId": "caf9dd82d09379544036b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:crates-regex-src-matcher-rs", "claimId": "cf470b78e29b1e6438e04", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:crates-regex-src-matcher-rs", "claimId": "c5db1136787d12ef1f692", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:crates-regex-src-matcher-rs", "claimId": "c71b641f1000dc32ac24c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:crates-regex-src-matcher-rs", "claimId": "c06fc09611745e3b0e4ee", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:crates-searcher-src-lib-rs", "claimId": "cc353fedc36246132d933", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-searcher-src-lib-rs", "claimId": "cd8bb83e41636cdbcf03a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.63 },
+      { "scopeId": "component:crates-searcher-src-lib-rs", "claimId": "c3fe6d4dd671b7d060a14", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.21 },
+      { "scopeId": "component:crates-searcher-src-lines-rs", "claimId": "c70ba27b6501864ff87f9", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:crates-searcher-src-lines-rs", "claimId": "cac0fc01462fd6b5a7b9c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:crates-searcher-src-lines-rs", "claimId": "c4f2614085468b2a21054", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:crates-searcher-src-lines-rs", "claimId": "c5e991f22801f7e1f72ff", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:crates-searcher-src-lines-rs", "claimId": "c32641c32e59189bcad50", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.57 },
+      { "scopeId": "component:crates-searcher-src-searcher-glue-rs", "claimId": "ce371e9ced211c482f9b5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.58 },
+      { "scopeId": "component:crates-searcher-src-searcher-glue-rs", "claimId": "cdfb44282e35ce9aae5fb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:crates-searcher-src-searcher-glue-rs", "claimId": "caab48f63aa1be287f6f4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:crates-searcher-src-searcher-glue-rs", "claimId": "cdc83262c7e08378b31c6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.4 },
+      { "scopeId": "component:crates-searcher-src-searcher-glue-rs", "claimId": "cd59e0f5068fc3bcccc28", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:crates-searcher-src-searcher-mod-rs", "claimId": "cc10124af0def186a49a3", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:crates-searcher-src-searcher-mod-rs", "claimId": "c9ebc81722cc94289bd20", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:crates-searcher-src-searcher-mod-rs", "claimId": "c745646821098afc95de7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:crates-searcher-src-searcher-mod-rs", "claimId": "cab0176406c5bbb757b7c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:crates-searcher-src-searcher-mod-rs", "claimId": "c100ec13c2d884a333725", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.32 },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "cbe56af8d4b5845da6a8b", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "c9de41078e654317ac625", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "cce0131f2542718af9c2e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "ccdb7e17c48f8f0b6f3bf", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.64 },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "c7766c58f30617f5e8076", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "c1ba038b42361edf7649c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.84 },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "c9089c738903fb031fd69", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:crates-searcher-src-sink-rs", "claimId": "c5bd3c8fff0a41b53454e", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "container:crates-cli", "claimId": "cb83be984aa91ab1c73f9", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-cli", "claimId": "c6e803f2d8b3d5233c1d7", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-cli", "claimId": "c87189982fcf889d05426", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-grep", "claimId": "c18546f633dad678e3857", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-grep", "claimId": "c4868f905c7aa11ffe59d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-ignore", "claimId": "c6fac99b988b12ff59674", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-ignore", "claimId": "c2ce1c73e415e104dd074", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-ignore", "claimId": "c46d475ad95ee38d0e804", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-ignore", "claimId": "c6421510ac8d04b916590", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-ignore", "claimId": "c08defcb82345aadfff61", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-ignore", "claimId": "c4ed12b7faae2001bb008", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" },
+      { "scopeId": "container:crates-pcre2", "claimId": "c55dd584aa5100834c36c", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" }
+    ],
+    "rateLimited": 0
+  },
+  "stageMs": { "claims": 27184, "ask": 26599, "blocks": 1558 }
+}

@@ -1,0 +1,634 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "GoogleCloudPlatform__microservices-demo",
+  "repository": "GoogleCloudPlatform/microservices-demo",
+  "commitSha": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
+  "scan": {
+    "asIs": {
+      "revision": "38e7348eb289eb5b87c0c6e8cb19ced0449dc389",
+      "ok": true,
+      "ms": 1841,
+      "entities": 55,
+      "relations": 28,
+      "kinds": { "code": 47, "component": 6, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:google-cloud-platform-microservices-demo", "name": "GoogleCloudPlatform_microservices-demo", "components": 6 }
+      ],
+      "signals": { "entities": 55, "containers": 1, "components": 6, "files": 8, "maxDepth": 2, "medianDepth": 2, "language": "Polyglot" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T03:10:32.421Z",
+    "corpus": "scan",
+    "entityCount": 55,
+    "systemNames": ["microservices-demo"],
+    "paths": ["src/paymentservice/index.js", "src/currencyservice/client.js", "src/currencyservice/server.js", "src/paymentservice/server.js", "google-cloud-platform-microservices-demo", "README.md", "src/paymentservice/charge.js", "src/paymentservice/logger.js"],
+    "rateLimited": 0,
+    "questions": [
+      {
+        "id": "msdemo-place-order",
+        "question": "What happens, step by step, when a shopper completes checkout?",
+        "selectedId": "system:google-cloud-platform-microservices-demo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 3604,
+        "sectionCount": 5,
+        "ranked": [0, 1, 2, 3, 4],
+        "packets": [5, 4],
+        "sections": [
+          {
+            "id": "component:src-paymentservice-index-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-paymentservice-index-js:hipster-shop-server", "name": "HipsterShopServer" },
+              { "id": "code:src-paymentservice-index-js:server", "name": "server" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-client-js:client", "name": "client" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-server-js:main", "name": "main" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-server-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-paymentservice-server-js:hipster-shop-server", "name": "HipsterShopServer" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 }
+        ],
+        "expectedIndexed": { "src/checkoutservice/main.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 3604, "sectionCount": 5, "ranked": [0, 1, 2, 3, 4] },
+          "double": { "byteBudget": 48000, "bytes": 3604, "sectionCount": 5, "ranked": [0, 1, 2, 3, 4] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 3604, "sectionCount": 5, "ranked": [0, 1, 2, 3, 4] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 3604, "sectionCount": 5, "ranked": [0, 1, 2, 3, 4] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "1aa490679c706226d89093564f94679b33107c00f9c329a3521c8bc372eb8cde",
+          "allowedIdsCount": 13,
+          "allowedIdsSha256": "c3d31ea9cf5f543bc87af862a623c6f7a950e66e624cfd1101e94cd6e4beab62",
+          "allowedIdsInContent": ["component:src-paymentservice-index-js", "code:src-paymentservice-index-js:hipster-shop-server", "code:src-paymentservice-index-js:server", "component:src-currencyservice-client-js", "code:src-currencyservice-client-js:shop-proto", "code:src-currencyservice-client-js:client", "component:src-currencyservice-server-js", "code:src-currencyservice-server-js:shop-proto", "code:src-currencyservice-server-js:main", "component:src-paymentservice-server-js", "code:src-paymentservice-server-js:hipster-shop-server", "container:google-cloud-platform-microservices-demo", "system:google-cloud-platform-microservices-demo"],
+          "packetSources": { "system:google-cloud-platform-microservices-demo": 5, "container:google-cloud-platform-microservices-demo": 4 },
+          "content": "{\"answer\":\"The full checkout flow is **not in the evidence** — the atlas only surfaced payment- and currency-service code, so the storefront, checkout/order service, shipping, and email steps are missing from these sections.\\n\\nWhat the evidence does show is the payment step:\\n\\n- `src/paymentservice/index.js` (`HipsterShopServer`, `server`) boots the payment gRPC server.\\n- `src/paymentservice/server.js` (`HipsterShopServer`, `ChargeServiceHandler`) registers `PaymentService.Charge`: on invocation it logs `PaymentService#Charge`, calls `charge(call.request)`, and returns a `ChargeResponse` via callback (errors are passed back to the caller).\\n- The server loads `demo.proto` (hipsterShop package) plus the gRPC health proto and binds an insecure gRPC listener on its configured port (`listen`, `CheckHandler` returns `SERVING`).\\n- `src/currencyservice/server.js` (`shopProto`, `main`) loads `demo.proto` the same way (`hipstershop` package) and starts its own gRPC server — this is the money-conversion counterpart.\\n- `src/currencyservice/client.js` (`shopProto`, `client`) is a small gRPC client for that service.\\n\\nCaveat: no evidence shows how these connect to the frontend cart/order placement, or what triggers `Charge` during checkout. Search covers 5 sections across `GoogleCloudPlatform_microservices-demo` only.\",\"citations\":[\"component:src-paymentservice-index-js\",\"code:src-paymentservice-index-js:hipster-shop-server\",\"code:src-paymentservice-index-js:server\",\"component:src-paymentservice-server-js\",\"code:src-paymentservice-server-js:hipster-shop-server\",\"component:src-currencyservice-server-js\",\"code:src-currencyservice-server-js:shop-proto\",\"code:src-currencyservice-server-js:main\",\"component:src-currencyservice-client-js\",\"code:src-currencyservice-client-js:shop-proto\",\"code:src-currencyservice-client-js:client\",\"container:google-cloud-platform-microservices-demo\",\"system:google-cloud-platform-microservices-demo\"]}",
+          "usage": { "promptTokens": 1931, "completionTokens": 539, "totalTokens": 2470, "costUsd": 0.001308915 },
+          "ms": 12711
+        }
+      },
+      {
+        "id": "msdemo-card-charge",
+        "question": "Which credit cards does the shop accept, and how is a card checked before it is charged?",
+        "selectedId": "system:google-cloud-platform-microservices-demo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 4672,
+        "sectionCount": 6,
+        "ranked": [6, 3, 2, 4, 0, 1],
+        "packets": [5, 4],
+        "sections": [
+          {
+            "id": "component:src-paymentservice-charge-js",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:src-paymentservice-charge-js:unaccepted-credit-card", "name": "UnacceptedCreditCard" },
+              { "id": "code:src-paymentservice-charge-js:invalid-credit-card", "name": "InvalidCreditCard" },
+              { "id": "code:src-paymentservice-charge-js:expired-credit-card", "name": "ExpiredCreditCard" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-server-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-paymentservice-server-js:hipster-shop-server", "name": "HipsterShopServer" },
+              { "id": "code:src-paymentservice-server-js:charge", "name": "charge" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:check", "name": "check" },
+              { "id": "code:src-currencyservice-server-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-server-js:main", "name": "main" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 },
+          {
+            "id": "component:src-paymentservice-index-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-paymentservice-index-js:hipster-shop-server", "name": "HipsterShopServer" },
+              { "id": "code:src-paymentservice-index-js:server", "name": "server" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-client-js:client", "name": "client" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "src/paymentservice/charge.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 4672, "sectionCount": 6, "ranked": [6, 3, 2, 4, 0, 1] },
+          "double": { "byteBudget": 48000, "bytes": 4672, "sectionCount": 6, "ranked": [6, 3, 2, 4, 0, 1] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 4672, "sectionCount": 6, "ranked": [6, 3, 2, 4, 0, 1] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 4672, "sectionCount": 6, "ranked": [6, 3, 2, 4, 0, 1] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "730253405510939b1dd834eb8862cc1ad76f8bd8a21a4c4d839c36b0adb27bee",
+          "allowedIdsCount": 19,
+          "allowedIdsSha256": "a95188ce5c3602a84cab48016f24a4342bd6e4d0f23dd081e99e6fef7f705e7d",
+          "allowedIdsInContent": ["component:src-paymentservice-charge-js", "code:src-paymentservice-charge-js:unaccepted-credit-card", "code:src-paymentservice-charge-js:invalid-credit-card", "code:src-paymentservice-charge-js:expired-credit-card", "component:src-paymentservice-server-js", "code:src-paymentservice-server-js:hipster-shop-server", "code:src-paymentservice-server-js:charge", "container:google-cloud-platform-microservices-demo", "component:src-paymentservice-index-js", "code:src-paymentservice-index-js:hipster-shop-server"],
+          "packetSources": { "container:google-cloud-platform-microservices-demo": 4 },
+          "content": "{\"answer\": \"The shop accepts **VISA and MasterCard only** — any other card type is rejected with \\\"Sorry, we cannot process ${cardType} credit cards. Only VISA or MasterCard is accepted.\\\"\\n\\nCard validation lives in the payment service's charge logic:\\n- `src/paymentservice/charge.js` defines three `CreditCardError` subclasses used to reject a card before any charge is applied: `UnacceptedCreditCard` (`code:src-paymentservice-charge-js:unaccepted-credit-card`, lines 43–47), `InvalidCreditCard` (`code:src-paymentservice-charge-js:invalid-credit-card`, lines 37–41), and `ExpiredCreditCard` (`code:src-paymentservice-charge-js:expired-credit-card`, lines 49–53).\\n- `src/paymentservice/server.js` wires this in via `HipsterShopServer.ChargeServiceHandler`, which calls `charge(call.request)` inside a try/catch and forwards any thrown `CreditCardError` to the gRPC callback instead of returning a response (`code:src-paymentservice-server-js:hipster-shop-server`, `code:src-paymentservice-server-js:charge`).\\n- `src/paymentservice/index.js` just boots the server (`code:src-paymentservice-index-js:hipster-shop-server`).\\n\\nSo the order is: gRPC `PaymentService.Charge` → `charge(call.request)` → card checks (accepted brand, validity, expiry) → only then a charge; otherwise an error is returned.\\n\\nOne caveat: the evidence only includes the source excerpt for `UnacceptedCreditCard`; the exact validation logic inside `InvalidCreditCard` and `ExpiredCreditCard` is not in the evidence.\", \"citations\": [\"component:src-paymentservice-charge-js\", \"code:src-paymentservice-charge-js:unaccepted-credit-card\", \"code:src-paymentservice-charge-js:invalid-credit-card\", \"code:src-paymentservice-charge-js:expired-credit-card\", \"component:src-paymentservice-server-js\", \"code:src-paymentservice-server-js:hipster-shop-server\", \"code:src-paymentservice-server-js:charge\", \"component:src-paymentservice-index-js\", \"code:src-paymentservice-index-js:hipster-shop-server\", \"container:google-cloud-platform-microservices-demo\"]}",
+          "usage": { "promptTokens": 2436, "completionTokens": 577, "totalTokens": 3013, "costUsd": 0.00156165 },
+          "ms": 17577
+        }
+      },
+      {
+        "id": "msdemo-currency-convert",
+        "question": "How are prices shown in a different currency, and where do the exchange rates come from?",
+        "selectedId": "system:google-cloud-platform-microservices-demo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 2375,
+        "sectionCount": 4,
+        "ranked": [2, 1, 4, 6],
+        "packets": [5, 4],
+        "sections": [
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:get-supported-currencies", "name": "getSupportedCurrencies" },
+              { "id": "code:src-currencyservice-server-js:get-currency-data", "name": "_getCurrencyData" },
+              { "id": "code:src-currencyservice-server-js:convert", "name": "convert" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:client", "name": "client" },
+              { "id": "code:src-currencyservice-client-js:request", "name": "request" },
+              { "id": "code:src-currencyservice-client-js:money-to-string", "name": "_moneyToString" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 },
+          {
+            "id": "component:src-paymentservice-charge-js",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:src-paymentservice-charge-js:credit-card-error", "name": "CreditCardError" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "src/currencyservice/server.js": true, "src/currencyservice/data/currency_conversion.json": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 2375, "sectionCount": 4, "ranked": [2, 1, 4, 6] },
+          "double": { "byteBudget": 48000, "bytes": 2375, "sectionCount": 4, "ranked": [2, 1, 4, 6] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 2375, "sectionCount": 4, "ranked": [2, 1, 4, 6] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 2375, "sectionCount": 4, "ranked": [2, 1, 4, 6] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "7055599bc5b1c2479a575d9897d5a5bdfb32aaa6bb23d1bb4028073c6a17795c",
+          "allowedIdsCount": 12,
+          "allowedIdsSha256": "d25dc10b2dc40db19a00b3f515f9dba8c1965333c1a22ec8b3fb25d068a16db9",
+          "allowedIdsInContent": ["component:src-currencyservice-server-js", "code:src-currencyservice-server-js:get-supported-currencies", "code:src-currencyservice-server-js:get-currency-data", "code:src-currencyservice-server-js:convert", "component:src-currencyservice-client-js", "code:src-currencyservice-client-js:client", "code:src-currencyservice-client-js:request", "code:src-currencyservice-client-js:money-to-string", "container:google-cloud-platform-microservices-demo", "system:google-cloud-platform-microservices-demo"],
+          "packetSources": { "system:google-cloud-platform-microservices-demo": 5, "container:google-cloud-platform-microservices-demo": 4 },
+          "content": "{\"answer\": \"Currency conversion is handled by the currency service (`src/currencyservice/server.js`), exposed over gRPC and called through the client in `src/currencyservice/client.js`. The exact source of the exchange rates is not in the evidence.\\n\\n- `src/currencyservice/server.js`: `getSupportedCurrencies` calls `_getCurrencyData` and returns `Object.keys(data)` as the list of supported currency codes.\\n- `src/currencyservice/server.js`: `convert` (line 138) performs the money conversion; `_getCurrencyData` (line 109) supplies the currency data it works from. The body of `_getCurrencyData` is not shown, so where the rate data is loaded from (file, API, etc.) is not in the evidence.\\n- `src/currencyservice/client.js`: `client` wraps `shopProto.CurrencyService` on `localhost:${PORT}` with insecure gRPC credentials; `request` sends calls to it and `_moneyToString` formats the returned `Money`.\\n- `src/paymentservice/charge.js` (`CreditCardError`) is unrelated to currency conversion.\\n\\nPart missing: the origin of the exchange rates themselves — only `_getCurrencyData` is named as the provider of the rate data, without its implementation or data source.\", \"citations\": [\"component:src-currencyservice-server-js\", \"code:src-currencyservice-server-js:get-supported-currencies\", \"code:src-currencyservice-server-js:get-currency-data\", \"code:src-currencyservice-server-js:convert\", \"component:src-currencyservice-client-js\", \"code:src-currencyservice-client-js:client\", \"code:src-currencyservice-client-js:request\", \"code:src-currencyservice-client-js:money-to-string\", \"container:google-cloud-platform-microservices-demo\", \"system:google-cloud-platform-microservices-demo\"]}",
+          "usage": { "promptTokens": 1561, "completionTokens": 530, "totalTokens": 2091, "costUsd": 0.001140135 },
+          "ms": 16374
+        }
+      },
+      {
+        "id": "msdemo-cart-storage",
+        "question": "Where is a shopper's basket kept between requests, and can it be backed by something other than Redis?",
+        "selectedId": "component:src-currencyservice-client-js",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 3862,
+        "sectionCount": 5,
+        "ranked": [1, 3, 2, 0, 4],
+        "packets": [1, 4],
+        "sections": [
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:request", "name": "request" },
+              { "id": "code:src-currencyservice-client-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-client-js:client", "name": "client" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-server-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-paymentservice-server-js:hipster-shop-server", "name": "HipsterShopServer" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-server-js:convert", "name": "convert" },
+              { "id": "code:src-currencyservice-server-js:main", "name": "main" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-index-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-paymentservice-index-js:hipster-shop-server", "name": "HipsterShopServer" },
+              { "id": "code:src-paymentservice-index-js:server", "name": "server" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 }
+        ],
+        "expectedIndexed": { "src/cartservice/src/Startup.cs": false, "src/cartservice/src/cartstore/RedisCartStore.cs": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 3862, "sectionCount": 5, "ranked": [1, 3, 2, 0, 4] },
+          "double": { "byteBudget": 48000, "bytes": 3862, "sectionCount": 5, "ranked": [1, 3, 2, 0, 4] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 3862, "sectionCount": 5, "ranked": [1, 3, 2, 0, 4] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 3862, "sectionCount": 5, "ranked": [1, 3, 2, 0, 4] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "29a7657edf7b7acc61ad457b05648e0250f59c477c7f4ecd728ed53c83281f97",
+          "allowedIdsCount": 21,
+          "allowedIdsSha256": "4961954955fb3b3661cfde3589ec6f7dbd8406bf54884eb39c28d5ec334a8826",
+          "allowedIdsInContent": ["container:google-cloud-platform-microservices-demo"],
+          "packetSources": { "container:google-cloud-platform-microservices-demo": 4 },
+          "content": "{\"answer\": \"This is not in the evidence. The whole-atlas search returned 5 sections (all under `google-cloud-platform-microservices-demo`), but none of them mention a shopper's basket, cart storage, session state, or Redis.\\n\\nWhat the evidence actually covers:\\n- `src/currencyservice/client.js` — a gRPC currency-conversion demo client (`shopProto`, `client`, `request`), no persistence.\\n- `src/currencyservice/server.js` — currency conversion service (`convert`, `main`, `shopProto`).\\n- `src/paymentservice/server.js` / `src/paymentservice/index.js` — gRPC payment service (`HipsterShopServer`, `ChargeServiceHandler`), stateless, no store.\\n\\nNo basket/cart component, no Redis (or alternative) backing-store abstraction appears anywhere in the searched scope, so neither where the basket is kept between requests nor whether it can be backed by something other than Redis can be answered from this evidence. If the basket logic lives in a different service (e.g. a cart service) not present in the atlas, that part of the repository is simply not indexed here.\", \"citations\": [\"container:google-cloud-platform-microservices-demo\"]}",
+          "usage": { "promptTokens": 3044, "completionTokens": 463, "totalTokens": 3507, "costUsd": 0.00172695 },
+          "ms": 13852
+        }
+      },
+      {
+        "id": "msdemo-session",
+        "question": "How does the site recognize a returning visitor when nobody logs in?",
+        "selectedId": "system:google-cloud-platform-microservices-demo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 3692,
+        "sectionCount": 7,
+        "ranked": [2, 1, 6, 7, 3, 0, 4],
+        "packets": [5, 4],
+        "sections": [
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:logger", "name": "logger" },
+              { "id": "code:src-currencyservice-server-js:carry", "name": "_carry" },
+              { "id": "code:src-currencyservice-server-js:main", "name": "main" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:logger", "name": "logger" },
+              { "id": "code:src-currencyservice-client-js:money-to-string", "name": "_moneyToString" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-charge-js",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:src-paymentservice-charge-js:logger", "name": "logger" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-logger-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:src-paymentservice-logger-js:pino", "name": "pino" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-server-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-paymentservice-server-js:logger", "name": "logger" },
+              { "id": "code:src-paymentservice-server-js:hipster-shop-server", "name": "HipsterShopServer" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-index-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-paymentservice-index-js:logger", "name": "logger" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 }
+        ],
+        "expectedIndexed": { "src/frontend/middleware.go": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 3692, "sectionCount": 7, "ranked": [2, 1, 6, 7, 3, 0, 4] },
+          "double": { "byteBudget": 48000, "bytes": 3692, "sectionCount": 7, "ranked": [2, 1, 6, 7, 3, 0, 4] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 3692, "sectionCount": 7, "ranked": [2, 1, 6, 7, 3, 0, 4] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 3692, "sectionCount": 7, "ranked": [2, 1, 6, 7, 3, 0, 4] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "d8533c5b98660849eda02af2f9f068ae384c58ab6eabfbe6d71684970fb632cd",
+          "allowedIdsCount": 18,
+          "allowedIdsSha256": "921b80938675673c1cdca60f00a64cf63364472c3c687940b30e2213686d6aa3",
+          "allowedIdsInContent": ["component:src-currencyservice-server-js", "component:src-currencyservice-client-js", "component:src-paymentservice-charge-js", "component:src-paymentservice-logger-js", "component:src-paymentservice-server-js", "component:src-paymentservice-index-js"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned 7 sections, but all of them concern gRPC service plumbing in the currency and payment services (logger setup, `_carry`, `main`, `_moneyToString`, `HipsterShopServer`) — none describe cookies, sessions, user IDs, or any mechanism for recognizing a returning unauthenticated visitor.\\n\\nWhat is present, for context only:\\n- `src/currencyservice/server.js` — `logger`, `_carry`, `main`: gRPC currency conversion server.\\n- `src/currencyservice/client.js` — `logger`, `_moneyToString`: currency client helpers.\\n- `src/paymentservice/charge.js`, `src/paymentservice/logger.js`, `src/paymentservice/server.js`, `src/paymentservice/index.js` — payment service logging and server bootstrap (`HipsterShopServer`).\\n\\nNo part of the question can be answered from these sections; visitor/session handling is not covered by the searched atlas content.\", \"citations\": [\"component:src-currencyservice-server-js\", \"component:src-currencyservice-client-js\", \"component:src-paymentservice-server-js\", \"component:src-paymentservice-charge-js\", \"component:src-paymentservice-index-js\", \"component:src-paymentservice-logger-js\"]}",
+          "usage": { "promptTokens": 2145, "completionTokens": 365, "totalTokens": 2510, "costUsd": 0.001250625 },
+          "ms": 13705
+        }
+      },
+      {
+        "id": "msdemo-recommendations",
+        "question": "How are the 'you may also like' products chosen?",
+        "selectedId": "component:src-paymentservice-logger-js",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 0,
+        "sectionCount": 0,
+        "ranked": [],
+        "packets": [7, 4],
+        "sections": [],
+        "expectedIndexed": { "src/recommendationservice/recommendation_server.py": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "double": { "byteBudget": 48000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 0, "sectionCount": 0, "ranked": [] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 0, "sectionCount": 0, "ranked": [] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "0e8d56d2d50ec7bf84f182955ddaa5cf9f9898ced4b2ffaec3d42c05e1f24104",
+          "allowedIdsCount": 3,
+          "allowedIdsSha256": "ac99e311dfdbfde209b74d66c6b86d305eb183fbd177b24a6c5fc62c1380ac5b",
+          "allowedIdsInContent": ["component:src-paymentservice-logger-js", "container:google-cloud-platform-microservices-demo", "code:src-paymentservice-logger-js:pino"],
+          "packetSources": { "component:src-paymentservice-logger-js": 7, "container:google-cloud-platform-microservices-demo": 4, "code:src-paymentservice-logger-js:pino": 7 },
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned zero matching sections, and the selected scope packets cover only `src/paymentservice/logger.js` (its `pino` logger) inside `GoogleCloudPlatform_microservices-demo` — nothing about product recommendations or a \\\"you may also like\\\" feature. If that logic exists elsewhere (e.g., a product catalog or frontend service), it isn't represented in what I can see here.\", \"citations\": [\"component:src-paymentservice-logger-js\", \"container:google-cloud-platform-microservices-demo\", \"code:src-paymentservice-logger-js:pino\"]}",
+          "usage": { "promptTokens": 685, "completionTokens": 160, "totalTokens": 845, "costUsd": 0.000437175 },
+          "ms": 5122
+        }
+      },
+      {
+        "id": "msdemo-ads",
+        "question": "Where does the advert shown on product pages come from, and how many are returned?",
+        "selectedId": "system:google-cloud-platform-microservices-demo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 3200,
+        "sectionCount": 4,
+        "ranked": [1, 2, 6, 4],
+        "packets": [5, 4],
+        "sections": [
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:money-to-string", "name": "_moneyToString" },
+              { "id": "code:src-currencyservice-client-js:request", "name": "request" },
+              { "id": "code:src-currencyservice-client-js:logger", "name": "logger" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:convert", "name": "convert" },
+              { "id": "code:src-currencyservice-server-js:logger", "name": "logger" },
+              { "id": "code:src-currencyservice-server-js:load-proto", "name": "_loadProto" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-charge-js",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:src-paymentservice-charge-js:logger", "name": "logger" },
+              { "id": "code:src-paymentservice-charge-js:credit-card-error", "name": "CreditCardError" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 }
+        ],
+        "expectedIndexed": { "src/adservice/src/main/java/hipstershop/AdService.java": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 3200, "sectionCount": 4, "ranked": [1, 2, 6, 4] },
+          "double": { "byteBudget": 48000, "bytes": 3200, "sectionCount": 4, "ranked": [1, 2, 6, 4] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 3200, "sectionCount": 4, "ranked": [1, 2, 6, 4] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 3200, "sectionCount": 4, "ranked": [1, 2, 6, 4] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "4a57a89d8e7ecc67cd384b244434e50e3ad36c936b8e15bcb8deced429168f66",
+          "allowedIdsCount": 13,
+          "allowedIdsSha256": "6cec869a153574ccd183e1182f91c49b8030bfa7a015cd04277f7f38b1c0d54b",
+          "allowedIdsInContent": ["code:src-currencyservice-client-js:request", "code:src-currencyservice-server-js:convert", "code:src-paymentservice-charge-js:credit-card-error"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Not in the evidence. The whole-atlas search returned 4 sections (`src/currencyservice/client.js`, `src/currencyservice/server.js`, `src/paymentservice/charge.js`, and the `GoogleCloudPlatform_microservices-demo` container), and none of them — nor the selected scope packets — mention an advert service, ad placement on product pages, or how many ads are returned.\\n\\nWhat the evidence does cover is unrelated: currency conversion (`code:src-currencyservice-server-js:convert`, `code:src-currencyservice-client-js:request`) and payment charging (`code:src-paymentservice-charge-js:credit-card-error`). To answer your question I'd need the product/ad service component (e.g. an ad service or frontend handler) and its request/response symbols, which are not present in this evidence.\",\"citations\":[]}",
+          "usage": { "promptTokens": 1834, "completionTokens": 251, "totalTokens": 2085, "costUsd": 0.00101616 },
+          "ms": 12249
+        }
+      },
+      {
+        "id": "msdemo-add-service",
+        "question": "What steps do I follow to add another service to the shop?",
+        "selectedId": "system:google-cloud-platform-microservices-demo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 3604,
+        "sectionCount": 5,
+        "ranked": [2, 3, 1, 0, 4],
+        "packets": [5, 4],
+        "sections": [
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-server-js:main", "name": "main" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-server-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-paymentservice-server-js:hipster-shop-server", "name": "HipsterShopServer" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:shop-proto", "name": "shopProto" },
+              { "id": "code:src-currencyservice-client-js:client", "name": "client" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-index-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-paymentservice-index-js:hipster-shop-server", "name": "HipsterShopServer" },
+              { "id": "code:src-paymentservice-index-js:server", "name": "server" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 }
+        ],
+        "expectedIndexed": { "docs/adding-new-microservice.md": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 3604, "sectionCount": 5, "ranked": [2, 3, 1, 0, 4] },
+          "double": { "byteBudget": 48000, "bytes": 3604, "sectionCount": 5, "ranked": [2, 3, 1, 0, 4] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 3604, "sectionCount": 5, "ranked": [2, 3, 1, 0, 4] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 3604, "sectionCount": 5, "ranked": [2, 3, 1, 0, 4] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "341a8d92d8a1055b6ab93bad2d0806fe4bcae0a0b2c1e1d54a2391c957a0c6f1",
+          "allowedIdsCount": 13,
+          "allowedIdsSha256": "5b1ed63cbce13a5f550ce6ddb49bbca7aea000c59a315218aaf9736cd48ff5af",
+          "allowedIdsInContent": ["component:src-currencyservice-server-js", "code:src-currencyservice-server-js:shop-proto", "code:src-currencyservice-server-js:main", "component:src-paymentservice-server-js", "code:src-paymentservice-server-js:hipster-shop-server", "component:src-currencyservice-client-js", "code:src-currencyservice-client-js:shop-proto", "code:src-currencyservice-client-js:client", "component:src-paymentservice-index-js", "code:src-paymentservice-index-js:hipster-shop-server", "code:src-paymentservice-index-js:server", "container:google-cloud-platform-microservices-demo", "system:google-cloud-platform-microservices-demo"],
+          "packetSources": { "system:google-cloud-platform-microservices-demo": 5, "container:google-cloud-platform-microservices-demo": 4 },
+          "content": "{\"answer\": \"There's no explicit \\\"add a service\\\" guide in the evidence, but the existing services show a clear, repeatable pattern you can follow:\\n\\n1. **Define the service in the shared proto** — both services load the hipstershop proto package (`shopProto` / `demo.proto`), so your new service's RPCs need to live there too (`src/currencyservice/server.js`, `src/paymentservice/server.js`).\\n2. **Implement a server class** — mirror `HipsterShopServer`, which takes `protoRoot`, loads the hipstershop and gRPC health protos (`loadProto`, `loadAllProtos`), and registers static handlers like `ChargeServiceHandler` and `CheckHandler`.\\n3. **Bind and start** — follow `listen()`, which binds `[::]:${port}` with `grpc.ServerCredentials.createInsecure()` and calls `server.start()`.\\n4. **Wire up an entrypoint** — as in `src/paymentservice/index.js`, `require('./server')` (symbol `HipsterShopServer`) and instantiate it via `server`.\\n5. **(Optional) Add a client** — as in `src/currencyservice/client.js`, load the same proto (`shopProto`) and construct `client` from it.\\n\\nAll of these components live under the `GoogleCloudPlatform_microservices-demo` container.\\n\\nWhat's missing from the evidence: any deployment/registration steps (manifests, service discovery, build config), so I can't say how a new service gets wired into the wider system beyond the code pattern above.\",\"citations\":[\"component:src-currencyservice-server-js\",\"code:src-currencyservice-server-js:shop-proto\",\"code:src-currencyservice-server-js:main\",\"component:src-paymentservice-server-js\",\"code:src-paymentservice-server-js:hipster-shop-server\",\"component:src-currencyservice-client-js\",\"code:src-currencyservice-client-js:shop-proto\",\"code:src-currencyservice-client-js:client\",\"component:src-paymentservice-index-js\",\"code:src-paymentservice-index-js:hipster-shop-server\",\"code:src-paymentservice-index-js:server\",\"container:google-cloud-platform-microservices-demo\",\"system:google-cloud-platform-microservices-demo\"]}",
+          "usage": { "promptTokens": 1931, "completionTokens": 618, "totalTokens": 2549, "costUsd": 0.001377645 },
+          "ms": 14504
+        }
+      },
+      {
+        "id": "msdemo-service-contracts",
+        "question": "Where are the requests and responses that the services exchange with each other defined?",
+        "selectedId": "system:google-cloud-platform-microservices-demo",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 4075,
+        "sectionCount": 4,
+        "ranked": [1, 3, 2, 4],
+        "packets": [5, 4],
+        "sections": [
+          {
+            "id": "component:src-currencyservice-client-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-currencyservice-client-js:request", "name": "request" },
+              { "id": "code:src-currencyservice-client-js:client", "name": "client" }
+            ]
+          },
+          {
+            "id": "component:src-paymentservice-server-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-paymentservice-server-js:hipster-shop-server", "name": "HipsterShopServer" }
+            ]
+          },
+          {
+            "id": "component:src-currencyservice-server-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-currencyservice-server-js:convert", "name": "convert" },
+              { "id": "code:src-currencyservice-server-js:main", "name": "main" },
+              { "id": "code:src-currencyservice-server-js:load-proto", "name": "_loadProto" }
+            ]
+          },
+          { "id": "container:google-cloud-platform-microservices-demo", "kind": "container", "p": 4 }
+        ],
+        "expectedIndexed": { "protos/demo.proto": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 4075, "sectionCount": 4, "ranked": [1, 3, 2, 4] },
+          "double": { "byteBudget": 48000, "bytes": 4075, "sectionCount": 4, "ranked": [1, 3, 2, 4] },
+          "size-scaled": { "byteBudget": 12000, "bytes": 4075, "sectionCount": 4, "ranked": [1, 3, 2, 4] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 4075, "sectionCount": 4, "ranked": [1, 3, 2, 4] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "30e620350fc1af337367ed15ca29b5488a2eb547f1f3c25c5c3679639069068d",
+          "allowedIdsCount": 11,
+          "allowedIdsSha256": "163bab1a466ca7b7182128d1b7847ef1ed33400ef21df756738e6079a12b428f",
+          "allowedIdsInContent": ["component:src-currencyservice-client-js", "code:src-currencyservice-client-js:request", "code:src-currencyservice-client-js:client", "component:src-paymentservice-server-js", "code:src-paymentservice-server-js:hipster-shop-server", "component:src-currencyservice-server-js", "code:src-currencyservice-server-js:convert", "code:src-currencyservice-server-js:load-proto", "container:google-cloud-platform-microservices-demo"],
+          "packetSources": { "container:google-cloud-platform-microservices-demo": 4 },
+          "content": "{\"answer\": \"The request/response messages come from shared gRPC protobuf files loaded at startup — `demo.proto` and `grpc/health/v1/health.proto` are pulled in via `loadProto`/`_loadProto` and registered on the gRPC servers; the evidence shows them being consumed, but the proto files themselves where the messages are defined are not in the evidence.\\n\\n- `src/paymentservice/server.js` — `HipsterShopServer` loads `demo.proto` and `grpc/health/v1/health.proto` into `this.packages`, and `ChargeServiceHandler` documents the `ChargeRequest`/`ChargeResponse` pair.\\n- `src/currencyservice/server.js` — `_loadProto` loads the same protos; `convert` reads `call.request.from` / `request.to_code` and replies with a `Currency`-shaped result.\\n- `src/currencyservice/client.js` — `request` (with `from.currency_code`, `units`, `nanos`, and `to_code`) shows the serialized shape of a `CurrencyConversionRequest` sent to the service.\\n\\nMissing from the evidence: the actual `.proto` files (e.g. `demo.proto`) containing the message and service definitions, since no proto component appears in the search results.\",\"citations\":[\"component:src-currencyservice-client-js\",\"code:src-currencyservice-client-js:request\",\"code:src-currencyservice-client-js:client\",\"component:src-paymentservice-server-js\",\"code:src-paymentservice-server-js:hipster-shop-server\",\"component:src-currencyservice-server-js\",\"code:src-currencyservice-server-js:convert\",\"code:src-currencyservice-server-js:load-proto\",\"container:google-cloud-platform-microservices-demo\"]}",
+          "usage": { "promptTokens": 2006, "completionTokens": 493, "totalTokens": 2499, "costUsd": 0.00130152 },
+          "ms": 16852
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "scan",
+    "nodes": [
+      {
+        "nodeId": "system:google-cloud-platform-microservices-demo",
+        "name": "GoogleCloudPlatform_microservices-demo",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "children", "type": "children", "preview": "Children: 1 node — GoogleCloudPlatform_microservices-demo (container)" }
+        ],
+        "defaultOrder": ["children"],
+        "jev": { "order": ["children"], "inputTokens": 624, "estimatedCostUsd": 0.0000262, "latencyMs": 236 }
+      },
+      {
+        "nodeId": "container:google-cloud-platform-microservices-demo",
+        "name": "GoogleCloudPlatform_microservices-demo",
+        "kind": "container",
+        "candidates": [
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — GoogleCloudPlatform_microservices-demo (softwareSystem)" },
+          { "id": "children", "type": "children", "preview": "Children: 6 nodes — src/currencyservice/client.js (component); src/currencyservice/server.js (component); src/paymentservice/charge.js (component); +3 more" }
+        ],
+        "defaultOrder": ["relations:parent", "children"],
+        "jev": { "order": ["children", "relations:parent"], "inputTokens": 952, "estimatedCostUsd": 0.00004, "latencyMs": 221 }
+      }
+    ]
+  },
+  "enrichmentSkipped": { "reason": "skipped: scanner-blind (Polyglot; the scanner extracts only TypeScript/JavaScript/Rust, and the scan has 6 components and 47 code entities)" },
+  "stageMs": { "ask": 17597, "blocks": 459 }
+}

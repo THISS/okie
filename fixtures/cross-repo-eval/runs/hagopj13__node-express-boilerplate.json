@@ -1,0 +1,1628 @@
+{
+  "schema": "cross-repo-eval-run/v1",
+  "slug": "hagopj13__node-express-boilerplate",
+  "repository": "hagopj13/node-express-boilerplate",
+  "commitSha": "179ae84efec61b14206d0305d941daed6c6d07f9",
+  "scan": {
+    "asIs": {
+      "revision": "179ae84efec61b14206d0305d941daed6c6d07f9",
+      "ok": true,
+      "ms": 17943,
+      "entities": 253,
+      "relations": 211,
+      "kinds": { "code": 208, "component": 43, "container": 1, "softwareSystem": 1 },
+      "containers": [
+        { "id": "container:create-nodejs-express-app", "name": "create-nodejs-express-app", "components": 43 }
+      ],
+      "signals": { "entities": 253, "containers": 1, "components": 43, "files": 45, "maxDepth": 3, "medianDepth": 2, "language": "JavaScript" }
+    }
+  },
+  "ask": {
+    "recordedAt": "2026-09-29T02:03:38.834Z",
+    "corpus": "enriched",
+    "entityCount": 253,
+    "systemNames": ["node-express-boilerplate"],
+    "paths": ["src/controllers/auth.controller.js", "src/services/auth.service.js", "src/services/token.service.js", "src/validations/auth.validation.js", "src/routes/v1/auth.route.js", "src/middlewares/auth.js", "tests/fixtures/token.fixture.js", "src/routes/v1/index.js", "src/routes/v1/user.route.js", "src/middlewares/rateLimiter.js", "src/app.js", "src/services/user.service.js", "src/utils/ApiError.js", "tests/fixtures/user.fixture.js", "src/utils/catchAsync.js", "README.md", "package.json", "src/config/tokens.js", "src/validations/custom.validation.js", "src/config/roles.js", "src/controllers/user.controller.js", "src/middlewares/error.js", "src/models/user.model.js", "src/routes/v1/docs.route.js", "src/middlewares/validate.js", "src/validations/user.validation.js", "src/docs/swaggerDef.js", "src/config/passport.js", "src/config/morgan.js", "src/index.js", "src/config/config.js", "src/config/logger.js", "bin/createNodejsApp.js", "src/services/index.js", "src/models/plugins/toJSON.plugin.js", "tests/utils/setupTestDB.js", "src/services/email.service.js", "src/models/index.js", "src/models/plugins/paginate.plugin.js", "src/utils/pick.js"],
+    "questions": [
+      {
+        "id": "nodeexpress-login",
+        "question": "What happens when someone signs in, and what do they get back?",
+        "selectedId": "system:create-nodejs-express-app",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 21493,
+        "sectionCount": 19,
+        "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+        "packets": [15, 16],
+        "sections": [
+          {
+            "id": "component:src-controllers-auth-controller-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-controllers-auth-controller-js:login", "name": "login" },
+              { "id": "code:src-controllers-auth-controller-js:refresh-tokens", "name": "refreshTokens" },
+              { "id": "code:src-controllers-auth-controller-js:logout", "name": "logout" }
+            ]
+          },
+          {
+            "id": "component:src-services-auth-service-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-services-auth-service-js:refresh-auth", "name": "refreshAuth" },
+              { "id": "code:src-services-auth-service-js:login-user-with-email-and-password", "name": "loginUserWithEmailAndPassword" },
+              { "id": "code:src-services-auth-service-js:api-error", "name": "ApiError" }
+            ]
+          },
+          {
+            "id": "component:src-services-token-service-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-services-token-service-js:generate-auth-tokens", "name": "generateAuthTokens" },
+              { "id": "code:src-services-token-service-js:generate-token", "name": "generateToken" }
+            ]
+          },
+          {
+            "id": "component:src-validations-auth-validation-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-validations-auth-validation-js:login", "name": "login" },
+              { "id": "code:src-validations-auth-validation-js:forgot-password", "name": "forgotPassword" },
+              { "id": "code:src-validations-auth-validation-js:joi", "name": "Joi" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-auth-route-js",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:src-routes-v1-auth-route-js:auth", "name": "auth" },
+              { "id": "code:src-routes-v1-auth-route-js:auth-controller", "name": "authController" },
+              { "id": "code:src-routes-v1-auth-route-js:auth-validation", "name": "authValidation" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-auth-js",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-middlewares-auth-js:auth", "name": "auth" },
+              { "id": "code:src-middlewares-auth-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-auth-js:http-status", "name": "httpStatus" }
+            ]
+          },
+          { "id": "component:tests-fixtures-token-fixture-js", "kind": "component", "p": 6 },
+          {
+            "id": "component:src-routes-v1-index-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:src-routes-v1-index-js:auth-route", "name": "authRoute" },
+              { "id": "code:src-routes-v1-index-js:default-routes", "name": "defaultRoutes" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-user-route-js",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:src-routes-v1-user-route-js:auth", "name": "auth" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-rate-limiter-js",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-middlewares-rate-limiter-js:auth-limiter", "name": "authLimiter" }
+            ]
+          },
+          { "id": "component:src-app-js", "kind": "component", "p": 10 },
+          { "id": "component:src-services-user-service-js", "kind": "component", "p": 11 },
+          { "id": "component:src-utils-api-error-js", "kind": "component", "p": 12 },
+          { "id": "component:tests-fixtures-user-fixture-js", "kind": "component", "p": 13 },
+          { "id": "component:src-utils-catch-async-js", "kind": "component", "p": 14 },
+          { "id": "system:create-nodejs-express-app", "kind": "softwareSystem", "p": 15 },
+          { "id": "container:create-nodejs-express-app", "kind": "container", "p": 16 },
+          { "id": "component:src-config-tokens-js", "kind": "component", "p": 17 },
+          { "id": "component:src-validations-custom-validation-js", "kind": "component", "p": 18 }
+        ],
+        "expectedIndexed": { "src/services/auth.service.js": true, "src/services/token.service.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11870, "sectionCount": 8, "ranked": [0, 1, 2, 3, 4, 5, 6, 7] },
+          "double": { "byteBudget": 48000, "bytes": 21493, "sectionCount": 19, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 11870, "sectionCount": 8, "ranked": [0, 1, 2, 3, 4, 5, 6, 7] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 21493, "sectionCount": 19, "ranked": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "9f181947fd2db29c30bc89e1b9df21c5b22149ff6a6ea89aa5a672790b7f0593",
+          "allowedIdsCount": 40,
+          "allowedIdsSha256": "1ae4daa128c3b806f2f8d3036249559eb9a7b129d9621cdc8ac7b67d9353524e",
+          "allowedIdsInContent": ["component:src-controllers-auth-controller-js", "code:src-controllers-auth-controller-js:login", "component:src-services-auth-service-js", "code:src-services-auth-service-js:login-user-with-email-and-password", "code:src-services-auth-service-js:api-error", "component:src-services-token-service-js", "code:src-services-token-service-js:generate-auth-tokens", "code:src-services-token-service-js:generate-token", "component:src-validations-auth-validation-js", "code:src-validations-auth-validation-js:login", "component:src-routes-v1-auth-route-js", "code:src-routes-v1-auth-route-js:auth", "code:src-routes-v1-auth-route-js:auth-controller", "code:src-routes-v1-auth-route-js:auth-validation", "component:src-routes-v1-index-js", "code:src-routes-v1-index-js:default-routes", "component:src-middlewares-rate-limiter-js", "code:src-middlewares-rate-limiter-js:auth-limiter", "component:src-app-js"],
+          "packetSources": {},
+          "content": "{\"answer\":\"On sign-in, the request body is validated, then `login()` calls `authService.loginUserWithEmailAndPassword(email, password)` and `tokenService.generateAuthTokens(user)`, returning `{ user, tokens }` — where `tokens` holds `access` and `refresh` objects, each with a `token` and `expires`.\\n\\n- **`src/validations/auth.validation.js`** — `login` schema requires `email` and `password` strings in the body before the controller runs.\\n- **`src/services/auth.service.js`** — `loginUserWithEmailAndPassword` fetches the user and checks `user.isPasswordMatch()`; a mismatch throws `ApiError` UNAUTHORIZED.\\n- **`src/services/token.service.js`** — `generateAuthTokens` signs an access token (expiry from `config.jwt.accessExpirationMinutes`) and a refresh token (`refreshExpirationDays`), persists the refresh token via `saveToken`, and returns `{ access: { token, expires }, refresh: { token, expires } }`; `generateToken` signs the JWT.\\n- **`src/controllers/auth.controller.js`** — `login` wraps this in `catchAsync` and responds `res.send({ user, tokens })`.\\n- **`src/routes/v1/auth.route.js`** wires `authValidation`, `validate`, and `authController`; it's mounted at `/auth` in `src/routes/v1/index.js` (`defaultRoutes`).\\n- **`src/middlewares/rateLimiter.js`** — `authLimiter` caps failed attempts at 20 per 15 minutes (`skipSuccessfulRequests: true`).\\n\\nNot in the evidence: the exact route path/method registration lines for login in `auth.route.js` and the Passport strategy details in `src/config/passport.js`.\", \"citations\":[\"component:src-controllers-auth-controller-js\",\"code:src-controllers-auth-controller-js:login\",\"component:src-services-auth-service-js\",\"code:src-services-auth-service-js:login-user-with-email-and-password\",\"code:src-services-auth-service-js:api-error\",\"component:src-services-token-service-js\",\"code:src-services-token-service-js:generate-auth-tokens\",\"code:src-services-token-service-js:generate-token\",\"component:src-validations-auth-validation-js\",\"code:src-validations-auth-validation-js:login\",\"component:src-routes-v1-auth-route-js\",\"code:src-routes-v1-auth-route-js:auth-controller\",\"code:src-routes-v1-auth-route-js:auth-validation\",\"component:src-routes-v1-index-js\",\"code:src-routes-v1-index-js:default-routes\",\"component:src-middlewares-rate-limiter-js\",\"code:src-middlewares-rate-limiter-js:auth-limiter\",\"component:src-app-js\"]}",
+          "usage": { "promptTokens": 7188, "completionTokens": 622, "totalTokens": 7810, "costUsd": 0.00366792 },
+          "ms": 26018
+        }
+      },
+      {
+        "id": "nodeexpress-admin-rights",
+        "question": "How does the API decide whether a user is allowed to list or manage other people's accounts?",
+        "selectedId": "system:create-nodejs-express-app",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23951,
+        "sectionCount": 18,
+        "ranked": [19, 11, 20, 12, 8, 5, 21, 22, 7, 24, 1, 10, 2, 25, 13, 26, 23, 16],
+        "packets": [15, 16],
+        "sections": [
+          {
+            "id": "component:src-config-roles-js",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:src-config-roles-js:all-roles", "name": "allRoles" }
+            ]
+          },
+          {
+            "id": "component:src-services-user-service-js",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-services-user-service-js:update-user-by-id", "name": "updateUserById" },
+              { "id": "code:src-services-user-service-js:delete-user-by-id", "name": "deleteUserById" },
+              { "id": "code:src-services-user-service-js:create-user", "name": "createUser" }
+            ]
+          },
+          {
+            "id": "component:src-controllers-user-controller-js",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:src-controllers-user-controller-js:get-user", "name": "getUser" },
+              { "id": "code:src-controllers-user-controller-js:update-user", "name": "updateUser" },
+              { "id": "code:src-controllers-user-controller-js:create-user", "name": "createUser" }
+            ]
+          },
+          {
+            "id": "component:src-utils-api-error-js",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-utils-api-error-js:api-error", "name": "ApiError" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-user-route-js",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:src-routes-v1-user-route-js:user-controller", "name": "userController" },
+              { "id": "code:src-routes-v1-user-route-js:user-validation", "name": "userValidation" },
+              { "id": "code:src-routes-v1-user-route-js:auth", "name": "auth" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-auth-js",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-middlewares-auth-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-auth-js:verify-callback", "name": "verifyCallback" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-error-js",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:src-middlewares-error-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-error-js:error-converter", "name": "errorConverter" }
+            ]
+          },
+          {
+            "id": "component:src-models-user-model-js",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:src-models-user-model-js:user", "name": "User" },
+              { "id": "code:src-models-user-model-js:user-schema", "name": "userSchema" },
+              { "id": "code:src-models-user-model-js:bcrypt", "name": "bcrypt" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-index-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:src-routes-v1-index-js:user-route", "name": "userRoute" },
+              { "id": "code:src-routes-v1-index-js:default-routes", "name": "defaultRoutes" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-validate-js",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middlewares-validate-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-validate-js:validate", "name": "validate" }
+            ]
+          },
+          {
+            "id": "component:src-services-auth-service-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-services-auth-service-js:login-user-with-email-and-password", "name": "loginUserWithEmailAndPassword" },
+              { "id": "code:src-services-auth-service-js:api-error", "name": "ApiError" },
+              { "id": "code:src-services-auth-service-js:user-service", "name": "userService" }
+            ]
+          },
+          {
+            "id": "component:src-app-js",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:src-app-js:api-error", "name": "ApiError" }
+            ]
+          },
+          {
+            "id": "component:src-services-token-service-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-services-token-service-js:api-error", "name": "ApiError" },
+              { "id": "code:src-services-token-service-js:user-service", "name": "userService" },
+              { "id": "code:src-services-token-service-js:generate-reset-password-token", "name": "generateResetPasswordToken" }
+            ]
+          },
+          {
+            "id": "component:src-validations-user-validation-js",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-validations-user-validation-js:get-user", "name": "getUser" },
+              { "id": "code:src-validations-user-validation-js:delete-user", "name": "deleteUser" },
+              { "id": "code:src-validations-user-validation-js:create-user", "name": "createUser" }
+            ]
+          },
+          {
+            "id": "component:tests-fixtures-user-fixture-js",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:tests-fixtures-user-fixture-js:insert-users", "name": "insertUsers" },
+              { "id": "code:tests-fixtures-user-fixture-js:user", "name": "User" },
+              { "id": "code:tests-fixtures-user-fixture-js:user-one", "name": "userOne" }
+            ]
+          },
+          {
+            "id": "component:src-docs-swagger-def-js",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-docs-swagger-def-js:swagger-def", "name": "swaggerDef" }
+            ]
+          },
+          { "id": "component:src-routes-v1-docs-route-js", "kind": "component", "p": 23 },
+          { "id": "container:create-nodejs-express-app", "kind": "container", "p": 16 }
+        ],
+        "expectedIndexed": { "src/middlewares/auth.js": true, "src/config/roles.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11891, "sectionCount": 9, "ranked": [19, 11, 20, 12, 8, 5, 21, 22, 23] },
+          "double": { "byteBudget": 48000, "bytes": 28855, "sectionCount": 23, "ranked": [19, 11, 20, 12, 8, 5, 21, 22, 7, 24, 1, 10, 2, 25, 13, 26, 23, 0, 16, 6, 15, 17, 27] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 12028, "sectionCount": 9, "ranked": [19, 11, 20, 12, 8, 5, 21, 22, 10] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23951, "sectionCount": 18, "ranked": [19, 11, 20, 12, 8, 5, 21, 22, 7, 24, 1, 10, 2, 25, 13, 26, 23, 16] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "5c486caaada1b87b2751ae0adcf27dc71bd8e10905804474967c2be8c8ba678c",
+          "allowedIdsCount": 55,
+          "allowedIdsSha256": "f8d7594f8063ef5dbe9131dfbaa24ca254b1a095084f38e5546b47967bdad2ea",
+          "allowedIdsInContent": ["component:src-config-roles-js", "code:src-config-roles-js:all-roles", "code:src-services-user-service-js:update-user-by-id", "code:src-services-user-service-js:delete-user-by-id", "code:src-controllers-user-controller-js:get-user", "code:src-controllers-user-controller-js:update-user", "component:src-routes-v1-user-route-js", "code:src-routes-v1-user-route-js:auth", "component:src-middlewares-auth-js", "code:src-middlewares-auth-js:verify-callback", "code:src-routes-v1-index-js:default-routes"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Access to other users' accounts is decided by the **role-rights map** plus the **`auth(...requiredRights)` middleware** applied per route in the user router. `src/config/roles.js` (`allRoles`) grants `admin` the `getUsers` and `manageUsers` rights while `user` has none, so only admin tokens pass the rights check; failures become a 401 `ApiError`.\\n\\n- `src/config/roles.js` — `allRoles` / `roleRights`: the single source of truth; rights are looked up by role string (`code:src-config-roles-js:all-roles`).\\n- `src/middlewares/auth.js` — `auth` takes `...requiredRights`, wraps `passport.authenticate('jwt', ...)`; `verifyCallback` rejects missing/invalid users with `ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate')` (`code:src-middlewares-auth-js:verify-callback`).\\n- `src/routes/v1/user.route.js` — wires `auth`, `validate`/`userValidation`, and `userController` together; this is where `auth(...)` is applied per endpoint (`code:src-routes-v1-user-route-js:auth`). Mounted at `/users` via `defaultRoutes` in `src/routes/v1/index.js`.\\n- `src/controllers/user.controller.js` — `getUser`/`updateUser`/`deleteUser` act on `req.params.userId`, so any authenticated caller reaching them can target arbitrary ids; authorization must come from the route-level `auth` rights.\\n- `src/services/user.service.js` — `updateUserById`/`deleteUserById` enforce only existence and email uniqueness, not ownership.\\n\\nMissing from the evidence: the exact `auth('getUsers')` / `auth('manageUsers')` call sites per route and the full body of `verifyCallback`'s rights-checking logic, so I can't name which specific endpoints require which right.\",\"citations\":[\"code:src-config-roles-js:all-roles\",\"component:src-config-roles-js\",\"code:src-middlewares-auth-js:verify-callback\",\"component:src-middlewares-auth-js\",\"code:src-routes-v1-user-route-js:auth\",\"component:src-routes-v1-user-route-js\",\"code:src-routes-v1-index-js:default-routes\",\"code:src-controllers-user-controller-js:get-user\",\"code:src-controllers-user-controller-js:update-user\",\"code:src-services-user-service-js:update-user-by-id\",\"code:src-services-user-service-js:delete-user-by-id\"]}",
+          "usage": { "promptTokens": 8520, "completionTokens": 631, "totalTokens": 9151, "costUsd": 0.00425517 },
+          "ms": 27743
+        }
+      },
+      {
+        "id": "nodeexpress-errors",
+        "question": "What does a client get back when something goes wrong, and how are unexpected crashes hidden in production?",
+        "selectedId": "system:create-nodejs-express-app",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 12946,
+        "sectionCount": 12,
+        "ranked": [28, 29, 10, 30, 21, 31, 16, 20, 12, 8, 15, 6],
+        "packets": [15, 16],
+        "sections": [
+          {
+            "id": "component:src-config-morgan-js",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:src-config-morgan-js:get-ip-format", "name": "getIpFormat" }
+            ]
+          },
+          {
+            "id": "component:src-index-js",
+            "kind": "component",
+            "p": 29,
+            "symbols": [
+              { "id": "code:src-index-js:unexpected-error-handler", "name": "unexpectedErrorHandler" }
+            ]
+          },
+          { "id": "component:src-app-js", "kind": "component", "p": 10 },
+          {
+            "id": "component:src-config-config-js",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:src-config-config-js:env-vars-schema", "name": "envVarsSchema" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-error-js",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:src-middlewares-error-js:error-handler", "name": "errorHandler" }
+            ]
+          },
+          { "id": "component:src-config-logger-js", "kind": "component", "p": 31 },
+          { "id": "container:create-nodejs-express-app", "kind": "container", "p": 16 },
+          { "id": "component:src-controllers-user-controller-js", "kind": "component", "p": 20 },
+          { "id": "component:src-utils-api-error-js", "kind": "component", "p": 12 },
+          { "id": "component:src-routes-v1-user-route-js", "kind": "component", "p": 8 },
+          { "id": "system:create-nodejs-express-app", "kind": "softwareSystem", "p": 15 },
+          { "id": "component:tests-fixtures-token-fixture-js", "kind": "component", "p": 6 }
+        ],
+        "expectedIndexed": { "src/middlewares/error.js": true, "src/utils/ApiError.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11974, "sectionCount": 11, "ranked": [28, 29, 10, 30, 21, 31, 16, 20, 12, 8, 6] },
+          "double": { "byteBudget": 48000, "bytes": 12946, "sectionCount": 12, "ranked": [28, 29, 10, 30, 21, 31, 16, 20, 12, 8, 15, 6] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 11974, "sectionCount": 11, "ranked": [28, 29, 10, 30, 21, 31, 16, 20, 12, 8, 6] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 12946, "sectionCount": 12, "ranked": [28, 29, 10, 30, 21, 31, 16, 20, 12, 8, 15, 6] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "155cfe2f7864d6f2cf850af5dd767d7c7470641aa44b5eef22b1388ba0a67536",
+          "allowedIdsCount": 16,
+          "allowedIdsSha256": "3cf555bed0632ab7c2f61bebed1cb9b6c15e1bba6addf4b174ca8d4caf41f2a9",
+          "allowedIdsInContent": ["component:src-index-js", "code:src-index-js:unexpected-error-handler", "component:src-config-config-js", "code:src-config-config-js:env-vars-schema", "component:src-middlewares-error-js", "code:src-middlewares-error-js:error-handler", "component:src-config-logger-js", "container:create-nodejs-express-app", "component:src-controllers-user-controller-js", "component:src-utils-api-error-js"],
+          "packetSources": { "container:create-nodejs-express-app": 16 },
+          "content": "{\"answer\":\"Clients get a JSON body shaped `{ code, message }` — plus `stack` only in development. In production, anything that isn't an operational `ApiError` is forced to `500` with the generic `Internal Server Error` message, so crash details never leak.\\n\\n- `src/utils/ApiError.js` (`ApiError`) defines the error shape: `statusCode`, `message`, and `isOperational` (defaults `true`).\\n- `src/middlewares/error.js` (`errorHandler`) builds the response as `{ code: statusCode, message, ...(development && { stack }) }` and sends `res.status(statusCode).send(response)`. Its `errorConverter` wraps non-`ApiError` values first.\\n- Masking rule: `config.env === 'production' && !err.isOperational` → `statusCode` and `message` are replaced with `httpStatus.INTERNAL_SERVER_ERROR`, hiding the original detail.\\n- Logging side: `logger.error(err)` runs only in development inside `errorHandler`; `src/config/logger.js` is the shared Winston instance that flattens errors to stack traces.\\n- Crash path: `src/index.js` (`unexpectedErrorHandler`) logs the error and calls `exitHandler()`, closing the `server` before exit — so fatal process errors end in graceful shutdown rather than a leaked response.\\n- Example explicit client error: `src/controllers/user.controller.js` throws `ApiError(httpStatus.NOT_FOUND, 'User not found')` in `getUser` (operational, so it survives masking).\\n- Env gating comes from `src/config/config.js` (`envVarsSchema`), which restricts `NODE_ENV` to production/development/test.\\n\\nNot in the evidence: exact behaviour of `errorConverter` (Mongoose error classification details beyond its top-level require).\",\"citations\":[\"component:src-middlewares-error-js\",\"code:src-middlewares-error-js:error-handler\",\"component:src-utils-api-error-js\",\"component:src-index-js\",\"code:src-index-js:unexpected-error-handler\",\"component:src-config-logger-js\",\"component:src-controllers-user-controller-js\",\"component:src-config-config-js\",\"code:src-config-config-js:env-vars-schema\",\"container:create-nodejs-express-app\"]}",
+          "usage": { "promptTokens": 4230, "completionTokens": 499, "totalTokens": 4729, "costUsd": 0.00227418 },
+          "ms": 16014
+        }
+      },
+      {
+        "id": "nodeexpress-async-wrapper",
+        "question": "Why don't the request handlers need try/catch around their async code?",
+        "selectedId": "component:src-models-plugins-to-json-plugin-js",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23961,
+        "sectionCount": 19,
+        "ranked": [14, 0, 20, 28, 21, 8, 1, 4, 10, 29, 12, 5, 7, 31, 11, 32, 16, 24, 23],
+        "packets": [34, 16],
+        "sections": [
+          {
+            "id": "component:src-utils-catch-async-js",
+            "kind": "component",
+            "p": 14,
+            "symbols": [
+              { "id": "code:src-utils-catch-async-js:catch-async", "name": "catchAsync" }
+            ]
+          },
+          {
+            "id": "component:src-controllers-auth-controller-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-controllers-auth-controller-js:catch-async", "name": "catchAsync" },
+              { "id": "code:src-controllers-auth-controller-js:logout", "name": "logout" },
+              { "id": "code:src-controllers-auth-controller-js:refresh-tokens", "name": "refreshTokens" }
+            ]
+          },
+          {
+            "id": "component:src-controllers-user-controller-js",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:src-controllers-user-controller-js:catch-async", "name": "catchAsync" },
+              { "id": "code:src-controllers-user-controller-js:create-user", "name": "createUser" },
+              { "id": "code:src-controllers-user-controller-js:delete-user", "name": "deleteUser" }
+            ]
+          },
+          {
+            "id": "component:src-config-morgan-js",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:src-config-morgan-js:error-handler", "name": "errorHandler" },
+              { "id": "code:src-config-morgan-js:success-handler", "name": "successHandler" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-error-js",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:src-middlewares-error-js:error-handler", "name": "errorHandler" },
+              { "id": "code:src-middlewares-error-js:error-converter", "name": "errorConverter" }
+            ]
+          },
+          { "id": "component:src-routes-v1-user-route-js", "kind": "component", "p": 8 },
+          {
+            "id": "component:src-services-auth-service-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-services-auth-service-js:refresh-auth", "name": "refreshAuth" },
+              { "id": "code:src-services-auth-service-js:verify-email", "name": "verifyEmail" },
+              { "id": "code:src-services-auth-service-js:reset-password", "name": "resetPassword" }
+            ]
+          },
+          { "id": "component:src-routes-v1-auth-route-js", "kind": "component", "p": 4 },
+          { "id": "component:src-app-js", "kind": "component", "p": 10 },
+          {
+            "id": "component:src-index-js",
+            "kind": "component",
+            "p": 29,
+            "symbols": [
+              { "id": "code:src-index-js:unexpected-error-handler", "name": "unexpectedErrorHandler" },
+              { "id": "code:src-index-js:exit-handler", "name": "exitHandler" }
+            ]
+          },
+          {
+            "id": "component:src-utils-api-error-js",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-utils-api-error-js:api-error", "name": "ApiError" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-auth-js",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-middlewares-auth-js:auth", "name": "auth" },
+              { "id": "code:src-middlewares-auth-js:verify-callback", "name": "verifyCallback" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-index-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:src-routes-v1-index-js:docs-route", "name": "docsRoute" },
+              { "id": "code:src-routes-v1-index-js:dev-routes", "name": "devRoutes" }
+            ]
+          },
+          { "id": "component:src-config-logger-js", "kind": "component", "p": 31 },
+          {
+            "id": "component:src-services-user-service-js",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-services-user-service-js:create-user", "name": "createUser" },
+              { "id": "code:src-services-user-service-js:update-user-by-id", "name": "updateUserById" },
+              { "id": "code:src-services-user-service-js:get-user-by-email", "name": "getUserByEmail" }
+            ]
+          },
+          {
+            "id": "component:bin-create-nodejs-app-js",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:bin-create-nodejs-app-js:has-yarn", "name": "hasYarn" },
+              { "id": "code:bin-create-nodejs-app-js:run-cmd", "name": "runCmd" },
+              { "id": "code:bin-create-nodejs-app-js:setup", "name": "setup" }
+            ]
+          },
+          { "id": "container:create-nodejs-express-app", "kind": "container", "p": 16 },
+          {
+            "id": "component:src-middlewares-validate-js",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middlewares-validate-js:validate", "name": "validate" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-docs-route-js",
+            "kind": "component",
+            "p": 23,
+            "symbols": [
+              { "id": "code:src-routes-v1-docs-route-js:swagger-definition", "name": "swaggerDefinition" },
+              { "id": "code:src-routes-v1-docs-route-js:specs", "name": "specs" },
+              { "id": "code:src-routes-v1-docs-route-js:express", "name": "express" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "src/utils/catchAsync.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11843, "sectionCount": 10, "ranked": [14, 0, 20, 28, 21, 8, 1, 4, 10, 31] },
+          "double": { "byteBudget": 48000, "bytes": 24450, "sectionCount": 20, "ranked": [14, 0, 20, 28, 21, 8, 1, 4, 10, 29, 12, 5, 7, 31, 11, 32, 16, 24, 23, 33] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 11843, "sectionCount": 10, "ranked": [14, 0, 20, 28, 21, 8, 1, 4, 10, 31] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23961, "sectionCount": 19, "ranked": [14, 0, 20, 28, 21, 8, 1, 4, 10, 29, 12, 5, 7, 31, 11, 32, 16, 24, 23] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "fec97f415626f0728ba7ab53869c6878a72541f7fbd5ad80ff9c6b76473bd6d1",
+          "allowedIdsCount": 53,
+          "allowedIdsSha256": "f80df9a928b333a9ce75847778bddf6d15474e2d2cdc77d7162b622931787038",
+          "allowedIdsInContent": ["component:src-utils-catch-async-js", "code:src-utils-catch-async-js:catch-async", "component:src-controllers-auth-controller-js", "code:src-controllers-auth-controller-js:catch-async", "code:src-controllers-auth-controller-js:logout", "code:src-controllers-auth-controller-js:refresh-tokens", "component:src-controllers-user-controller-js", "code:src-controllers-user-controller-js:catch-async", "code:src-controllers-user-controller-js:create-user", "code:src-controllers-user-controller-js:delete-user", "component:src-middlewares-error-js", "code:src-middlewares-error-js:error-handler", "code:src-middlewares-error-js:error-converter", "component:src-utils-api-error-js", "code:src-utils-api-error-js:api-error", "component:src-services-user-service-js", "code:src-services-user-service-js:create-user", "code:src-services-user-service-js:update-user-by-id"],
+          "packetSources": {},
+          "content": "{\"answer\": \"Because every controller handler is declared through the `catchAsync` wrapper, which turns a rejected promise into `next(err)`. Express then routes that error into the error middleware instead of leaving handlers to catch it themselves.\\n\\n- `catchAsync` (`src/utils/catchAsync.js`) returns a new `(req, res, next)` middleware that calls `Promise.resolve(fn(req, res, next)).catch((err) => next(err))` — this is the single helper that feeds async failures into Express error handling.\\n- The controllers rely on it: `src/controllers/auth.controller.js` requires `catchAsync` and wraps every handler (`logout`, `refreshTokens`, etc.); `src/controllers/user.controller.js` does the same (`createUser`, `deleteUser`, ...). So services can simply `throw new ApiError(...)` (e.g. `createUser`, `updateUserById` in `src/services/user.service.js`) and it surfaces as a response.\\n- Downstream, `errorConverter` in `src/middlewares/error.js` normalizes anything that isn't already an `ApiError`, and `errorHandler` formats/masks the JSON response (production forces non-operational errors to 500).\\n- The error shape comes from `ApiError` (`src/utils/ApiError.js`), which carries `statusCode`/`isOperational`.\\n\\nCaveat from the evidence: only promise rejections reach `next(err)` — a synchronous throw inside a handler escapes `catchAsync`'s wrapper, so that edge is not covered by this pattern.\",\"citations\":[\"component:src-utils-catch-async-js\",\"code:src-utils-catch-async-js:catch-async\",\"component:src-controllers-auth-controller-js\",\"code:src-controllers-auth-controller-js:catch-async\",\"code:src-controllers-auth-controller-js:logout\",\"code:src-controllers-auth-controller-js:refresh-tokens\",\"component:src-controllers-user-controller-js\",\"code:src-controllers-user-controller-js:catch-async\",\"code:src-controllers-user-controller-js:create-user\",\"code:src-controllers-user-controller-js:delete-user\",\"component:src-middlewares-error-js\",\"code:src-middlewares-error-js:error-converter\",\"code:src-middlewares-error-js:error-handler\",\"component:src-utils-api-error-js\",\"code:src-utils-api-error-js:api-error\",\"component:src-services-user-service-js\",\"code:src-services-user-service-js:create-user\",\"code:src-services-user-service-js:update-user-by-id\"]}",
+          "usage": { "promptTokens": 8687, "completionTokens": 599, "totalTokens": 9286, "costUsd": 0.004299975 },
+          "ms": 14969
+        }
+      },
+      {
+        "id": "nodeexpress-required-env",
+        "question": "Which environment settings have to be present before the server will even start?",
+        "selectedId": "system:create-nodejs-express-app",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 22248,
+        "sectionCount": 20,
+        "ranked": [30, 29, 26, 23, 0, 10, 31, 1, 2, 21, 17, 16, 18, 3, 35, 36, 4, 22, 6, 7],
+        "packets": [15, 16],
+        "sections": [
+          {
+            "id": "component:src-config-config-js",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:src-config-config-js:env-vars-schema", "name": "envVarsSchema" }
+            ]
+          },
+          {
+            "id": "component:src-index-js",
+            "kind": "component",
+            "p": 29,
+            "symbols": [
+              { "id": "code:src-index-js:server", "name": "server" },
+              { "id": "code:src-index-js:exit-handler", "name": "exitHandler" }
+            ]
+          },
+          {
+            "id": "component:src-docs-swagger-def-js",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-docs-swagger-def-js:swagger-def", "name": "swaggerDef" }
+            ]
+          },
+          { "id": "component:src-routes-v1-docs-route-js", "kind": "component", "p": 23 },
+          {
+            "id": "component:src-controllers-auth-controller-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-controllers-auth-controller-js:reset-password", "name": "resetPassword" },
+              { "id": "code:src-controllers-auth-controller-js:forgot-password", "name": "forgotPassword" }
+            ]
+          },
+          { "id": "component:src-app-js", "kind": "component", "p": 10 },
+          { "id": "component:src-config-logger-js", "kind": "component", "p": 31 },
+          {
+            "id": "component:src-services-auth-service-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-services-auth-service-js:reset-password", "name": "resetPassword" }
+            ]
+          },
+          {
+            "id": "component:src-services-token-service-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-services-token-service-js:generate-reset-password-token", "name": "generateResetPasswordToken" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-error-js",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:src-middlewares-error-js:error-handler", "name": "errorHandler" },
+              { "id": "code:src-middlewares-error-js:error-converter", "name": "errorConverter" }
+            ]
+          },
+          {
+            "id": "component:src-config-tokens-js",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:src-config-tokens-js:token-types", "name": "tokenTypes" }
+            ]
+          },
+          { "id": "container:create-nodejs-express-app", "kind": "container", "p": 16 },
+          { "id": "component:src-validations-custom-validation-js", "kind": "component", "p": 18 },
+          {
+            "id": "component:src-validations-auth-validation-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-validations-auth-validation-js:reset-password", "name": "resetPassword" }
+            ]
+          },
+          { "id": "component:tests-utils-setup-test-db-js", "kind": "component", "p": 35 },
+          {
+            "id": "component:src-services-email-service-js",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:src-services-email-service-js:send-reset-password-email", "name": "sendResetPasswordEmail" }
+            ]
+          },
+          { "id": "component:src-routes-v1-auth-route-js", "kind": "component", "p": 4 },
+          { "id": "component:src-models-user-model-js", "kind": "component", "p": 22 },
+          { "id": "component:tests-fixtures-token-fixture-js", "kind": "component", "p": 6 },
+          { "id": "component:src-routes-v1-index-js", "kind": "component", "p": 7 }
+        ],
+        "expectedIndexed": { "src/config/config.js": true, ".env.example": false },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11605, "sectionCount": 9, "ranked": [30, 29, 26, 23, 0, 10, 31, 1, 2] },
+          "double": { "byteBudget": 48000, "bytes": 22248, "sectionCount": 20, "ranked": [30, 29, 26, 23, 0, 10, 31, 1, 2, 21, 17, 16, 18, 3, 35, 36, 4, 22, 6, 7] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 11605, "sectionCount": 9, "ranked": [30, 29, 26, 23, 0, 10, 31, 1, 2] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 22248, "sectionCount": 20, "ranked": [30, 29, 26, 23, 0, 10, 31, 1, 2, 21, 17, 16, 18, 3, 35, 36, 4, 22, 6, 7] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "d13057a7d58c328a834e3e6ac661717e3ae171aa639a034a963a9eafb3db780f",
+          "allowedIdsCount": 34,
+          "allowedIdsSha256": "be51877c0eae079e00dd47acbced53e0dc7b0d4cc7133d00ad5110cd6cec090f",
+          "allowedIdsInContent": ["component:src-config-config-js", "code:src-config-config-js:env-vars-schema", "component:src-index-js", "code:src-index-js:server", "code:src-index-js:exit-handler", "component:src-services-token-service-js", "code:src-services-token-service-js:generate-reset-password-token"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Before startup, exactly three variables must be set: `NODE_ENV`, `MONGODB_URL`, and `JWT_SECRET`. The Joi `envVarsSchema` in `src/config/config.js` is validated at module load (with `dotenv` loaded first), so a missing or invalid value aborts the process before `src/index.js` ever opens the server.\\n\\n- `NODE_ENV` — required, and must be one of `'production'`, `'development'`, `'test'`; anything else fails validation.\\n- `MONGODB_URL` — required; there is no default.\\n- `JWT_SECRET` — required; there is no default.\\n- Everything else is optional at startup: `PORT` defaults to 3000, the four `JWT_*_EXPIRATION_*` vars default to 30/30/10/10, and `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `EMAIL_FROM` are optional strings/numbers used only when email is sent.\\n\\nWhere to look:\\n- `src/config/config.js` — `envVarsSchema` (line 7) is the gatekeeper; `.unknown()` tolerates extra vars.\\n- `src/index.js` — `server` and `exitHandler` own lifecycle only; they assume config already validated.\\n- `src/config/tokens.js`, `src/services/token.service.js` (`generateResetPasswordToken`) consume `config.jwt.*` at runtime, not at startup.\",\"citations\":[\"component:src-config-config-js\",\"code:src-config-config-js:env-vars-schema\",\"component:src-index-js\",\"code:src-index-js:server\",\"code:src-index-js:exit-handler\",\"component:src-services-token-service-js\",\"code:src-services-token-service-js:generate-reset-password-token\"]}",
+          "usage": { "promptTokens": 7157, "completionTokens": 459, "totalTokens": 7616, "costUsd": 0.003512625 },
+          "ms": 32817
+        }
+      },
+      {
+        "id": "nodeexpress-login-flood",
+        "question": "Is there anything stopping someone from hammering the sign-in endpoint with password guesses?",
+        "selectedId": "system:create-nodejs-express-app",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23701,
+        "sectionCount": 19,
+        "ranked": [0, 3, 1, 4, 18, 2, 17, 8, 7, 13, 30, 25, 36, 12, 5, 21, 9, 22, 6],
+        "packets": [15, 16],
+        "sections": [
+          {
+            "id": "component:src-controllers-auth-controller-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-controllers-auth-controller-js:login", "name": "login" },
+              { "id": "code:src-controllers-auth-controller-js:forgot-password", "name": "forgotPassword" },
+              { "id": "code:src-controllers-auth-controller-js:reset-password", "name": "resetPassword" }
+            ]
+          },
+          {
+            "id": "component:src-validations-auth-validation-js",
+            "kind": "component",
+            "p": 3,
+            "symbols": [
+              { "id": "code:src-validations-auth-validation-js:reset-password", "name": "resetPassword" },
+              { "id": "code:src-validations-auth-validation-js:login", "name": "login" },
+              { "id": "code:src-validations-auth-validation-js:forgot-password", "name": "forgotPassword" }
+            ]
+          },
+          {
+            "id": "component:src-services-auth-service-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-services-auth-service-js:login-user-with-email-and-password", "name": "loginUserWithEmailAndPassword" },
+              { "id": "code:src-services-auth-service-js:reset-password", "name": "resetPassword" },
+              { "id": "code:src-services-auth-service-js:refresh-auth", "name": "refreshAuth" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-auth-route-js",
+            "kind": "component",
+            "p": 4,
+            "symbols": [
+              { "id": "code:src-routes-v1-auth-route-js:auth", "name": "auth" },
+              { "id": "code:src-routes-v1-auth-route-js:auth-controller", "name": "authController" },
+              { "id": "code:src-routes-v1-auth-route-js:auth-validation", "name": "authValidation" }
+            ]
+          },
+          {
+            "id": "component:src-validations-custom-validation-js",
+            "kind": "component",
+            "p": 18,
+            "symbols": [
+              { "id": "code:src-validations-custom-validation-js:password", "name": "password" }
+            ]
+          },
+          {
+            "id": "component:src-services-token-service-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-services-token-service-js:generate-reset-password-token", "name": "generateResetPasswordToken" },
+              { "id": "code:src-services-token-service-js:generate-auth-tokens", "name": "generateAuthTokens" },
+              { "id": "code:src-services-token-service-js:generate-token", "name": "generateToken" }
+            ]
+          },
+          {
+            "id": "component:src-config-tokens-js",
+            "kind": "component",
+            "p": 17,
+            "symbols": [
+              { "id": "code:src-config-tokens-js:token-types", "name": "tokenTypes" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-user-route-js",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:src-routes-v1-user-route-js:auth", "name": "auth" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-index-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:src-routes-v1-index-js:auth-route", "name": "authRoute" },
+              { "id": "code:src-routes-v1-index-js:default-routes", "name": "defaultRoutes" }
+            ]
+          },
+          {
+            "id": "component:tests-fixtures-user-fixture-js",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:tests-fixtures-user-fixture-js:hashed-password", "name": "hashedPassword" },
+              { "id": "code:tests-fixtures-user-fixture-js:password", "name": "password" },
+              { "id": "code:tests-fixtures-user-fixture-js:insert-users", "name": "insertUsers" }
+            ]
+          },
+          {
+            "id": "component:src-config-config-js",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:src-config-config-js:env-vars-schema", "name": "envVarsSchema" }
+            ]
+          },
+          {
+            "id": "component:src-validations-user-validation-js",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-validations-user-validation-js:create-user", "name": "createUser" },
+              { "id": "code:src-validations-user-validation-js:update-user", "name": "updateUser" }
+            ]
+          },
+          {
+            "id": "component:src-services-email-service-js",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:src-services-email-service-js:send-reset-password-email", "name": "sendResetPasswordEmail" }
+            ]
+          },
+          { "id": "component:src-utils-api-error-js", "kind": "component", "p": 12 },
+          {
+            "id": "component:src-middlewares-auth-js",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-middlewares-auth-js:auth", "name": "auth" },
+              { "id": "code:src-middlewares-auth-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-auth-js:http-status", "name": "httpStatus" }
+            ]
+          },
+          { "id": "component:src-middlewares-error-js", "kind": "component", "p": 21 },
+          {
+            "id": "component:src-middlewares-rate-limiter-js",
+            "kind": "component",
+            "p": 9,
+            "symbols": [
+              { "id": "code:src-middlewares-rate-limiter-js:auth-limiter", "name": "authLimiter" }
+            ]
+          },
+          {
+            "id": "component:src-models-user-model-js",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:src-models-user-model-js:user-schema", "name": "userSchema" }
+            ]
+          },
+          { "id": "component:tests-fixtures-token-fixture-js", "kind": "component", "p": 6 }
+        ],
+        "expectedIndexed": { "src/middlewares/rateLimiter.js": true, "src/app.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11967, "sectionCount": 9, "ranked": [0, 3, 1, 4, 18, 2, 17, 8, 12] },
+          "double": { "byteBudget": 48000, "bytes": 27259, "sectionCount": 24, "ranked": [0, 3, 1, 4, 18, 2, 17, 8, 7, 13, 30, 25, 36, 12, 5, 21, 9, 22, 6, 11, 10, 37, 24, 33] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 11967, "sectionCount": 9, "ranked": [0, 3, 1, 4, 18, 2, 17, 8, 12] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23701, "sectionCount": 19, "ranked": [0, 3, 1, 4, 18, 2, 17, 8, 7, 13, 30, 25, 36, 12, 5, 21, 9, 22, 6] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "ff54911ee38eb14293c2a22ea1f288fb94a7cdacb639123919d15a65aaf8f435",
+          "allowedIdsCount": 53,
+          "allowedIdsSha256": "66c5c3ce516e7d489cd318aae4038c81ee64ea6ba885f9a1a4fb69f30f21e5b7",
+          "allowedIdsInContent": ["code:src-controllers-auth-controller-js:login", "code:src-validations-auth-validation-js:login", "code:src-services-auth-service-js:login-user-with-email-and-password", "component:src-routes-v1-auth-route-js", "code:src-routes-v1-auth-route-js:auth", "code:src-routes-v1-auth-route-js:auth-validation", "component:src-middlewares-rate-limiter-js", "code:src-middlewares-rate-limiter-js:auth-limiter"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Yes — there is a dedicated rate limiter for auth attempts, but the evidence does not confirm it is actually mounted on the sign-in route.\\n\\n- `src/middlewares/rateLimiter.js` defines `authLimiter` (`code:src-middlewares-rate-limiter-js:auth-limiter`), built on `express-rate-limit`: it caps attempts at **20 per 15 minutes** and sets `skipSuccessfulRequests: true`, so only failed attempts count toward the cap.\\n- The catch: `src/routes/v1/auth.route.js` (`code:src-routes-v1-auth-route-js:auth-validation`) is where endpoints are wired together, and its evidence only shows `validate`, `authValidation`, `authController` and the `auth` middleware — `authLimiter` does not appear anywhere in the route assembly. So whether `/auth/login` is behind the limiter is **not in the evidence**; you'd want to confirm the `router.post('/login', ...)` registration directly.\\n- What the login path does enforce: `login` (`code:src-validations-auth-validation-js:login`) accepts `password` only as a plain required string (no strength rule, unlike `register`), and `loginUserWithEmailAndPassword` (`code:src-services-auth-service-js:login-user-with-email-and-password`) returns a generic 401 'Incorrect email or password' on mismatch — no per-account lockout or exponential backoff is present in the evidence.\\n- `login` (`code:src-controllers-auth-controller-js:login`) itself adds no throttling; it just calls the service and mints tokens.\\n\\nNet: the intended defense is `authLimiter`, but its wiring to the sign-in endpoint is unverified here — worth checking `src/routes/v1/auth.route.js` line by line.\",\"citations\":[\"component:src-middlewares-rate-limiter-js\",\"code:src-middlewares-rate-limiter-js:auth-limiter\",\"component:src-routes-v1-auth-route-js\",\"code:src-routes-v1-auth-route-js:auth-validation\",\"code:src-controllers-auth-controller-js:login\",\"code:src-services-auth-service-js:login-user-with-email-and-password\",\"code:src-validations-auth-validation-js:login\"]}",
+          "usage": { "promptTokens": 8190, "completionTokens": 676, "totalTokens": 8866, "costUsd": 0.00415077 },
+          "ms": 16745
+        }
+      },
+      {
+        "id": "nodeexpress-api-docs",
+        "question": "Where can I browse interactive API documentation, and why doesn't it show up on my production server?",
+        "selectedId": "system:create-nodejs-express-app",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23340,
+        "sectionCount": 19,
+        "ranked": [26, 23, 10, 29, 21, 30, 12, 28, 2, 1, 7, 11, 15, 16, 5, 24, 20, 31, 6],
+        "packets": [15, 16],
+        "sections": [
+          {
+            "id": "component:src-docs-swagger-def-js",
+            "kind": "component",
+            "p": 26,
+            "symbols": [
+              { "id": "code:src-docs-swagger-def-js:swagger-def", "name": "swaggerDef" }
+            ]
+          },
+          { "id": "component:src-routes-v1-docs-route-js", "kind": "component", "p": 23 },
+          {
+            "id": "component:src-app-js",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:src-app-js:api-error", "name": "ApiError" }
+            ]
+          },
+          {
+            "id": "component:src-index-js",
+            "kind": "component",
+            "p": 29,
+            "symbols": [
+              { "id": "code:src-index-js:server", "name": "server" },
+              { "id": "code:src-index-js:exit-handler", "name": "exitHandler" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-error-js",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:src-middlewares-error-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-error-js:error-handler", "name": "errorHandler" },
+              { "id": "code:src-middlewares-error-js:error-converter", "name": "errorConverter" }
+            ]
+          },
+          {
+            "id": "component:src-config-config-js",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:src-config-config-js:env-vars-schema", "name": "envVarsSchema" }
+            ]
+          },
+          {
+            "id": "component:src-utils-api-error-js",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-utils-api-error-js:api-error", "name": "ApiError" }
+            ]
+          },
+          {
+            "id": "component:src-config-morgan-js",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:src-config-morgan-js:get-ip-format", "name": "getIpFormat" }
+            ]
+          },
+          {
+            "id": "component:src-services-token-service-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-services-token-service-js:api-error", "name": "ApiError" },
+              { "id": "code:src-services-token-service-js:generate-reset-password-token", "name": "generateResetPasswordToken" }
+            ]
+          },
+          {
+            "id": "component:src-services-auth-service-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-services-auth-service-js:api-error", "name": "ApiError" },
+              { "id": "code:src-services-auth-service-js:login-user-with-email-and-password", "name": "loginUserWithEmailAndPassword" },
+              { "id": "code:src-services-auth-service-js:logout", "name": "logout" }
+            ]
+          },
+          { "id": "component:src-routes-v1-index-js", "kind": "component", "p": 7 },
+          {
+            "id": "component:src-services-user-service-js",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-services-user-service-js:api-error", "name": "ApiError" },
+              { "id": "code:src-services-user-service-js:update-user-by-id", "name": "updateUserById" },
+              { "id": "code:src-services-user-service-js:delete-user-by-id", "name": "deleteUserById" }
+            ]
+          },
+          { "id": "system:create-nodejs-express-app", "kind": "softwareSystem", "p": 15 },
+          { "id": "container:create-nodejs-express-app", "kind": "container", "p": 16 },
+          {
+            "id": "component:src-middlewares-auth-js",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-middlewares-auth-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-auth-js:verify-callback", "name": "verifyCallback" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-validate-js",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middlewares-validate-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-validate-js:validate", "name": "validate" }
+            ]
+          },
+          {
+            "id": "component:src-controllers-user-controller-js",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:src-controllers-user-controller-js:api-error", "name": "ApiError" },
+              { "id": "code:src-controllers-user-controller-js:get-user", "name": "getUser" }
+            ]
+          },
+          { "id": "component:src-config-logger-js", "kind": "component", "p": 31 },
+          { "id": "component:tests-fixtures-token-fixture-js", "kind": "component", "p": 6 }
+        ],
+        "expectedIndexed": { "src/routes/v1/index.js": true, "src/routes/v1/docs.route.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11494, "sectionCount": 9, "ranked": [26, 23, 10, 29, 21, 30, 12, 28, 2] },
+          "double": { "byteBudget": 48000, "bytes": 23340, "sectionCount": 19, "ranked": [26, 23, 10, 29, 21, 30, 12, 28, 2, 1, 7, 11, 15, 16, 5, 24, 20, 31, 6] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 11494, "sectionCount": 9, "ranked": [26, 23, 10, 29, 21, 30, 12, 28, 2] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23340, "sectionCount": 19, "ranked": [26, 23, 10, 29, 21, 30, 12, 28, 2, 1, 7, 11, 15, 16, 5, 24, 20, 31, 6] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "cf9978788be90f1e8dca80d692a4b49d8c1666815dd0ead89849bae987a2fdcd",
+          "allowedIdsCount": 43,
+          "allowedIdsSha256": "e9ea6ba8a9af490bb25a7794feeac3520a94b9eb6a099c6ba3c08a8749595c62",
+          "allowedIdsInContent": ["component:src-docs-swagger-def-js", "code:src-docs-swagger-def-js:swagger-def", "component:src-routes-v1-docs-route-js", "component:src-config-config-js", "code:src-config-config-js:env-vars-schema", "component:src-routes-v1-index-js"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Browse the interactive Swagger/OpenAPI docs at `/v1/docs` — but only when the app runs in development, because `docs.route` is mounted in `devRoutes` rather than `defaultRoutes` in `src/routes/v1/index.js`, so production never exposes it.\\n\\n- `src/routes/v1/docs.route.js` builds the spec with `swaggerJsdoc`, collecting annotations from `src/docs/*.yml` and `src/routes/v1/*.js`, and exports the docs router.\\n- `src/routes/v1/index.js` holds `defaultRoutes` (always-on `/auth`, `/user`) and `devRoutes`, which is commented development-only and is where `/docs` is mounted. Check how `config` (required at the top of that file) gates `devRoutes`.\\n- `src/docs/swaggerDef.js` (`swaggerDef`) supplies the OpenAPI 3.0.0 base: title, version, and the `servers` entry pointing at `http://localhost:${config.port}/v1` — note that base URL is fixed to localhost, so the \\\"try it out\\\" target is local even in dev.\\n- `src/config/config.js` (`envVarsSchema`) validates `NODE_ENV` as one of 'production', 'development', 'test' and gives `config.env`, which is what the dev-only gate reads.\\n\\nIf the docs 404 on production, that's expected behavior per the `devRoutes` comment — not a config error.\",\"citations\":[\"component:src-routes-v1-index-js\",\"component:src-routes-v1-docs-route-js\",\"component:src-docs-swagger-def-js\",\"code:src-docs-swagger-def-js:swagger-def\",\"component:src-config-config-js\",\"code:src-config-config-js:env-vars-schema\"]}",
+          "usage": { "promptTokens": 7833, "completionTokens": 411, "totalTokens": 8244, "costUsd": 0.003764925 },
+          "ms": 12577
+        }
+      },
+      {
+        "id": "nodeexpress-paging",
+        "question": "How does listing users support page size and sort order?",
+        "selectedId": "component:src-services-email-service-js",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23966,
+        "sectionCount": 17,
+        "ranked": [20, 25, 38, 11, 22, 19, 13, 8, 6, 1, 5, 2, 0, 14, 39, 7, 36],
+        "packets": [36, 16],
+        "sections": [
+          {
+            "id": "component:src-controllers-user-controller-js",
+            "kind": "component",
+            "p": 20,
+            "symbols": [
+              { "id": "code:src-controllers-user-controller-js:get-user", "name": "getUser" },
+              { "id": "code:src-controllers-user-controller-js:update-user", "name": "updateUser" },
+              { "id": "code:src-controllers-user-controller-js:get-users", "name": "getUsers" }
+            ]
+          },
+          {
+            "id": "component:src-validations-user-validation-js",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-validations-user-validation-js:get-users", "name": "getUsers" },
+              { "id": "code:src-validations-user-validation-js:get-user", "name": "getUser" },
+              { "id": "code:src-validations-user-validation-js:delete-user", "name": "deleteUser" }
+            ]
+          },
+          {
+            "id": "component:src-models-plugins-paginate-plugin-js",
+            "kind": "component",
+            "p": 38,
+            "symbols": [
+              { "id": "code:src-models-plugins-paginate-plugin-js:paginate", "name": "paginate" }
+            ]
+          },
+          {
+            "id": "component:src-services-user-service-js",
+            "kind": "component",
+            "p": 11,
+            "symbols": [
+              { "id": "code:src-services-user-service-js:update-user-by-id", "name": "updateUserById" },
+              { "id": "code:src-services-user-service-js:delete-user-by-id", "name": "deleteUserById" },
+              { "id": "code:src-services-user-service-js:create-user", "name": "createUser" }
+            ]
+          },
+          {
+            "id": "component:src-models-user-model-js",
+            "kind": "component",
+            "p": 22,
+            "symbols": [
+              { "id": "code:src-models-user-model-js:user", "name": "User" },
+              { "id": "code:src-models-user-model-js:user-schema", "name": "userSchema" },
+              { "id": "code:src-models-user-model-js:bcrypt", "name": "bcrypt" }
+            ]
+          },
+          {
+            "id": "component:src-config-roles-js",
+            "kind": "component",
+            "p": 19,
+            "symbols": [
+              { "id": "code:src-config-roles-js:all-roles", "name": "allRoles" }
+            ]
+          },
+          {
+            "id": "component:tests-fixtures-user-fixture-js",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:tests-fixtures-user-fixture-js:insert-users", "name": "insertUsers" },
+              { "id": "code:tests-fixtures-user-fixture-js:user", "name": "User" },
+              { "id": "code:tests-fixtures-user-fixture-js:user-one", "name": "userOne" }
+            ]
+          },
+          {
+            "id": "component:src-routes-v1-user-route-js",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:src-routes-v1-user-route-js:user-controller", "name": "userController" },
+              { "id": "code:src-routes-v1-user-route-js:user-validation", "name": "userValidation" },
+              { "id": "code:src-routes-v1-user-route-js:auth", "name": "auth" }
+            ]
+          },
+          {
+            "id": "component:tests-fixtures-token-fixture-js",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:tests-fixtures-token-fixture-js:user-one-access-token", "name": "userOneAccessToken" }
+            ]
+          },
+          {
+            "id": "component:src-services-auth-service-js",
+            "kind": "component",
+            "p": 1,
+            "symbols": [
+              { "id": "code:src-services-auth-service-js:login-user-with-email-and-password", "name": "loginUserWithEmailAndPassword" },
+              { "id": "code:src-services-auth-service-js:user-service", "name": "userService" },
+              { "id": "code:src-services-auth-service-js:verify-email", "name": "verifyEmail" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-auth-js",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-middlewares-auth-js:verify-callback", "name": "verifyCallback" }
+            ]
+          },
+          {
+            "id": "component:src-services-token-service-js",
+            "kind": "component",
+            "p": 2,
+            "symbols": [
+              { "id": "code:src-services-token-service-js:user-service", "name": "userService" },
+              { "id": "code:src-services-token-service-js:generate-reset-password-token", "name": "generateResetPasswordToken" },
+              { "id": "code:src-services-token-service-js:generate-auth-tokens", "name": "generateAuthTokens" }
+            ]
+          },
+          {
+            "id": "component:src-controllers-auth-controller-js",
+            "kind": "component",
+            "p": 0,
+            "symbols": [
+              { "id": "code:src-controllers-auth-controller-js:register", "name": "register" },
+              { "id": "code:src-controllers-auth-controller-js:login", "name": "login" },
+              { "id": "code:src-controllers-auth-controller-js:send-verification-email", "name": "sendVerificationEmail" }
+            ]
+          },
+          { "id": "component:src-utils-catch-async-js", "kind": "component", "p": 14 },
+          { "id": "component:src-utils-pick-js", "kind": "component", "p": 39 },
+          {
+            "id": "component:src-routes-v1-index-js",
+            "kind": "component",
+            "p": 7,
+            "symbols": [
+              { "id": "code:src-routes-v1-index-js:user-route", "name": "userRoute" },
+              { "id": "code:src-routes-v1-index-js:default-routes", "name": "defaultRoutes" }
+            ]
+          },
+          {
+            "id": "component:src-services-email-service-js",
+            "kind": "component",
+            "p": 36,
+            "symbols": [
+              { "id": "code:src-services-email-service-js:send-verification-email", "name": "sendVerificationEmail" },
+              { "id": "code:src-services-email-service-js:send-reset-password-email", "name": "sendResetPasswordEmail" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "src/models/plugins/paginate.plugin.js": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11930, "sectionCount": 8, "ranked": [20, 25, 38, 11, 22, 19, 13, 18] },
+          "double": { "byteBudget": 48000, "bytes": 26423, "sectionCount": 20, "ranked": [20, 25, 38, 11, 22, 19, 13, 8, 6, 1, 5, 2, 0, 14, 39, 7, 36, 16, 12, 18] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 12021, "sectionCount": 8, "ranked": [20, 25, 38, 11, 22, 19, 13, 39] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23966, "sectionCount": 17, "ranked": [20, 25, 38, 11, 22, 19, 13, 8, 6, 1, 5, 2, 0, 14, 39, 7, 36] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "a4566dc483b2a9002b9c7fd6927f1f2e6dd4869622dd5cd06b16929978665ae6",
+          "allowedIdsCount": 58,
+          "allowedIdsSha256": "8eef1b028fbd733f9e56db66df6f608289f20fc1034aafe3408288be0dba3408",
+          "allowedIdsInContent": ["code:src-controllers-user-controller-js:get-user", "code:src-controllers-user-controller-js:get-users", "code:src-validations-user-validation-js:get-users", "code:src-validations-user-validation-js:get-user", "code:src-models-plugins-paginate-plugin-js:paginate", "component:src-services-user-service-js", "code:src-services-user-service-js:create-user", "code:src-models-user-model-js:user", "component:src-utils-pick-js"],
+          "packetSources": {},
+          "content": "{\"answer\":\"Listing users threads page size and sort order from the query string down to the Mongoose `paginate` plugin. `getUsers` (`src/controllers/user.controller.js`) whitelists `sortBy`, `limit`, and `page` from `req.query` via `pick` into an `options` object alongside a `filter`, and passes them to `userService.queryUsers`, which delegates straight to `User.paginate(filter, options)`.\\n\\n- `code:src-controllers-user-controller-js:get-users` — splits `req.query` into `filter` and `options` using `pick` (`component:src-utils-pick-js`), so only allowed keys through.\\n- `code:src-validations-user-validation-js:get-users` — the Joi `query` schema accepts `sortBy` (string), `limit` and `page` (integers) plus `name`/`role` filters.\\n- `code:src-services-user-service-js:create-user` / `component:src-services-user-service-js` — `queryUsers()` is the pass-through to `User.paginate()`; no extra paging logic lives in the service.\\n- `code:src-models-plugins-paginate-plugin-js:paginate` — parses `options.sortBy` as `sortField:(desc|asc)` (comma-separated for multiple keys, `desc` becomes a `-` prefix), falls back to `createdAt`; `limit` defaults to 10 and `page` to 1 when absent or non-positive, computing `skip = (page - 1) * limit` before `find().sort().skip().limit()`.\\n- `code:src-models-user-model-js:user` — `User` is the model carrying the plugin's `paginate` static.\",\"citations\":[\"code:src-controllers-user-controller-js:get-users\",\"code:src-validations-user-validation-js:get-users\",\"component:src-services-user-service-js\",\"code:src-models-plugins-paginate-plugin-js:paginate\",\"code:src-models-user-model-js:user\",\"component:src-utils-pick-js\"]}",
+          "usage": { "promptTokens": 8992, "completionTokens": 479, "totalTokens": 9471, "costUsd": 0.00432825 },
+          "ms": 13798
+        }
+      },
+      {
+        "id": "nodeexpress-prod-run",
+        "question": "How is the app kept running in production — what actually starts the process?",
+        "selectedId": "system:create-nodejs-express-app",
+        "selectionFound": true,
+        "byteBudget": 24000,
+        "bytes": 23810,
+        "sectionCount": 17,
+        "ranked": [32, 30, 28, 29, 16, 21, 6, 10, 15, 8, 35, 31, 13, 24, 25, 5, 12],
+        "packets": [15, 16],
+        "sections": [
+          {
+            "id": "component:bin-create-nodejs-app-js",
+            "kind": "component",
+            "p": 32,
+            "symbols": [
+              { "id": "code:bin-create-nodejs-app-js:run-cmd", "name": "runCmd" },
+              { "id": "code:bin-create-nodejs-app-js:app-path", "name": "appPath" },
+              { "id": "code:bin-create-nodejs-app-js:setup", "name": "setup" }
+            ]
+          },
+          {
+            "id": "component:src-config-config-js",
+            "kind": "component",
+            "p": 30,
+            "symbols": [
+              { "id": "code:src-config-config-js:env-vars-schema", "name": "envVarsSchema" },
+              { "id": "code:src-config-config-js:dotenv", "name": "dotenv" },
+              { "id": "code:src-config-config-js:joi", "name": "Joi" }
+            ]
+          },
+          {
+            "id": "component:src-config-morgan-js",
+            "kind": "component",
+            "p": 28,
+            "symbols": [
+              { "id": "code:src-config-morgan-js:morgan", "name": "morgan" },
+              { "id": "code:src-config-morgan-js:get-ip-format", "name": "getIpFormat" },
+              { "id": "code:src-config-morgan-js:config", "name": "config" }
+            ]
+          },
+          {
+            "id": "component:src-index-js",
+            "kind": "component",
+            "p": 29,
+            "symbols": [
+              { "id": "code:src-index-js:app", "name": "app" },
+              { "id": "code:src-index-js:exit-handler", "name": "exitHandler" },
+              { "id": "code:src-index-js:config", "name": "config" }
+            ]
+          },
+          { "id": "container:create-nodejs-express-app", "kind": "container", "p": 16 },
+          {
+            "id": "component:src-middlewares-error-js",
+            "kind": "component",
+            "p": 21,
+            "symbols": [
+              { "id": "code:src-middlewares-error-js:error-handler", "name": "errorHandler" },
+              { "id": "code:src-middlewares-error-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-error-js:config", "name": "config" }
+            ]
+          },
+          {
+            "id": "component:tests-fixtures-token-fixture-js",
+            "kind": "component",
+            "p": 6,
+            "symbols": [
+              { "id": "code:tests-fixtures-token-fixture-js:access-token-expires", "name": "accessTokenExpires" },
+              { "id": "code:tests-fixtures-token-fixture-js:admin-access-token", "name": "adminAccessToken" },
+              { "id": "code:tests-fixtures-token-fixture-js:config", "name": "config" }
+            ]
+          },
+          {
+            "id": "component:src-app-js",
+            "kind": "component",
+            "p": 10,
+            "symbols": [
+              { "id": "code:src-app-js:app", "name": "app" },
+              { "id": "code:src-app-js:api-error", "name": "ApiError" },
+              { "id": "code:src-app-js:compression", "name": "compression" }
+            ]
+          },
+          { "id": "system:create-nodejs-express-app", "kind": "softwareSystem", "p": 15 },
+          {
+            "id": "component:src-routes-v1-user-route-js",
+            "kind": "component",
+            "p": 8,
+            "symbols": [
+              { "id": "code:src-routes-v1-user-route-js:auth", "name": "auth" },
+              { "id": "code:src-routes-v1-user-route-js:express", "name": "express" },
+              { "id": "code:src-routes-v1-user-route-js:router", "name": "router" }
+            ]
+          },
+          {
+            "id": "component:tests-utils-setup-test-db-js",
+            "kind": "component",
+            "p": 35,
+            "symbols": [
+              { "id": "code:tests-utils-setup-test-db-js:setup-test-db", "name": "setupTestDB" },
+              { "id": "code:tests-utils-setup-test-db-js:config", "name": "config" },
+              { "id": "code:tests-utils-setup-test-db-js:mongoose", "name": "mongoose" }
+            ]
+          },
+          {
+            "id": "component:src-config-logger-js",
+            "kind": "component",
+            "p": 31,
+            "symbols": [
+              { "id": "code:src-config-logger-js:logger", "name": "logger" },
+              { "id": "code:src-config-logger-js:config", "name": "config" },
+              { "id": "code:src-config-logger-js:enumerate-error-format", "name": "enumerateErrorFormat" }
+            ]
+          },
+          {
+            "id": "component:tests-fixtures-user-fixture-js",
+            "kind": "component",
+            "p": 13,
+            "symbols": [
+              { "id": "code:tests-fixtures-user-fixture-js:admin", "name": "admin" },
+              { "id": "code:tests-fixtures-user-fixture-js:bcrypt", "name": "bcrypt" },
+              { "id": "code:tests-fixtures-user-fixture-js:faker", "name": "faker" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-validate-js",
+            "kind": "component",
+            "p": 24,
+            "symbols": [
+              { "id": "code:src-middlewares-validate-js:validate", "name": "validate" },
+              { "id": "code:src-middlewares-validate-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-validate-js:http-status", "name": "httpStatus" }
+            ]
+          },
+          {
+            "id": "component:src-validations-user-validation-js",
+            "kind": "component",
+            "p": 25,
+            "symbols": [
+              { "id": "code:src-validations-user-validation-js:create-user", "name": "createUser" },
+              { "id": "code:src-validations-user-validation-js:delete-user", "name": "deleteUser" },
+              { "id": "code:src-validations-user-validation-js:get-user", "name": "getUser" }
+            ]
+          },
+          {
+            "id": "component:src-middlewares-auth-js",
+            "kind": "component",
+            "p": 5,
+            "symbols": [
+              { "id": "code:src-middlewares-auth-js:auth", "name": "auth" },
+              { "id": "code:src-middlewares-auth-js:api-error", "name": "ApiError" },
+              { "id": "code:src-middlewares-auth-js:http-status", "name": "httpStatus" }
+            ]
+          },
+          {
+            "id": "component:src-utils-api-error-js",
+            "kind": "component",
+            "p": 12,
+            "symbols": [
+              { "id": "code:src-utils-api-error-js:api-error", "name": "ApiError" }
+            ]
+          }
+        ],
+        "expectedIndexed": { "ecosystem.config.json": false, "package.json": true },
+        "variants": {
+          "half": { "byteBudget": 12000, "bytes": 11663, "sectionCount": 8, "ranked": [32, 30, 28, 29, 16, 21, 6, 10] },
+          "double": { "byteBudget": 48000, "bytes": 31966, "sectionCount": 25, "ranked": [32, 30, 28, 29, 16, 21, 6, 10, 15, 8, 35, 31, 13, 24, 25, 5, 7, 22, 12, 26, 27, 2, 17, 39, 4] },
+          "size-scaled": { "byteBudget": 12072, "bytes": 11663, "sectionCount": 8, "ranked": [32, 30, 28, 29, 16, 21, 6, 10] },
+          "depth-scaled": { "byteBudget": 24000, "bytes": 23810, "sectionCount": 17, "ranked": [32, 30, 28, 29, 16, 21, 6, 10, 15, 8, 35, 31, 13, 24, 25, 5, 12] }
+        },
+        "answer": {
+          "modelId": "xiaomi/mimo-v2.6-pro",
+          "requestSha256": "0dff5981b82a923b30b5adf55958775d5c32370b5e9c26f7480c2a0ef0a9b575",
+          "allowedIdsCount": 60,
+          "allowedIdsSha256": "ef55c71a97bc332769b5da94ce415e1aa43da3e37cc4d2f1cd561c65d80fc4b4",
+          "allowedIdsInContent": ["component:bin-create-nodejs-app-js", "code:bin-create-nodejs-app-js:setup", "component:src-config-config-js", "code:src-config-config-js:env-vars-schema", "code:src-config-config-js:dotenv", "component:src-index-js", "code:src-index-js:app", "code:src-index-js:exit-handler", "code:src-index-js:config", "container:create-nodejs-express-app", "component:src-app-js", "code:src-app-js:app"],
+          "packetSources": { "container:create-nodejs-express-app": 16 },
+          "content": "{\"answer\": \"The process itself is started by the Node runtime executing `src/index.js`, which is the entry point: it requires `src/app.js` (`app`) and `src/config/config.js`, connects `mongoose`, and owns the listening `server` handle. Once up, it stays up until `exitHandler()` closes the server — fatal errors go through `unexpectedErrorHandler()` → `exitHandler()`, so crashes end in graceful shutdown rather than a silent hang.\\n\\nWhat launches that file in production (npm `start` script, process manager like PM2, container CMD, etc.) is **not in the evidence** — `package.json` is named as the container source, but no scripts or deploy config appear in the search results.\\n\\n- `src/index.js` (`component:src-index-js`) — entry point; `exitHandler` (`code:src-index-js:exit-handler`) closes the `server` and logs `Server closed` before exit; `server` is a `let` set only after listen, guarded inside the handler.\\n- `src/app.js` (`component:src-app-js`) — builds the Express `app` (`code:src-app-js:app`) that `src/index.js` serves.\\n- `src/config/config.js` (`component:src-config-config-js`) — `envVarsSchema` (`code:src-config-config-js:env-vars-schema`) validates `NODE_ENV` (must be `production`/`development`/`test`) and `PORT` (default 3000) at startup, so config problems fail fast; `dotenv` (`code:src-config-config-js:dotenv`) loads `.env` first.\\n- `bin/createNodejsApp.js` (`component:bin-create-nodejs-app-js`) is the scaffolding CLI (`setup`, `code:bin-create-nodejs-app-js:setup`) that clones a boilerplate — it creates apps, it does not run them in production.\",\"citations\":[\"component:src-index-js\",\"code:src-index-js:exit-handler\",\"code:src-index-js:app\",\"code:src-index-js:config\",\"component:src-app-js\",\"code:src-app-js:app\",\"component:src-config-config-js\",\"code:src-config-config-js:env-vars-schema\",\"code:src-config-config-js:dotenv\",\"component:bin-create-nodejs-app-js\",\"code:bin-create-nodejs-app-js:setup\",\"container:create-nodejs-express-app\"]}",
+          "usage": { "promptTokens": 8601, "completionTokens": 639, "totalTokens": 9240, "costUsd": 0.004297365 },
+          "ms": 29662
+        }
+      }
+    ]
+  },
+  "blocks": {
+    "corpus": "enriched",
+    "nodes": [
+      {
+        "nodeId": "system:create-nodejs-express-app",
+        "name": "create-nodejs-express-app",
+        "kind": "softwareSystem",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "A JavaScript system that scaffolds and contains an Express API: `bin/createNodejsApp.js` clones a boilerplate, while the `src/` tree holds the generated app. Read the **create-nodejs-express-app** co…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Read `src/index.js` then `src/app.js`: process lifecycle and shutdown live in the first, Express middleware assembly in the second. | Auth seam: `src/middlewares/auth.js` wraps the Pass…" },
+          { "id": "children", "type": "children", "preview": "Children: 1 node — create-nodejs-express-app (container)" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:keyPoints", "children", "enrichment:evidence"], "inputTokens": 1654, "estimatedCostUsd": 0.0000695, "latencyMs": 372 }
+      },
+      {
+        "nodeId": "container:create-nodejs-express-app",
+        "name": "create-nodejs-express-app",
+        "kind": "container",
+        "candidates": [
+          { "id": "enrichment:summary", "type": "markdown", "preview": "**create-nodejs-express-app** is a JavaScript package. `bin/createNodejsApp.js` scaffolds an Express API by cloning a boilerplate, while the `src/` tree holds that app: read `src/index.js` and `src/a…" },
+          { "id": "enrichment:keyPoints", "type": "keyPoints", "preview": "Worth a look: Start with `src/index.js` then `src/app.js`: the first owns process lifecycle and shutdown, the second assembles Express middleware. | Auth seam: `src/middlewares/auth.js` wraps the Pas…" },
+          { "id": "relations:parent", "type": "relations", "preview": "Parent: 1 node — create-nodejs-express-app (softwareSystem)" },
+          { "id": "enrichment:diagram", "type": "mermaid", "preview": "Diagram: create-nodejs-express-app at a glance" },
+          { "id": "children", "type": "children", "preview": "Children: 43 nodes — bin/createNodejsApp.js (component); jest.config.js (component); src/app.js (component); +40 more" },
+          { "id": "enrichment:evidence", "type": "evidence", "preview": "Evidence: 1 source citation" }
+        ],
+        "defaultOrder": ["enrichment:summary", "enrichment:keyPoints", "relations:parent", "enrichment:diagram", "children", "enrichment:evidence"],
+        "jev": { "order": ["enrichment:summary", "enrichment:diagram", "enrichment:keyPoints", "children", "relations:parent", "enrichment:evidence"], "inputTokens": 2278, "estimatedCostUsd": 0.0000957, "latencyMs": 447 }
+      }
+    ]
+  },
+  "enrichment": {
+    "scope": { "mode": "full" },
+    "mode": "live",
+    "modelId": "xiaomi/mimo-v2.6-pro",
+    "depth": "component",
+    "caps": { "maxRequests": 80, "maxTokens": 4000000, "maxDollars": 0.35, "maxConcurrent": 4, "globalMaxDollars": 0.7904 },
+    "ms": 472289,
+    "runState": "awaiting_review",
+    "stopped": "complete",
+    "requests": 45,
+    "inputTokens": 70938,
+    "outputTokens": 45568,
+    "costUsd": 0.061028,
+    "costEstimated": false,
+    "coverage": { "accepted": 43, "failed": 2, "notRun": 0, "belowCap": 208, "inScope": 45 },
+    "byKind": {
+      "code": { "total": 208, "accepted": 0, "failed": 0, "notRun": 0, "belowCap": 208 },
+      "component": { "total": 43, "accepted": 41, "failed": 2, "notRun": 0, "belowCap": 0 },
+      "container": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 },
+      "softwareSystem": { "total": 1, "accepted": 1, "failed": 0, "notRun": 0, "belowCap": 0 }
+    },
+    "systemExplained": true,
+    "containersExplained": 1,
+    "parentsWithUnsettledChildren": 0,
+    "failures": [
+      { "scopeId": "component:jest-config-js", "kind": "component", "class": "rejected-by-validator", "error": "malformed explanation: evidence is required" },
+      { "scopeId": "component:src-services-email-service-js", "kind": "component", "class": "rejected-by-validator", "error": "rejected explanation: unknown evidence reference(s): component:src-services-email-service-js src/services/email.service.js:21-24, component:src-services-email-service-js src/services/email.service.js:" }
+    ]
+  },
+  "claims": {
+    "mode": "live",
+    "modelId": "jev-1.13.0",
+    "ms": 9560,
+    "outcome": "accepted",
+    "requests": 35,
+    "inputTokens": 75532,
+    "costUsd": 0.0031723,
+    "costEstimated": true,
+    "rows": [
+      { "scopeId": "component:bin-create-nodejs-app-js", "claimId": "cdec6190dabf0156f4113", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:bin-create-nodejs-app-js", "claimId": "c08b7eaa52b9c39e47f67", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bin-create-nodejs-app-js", "claimId": "c2d973b9788e6a3da13b8", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:bin-create-nodejs-app-js", "claimId": "cb22a5debc927f91521be", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:bin-create-nodejs-app-js", "claimId": "c0b9d5783cd3a08eb372c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.53 },
+      { "scopeId": "component:bin-create-nodejs-app-js", "claimId": "cf17ba54ef67dc94957cc", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:src-app-js", "claimId": "c5b21b1ab4e43fc421cb3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.33 },
+      { "scopeId": "component:src-app-js", "claimId": "cfd7da7424074d7d77a97", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:src-app-js", "claimId": "cb84ea0ad35fdbc908cf6", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:src-app-js", "claimId": "c36e0a9157a4e0c2aa4f5", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.36 },
+      { "scopeId": "component:src-app-js", "claimId": "c8646f40954122bf6e979", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:src-app-js", "claimId": "ce9ca18ed01251d92ed06", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:src-config-config-js", "claimId": "cbce74deb269cfcb2c4e6", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.74 },
+      { "scopeId": "component:src-config-config-js", "claimId": "cdd5f77990940e0cdd93c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-config-config-js", "claimId": "c453d9dcf76898f0e067f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.41 },
+      { "scopeId": "component:src-config-config-js", "claimId": "cf9ef913c040f2fe58921", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:src-config-config-js", "claimId": "cf84767a5d79043ab365c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.93 },
+      { "scopeId": "component:src-config-config-js", "claimId": "c7ae40df0824653d727e8", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-config-logger-js", "claimId": "cd63d8e504dee95eaedbb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.37 },
+      { "scopeId": "component:src-config-logger-js", "claimId": "c137e7b18ebab990d1b28", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:src-config-logger-js", "claimId": "c3ddc9e37975262293934", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-config-morgan-js", "claimId": "c4fde4c8149acb572adea", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.72 },
+      { "scopeId": "component:src-config-morgan-js", "claimId": "c26ec35f185d8e62f59da", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.55 },
+      { "scopeId": "component:src-config-morgan-js", "claimId": "c8de0f1e729c24fb396c0", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:src-config-morgan-js", "claimId": "c9be0c95a0fed4b818268", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:src-config-morgan-js", "claimId": "cbe355cbbab8c8888dc9d", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:src-config-morgan-js", "claimId": "ca0ee10f118473b67855a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.68 },
+      { "scopeId": "component:src-config-morgan-js", "claimId": "cedcaeae769848d55b9f4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:src-config-passport-js", "claimId": "cad8e72727aeb06ef6e3f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:src-config-passport-js", "claimId": "c0aca47ff9c2efa552e6d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:src-config-passport-js", "claimId": "c02047aa35e4ab30d5f9f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:src-config-passport-js", "claimId": "c46bd8e04efc49dbfb8a3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-config-passport-js", "claimId": "ca4bdfe7dea1f40f17510", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.54 },
+      { "scopeId": "component:src-config-roles-js", "claimId": "cdcc022a5ffca56362dbd", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-config-roles-js", "claimId": "c637d487ab40eb4569e09", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.38 },
+      { "scopeId": "component:src-config-roles-js", "claimId": "c2187434e304855c32565", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.27 },
+      { "scopeId": "component:src-config-tokens-js", "claimId": "c688922d68d5302a56a74", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:src-config-tokens-js", "claimId": "cf5f3243069744010e436", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:src-config-tokens-js", "claimId": "c23e85c89c048ad1a6e9e", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:src-config-tokens-js", "claimId": "cc9107b3888db7da17fb7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:src-controllers-auth-controller-js", "claimId": "cd15868fcb0bf494338fa", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:src-controllers-auth-controller-js", "claimId": "cc2ed0018400baedc6e37", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:src-controllers-auth-controller-js", "claimId": "cd615f0b1127a229bdac1", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-controllers-auth-controller-js", "claimId": "cbb3a6431e234f89b3460", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:src-controllers-auth-controller-js", "claimId": "ce6f7e73dafa0da2c70d8", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:src-controllers-user-controller-js", "claimId": "cc6e27826a40bdd3380d4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-controllers-user-controller-js", "claimId": "ce17ddd8a39e6b587052a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:src-controllers-user-controller-js", "claimId": "cf25dbeaee61c7931e9f9", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:src-controllers-user-controller-js", "claimId": "c2353b30b687937b707a1", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:src-docs-swagger-def-js", "claimId": "c3405dc049b95c302fbfb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:src-docs-swagger-def-js", "claimId": "ce2cc0521dcc04d88718b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.48 },
+      { "scopeId": "component:src-docs-swagger-def-js", "claimId": "cffd913fc9e941d18207e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.59 },
+      { "scopeId": "component:src-docs-swagger-def-js", "claimId": "c24a4f89d8d13b806d10e", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:src-index-js", "claimId": "ca9368c1bdb9d5af2676f", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:src-index-js", "claimId": "c2f44ae324dd1f8283d78", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "component:src-index-js", "claimId": "c399386eb5f3f803e211b", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:src-index-js", "claimId": "cbf50a93bc7ae8dae62e9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:src-middlewares-auth-js", "claimId": "cc2cc88d9befffb7ad0b9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.6 },
+      { "scopeId": "component:src-middlewares-auth-js", "claimId": "cb9ac1e387aea9b598d4e", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:src-middlewares-auth-js", "claimId": "c6ad339b4f7cf71209e1b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:src-middlewares-auth-js", "claimId": "cd7279ba16a4772d8ecd3", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.81 },
+      { "scopeId": "component:src-middlewares-auth-js", "claimId": "cf31df7322db148a19c0e", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:src-middlewares-auth-js", "claimId": "cfd01b54b417727954a3d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.75 },
+      { "scopeId": "component:src-middlewares-error-js", "claimId": "c556e0c9823a4ab0b1b46", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.91 },
+      { "scopeId": "component:src-middlewares-error-js", "claimId": "ccbf870320ca1b5d2dc40", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.42 },
+      { "scopeId": "component:src-middlewares-error-js", "claimId": "c957b42ef7dba90bcf572", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:src-middlewares-error-js", "claimId": "ceb94e7013d31cc8cccce", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:src-middlewares-rate-limiter-js", "claimId": "cde5cb4a500508af39a04", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:src-middlewares-rate-limiter-js", "claimId": "cbf93714a33c6452fdec1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.51 },
+      { "scopeId": "component:src-middlewares-rate-limiter-js", "claimId": "cd26b532667b385f152de", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:src-middlewares-rate-limiter-js", "claimId": "c8df8c8b07e6b918fc174", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.38 },
+      { "scopeId": "component:src-middlewares-rate-limiter-js", "claimId": "ce03c02d9adaf5787a7d7", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:src-middlewares-validate-js", "claimId": "c12a263f7aa81582c7cc1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:src-middlewares-validate-js", "claimId": "cf2c2dc75aec8ad06c681", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:src-middlewares-validate-js", "claimId": "c787060e3b74753c4a874", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:src-middlewares-validate-js", "claimId": "c0c2f252c33b308efcfed", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.94 },
+      { "scopeId": "component:src-middlewares-validate-js", "claimId": "cc398690ffc932fb315ad", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.31 },
+      { "scopeId": "component:src-models-index-js", "claimId": "c792331b8ed938305c475", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-models-index-js", "claimId": "cc05b97373a0cfe08d732", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-index-js", "claimId": "c57e3fd8c0f2e6cb6a4b7", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-index-js", "claimId": "c0d881d804a4aa03f20f3", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-index-js", "claimId": "c27fbaca6fc9a8273a560", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-paginate-plugin-js", "claimId": "c21095abd977dd4f310ea", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-paginate-plugin-js", "claimId": "c6ba7d32ab7aace42493c", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-paginate-plugin-js", "claimId": "ce6b55b2ee708850d427e", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-paginate-plugin-js", "claimId": "c982db0a5ce345ea26a77", "state": "insufficient-context", "source": "code", "reason": "truncated-capture", "kind": "component" },
+      { "scopeId": "component:src-models-plugins-to-json-plugin-js", "claimId": "c961da62d385c0460dadd", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:src-models-plugins-to-json-plugin-js", "claimId": "cd2970f6edb80f57f9a52", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:src-models-plugins-to-json-plugin-js", "claimId": "c6cf36b0a91d1cd665bb3", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.28 },
+      { "scopeId": "component:src-models-plugins-to-json-plugin-js", "claimId": "ca7a36d56ddba5c78fb1b", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:src-models-token-model-js", "claimId": "ce4d5af719bb94e4add55", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-models-token-model-js", "claimId": "c1b1193e33d350dbc07b5", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-models-token-model-js", "claimId": "c3bf996e13c0d4046e4ac", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:src-models-user-model-js", "claimId": "c3f09df30f77d4c1b5a5d", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-models-user-model-js", "claimId": "c00877c1a86daaa20b0a1", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:src-models-user-model-js", "claimId": "cd29b67e64b0fc2f9c57d", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-models-user-model-js", "claimId": "cfebe84bbe1d45e514ebb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.3 },
+      { "scopeId": "component:src-models-user-model-js", "claimId": "cc0ec8742fd2bc505e33d", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:src-routes-v1-auth-route-js", "claimId": "c945320d568672a5cc628", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.76 },
+      { "scopeId": "component:src-routes-v1-auth-route-js", "claimId": "c1f3d36df7ef51eb9731a", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:src-routes-v1-auth-route-js", "claimId": "c032abb7efeda7388da49", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:src-routes-v1-docs-route-js", "claimId": "ca5ee10035f9c09cabdea", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-routes-v1-docs-route-js", "claimId": "ccac4f7d093133f93c22a", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.68 },
+      { "scopeId": "component:src-routes-v1-docs-route-js", "claimId": "cca3976aa64fed205f09f", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.86 },
+      { "scopeId": "component:src-routes-v1-docs-route-js", "claimId": "cebc0a8cd94c609f109ff", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.64 },
+      { "scopeId": "component:src-routes-v1-docs-route-js", "claimId": "caac8046fb11fa60a4f58", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.32 },
+      { "scopeId": "component:src-routes-v1-docs-route-js", "claimId": "c99a8ade74a933212b0ab", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:src-routes-v1-index-js", "claimId": "ce1965fd3dd2b3116cafb", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.49 },
+      { "scopeId": "component:src-routes-v1-index-js", "claimId": "c82785fcfcaaccd245944", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.83 },
+      { "scopeId": "component:src-routes-v1-index-js", "claimId": "c320c95fb0d1a82a5745e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.09 },
+      { "scopeId": "component:src-routes-v1-index-js", "claimId": "c23ccc684ca5321739102", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:src-routes-v1-index-js", "claimId": "cf11b393b17f4c49f735a", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:src-routes-v1-user-route-js", "claimId": "c34aa55016341e34ef2f0", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-routes-v1-user-route-js", "claimId": "c9947fd54b67f95b3afd8", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-routes-v1-user-route-js", "claimId": "c947d458b11ab390dcdc4", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:src-services-auth-service-js", "claimId": "cc887c048824a92bc9a40", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:src-services-auth-service-js", "claimId": "c87d4d92b47526b207592", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-services-auth-service-js", "claimId": "c8a50043dfc729a0cf0db", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-services-auth-service-js", "claimId": "c9a5b9619344f3df55c4f", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:src-services-auth-service-js", "claimId": "c7a5bc26b47137f954824", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:src-services-index-js", "claimId": "cc9d304bdb80e47474cfb", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-services-index-js", "claimId": "c6a9117559ab7727f5ca2", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-services-token-service-js", "claimId": "c64d6a6138da6171c2ce0", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-services-token-service-js", "claimId": "c01906c4b739e1c020109", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.79 },
+      { "scopeId": "component:src-services-token-service-js", "claimId": "c9d0e80752d3c07891b6e", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.89 },
+      { "scopeId": "component:src-services-token-service-js", "claimId": "c9d0db792437a1d9baa21", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-services-token-service-js", "claimId": "cde0d3243251b421bfcf1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.56 },
+      { "scopeId": "component:src-services-token-service-js", "claimId": "cee4a45ad6ed1cf451d39", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-services-token-service-js", "claimId": "c8dd24be7489ad1a0adfc", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:src-services-user-service-js", "claimId": "cc0cf474208bc2aa0c26d", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-services-user-service-js", "claimId": "c6ea7552111acb6984311", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-services-user-service-js", "claimId": "cc4df7b8411602d76dff8", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-services-user-service-js", "claimId": "c26e58dda4c624ae47864", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:src-services-user-service-js", "claimId": "cbc0e530939d95bbce81c", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:src-utils-api-error-js", "claimId": "c4ee53456b5dfc88e0812", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.9 },
+      { "scopeId": "component:src-utils-api-error-js", "claimId": "cc43dd59e9a407bc5025c", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.5 },
+      { "scopeId": "component:src-utils-api-error-js", "claimId": "c9d0d92dde04ffacfedf9", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.78 },
+      { "scopeId": "component:src-utils-api-error-js", "claimId": "c5339089a91c45c0527de", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:src-utils-catch-async-js", "claimId": "c7a1885aeb8ed432e482b", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.8 },
+      { "scopeId": "component:src-utils-catch-async-js", "claimId": "cd7c1e71919070ecec11c", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.96 },
+      { "scopeId": "component:src-utils-catch-async-js", "claimId": "cf511784ab6decbb4e8a6", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.29 },
+      { "scopeId": "component:src-utils-catch-async-js", "claimId": "ce930612525377102e6bd", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.82 },
+      { "scopeId": "component:src-utils-pick-js", "claimId": "c05a454c4c08aa4b11aed", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.88 },
+      { "scopeId": "component:src-utils-pick-js", "claimId": "c4c0f23741675c531d21d", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-utils-pick-js", "claimId": "cb55f7e881398acf046b4", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:src-utils-pick-js", "claimId": "c493e5732ccf0f6f58910", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-validations-auth-validation-js", "claimId": "c5a5c16ae6b077f32b6cd", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:src-validations-auth-validation-js", "claimId": "cacb3fb7b6dfcb41cf8ee", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.97 },
+      { "scopeId": "component:src-validations-auth-validation-js", "claimId": "c62e8fa0e09ea1d0ff915", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:src-validations-auth-validation-js", "claimId": "c1ac8893a6131c62e9606", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.32 },
+      { "scopeId": "component:src-validations-custom-validation-js", "claimId": "c48b9a528896ea6902397", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.63 },
+      { "scopeId": "component:src-validations-custom-validation-js", "claimId": "cb0aac563dc6f76f5ca67", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:src-validations-custom-validation-js", "claimId": "c487dd66a0febcb4bf4d1", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.62 },
+      { "scopeId": "component:src-validations-index-js", "claimId": "c49636174cf7580a4cbe5", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-validations-index-js", "claimId": "c0804d882bb4bb15f2455", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "component" },
+      { "scopeId": "component:src-validations-user-validation-js", "claimId": "cedb3813e2a8d73ba1668", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.44 },
+      { "scopeId": "component:src-validations-user-validation-js", "claimId": "c42aa52c02149606cf40a", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.73 },
+      { "scopeId": "component:src-validations-user-validation-js", "claimId": "cc33f06c7abec9aae2f35", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.69 },
+      { "scopeId": "component:src-validations-user-validation-js", "claimId": "c01b35fcb4da41ba9e928", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.92 },
+      { "scopeId": "component:src-validations-user-validation-js", "claimId": "c4588eb0445eeb38ad36e", "state": "contradicted", "source": "jev", "kind": "component", "confidence": 0.7 },
+      { "scopeId": "component:tests-fixtures-token-fixture-js", "claimId": "cf28f482e239ddcf8d6af", "state": "supported", "source": "jev", "kind": "component", "confidence": 1 },
+      { "scopeId": "component:tests-fixtures-token-fixture-js", "claimId": "cd6dd0357ae86c3e40362", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.24 },
+      { "scopeId": "component:tests-fixtures-token-fixture-js", "claimId": "c1828f4d732b0097711d7", "state": "insufficient", "source": "jev", "kind": "component", "confidence": 0.95 },
+      { "scopeId": "component:tests-fixtures-user-fixture-js", "claimId": "ce121610d287d4c0d73eb", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.87 },
+      { "scopeId": "component:tests-fixtures-user-fixture-js", "claimId": "c9fc0272dd7966e125c36", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.85 },
+      { "scopeId": "component:tests-fixtures-user-fixture-js", "claimId": "c8ac07daf6d287a0f73fe", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.98 },
+      { "scopeId": "component:tests-fixtures-user-fixture-js", "claimId": "c5c042e7fb80e8773f6b9", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.52 },
+      { "scopeId": "component:tests-fixtures-user-fixture-js", "claimId": "c0b83eb75de4e32ed5fce", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.55 },
+      { "scopeId": "component:tests-fixtures-user-fixture-js", "claimId": "c9048112ad041d0e4b260", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.26 },
+      { "scopeId": "component:tests-utils-setup-test-db-js", "claimId": "c2e0be2eedd3c38a5609e", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.45 },
+      { "scopeId": "component:tests-utils-setup-test-db-js", "claimId": "cd0fae143454b2dc49fd2", "state": "supported", "source": "jev", "kind": "component", "confidence": 0.99 },
+      { "scopeId": "component:tests-utils-setup-test-db-js", "claimId": "c2d839df97f1f164d4674", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.46 },
+      { "scopeId": "component:tests-utils-setup-test-db-js", "claimId": "c934a0f9a9fcb90dcec31", "state": "uncertain", "source": "jev", "kind": "component", "confidence": 0.25 },
+      { "scopeId": "container:create-nodejs-express-app", "claimId": "c302727a2d01ad188056f", "state": "insufficient-context", "source": "code", "reason": "missing-capture", "kind": "container" }
+    ]
+  },
+  "stageMs": { "blocks": 957 }
+}

@@ -1,0 +1,492 @@
+{
+  "schema": "cross-repo-eval-spend/v1",
+  "capUsd": 3,
+  "entries": [
+    {
+      "at": "2026-09-29T01:42:27.538Z",
+      "session": "2026-09-29T01:33:58.135Z",
+      "stage": "enrich",
+      "slug": "vercel__commerce",
+      "usd": 0.0711968,
+      "estimated": false,
+      "requests": 68
+    },
+    {
+      "at": "2026-09-29T01:46:29.007Z",
+      "session": "2026-09-29T01:42:27.968Z",
+      "stage": "enrich",
+      "slug": "pmndrs__zustand",
+      "usd": 0.0383989,
+      "estimated": false,
+      "requests": 32
+    },
+    {
+      "at": "2026-09-29T01:54:35.970Z",
+      "session": "2026-09-29T01:46:29.398Z",
+      "stage": "enrich",
+      "slug": "hagopj13__node-express-boilerplate",
+      "usd": 0.0610283,
+      "estimated": false,
+      "requests": 45
+    },
+    {
+      "at": "2026-09-29T01:55:02.592Z",
+      "session": "2026-09-29T01:54:47.800Z",
+      "stage": "claims",
+      "slug": "vercel__commerce",
+      "usd": 0.0042026,
+      "estimated": true,
+      "requests": 56
+    },
+    {
+      "at": "2026-09-29T01:55:06.729Z",
+      "session": "2026-09-29T01:54:47.800Z",
+      "stage": "claims",
+      "slug": "pmndrs__zustand",
+      "usd": 0.0014338,
+      "estimated": true,
+      "requests": 15
+    },
+    {
+      "at": "2026-09-29T01:55:16.246Z",
+      "session": "2026-09-29T01:54:47.800Z",
+      "stage": "claims",
+      "slug": "hagopj13__node-express-boilerplate",
+      "usd": 0.0031724,
+      "estimated": true,
+      "requests": 35
+    },
+    {
+      "at": "2026-09-29T01:57:58.643Z",
+      "session": "2026-09-29T01:55:20.760Z",
+      "stage": "ask",
+      "slug": "vercel__commerce",
+      "usd": 0.0312214,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T02:00:27.983Z",
+      "session": "2026-09-29T01:57:58.992Z",
+      "stage": "ask",
+      "slug": "pmndrs__zustand",
+      "usd": 0.0316789,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T02:03:38.830Z",
+      "session": "2026-09-29T02:00:28.331Z",
+      "stage": "ask",
+      "slug": "hagopj13__node-express-boilerplate",
+      "usd": 0.0345513,
+      "estimated": false,
+      "requests": 9
+    },
+    {
+      "at": "2026-09-29T02:19:20.922Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "trpc__trpc",
+      "usd": 0.1215941,
+      "estimated": false,
+      "requests": 68
+    },
+    {
+      "at": "2026-09-29T02:24:08.706Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "excalidraw__excalidraw",
+      "usd": 0.0880979,
+      "estimated": false,
+      "requests": 32
+    },
+    {
+      "at": "2026-09-29T02:32:23.415Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "tauri-apps__tauri",
+      "usd": 0.1929051,
+      "estimated": false,
+      "requests": 97
+    },
+    {
+      "at": "2026-09-29T02:39:36.701Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "BurntSushi__ripgrep",
+      "usd": 0.1375192,
+      "estimated": false,
+      "requests": 56
+    },
+    {
+      "at": "2026-09-29T02:45:54.872Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "tokio-rs__axum",
+      "usd": 0.0684934,
+      "estimated": false,
+      "requests": 32
+    },
+    {
+      "at": "2026-09-29T02:49:28.668Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "microsoft__TypeScript",
+      "usd": 0.0774272,
+      "estimated": false,
+      "requests": 32
+    },
+    {
+      "at": "2026-09-29T02:52:50.555Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "go-gitea__gitea",
+      "usd": 0.0625304,
+      "estimated": false,
+      "requests": 32
+    },
+    {
+      "at": "2026-09-29T02:57:47.431Z",
+      "session": "2026-09-29T02:13:19.686Z",
+      "stage": "enrich",
+      "slug": "rubygems__rubygems.org",
+      "usd": 0.0339957,
+      "estimated": false,
+      "requests": 32
+    },
+    {
+      "at": "2026-09-29T03:08:27.991Z",
+      "session": "2026-09-29T03:02:02.463Z",
+      "stage": "enrich",
+      "slug": "facebook__docusaurus",
+      "usd": 0.2426371,
+      "estimated": false,
+      "requests": 160
+    },
+    {
+      "at": "2026-09-29T03:08:49.344Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "trpc__trpc",
+      "usd": 0.003627,
+      "estimated": true,
+      "requests": 43
+    },
+    {
+      "at": "2026-09-29T03:09:04.512Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "facebook__docusaurus",
+      "usd": 0.0081789,
+      "estimated": true,
+      "requests": 94
+    },
+    {
+      "at": "2026-09-29T03:08:56.704Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "excalidraw__excalidraw",
+      "usd": 0.0026844,
+      "estimated": true,
+      "requests": 27
+    },
+    {
+      "at": "2026-09-29T03:09:16.707Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "tauri-apps__tauri",
+      "usd": 0.0063863,
+      "estimated": true,
+      "requests": 71
+    },
+    {
+      "at": "2026-09-29T03:09:16.556Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "BurntSushi__ripgrep",
+      "usd": 0.0049399,
+      "estimated": true,
+      "requests": 43
+    },
+    {
+      "at": "2026-09-29T03:09:24.433Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "tokio-rs__axum",
+      "usd": 0.0030796,
+      "estimated": true,
+      "requests": 28
+    },
+    {
+      "at": "2026-09-29T03:09:23.407Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "microsoft__TypeScript",
+      "usd": 0.0022904,
+      "estimated": true,
+      "requests": 24
+    },
+    {
+      "at": "2026-09-29T03:09:31.776Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "go-gitea__gitea",
+      "usd": 0.003044,
+      "estimated": true,
+      "requests": 30
+    },
+    {
+      "at": "2026-09-29T03:09:24.987Z",
+      "session": "2026-09-29T03:08:37.787Z",
+      "stage": "claims",
+      "slug": "rubygems__rubygems.org",
+      "usd": 0.0001661,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:10:11.283Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "trpc__trpc",
+      "usd": 0.049289,
+      "estimated": false,
+      "requests": 9
+    },
+    {
+      "at": "2026-09-29T03:10:14.821Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "excalidraw__excalidraw",
+      "usd": 0.0427383,
+      "estimated": false,
+      "requests": 9
+    },
+    {
+      "at": "2026-09-29T03:10:12.778Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "facebook__docusaurus",
+      "usd": 0.0601334,
+      "estimated": false,
+      "requests": 9
+    },
+    {
+      "at": "2026-09-29T03:10:13.260Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "tauri-apps__tauri",
+      "usd": 0.0470586,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T03:10:32.420Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "GoogleCloudPlatform__microservices-demo",
+      "usd": 0.0111207,
+      "estimated": false,
+      "requests": 9
+    },
+    {
+      "at": "2026-09-29T03:10:37.887Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "BurntSushi__ripgrep",
+      "usd": 0.0451988,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T03:10:38.305Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "microsoft__TypeScript",
+      "usd": 0.0350669,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T03:10:38.848Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "tokio-rs__axum",
+      "usd": 0.0400168,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T03:10:52.481Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "go-gitea__gitea",
+      "usd": 0.0392257,
+      "estimated": false,
+      "requests": 9
+    },
+    {
+      "at": "2026-09-29T03:10:49.133Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "spring-projects__spring-petclinic",
+      "usd": 0.0024271,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T03:10:46.952Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "saleor__saleor",
+      "usd": 0.0027078,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T03:11:00.023Z",
+      "session": "2026-09-29T03:09:39.218Z",
+      "stage": "ask",
+      "slug": "rubygems__rubygems.org",
+      "usd": 0.014898,
+      "estimated": false,
+      "requests": 8
+    },
+    {
+      "at": "2026-09-29T03:16:28.762Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "pmndrs__zustand",
+      "usd": 0.0001517,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:28.865Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "vercel__commerce",
+      "usd": 0.0001523,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:28.979Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "hagopj13__node-express-boilerplate",
+      "usd": 0.0001652,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:29.607Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "excalidraw__excalidraw",
+      "usd": 0.0001533,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:29.835Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "trpc__trpc",
+      "usd": 0.0005071,
+      "estimated": true,
+      "requests": 5
+    },
+    {
+      "at": "2026-09-29T03:16:30.133Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "facebook__docusaurus",
+      "usd": 0.0005713,
+      "estimated": true,
+      "requests": 5
+    },
+    {
+      "at": "2026-09-29T03:16:30.367Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "tokio-rs__axum",
+      "usd": 0.0001221,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:30.629Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "tauri-apps__tauri",
+      "usd": 0.0003849,
+      "estimated": true,
+      "requests": 5
+    },
+    {
+      "at": "2026-09-29T03:16:30.828Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "GoogleCloudPlatform__microservices-demo",
+      "usd": 0.0000662,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:30.842Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "microsoft__TypeScript",
+      "usd": 0.000153,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:31.167Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "BurntSushi__ripgrep",
+      "usd": 0.0005435,
+      "estimated": true,
+      "requests": 5
+    },
+    {
+      "at": "2026-09-29T03:16:31.223Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "go-gitea__gitea",
+      "usd": 0.000165,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:31.296Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "saleor__saleor",
+      "usd": 0.0000509,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:31.389Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "rubygems__rubygems.org",
+      "usd": 0.0001504,
+      "estimated": true,
+      "requests": 2
+    },
+    {
+      "at": "2026-09-29T03:16:31.650Z",
+      "session": "2026-09-29T03:16:28.019Z",
+      "stage": "blocks",
+      "slug": "spring-projects__spring-petclinic",
+      "usd": 0.0000521,
+      "estimated": true,
+      "requests": 2
+    }
+  ]
+}

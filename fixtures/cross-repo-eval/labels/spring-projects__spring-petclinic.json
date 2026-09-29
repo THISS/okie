@@ -1,0 +1,200 @@
+{
+  "schema": "cross-repo-eval-labels/v1",
+  "repository": "spring-projects/spring-petclinic",
+  "commitSha": "818c4136ea971c21674525f9053de0d9c7ad8cfe",
+  "status": "draft",
+  "labelOrigin": "Agent-drafted from reading the code at the pinned commit (CLA-289); pending Brenton's spot-check before counting as ground truth.",
+  "questions": [
+    {
+      "id": "petclinic-owner-search",
+      "family": "petclinic-owner-search",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When I search for an owner by surname, what happens with zero, one, or many matches?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java"
+      ],
+      "mustMention": [
+        "redirect",
+        "page|pagina",
+        "not found|notFound"
+      ],
+      "answerNote": "OwnerController.processFindForm: blank last name = all owners; findByLastNameStartingWith with page size 5; none -> field error \"not found\" on the find form; exactly one -> redirect to /owners/{id}; many -> paginated ownersList."
+    },
+    {
+      "id": "petclinic-pet-rules",
+      "family": "petclinic-pet-rules",
+      "status": "draft",
+      "category": "locate",
+      "question": "What rules must a pet's details satisfy before it can be saved?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java"
+      ],
+      "mustMention": [
+        "required",
+        "30",
+        "birth"
+      ],
+      "answerNote": "PetValidator: name required and at most 30 characters, type required for new pets, birth date required (PetController also rejects duplicate names and future birth dates)."
+    },
+    {
+      "id": "petclinic-vet-cache",
+      "family": "petclinic-vet-cache",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "Is the list of veterinarians cached, and where is that set up?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java",
+        "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java"
+      ],
+      "mustMention": [
+        "vets",
+        "Cacheable|JCache|cache"
+      ],
+      "answerNote": "VetRepository findAll methods are @Cacheable(\"vets\"); CacheConfiguration (@EnableCaching) creates the \"vets\" JCache cache with statistics enabled."
+    },
+    {
+      "id": "petclinic-switch-db",
+      "family": "petclinic-switch-db",
+      "status": "draft",
+      "category": "config",
+      "question": "How do I run the app against MySQL instead of the built-in in-memory database?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/resources/application-mysql.properties",
+        "README.md"
+      ],
+      "mustMention": [
+        "mysql",
+        "profile",
+        "h2|in-memory"
+      ],
+      "answerNote": "Default is H2 (application.properties database=h2); activate spring.profiles.active=mysql so application-mysql.properties sets MYSQL_URL/USER/PASS and db/mysql schema+data; README shows docker run / docker compose up mysql."
+    },
+    {
+      "id": "petclinic-language",
+      "family": "petclinic-language",
+      "status": "draft",
+      "category": "cross-cutting",
+      "question": "How can a visitor switch the site's language?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/java/org/springframework/samples/petclinic/system/WebConfiguration.java",
+        "src/main/resources/messages/messages.properties"
+      ],
+      "mustMention": [
+        "lang",
+        "session|locale"
+      ],
+      "answerNote": "WebConfiguration registers a SessionLocaleResolver (default English) and a LocaleChangeInterceptor on the \"lang\" URL parameter (?lang=de); texts come from messages/messages*.properties (spring.messages.basename)."
+    },
+    {
+      "id": "petclinic-error-demo",
+      "family": "petclinic-error-demo",
+      "status": "draft",
+      "category": "locate",
+      "question": "Is there a page that deliberately triggers an error to show what the error screen looks like?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/java/org/springframework/samples/petclinic/system/CrashController.java",
+        "src/main/resources/templates/error.html"
+      ],
+      "mustMention": [
+        "/oups|oups",
+        "exception"
+      ],
+      "answerNote": "CrashController GET /oups throws a RuntimeException on purpose; Spring Boot renders templates/error.html with status-specific message."
+    },
+    {
+      "id": "petclinic-schema",
+      "family": "petclinic-schema",
+      "status": "draft",
+      "category": "generic-dir",
+      "question": "Where are the database tables and the sample owners, pets and vets defined?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/resources/db/h2/schema.sql",
+        "src/main/resources/db/h2/data.sql"
+      ],
+      "mustMention": [
+        "schema.sql",
+        "data.sql"
+      ],
+      "answerNote": "src/main/resources/db/<database>/schema.sql + data.sql (h2 default; mysql and postgres variants), loaded via spring.sql.init.*-locations using ${database}; JPA ddl-auto is none."
+    },
+    {
+      "id": "petclinic-visit-date",
+      "family": "petclinic-visit-date",
+      "status": "draft",
+      "category": "how-it-works",
+      "question": "When booking a vet visit for a pet, what stops someone choosing a date in the past?",
+      "selection": {
+        "level": "L1 system",
+        "selectedId": "system:spring-projects-spring-petclinic"
+      },
+      "expectedFiles": [
+        "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java"
+      ],
+      "mustMention": [
+        "minVisitDate|tomorrow|plusDays",
+        "isAfter|future|past"
+      ],
+      "answerNote": "VisitController: loadPetWithVisit resolves owner+pet from the path; minVisitDate model attribute = today+1 for the form; processNewVisitForm rejects a date not after today (typeMismatch.visitDate), otherwise adds the visit and saves the owner."
+    }
+  ],
+  "c4Note": {
+    "verdict": "wrong",
+    "note": "Petclinic is a single Spring Boot web app whose code is split by feature package (owner, vet, system, model) under a deep src/main/java/org/springframework/samples/petclinic path, with Thymeleaf templates and SQL schema per database. The scan produces only one system and one container (2 entities total): no components, no code, no templates. One container is actually right for this repo, but it is empty, so every question has nothing to retrieve.",
+    "expectedContainers": [
+      "Spring Boot web app (single container) with components: owner (owners/pets/visits), vet, system (config, welcome, crash), model (base entities)",
+      "Database: H2 in-memory by default, MySQL/Postgres profiles (src/main/resources/db/*)"
+    ],
+    "problems": [
+      "Zero components/code: Java not extracted, so the correct single container is an empty shell",
+      "Deep package nesting (org/springframework/samples/petclinic/<feature>) would need collapsing to feature packages to be useful",
+      "Thymeleaf templates, application*.properties and db/*.sql (where several answers live) are not represented"
+    ]
+  },
+  "overviews": [
+    {
+      "nodeId": "system:spring-projects-spring-petclinic",
+      "status": "draft",
+      "order": [
+        "children"
+      ],
+      "note": "Java is invisible to the scanner; the empty container link is all there is."
+    },
+    {
+      "nodeId": "container:spring-projects-spring-petclinic",
+      "status": "draft",
+      "order": [
+        "relations:parent"
+      ],
+      "note": "Nothing but a back-link to the system; kept only so the panel is not blank."
+    }
+  ]
+}
