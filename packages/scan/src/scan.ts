@@ -67,6 +67,11 @@ export interface ScanOptions {
   lcovText?: string;
   /** Local Git revision to scan (HEAD by default). */
   revision?: string;
+  /**
+   * CLA-271: content-addressed rust-analyzer SCIP index cache directory. Off by default (every full scan runs
+   * rust-analyzer). The same Rust inputs, analyzer version and invocation reuse an index across checkouts.
+   */
+  rustIndexCacheDir?: string;
 }
 
 export interface GithubScanOptions extends ScanOptions {
@@ -366,9 +371,9 @@ export function buildScanArtifacts(params: BuildScanArtifactsParams): ScanArtifa
 }
 
 /** Runs the local scan pipeline against an already-acquired committed tree. */
-function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode'], installationRoot?: string): LanguageAnalysis | undefined {
+function analyzeLanguages(root: string, discovery: Discovery, mode: ScanOptions['analysisMode'], installationRoot?: string, rustIndexCacheDir?: string): LanguageAnalysis | undefined {
   if (mode !== 'full') return undefined;
-  const analyses = [analyzeTypeScript(root, discovery.sourceFiles, installationRoot), analyzeRust(root, discovery.sourceFiles)];
+  const analyses = [analyzeTypeScript(root, discovery.sourceFiles, installationRoot), analyzeRust(root, discovery.sourceFiles, rustIndexCacheDir ? { indexCacheDir: rustIndexCacheDir } : {})];
   return { schemaVersion: 1, definitions: analyses.flatMap(item => item.definitions), references: analyses.flatMap(item => item.references), modules: analyses.flatMap(item => item.modules), externalReferences: analyses.flatMap(item => item.externalReferences ?? []), coverage: analyses.flatMap(item => item.coverage) };
 }
 
@@ -383,7 +388,7 @@ export function scanAcquiredRepository(acquired: Pick<AcquiredCommittedTree, "ro
   // Read manifests/lockfiles BEFORE analyzers run: cargo/rust-analyzer may write a
   // Cargo.lock into the acquired tree, which must never be cited as committed evidence.
   const dependencyInputs = collectDependencyInputs(discovery.sourceFiles, readFile);
-  const languageAnalysis = analyzeLanguages(sourceRoot, discovery, options.analysisMode, acquired.installationRoot);
+  const languageAnalysis = analyzeLanguages(sourceRoot, discovery, options.analysisMode, acquired.installationRoot, options.rustIndexCacheDir);
   return buildScanArtifacts({
     dependencyInputs,
     discovery,
@@ -438,7 +443,7 @@ export async function scanGithubRepository(source: GithubSourceRef, options: Git
     const pin: RepositoryPin = { commitSha: commit.sha, treeHash: commit.treeSha, generatedAt: commit.generatedAt };
     const discovery = discoverExtractedTree(acquired.root, options.includeAllMembers ? { includeAllMembers: true } : {});
     const dependencyInputs = collectDependencyInputs(discovery.sourceFiles, readFile);
-    const languageAnalysis = analyzeLanguages(acquired.root, discovery, options.analysisMode);
+    const languageAnalysis = analyzeLanguages(acquired.root, discovery, options.analysisMode, undefined, options.rustIndexCacheDir);
     if (discovery.sourceFiles.length === 0) {
       throw new Error(
         `No scannable source files in ${source.owner}/${source.repo} at ${commit.sha.slice(0, 12)}. ` +

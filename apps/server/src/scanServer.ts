@@ -27,6 +27,7 @@ import {
 } from "./scanNeighborhood.js";
 import { resolvePublishedScanFile, resolvePublicationScanFile } from "./scanObjects.js";
 import { handleOperatorApi, type OperatorApiOptions } from "./operatorApi.js";
+import { automationBodyLimit, automationPreflight, handleIncrementalAutomation, INCREMENTAL_CRON_PATH, INCREMENTAL_WEBHOOK_PATH } from "./operatorIncrementalTriggers.js";
 import { readArtifactScopes } from "./operatorWorkflow.js";
 import { MAX_BLOCK_PLAN_REQUEST_BYTES, type BlockPlanService } from "./blockPlans.js";
 import { createAskCorpusSource, sanitizeAskSlug, type AskCorpusSource } from "./askRetrieval.js";
@@ -69,7 +70,7 @@ function operatorRepositoryForSlug(operator: OperatorApiOptions | undefined, slu
   return slug && operator ? operator.publications.repositoryIdForSlug(slug) : undefined;
 }
 
-async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Promise<unknown> {
+async function readRawBody(request: IncomingMessage, maxBytes: number): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of request) {
@@ -78,7 +79,11 @@ async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Pro
     if (size > maxBytes) throw new Error("request body too large");
     chunks.push(buffer);
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+  return Buffer.concat(chunks);
+}
+
+async function readJsonBody(request: IncomingMessage, maxBytes = 16 * 1024): Promise<unknown> {
+  return JSON.parse((await readRawBody(request, maxBytes)).toString("utf8")) as unknown;
 }
 
 /** Serves one published scan object; the scan root is the only readable tree. */
@@ -137,6 +142,17 @@ export function createScanHttpHandler(options: ScanHttpOptions): (request: Incom
     const pathname = url.pathname;
 
     if (await auth.handle(request, response, url)) return;
+
+    if (options.operator && (pathname === INCREMENTAL_WEBHOOK_PATH || pathname === INCREMENTAL_CRON_PATH)) {
+      // CLA-271: no session here; each route checks its own secret. Method, configuration, cron token and a declared
+      // oversize are decided before the body is read (404 when unconfigured); the webhook signature is over the raw body.
+      const preflight = automationPreflight(options.operator.incremental, request, pathname);
+      if (preflight !== "read") { if (preflight) sendJson(response, preflight.status, preflight.body); return; }
+      let raw: Buffer;
+      try { raw = await readRawBody(request, automationBodyLimit(pathname)); } catch { sendJson(response, 413, { error: "request body too large" }); return; }
+      const result = await handleIncrementalAutomation(options.operator.incremental, request, pathname, raw);
+      if (result) { sendJson(response, result.status, result.body); return; }
+    }
 
     if (options.operator && pathname.startsWith("/api/operator")) {
       let body: unknown;

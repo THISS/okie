@@ -6,13 +6,15 @@ import { OperatorPublicationService } from "./operatorPublication.js";
 import { OperatorStore } from "./operatorStore.js";
 import { CLAIM_CHECK_CONFIDENCE_THRESHOLD, CLAIM_CHECK_LABEL, isClaimCheckAttempt, readClaimCheckView, type ClaimCheckView, type ScopeClaimChecks } from "./claimChecks.js";
 import { resolveClaimCheckConfig } from "./llmGateway.js";
+import { INCREMENTAL_CHANGELOG_FILE } from "./incrementalChangelog.js";
+import { readIncrementalChangelog, readUnfinishedReasons } from "./operatorIncremental.js";
 
 /** `kind` is the C4 kind recorded in the sidecar (absent on hand-written legacy rows); `depth` counts ancestors. */
 /**
  * `path`: the scope's primary source path (first source ref), for list search and tooltips (CLA-259).
  * `metrics`: operator-only cost/tokens/last-updated summary of the attempts behind the scope's current state (CLA-259).
  */
-export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; path?: string; depth: number; state: string; stale: boolean; explanation?: unknown; explanationVersionId?: string; diagramError?: string; /** CLA-145: per-scope claim-check counts and rows (model judgment over captured excerpts, not verification). */ claimChecks?: ScopeClaimChecks; /** `inherited`: borrowed from an earlier revision of the run (lineage, CLA-264); display only, never counted in metrics. */ attempts?: Array<OperatorScopeAttempt & { inherited?: true }>; metrics?: OperatorScopeMetrics; }
+export interface OperatorScopeDto { scopeId: string; entityId?: string; parentScopeId?: string; name: string; kind?: string; path?: string; depth: number; state: string; stale: boolean; /** CLA-271 incremental overlay: claim re-check ("dependency-internal"), moved evidence ("moved"), or a below-cap scope's own source changed ("changed"). */ staleReason?: "dependency-internal" | "moved" | "changed" | "pending" | "dropped" | "inherited"; explanation?: unknown; explanationVersionId?: string; diagramError?: string; /** CLA-145: per-scope claim-check counts and rows (model judgment over captured excerpts, not verification). */ claimChecks?: ScopeClaimChecks; /** `inherited`: borrowed from an earlier revision of the run (lineage, CLA-264); display only, never counted in metrics. */ attempts?: Array<OperatorScopeAttempt & { inherited?: true }>; metrics?: OperatorScopeMetrics; }
 /** Every field optional; `metrics` is omitted when none is known. */
 export interface OperatorScopeMetrics { costUsd?: number; totalTokens?: number; updatedAt?: number; }
 
@@ -36,7 +38,7 @@ export function scopeMetricsFor(draftAttempts: readonly OperatorScopeAttempt[], 
   return costUsd === undefined && totalTokens === undefined && updatedAt === undefined ? undefined : { ...(costUsd !== undefined ? { costUsd } : {}), ...(totalTokens !== undefined ? { totalTokens } : {}), ...(updatedAt !== undefined ? { updatedAt } : {}) };
 }
 /** `batch`: the retry came in the API's `scopeIds` form and re-reduces affected ancestors in one pass. */
-export interface OperatorWorkflowJob { kind: "run" | "retry" | "refresh" | "claim-checks"; runId: string; draftRevisionId?: string; scopeIds?: string[]; batch?: boolean; githubAccess: ScanGithubAccess; }
+export interface OperatorWorkflowJob { kind: "run" | "retry" | "refresh" | "claim-checks" | "incremental"; runId: string; draftRevisionId?: string; scopeIds?: string[]; batch?: boolean; githubAccess: ScanGithubAccess; }
 /** The run ledger as the operator sees it: spend so far against the configured per-run limits. */
 export interface OperatorRunBudget { maxDollars: number; spentDollars: number; maxRequests: number; requests: number; maxTokens: number; tokens: number; /** Present only when a global operator dollar cap is configured. */ globalRemainingDollars?: number; /** Run requests left (maxRequests − requests). */ remainingRequests: number; /** Present only when a global request cap is configured. */ globalRemainingRequests?: number; /** Run tokens left (maxTokens − tokens, reservations included; CLA-264). */ remainingTokens: number; /** Present only when a global token cap is configured. */ globalRemainingTokens?: number; /** Requests the pass keeps in flight at once; each holds a token reservation until it settles. */ maxConcurrent: number; /** Average tokens one admission reserved (request bytes + max output tokens) in this run; absent before any. */ avgTokenReservation?: number; }
 /** The process-wide operator ledger and its dollar cap (OKIE_LLM_GLOBAL_*). */
@@ -92,8 +94,14 @@ export class OperatorWorkflow {
     catch { view = { enabled: resolveClaimCheckConfig().enabled, label: CLAIM_CHECK_LABEL, threshold: CLAIM_CHECK_CONFIDENCE_THRESHOLD, state: "corrupt", file: "snapshot.json", scopes: {} }; }
     const { scopes: claimScopes, ...claimChecks } = view;
     for (const scope of scopes) { const checks = claimScopes[scope.scopeId]; if (checks) scope.claimChecks = checks; }
+    // CLA-271: an incremental revision carries its changelog; the outcome is derived from this revision's own sidecar.
+    const changelog = artifact?.files.includes(INCREMENTAL_CHANGELOG_FILE) ? readIncrementalChangelog(this.options.store, artifact.artifactRevisionId, live) : undefined;
+    // A stale incremental scope without an overlay reason is unfinished: "pending" (changed, not re-enriched: budget stop
+    // or failure) or "dropped" (two consecutive updates failed it; Refresh it).
+    if (changelog) { const reasons = readUnfinishedReasons(this.options.store, artifact!.artifactRevisionId); for (const scope of scopes) { const reason = reasons.get(scope.scopeId); if (reason && scope.stale && !scope.staleReason) scope.staleReason = reason; } }
     return { draft: { ...draft, coverage }, source: run.source, scopes, usage: usage(attempts), artifact, claimChecks,
-      ...(current ? { currentPublicationVersionId: current.versionId } : {}) };
+      ...(current ? { currentPublicationVersionId: current.versionId, currentPublicationDraftRevisionId: current.draftRevisionId } : {}),
+      ...(run.incremental ? { incremental: run.incremental } : {}), ...(changelog ? { changelog } : {}) };
   }
   bundle(draftRevisionId: string): Buffer | undefined { const detail = this.draftDetail(draftRevisionId); return detail ? this.options.store.readArtifactFile(detail.draft.artifactRevisionId, "atlas.okie.json") : undefined; }
   async enqueue(job: OperatorWorkflowJob): Promise<void> { await this.options.enqueue(job); }
@@ -201,6 +209,9 @@ export function readArtifactScopes(store: OperatorStore, artifactRevisionId: str
       // (the full run's accepted attempts live under the pre-enrichment draft, whose sidecar has none).
       state: attemptedBelowCap ?? (latest && ["running", "queued", "cancelled"].includes(latest.state) ? latest.state : undefined) ?? (settled === "accepted" && !row ? "not run" : settled),
       stale: Boolean(scope.stale || row?.stale || staleScopes.has(scope.scopeId) || latest?.stale),
+      // CLA-271: why an incremental run marked it stale ("dependency-internal": claim re-check; "moved": evidence lines moved;
+      // "changed": a below-cap scope's own source or relations changed and the pass does not re-enrich below the cap).
+      ...(scope.stale && (scope.staleReason === "dependency-internal" || scope.staleReason === "moved" || scope.staleReason === "changed") ? { staleReason: scope.staleReason } : {}),
       ...(typeof explanation.summary === "string" ? { explanation } : {}),
       ...(typeof row?.explanationVersionId === "string" ? { explanationVersionId: row.explanationVersionId } : {}),
       ...(typeof explanation.diagramError === "string" ? { diagramError: explanation.diagramError } : {}),

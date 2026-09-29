@@ -34,6 +34,14 @@ Outputs are gitignored and rebuilt on demand — never hand-edit them.
     numbers in `apps/server/src/claimCheckEvaluation.test.ts`).
   - Reports per-category false acceptance and false alarms, review load, p50/p95 latency, cost and
     accuracy at several confidence thresholds.
+- **`measure-incremental.mjs`**: CLA-271 incremental re-scan measurement (build `@okie/server` first).
+  `node scripts/measure-incremental.mjs --repo <checkout> --from <A> --to <B>[,<C>,…] [--live] [--depth code] [--name owner/repo] [--scan-root <empty dir>] [--json <out>]`
+  runs a published full baseline at A, then incremental runs at B, C, … in order, through the real runner in a scratch
+  store (never `OKIE_SCAN_ROOT`; the rust-analyzer SCIP cache lives inside it). A step's draft is published when fully
+  accepted; otherwise the next step builds on it (the baseline chain). Per step it prints commit-caused dirty and
+  carried scope counts, requests, cost, scan ms, enrichment ms, per-level spans (leaf/container/system), the enrichment
+  critical path (first leaf start → last system end), total ms and reuse ratio. Dry-run (fake gateway, no spend) is the default; only `--live`
+  is paid.
 - **`cross-repo-eval.mjs`**: CLA-289 cross-repo evaluation over the pinned corpus in
   `fixtures/cross-repo-eval/manifest.json` (build `@okie/server` first).
   `node scripts/cross-repo-eval.mjs <fetch|scan|enrich|claims|ask|blocks|report|all> [--repos a,b] [--work <dir outside the repo>]`.

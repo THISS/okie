@@ -1,6 +1,8 @@
-import { scanGithubRepository, stableJson, portableAtlasFromScan, type GithubClient, type GithubSourceRef, type ScanArtifacts } from "@okie/scan";
+import { createAnonymousGithubClient, resolveGithubCommit, scanGithubRepository, stableJson, portableAtlasFromScan, type GithubClient, type GithubSourceRef, type ScanArtifacts } from "@okie/scan";
+import { join } from "node:path";
 import { serializePortableAtlas, type ArchitectureSnapshot } from "@okie/architecture";
 import { githubRepoIsPublic, repoApiPath } from "@okie/scan";
+import { scanInWorker } from "./scanWorker.js";
 import type { ScanGithubAccess } from "./githubAccess.js";
 import { OperatorPublicationService } from "./operatorPublication.js";
 import { OperatorStore } from "./operatorStore.js";
@@ -15,10 +17,12 @@ import { createJevProvider, runOperatorJudgments, type JudgmentLimits, type Judg
 import { runSectionProfile } from "./sectionProfiles.js";
 import { CLAIM_CHECK_STALE_SKIP, claimReasonText, runClaimChecks } from "./claimChecks.js";
 import { resolveClaimCheckConfig } from "./llmGateway.js";
+import { operatorScopeFacts, operatorScopesFromSnapshot } from "./operatorFacts.js";
+import { runIncremental } from "./operatorIncremental.js";
 
 export interface OperatorRunnerScan { commitSha: string; artifacts: ScanArtifacts; }
-export interface OperatorRunnerDeps { store: OperatorStore; publication: OperatorPublicationService; githubClient?(access: ScanGithubAccess): GithubClient; scan?(source: GithubSourceRef, options: { client: GithubClient; analysisMode: "full"; codeSurface: "all" }): Promise<OperatorRunnerScan>; gateway?: OperatorEnrichmentGateway; gatewayConfig?: LlmGatewayConfig; judgmentProvider?: JudgmentProvider | null; judgmentLimits?: Partial<JudgmentLimits>; /** Test seam; defaults to the process-wide limiter for the gateway's provider. */ rateLimiter?: LlmRateLimiter; /** Process-wide operator spend ledger (OKIE_LLM_GLOBAL_*), reserved before the run ledger. */ globalLedger?: OperatorBudgetLedger; /** Test seam: pause before a transport retry (default TRANSPORT_RETRY_DELAY_MS). */ transportRetryDelayMs?: number; }
-export interface OperatorRunner { profile(input: { runId: string; draftRevisionId: string; scopeId: string }, signal?: AbortSignal): ReturnType<typeof runSectionProfile>; judge(request: JudgmentRequest, signal?: AbortSignal): Promise<JudgmentOutcome>; enqueue(input: { kind: "run" | "retry" | "refresh" | "claim-checks"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Batch retry: re-reduce affected ancestors in the same pass (CLA-258). */ batch?: boolean; /** Internal audit label for refresh's targeted retry execution. */ attemptKind?: "retry" | "refresh" }): Promise<void>; }
+export interface OperatorRunnerDeps { store: OperatorStore; publication: OperatorPublicationService; githubClient?(access: ScanGithubAccess): GithubClient; scan?(source: GithubSourceRef, options: { client: GithubClient; analysisMode: "full"; codeSurface: "all"; rustIndexCacheDir?: string }): Promise<OperatorRunnerScan>; gateway?: OperatorEnrichmentGateway; gatewayConfig?: LlmGatewayConfig; judgmentProvider?: JudgmentProvider | null; judgmentLimits?: Partial<JudgmentLimits>; /** Test seam; defaults to the process-wide limiter for the gateway's provider. */ rateLimiter?: LlmRateLimiter; /** Process-wide operator spend ledger (OKIE_LLM_GLOBAL_*), reserved before the run ledger. */ globalLedger?: OperatorBudgetLedger; /** Test seam: pause before a transport retry (default TRANSPORT_RETRY_DELAY_MS). */ transportRetryDelayMs?: number; /** CLA-271: resolve a ref (absent = default branch) to a commit SHA; default GitHub commits API. */ resolveCommit?(source: GithubSourceRef, client: GithubClient): Promise<string>; }
+export interface OperatorRunner { profile(input: { runId: string; draftRevisionId: string; scopeId: string }, signal?: AbortSignal): ReturnType<typeof runSectionProfile>; judge(request: JudgmentRequest, signal?: AbortSignal): Promise<JudgmentOutcome>; enqueue(input: { kind: "run" | "retry" | "refresh" | "claim-checks" | "incremental"; runId: string; githubAccess: ScanGithubAccess; draftRevisionId?: string; scopeIds?: string[]; /** Batch retry: re-reduce affected ancestors in the same pass (CLA-258). */ batch?: boolean; /** Internal audit label for refresh's (and an incremental run's) targeted retry execution. */ attemptKind?: "retry" | "refresh" | "incremental" }): Promise<void>; }
 
 function persistedUsage(usage?: GatewayUsage) {
   return usage ? {
@@ -36,7 +40,7 @@ function passCost(attempts: readonly { usage?: GatewayUsage }[]): { costUsd?: nu
   const costs = attempts.map(attempt => attempt.usage?.costUsd).filter((value): value is number => value !== undefined);
   return costs.length ? { costUsd: costs.reduce((total, value) => total + value, 0) } : {};
 }
-function finishedDetail(kind: "run" | "retry", stopped: string, coverage: ReturnType<typeof coverageFor>, startedAt: number, extra: Record<string, number> = {}): Record<string, string | number> {
+function finishedDetail(kind: "run" | "retry", stopped: string, coverage: ReturnType<typeof coverageFor>, startedAt: number, extra: Record<string, number | string> = {}): Record<string, string | number> {
   return { kind, stopped, accepted: coverage.accepted, failed: coverage.failed, notRun: coverage.notRun, belowCap: coverage.belowCap, inScope: coverage.total - coverage.belowCap, durationMs: Math.max(0, Date.now() - startedAt), ...extra };
 }
 
@@ -48,6 +52,9 @@ function finishedDetail(kind: "run" | "retry", stopped: string, coverage: Return
  * the real usage. Rate-limit retries live below this layer (in the limiter
  * around the raw gateway), so they never touch a ledger.
  */
+/** CLA-271: operator scans share a content-addressed rust-analyzer SCIP cache under the store root. */
+export function rustIndexCacheDir(store: OperatorStore): string { return join(store.root, "cache", "rust-scip"); }
+
 function ledgerAdmission(store: OperatorStore, runId: string, budget: ReturnType<typeof resolveOperatorEnrichmentBudget>, global?: OperatorBudgetLedger) {
   const ledger = createOperatorBudgetLedger({ maxRequests: budget.maxScopes, maxTokens: budget.maxTokens, maxDollars: budget.maxDollars }, { store, runId });
   /** Which ledger refused last; the run-level cap inside runOperatorEnrichment also counts as "run". */
@@ -87,8 +94,31 @@ function leafReasoningFor(raw: OperatorEnrichmentGateway | undefined, config: Ll
 }
 
 
-/** Controller seam: full committed scans create immutable drafts only; publication is never called here. */
+/** The public artifact files of one scan (every draft revision carries them unchanged). */
+function publicArtifactFiles(source: { owner: string; repo: string }, artifacts: ScanArtifacts): Record<string, string> {
+  return { "atlas.okie.json": serializePortableAtlas(portableAtlasFromScan(artifacts, `https://github.com/${source.owner}/${source.repo}`)), "extraction.json": stableJson(artifacts.extraction), "snapshot.json": stableJson(artifacts.snapshot), "view.json": stableJson(artifacts.view), "scene.json": stableJson(artifacts.scene), "story.json": stableJson(artifacts.story), "stories.json": stableJson(artifacts.catalog), "timeline.json": stableJson(artifacts.timeline) };
+}
+
+/**
+ * Operator scans read public repositories only. A failed read is reported as such (status, rate limit), never as
+ * "not public"; "repository is not public" is kept for a successful read of a private repository.
+ */
+export async function assertPublicRepository(client: GithubClient, owner: string, repo: string): Promise<void> {
+  const result = await client.getJson(repoApiPath(owner, repo));
+  if (!result.ok) throw new Error(result.rateLimited ? `could not read the repository on GitHub: rate limited (status ${result.status}). Try again after the rate limit resets.` : `could not read the repository on GitHub (status ${result.status}${result.status === 404 ? ": not found, or not public" : ""}).`);
+  if (!githubRepoIsPublic(result.json)) throw new Error("repository is not public");
+}
+
+/** Controller seam: full committed scans create immutable drafts only; publication is never called here (except CLA-271's opt-in incremental auto-publish). */
 export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
+  // The scan seam: a test `scan`, else inline with an injected client, else (production) a worker thread so the
+  // synchronous analysis never blocks the server's event loop.
+  const scanSource = (source: GithubSourceRef, client: GithubClient, access: ScanGithubAccess): Promise<OperatorRunnerScan> => {
+    const options = { analysisMode: "full" as const, codeSurface: "all" as const, rustIndexCacheDir: rustIndexCacheDir(deps.store) };
+    if (deps.scan) return deps.scan(source, { client, ...options });
+    if (deps.githubClient) return scanGithubRepository(source, { client, ...options });
+    return scanInWorker({ source, access, options });
+  };
   const runner: OperatorRunner = {
     async profile(input, signal) {
       // Opt-in scan enrichment only. Existing scans and portable atlases need no provider.
@@ -103,6 +133,22 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
     },
     async enqueue(input) {
     const run = deps.store.snapshot().runs.find(value => value.runId === input.runId); if (!run) throw new Error("unknown operator run");
+    if (input.kind === "incremental") {
+      // CLA-271: re-scan at the new commit, carry reused explanations over, then one batch retry pass on the dirty set.
+      const rawGateway = deps.gateway ?? createLlmGatewayClient(deps.gatewayConfig ?? resolveLlmGatewayConfig(), { timeoutMs: resolveOperatorEnrichmentBudget().requestTimeoutMs });
+      await runIncremental({
+        store: deps.store, publication: deps.publication,
+        // Cron and webhook triggers carry no session: public repositories are read anonymously (never operator `gh`).
+        client: access => deps.githubClient ? deps.githubClient(access) : access.kind === "unauthenticated" ? createAnonymousGithubClient() : githubClientForAccess(access),
+        resolveCommit: async (source, client) => { await assertPublicRepository(client, source.owner, source.repo); return deps.resolveCommit ? deps.resolveCommit(source, client) : (await resolveGithubCommit(source, client)).sha; },
+        scan: (source, client) => scanSource(source, client, input.githubAccess),
+        publicFiles: artifacts => publicArtifactFiles(run.source, artifacts),
+        defaultCap: resolveOperatorEnrichmentDepth,
+        hashModel: () => ({ modelId: rawGateway?.modelId ?? (deps.gatewayConfig ?? resolveLlmGatewayConfig()).modelId, leafReasoning: leafReasoningFor(rawGateway, deps.gatewayConfig) }),
+        retry: job => runner.enqueue({ kind: "retry", attemptKind: "incremental", batch: true, githubAccess: input.githubAccess, ...job }),
+      }, run, input.githubAccess);
+      return;
+    }
     if (input.kind !== "run" && run.draftRevisionId !== input.draftRevisionId) {
       deps.store.appendEvent({ runId: run.runId, type: "draft.conflict", detail: { reason: "stale_retry_base", ...(input.draftRevisionId ? { draftRevisionId: input.draftRevisionId } : {}) } });
       // Nothing will execute: release the run from the API's "queued" mark.
@@ -159,13 +205,13 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
       const draft = deps.store.snapshot().drafts.find(value => value.draftRevisionId === input.draftRevisionId && value.runId === run.runId); const requested = [...new Set(input.scopeIds ?? [])];
       if (!draft || !requested.length) throw new Error("retry requires draft and scope");
       const artifact = deps.store.snapshot().artifacts.find(value => value.artifactRevisionId === draft.artifactRevisionId)!;
-      const sidecar = JSON.parse(deps.store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!.toString()) as { maxKind?: OperatorEnrichmentCap; scopes: Array<{ scopeId: string; parentScopeId?: string; name: string; kind: OperatorEnrichmentScope["kind"]; stale?: boolean; state?: OperatorSidecarScopeState; sourceRefs: Array<{ path: string; startLine?: number; endLine?: number }> }>; explanations: Array<{ scopeId: string; content: unknown; explanationVersionId?: string }> };
+      const sidecar = JSON.parse(deps.store.readArtifactFile(artifact.artifactRevisionId, "operator-explanations.json")!.toString()) as { maxKind?: OperatorEnrichmentCap; scopes: Array<{ scopeId: string; parentScopeId?: string; name: string; kind: OperatorEnrichmentScope["kind"]; stale?: boolean; /** CLA-271 overlay (claim re-check or moved evidence): never makes a parent stale. */ staleReason?: string; state?: OperatorSidecarScopeState; sourceRefs: Array<{ path: string; startLine?: number; endLine?: number }> }>; explanations: Array<{ scopeId: string; content: unknown; explanationVersionId?: string }> };
       const selectedIds = requested.filter(scopeId => sidecar.scopes.some(scope => scope.scopeId === scopeId)); const rawGateway = deps.gateway ?? createLlmGatewayClient(deps.gatewayConfig ?? resolveLlmGatewayConfig(), { timeoutMs: resolveOperatorEnrichmentBudget().requestTimeoutMs });
       if (!selectedIds.length) { if (!deps.store.isCancelled(run.runId)) deps.store.updateRun(run.runId, { state: "awaiting_review" }); return; }
       markRunning();
       const single = selectedIds.length === 1 ? selectedIds[0]! : undefined;
       /** Error/event subject: the scope id for one target (unchanged CLA-134 wording), else a count. */
-      const subject = single ?? `${selectedIds.length} scopes`; const verb = input.attemptKind === "refresh" ? "Refresh" : "Retry"; const subjectDetail = single ? { scopeId: single } : { scopes: selectedIds.length };
+      const subject = single ?? `${selectedIds.length} scopes`; const verb = input.attemptKind === "refresh" ? "Refresh" : input.attemptKind === "incremental" ? "Update" : "Retry"; const subjectDetail = single ? { scopeId: single } : { scopes: selectedIds.length };
       // A recorded cap wins. A legacy (CLA-254) sidecar is treated as component-capped only when no code scope shows a
       // code-opt-in run (legacyEnrichmentCap); otherwise no scope is ever "below cap" and no maxKind is stamped.
       const recordedCap: OperatorEnrichmentCap | undefined = sidecar.maxKind === "code" || sidecar.maxKind === "component" ? sidecar.maxKind : undefined;
@@ -176,13 +222,13 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
       const scopes: OperatorEnrichmentScope[] = sidecar.scopes.map(scope => {
         const entity = snapshot.entities.find(value => value.id === scope.scopeId);
         const { state: _state, ...definition } = scope;
-        return { ...definition, facts: { tags: entity?.tags, technology: entity?.technology, exposure: entity?.exposure, sourceExcerpts: entity?.sourceExcerpts, relationships: snapshot.relations.filter(relation => relation.from === scope.scopeId || relation.to === scope.scopeId).map(relation => ({ id: relation.id, from: relation.from, to: relation.to, kind: relation.kind })) }, allowedEvidence: scope.sourceRefs.map(ref => ({ entityId: scope.scopeId, path: ref.path, ...(ref.startLine ? { startLine: ref.startLine } : {}), ...(ref.endLine ? { endLine: ref.endLine } : {}) })) };
+        return { ...definition, facts: entity ? operatorScopeFacts(entity, snapshot.relations) : { relationships: [] }, allowedEvidence: scope.sourceRefs.map(ref => ({ entityId: scope.scopeId, path: ref.path, ...(ref.startLine ? { startLine: ref.startLine } : {}), ...(ref.endLine ? { endLine: ref.endLine } : {}) })) };
       });
-      const attempts = new Map<string, string>(); const acceptedContent = new Map<string, unknown>(); const acceptedVersionId = new Map<string, string>();
+      const attempts = new Map<string, string>(); const acceptedContent = new Map<string, unknown>(); const acceptedVersionId = new Map<string, string>(); const acceptedInputHash = new Map<string, string>();
       const staleScopes = new Set<string>();
       // latestAttempt: a scope with a pinned explanation is passed up as accepted/stale even after a failed retry attempt on
       // this draft (a pass that changes nothing installs no revision, so such attempts stay on the current draft).
-      const adapter: OperatorEnrichmentStore = { async createAttempt(attempt) { attempts.set(attempt.attemptId, deps.store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: attempt.scopeId, kind: input.attemptKind ?? "retry", state: "running", modelId: attempt.modelId, inputHash: attempt.inputHash }).attemptId); }, async updateAttempt(id, patch) { const mapped = attempts.get(id); if (mapped) deps.store.updateAttempt(mapped, { state: patch.state === "accepted" ? "accepted" : patch.state === "cancelled" ? "cancelled" : "failed", ...(patch.usage ? { usage: persistedUsage(patch.usage)! } : {}), ...(patch.error ? { error: patch.error } : {}) }); }, async latestAttempt(scope) { const previous = deps.store.listAttempts(draft.draftRevisionId, scope).at(-1); const sidecarScope = sidecar.scopes.find(value => value.scopeId === scope); const prior = sidecar.explanations.some(value => value.scopeId === scope) || acceptedContent.has(scope); const stale = Boolean(sidecarScope?.stale || staleScopes.has(scope) || previous?.stale); if (previous && previous.state !== "accepted" && !prior) return { attemptId: previous.attemptId, scopeId: scope, role: "owner", state: previous.state === "cancelled" ? "cancelled" : "failed", modelId: previous.modelId ?? "", inputHash: previous.inputHash ?? "", createdAt: previous.createdAt, updatedAt: previous.updatedAt }; if (!previous && !prior && sidecarScope?.state === "failed") return { attemptId: "sidecar", scopeId: scope, role: "owner", state: "failed", modelId: "", inputHash: "", createdAt: 0, updatedAt: 0 }; return prior ? { attemptId: previous?.attemptId ?? "sidecar", scopeId: scope, role: "owner", state: stale ? "stale" : "accepted", modelId: previous?.modelId ?? "", inputHash: previous?.inputHash ?? "", createdAt: previous?.createdAt ?? 0, updatedAt: previous?.updatedAt ?? 0 } : undefined; }, async putAcceptedExplanation(scope, explanation, attempt, inputHash) { acceptedContent.set(scope, explanation); const row = deps.store.putAcceptedExplanation({ draftRevisionId: draft.draftRevisionId, scopeId: scope, attemptId: attempts.get(attempt)!, inputHash, content: explanation, validation: { accepted: true, validator: "operator-enrichment/v1" } }); acceptedVersionId.set(scope, row.explanationVersionId); return { explanationVersionId: row.explanationVersionId }; }, async getAcceptedExplanation(scope) { const prior = sidecar.explanations.find(value => value.scopeId === scope); return (acceptedContent.get(scope) ?? prior?.content) as OperatorExplanation | undefined; }, async markStale(ids) { ids.forEach(id => staleScopes.add(id)); } };
+      const adapter: OperatorEnrichmentStore = { async createAttempt(attempt) { attempts.set(attempt.attemptId, deps.store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: attempt.scopeId, kind: input.attemptKind ?? "retry", state: "running", modelId: attempt.modelId, inputHash: attempt.inputHash }).attemptId); }, async updateAttempt(id, patch) { const mapped = attempts.get(id); if (mapped) deps.store.updateAttempt(mapped, { state: patch.state === "accepted" ? "accepted" : patch.state === "cancelled" ? "cancelled" : "failed", ...(patch.usage ? { usage: persistedUsage(patch.usage)! } : {}), ...(patch.error ? { error: patch.error } : {}) }); }, async latestAttempt(scope) { const previous = deps.store.listAttempts(draft.draftRevisionId, scope).at(-1); const sidecarScope = sidecar.scopes.find(value => value.scopeId === scope); const prior = sidecar.explanations.some(value => value.scopeId === scope) || acceptedContent.has(scope); const stale = !acceptedContent.has(scope) && Boolean(sidecarScope?.stale || staleScopes.has(scope) || previous?.stale); /* CLA-271: a scope accepted earlier in this pass is fresh input for its re-reduced parent, whatever the pass-start sidecar said. */ if (previous && previous.state !== "accepted" && !prior) return { attemptId: previous.attemptId, scopeId: scope, role: "owner", state: previous.state === "cancelled" ? "cancelled" : "failed", modelId: previous.modelId ?? "", inputHash: previous.inputHash ?? "", createdAt: previous.createdAt, updatedAt: previous.updatedAt }; if (!previous && !prior && sidecarScope?.state === "failed") return { attemptId: "sidecar", scopeId: scope, role: "owner", state: "failed", modelId: "", inputHash: "", createdAt: 0, updatedAt: 0 }; return prior ? { attemptId: previous?.attemptId ?? "sidecar", scopeId: scope, role: "owner", state: stale ? "stale" : "accepted", modelId: previous?.modelId ?? "", inputHash: previous?.inputHash ?? "", createdAt: previous?.createdAt ?? 0, updatedAt: previous?.updatedAt ?? 0 } : undefined; }, async putAcceptedExplanation(scope, explanation, attempt, inputHash) { acceptedContent.set(scope, explanation); const row = deps.store.putAcceptedExplanation({ draftRevisionId: draft.draftRevisionId, scopeId: scope, attemptId: attempts.get(attempt)!, inputHash, content: explanation, validation: { accepted: true, validator: "operator-enrichment/v1" } }); acceptedVersionId.set(scope, row.explanationVersionId); acceptedInputHash.set(scope, inputHash); return { explanationVersionId: row.explanationVersionId }; }, async getAcceptedExplanation(scope) { const prior = sidecar.explanations.find(value => value.scopeId === scope); return (acceptedContent.get(scope) ?? prior?.content) as OperatorExplanation | undefined; }, async markStale(ids) { ids.forEach(id => staleScopes.add(id)); } };
       let result: Awaited<ReturnType<typeof runOperatorEnrichment>>;
       const admission = ledgerAdmission(deps.store, run.runId, budget, deps.globalLedger);
       // A batch (the API's `scopeIds` form) re-reduces affected ancestors in the same pass; the single `scopeId` form and refresh keep marking them stale.
@@ -192,7 +238,7 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
       const hadExplanation = new Set(sidecar.explanations.map(value => value.scopeId));
       /** Per selected scope: accepted in this pass, or attempted and failed (a previous explanation, if any, is kept). */
       const selectedOutcome = () => { const accepted = new Set(result.attempts.filter(attempt => attempt.state === "accepted").map(attempt => attempt.scopeId)); const failed = selectedIds.filter(scopeId => attemptedIds.has(scopeId) && !accepted.has(scopeId)); return { retryAccepted: selectedIds.filter(scopeId => accepted.has(scopeId)).length, retryFailed: failed.length, retryKept: failed.filter(scopeId => hadExplanation.has(scopeId)).length }; };
-      const finishedEvent = (stopped: string, coverage: ReturnType<typeof coverageFor>, installed = true) => deps.store.appendEvent({ runId: run.runId, type: "enrichment.finished", detail: { ...finishedDetail("retry", stopped, coverage, startedAt, { selected: selectedIds.length, retried: selectedIds.filter(scopeId => attemptedIds.has(scopeId)).length, ...selectedOutcome(), ...passCost(result.attempts) }), installed } });
+      const finishedEvent = (stopped: string, coverage: ReturnType<typeof coverageFor>, installed = true) => deps.store.appendEvent({ runId: run.runId, type: "enrichment.finished", detail: { ...finishedDetail("retry", stopped, coverage, startedAt, { ...(input.attemptKind === "incremental" ? { pass: "incremental" } : {}), selected: selectedIds.length, retried: selectedIds.filter(scopeId => attemptedIds.has(scopeId)).length, ...selectedOutcome(), ...passCost(result.attempts) }), installed } });
       const recordedScopes = () => sidecar.scopes.map(scope => ({ ...scope, state: sidecarState(sidecar.explanations.some(value => value.scopeId === scope.scopeId), false, scope.state, capped(scope.kind)) }));
       if (deps.store.isCancelled(run.runId)) { finishedEvent("cancelled", coverageFor(recordedScopes())); return; }
       // Nothing was attempted (budget refused or no gateway): no new draft and no persisted stale marks.
@@ -206,7 +252,7 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
       const files = Object.fromEntries(artifact.files.map(name => [name, deps.store.readArtifactFile(artifact.artifactRevisionId, name)!.toString()]));
       /** Every scope accepted in this pass (selected targets and re-reduced ancestors) gets its new immutable version. */
       const newlyAccepted = new Set(result.attempts.filter(attempt => attempt.state === "accepted" && acceptedContent.has(attempt.scopeId)).map(attempt => attempt.scopeId));
-      const nextEntry = (scopeId: string) => ({ scopeId, content: acceptedContent.get(scopeId), ...(acceptedVersionId.has(scopeId) ? { explanationVersionId: acceptedVersionId.get(scopeId) } : {}) });
+      const nextEntry = (scopeId: string) => ({ scopeId, content: acceptedContent.get(scopeId), ...(acceptedVersionId.has(scopeId) ? { explanationVersionId: acceptedVersionId.get(scopeId) } : {}), ...(acceptedInputHash.has(scopeId) ? { inputHash: acceptedInputHash.get(scopeId) } : {}) });
       const nextExplanations = sidecar.explanations.map(value => newlyAccepted.has(value.scopeId) ? nextEntry(value.scopeId) : value);
       for (const scopeId of newlyAccepted) if (!nextExplanations.some(value => value.scopeId === scopeId)) nextExplanations.push(nextEntry(scopeId));
       const explained = new Set(nextExplanations.map(value => value.scopeId));
@@ -215,7 +261,9 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
       // Freshness is judged against the next sidecar, children first, so a child refreshed in this same pass counts as fresh.
       const nextById = new Map(nextScopes.map(scope => [scope.scopeId, scope]));
       const depthOf = (scopeId: string) => { let depth = 0; let cursor = nextById.get(scopeId)?.parentScopeId; const seen = new Set<string>(); while (cursor && !seen.has(cursor)) { seen.add(cursor); depth += 1; cursor = nextById.get(cursor)?.parentScopeId; } return depth; };
-      const hasUnfreshChild = (parentScopeId: string) => nextScopes.some(child => child.parentScopeId === parentScopeId && (child.stale || (() => { const latest = deps.store.listAttempts(draft.draftRevisionId, child.scopeId).at(-1); return latest !== undefined && (latest.stale || latest.state !== "accepted"); })()));
+      // A stale overlay with a CLA-271 reason (claim re-check, moved evidence) leaves the child's explanation text, the parent's input, unchanged.
+      for (const scope of nextScopes) if (staleScopes.has(scope.scopeId) || newlyAccepted.has(scope.scopeId)) delete scope.staleReason;
+      const hasUnfreshChild = (parentScopeId: string) => nextScopes.some(child => child.parentScopeId === parentScopeId && ((child.stale && !child.staleReason) || (() => { const latest = deps.store.listAttempts(draft.draftRevisionId, child.scopeId).at(-1); return latest !== undefined && (latest.stale || latest.state !== "accepted"); })()));
       for (const scopeId of [...newlyAccepted].sort((left, right) => depthOf(right) - depthOf(left))) { const scope = nextById.get(scopeId); if (scope && !hasUnfreshChild(scopeId)) scope.stale = false; }
       const nextSidecar = { ...sidecar, ...(sidecarCap ? { maxKind: sidecarCap } : {}), scopes: nextScopes, explanations: nextExplanations };
       files["operator-explanations.json"] = stableJson(nextSidecar);
@@ -225,7 +273,7 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
       const outcome = selectedOutcome();
       // Honest run error: a budget stop and/or failed selected scopes (their previous explanations stay pinned).
       const errors = [
-        ...(limitStop ? [`${verb === "Refresh" ? "Refreshed" : "Retried"} ${retried} of ${selectedIds.length} selected scope${selectedIds.length === 1 ? "" : "s"}: stopped at the ${ledger === "global" ? "process-wide operator budget (OKIE_LLM_GLOBAL_*)" : "run budget (OKIE_LLM_OPERATOR_*)"}; ${selectedIds.length - retried} not run.`] : []),
+        ...(limitStop ? [`${verb === "Refresh" ? "Refreshed" : verb === "Update" ? "Updated" : "Retried"} ${retried} of ${selectedIds.length} selected scope${selectedIds.length === 1 ? "" : "s"}: stopped at the ${ledger === "global" ? "process-wide operator budget (OKIE_LLM_GLOBAL_*)" : "run budget (OKIE_LLM_OPERATOR_*)"}; ${selectedIds.length - retried} not run.`] : []),
         ...(outcome.retryFailed ? [`${verb}: ${outcome.retryFailed} of ${selectedIds.length} selected scope${selectedIds.length === 1 ? "" : "s"} failed${outcome.retryKept === outcome.retryFailed ? `; previous explanation${outcome.retryKept === 1 ? " was" : "s were"} kept.` : outcome.retryKept ? `; ${outcome.retryKept} previous explanation${outcome.retryKept === 1 ? " was" : "s were"} kept.` : "."}`] : []),
       ];
       const error = errors.length ? errors.join(" ") : undefined;
@@ -252,23 +300,24 @@ export function createOperatorRunner(deps: OperatorRunnerDeps): OperatorRunner {
     }
     if (input.kind !== "run") return;
     const startedAt = Date.now();
+    // Cancelled while queued: never mark it running, scan or spend.
+    if (deps.store.isCancelled(run.runId)) return;
     deps.store.updateRun(run.runId, { state: "running" });
     try {
-      const client = (deps.githubClient ?? githubClientForAccess)(input.githubAccess); const publicRepo = await client.getJson(repoApiPath(run.source.owner, run.source.repo));
-      if (!publicRepo.ok || !githubRepoIsPublic(publicRepo.json)) throw new Error("repository is not public");
-      const scanned = await (deps.scan ?? (async (source, options) => scanGithubRepository(source, options)) )({ owner: run.source.owner, repo: run.source.repo, ...(run.source.ref ? { ref: run.source.ref } : {}), dirSlug: run.source.slug }, { client, analysisMode: "full", codeSurface: "all" });
+      const client = (deps.githubClient ?? githubClientForAccess)(input.githubAccess); await assertPublicRepository(client, run.source.owner, run.source.repo);
+      const scanned = await scanSource({ owner: run.source.owner, repo: run.source.repo, ...(run.source.ref ? { ref: run.source.ref } : {}), dirSlug: run.source.slug }, client, input.githubAccess);
       if (deps.store.isCancelled(run.runId)) return;
       const artifacts = scanned.artifacts;
       // The cap in effect for this run is recorded in every sidecar so "below cap" never has to be guessed later.
       const maxKind = resolveOperatorEnrichmentDepth();
       const scopeDto = artifacts.snapshot.entities.map(entity => ({ scopeId: entity.id, ...(entity.parentId ? { parentScopeId: entity.parentId } : {}), name: entity.name, kind: entity.kind, sourceRefs: entity.sourceRefs }));
-      const files: Record<string, string> = { "atlas.okie.json": serializePortableAtlas(portableAtlasFromScan(artifacts, `https://github.com/${run.source.owner}/${run.source.repo}`)), "extraction.json": stableJson(artifacts.extraction), "snapshot.json": stableJson(artifacts.snapshot), "view.json": stableJson(artifacts.view), "scene.json": stableJson(artifacts.scene), "story.json": stableJson(artifacts.story), "stories.json": stableJson(artifacts.catalog), "timeline.json": stableJson(artifacts.timeline), "operator-explanations.json": stableJson({ schemaVersion: 1, maxKind, scopes: scopeDto, explanations: [] }) };
+      const files: Record<string, string> = { ...publicArtifactFiles(run.source, artifacts), "operator-explanations.json": stableJson({ schemaVersion: 1, maxKind, scopes: scopeDto, explanations: [] }) };
       const artifact = deps.store.writeArtifactRevision({ repositoryId: run.source.repositoryId, sourceCommitSha: scanned.commitSha, files });
       const draft = deps.publication.createDraftRevision({ runId: run.runId, artifactRevisionId: artifact.artifactRevisionId, coverage: coverageFor(scopeDto.map(scope => ({ ...scope, state: sidecarState(false, false, undefined, belowEnrichmentCap(scope.kind, maxKind)) }))) }); let activeDraftRevisionId = draft.draftRevisionId;
       const rawGateway = deps.gateway ?? createLlmGatewayClient(deps.gatewayConfig ?? resolveLlmGatewayConfig(), { timeoutMs: resolveOperatorEnrichmentBudget().requestTimeoutMs });
       const budget = resolveOperatorEnrichmentBudget();
       const gateway = rawGateway && limitedGateway(rawGateway, deps.gatewayConfig, deps.rateLimiter);
-        const scopes: OperatorEnrichmentScope[] = artifacts.snapshot.entities.map(entity => ({ scopeId: entity.id, ...(entity.parentId ? { parentScopeId: entity.parentId } : {}), name: entity.name, kind: entity.kind as OperatorEnrichmentScope["kind"], facts: { tags: entity.tags, technology: entity.technology, exposure: entity.exposure, sourceExcerpts: entity.sourceExcerpts, relationships: artifacts.snapshot.relations.filter(relation => relation.from === entity.id || relation.to === entity.id).map(relation => ({ id: relation.id, from: relation.from, to: relation.to, kind: relation.kind })) }, allowedEvidence: entity.sourceRefs.map(ref => ({ entityId: entity.id, path: ref.path, ...(ref.startLine ? { startLine: ref.startLine } : {}), ...(ref.endLine ? { endLine: ref.endLine } : {}) })) }));
+        const scopes: OperatorEnrichmentScope[] = operatorScopesFromSnapshot(artifacts.snapshot);
         const attemptMap = new Map<string, string>();
         const adapter: OperatorEnrichmentStore = { async createAttempt(attempt) { const row = deps.store.createAttempt({ draftRevisionId: draft.draftRevisionId, scopeId: attempt.scopeId, kind: "enrichment", state: "running", modelId: attempt.modelId, inputHash: attempt.inputHash, taskId: attempt.attemptId }); attemptMap.set(attempt.attemptId, row.attemptId); }, async updateAttempt(id, patch) { const mapped = attemptMap.get(id); const usage = persistedUsage(patch.usage); if (mapped) deps.store.updateAttempt(mapped, { state: patch.state === "accepted" ? "accepted" : patch.state === "cancelled" ? "cancelled" : "failed", ...(usage ? { usage } : {}), ...(patch.error ? { error: patch.error } : {}) }); }, async latestAttempt(scopeId) { const row = deps.store.listAttempts(draft.draftRevisionId, scopeId).at(-1); return row ? { attemptId: row.attemptId, scopeId, role: "owner", state: row.state === "accepted" ? "accepted" : "failed", modelId: row.modelId ?? "", inputHash: row.inputHash ?? "", createdAt: row.createdAt, updatedAt: row.updatedAt } : undefined; }, async putAcceptedExplanation(scopeId, explanation, attemptId, inputHash) { const row = deps.store.putAcceptedExplanation({ draftRevisionId: draft.draftRevisionId, scopeId, attemptId: attemptMap.get(attemptId) ?? attemptId, inputHash, content: explanation, validation: { accepted: true, validator: "operator-enrichment/v1" } }); return { explanationVersionId: row.explanationVersionId }; }, async getAcceptedExplanation(scopeId) { const row = deps.store.getAcceptedExplanation(draft.draftRevisionId, scopeId); return row?.content as OperatorExplanation | undefined; }, async markStale(ids) { ids.forEach(id => deps.store.markScopeStale(draft.draftRevisionId, id)); } };
         const admission = ledgerAdmission(deps.store, run.runId, budget, deps.globalLedger);
