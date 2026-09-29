@@ -2009,7 +2009,7 @@ export function App() {
   const portableAtlas = getActivePortableAtlas();
   const sourceRepositoryUrl = portableAtlas ? portableRepositoryRevisionUrl(portableAtlas.repository) : atlasSourceRepositoryUrl(askAtlasIdentity);
   const askReturnPath = `${window.location.pathname}${window.location.search}`;
-  const askSignedIn = askAuth?.authenticated === true;
+  const askSignedIn = askAuth?.authenticated === true || askAuth?.publicMode === true; const askHidden = askAuth === undefined || askAuth.askEnabled === false; // CLA-266: no Ask affordance before /api/auth/me answers or when the deployment disables Ask
   const isolatedRelationIds = useMemo(
     () => scene.relations
       .filter(relation => isolatedEntityIdSet.has(relation.from) && isolatedEntityIdSet.has(relation.to))
@@ -4502,7 +4502,7 @@ export function App() {
     },
     startOverviewTour: () => setStep(0, true, 'push', defaultStory),
     openAsk: question => {
-      if (getActivePortableAtlas()) return;
+      if (getActivePortableAtlas() || askHidden) return;
       // Ask lives in the story launcher; a playing tour hides that chrome.
       storyOriginAvailableRef.current = false;
       if (storyStep >= 0) closeStory();
@@ -4512,7 +4512,7 @@ export function App() {
       setQuestion(question);
       window.setTimeout(() => askInputRef.current?.focus(), 0);
     },
-    askSignedIn: () => askAuth?.authenticated === true,
+    askSignedIn: () => askAuth?.authenticated === true || askAuth?.publicMode === true, askEnabled: () => !askHidden,
     readContext: () => ({
       atlas: atlasIdentityFromLocation(window.location.pathname, window.location.search),
       c4Level: activeDetail,
@@ -4542,7 +4542,7 @@ export function App() {
         entities: scene.entities,
       }),
       scanAvailable: false,
-      askAvailable: query.fixture !== 'stress' && storyStep < 0,
+      askAvailable: query.fixture !== 'stress' && storyStep < 0 && !askHidden,
     }),
   };
 
@@ -4555,7 +4555,7 @@ export function App() {
       isolate: active => atlasChromeRef.current.isolate(active),
       startOverviewTour: () => atlasChromeRef.current.startOverviewTour(),
       openAsk: question => atlasChromeRef.current.openAsk(question),
-      askSignedIn: () => atlasChromeRef.current.askSignedIn(),
+      askSignedIn: () => atlasChromeRef.current.askSignedIn(), askEnabled: () => atlasChromeRef.current.askEnabled?.() !== false,
       readContext: () => atlasChromeRef.current.readContext(),
     });
     void registerWebMcpAtlasTools(globalThis, { signal: controller.signal });
@@ -4792,7 +4792,7 @@ export function App() {
         event.preventDefault();
         setDevMode(value => !value);
       }
-      if (!getActivePortableAtlas() && shouldOpenAskAtlas(event, storyStep >= 0)) {
+      if (!getActivePortableAtlas() && !askHidden && shouldOpenAskAtlas(event, storyStep >= 0)) {
         event.preventDefault();
         if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
         setAskOpen(true);
@@ -4822,7 +4822,7 @@ export function App() {
     }
     window.addEventListener('keydown', shortcut);
     return () => window.removeEventListener('keydown', shortcut);
-  }, [askOpen, camera, detailsOpen, editingEnabled, mainDiagramActive, navigationIdentity.rootEntityId, pickedRelationId, searchOpen, semanticLensSession, storyStep, viewport]);
+  }, [askHidden, askOpen, camera, detailsOpen, editingEnabled, mainDiagramActive, navigationIdentity.rootEntityId, pickedRelationId, searchOpen, semanticLensSession, storyStep, viewport]);
 
   useEffect(() => {
     if (getActivePortableAtlas()) return;
@@ -4834,7 +4834,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!askOpen || getActivePortableAtlas()) {
+    if (!askOpen || askHidden || getActivePortableAtlas()) {
       askAbortRef.current?.abort();
       askAbortRef.current = undefined;
       setAskPending(undefined);
@@ -4846,7 +4846,7 @@ export function App() {
     void fetchAskAuth({ signal: controller.signal }).then(auth => {
       if (controller.signal.aborted) return;
       setAskAuth(auth);
-      if (!auth.authenticated) {
+      if (!auth.authenticated && auth.publicMode !== true) {
         setAskConnected(false);
         setAskThread(undefined);
         return;
@@ -4861,13 +4861,13 @@ export function App() {
       });
     });
     return () => controller.abort();
-  }, [askOpen, askSignedIn, askAtlasIdentity?.owner, askAtlasIdentity?.repo, askAtlasIdentity?.commitSha]);
+  }, [askHidden, askOpen, askSignedIn, askAtlasIdentity?.owner, askAtlasIdentity?.repo, askAtlasIdentity?.commitSha]);
 
   // Opening Ask (click / shortcut / tour hand-off) and submitting a question are gestures: if the
   // panel now covers the selected card, pan it into the unobstructed area with the same safe-area
   // reframe the inspector uses. An async thread load or the panel reappearing after a story never
   // moves the camera, and closing Ask never moves it back (askPanelReframeDue).
-  const askPanelLayout = !askOpen || portableAtlas || currentStory || query.fixture === 'stress'
+  const askPanelLayout = !askOpen || askHidden || portableAtlas || currentStory || query.fixture === 'stress'
     ? 'closed'
     : (askThread?.turns.length ?? 0) > 0 || askPending || askError ? 'thread' : 'empty';
   const askReframeHandledRef = useRef(0);
@@ -5122,7 +5122,7 @@ export function App() {
           authenticated: false,
           loginPath: result.loginPath,
           logoutPath: '/api/auth/logout',
-          ...(result.testLoginPath ? { testLoginPath: result.testLoginPath } : {}),
+          ...(result.testLoginPath ? { testLoginPath: result.testLoginPath } : {}), ...(askAuth?.publicMode === true ? { publicMode: true } : {}),
         });
         setAskConnected(false);
         return;
@@ -5582,7 +5582,7 @@ export function App() {
             {shareFeedback?.tone === 'success' ? <CheckIcon/> : <ShareIcon/>}
           </button>
           {sourceRepositoryUrl && <a aria-label="Open source repository" className="icon-button" data-testid="open-source-repo" href={sourceRepositoryUrl} rel="noreferrer" target="_blank" title="Open source repository"><CodeIcon/></a>}
-          {!portableAtlas && <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p><OperatorMenuLink signedIn={askSignedIn}/><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>}
+          {!portableAtlas && askAuth !== undefined && askAuth.publicMode !== true && <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p><OperatorMenuLink signedIn={askSignedIn}/><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>}
         </div>
       </header>
 
@@ -5812,7 +5812,7 @@ export function App() {
           ) : (
             <div className="story-launcher" data-story-catalog-count={storyCatalog.length}>
               <div className="ask-anchor">
-              {!portableAtlas && <button className="ask-button" onClick={() => { if (!askOpen) requestAskReframe(); setAskOpen(!askOpen); }} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>}
+              {!portableAtlas && !askHidden && <button className="ask-button" onClick={() => { if (!askOpen) requestAskReframe(); setAskOpen(!askOpen); }} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>}
               </div>
               {storyCatalog.length === 1 ? storyCatalog.map(plan => (
                 <button
@@ -5846,7 +5846,7 @@ export function App() {
               )}
             </div>
           )}
-          {!currentStory && query.fixture !== 'stress' && !portableAtlas && askOpen && (
+          {!currentStory && query.fixture !== 'stress' && !portableAtlas && !askHidden && askOpen && (
             <AskPanel
               auth={askAuth}
               citationsFor={turn => askCitationChips(turn, {

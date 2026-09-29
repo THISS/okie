@@ -1,0 +1,32 @@
+# CLA-266: the atlas API container (apps/server/Dockerfile) builds from the repo root with an allowlist.
+# Everything is excluded unless re-included below: no .git, no .env / credentials, no fixtures (scans stay on the
+# operator's machine), no crates / Rust toolchain, no web app sources, no node_modules or dist.
+**
+
+# Workspace manifests (every workspace package.json keeps the frozen lockfile consistent).
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.base.json
+!apps/*/package.json
+!packages/*/package.json
+
+# Sources of @okie/server and its workspace dependency closure.
+!packages/architecture/tsconfig.json
+!packages/architecture/src/**
+!packages/scene-compiler/tsconfig.json
+!packages/scene-compiler/src/**
+!packages/scan/tsconfig.json
+!packages/scan/enrichment-prompt.md
+!packages/scan/src/**
+!apps/server/tsconfig.json
+!apps/server/src/**
+
+# Never, even if matched above.
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+**/*.pem
+**/*.key

@@ -1109,3 +1109,16 @@ a.icon-button { text-decoration: none; }
 .path-explorer .detail-muted { color: var(--atlas-quiet); }
 .details-scroll > .path-explorer:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .path-explorer { margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--atlas-line); }
+
+/* CLA-266: published-atlas attribution strip (atlasAttribution.ts, rendered outside #root). The root
+   shrinks by the strip height, so the strip never covers the canvas controls at any width. */
+:root { --atlas-attribution-height: 26px; }
+html[data-atlas-attribution] #root { height: calc(100% - var(--atlas-attribution-height)); }
+.atlas-attribution { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; height: var(--atlas-attribution-height); display: flex; align-items: center; padding: 0 14px; border-top: 1px solid var(--atlas-line); background: var(--atlas-bg-raised); color: var(--atlas-muted); font-size: 11px; }
+.atlas-attribution p { min-width: 0; margin: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.atlas-attribution a { color: var(--atlas-text); text-decoration: underline; text-decoration-color: var(--atlas-line-strong); text-underline-offset: 2px; }
+.atlas-attribution a:hover { color: var(--atlas-accent); }
+.atlas-attribution code { font-family: var(--atlas-font-mono); font-size: 10.5px; }
+@media (max-width: 780px) {
+  .atlas-attribution { padding: 0 10px; font-size: 10.5px; }
+}

@@ -1,8 +1,8 @@
 /**
  * Deterministic Open Graph card for a public atlas (CLA-39).
  *
- * Node-only (PNG via `node:zlib`). Do not import this module from the browser
- * bundle — the share HTML and `/og/` handlers run on Vite / Vercel, not in React.
+ * Server-only (PNG via `node:zlib`; the edge Worker runs it under `nodejs_compat`). Do not import this module from the browser
+ * bundle — the share HTML and `/og/` handlers run on Vite and the edge Worker, not in React.
  *
  * The card is owner/repo + a generated map preview, not a site logo. Bytes are a
  * pure function of owner/repo; no env, tokens, paths, or scan objects.

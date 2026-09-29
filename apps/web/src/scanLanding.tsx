@@ -70,7 +70,46 @@ type AuthView = {
   oauthConfigured: boolean;
   testLoginPath?: string;
   installPath?: string;
+  /** CLA-266: the hosted edge answers `mode: "public"` — no sign-in route, no scan submission. */
+  mode?: string;
 };
+
+/**
+ * What the landing shows for an auth answer. Hosted public mode (sourcefor.dev) is a read-only list of
+ * published atlases: no paste-a-repo form, no sign-in/out links, no operator entry point.
+ */
+export function scanLandingChrome(auth: Pick<AuthView, 'mode'> | undefined, operator: boolean | undefined): {
+  publicMode: boolean;
+  heading: string;
+  showScanCard: boolean;
+  showAuthStatus: boolean;
+  publishedHeading: string;
+} {
+  const publicMode = auth?.mode === 'public';
+  return {
+    publicMode,
+    heading: publicMode ? 'Source For Atlas' : 'Map a repository',
+    showScanCard: !publicMode,
+    showAuthStatus: !publicMode && auth !== undefined && operator !== true,
+    publishedHeading: publicMode ? 'Published atlases' : 'Already mapped',
+  };
+}
+
+/**
+ * `/api/auth/me`, then — only outside hosted public mode — `/api/operator/session`. The public edge
+ * has no operator routes, so asking would only log a 404 (CLA-266 QA B4).
+ */
+export async function loadLandingSession(fetchImpl: typeof fetch = fetch): Promise<{ auth: AuthView | undefined; operator: boolean }> {
+  const auth = await fetchImpl('/api/auth/me', { credentials: 'include' })
+    .then(response => (response.ok ? response.json() as Promise<AuthView> : undefined))
+    .catch(() => undefined);
+  if (auth?.mode === 'public') return { auth, operator: false };
+  const operator = await fetchImpl('/api/operator/session', { credentials: 'include' })
+    .then(response => (response.ok ? response.json() as Promise<{ operator?: boolean }> : undefined))
+    .then(body => body?.operator === true)
+    .catch(() => false);
+  return { auth, operator };
+}
 
 export function ScanLandingScreen() {
   const [input, setInput] = useState('');
@@ -83,16 +122,10 @@ export function ScanLandingScreen() {
   const pollRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
-    void fetch('/api/auth/me', { credentials: 'include' })
-      .then(response => (response.ok ? response.json() : undefined))
-      .then((body: AuthView | undefined) => {
-        if (body) setAuth(body);
-      })
-      .catch(() => {});
-    void fetch('/api/operator/session', { credentials: 'include' })
-      .then(response => response.ok ? response.json() as Promise<{ operator?: boolean }> : undefined)
-      .then(body => setOperator(body?.operator === true))
-      .catch(() => setOperator(false));
+    void loadLandingSession().then(({ auth: body, operator: isOperator }) => {
+      if (body) setAuth(body);
+      setOperator(isOperator);
+    });
     return () => {
       if (pollRef.current !== undefined) window.clearInterval(pollRef.current);
     };
@@ -179,17 +212,20 @@ export function ScanLandingScreen() {
   const signInHref = auth?.loginPath ?? '/api/auth/github';
   const testLoginHref = auth?.testLoginPath;
   const signOutHref = `${auth?.logoutPath ?? '/api/auth/logout'}?return=/new`;
+  const chrome = scanLandingChrome(auth, operator);
 
   return (
-    <main data-auth-state={auth ? (signedIn ? 'signed-in' : 'signed-out') : 'unknown'} style={page}>
-      <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Map a repository</h1>
-      <p style={mutedStyle}>
-        Hosted scans are managed by operators. Viewing a published atlas at <code>/r/owner/repo</code> stays public.
-      </p>
+    <main data-auth-state={auth ? (signedIn ? 'signed-in' : 'signed-out') : 'unknown'} data-public-mode={chrome.publicMode ? 'true' : undefined} style={page}>
+      <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>{chrome.heading}</h1>
+      {chrome.publicMode
+        ? <p style={mutedStyle}>Browse the published architecture atlases below. Viewing an atlas at <code>/r/owner/repo</code> needs no sign-in.</p>
+        : <p style={mutedStyle}>
+            Hosted scans are managed by operators. Viewing a published atlas at <code>/r/owner/repo</code> stays public.
+          </p>}
 
-      {operator === true ? <section style={cardStyle}><h2>Operator scans</h2><p style={mutedStyle}>Start and review public repository scans in the operator workspace.</p><a href="/operator" style={{ color: '#d9ff70', fontWeight: 600 }}>Open operator review</a></section> : <section style={cardStyle}><h2>Request a scan</h2><p style={mutedStyle}>{operator === undefined ? 'Checking operator access…' : 'Public repositories are published after an operator review. Ask a configured operator to run a scan.'}</p></section>}
+      {!chrome.showScanCard ? null : operator === true ? <section style={cardStyle}><h2>Operator scans</h2><p style={mutedStyle}>Start and review public repository scans in the operator workspace.</p><a href="/operator" style={{ color: '#d9ff70', fontWeight: 600 }}>Open operator review</a></section> : <section style={cardStyle}><h2>Request a scan</h2><p style={mutedStyle}>{operator === undefined ? 'Checking operator access…' : 'Public repositories are published after an operator review. Ask a configured operator to run a scan.'}</p></section>}
 
-      {auth && operator !== true && (
+      {auth && chrome.showAuthStatus && (
         <p data-testid="scan-auth-status" style={{ ...mutedStyle, marginTop: '1rem' }}>
           {signedIn
             ? <>Signed in as <strong>@{auth.login}</strong>. <a href={signOutHref} style={{ color: '#79dfd4' }}>Sign out</a></>
@@ -202,7 +238,7 @@ export function ScanLandingScreen() {
         </p>
       )}
 
-      {Boolean(0) && <form onSubmit={submit} style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem' }}>
+      {Boolean(0) && !chrome.publicMode && <form onSubmit={submit} style={{ display: 'flex', gap: '0.6rem', marginTop: '1.5rem' }}>
         <input
           aria-label="GitHub repository URL"
           name="url"
@@ -302,7 +338,7 @@ export function ScanLandingScreen() {
 
       {published.length > 0 && (
         <section style={{ marginTop: '2.5rem' }}>
-          <h2 style={{ fontSize: '1rem', color: '#b7c3c0', marginBottom: '0.5rem' }}>Already mapped</h2>
+          <h2 style={{ fontSize: '1rem', color: '#b7c3c0', marginBottom: '0.5rem' }}>{chrome.publishedHeading}</h2>
           <ul style={{ listStyle: 'none', display: 'grid', gap: '0.3rem' }}>
             {published.map(repo => {
               const href = atlasHrefForSlug(repo.slug);

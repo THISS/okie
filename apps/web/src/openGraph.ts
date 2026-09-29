@@ -21,15 +21,17 @@ import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, renderAtlasCardPng } from './atlasCard
 /**
  * Open Graph for public `/r/<owner>/<repo>` share URLs (CLA-39).
  *
- * Crawlers do not run the SPA, so Vite / Vercel inject these tags into the HTML
- * response. The image is a generated Okie atlas card (not the site favicon).
+ * Crawlers do not run the SPA, so the Vite dev/preview plugin and the Cloudflare
+ * edge Worker (apps/edge) inject these tags into the HTML response. The image is a generated Okie atlas card (not the site favicon).
  * Unpublished and private trees 404 with the same generic body — no GitHub
  * lookup, no existence leak, no secrets in meta or PNG bytes.
  */
 
 export const OG_IMAGE_ROUTE_PREFIX = '/og';
-/** Local scan process — the only loopback origin used for published-snapshot lookups. */
-export const LOCAL_SCAN_ORIGIN = 'http://127.0.0.1:4180';
+/** Default loopback port of the local scan process (apps/server). */
+export const DEFAULT_LOCAL_SCAN_PORT = '4180';
+/** Default local scan origin; hosts configure theirs with {@link localScanOriginFromEnv}. */
+export const DEFAULT_LOCAL_SCAN_ORIGIN = `http://127.0.0.1:${DEFAULT_LOCAL_SCAN_PORT}`;
 export const ATLAS_NOT_FOUND_BODY = `<!doctype html>
 <html lang="en">
   <head>
@@ -133,26 +135,48 @@ export function trustedShareOrigin(
   return undefined;
 }
 
-/** Snapshot lookup origin: known scan bind on loopback, else an allowlisted https origin. */
+/**
+ * Configured local scan origin (not a secret). `OKIE_SCAN_ORIGIN` wins when it is a loopback http or an
+ * https origin; else loopback on `OKIE_SCAN_SERVER_PORT` (the same knob the Vite proxy uses), default 4180.
+ * Callers pass `process.env`; this module never reads it itself.
+ */
+export function localScanOriginFromEnv(env: Record<string, string | undefined>): string {
+  const explicit = env.OKIE_SCAN_ORIGIN?.trim();
+  const origin = explicit ? sanitizeOembedOrigin(explicit) : undefined;
+  if (origin && isTrustedScanOrigin(origin, origin)) return origin;
+  const port = /^\d{2,5}$/.test(env.OKIE_SCAN_SERVER_PORT ?? '') ? env.OKIE_SCAN_SERVER_PORT! : DEFAULT_LOCAL_SCAN_PORT;
+  return `http://127.0.0.1:${port}`;
+}
+
+/** Snapshot lookup origin: the configured scan origin on loopback, else an allowlisted https origin. */
 export function trustedScanLookupOrigin(
   requestOrigin: string,
   allowedOrigins: readonly string[] = [],
+  scanOrigin: string = DEFAULT_LOCAL_SCAN_ORIGIN,
 ): string | undefined {
   const origin = sanitizeOembedOrigin(requestOrigin);
   if (!origin) return undefined;
   const url = new URL(origin);
-  if (isLoopbackHostname(url.hostname)) return LOCAL_SCAN_ORIGIN;
+  if (isLoopbackHostname(url.hostname)) return scanOrigin;
   if (allowedOrigins.includes(origin) && url.protocol === 'https:') return origin;
   return undefined;
 }
 
-export function isTrustedScanOrigin(raw: string): boolean {
+/**
+ * A scan origin may be probed when it is https, or plain http on loopback at the configured scan
+ * port (`trustedLoopbackOrigin`, default {@link DEFAULT_LOCAL_SCAN_ORIGIN}) — never another local port.
+ */
+export function isTrustedScanOrigin(raw: string, trustedLoopbackOrigin: string = DEFAULT_LOCAL_SCAN_ORIGIN): boolean {
   const origin = sanitizeOembedOrigin(raw);
   if (!origin) return false;
   const url = new URL(origin);
   if (url.username || url.password) return false;
   if (isLoopbackHostname(url.hostname)) {
-    return url.protocol === 'http:' && effectiveOembedPort(url) === '4180';
+    const trusted = sanitizeOembedOrigin(trustedLoopbackOrigin);
+    if (!trusted) return false;
+    const trustedUrl = new URL(trusted);
+    return url.protocol === 'http:' && isLoopbackHostname(trustedUrl.hostname)
+      && effectiveOembedPort(url) === effectiveOembedPort(trustedUrl);
   }
   return url.protocol === 'https:';
 }
@@ -162,9 +186,10 @@ export async function resolvePublicAtlasShare(
   repo: string,
   scanOrigin: string,
   fetchImpl: typeof fetch = fetch,
+  trustedLoopbackOrigin: string = DEFAULT_LOCAL_SCAN_ORIGIN,
 ): Promise<boolean> {
   if (isDogfoodAtlas(owner, repo)) return true;
-  if (!isTrustedScanOrigin(scanOrigin)) return false;
+  if (!isTrustedScanOrigin(scanOrigin, trustedLoopbackOrigin)) return false;
   const snapshot = new URL(`/scan/${encodeURIComponent(repoSlugFor(owner, repo))}/snapshot.json`, scanOrigin);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 1500);
@@ -258,6 +283,15 @@ export function injectPublicAtlasOpenGraph(html: string, tags: OpenGraphTags): s
   return `${block}\n${stripped}`;
 }
 
+/** Bytes → latin1 text without Node's Buffer (runs in Node and workerd alike). */
+function latin1(bytes: Uint8Array): string {
+  let text = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    text += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return text;
+}
+
 export function openGraphLeaksSecrets(text: string): boolean {
   return SECRET_LEAK.test(text);
 }
@@ -333,7 +367,7 @@ export async function handleOgImageRequest(input: OgImageHttpInput): Promise<Pub
     };
   }
   const png = renderAtlasCardPng(parsed);
-  const asText = Buffer.from(png).toString('latin1');
+  const asText = latin1(png);
   if (openGraphLeaksSecrets(asText)) {
     return {
       status: 404,

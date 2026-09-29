@@ -9,6 +9,7 @@ import '@fontsource/ibm-plex-mono/latin-600.css';
 import '@okie/theme/tokens.css';
 import './app.css';
 import { ASPECT_PRESET_TARGET, parsePortableAtlas, type PortableAtlas } from '@okie/architecture';
+import { installPublishedAtlasAttribution } from './atlasAttribution';
 import { hostedAtlasBootPlan } from './hostedAtlas';
 import { installPublicAtlasOembedDiscovery } from './oembed';
 import { readDemoQuery } from './renderer/query';
@@ -336,6 +337,8 @@ async function boot() {
   const { App } = await import('./App');
   setDocumentPage(documentPageFor('atlas'));
   root.render(<StrictMode><App /></StrictMode>);
+  // CLA-266: a published atlas credits its upstream repository, commit and licence (not in embeds).
+  if (route.kind === 'repo') void installPublishedAtlasAttribution(route.slug);
 }
 
 void boot();

@@ -69,3 +69,38 @@ A per-scope timeout omits that scope and continues. Hitting a scan-level cap ski
 The system packet is scheduled **before** container packets so a 200k token cap cannot starve the system-scope summary after three container proposals. A packet over the 500-code cap is skipped on its own; remainder chunks for the same container are still asked when they fit. The 2000 hang-guard is a different axis and is not this table.
 
 The global token/$ cap is a **process-wide** ceiling across GitHub users (CLA-38), not a per-account quota. The existing 5 scans / 10 minutes per-user (plus IP) submit limiter stays. When the process is already at the global cap, enrichment is skipped (`enrichment.state: skipped`, note `global enrichment budget reached`) and the deterministic atlas still publishes. Unset / invalid global env values mean no global ceiling — only the per-scan caps apply. Dollar totals are enforced only when the gateway reports cost. Spend totals, keys, and gateway URLs never appear on `/healthz`, in job JSON, or in logs.
+
+## public-readonly mode (container)
+
+`OKIE_SERVER_MODE=public-readonly` is the stateless container behind the sourcefor.dev edge Worker (CLA-266). Scans stay on the operator's machine; `pnpm publish:atlas` uploads published versions to R2 and the container mirrors them. The browse-only launch does not deploy it (the Worker serves everything from R2); it stays for signed-in Ask later.
+
+- Routes: `GET/POST /api/ask`, `GET /api/ask/thread`, `POST /api/block-plan`, `GET /scan/*` (neighborhood, excerpt, source, published objects), `GET /healthz`. Everything else — OAuth/session, `/api/operator/*`, cron, webhook, `/api/scans*`, `/` — is 404. No operator runner, enrichment or incremental automation runs.
+- Ask and block plans are anonymous: the per-IP windows, the Ask retrieval worker admission, the 48 KB Ask body cap and the planner ledger / kill switch still apply; Ask threads are not persisted (`POST /api/ask` answers without `thread`; `GET /api/ask/thread` returns an empty thread). `POST /api/ask` sets `x-okie-ask-cost-usd` for the edge's dollar ledger: the gateway-reported cost after a gateway call (absent when unreported), and `0` for every answer that made no gateway call (per-IP refusals, 400s, empty question, `connected: false`, no scope) so the edge releases its estimate. `x-okie-ask-tokens` is set when known.
+- The scan root is scratch disk. `publishedMirror.ts` materialises published versions from `<OKIE_PUBLISHED_STORE_URL>/<key>` (layout: `publishedStoreLayout.ts`) into a minimal operator-v1 store — at boot, every `OKIE_PUBLISHED_REFRESH_MS`, and on demand when a request names a slug or `?version=` it lacks. It downloads only `snapshot.json`, `view.json` and the private raw `operator-explanations.json` (the Worker serves every other public file from R2). Files are checked against the manifest's sha256/bytes before install; a miss is a closed 404. A slug whose sync failed is retried on every refresh (the index digest only advances when every slug synced), and a request naming a version or commit that is not current re-reads `latest.json` (at most once per 10 s per slug, deduped).
+- Image: `apps/server/Dockerfile` (build context = repo root, root `.dockerignore` is an allowlist): `docker buildx build --platform linux/amd64 -f apps/server/Dockerfile -t okie-atlas-api .`
+
+| Env | Purpose |
+|---|---|
+| `OKIE_SERVER_MODE` | `default` (unset) or `public-readonly`; anything else fails at boot |
+| `OKIE_SERVER_HOST` / `OKIE_SERVER_PORT` | Bind (loopback by default; the image sets `0.0.0.0:8080`) |
+| `OKIE_TRUSTED_PROXY` | `cloudflare`: the client IP is `CF-Connecting-IP` when it is a valid IP literal, else `x-okie-client-ip` (set by the Worker, which deletes any client copy), else the socket address; the Ask loopback exemption no longer applies. Unset by default; `X-Forwarded-For` is never trusted |
+| `OKIE_PUBLISHED_STORE_URL` | Origin serving published-store keys (the container: `http://atlas-store.internal`) |
+| `OKIE_PUBLISHED_REFRESH_MS` | Mirror refresh interval (default 60000; 0 disables the timer) |
+| `OKIE_SCAN_ROOT` | Mirror scratch dir (default: a new temp dir) |
+| `OKIE_ASK_WORKER_MAX_HEAP_MB` | Ask worker heap cap (default 1536; the image sets 512) |
+| `OKIE_ASK_MAX_WARM_INDEXES` | Warm Ask indexes (default 4; the image sets 2) |
+| `OKIE_NEIGHBORHOOD_CACHE_ENTRIES` | Parsed snapshot/view LRU for neighborhood/excerpt packets (default 4; the image sets 2) |
+
+Publishing (operator machine; build `@okie/server` first):
+
+```sh
+pnpm publish:atlas --repo owner/name --env staging|production|local [--scan-root <dir>] [--dry-run [--out <dir>]] [--persist-to <dir>] [--license-override <SPDX>] [--yes]
+pnpm publish:atlas --repo owner/name --env <env> --set-latest <versionId> [--yes]     # rollback
+```
+
+- Reads the operator store read-only. Uploads the version's public files, the private raw sidecar, the `neighborhood` pack (default view + every entity) and `excerpt` pack, and `packs/source-paths.json`, then `manifest.json`, `latest.json` and the merged `index.json`.
+- Packs: every entry is its own gzip member of the exact route body (`index.encoding: "gzip"`, `[offset, length]` of the compressed member). One object per pack; a pack over 300 MB fails the publish (wrangler's per-object limit is 315 MB).
+- Licence: `GET api.github.com/repos/<o>/<r>/license?ref=<commit>`, unauthenticated. No licence, `NOASSERTION` or a failed lookup refuses the publish unless `--license-override <SPDX>` (no lookup, no URL).
+- `--set-latest <versionId>` checks that version's manifest exists in the target store, then rewrites `latest.json` and `index.json` from it; nothing else is uploaded.
+- Remote envs use the `wrangler login` OAuth session and take the account from `apps/edge/wrangler.jsonc` `account_id` (`CLOUDFLARE_ACCOUNT_ID` overrides it). `CLOUDFLARE_API_TOKEN` (and `CF_API_TOKEN` / API keys) are stripped from the wrangler child, with a one-line note. Production needs `--yes`.
+- A `wrangler r2 object get` counts as "missing" only on wrangler's exact `The specified key does not exist.` error; anything else fails the publish before any upload.

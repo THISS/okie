@@ -44,25 +44,8 @@ import { INSPECTOR_EMPTY_SUMMARY, CYCLOMATIC_FLAG_THRESHOLD } from './inspector/
 import { readDemoQuery } from './renderer/query';
 import { parseAppRoute } from './renderer/route';
 
-/** Permissions-Policy + origin-keyed agent cluster for hosted chrome. */
-export const WEBMCP_HOST_HEADERS = {
-  'Permissions-Policy': 'tools=(self)',
-  'Origin-Agent-Cluster': '?1',
-} as const;
-
-/**
- * Framed public atlas views (oEmbed) omit Origin-Agent-Cluster so WebGL2 can
- * present inside a cross-origin iframe. Do not widen `tools`.
- */
-export function webMcpHostHeadersForFetchDest(
-  dest: string | string[] | undefined,
-): Record<string, string> {
-  const token = (Array.isArray(dest) ? dest[0] : dest)?.split(',')[0]?.trim().toLowerCase();
-  if (token === 'iframe' || token === 'embed' || token === 'object' || token === 'frame') {
-    return { 'Permissions-Policy': WEBMCP_HOST_HEADERS['Permissions-Policy'] };
-  }
-  return { ...WEBMCP_HOST_HEADERS };
-}
+// Host headers live in a tiny module so the edge Worker and Vite config need not import the inspector.
+export { WEBMCP_HOST_HEADERS, webMcpHostHeadersForFetchDest } from './webmcpHeaders';
 
 export const OKIE_PROBE_TOOL_NAME = 'okie_probe';
 export const OKIE_PROBE_TOOL_TITLE = 'Okie probe';
@@ -371,8 +354,12 @@ export type AtlasChromeActions = {
   startOverviewTour: () => void;
   openAsk: (question: string) => void;
   askSignedIn: () => boolean;
+  /** False when the deployment has Ask disabled (CLA-266 browse-only launch); absent = enabled. */
+  askEnabled?: () => boolean;
   readContext: () => AtlasPageContextInput;
 };
+
+export const ASK_DISABLED_MESSAGE = 'Ask is not available on this site. The map stays fully browsable.';
 
 const GITHUB_NAME = /^[A-Za-z0-9._-]+$/;
 const GITHUB_NAME_MAX = 100;
@@ -829,6 +816,7 @@ function executeAskAtlas(input?: Record<string, unknown>): AskAtlasResult {
   try {
     const actions = atlasActions;
     if (!actions) return atlasUnavailable();
+    if (actions.askEnabled?.() === false) return webMcpToolError('unavailable', ASK_DISABLED_MESSAGE);
     actions.openAsk(optionalAskQuestion(input));
     if (!actions.askSignedIn()) {
       return webMcpToolError(
