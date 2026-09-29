@@ -11,13 +11,13 @@
 // and never gets the headers. No value is ever printed. Browser checks (CSP console, beacon load) stay manual.
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { accessChallengeMessage, accessHeaders, isAccessChallenge } from './smokeAccess.mjs';
+import { AccessChallengeError, accessHeaders, redactHeaderValues, smokeRequester } from './smokeAccess.mjs';
 
 const ORIGINS = { staging: 'https://staging.sourcefor.dev', production: 'https://sourcefor.dev' };
 const BEACON = /cloudflareinsights\.com\/beacon/g;
 
 const target = process.argv[2];
-if (!(target in ORIGINS)) {
+if (!Object.hasOwn(ORIGINS, target ?? '')) {
   console.error(`usage: smoke.mjs <${Object.keys(ORIGINS).join('|')}>`);
   process.exit(2);
 }
@@ -34,14 +34,8 @@ if (access.error) {
 const sentToken = Object.keys(access.headers).length > 0;
 if (target === 'staging') console.log(sentToken ? 'using the Access service token (STAGING_ACCESS_CLIENT_ID)' : 'no Access service token set');
 
-class AccessChallenge extends Error {}
-
-/** GET (or HEAD) without following redirects, so an Access redirect is seen on every request. */
-async function get(path, method = 'GET') {
-  const response = await fetch(`${origin}${path}`, { method, redirect: 'manual', headers: access.headers });
-  if (isAccessChallenge(response)) throw new AccessChallenge(accessChallengeMessage(sentToken));
-  return response;
-}
+const get = smokeRequester({ origin, headers: access.headers });
+const describe = error => redactHeaderValues(error instanceof Error ? error.message : String(error), access.headers);
 
 const failures = [];
 async function check(name, run) {
@@ -54,9 +48,9 @@ async function check(name, run) {
       console.log(`ok   ${name}`);
     }
   } catch (error) {
-    if (error instanceof AccessChallenge) throw error;
+    if (error instanceof AccessChallengeError) throw error;
     failures.push(name);
-    console.log(`FAIL ${name}: ${error instanceof Error ? error.message : String(error)}`);
+    console.log(`FAIL ${name}: ${describe(error)}`);
   }
 }
 
@@ -145,10 +139,6 @@ async function main() {
 }
 
 main().catch(error => {
-  if (error instanceof AccessChallenge) {
-    console.error(`smoke: ${error.message}`);
-  } else {
-    console.error(`smoke: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  console.error(`smoke: ${describe(error)}`);
   process.exit(1);
 });

@@ -6,3 +6,10 @@ export declare function accessHeaders(
 ): { headers: Record<string, string>; error?: undefined } | { headers?: undefined; error: string };
 export declare function isAccessChallenge(response: { status: number; headers: { get(name: string): string | null } }): boolean;
 export declare function accessChallengeMessage(sentToken: boolean): string;
+export declare class AccessChallengeError extends Error {}
+export declare function smokeRequester(options: {
+  origin: string;
+  headers: Record<string, string>;
+  fetch?: typeof fetch;
+}): (path: string, method?: 'GET' | 'HEAD') => Promise<Response>;
+export declare function redactHeaderValues(text: string, headers: Record<string, string>): string;
