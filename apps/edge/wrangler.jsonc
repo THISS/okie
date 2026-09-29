@@ -19,14 +19,14 @@
   // No telemetry calls from dry-run builds / local dev.
   "send_metrics": false,
   "observability": { "enabled": true },
-  // run_worker_first patterns are path-only, so the Worker runs first for every path except the
-  // content-hashed /assets/* (served straight from Static Assets; _headers still apply to what the
-  // Worker passes through env.ASSETS). That lets it 301 www.sourcefor.dev before anything else.
+  // The Worker runs first for every path (_headers still apply to what it passes through env.ASSETS):
+  // it 301s www.sourcefor.dev before anything else, and turns the SPA fallback for a missing
+  // /assets/* file into a 404 instead of index.html cached as immutable.
   "assets": {
     "directory": "../web/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/*", "!/assets/*"]
+    "run_worker_first": true
   },
   "dev": {
     "ip": "127.0.0.1",
@@ -71,6 +71,8 @@
       "routes": [{ "pattern": "staging.sourcefor.dev", "custom_domain": true }],
       "vars": {
         "OKIE_PUBLIC_ORIGIN": "https://staging.sourcefor.dev",
+        // Keep staging out of search engines: X-Robots-Tag on every response + a disallow-all robots.txt.
+        "ROBOTS_NOINDEX": "1",
         // Browse-only launch: Ask and block-plan are off (and there is no container to serve them).
         "ASK_ENABLED": "0",
         // Placeholder caps pending Brenton's numbers (dormant while ASK_ENABLED is "0").

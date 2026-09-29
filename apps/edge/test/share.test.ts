@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pngDimensions, pngSignatureOk } from '../../web/src/atlasCard';
-import { canonicalHostRedirect } from '../src/index';
+import { NOINDEX_ROBOTS_TXT, canonicalHostRedirect } from '../src/index';
 import { edgeFetch, seedAtlas } from './helpers';
 
 const ORIGIN = 'http://127.0.0.1:4196';
@@ -76,9 +76,50 @@ describe('share pages at the edge', () => {
     expect(wasm.headers.get('content-type')).toBe('application/wasm');
   });
 
+  it('404s a missing hashed asset (uncacheable) instead of the SPA shell', async () => {
+    const present = await edgeFetch('/assets/index-abc123.js');
+    expect(present.status).toBe(200);
+    expect(present.headers.get('content-type')).toMatch(/javascript/);
+    // _headers still apply through the binding now that /assets/* runs the Worker first.
+    expect(present.headers.get('cache-control')).toBe('public, max-age=31536000, immutable');
+    for (const path of ['/assets/App-previousBuild.js', '/assets/', '/assets/nested/missing.css']) {
+      const missing = await edgeFetch(path);
+      expect(missing.status, path).toBe(404);
+      expect(missing.headers.get('cache-control'), path).toBe('no-store');
+      expect(await missing.text(), path).not.toContain('<div id="root">');
+    }
+    const head = await edgeFetch('/assets/App-previousBuild.js', { init: { method: 'HEAD' } });
+    expect(head.status).toBe(404);
+    // A browser revalidating a shell it cached before the fix (index.html's ETag) gets a 404, not a 304.
+    const shellEtag = (await edgeFetch('/')).headers.get('etag');
+    expect(shellEtag).toBeTruthy();
+    const revalidate = await edgeFetch('/assets/App-previousBuild.js', { init: { headers: { 'if-none-match': shellEtag! } } });
+    expect(revalidate.status).toBe(404);
+    expect(revalidate.headers.get('cache-control')).toBe('no-store');
+    // SPA routes outside /assets keep the fallback.
+    expect((await edgeFetch('/some/client/route')).status).toBe(200);
+  });
+
+  it('staging (ROBOTS_NOINDEX=1): X-Robots-Tag on every response and a disallow-all robots.txt', async () => {
+    const env = { ROBOTS_NOINDEX: '1', OKIE_PUBLIC_ORIGIN: 'https://staging.sourcefor.dev' };
+    const robots = await edgeFetch('/robots.txt', { env });
+    expect(robots.status).toBe(200);
+    expect(robots.headers.get('content-type')).toBe('text/plain; charset=utf-8');
+    expect(await robots.text()).toBe(NOINDEX_ROBOTS_TXT);
+    for (const path of ['/', '/new', '/robots.txt', '/assets/index-abc123.js', '/assets/missing.js', '/scan/index.json', '/scan/nobody__here/snapshot.json', '/api/auth/me', '/oembed?url=x']) {
+      const response = await edgeFetch(path, { env });
+      expect(response.headers.get('x-robots-tag'), path).toBe('noindex, nofollow');
+    }
+    // Production (unset) adds nothing and leaves robots.txt to static assets.
+    for (const path of ['/', '/assets/index-abc123.js', '/scan/index.json']) {
+      expect((await edgeFetch(path)).headers.get('x-robots-tag'), path).toBeNull();
+    }
+    expect(await (await edgeFetch('/robots.txt')).text()).not.toBe(NOINDEX_ROBOTS_TXT);
+  });
+
   it('301s www.<canonical host> to OKIE_PUBLIC_ORIGIN (same path + query) before anything else', async () => {
     const env = { OKIE_PUBLIC_ORIGIN: 'https://sourcefor.dev' };
-    for (const path of ['/', '/r/acme/shared?sel=x', '/scan/index.json', '/api/auth/me', '/og/acme/shared']) {
+    for (const path of ['/', '/r/acme/shared?sel=x', '/scan/index.json', '/api/auth/me', '/og/acme/shared', '/assets/index-abc123.js']) {
       const response = await edgeFetch(new Request(`https://www.sourcefor.dev${path}`), { env });
       expect(response.status, path).toBe(301);
       expect(response.headers.get('location'), path).toBe(`https://sourcefor.dev${path}`);

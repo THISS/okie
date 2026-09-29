@@ -14,8 +14,11 @@ export { ContainerProxy } from '@cloudflare/containers';
 
 /**
  * sourcefor.dev edge Worker (CLA-266). Static assets (apps/web/dist) are served by Workers Static
- * Assets; only `run_worker_first` routes reach this handler:
+ * Assets behind this handler (`run_worker_first: true`, so every request reaches it first):
  *
+ *   www.*                     301 to the canonical origin
+ *   /robots.txt               disallow-all when ROBOTS_NOINDEX=1 (staging; also X-Robots-Tag on everything)
+ *   /assets/*                 Static Assets, but a missing hashed asset is 404 no-store, never the SPA shell
  *   /scan/*                   published atlases from R2 (scan.ts), source.json via GitHub raw (source.ts)
  *   /r/*, /og/*, /oembed      share pages (share.ts)
  *   /api/*                    auth/me + Ask status answered here; with ASK_ENABLED=1, Ask + block-plan →
@@ -40,9 +43,8 @@ export function defaultDeps(env: EdgeEnv): EdgeDeps {
 
 /**
  * `www.<canonical host>` → 301 to the same path + query on `OKIE_PUBLIC_ORIGIN` (production binds both
- * sourcefor.dev and www.sourcefor.dev). Checked before anything else. `run_worker_first` patterns are
- * path-only, so every path except the content-hashed `/assets/*` runs the Worker first; those asset
- * URLs are only ever requested by an already-redirected page.
+ * sourcefor.dev and www.sourcefor.dev). Checked before anything else; the Worker runs first for every
+ * path (`run_worker_first: true`), so this covers `/assets/*` too.
  */
 export function canonicalHostRedirect(url: URL, env: Pick<EdgeEnv, 'OKIE_PUBLIC_ORIGIN'>): Response | undefined {
   const raw = env.OKIE_PUBLIC_ORIGIN?.trim();
@@ -56,7 +58,45 @@ export function canonicalHostRedirect(url: URL, env: Pick<EdgeEnv, 'OKIE_PUBLIC_
   });
 }
 
+/** Staging-only crawler opt-out (`ROBOTS_NOINDEX=1`): robots.txt disallows everything. */
+export const NOINDEX_ROBOTS_TXT = 'User-agent: *\nDisallow: /\n';
+export const ROBOTS_TAG = 'noindex, nofollow';
+
+function noindex(env: Pick<EdgeEnv, 'ROBOTS_NOINDEX'>): boolean {
+  return env.ROBOTS_NOINDEX?.trim() === '1';
+}
+
+/**
+ * `/assets/*` through Static Assets. With `not_found_handling: single-page-application` a missing
+ * hashed asset (e.g. a chunk of the previous build, requested by a page loaded before a deploy) would
+ * come back as index.html with 200 and the immutable `/assets/*` cache header, and a browser would
+ * keep that wrong "script" for a year. Vite never emits HTML under /assets, so an HTML answer there
+ * is the SPA fallback: turn it into an uncacheable 404. Cost: every /assets request is now a Worker
+ * invocation (Workers Paid; a pass-through to env.ASSETS, negligible CPU).
+ */
+async function serveHashedAsset(request: Request, env: EdgeEnv): Promise<Response> {
+  const response = await env.ASSETS.fetch(request);
+  const type = response.headers.get('content-type') ?? '';
+  // Any HTML status counts (a 304 revalidating index.html's ETag included).
+  if (/^text\/html\b/i.test(type)) {
+    return new Response(request.method === 'HEAD' ? null : 'not found\n', {
+      status: 404,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+  return response;
+}
+
 export async function handleEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionContext, deps: EdgeDeps = defaultDeps(env)): Promise<Response> {
+  const response = await routeEdgeRequest(request, env, ctx, deps);
+  if (!noindex(env)) return response;
+  // Staging: every response carries the crawler opt-out (a copy, since fetched responses are immutable).
+  const tagged = new Response(response.body, response);
+  tagged.headers.set('x-robots-tag', ROBOTS_TAG);
+  return tagged;
+}
+
+async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionContext, deps: EdgeDeps): Promise<Response> {
   const url = new URL(request.url);
   const { pathname } = url;
   const waitUntil = (promise: Promise<unknown>) => ctx.waitUntil(promise);
@@ -64,6 +104,12 @@ export async function handleEdgeRequest(request: Request, env: EdgeEnv, ctx: Exe
   const redirect = canonicalHostRedirect(url, env);
   if (redirect) return redirect;
 
+  if (pathname === '/robots.txt' && noindex(env)) {
+    return new Response(request.method === 'HEAD' ? null : NOINDEX_ROBOTS_TXT, {
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=300' },
+    });
+  }
+  if (pathname.startsWith('/assets/')) return serveHashedAsset(request, env);
   if (pathname.startsWith('/scan/')) {
     return handleScanRoute(request, {
       bucket: env.ATLAS_BUCKET,

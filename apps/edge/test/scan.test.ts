@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetPackIndexCache, sanitizeFocusId, VERSION_HEADER } from '../src/scan';
 import { acceptsGzip } from '../src/scan';
-import { edgeFetch, gunzipText, recordingBackend, seedAtlas, seedIndex } from './helpers';
+import { edgeFetch, gunzipText, memoryCache, recordingBackend, seedAtlas, seedIndex } from './helpers';
 
 const NEIGHBORHOOD_DEFAULT = `${JSON.stringify({ focus: null, entities: ['a'] })}\n`;
 const NEIGHBORHOOD_A = `${JSON.stringify({ focus: 'container:a', entities: ['a', 'b'] })}\n`;
@@ -64,6 +64,30 @@ describe('/scan from R2', () => {
       expect(await response.json(), path).toEqual({ error: 'not found' });
     }
     expect((await edgeFetch('/scan/acme__miss/snapshot.json', { init: { method: 'POST', body: '{}' } })).status).toBe(404);
+  });
+
+  it('answers an absent optional sidecar with 204 (no console 404), a present one with its bytes', async () => {
+    await seedAtlas({ slug: 'acme__sidecar', versionId: 'v1', files: { 'snapshot.json': '{}', 'stories.json': '{"s":1}' } });
+    for (const file of ['enrichment-report.json', 'enrichment-status.json']) {
+      for (const query of ['', '?version=v1']) {
+        const response = await edgeFetch(`/scan/acme__sidecar/${file}${query}`);
+        expect(response.status, file + query).toBe(204);
+        expect(await response.text()).toBe('');
+        expect(response.headers.get(VERSION_HEADER)).toBe('v1');
+        expect(response.headers.get('content-type')).toBeNull();
+      }
+    }
+    expect(await (await edgeFetch('/scan/acme__sidecar/stories.json')).text()).toBe('{"s":1}');
+    // A pinned 204 is as immutable as the version: cached like a 200; a latest-resolved one is not.
+    const cache = memoryCache();
+    await edgeFetch('/scan/acme__sidecar/enrichment-report.json?version=v1', { cache });
+    await edgeFetch('/scan/acme__sidecar/enrichment-status.json', { cache });
+    expect(cache.keys).toEqual(['http://127.0.0.1:4196/scan/acme__sidecar/enrichment-report.json?version=v1']);
+    expect((await edgeFetch('/scan/acme__sidecar/enrichment-report.json?version=v1', { cache })).status).toBe(204);
+    // Required files, and sidecars of an unknown slug or version, still 404.
+    expect((await edgeFetch('/scan/acme__sidecar/view.json')).status).toBe(404);
+    expect((await edgeFetch('/scan/nobody__here/enrichment-report.json')).status).toBe(404);
+    expect((await edgeFetch('/scan/acme__sidecar/enrichment-report.json?version=v9')).status).toBe(404);
   });
 
   it('never serves a private/ object, even under a public file name', async () => {

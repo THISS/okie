@@ -130,3 +130,15 @@ export async function seedIndex(repos: Array<{ slug: string; versionId: string }
   await edgeEnv.ATLAS_BUCKET.put(publishedIndexKey(), text);
   return text;
 }
+
+/** An isolated in-memory Cache stand-in (the real `caches.default` is shared across tests). */
+export function memoryCache(): Cache & { keys: string[] } {
+  const store = new Map<string, Response>();
+  const keys: string[] = [];
+  return {
+    keys,
+    async match(key: RequestInfo | URL) { const hit = store.get(String(key)); return hit ? hit.clone() : undefined; },
+    async put(key: RequestInfo | URL, response: Response) { keys.push(String(key)); store.set(String(key), response.clone()); },
+    async delete(key: RequestInfo | URL) { return store.delete(String(key)); },
+  } as unknown as Cache & { keys: string[] };
+}

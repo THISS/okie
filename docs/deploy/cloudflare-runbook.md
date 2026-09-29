@@ -61,9 +61,11 @@ print a one-line note if they found one.
    1 min period.
 7. **Custom domains:** these are created by the first deploy (`routes[].custom_domain: true`): `staging.sourcefor.dev`,
    and `sourcefor.dev` plus `www.sourcefor.dev` for production. The Worker 301s `www.<host>` to the same path and
-   query on `OKIE_PUBLIC_ORIGIN` before anything else. `run_worker_first` patterns match paths only, so the Worker runs
-   first for every path except the content-hashed `/assets/*`. Those are only requested by a page that has already
-   been redirected. `_headers` still apply to what the Worker passes through `env.ASSETS`.
+   query on `OKIE_PUBLIC_ORIGIN` before anything else. The Worker runs first for every path (`run_worker_first: true`);
+   `_headers` still apply to what it passes through `env.ASSETS`. A missing `/assets/*` file (a chunk of the previous
+   build, asked for by a page loaded before a deploy) answers 404 `no-store` rather than the SPA shell. The cost is one
+   Worker invocation per asset request (a pass-through; negligible on Workers Paid). Staging sets
+   `ROBOTS_NOINDEX=1`: `X-Robots-Tag: noindex, nofollow` on every response and a disallow-all `/robots.txt`.
 8. **First-deploy lessons (fresh account):**
    - Error **10063**: the account has no workers.dev subdomain yet. Open Workers & Pages in the dashboard once to
      create it, then deploy again.
@@ -118,6 +120,11 @@ Then run the smoke checks against staging:
 - On `/r/<owner>/<repo>`: no Ask button, panel or ⌘↵ shortcut; no account menu; the attribution strip at the bottom
   shows the repository, commit and licence, linking to GitHub (it is hidden in embeds).
 - `/scan/index.json`, `/api/auth/me` (`{ mode: "public", ask: false }`), `/api/ask` (`{ connected: false }`).
+- `curl -s -o /dev/null -w '%{http_code}' <origin>/assets/missing.js` answers `404`, and `curl -sI` on a real chunk
+  from the page (`<origin>/assets/index-<hash>.js`) still shows `cache-control: public, max-age=31536000, immutable`
+  (`_headers` through the Worker). On staging,
+  `curl -sI <origin>/ | grep -i x-robots-tag` shows `noindex, nofollow` and `/robots.txt` disallows everything;
+  production serves the allow-all `robots.txt` from the web build.
 - `curl -sI -H 'accept-encoding: gzip' '<origin>/scan/<slug>/neighborhood.json'`: `content-encoding: gzip`,
   `vary: Accept-Encoding`.
 - Open "View full source" in the inspector once. `source.json` fetches the file from GitHub raw at the pinned commit
