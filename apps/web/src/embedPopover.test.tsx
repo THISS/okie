@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { copyEmbedSnippet, EMBED_COPY_FAILED_MESSAGE, EMBED_LINK_COPY_FAILED_MESSAGE, restartTimer, type TimerApi, type TimerHandle, EMBED_UNAVAILABLE_MESSAGE, EmbedAtlasControl, EmbedDialogBody, focusTrapTarget, type EmbedDialogProps } from './embedPopover';
+import { copyEmbedSnippet, EMBED_COPY_FAILED_MESSAGE, EMBED_LINK_COPY_FAILED_MESSAGE, EMBED_UNAVAILABLE_MESSAGE, EmbedAtlasControl, EmbedDialogBody, focusTrapTarget, settleCopyFeedback, type EmbedDialogProps, type TimerApi, type TimerHandle } from './embedPopover';
 import { EMBED_OEMBED_NOTE } from './embedSnippet';
 
 /**
@@ -122,20 +122,42 @@ describe('CLA-329 embed dialog: markup', () => {
 });
 
 describe('CLA-329 embed dialog: copied-feedback timer', () => {
-  it('a second copy replaces the pending reset instead of leaving it to fire early', () => {
+  function fakeTimers() {
     let next = 0;
     const pending = new Map<number, () => void>();
     const timers: TimerApi = {
       set: callback => { next += 1; pending.set(next, callback); return next; },
-      clear: handle => { if (typeof handle === 'number') pending.delete(handle); },
+      clear: handle => { if (handle !== undefined) pending.delete(handle); },
     };
+    return { timers, pending, fire: () => { for (const callback of [...pending.values()]) callback(); } };
+  }
+
+  it('a second successful copy replaces the pending reset instead of leaving it to fire early', () => {
+    const { timers, pending, fire } = fakeTimers();
     const ref: { current: TimerHandle } = { current: undefined };
     const resets: string[] = [];
-    restartTimer(ref, timers, () => resets.push('first'), 2400);
-    restartTimer(ref, timers, () => resets.push('second'), 2400);
+    settleCopyFeedback(ref, timers, true, () => resets.push('first'), 2400);
+    settleCopyFeedback(ref, timers, true, () => resets.push('second'), 2400);
     expect([...pending.keys()]).toEqual([2]);
-    for (const callback of pending.values()) callback();
+    fire();
     expect(resets).toEqual(['second']);
   });
-});
 
+  it('a failed copy cancels an earlier copy\'s pending reset, so its failure message stays', () => {
+    const { timers, pending, fire } = fakeTimers();
+    const ref: { current: TimerHandle } = { current: undefined };
+    const resets: string[] = [];
+    settleCopyFeedback(ref, timers, true, () => resets.push('copied'), 2400);
+    settleCopyFeedback(ref, timers, false, () => resets.push('failed'), 2400);
+    expect(pending.size).toBe(0);
+    expect(ref.current).toBeUndefined();
+    fire();
+    expect(resets).toEqual([]);
+  });
+
+  it('both Copy handlers settle their feedback through the helper (no bare setTimeout in the component)', () => {
+    const source = readFileSync(new URL('./embedPopover.tsx', import.meta.url), 'utf8');
+    expect(source.match(/settleCopyFeedback\(copiedTimerRef, WINDOW_TIMERS, copied,/g)).toHaveLength(2);
+    expect(source.match(/window\.setTimeout\(/g)).toHaveLength(1); // only WINDOW_TIMERS.set
+  });
+});
