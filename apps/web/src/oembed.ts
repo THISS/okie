@@ -92,7 +92,7 @@ export type OembedHeaderBag = {
 
 const CORS_HEADERS = {
   'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, OPTIONS',
+  'access-control-allow-methods': 'GET, HEAD, OPTIONS',
   'access-control-allow-headers': 'Accept',
 } as const;
 
@@ -396,7 +396,17 @@ export function installPublicAtlasOembedDiscovery(
   link.setAttribute('title', `${OEMBED_PROVIDER_NAME} oEmbed`);
 }
 
+/**
+ * oEmbed over HTTP. HEAD (CLA-329: some consumers probe with it) answers exactly as GET would, same
+ * status and headers, without the body.
+ */
 export function handleOembedRequest(input: OembedHttpInput): OembedHttpOutput {
+  if (input.method.toUpperCase() !== 'HEAD') return answerOembedRequest(input);
+  const answer = answerOembedRequest({ ...input, method: 'GET' });
+  return { ...answer, body: '' };
+}
+
+function answerOembedRequest(input: OembedHttpInput): OembedHttpOutput {
   const cors = {
     ...CORS_HEADERS,
     'cache-control': `public, max-age=${OEMBED_CACHE_AGE_SECONDS}`,
@@ -406,7 +416,7 @@ export function handleOembedRequest(input: OembedHttpInput): OembedHttpOutput {
     return { status: 204, headers: cors, body: '' };
   }
   if (method !== 'GET') {
-    return jsonBody(405, { error: 'method not allowed' });
+    return jsonBody(405, { error: 'method not allowed' }, { allow: 'GET, HEAD, OPTIONS' });
   }
   const format = (input.searchParams.get('format') ?? 'json').toLowerCase();
   if (format === 'xml') {
