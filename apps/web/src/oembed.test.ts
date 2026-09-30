@@ -148,6 +148,19 @@ describe('oEmbed for public atlas URLs (CLA-30)', () => {
     )).toBeUndefined();
   });
 
+  it('answers HEAD with the same status and headers as GET and no body (CLA-329)', () => {
+    for (const query of [`url=${encodeURIComponent(DOGFOOD)}`, '', `url=${encodeURIComponent(DOGFOOD)}&format=xml`, `url=${encodeURIComponent(`${ORIGIN}/r/secret-org/private-tree`)}`]) {
+      const get = request(query);
+      const head = request(query, 'HEAD');
+      expect(head.status).toBe(get.status);
+      expect(head.headers).toEqual(get.headers);
+      expect(head.body).toBe('');
+      expect(get.body).not.toBe('');
+    }
+    expect(request(`url=${encodeURIComponent(DOGFOOD)}`).headers['access-control-allow-methods']).toBe('GET, HEAD, OPTIONS');
+    expect(request(`url=${encodeURIComponent(DOGFOOD)}`, 'POST').headers.allow).toBe('GET, HEAD, OPTIONS');
+  });
+
   it('rejects missing, xml, and non-atlas URLs', () => {
     expect(request('').status).toBe(400);
     expect(request(`url=${encodeURIComponent(DOGFOOD)}&format=xml`).status).toBe(501);

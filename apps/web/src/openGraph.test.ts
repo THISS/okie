@@ -53,6 +53,8 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     expect(html).toContain('<meta name="twitter:title" content="okie by THISS · Source For Atlas" />');
     expect(html).toContain('<meta name="twitter:description" content="Explore how THISS/okie is built: an architecture atlas from system context down to source, on Source For Atlas." />');
     expect(html).toContain(`<meta name="twitter:image" content="${ORIGIN}/og/THISS/okie" />`);
+    // CLA-329: the embed page advertised as an Iframely player (honoured once Iframely has reviewed the domain).
+    expect(html).toContain(`<link rel="iframely player" type="text/html" href="${ORIGIN}/r/THISS/okie?embed=1" media="aspect-ratio: 16/9" />`);
     expect(html).not.toMatch(/login|signin|oauth|authorize/i);
     expect(openGraphLeaksSecrets(html)).toBe(false);
     expect(html).toContain('id="root"');

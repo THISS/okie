@@ -4,6 +4,7 @@ import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 
 const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
+const sourceRepoLink = readFileSync(new URL('./sourceRepoLink.tsx', import.meta.url), 'utf8');
 const askPanel = readFileSync(new URL('./ask/AskPanel.tsx', import.meta.url), 'utf8');
 const askCss = readFileSync(new URL('./ask/ask.css', import.meta.url), 'utf8');
 const diagramView = readFileSync(new URL('./diagram/SemanticDiagramSurface.tsx', import.meta.url), 'utf8');
@@ -690,11 +691,14 @@ describe('production dev-mode gate', () => {
 
 describe('header Open source and account chrome (CLA-101)', () => {
   it('opens the source repository and account/sign-in instead of dead header buttons', () => {
-    expect(app).toContain('data-testid="open-source-repo"');
+    // CLA-329: the link lives in SourceRepoLink (GitHub mark + "View on GitHub" for GitHub repositories).
+    expect(app).toContain('<SourceRepoLink url={sourceRepositoryUrl}/>');
+    expect(sourceRepoLink).toContain('data-testid="open-source-repo"');
     expect(app).toContain('atlasSourceRepositoryUrl(askAtlasIdentity)');
-    expect(app).toContain('aria-label="Open source repository"');
-    expect(app).toContain('rel="noreferrer"');
-    expect(app).toContain('target="_blank"');
+    expect(sourceRepoLink).toContain("'Open source repository'");
+    expect(sourceRepoLink).toContain('aria-label={label}');
+    expect(sourceRepoLink).toContain('rel="noreferrer"');
+    expect(sourceRepoLink).toContain('target="_blank"');
     expect(app).toContain('className="diagram-add-menu screenshot-menu account-menu"');
     expect(app).toContain('data-testid="account-menu"');
     expect(app).toContain('data-testid="account-signin"');
@@ -704,13 +708,25 @@ describe('header Open source and account chrome (CLA-101)', () => {
     expect(app).toContain('Sign in with GitHub');
     expect(app).toContain('Sign out');
     expect(app).toContain('accountInitials(askAuth?.login)');
-    expect(app).not.toMatch(/<button aria-label="Open source repository"/);
+    expect(sourceRepoLink).not.toMatch(/<button aria-label=/);
     expect(app).not.toMatch(/<button aria-label="Open account menu"/);
     expect(app).not.toContain('>BC</button>');
     expect(app).not.toContain('>BC</summary>');
     expect(css).toContain('a.icon-button { text-decoration: none; }');
     expect(css).toContain('.account-menu summary.avatar-button');
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
+  });
+
+  it('CLA-329: the embed button renders only behind the availability gate, right after Share', () => {
+    expect(app).toContain('const embedAtlas = useEmbedAtlasAvailability(Boolean(portableAtlas));');
+    expect(app.match(/<EmbedAtlasControl /g)).toHaveLength(1);
+    expect(app).toContain('{embedAtlas.visible && <EmbedAtlasControl displayNames={embedAtlas.displayNames} readPageHref={readCurrentViewHref}/>}');
+    const share = app.indexOf('title="Copy current view"');
+    expect(share).toBeGreaterThan(0);
+    expect(app.indexOf('<EmbedAtlasControl ')).toBeGreaterThan(share);
+    expect(app.indexOf('<EmbedAtlasControl ')).toBeLessThan(app.indexOf('<SourceRepoLink '));
+    // Share and Embed read the same flushed view.
+    expect(app).toMatch(/async function copyCurrentView\(\) \{\n    const url = readCurrentViewHref\(\);/);
   });
 
   it('leaves Share, Mermaid import, and screenshot wired', () => {

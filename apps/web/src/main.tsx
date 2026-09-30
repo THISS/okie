@@ -374,7 +374,8 @@ async function boot() {
   const { App } = await import('./App');
   setDocumentPage(documentPageFor('atlas'));
   root.render(<StrictMode><App /></StrictMode>);
-  // CLA-266: a published atlas credits its upstream repository, commit and licence (not in embeds).
+  // CLA-266: a published atlas credits its upstream repository, commit and licence; embeds get the compact
+  // owner/repo · licence · source line (CLA-328). The result also tells App the atlas is a publication (CLA-329).
   if (route.kind === 'repo') void installPublishedAtlasAttribution(route.slug);
 }
 

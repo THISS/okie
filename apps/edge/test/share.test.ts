@@ -213,6 +213,25 @@ describe('share pages at the edge', () => {
     expect(miss.status).toBe(404);
   });
 
+  it('answers HEAD like GET without a body on /oembed, the share page and the embed page (CLA-329)', async () => {
+    await seedAtlas({ slug: 'acme__embed', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    const paths = [
+      `/oembed?url=${encodeURIComponent(`${ORIGIN}/r/acme/embed`)}&format=json`,
+      `/oembed?url=${encodeURIComponent(`${ORIGIN}/r/nobody/unpublished`)}`,
+      '/r/acme/embed',
+      '/r/acme/embed?embed=1',
+    ];
+    for (const path of paths) {
+      const get = await edgeFetch(path);
+      const head = await edgeFetch(path, { init: { method: 'HEAD' } });
+      expect(head.status, path).toBe(get.status);
+      const headers = (response: Response) => [...response.headers].filter(([name]) => name !== 'content-length' && name !== 'date');
+      expect(headers(head), path).toEqual(headers(get));
+      expect(await head.text(), path).toBe('');
+      expect((await get.text()).length, path).toBeGreaterThan(0);
+    }
+  });
+
   it('leaves everything else to static assets (SPA fallback for / with a non-home query)', async () => {
     const shell = await edgeFetch('/?portable=1');
     expect(shell.status).toBe(200);
