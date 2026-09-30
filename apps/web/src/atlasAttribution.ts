@@ -1,7 +1,7 @@
 import { isFramedBrowsingContext } from './embedCanvas';
 import { isEmbedChrome, isEmbedQueryFlag } from './embedChrome';
 import { publishedNamesFor, publishedRowForSlug } from './publishedNames';
-import { CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, repoPageTitle } from './siteMeta';
+import { CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, PRIVACY_PATH, repoPageTitle } from './siteMeta';
 
 /**
  * CLA-266 attribution for published atlases. Every `/r/<owner>/<repo>` page whose atlas came from a
@@ -78,7 +78,7 @@ export function atlasAttributionFor(index: unknown, slug: string): PublishedAtla
 
 /** The strip's words, in order, as plain text (also its accessible description). */
 export function attributionText(attribution: PublishedAtlasAttribution): string {
-  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub · About · ${CREDIT_LEAD}${CREDIT_LINK_TEXT}`;
+  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub · About · Privacy · ${CREDIT_LEAD}${CREDIT_LINK_TEXT}`;
 }
 
 type Link = { text: string; href: string; code?: boolean; internal?: boolean; rel?: string };
@@ -99,6 +99,8 @@ function parts(attribution: PublishedAtlasAttribution): Part[] {
     { text: 'source on GitHub', href: attribution.treeUrl },
     ' · ',
     { text: 'About', href: ATTRIBUTION_ABOUT_HREF, internal: true },
+    ' · ',
+    { text: 'Privacy', href: PRIVACY_PATH, internal: true },
     ' · ',
     // CLA-269: the site footer's fine-print credit (same words, href and rel), trailing the strip's one line.
     { credit: [CREDIT_LEAD, { text: CREDIT_LINK_TEXT, href: CREDIT_URL, rel: CREDIT_REL }] },

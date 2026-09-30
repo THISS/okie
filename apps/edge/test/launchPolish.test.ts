@@ -133,6 +133,10 @@ describe('sitemap.xml at the edge', () => {
     <lastmod>2026-09-20T08:30:00.000Z</lastmod>
   </url>
   <url>
+    <loc>https://sourcefor.dev/privacy</loc>
+    <lastmod>2026-09-30</lastmod>
+  </url>
+  <url>
     <loc>https://sourcefor.dev/r/burnt-sushi/ripgrep</loc>
     <lastmod>2026-09-20T08:30:00.000Z</lastmod>
   </url>
@@ -158,14 +162,15 @@ describe('sitemap.xml at the edge', () => {
     expect(staging).toContain('<loc>https://staging.sourcefor.dev/</loc>');
     expect(staging).not.toContain('/new');
     const fallback = await (await edgeFetch('/sitemap.xml', { env: { OKIE_PUBLIC_ORIGIN: '' } })).text();
-    expect(fallback.match(/<url>/g)).toHaveLength(1);
+    // `/` and `/privacy` (CLA-316).
+    expect(fallback.match(/<url>/g)).toHaveLength(2);
     expect(fallback).toContain('<loc>https://sourcefor.dev/</loc>\n  </url>'); // no lastmod without a publish
     await edgeEnv.ATLAS_BUCKET.put(publishedIndexKey(), 'not json');
     const broken = await edgeFetch('/sitemap.xml', { env: { OKIE_PUBLIC_ORIGIN: 'https://sourcefor.dev' } });
     expect(broken.status).toBe(200);
-    expect((await broken.text()).match(/<url>/g)).toHaveLength(1);
+    expect((await broken.text()).match(/<url>/g)).toHaveLength(2);
     await seedIndex([]);
-    expect((await (await edgeFetch('/sitemap.xml')).text()).match(/<url>/g)).toHaveLength(1);
+    expect((await (await edgeFetch('/sitemap.xml')).text()).match(/<url>/g)).toHaveLength(2);
   });
 
   it('escapes XML', () => {
@@ -173,7 +178,7 @@ describe('sitemap.xml at the edge', () => {
     const xml = renderSitemap([{ loc: 'https://x.test/?a=1&b=<2>', lastmod: '2026-09-30T00:00:00.000Z' }]);
     expect(xml).toContain('<loc>https://x.test/?a=1&amp;b=&lt;2&gt;</loc>');
     // Only slugs that map straight back to themselves are listed, so a row can't inject path text.
-    expect(sitemapUrls({ schema: 'okie.published-index/v1', repos: [{ slug: 'a&b__c' }, { slug: '../x__y' }] }, 'https://sourcefor.dev')).toHaveLength(1);
+    expect(sitemapUrls({ schema: 'okie.published-index/v1', repos: [{ slug: 'a&b__c' }, { slug: '../x__y' }] }, 'https://sourcefor.dev').map(url => url.loc)).toEqual(['https://sourcefor.dev/', 'https://sourcefor.dev/privacy']);
   });
 });
 

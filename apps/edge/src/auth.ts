@@ -113,6 +113,17 @@ export function resolveAuthSetup(env: EdgeEnv, requestUrl: URL): AuthSetup | und
   };
 }
 
+/**
+ * The cookies sign-in sets on the production (https) origin, for the privacy page's table
+ * (apps/web/src/privacyPage.ts): names and lifetimes straight from the constants used to set them.
+ */
+export function privacyCookies(): { oauthState: { name: string; maxAgeSeconds: number }; session: { name: string; maxAgeSeconds: number } } {
+  return {
+    oauthState: { name: stateCookieName(true), maxAgeSeconds: STATE_TTL_SECONDS },
+    session: { name: sessionCookieName(true), maxAgeSeconds: SESSION_TTL_SECONDS },
+  };
+}
+
 export function sessionCookieName(secure: boolean): string {
   return secure ? '__Host-sf_session' : 'sf_session';
 }

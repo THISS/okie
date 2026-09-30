@@ -2,7 +2,7 @@ import { SITE_FOOTER_CSS, siteBrandLinkHtml, siteFooterHtml } from './notFoundPa
 import { buildSitePageOpenGraphTags, renderOpenGraphHead, trustedPageOrigin } from './openGraph';
 import { canonicalAtlasPathForSlug, isoDate, publishedNamesFor } from './publishedNames';
 import { repoSlugFor } from './renderer/route';
-import { CONTACT_EMAIL, HOME_DESCRIPTION, homePageMeta } from './siteMeta';
+import { CONTACT_EMAIL, COOKIE_NOTICE_STORAGE_KEY, COOKIE_NOTICE_TEXT, HOME_DESCRIPTION, homePageMeta, PRIVACY_PATH } from './siteMeta';
 
 /**
  * The hosted home page (CLA-269): `/` on sourcefor.dev is a server-rendered hero plus a directory of
@@ -490,6 +490,30 @@ export const HOME_SCRIPT_PATH = '/home.js';
  */
 export const AUTH_SLOT_HTML = '<nav class="site-auth" aria-label="Account" data-auth-slot hidden></nav>';
 
+export { COOKIE_NOTICE_STORAGE_KEY, COOKIE_NOTICE_TEXT };
+
+/**
+ * The cookie notice (CLA-316), rendered only when accounts are configured (no sign-in, no cookies to tell
+ * anyone about). `hidden` in the HTML, so without JavaScript nothing shows (it is informational only: every
+ * cookie is strictly necessary). home.js reveals it only when /api/auth/me answers `oauthConfigured: true`,
+ * and not once it was dismissed.
+ */
+export const COOKIE_NOTICE_HTML = `<div class="cookie-notice" role="region" aria-label="Cookie notice" data-cookie-notice hidden>
+      <p>${COOKIE_NOTICE_TEXT}</p>
+      <a href="${PRIVACY_PATH}">Privacy</a>
+      <button type="button" data-cookie-notice-dismiss>OK</button>
+    </div>`;
+
+const COOKIE_NOTICE_STYLE = `
+      .cookie-notice{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;align-items:center;gap:.5rem .9rem;padding:.55rem 1rem;border-top:1px solid #2a3a37;background:#0d1413;color:#b7c3c0;font-size:.85rem;line-height:1.4}
+      .cookie-notice[hidden]{display:none}
+      .cookie-notice p{flex:1;min-width:0;margin:0}
+      .cookie-notice a{color:#79dfd4}
+      .cookie-notice button{flex:none;min-height:36px;padding:.3rem .9rem;border:1px solid #79dfd4;border-radius:8px;background:transparent;color:#79dfd4;font:inherit;font-weight:600;cursor:pointer}
+      .cookie-notice a:focus-visible,.cookie-notice button:focus-visible{outline:2px solid #79dfd4;outline-offset:2px}
+      body.has-cookie-notice{padding-bottom:5.5rem}
+    `;
+
 /** The slot's CSS, only on pages that render it (positioned over the hero, so filling it never shifts the layout). */
 const AUTH_STYLE = `
       body{position:relative}
@@ -549,7 +573,7 @@ function renderHomePage(input: HomePageInput, cards: readonly HomeAtlasCard[]): 
     <meta name="color-scheme" content="dark" />
     ${renderOpenGraphHead(tags)}
     ${FAVICONS}
-    <style>${STYLE}${accounts ? AUTH_STYLE : ''}</style>${script}
+    <style>${STYLE}${accounts ? AUTH_STYLE : ''}${accounts ? COOKIE_NOTICE_STYLE : ''}</style>${script}
   </head>
   <body>
     ${header}<main data-home="true">
@@ -564,7 +588,7 @@ function renderHomePage(input: HomePageInput, cards: readonly HomeAtlasCard[]): 
       ${directoryHtml(cards, q, sort)}
       </section>
     </main>
-    ${siteFooterHtml()}
+    ${siteFooterHtml()}${accounts ? `\n    ${COOKIE_NOTICE_HTML}` : ''}
   </body>
 </html>
 `;

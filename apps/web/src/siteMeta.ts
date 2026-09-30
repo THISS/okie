@@ -152,3 +152,11 @@ export function applyPageMeta(doc: MetaDocument, pathname: string): PageMeta {
  * (`users.privacy_version`, apps/edge) and shown on the privacy page; bump it when the policy changes.
  */
 export const PRIVACY_POLICY_VERSION = '2026-09-30';
+
+/** The privacy page (CLA-316; privacyPage.ts, rendered by the edge Worker). Every site footer links it. */
+export const PRIVACY_PATH = '/privacy';
+
+/** The cookie notice's words (CLA-316): the edge home (homePage.ts + home.js) and the SPA (cookieNotice.tsx). */
+export const COOKIE_NOTICE_TEXT = 'We use only the cookies needed to keep you signed in, and cookieless analytics.';
+/** localStorage key (value "1") that remembers a dismissed notice, shared by home.js and the SPA. */
+export const COOKIE_NOTICE_STORAGE_KEY = 'sf.cookieNotice.dismissed';

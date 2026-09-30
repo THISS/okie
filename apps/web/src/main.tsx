@@ -22,6 +22,7 @@ import { createIndexedDbPortableStore, createPortablePersistence, portableStorag
 import { registerWebMcpFoundation } from './webmcp';
 import { applyPageMeta, SITE_NAME } from './siteMeta';
 import { bootPlan } from './bootPlan';
+import { mountCookieNotice } from './cookieNotice';
 import { MobileNotice, mobileNoticeCopy, readMobileGateInput } from './mobileGate';
 import { NotFoundScreen } from './siteFooter';
 import { readPortableFile, rememberPortableSession, forgetPortableSession } from './portable/session';
@@ -276,6 +277,8 @@ async function boot() {
     portableMarker: portableMarkerEnabled(),
     gate: readMobileGateInput(),
   });
+  // CLA-316: the cookie notice, in its own root outside App (never in embeds, portable, operator or demos).
+  void mountCookieNotice({ portable: plan.kind === 'portable' });
   if (plan.kind === 'portable') {
     // A self-hosted portable viewer is not a sourcefor.dev page: brand the tab only. applyPageMeta (and
     // its canonical) never runs here, and build-portable-viewer.mjs strips the shell's canonical/og/twitter tags.

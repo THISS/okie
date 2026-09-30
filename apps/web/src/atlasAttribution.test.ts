@@ -68,7 +68,7 @@ describe('published atlas attribution (CLA-266)', () => {
       licenceLabel: 'MIT licence',
       licenceUrl: `https://github.com/pmndrs/zustand/blob/${SHA}/LICENSE`,
     });
-    expect(attributionText(attribution!)).toBe('Source For Atlas · zustand by pmndrs · commit 4f1c2a9 · MIT licence · source on GitHub · About · Brought to you by the guy who made clabrate.com');
+    expect(attributionText(attribution!)).toBe('Source For Atlas · zustand by pmndrs · commit 4f1c2a9 · MIT licence · source on GitHub · About · Privacy · Brought to you by the guy who made clabrate.com');
   });
 
   it('renders nothing for rows that are not publications or are malformed', () => {
@@ -106,10 +106,12 @@ describe('published atlas attribution (CLA-266)', () => {
       ['source on GitHub', `https://github.com/pmndrs/zustand/tree/${SHA}`, 'noopener noreferrer'],
       // CLA-318: the one site link, to the home page's footer (GitHub, contact, licence note; CLA-269), same tab.
       ['About', '/#about', 'undefined'], // no rel: same tab
+      // CLA-316: the privacy page, same tab.
+      ['Privacy', '/privacy', 'undefined'],
       // CLA-269: the site footer's credit, same words, href and rel.
       ['clabrate.com', 'https://clabrate.com', 'noopener'],
     ]);
-    expect(page.text(footer as never)).toMatch(/ · About · Brought to you by the guy who made clabrate\.com$/);
+    expect(page.text(footer as never)).toMatch(/ · About · Privacy · Brought to you by the guy who made clabrate\.com$/);
     const line = (footer as unknown as { children: Array<{ children: Array<{ tag?: string; className?: string }> }> }).children[0]!;
     const credit = line.children.at(-1)!;
     expect(credit).toMatchObject({ tag: 'span', className: 'atlas-attribution-credit' });

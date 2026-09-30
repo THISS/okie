@@ -1,5 +1,5 @@
 import { canonicalAtlasPathForSlug, isoDate } from '../../web/src/publishedNames';
-import { CANONICAL_ORIGIN } from '../../web/src/siteMeta';
+import { CANONICAL_ORIGIN, PRIVACY_PATH, PRIVACY_POLICY_VERSION } from '../../web/src/siteMeta';
 import { PUBLISHED_INDEX_SCHEMA } from '../../server/src/publishedStoreLayout';
 import type { EdgeEnv } from './env';
 import { readPublishedIndex } from './publishedIndexCache';
@@ -9,7 +9,7 @@ import { readPublishedIndex } from './publishedIndexCache';
  * `<lastmod>` = the newest publishedAt) and every published atlas's canonical
  * `/r/<slug owner>/<slug repo>` (the same target the case/punctuation 301 and the page's
  * `<link rel="canonical">` use), on `OKIE_PUBLIC_ORIGIN` (fallback https://sourcefor.dev), with
- * `<lastmod>` from the row's publishedAt. `/new` is not listed: it 301s to `/`. Built from the
+ * `<lastmod>` from the row's publishedAt, plus `/privacy` (lastmod = PRIVACY_POLICY_VERSION, CLA-316). `/new` is not listed: it 301s to `/`. Built from the
  * published index.json in R2 (through the per-isolate cache, publishedIndexCache.ts); a missing or
  * unreadable index still answers `/`.
  */
@@ -58,7 +58,11 @@ export function sitemapUrls(index: unknown, origin: string): SitemapUrl[] {
     atlases.push({ loc: new URL(path, origin).href, ...(lastmod ? { lastmod } : {}) });
   }
   atlases.sort((a, b) => (a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : 0));
-  return [{ loc: new URL('/', origin).href, ...(newest ? { lastmod: newest } : {}) }, ...atlases];
+  return [
+    { loc: new URL('/', origin).href, ...(newest ? { lastmod: newest } : {}) },
+    { loc: new URL(PRIVACY_PATH, origin).href, lastmod: PRIVACY_POLICY_VERSION },
+    ...atlases,
+  ];
 }
 
 export function renderSitemap(urls: readonly SitemapUrl[]): string {

@@ -363,6 +363,8 @@ pnpm --silent --filter @okie/edge users:delete production --email someone@exampl
 Self-serve: a signed-in user can untick product updates, or tick the confirmation and "Delete my account", on
 `/account`. Deletion removes the row at once and signs them out.
 
+**Privacy page and cookie notice:** the `/privacy` copy lives in `PRIVACY_COPY` at the top of `apps/web/src/privacyPage.ts` (its cookie table comes from `auth.ts`, its date from `PRIVACY_POLICY_VERSION` in `apps/web/src/siteMeta.ts`: bump that when the policy changes); the notice's words are `COOKIE_NOTICE_TEXT` in the same `siteMeta.ts`. Copy the owner still has to fill in carries the marker `[pending owner]` (or `[pending owner: <what to do>]`); `deploy:production` refuses to run while `privacyPage.ts` contains it (staging deploys anyway, and a production `--dry-run` only prints a warning).
+
 **Local:** in `apps/edge/.dev.vars` set `SESSION_SIGNING_KEY` (32+ characters) and either `DEV_AUTH_TEST_LOGIN=1` (a fixed
 test user `okie-test-user`; honoured only on a loopback origin) or a local OAuth app's `GITHUB_CLIENT_ID` /
 `GITHUB_CLIENT_SECRET`. Create the local table once with `pnpm --filter @okie/edge exec wrangler d1 migrations apply USERS_DB --local`.
