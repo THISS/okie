@@ -85,6 +85,8 @@ import { evidenceExcerpt, explorePathView, isKnownRelationKind, navigationPathFr
 import { canonicalRelationForInspection, resolveRelationshipReveal } from './relations/relationshipReveal';
 import { SourceViewer, portableRepositoryRevisionUrl, type LocalWorkspaceContext } from './diagram/SourceViewer';
 import { getActivePortableAtlas } from './portable/runtime';
+import { EmbedAtlasControl, useEmbedAtlasAvailability } from './embedPopover';
+import { SourceRepoLink } from './sourceRepoLink';
 import { resolveExplanationExcerpt } from './explanation/explanationSource';
 import { getDraftPreviewContext } from './operator/previewContext';
 import { OperatorMenuLink } from './operator/OperatorMenuLink';
@@ -2097,6 +2099,7 @@ export function App() {
   });
   const portableAtlas = getActivePortableAtlas();
   const sourceRepositoryUrl = portableAtlas ? portableRepositoryRevisionUrl(portableAtlas.repository) : atlasSourceRepositoryUrl(askAtlasIdentity);
+  const embedAtlas = useEmbedAtlasAvailability(Boolean(portableAtlas)); // CLA-329: public atlases only; reacts to the publication index
   const askReturnPath = `${window.location.pathname}${window.location.search}`;
   const askSignedIn = askAuth?.authenticated === true || askAuth?.publicMode === true; const askHidden = askAuth === undefined || askAuth.askEnabled === false; // CLA-266: no Ask affordance before /api/auth/me answers or when the deployment disables Ask
   const isolatedRelationIds = useMemo(
@@ -5243,7 +5246,8 @@ export function App() {
     }
   }
 
-  async function copyCurrentView() {
+  /** Land the live view (story sample, canvas camera, deferred URL write) in the URL; Share and Embed both read it. */
+  function flushCurrentViewUrl() {
     if (storyStep >= 0) {
       let phase = storyCanonicalPhase;
       let elapsed = storyPhaseElapsedMs;
@@ -5285,7 +5289,15 @@ export function App() {
     if (storyStep < 0) window.dispatchEvent(new Event('atlas:flush-navigation'));
     // Camera-only URL writes are spaced (CLA-326); land any deferred one before reading it.
     historyControllerRef.current?.flushUrl();
-    const url = window.location.href;
+  }
+
+  function readCurrentViewHref() {
+    flushCurrentViewUrl();
+    return window.location.href;
+  }
+
+  async function copyCurrentView() {
+    const url = readCurrentViewHref();
     if (shareFeedbackTimerRef.current !== undefined) window.clearTimeout(shareFeedbackTimerRef.current);
     try {
       await copyViewLink(url, navigator.clipboard);
@@ -5672,7 +5684,8 @@ export function App() {
           >
             {shareFeedback?.tone === 'success' ? <CheckIcon/> : <ShareIcon/>}
           </button>
-          {sourceRepositoryUrl && <a aria-label="Open source repository" className="icon-button" data-testid="open-source-repo" href={sourceRepositoryUrl} rel="noreferrer" target="_blank" title="Open source repository"><CodeIcon/></a>}
+          {embedAtlas.visible && <EmbedAtlasControl displayNames={embedAtlas.displayNames} readPageHref={readCurrentViewHref}/>}
+          {sourceRepositoryUrl && <SourceRepoLink url={sourceRepositoryUrl}/>}
           {!portableAtlas && askAuth !== undefined && askAuth.publicMode !== true && <details className="diagram-add-menu screenshot-menu account-menu"><summary aria-label={askSignedIn ? `Account menu for @${askAuth?.login}` : 'Sign in with GitHub'} className="avatar-button" data-testid="account-menu" title={askSignedIn ? `@${askAuth?.login}` : 'Sign in with GitHub'}>{accountInitials(askAuth?.login)}</summary><div>{askSignedIn ? <><p>@{askAuth?.login}</p>{askAuth?.accountPath ? <a data-testid="account-page-link" href={askAuth.accountPath}>Account</a> : null}<OperatorMenuLink signedIn={askSignedIn}/><a href={askSignInHref(askAuth?.logoutPath ?? '/api/auth/logout', askReturnPath)}>Sign out</a></> : <><a data-testid="account-signin" href={askSignInHref(askAuth?.loginPath ?? '/api/auth/github', askReturnPath)}>Sign in with GitHub</a>{askAuth?.testLoginPath ? <a data-testid="account-test-login" href={askSignInHref(askAuth.testLoginPath, askReturnPath)}>Use the local test sign-in</a> : null}</>}</div></details>}
         </div>
       </header>

@@ -244,7 +244,8 @@ login first.
 - `curl -sI <origin>/new` answers `301` with `location: /` (`/new?utm_source=x&a=1` → `/?utm_source=x`: only the
   home's query params survive).
 - On `/r/<owner>/<repo>`: no Ask button, panel or ⌘↵ shortcut; no account menu; the attribution strip at the bottom
-  shows the repository, commit and licence, linking to GitHub (it is hidden in embeds).
+  shows the repository, commit and licence, linking to GitHub. In an embed (`?embed=1` or framed) it is a compact line,
+  `owner/repo · licence · source ↗`, with each link opening a new tab (CLA-328).
 - Headers: `curl -sI <origin>/ | grep -iE 'content-security|x-content-type|referrer-policy|permissions-policy|origin-agent-cluster'`
   shows all five, with `frame-ancestors 'self'`, `Permissions-Policy: tools=(self)` and `Origin-Agent-Cluster: ?1`. `curl -sI <origin>/r/<owner>/<repo>` shows a CSP without `frame-ancestors`. A JSON or asset
   response has `nosniff` and no CSP. In a browser, the console on `/`, `/?fixture=okie` and `/r/<owner>/<repo>` (and in an embed)

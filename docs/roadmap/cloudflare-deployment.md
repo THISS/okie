@@ -81,7 +81,9 @@ okie-scan + operator UI                sourcefor.dev ─► Worker  (apps/edge, 
   - "Source For Atlas" branding.
 
   It is rendered outside the React shell (`apps/web/src/atlasAttribution.ts`, mounted from `main.tsx`). The root
-  shrinks by the strip's height, so it never covers canvas controls. It is hidden in embeds.
+  shrinks by the strip's height, so it never covers canvas controls. Embeds (framed or `?embed=1`) show a compact
+  22px line instead: `owner/repo · licence · source ↗`, every link opening GitHub in a new tab (CLA-328). The root
+  shrinks by that height too.
 - **Container (apps/server, public-readonly; not deployed at launch).** It serves only Ask, the Ask thread (always
   empty), block-plan, the dynamic `/scan` packets and `/healthz`. There are no OAuth, operator, scan-submit or
   incremental routes. Ask and block-plan are anonymous. The Worker forwards the client address as `x-okie-client-ip`,

@@ -305,14 +305,26 @@ export function publicAtlasOgImageHref(target: PublicAtlasOembedTarget): string 
   return new URL(publicAtlasOgImagePath(target), target.origin).href;
 }
 
+/** Fixed pixel size, or 'responsive': full container width at 16:9 (CLA-329 embed dialog). */
+export type EmbedIframeSize = { width: number; height: number } | 'responsive';
+
+/** Full width, 16:9 by `aspect-ratio` (height:auto overrides the iframe's default 150px). */
+export const RESPONSIVE_IFRAME_STYLE = 'border:0;border-radius:12px;width:100%;height:auto;aspect-ratio:16/9';
+
 export function buildOembedIframeHtml(
   target: PublicAtlasOembedTarget,
-  size: { width: number; height: number },
+  size: EmbedIframeSize,
   displayNames: PublicAtlasDisplayNames = target,
+  options: { chromeNote?: boolean } = {},
 ): string {
   const src = publicAtlasEmbedHref(target);
   const title = publicAtlasTitle(displayNames);
-  return `<!-- ${OEMBED_SNIPPET_CHROME_NOTE} --><iframe src="${escapeAttribute(src)}" width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px" title="${escapeAttribute(title)}" allow="${OEMBED_IFRAME_ALLOW}" allowfullscreen></iframe>`;
+  // The oEmbed payload documents the embed chrome in a leading comment; the header's embed dialog omits it (CLA-329).
+  const note = options.chromeNote === false ? '' : `<!-- ${OEMBED_SNIPPET_CHROME_NOTE} -->`;
+  const box = size === 'responsive'
+    ? `width="100%" loading="lazy" style="${RESPONSIVE_IFRAME_STYLE}"`
+    : `width="${size.width}" height="${size.height}" loading="lazy" style="border:0;border-radius:12px"`;
+  return `${note}<iframe src="${escapeAttribute(src)}" ${box} title="${escapeAttribute(title)}" allow="${OEMBED_IFRAME_ALLOW}" allowfullscreen></iframe>`;
 }
 
 export function buildOembedRichResponse(

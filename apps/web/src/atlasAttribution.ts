@@ -13,7 +13,11 @@ import { CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, PRIVACY_PATH, re
  *
  * Rendered as a small fixed strip outside the React root (main.tsx), so the atlas shell is untouched;
  * `html[data-atlas-attribution]` shrinks `#root` by the strip height so nothing overlaps the canvas
- * controls (app.css). Hidden in embed contexts (framed or `?embed=1`), which keep map-first chrome.
+ * controls (app.css). Embed contexts (framed or `?embed=1`) keep map-first chrome: they get a compact one-line
+ * variant instead (CLA-328: `owner/repo · licence · source ↗`), shrinking `#root` by its smaller height.
+ *
+ * CLA-329: the resolved attribution is also published to a tiny store (`onPublishedAtlasAttribution`), so App,
+ * mounted before the index fetch lands, learns that the atlas is a publication (and GitHub's casing of its names).
  */
 
 export type PublishedAtlasAttribution = {
@@ -159,14 +163,70 @@ export function renderAtlasAttribution(doc: Document, attribution: PublishedAtla
   return footer;
 }
 
-/** Fetch the published index and show the strip for `slug` (no-op in embeds or for non-publications). */
+/** CLA-328: the embed variant's words, in order, as plain text. */
+export function embedAttributionText(attribution: PublishedAtlasAttribution): string {
+  return `${attribution.owner}/${attribution.repo} · ${attribution.licenceLabel} · source ↗`;
+}
+
+function embedParts(attribution: PublishedAtlasAttribution): Part[] {
+  return [
+    { text: `${attribution.owner}/${attribution.repo}`, href: attribution.treeUrl },
+    ' · ',
+    attribution.licenceUrl ? { text: attribution.licenceLabel, href: attribution.licenceUrl } : attribution.licenceLabel,
+    ' · ',
+    { text: 'source ↗', href: attribution.treeUrl },
+  ];
+}
+
+export const EMBED_ATTRIBUTION_CLASS = 'atlas-attribution-embed';
+
+/**
+ * CLA-328: the compact strip for embeds (repo, licence, source; external links only). Same element and test id as
+ * the full strip; `html[data-atlas-attribution="embed"]` gives it (and the #root shrink) the smaller height.
+ */
+export function renderEmbedAtlasAttribution(doc: Document, attribution: PublishedAtlasAttribution): HTMLElement {
+  doc.querySelector('footer.atlas-attribution')?.remove();
+  const footer = doc.createElement('footer');
+  footer.className = `atlas-attribution ${EMBED_ATTRIBUTION_CLASS}`;
+  footer.setAttribute('aria-label', 'Atlas attribution');
+  footer.dataset.testid = 'atlas-attribution';
+  footer.dataset.variant = 'embed';
+  const line = doc.createElement('p');
+  appendParts(doc, line, embedParts(attribution));
+  footer.append(line);
+  doc.body.append(footer);
+  doc.documentElement.setAttribute(ATTRIBUTION_ATTRIBUTE, 'embed');
+  return footer;
+}
+
+let publishedAttribution: PublishedAtlasAttribution | undefined;
+const publishedListeners = new Set<() => void>();
+
+/** CLA-329: the page's publication attribution once the index has answered (undefined before, or when none). */
+export function getPublishedAtlasAttribution(): PublishedAtlasAttribution | undefined {
+  return publishedAttribution;
+}
+
+/** Subscribe to the attribution resolving (useSyncExternalStore-shaped); returns the unsubscribe. */
+export function onPublishedAtlasAttribution(listener: () => void): () => void {
+  publishedListeners.add(listener);
+  return () => { publishedListeners.delete(listener); };
+}
+
+function publishAttribution(attribution: PublishedAtlasAttribution | undefined): void {
+  if (attribution === publishedAttribution) return;
+  publishedAttribution = attribution;
+  for (const listener of [...publishedListeners]) listener();
+}
+
+/** Fetch the published index and show the strip for `slug` (compact in embeds; nothing for non-publications). */
 export async function installPublishedAtlasAttribution(
   slug: string,
   options: { fetch?: typeof fetch; doc?: Document; search?: string; framed?: boolean } = {},
 ): Promise<PublishedAtlasAttribution | undefined> {
   const search = options.search ?? window.location.search;
   const framed = options.framed ?? isFramedBrowsingContext();
-  if (isEmbedChrome({ framed, embedQuery: isEmbedQueryFlag(search) })) return undefined;
+  const embedded = isEmbedChrome({ framed, embedQuery: isEmbedQueryFlag(search) });
   const fetchImpl = options.fetch ?? fetch;
   try {
     const response = await fetchImpl('/scan/index.json', { headers: { accept: 'application/json' } });
@@ -174,11 +234,13 @@ export async function installPublishedAtlasAttribution(
     const attribution = atlasAttributionFor(await response.json(), slug);
     if (attribution) {
       const doc = options.doc ?? document;
-      renderAtlasAttribution(doc, attribution);
+      if (embedded) renderEmbedAtlasAttribution(doc, attribution);
+      else renderAtlasAttribution(doc, attribution);
       // The boot title came from the URL; the row's names (GitHub's casing, else the stored owner/repo) are known
       // only now. They are the names the server put in the share HTML's <title>, so the tab keeps that title.
       doc.title = repoPageTitle(attribution.owner, attribution.repo);
     }
+    publishAttribution(attribution);
     return attribution;
   } catch {
     return undefined;

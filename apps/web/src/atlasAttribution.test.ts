@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { atlasAttributionFor, attributionText, installPublishedAtlasAttribution } from './atlasAttribution';
+import { atlasAttributionFor, attributionText, embedAttributionText, getPublishedAtlasAttribution, installPublishedAtlasAttribution, onPublishedAtlasAttribution } from './atlasAttribution';
 
 const SHA = '4f1c2a9e0b7d6c5a4f3e2d1c0b9a8f7e6d5c4b3a';
 const INDEX = {
@@ -122,10 +122,15 @@ describe('published atlas attribution (CLA-266)', () => {
     expect(page.links(credit as never)).toEqual([{ text: 'clabrate.com', href: 'https://clabrate.com', rel: 'noopener' }]);
     expect(page.root.attrs['data-atlas-attribution']).toBe('');
 
+    // CLA-328: embeds get the compact variant instead (tested below), never the full strip.
+    for (const context of [{ search: '?embed=1', framed: false }, { search: '', framed: true }]) {
+      const embed = fakeDocument();
+      expect(await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: fetchIndex, doc: embed.doc, ...context })).toBeDefined();
+      expect(embed.body.children).toHaveLength(1);
+      expect(embed.text(embed.body.children[0] as never)).toBe(embedAttributionText(installed!));
+      expect((embed.body.children[0] as unknown as { className: string }).className).toBe('atlas-attribution atlas-attribution-embed');
+    }
     const embed = fakeDocument();
-    expect(await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: fetchIndex, doc: embed.doc, search: '?embed=1', framed: false })).toBeUndefined();
-    expect(await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: fetchIndex, doc: embed.doc, search: '', framed: true })).toBeUndefined();
-    expect(embed.body.children).toHaveLength(0);
     const failing = vi.fn(async () => new Response('nope', { status: 404 })) as unknown as typeof fetch;
     expect(await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: failing, doc: embed.doc, search: '', framed: false })).toBeUndefined();
   });
@@ -196,5 +201,69 @@ describe('published atlas attribution (CLA-266)', () => {
     expect(css).toMatch(/\.atlas-attribution \{[^}]*position: fixed;[^}]*height: var\(--atlas-attribution-height\);/);
     const main = readFileSync(new URL('./main.tsx', import.meta.url), 'utf8');
     expect(main).toContain('installPublishedAtlasAttribution(route.slug)');
+  });
+
+  it('CLA-328: embeds show a compact repo · licence · source line with external links only', async () => {
+    const install = async (row: Record<string, unknown>, context = { search: '?embed=1', framed: false }) => {
+      const page = fakeDocument();
+      const fetchIndex = vi.fn(async () => new Response(JSON.stringify({ repos: [{ ...INDEX.repos[0]!, ...row }] }), { status: 200 })) as unknown as typeof fetch;
+      const attribution = await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: fetchIndex, doc: page.doc, ...context });
+      const footer = page.body.children[0] as unknown as { tag: string; className: string; attrs: Record<string, string>; dataset: Record<string, string> };
+      return { page, attribution: attribution!, footer };
+    };
+    const { page, attribution, footer } = await install({});
+    expect(footer.tag).toBe('footer');
+    expect(footer.className).toBe('atlas-attribution atlas-attribution-embed');
+    expect(footer.dataset).toEqual({ testid: 'atlas-attribution', variant: 'embed' });
+    expect(footer.attrs['aria-label']).toBe('Atlas attribution');
+    expect(page.text(footer as never)).toBe('pmndrs/zustand · MIT licence · source ↗');
+    expect(embedAttributionText(attribution)).toBe('pmndrs/zustand · MIT licence · source ↗');
+    const links = (footer as unknown as { children: Array<{ children: Array<{ tag?: string; target?: string; rel?: string; href?: string; textContent?: string }> }> }).children[0]!.children.filter(child => child.tag === 'a');
+    expect(links.map(link => [link.textContent, link.href, link.target, link.rel])).toEqual([
+      ['pmndrs/zustand', `https://github.com/pmndrs/zustand/tree/${SHA}`, '_blank', 'noopener noreferrer'],
+      ['MIT licence', `https://github.com/pmndrs/zustand/blob/${SHA}/LICENSE`, '_blank', 'noopener noreferrer'],
+      ['source ↗', `https://github.com/pmndrs/zustand/tree/${SHA}`, '_blank', 'noopener noreferrer'],
+    ]);
+    // The smaller strip still shrinks #root (html[data-atlas-attribution="embed"]).
+    expect(page.root.attrs['data-atlas-attribution']).toBe('embed');
+
+    // Framed (no query flag) is an embed too.
+    expect((await install({}, { search: '', framed: true })).footer.dataset.variant).toBe('embed');
+    // Operator override of NOASSERTION, and an SPDX expression; no licence URL renders plain text.
+    const unasserted = await install({ license: { spdxId: 'NOASSERTION', name: 'NOASSERTION' } });
+    expect(unasserted.page.text(unasserted.footer as never)).toBe('pmndrs/zustand · Licence not asserted · source ↗');
+    expect(unasserted.page.links(unasserted.footer as never).map(link => link.text)).toEqual(['pmndrs/zustand', 'source ↗']);
+    const expression = await install({ license: { spdxId: 'MIT AND CC-BY-4.0', name: 'MIT AND CC-BY-4.0', url: 'https://example.com/L' } });
+    expect(expression.page.text(expression.footer as never)).toBe('pmndrs/zustand · licence: MIT AND CC-BY-4.0 · source ↗');
+    // GitHub's casing when the row has it.
+    const canonical = await install({ ownerLogin: 'PMNDRS', repoName: 'zustand', owner: 'pmndrs' });
+    expect(canonical.page.text(canonical.footer as never)).toBe('PMNDRS/zustand · MIT licence · source ↗');
+    expect(canonical.page.links(canonical.footer as never)[0]!.href).toBe(`https://github.com/PMNDRS/zustand/tree/${SHA}`);
+
+    // Outside embeds the full strip is unchanged.
+    const full = await install({}, { search: '', framed: false });
+    expect(full.footer.className).toBe('atlas-attribution');
+    expect(full.footer.dataset).toEqual({ testid: 'atlas-attribution' });
+    expect(full.page.text(full.footer as never)).toBe(attributionText(full.attribution));
+    expect(full.page.root.attrs['data-atlas-attribution']).toBe('');
+  });
+
+  it('CLA-328: the embed strip reserves a smaller height and never covers the canvas', () => {
+    const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
+    expect(css).toContain('html[data-atlas-attribution="embed"] { --atlas-attribution-height: 22px; }');
+    expect(css).toContain('html[data-atlas-attribution] #root { height: calc(100% - var(--atlas-attribution-height)); }');
+  });
+
+  it('CLA-329: publishes the resolved attribution so App can react after mount', async () => {
+    const seen: Array<string | undefined> = [];
+    const unsubscribe = onPublishedAtlasAttribution(() => { seen.push(getPublishedAtlasAttribution()?.repo); });
+    const fetchIndex = vi.fn(async () => new Response(JSON.stringify(INDEX), { status: 200 })) as unknown as typeof fetch;
+    await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: fetchIndex, doc: fakeDocument().doc, search: '', framed: false });
+    expect(getPublishedAtlasAttribution()).toMatchObject({ owner: 'pmndrs', repo: 'zustand' });
+    await installPublishedAtlasAttribution('acme__local', { fetch: fetchIndex, doc: fakeDocument().doc, search: '', framed: false });
+    expect(getPublishedAtlasAttribution()).toBeUndefined();
+    unsubscribe();
+    await installPublishedAtlasAttribution('pmndrs__zustand', { fetch: fetchIndex, doc: fakeDocument().doc, search: '', framed: false });
+    expect(seen).toEqual(['zustand', undefined]);
   });
 });
