@@ -1,6 +1,6 @@
 import { escapeHtml } from './homePage';
 import { SITE_FOOTER_CSS, siteBrandLinkHtml, siteFooterHtml } from './notFoundPage';
-import { CONTACT_EMAIL, PRIVACY_PATH, SITE_NAME } from './siteMeta';
+import { CONTACT_EMAIL, PRIVACY_PATH, SITE_NAME, TERMS_PATH } from './siteMeta';
 
 /**
  * `/account` on sourcefor.dev (CLA-316): who you are signed in as, the email we hold (GitHub's primary
@@ -31,7 +31,7 @@ export const ACCOUNT_CACHE_CONTROL = 'private, no-store';
 export const PRODUCT_UPDATES_LABEL = 'Email me occasional product updates';
 export const NO_EMAIL_COPY = 'Your GitHub account has no verified primary email, so we don’t have one on file.';
 
-/** The document look shared by /account, the session-ended page and /privacy (privacyPage.ts). */
+/** The document look shared by /account, the session-ended page, /privacy and /terms (privacyPage.ts, termsPage.ts). */
 export const ACCOUNT_PAGE_STYLE = `
       *{box-sizing:border-box}
       html,body{margin:0;min-height:100%;background:#070a0b;color:#eef4f2}
@@ -138,7 +138,7 @@ function pageShell(title: string, kind: string, body: string): string {
     <main data-account="${kind}">
       ${siteBrandLinkHtml('brand')}
       ${body}
-      <p class="help">Questions or requests about your data: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>. <a href="${PRIVACY_PATH}">Privacy</a> · <a href="/">Back to the home page</a></p>
+      <p class="help">Questions or requests about your data: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>. <a href="${PRIVACY_PATH}">Privacy</a> · <a href="${TERMS_PATH}">Terms</a> · <a href="/">Back to the home page</a></p>
     </main>
     ${siteFooterHtml()}
   </body>

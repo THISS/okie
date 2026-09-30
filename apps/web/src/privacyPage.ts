@@ -2,38 +2,44 @@ import { ACCOUNT_PAGE_STYLE } from './accountPage';
 import { escapeHtml } from './homePage';
 import { siteBrandLinkHtml, siteFooterHtml } from './notFoundPage';
 import { trustedPageOrigin } from './openGraph';
-import { CANONICAL_ORIGIN, CONTACT_EMAIL, PRIVACY_PATH, PRIVACY_POLICY_VERSION, SITE_NAME } from './siteMeta';
+import { CANONICAL_ORIGIN, CONTACT_EMAIL, PRIVACY_PATH, PRIVACY_POLICY_VERSION, SITE_NAME, TERMS_PATH } from './siteMeta';
 
 /**
  * The privacy page's words (CLA-316), kept together so the owner can edit them in one place.
  *
- * Inline markup in any string: `code`, **bold**, and the token [CONTACT_EMAIL] (becomes a mailto link to
- * CONTACT_EMAIL). Everything else is plain text and HTML-escaped. The cookie table's names and lifetimes are
+ * Inline markup in any string: `code`, **bold**, [text](/site-path) (a link to a path on this site), and the
+ * token [CONTACT_EMAIL] (becomes a mailto link to CONTACT_EMAIL). Everything else is plain text and HTML-escaped. The cookie table's names and lifetimes are
  * NOT here: they come from the edge's cookie constants (apps/edge/src/auth.ts) through {@link PrivacyPageInput},
  * so the page can never drift from what the Worker sets. The "Last updated" date is PRIVACY_POLICY_VERSION.
  */
 /**
  * Marks copy the owner has not filled in or confirmed yet: the copy writes it as a bracketed tag, either bare
- * or followed by a colon and what to do (never spelled out in a comment here). `deploy.mjs production` refuses to deploy while this file contains it
- * (apps/edge/scripts/deployCore.mjs, a plain text search of this file). Built from two parts so this
+ * or followed by a colon and what to do (never spelled out in a comment here). `deploy.mjs production`
+ * refuses to deploy while this file or termsPage.ts contains it (apps/edge/scripts/deployCore.mjs, a plain
+ * text search of both files). Built from two parts so this
  * definition never matches that search: only a use in the copy does.
  */
 export const PRIVACY_COPY_PENDING = ['[pending', 'owner'].join(' ');
 
-/** The "Who runs this site" placeholder (the marker is written out literally, for the deploy check). */
-export const PRIVACY_OPERATOR_PLACEHOLDER = '[OPERATOR NAME AND LOCATION] [pending owner]';
+/**
+ * Who runs the site: the operator's legal name, the data controller on /privacy and the party to /terms
+ * (termsPage.ts imports it). Filling it in is this one line. Until then it carries the marker, written out
+ * literally for the deploy check.
+ */
+export const SITE_OPERATOR = '[pending owner: operator legal name]';
 
 export const PRIVACY_COPY = {
   title: 'Privacy',
   lastUpdatedLead: 'Last updated',
   intro: [
     'Source For Atlas (sourcefor.dev) publishes explorable maps of public GitHub repositories. You can browse every atlas without an account. This page says what we collect, why, how long we keep it, and how to have it deleted.',
+    `Using the site is also covered by our [Terms of use](${TERMS_PATH}).`,
   ],
   sections: [
     {
       heading: 'Who runs this site',
       blocks: [
-        { kind: 'p', text: `Source For Atlas is run by ${PRIVACY_OPERATOR_PLACEHOLDER}.` },
+        { kind: 'p', text: `Source For Atlas is run by ${SITE_OPERATOR}, the data controller for the personal data described on this page.` },
       ],
     },
     {
@@ -86,7 +92,7 @@ export const PRIVACY_COPY = {
     {
       heading: 'How long we keep it',
       blocks: [
-        { kind: 'p', text: 'We keep your account data until you delete your account, or ask us to. [pending owner: confirm or drop] If an account hasn’t been used for 24 months, we delete it.' },
+        { kind: 'p', text: 'We keep your account data until you delete your account, or ask us to.' },
         { kind: 'p', text: 'Our host keeps short-lived request logs (up to 7 days) and database backups (up to 30 days), so a deleted record can remain in backups for up to 30 days before it is gone for good.' },
       ],
     },
@@ -158,11 +164,12 @@ export function formatLifetime(seconds: number): string {
   return unit(seconds, 'second');
 }
 
-/** Escape, then the copy's inline markup: `code`, **bold**, [CONTACT_EMAIL]. */
+/** Escape, then the copy's inline markup: `code`, **bold**, [text](/site-path), [CONTACT_EMAIL]. Shared with termsPage.ts. */
 export function privacyInlineHtml(text: string): string {
   return escapeHtml(text)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\((\/(?![\/\\])[^)\s"]*)\)/g, '<a href="$2">$1</a>')
     .replace(/\[CONTACT_EMAIL\]/g, `<a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>`);
 }
 
@@ -187,10 +194,10 @@ function blockHtml(block: PrivacyBlock, input: PrivacyPageInput): string {
 }
 
 /**
- * The table never scrolls sideways: fixed layout over the full width, and long cookie names wrap anywhere
+ * The legal pages' shared look (privacy and terms, on top of ACCOUNT_PAGE_STYLE). The cookie table never scrolls sideways: fixed layout over the full width, and long cookie names wrap anywhere
  * (at 375px the name column is ~130px wide).
  */
-const PRIVACY_STYLE = `
+export const LEGAL_PAGE_STYLE = `
       .updated{color:#97a5a0;font-size:.9rem}
       article h2{margin:2rem 0 .5rem}
       ul{margin:0 0 .75rem;padding-left:1.25rem;color:#b7c3c0}
@@ -222,7 +229,7 @@ export function privacyPageHtml(input: PrivacyPageInput): string {
     <meta name="description" content="${escapeHtml(copy.description)}" />
     <link rel="canonical" href="${escapeHtml(canonical)}" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <style>${ACCOUNT_PAGE_STYLE}${PRIVACY_STYLE}</style>
+    <style>${ACCOUNT_PAGE_STYLE}${LEGAL_PAGE_STYLE}</style>
   </head>
   <body>
     <main data-privacy="true">

@@ -155,6 +155,6 @@ describe('CLA-316 SPA cookie notice: markup', () => {
   });
 
   it('imports nothing server-only (homePage/openGraph pull node:zlib into the browser bundle)', () => {
-    expect(source).not.toMatch(/from '\.\/(homePage|openGraph|atlasCard|privacyPage|accountPage)'/);
+    expect(source).not.toMatch(/from '\.\/(homePage|openGraph|atlasCard|privacyPage|termsPage|accountPage)'/);
   });
 });

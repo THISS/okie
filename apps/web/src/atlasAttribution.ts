@@ -1,7 +1,7 @@
 import { isFramedBrowsingContext } from './embedCanvas';
 import { isEmbedChrome, isEmbedQueryFlag } from './embedChrome';
 import { publishedNamesFor, publishedRowForSlug } from './publishedNames';
-import { CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, PRIVACY_PATH, repoPageTitle } from './siteMeta';
+import { CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, PRIVACY_PATH, repoPageTitle, TERMS_PATH } from './siteMeta';
 
 /**
  * CLA-266 attribution for published atlases. Every `/r/<owner>/<repo>` page whose atlas came from a
@@ -46,7 +46,8 @@ function licenceLabel(spdxId: string, name: string): string {
   // An SPDX expression ("MIT AND CC-BY-4.0", "Unlicense OR MIT") reads as a list, not an adjective.
   if (spdxId && /\s/.test(spdxId)) return `licence: ${spdxId}`;
   if (spdxId && spdxId !== 'NOASSERTION') return `${spdxId} licence`;
-  return name ? name : 'Licence not asserted';
+  // An operator override of NOASSERTION records it as the name too (publishAtlas.ts): not a licence name.
+  return name && name !== 'NOASSERTION' ? name : 'Licence not asserted';
 }
 
 /** The attribution for `slug` from a published index, or undefined when it is not a publication. */
@@ -78,7 +79,7 @@ export function atlasAttributionFor(index: unknown, slug: string): PublishedAtla
 
 /** The strip's words, in order, as plain text (also its accessible description). */
 export function attributionText(attribution: PublishedAtlasAttribution): string {
-  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub · About · Privacy · ${CREDIT_LEAD}${CREDIT_LINK_TEXT}`;
+  return `Source For Atlas · ${attribution.repo} by ${attribution.owner} · commit ${attribution.shortSha} · ${attribution.licenceLabel} · source on GitHub · About · Privacy · Terms · ${CREDIT_LEAD}${CREDIT_LINK_TEXT}`;
 }
 
 type Link = { text: string; href: string; code?: boolean; internal?: boolean; rel?: string };
@@ -101,6 +102,8 @@ function parts(attribution: PublishedAtlasAttribution): Part[] {
     { text: 'About', href: ATTRIBUTION_ABOUT_HREF, internal: true },
     ' · ',
     { text: 'Privacy', href: PRIVACY_PATH, internal: true },
+    ' · ',
+    { text: 'Terms', href: TERMS_PATH, internal: true },
     ' · ',
     // CLA-269: the site footer's fine-print credit (same words, href and rel), trailing the strip's one line.
     { credit: [CREDIT_LEAD, { text: CREDIT_LINK_TEXT, href: CREDIT_URL, rel: CREDIT_REL }] },

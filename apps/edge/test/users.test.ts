@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { appliesRemoteMigrations, deployBlockedReason, PRIVACY_PENDING_MARKER, runDeploy, type DeploySpawn } from '../scripts/deployCore.mjs';
 import deployScriptSource from '../scripts/deploy.mjs?raw';
 import privacySource from '../../web/src/privacyPage.ts?raw';
+import termsSource from '../../web/src/termsPage.ts?raw';
 import { PRIVACY_COPY_PENDING } from '../../web/src/privacyPage';
 import { csvField, deleteOutputUnreadableMessage, deleteSql, EXPORT_COLUMNS, exportSql, parseUsersArgs, sqlString, toCsv, wranglerRows } from '../scripts/usersCore.mjs';
 import { edgeEnv } from './helpers';
@@ -75,22 +76,32 @@ describe('operator users scripts (CLA-316)', () => {
     expect(appliesRemoteMigrations(['--dry-run', '--outdir', 'x'])).toBe(false);
   });
 
-  it('deploy.mjs refuses production while the privacy copy has an unfilled placeholder; staging still deploys', () => {
+  const sources = (privacy: string, terms: string) => (path: string) => {
+    if (path === 'apps/web/src/privacyPage.ts') return privacy;
+    if (path === 'apps/web/src/termsPage.ts') return terms;
+    throw new Error(`unexpected read: ${path}`);
+  };
+
+  it('deploy.mjs refuses production while the privacy or terms copy has an unfilled placeholder; staging still deploys', () => {
     expect(PRIVACY_PENDING_MARKER).toBe(PRIVACY_COPY_PENDING);
     const message = 'privacy copy has an unfilled placeholder (apps/web/src/privacyPage.ts)';
     // Today's copy still has the operator placeholder (update when the owner fills it in).
     expect(privacySource).toContain(PRIVACY_PENDING_MARKER);
-    expect(deployBlockedReason('production', privacySource)).toBe(message);
-    expect(deployBlockedReason('staging', privacySource)).toBeUndefined();
-    const filled = privacySource.replace(/\[pending owner[^\]]*\] ?/g, 'Example Ltd, London');
-    expect(filled).not.toContain(PRIVACY_PENDING_MARKER);
-    expect(deployBlockedReason('production', filled)).toBeUndefined();
+    expect(deployBlockedReason('production', sources(privacySource, termsSource))).toBe(message);
+    expect(deployBlockedReason('staging', () => { throw new Error('staging reads nothing'); })).toBeUndefined();
+    const fill = (text: string) => text.replace(/\[pending owner[^\]]*\]/g, 'Example Ltd');
+    expect(fill(privacySource)).not.toContain(PRIVACY_PENDING_MARKER);
+    // The terms page carries no marker of its own today (it imports the operator from privacyPage.ts).
+    expect(termsSource).not.toContain(PRIVACY_PENDING_MARKER);
+    expect(deployBlockedReason('production', sources(fill(privacySource), termsSource))).toBeUndefined();
+    // A marker in the terms copy blocks too, naming that file.
+    expect(deployBlockedReason('production', sources(fill(privacySource), 'x [pending owner: governing law] y'))).toBe('terms copy has an unfilled placeholder (apps/web/src/termsPage.ts)');
     // Both forms of the tag count: bare, and with what the owner has to do.
-    expect(deployBlockedReason('production', 'x [pending owner] y')).toBe(message);
-    expect(deployBlockedReason('production', 'x [pending owner: confirm or drop] y')).toBe(message);
+    expect(deployBlockedReason('production', sources('x [pending owner] y', ''))).toBe(message);
+    expect(deployBlockedReason('production', sources('x [pending owner: confirm or drop] y', ''))).toBe(message);
   });
 
-  function fakeDeploy(argv: string[], options: { privacy?: string; dist?: boolean; status?: number } = {}) {
+  function fakeDeploy(argv: string[], options: { privacy?: string; terms?: string; dist?: boolean; status?: number } = {}) {
     const spawned: Array<{ command: string; args: string[]; env: Record<string, string | undefined> }> = [];
     const out: string[] = [];
     const err: string[] = [];
@@ -104,7 +115,7 @@ describe('operator users scripts (CLA-316)', () => {
       env: { CLOUDFLARE_API_TOKEN: 'secret', HOME: '/home/x' },
       edgeDir: '/repo/apps/edge/',
       repoRoot: '/repo/',
-      readFile: path => { reads.push(path); return options.privacy ?? privacySource; },
+      readFile: path => { reads.push(path); return sources(options.privacy ?? privacySource, options.terms ?? termsSource)(path.replace('/repo/', '')); },
       exists: () => options.dist ?? true,
       spawn,
       log: message => out.push(message),
@@ -139,9 +150,11 @@ describe('operator users scripts (CLA-316)', () => {
     ]);
     expect(staging.spawned.every(call => call.command === 'pnpm' && !('CLOUDFLARE_API_TOKEN' in call.env))).toBe(true);
 
-    const production = fakeDeploy(['production'], { privacy: 'Run by Example Ltd, London.' });
+    const production = fakeDeploy(['production'], { privacy: 'Run by Example Ltd.' });
     expect(production.code).toBe(0);
+    expect(production.reads).toEqual(['/repo/apps/web/src/privacyPage.ts', '/repo/apps/web/src/termsPage.ts']);
     expect(production.spawned).toHaveLength(2);
+    expect(fakeDeploy(['production'], { privacy: 'Run by Example Ltd.', terms: '[pending owner]' })).toMatchObject({ code: 1, spawned: [] });
 
     expect(fakeDeploy(['staging'], { status: 7 })).toMatchObject({ code: 7, spawned: [{ args: expect.arrayContaining(['migrations']) }] });
     expect(fakeDeploy(['staging'], { dist: false })).toMatchObject({ code: 1, spawned: [], err: ['apps/web/dist is missing; run `pnpm build` first'] });

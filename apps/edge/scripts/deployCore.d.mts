@@ -1,7 +1,8 @@
 export declare function appliesRemoteMigrations(extraArgs: string[]): boolean;
 export declare const PRIVACY_PENDING_MARKER: string;
 export declare const PRIVACY_PENDING_MESSAGE: string;
-export declare function deployBlockedReason(target: string, privacySource: string): string | undefined;
+export declare const LEGAL_COPY_FILES: ReadonlyArray<{ path: string; label: string }>;
+export declare function deployBlockedReason(target: string, readSource: (path: string) => string): string | undefined;
 export declare const ENVIRONMENTS: string[];
 export declare const API_TOKEN: string;
 export type DeploySpawn = (

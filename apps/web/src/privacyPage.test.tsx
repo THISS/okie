@@ -4,8 +4,9 @@ import { accountPageHtml, sessionEndedPageHtml } from './accountPage';
 import { homePageHtml } from './homePage';
 import { notFoundPageHtml, siteFooterHtml } from './notFoundPage';
 import privacySource from './privacyPage.ts?raw';
-import { formatLifetime, PRIVACY_COPY_PENDING, formatPolicyDate, PRIVACY_COPY, PRIVACY_OPERATOR_PLACEHOLDER, privacyHttpOutput, privacyInlineHtml, privacyPageHtml } from './privacyPage';
+import { formatLifetime, PRIVACY_COPY_PENDING, formatPolicyDate, PRIVACY_COPY, privacyHttpOutput, privacyInlineHtml, privacyPageHtml, SITE_OPERATOR } from './privacyPage';
 import { SiteFooter } from './siteFooter';
+import { termsPageHtml } from './termsPage';
 import { CONTACT_EMAIL, PRIVACY_POLICY_VERSION } from './siteMeta';
 
 const COOKIES = {
@@ -33,11 +34,11 @@ describe('CLA-316 privacy page', () => {
     expect(html).not.toContain('noindex');
   });
 
-  it('puts "Who runs this site" right after the intro, still with the owner placeholder (update this test when the real text lands)', () => {
+  it('puts "Who runs this site" right after the intro, naming the data controller, still a placeholder (update this test when the real name lands)', () => {
     expect(PRIVACY_COPY.sections[0]!.heading).toBe('Who runs this site');
-    expect(PRIVACY_OPERATOR_PLACEHOLDER).toBe('[OPERATOR NAME AND LOCATION] [pending owner]');
-    expect(PRIVACY_OPERATOR_PLACEHOLDER).toContain(PRIVACY_COPY_PENDING);
-    expect(html).toContain(`Source For Atlas is run by ${PRIVACY_OPERATOR_PLACEHOLDER}.`);
+    expect(SITE_OPERATOR).toBe('[pending owner: operator legal name]');
+    expect(SITE_OPERATOR).toContain(PRIVACY_COPY_PENDING);
+    expect(html).toContain(`<p>Source For Atlas is run by ${SITE_OPERATOR}, the data controller for the personal data described on this page.</p>`);
     expect(html.indexOf('Who runs this site')).toBeLessThan(html.indexOf('If you just browse'));
   });
 
@@ -46,7 +47,7 @@ describe('CLA-316 privacy page', () => {
     // The file contains the marker literally exactly as often as the rendered page does (the constant itself is split).
     const count = (text: string) => text.split(PRIVACY_COPY_PENDING).length - 1;
     expect(count(privacySource)).toBe(count(html));
-    expect(count(html)).toBe(2);
+    expect(count(html)).toBe(1);
     expect(privacySource).not.toMatch(/PRIVACY_COPY_PENDING = '\[pending owner/);
   });
 
@@ -56,7 +57,10 @@ describe('CLA-316 privacy page', () => {
     expect(html).toContain('<p>We use this to run your account, and to contact you about it if we need to.</p>');
     expect(html).not.toContain('fair-use');
     expect(html).not.toContain('Ask');
-    expect(html).toContain('[pending owner: confirm or drop] If an account hasn’t been used for 24 months, we delete it.');
+    // The owner dropped inactivity deletion: kept until you delete the account or ask us to.
+    expect(html).toContain('<p>We keep your account data until you delete your account, or ask us to.</p>');
+    expect(html).not.toContain('24 months');
+    expect(html).not.toContain('confirm or drop');
     expect(html).toContain('Our host keeps short-lived request logs (up to 7 days) and database backups (up to 30 days), so a deleted record can remain in backups for up to 30 days before it is gone for good.');
     expect(html).toContain('This removes your record immediately (and from backups within 30 days) and signs you out.');
   });
@@ -74,12 +78,22 @@ describe('CLA-316 privacy page', () => {
     expect(html).toContain('overflow-wrap:anywhere');
   });
 
+  it('links to the terms of use', () => {
+    expect(html).toContain('<p>Using the site is also covered by our <a href="/terms">Terms of use</a>.</p>');
+  });
+
   it('formats dates, lifetimes and inline markup, escaping everything else', () => {
     expect(formatPolicyDate('2027-01-05')).toBe('5 January 2027');
     expect(formatLifetime(600)).toBe('10 minutes');
     expect(formatLifetime(2_592_000)).toBe('30 days');
     expect(formatLifetime(45)).toBe('45 seconds');
     expect(privacyInlineHtml('a `<b>` **c** <i>')).toBe('a <code>&lt;b&gt;</code> <strong>c</strong> &lt;i&gt;');
+    // Links go to paths on this site only: never another host, a scheme or a protocol-relative URL.
+    expect(privacyInlineHtml('see [Terms](/terms) and [Privacy](/privacy#cookies)')).toBe('see <a href="/terms">Terms</a> and <a href="/privacy#cookies">Privacy</a>');
+    for (const text of ['[x](https://evil.example)', '[x](//evil.example)', '[x](/\\evil.example)', '[x](javascript:alert(1))']) {
+      expect(privacyInlineHtml(text)).not.toContain('<a');
+    }
+    expect(privacyInlineHtml('[x](/a" onmouseover="b)')).not.toContain('onmouseover="');
   });
 
   it('is shared-cacheable for 5 minutes; HEAD has no body', () => {
@@ -94,18 +108,19 @@ describe('CLA-316 privacy page', () => {
   });
 });
 
-describe('CLA-316 footer links to /privacy', () => {
-  it('every static footer, the 404, the home, /account and the session-ended page link it', () => {
-    const link = '<a href="/privacy">Privacy</a>';
-    expect(siteFooterHtml()).toContain(link);
-    for (const page of [notFoundPageHtml(), homePageHtml({ index: undefined }), accountPageHtml({ login: 'a', email: null, productUpdatesOptIn: false }), sessionEndedPageHtml()]) {
-      expect(page).toContain(link);
+describe('CLA-316 footer links to /privacy and /terms', () => {
+  it('every static footer, the 404, the home, /account, the session-ended page and both legal pages link them, Terms next to Privacy', () => {
+    const links = '<a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>';
+    expect(siteFooterHtml()).toContain(links);
+    for (const page of [notFoundPageHtml(), homePageHtml({ index: undefined }), accountPageHtml({ login: 'a', email: null, productUpdatesOptIn: false }), sessionEndedPageHtml(), privacyPageHtml({ cookies: COOKIES }), termsPageHtml()]) {
+      expect(page).toContain(links);
     }
     // The account page's help line too, not just its footer.
-    expect(accountPageHtml({ login: 'a', email: null, productUpdatesOptIn: false })).toMatch(/<p class="help">[^\n]*<a href="\/privacy">Privacy<\/a>/);
+    expect(accountPageHtml({ login: 'a', email: null, productUpdatesOptIn: false })).toMatch(/<p class="help">[^\n]*<a href="\/privacy">Privacy<\/a> · <a href="\/terms">Terms<\/a>/);
   });
 
-  it('the SPA footer links it', () => {
-    expect(renderToStaticMarkup(<SiteFooter/>)).toContain('href="/privacy"');
+  it('the SPA footer links them', () => {
+    const html = renderToStaticMarkup(<SiteFooter/>);
+    expect(html).toMatch(/href="\/privacy"[^>]*>Privacy<\/a> · <a[^>]*href="\/terms"[^>]*>Terms<\/a>/);
   });
 });

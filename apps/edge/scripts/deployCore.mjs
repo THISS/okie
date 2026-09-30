@@ -11,20 +11,29 @@ export function appliesRemoteMigrations(extraArgs) {
 }
 
 /**
- * The marker for unfilled or unconfirmed privacy copy (PRIVACY_COPY_PENDING in apps/web/src/privacyPage.ts):
+ * The marker for unfilled or unconfirmed legal copy (PRIVACY_COPY_PENDING in apps/web/src/privacyPage.ts):
  * the bare tag and the `: <what to do>` form both start with it.
  */
 export const PRIVACY_PENDING_MARKER = ['[pending', 'owner'].join(' ');
 export const PRIVACY_PENDING_MESSAGE = 'privacy copy has an unfilled placeholder (apps/web/src/privacyPage.ts)';
 
+/** The legal pages' sources (repo-relative) searched for the marker, in order, with the word the refusal uses. */
+export const LEGAL_COPY_FILES = [
+  { path: 'apps/web/src/privacyPage.ts', label: 'privacy' },
+  { path: 'apps/web/src/termsPage.ts', label: 'terms' },
+];
+
 /**
- * Why `target` must not deploy, or undefined. Production refuses while the privacy page's source still
- * contains the pending marker; staging may deploy with it.
+ * Why `target` must not deploy, or undefined. Production refuses while a legal page's source (privacy, then
+ * terms) still contains the pending marker; staging may deploy with it (and nothing is read for it).
  * @param {string} target
- * @param {string} privacySource  the text of apps/web/src/privacyPage.ts
+ * @param {(path: string) => string} readSource  the text of a repo-relative path
  */
-export function deployBlockedReason(target, privacySource) {
-  if (target === 'production' && privacySource.includes(PRIVACY_PENDING_MARKER)) return PRIVACY_PENDING_MESSAGE;
+export function deployBlockedReason(target, readSource) {
+  if (target !== 'production') return undefined;
+  for (const file of LEGAL_COPY_FILES) {
+    if (readSource(file.path).includes(PRIVACY_PENDING_MARKER)) return `${file.label} copy has an unfilled placeholder (${file.path})`;
+  }
   return undefined;
 }
 
@@ -62,7 +71,7 @@ export function runDeploy(deps) {
   }
   const dryRun = !appliesRemoteMigrations(extraArgs);
   // Production never ships unfilled privacy copy (CLA-316); staging may. A dry run only warns: it deploys nothing.
-  const blocked = deployBlockedReason(target, readFile(`${repoRoot}apps/web/src/privacyPage.ts`));
+  const blocked = deployBlockedReason(target, path => readFile(`${repoRoot}${path}`));
   if (blocked && !dryRun) {
     error(`refusing to deploy ${target}: ${blocked}`);
     return 1;
