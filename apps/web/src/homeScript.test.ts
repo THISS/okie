@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import source from '../public/home.js?raw';
-import { AUTH_SLOT_HTML, homeAtlasCards, homeCardMatches, homeCountText, homePageHtml, matchesAtWordStart, normalizeHomeQuery } from './homePage';
+import { AUTH_SLOT_HTML, COOKIE_NOTICE_HTML, COOKIE_NOTICE_STORAGE_KEY, COOKIE_NOTICE_TEXT, homeAtlasCards, homeCardMatches, homeCountText, homePageHtml, matchesAtWordStart, normalizeHomeQuery } from './homePage';
 
 /**
  * CLA-269: apps/web/public/home.js, the home page's plain-script enhancement. The file is evaluated as the
@@ -19,6 +19,9 @@ type HomeScript = {
   searchFor(search: string, query: string, sort: string): string;
   init(doc: unknown, win: unknown): { update(): unknown } | undefined;
   AUTH_ME_PATH: string;
+  COOKIE_NOTICE_KEY: string;
+  cookieNoticeAllowed(me: unknown): boolean;
+  initCookieNotice(doc: unknown, win: unknown, me: unknown): unknown;
   authLinks(me: unknown): Array<{ text: string; href?: string }> | null;
   initAuth(doc: unknown, win: unknown): Promise<unknown> | undefined;
 };
@@ -398,5 +401,118 @@ describe('CLA-316 home.js: the sign-in slot', () => {
       ['a', 'Account', '/account'],
       ['a', 'Sign out', '/api/auth/logout?return=/'],
     ]);
+  });
+});
+
+const CONFIGURED = { authenticated: false, mode: 'accounts', oauthConfigured: true };
+
+describe('CLA-316 home.js: the cookie notice', () => {
+  function noticePage(storage: { getItem(key: string): string | null; setItem(key: string, value: string): void } | 'throws' | undefined) {
+    const notice = new FakeElement();
+    notice.hidden = true;
+    const button = new FakeElement();
+    notice.lookup.set('[data-cookie-notice-dismiss]', button);
+    const classes = new Set<string>();
+    const doc = new FakeElement();
+    doc.lookup.set('[data-cookie-notice]', notice);
+    (doc as unknown as { body: unknown }).body = { classList: { add: (name: string) => classes.add(name), remove: (name: string) => classes.delete(name) } };
+    const win = storage === 'throws'
+      ? Object.defineProperty({}, 'localStorage', { get() { throw new Error('SecurityError'); } })
+      : { localStorage: storage };
+    return { doc, win, notice, button, classes };
+  }
+  const memory = () => {
+    const values = new Map<string, string>();
+    return { values, getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+  };
+
+  it('ships hidden in the home HTML (so nothing shows without JS), with a Privacy link and an OK button', () => {
+    const html = homePageHtml({ index: INDEX, accounts: true });
+    expect(html).toContain(COOKIE_NOTICE_HTML);
+    expect(COOKIE_NOTICE_HTML).toContain('role="region" aria-label="Cookie notice" data-cookie-notice hidden>');
+    expect(COOKIE_NOTICE_HTML).toContain(`<p>${COOKIE_NOTICE_TEXT}</p>`);
+    expect(COOKIE_NOTICE_HTML).toContain('<a href="/privacy">Privacy</a>');
+    expect(COOKIE_NOTICE_HTML).toContain('<button type="button" data-cookie-notice-dismiss>OK</button>');
+    expect(script.COOKIE_NOTICE_KEY).toBe(COOKIE_NOTICE_STORAGE_KEY);
+    expect(COOKIE_NOTICE_STORAGE_KEY).toBe('sf.cookieNotice.dismissed');
+    // With accounts on, an empty directory still loads home.js, so it gets the notice too. Accounts off: no
+    // notice at all (no sign-in, no cookies), even though the directory still loads home.js.
+    expect(homePageHtml({ index: undefined, accounts: true })).toContain('data-cookie-notice hidden');
+    expect(homePageHtml({ index: undefined })).not.toContain('data-cookie-notice');
+    expect(homePageHtml({ index: INDEX })).not.toContain('cookie-notice');
+  });
+
+  it('reveals it, and OK hides it and remembers the dismissal', () => {
+    const storage = memory();
+    const page = noticePage(storage);
+    expect(script.initCookieNotice(page.doc, page.win, CONFIGURED)).toBe(page.notice);
+    expect(page.notice.hidden).toBe(false);
+    expect(page.classes.has('has-cookie-notice')).toBe(true);
+    page.button.dispatch('click');
+    expect(page.notice.hidden).toBe(true);
+    expect(page.classes.has('has-cookie-notice')).toBe(false);
+    expect(storage.values.get('sf.cookieNotice.dismissed')).toBe('1');
+    // Next page load: stays hidden.
+    const next = noticePage(storage);
+    expect(script.initCookieNotice(next.doc, next.win, CONFIGURED)).toBeUndefined();
+    expect(next.notice.hidden).toBe(true);
+  });
+
+  it('shows it when storage throws, and OK still hides it for the page', () => {
+    const page = noticePage('throws');
+    script.initCookieNotice(page.doc, page.win, CONFIGURED);
+    expect(page.notice.hidden).toBe(false);
+    page.button.dispatch('click');
+    expect(page.notice.hidden).toBe(true);
+    const failingSet = noticePage({ getItem: () => null, setItem: () => { throw new Error('QuotaExceeded'); } });
+    script.initCookieNotice(failingSet.doc, failingSet.win, CONFIGURED);
+    failingSet.button.dispatch('click');
+    expect(failingSet.notice.hidden).toBe(true);
+  });
+
+  it('does nothing on a page without the notice', () => {
+    expect(script.initCookieNotice(new FakeElement(), {}, CONFIGURED)).toBeUndefined();
+  });
+
+  it('shows only when /api/auth/me answers oauthConfigured: true (fail closed)', () => {
+    expect(script.cookieNoticeAllowed(CONFIGURED)).toBe(true);
+    for (const me of [null, undefined, '<!doctype html>', {}, { oauthConfigured: false }, { oauthConfigured: 'true' }, { authenticated: false, mode: 'public', oauthConfigured: false, ask: false }]) {
+      expect(script.cookieNoticeAllowed(me)).toBe(false);
+      const page = noticePage(memory());
+      expect(script.initCookieNotice(page.doc, page.win, me)).toBeUndefined();
+      expect(page.notice.hidden).toBe(true);
+      expect(page.classes.has('has-cookie-notice')).toBe(false);
+    }
+  });
+
+  it('initAuth reveals it from the same single request, and never when accounts are off or the request fails', async () => {
+    const withFetch = (me: unknown, options: { ok?: boolean; fail?: boolean } = {}) => {
+      const page = noticePage(memory());
+      const calls: string[] = [];
+      Object.assign(page.doc, { createElement: () => new FakeElement() });
+      Object.assign(page.win, {
+        fetch: async (url: string) => {
+          calls.push(url);
+          if (options.fail) throw new Error('offline');
+          return { ok: options.ok !== false, json: async () => me };
+        },
+      });
+      return { ...page, calls };
+    };
+    const on = withFetch({ authenticated: false, mode: 'accounts', oauthConfigured: true });
+    await script.initAuth(on.doc, on.win);
+    expect(on.calls).toEqual(['/api/auth/me']);
+    expect(on.notice.hidden).toBe(false);
+    for (const [me, options] of [
+      [{ authenticated: false, mode: 'public', oauthConfigured: false, ask: false }, {}],
+      [{ oauthConfigured: true }, { ok: false }],
+      [{ oauthConfigured: true }, { fail: true }],
+      ['<!doctype html>', {}],
+    ] as const) {
+      const off = withFetch(me, options);
+      await script.initAuth(off.doc, off.win);
+      expect(off.calls).toEqual(['/api/auth/me']);
+      expect(off.notice.hidden).toBe(true);
+    }
   });
 });

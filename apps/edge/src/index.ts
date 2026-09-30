@@ -6,7 +6,10 @@ import { securityHeadersFor } from '../../web/src/securityHeaders';
 import { webMcpHostHeadersForFetchDest } from '../../web/src/webmcpHeaders';
 import { analyticsConditionalRequest, injectsInto, webAnalyticsToken, withWebAnalytics } from './analytics';
 import { handleApiRoute } from './api';
-import { ACCOUNT_PATH, accountsEnabled, handleAccountPage } from './auth';
+import { ACCOUNT_PATH, accountsEnabled, handleAccountPage, privacyCookies } from './auth';
+import { privacyHttpOutput } from '../../web/src/privacyPage';
+import { PRIVACY_PATH, TERMS_PATH } from '../../web/src/siteMeta';
+import { termsHttpOutput } from '../../web/src/termsPage';
 import { selectBackend, type Backend } from './backend';
 import type { EdgeEnv } from './env';
 import { defaultGuards, type Guard } from './guards';
@@ -48,6 +51,8 @@ export { ContainerProxy } from '@cloudflare/containers';
  *                             shell as before, so the golden demo stays at `/?fixture=okie`
  *   /account                  signed-in account page (email, product-updates opt-in, delete; auth.ts +
  *                             apps/web/src/accountPage.ts); while accounts are off, like any unknown path
+ *   /privacy                  GET/HEAD: the privacy page (apps/web/src/privacyPage.ts), always
+ *   /terms                    GET/HEAD: the terms of use (apps/web/src/termsPage.ts), always
  *   /operator                 the SPA shell (Static Assets)
  *   anything else             a real static file (favicons, robots.txt, og-default.png) from Static
  *                             Assets; otherwise the branded 404 page with a real 404 (CLA-318)
@@ -181,6 +186,8 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     return new Response(null, { status: 301, headers: { location: `/${homeSearchFrom(url)}`, 'cache-control': 'public, max-age=3600' } });
   }
   if (readOnly && isHomeRequest(url)) return serveHome(request, url, env);
+  if (readOnly && (pathname === PRIVACY_PATH || pathname === `${PRIVACY_PATH}/`)) return servePrivacy(request, url, env);
+  if (readOnly && (pathname === TERMS_PATH || pathname === `${TERMS_PATH}/`)) return serveTerms(request, url, env);
   // Only while accounts are on; otherwise /account falls through like any unknown path (CLA-316).
   if ((pathname === ACCOUNT_PATH || pathname === `${ACCOUNT_PATH}/`) && accountsEnabled(env, url)) {
     return handleAccountPage(request, env, { now: deps.now(), ...(deps.fetch ? { fetch: deps.fetch } : {}) });
@@ -191,6 +198,28 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
   }
   if (isKnownAppPath(pathname)) return env.ASSETS.fetch(analyticsConditionalRequest(request, env));
   return serveStaticFileOr404(request, env);
+}
+
+/**
+ * `/privacy` (CLA-316), whether or not accounts are on. Its cookie table is built from the cookies auth.ts
+ * really sets (names + lifetimes), so the page cannot drift from the code.
+ */
+function servePrivacy(request: Request, url: URL, env: EdgeEnv): Response {
+  const page = privacyHttpOutput(request.method, {
+    cookies: privacyCookies(),
+    requestOrigin: url.origin,
+    allowedOrigins: oembedAllowedOriginsFromEnv({ OKIE_PUBLIC_ORIGIN: env.OKIE_PUBLIC_ORIGIN }),
+  });
+  return new Response(page.body === '' ? null : page.body, { status: page.status, headers: page.headers });
+}
+
+/** `/terms` (CLA-316), whether or not accounts are on; built like `/privacy`. */
+function serveTerms(request: Request, url: URL, env: EdgeEnv): Response {
+  const page = termsHttpOutput(request.method, {
+    requestOrigin: url.origin,
+    allowedOrigins: oembedAllowedOriginsFromEnv({ OKIE_PUBLIC_ORIGIN: env.OKIE_PUBLIC_ORIGIN }),
+  });
+  return new Response(page.body === '' ? null : page.body, { status: page.status, headers: page.headers });
 }
 
 /**

@@ -23,6 +23,8 @@ export const DEFAULT_OG_IMAGE_ALT = `${SITE_NAME}: explore how open-source softw
 /** Footer / about (CLA-318): the product's own repository and contact address. */
 export const GITHUB_REPO_URL = 'https://github.com/source-for/atlas';
 export const CONTACT_EMAIL = 'hello@sourcefor.dev';
+/** The contact on the legal pages (/privacy, /terms): the operator's own address, as on clabrate.com (CLA-316). */
+export const LEGAL_CONTACT_EMAIL = 'support@clabrate.com';
 /** The brand mark + wordmark link to the home page everywhere (CLA-269); this is its accessible name. */
 export const SITE_HOME_HREF = '/';
 export const SITE_HOME_LABEL = `${SITE_NAME} \u2014 home`;
@@ -152,3 +154,17 @@ export function applyPageMeta(doc: MetaDocument, pathname: string): PageMeta {
  * (`users.privacy_version`, apps/edge) and shown on the privacy page; bump it when the policy changes.
  */
 export const PRIVACY_POLICY_VERSION = '2026-09-30';
+
+/** The privacy page (CLA-316; privacyPage.ts, rendered by the edge Worker). Every site footer links it. */
+export const PRIVACY_PATH = '/privacy';
+
+/** The terms of use version in force (CLA-316): the "Last updated" date on /terms; bump it when the terms change. */
+export const TERMS_VERSION = '2026-09-30';
+
+/** The terms of use page (CLA-316; termsPage.ts, rendered by the edge Worker). Every site footer links it, next to Privacy. */
+export const TERMS_PATH = '/terms';
+
+/** The cookie notice's words (CLA-316): the edge home (homePage.ts + home.js) and the SPA (cookieNotice.tsx). */
+export const COOKIE_NOTICE_TEXT = 'We use only the cookies needed to keep you signed in, and cookieless analytics.';
+/** localStorage key (value "1") that remembers a dismissed notice, shared by home.js and the SPA. */
+export const COOKIE_NOTICE_STORAGE_KEY = 'sf.cookieNotice.dismissed';

@@ -10,7 +10,8 @@
 // (its names) or a word start in a line of its `data-search-words` (description, language). Ranks for each sort
 // come from the server (`data-rank-recent`, `data-rank-az`), so the order rules live in one place.
 // Written with \u escapes only: the file holds no raw bidi or zero-width characters.
-// It also fills the header's sign-in slot from /api/auth/me when accounts are on (CLA-316; initAuth below).
+// It also asks /api/auth/me once and, only when sign-in is configured, fills the header's sign-in slot and
+// shows the cookie notice unless it was dismissed (CLA-316; initAuth and initCookieNotice below).
 (function (root) {
   'use strict';
 
@@ -196,7 +197,8 @@
   // ---- Sign-in slot (CLA-316) ----
   // The header's `[data-auth-slot]` is hidden and empty in the (shared-cached) HTML. When /api/auth/me says
   // sign-in is configured (`oauthConfigured: true`), it shows "Sign in with GitHub", or "@login · Account ·
-  // Sign out" when signed in. Accounts off, a failed request or no fetch: the slot stays hidden.
+  // Sign out" when signed in. Accounts off, a failed request or no fetch: the slot stays hidden. The same answer
+  // gates the cookie notice (no second request).
   var AUTH_ME_PATH = '/api/auth/me';
 
   // A same-origin path from /api/auth/me, else the fallback (never `//host` or a scheme).
@@ -236,10 +238,12 @@
     slot.hidden = false;
   }
 
+  // Resolves to the links shown (or null). Asks only when the page has a slot or a notice to fill.
   function initAuth(doc, win) {
     if (!doc || typeof doc.querySelector !== 'function' || typeof doc.createElement !== 'function') return undefined;
     var slot = doc.querySelector('[data-auth-slot]');
-    if (!slot || !win || typeof win.fetch !== 'function') return undefined;
+    var notice = doc.querySelector('[data-cookie-notice]');
+    if ((!slot && !notice) || !win || typeof win.fetch !== 'function') return undefined;
     var request;
     try {
       request = win.fetch(AUTH_ME_PATH, { credentials: 'same-origin', headers: { accept: 'application/json' } });
@@ -249,14 +253,52 @@
     return Promise.resolve(request)
       .then(function (response) { return response && response.ok ? response.json() : null; })
       .then(function (me) {
-        var links = authLinks(me);
+        var links = slot ? authLinks(me) : null;
         if (links) renderAuth(doc, slot, links);
+        initCookieNotice(doc, win, me);
         return links;
       })
       .catch(function () { return null; });
   }
 
-  var api = { AUTH_ME_PATH: AUTH_ME_PATH, authLinks: authLinks, initAuth: initAuth, QUERY_MAX: QUERY_MAX, SORTS: SORTS, URL_DELAY_MS: URL_DELAY_MS, supported: supported, matchesAtWordStart: matchesAtWordStart, normalizeQuery: normalizeQuery, sortFrom: sortFrom, matches: matches, countText: countText, searchFor: searchFor, view: view, init: init };
+  // ---- Cookie notice (CLA-316) ----
+  // `[data-cookie-notice]` ships `hidden`: shown only when the /api/auth/me answer says sign-in is configured
+  // (the cookies it describes can then be set; anything else, including no answer, keeps it hidden), and
+  // unless localStorage says it was dismissed. OK hides it and
+  // remembers that (`sf.cookieNotice.dismissed=1`). Storage that throws (blocked, private mode) = show it, and
+  // OK still hides it for this page.
+  var COOKIE_NOTICE_KEY = 'sf.cookieNotice.dismissed';
+
+  function noticeDismissed(win) {
+    try { return Boolean(win && win.localStorage && win.localStorage.getItem(COOKIE_NOTICE_KEY) === '1'); } catch (_) { return false; }
+  }
+
+  function rememberNoticeDismissed(win) {
+    try { if (win && win.localStorage) win.localStorage.setItem(COOKIE_NOTICE_KEY, '1'); } catch (_) { /* this page only */ }
+  }
+
+  // Whether an /api/auth/me answer allows the notice: only `oauthConfigured: true` (fail closed).
+  function cookieNoticeAllowed(me) {
+    return Boolean(me && typeof me === 'object' && me.oauthConfigured === true);
+  }
+
+  function initCookieNotice(doc, win, me) {
+    if (!cookieNoticeAllowed(me) || !doc || typeof doc.querySelector !== 'function') return undefined;
+    var notice = doc.querySelector('[data-cookie-notice]');
+    if (!notice || typeof notice.querySelector !== 'function' || noticeDismissed(win)) return undefined;
+    var button = notice.querySelector('[data-cookie-notice-dismiss]');
+    if (!button || typeof button.addEventListener !== 'function') return undefined;
+    notice.hidden = false;
+    if (doc.body && doc.body.classList) doc.body.classList.add('has-cookie-notice');
+    button.addEventListener('click', function () {
+      notice.hidden = true;
+      if (doc.body && doc.body.classList) doc.body.classList.remove('has-cookie-notice');
+      rememberNoticeDismissed(win);
+    });
+    return notice;
+  }
+
+  var api = { COOKIE_NOTICE_KEY: COOKIE_NOTICE_KEY, cookieNoticeAllowed: cookieNoticeAllowed, initCookieNotice: initCookieNotice, AUTH_ME_PATH: AUTH_ME_PATH, authLinks: authLinks, initAuth: initAuth, QUERY_MAX: QUERY_MAX, SORTS: SORTS, URL_DELAY_MS: URL_DELAY_MS, supported: supported, matchesAtWordStart: matchesAtWordStart, normalizeQuery: normalizeQuery, sortFrom: sortFrom, matches: matches, countText: countText, searchFor: searchFor, view: view, init: init };
   // Tests evaluate this file with a `module` in scope; the browser has none and just runs it.
   if (typeof module === 'object' && module && module.exports) module.exports = api;
   else if (root.document) {

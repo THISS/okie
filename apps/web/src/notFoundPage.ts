@@ -1,5 +1,5 @@
 import { parseAppRoute } from './renderer/route';
-import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, GITHUB_REPO_URL, PRODUCT_NAME, SITE_HOME_HREF, SITE_HOME_LABEL, SITE_NAME } from './siteMeta';
+import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, GITHUB_REPO_URL, PRIVACY_PATH, PRODUCT_NAME, SITE_HOME_HREF, SITE_HOME_LABEL, SITE_NAME, TERMS_PATH } from './siteMeta';
 
 /**
  * Branded 404 (CLA-318). One self-contained HTML page (inline CSS and SVG, no script, noindex) that
@@ -50,7 +50,7 @@ export const SOURCE_FOR_MARK_SVG = '<svg aria-hidden="true" fill="none" height="
 export function siteFooterHtml(): string {
   return `<footer class="site-footer" id="about" aria-label="About ${SITE_NAME}">
       <p>${ATLAS_LICENCE_NOTE.replace('’', '&rsquo;')}</p>
-      <p><a href="${GITHUB_REPO_URL}" rel="noopener noreferrer">${SITE_NAME} on GitHub</a> · Contact <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a></p>
+      <p><a href="${GITHUB_REPO_URL}" rel="noopener noreferrer">${SITE_NAME} on GitHub</a> · Contact <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> · <a href="${PRIVACY_PATH}">Privacy</a> · <a href="${TERMS_PATH}">Terms</a></p>
       ${SITE_CREDIT_HTML}
     </footer>`;
 }

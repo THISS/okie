@@ -1114,3 +1114,20 @@ html[data-atlas-attribution] #root { height: calc(100% - var(--atlas-attribution
 @media (max-width: 780px) {
   .atlas-attribution { padding: 0 10px; font-size: 10.5px; }
 }
+
+/* CLA-316 cookie notice (cookieNotice.tsx): a bar fixed to the bottom, above the attribution strip. While it shows,
+   html[data-cookie-notice] carries its measured height in --cookie-notice-height, and the atlas root shrinks by it
+   (document pages get bottom padding instead), so it never covers the canvas's bottom controls. */
+:root { --cookie-notice-height: 44px; }
+html[data-cookie-notice] #root { height: calc(100% - var(--cookie-notice-height)); }
+html[data-cookie-notice][data-atlas-attribution] #root { height: calc(100% - var(--atlas-attribution-height) - var(--cookie-notice-height)); }
+html[data-cookie-notice] body.document-page #root { height: auto; min-height: 100%; padding-bottom: var(--cookie-notice-height); }
+.cookie-notice { position: fixed; z-index: 41; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 6px 12px; padding: 6px 14px; border-top: 1px solid var(--atlas-line); background: var(--atlas-bg-raised); color: var(--atlas-muted); font-size: 12px; line-height: 1.35; }
+html[data-atlas-attribution] .cookie-notice { bottom: var(--atlas-attribution-height); }
+.cookie-notice p { flex: 1; min-width: 0; margin: 0; }
+.cookie-notice a { flex: none; color: var(--atlas-text); text-decoration: underline; text-underline-offset: 2px; }
+.cookie-notice button { flex: none; min-height: 32px; padding: 4px 12px; border: 1px solid var(--atlas-line-strong); border-radius: 6px; background: transparent; color: var(--atlas-text); font-weight: 600; cursor: pointer; }
+.cookie-notice button:hover { border-color: var(--atlas-accent); color: var(--atlas-accent); }
+@media (max-width: 780px) {
+  .cookie-notice { padding: 6px 10px; font-size: 11.5px; }
+}

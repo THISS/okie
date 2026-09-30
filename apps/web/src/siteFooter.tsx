@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { SourceForMark } from './icons';
 import { NOT_FOUND_COPY, type NotFoundKind } from './notFoundPage';
-import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, GITHUB_REPO_URL, PRODUCT_NAME, SITE_HOME_HREF, SITE_HOME_LABEL, SITE_NAME } from './siteMeta';
+import { ATLAS_LICENCE_NOTE, BRAND_NAME, CONTACT_EMAIL, CREDIT_LEAD, CREDIT_LINK_TEXT, CREDIT_REL, CREDIT_URL, GITHUB_REPO_URL, PRIVACY_PATH, PRODUCT_NAME, SITE_HOME_HREF, SITE_HOME_LABEL, SITE_NAME, TERMS_PATH } from './siteMeta';
 
 /**
  * Site footer / about (CLA-318) for the document-style pages (the `/new` landing, the in-app 404).
@@ -34,6 +34,10 @@ export function SiteFooter() {
       <a href={GITHUB_REPO_URL} rel="noopener noreferrer" style={linkStyle}>{SITE_NAME} on GitHub</a>
       {' · Contact '}
       <a href={`mailto:${CONTACT_EMAIL}`} style={linkStyle}>{CONTACT_EMAIL}</a>
+      {' · '}
+      <a data-testid="site-footer-privacy" href={PRIVACY_PATH} style={linkStyle}>Privacy</a>
+      {' · '}
+      <a data-testid="site-footer-terms" href={TERMS_PATH} style={linkStyle}>Terms</a>
     </p>
     <p className="site-credit" data-testid="site-credit" style={creditStyle}>
       {CREDIT_LEAD}<a href={CREDIT_URL} rel={CREDIT_REL} style={creditLinkStyle}>{CREDIT_LINK_TEXT}</a>

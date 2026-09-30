@@ -410,7 +410,8 @@ describe('/account (CLA-316)', () => {
     expect(html).toContain('<input type="checkbox" name="product_updates" value="1" />');
     expect(html).toContain('action="/api/account/delete"');
     expect(html).toContain('mailto:hello@sourcefor.dev');
-    expect(html).not.toContain('/privacy');
+    // CLA-316 increment 2: the help line links the privacy page.
+    expect(html).toContain('<a href="/privacy">Privacy</a>');
   });
 
   it('never carries the Web Analytics beacon, and its CSP does not allow it (CLA-316)', async () => {
