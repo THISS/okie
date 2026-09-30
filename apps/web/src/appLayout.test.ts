@@ -79,7 +79,7 @@ describe('canvas hint chrome shield (CLA-115)', () => {
     expect(heading).toContain('backdrop-filter: blur(16px)');
     expect(canvas).toMatch(/z-index:\s*0/);
     expect(app).toContain('className="canvas-hint"');
-    expect(app).toContain('<span>Scroll to zoom</span>');
+    expect(app).toContain('<span>Pinch or wheel to zoom</span><i/>drag to pan<i/>');
     expect(app).toContain('drag to pan');
     expect(app).toContain('click to inspect');
     expect(app).toContain('double-click to open inside');
@@ -146,6 +146,16 @@ describe('view and edit interaction modes', () => {
     expect(viewport.match(/onCameraFlightCancelRef\.current\(\)/g)).toHaveLength(3);
     expect(viewport).toContain("onInteractionStartRef.current('Pinched the map'");
     expect(viewport).not.toContain("onInteractionStartRef.current('Panned the map'");
+  });
+
+  it('interrupts a guided story on trackpad two-finger scroll-pan (CLA-326)', () => {
+    const panStart = app.indexOf('const wheelPan = ');
+    const panEnd = app.indexOf('const installSession = ', panStart);
+    const wheelPan = app.slice(panStart, panEnd);
+
+    expect(panStart).toBeGreaterThan(0);
+    expect(wheelPan).toContain("onInteractionStartRef.current('Scrolled the map', liveCameraRef.current);");
+    expect(wheelPan.indexOf("'Scrolled the map'")).toBeLessThan(wheelPan.indexOf('applyLiveCameraRef.current(next)'));
   });
 
   it('presents the mode choice as a polished two-state control', () => {

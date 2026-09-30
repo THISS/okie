@@ -61,7 +61,7 @@ export const chromeTrackpadPinch: WheelSample[] = sequence(3000, 16, [
   -0.5, -1.2, -2.4, -3.6, -4.8, -6.1, -7.4, -8, -7.9, -7.2, -6.3, -5.1, -4, -2.9, -1.4, -0.5,
 ].map(deltaY => ({ deltaX: 0, deltaY, deltaMode: 0, ctrlKey: true })));
 
-/** (4) Notched mouse, Chrome macOS/Windows: ±100 px per notch, wheelDeltaY ∓120. */
+/** (4) Notched mouse, Chrome Windows: ±100 px per notch, wheelDeltaY ∓120. */
 export const chromeMouseNotches: WheelSample[] = sequence(4000, 40, [
   { deltaX: 0, deltaY: -100, deltaMode: 0, wheelDeltaY: 120 },
   { deltaX: 0, deltaY: -100, deltaMode: 0, wheelDeltaY: 120 },
@@ -97,3 +97,20 @@ export const modifierMouseNotches: WheelSample[] = [
     { deltaX: 0, deltaY: -3, deltaMode: 1, ctrlKey: true },
   ]),
 ];
+
+/**
+ * (4b) Notched mouse, Chrome macOS: scroll acceleration makes each notch a fractional
+ * pixel delta with a ±120·k legacy wheelDeltaY (shape per the logged macOS Chrome
+ * values in github.com/ukonpower/OREngine/pull/210).
+ */
+export const chromeMacMouseNotches: WheelSample[] = sequence(4500, 40, [
+  { deltaX: 0, deltaY: -4.000244140625, deltaMode: 0, wheelDeltaY: 120 },
+  { deltaX: 0, deltaY: -21.400390625, deltaMode: 0, wheelDeltaY: 120 },
+  { deltaX: 0, deltaY: -52.03125, deltaMode: 0, wheelDeltaY: 240 },
+  { deltaX: 0, deltaY: 316.59375, deltaMode: 0, wheelDeltaY: -360 },
+]);
+
+/** (8) Fast Chrome trackpad flick: large integer deltas that are multiples of 40 (wheelDeltaY a multiple of 120). */
+export const chromeTrackpadFlick: WheelSample[] = sequence(8000, 16, [80, 67, 55, 40, 28, 16, 8].map(deltaY => ({
+  deltaX: 0, deltaY, deltaMode: 0, wheelDeltaY: -3 * deltaY,
+})));

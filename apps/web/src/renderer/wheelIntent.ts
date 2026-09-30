@@ -11,17 +11,18 @@
  *
  * Rules (first match wins; see `classifyWheelDevice` / `createWheelIntentClassifier`):
  *   (a) ctrlKey || metaKey → zoom. Source `pinch`, unless the event looks like a
- *       wheel notch (deltaMode ≠ pixel; or integer |deltaY| ≥ 50 with deltaX = 0;
- *       or a legacy wheelDeltaY that is a nonzero multiple of 120 and not the
- *       trackpad-style −3·deltaY) → `modifier-wheel`. Modifier events always zoom,
- *       whatever the stream latch says, and end the current latch.
+ *       wheel notch (deltaMode ≠ pixel; or integer |deltaY| ≥ 50 with deltaX = 0)
+ *       → `modifier-wheel`. The legacy wheelDeltaY is deliberately ignored here:
+ *       synthetic/accelerated wheels can report ±120 with tiny deltas, and a pinch
+ *       must never fall back to the slow notch gain on that signal (a small
+ *       Ctrl+notch zooming at pinch gain is the harmless side). Modifier events
+ *       always zoom, whatever the stream latch says, and end the current latch.
  *   (b) deltaMode LINE/PAGE → mouse. Line deltas are converted to CSS px at
  *       33 px/line so a Firefox 3-line notch (±3) ≈ Chrome's ±100 px notch; a
  *       page delta counts as one ±100 px notch.
  *   (c) legacy `wheelDeltaY` (Chrome/Safari only) when nonzero: a multiple of 120
- *       that is not −3·deltaY, with deltaX = 0 → mouse; exactly −3·deltaY and not a
- *       multiple of 120 → trackpad. When both hold (deltaY a multiple of 40) the
- *       rule is inconclusive and classification continues.
+ *       that is not −3·deltaY, with deltaX = 0 → mouse; exactly −3·deltaY with an
+ *       integer deltaY → trackpad (this includes fast flicks of ±40/±80 px).
  *   (d) deltaX ≠ 0 → trackpad.
  *   (e) non-integer deltaY → trackpad.
  *   (f) integer |deltaY| ≥ 50 with deltaX = 0 → mouse.
@@ -34,16 +35,27 @@
  * by a *strong* trackpad signal only — a fractional pixel delta or a diagonal
  * (deltaX and deltaY both nonzero) delta, neither of which a notched wheel emits.
  * A trackpad latch is never downgraded (fast flicks and momentum tails can emit
- * large integer deltas). An `unknown` event outside a latch does not latch.
+ * large integer deltas). An `unknown` event outside a latch does not latch, and
+ * neither does a Shift+wheel event (Shift turns a mouse notch into a horizontal
+ * deltaX that would otherwise latch the stream as trackpad): it pans horizontally
+ * on its own and leaves the latch untouched.
+ *
+ * Read order: build samples with `wheelSampleFromEvent`, which reads `deltaMode`
+ * before the deltas. Firefox (88+) reports a mouse notch in pixels (≈ ±17 px on
+ * macOS) instead of lines when a page reads deltaX/deltaY first, which would make
+ * every Firefox mouse notch pan.
  *
  * KNOWN LIMITS (heuristic, no browser exposes the device):
  * - High-resolution / free-spin mice (e.g. Logitech MX in free-spin, Apple Magic
  *   Mouse) on macOS Chrome/Firefox emit continuous small or fractional pixel
  *   deltas and are classified as trackpads, so they pan. Cmd/Ctrl + scroll still
  *   zooms.
- * - macOS scroll acceleration can shrink notched-mouse deltas below 50 px in
- *   Chrome/Firefox; such notches pan unless the legacy wheelDeltaY (±120) marks
- *   them as a mouse (Chrome/Safari only).
+ * - macOS scroll acceleration shrinks notched-mouse deltas below 50 px. Chrome and
+ *   Safari still read them as a mouse through the legacy wheelDeltaY (±120·k with a
+ *   fractional deltaY); Firefox reads them through line deltaMode. A mouse or
+ *   browser that reports small integer pixel deltas without either signal pans,
+ *   and an unaccelerated notch of exactly −40 px with wheelDeltaY 120 reads as a
+ *   trackpad.
  * - Ctrl + mouse notch vs. trackpad pinch is distinguished by magnitude and
  *   deltaMode only; a very large, integer pinch delta (≥ 50) reads as a notch.
  * - Firefox has no wheelDeltaY, so rule (c) never applies there.
@@ -116,13 +128,15 @@ function isLegacyNotch(sample: WheelSample): boolean {
 function isLegacyTrackpad(sample: WheelSample): boolean {
   const legacy = sample.wheelDeltaY;
   if (legacy === undefined || legacy === 0) return false;
-  return legacy === -3 * sample.deltaY && legacy % LEGACY_NOTCH !== 0;
+  // Chrome/Safari trackpads report wheelDeltaY = −3·deltaY with integer deltas, including
+  // fast flicks of ±40/±80 (a multiple of 120). Real macOS mouse notches are accelerated
+  // and fractional (−4.000244, −21.40 with ±120·k), so they never match this exactly.
+  return legacy === -3 * sample.deltaY && Number.isInteger(sample.deltaY);
 }
 
 function looksLikeNotch(sample: WheelSample): boolean {
   if (sample.deltaMode !== DOM_DELTA_PIXEL) return true;
-  if (Math.abs(sample.deltaY) >= NOTCH_MIN_PX && Number.isInteger(sample.deltaY) && sample.deltaX === 0) return true;
-  return isLegacyNotch(sample);
+  return Math.abs(sample.deltaY) >= NOTCH_MIN_PX && Number.isInteger(sample.deltaY) && sample.deltaX === 0;
 }
 
 /** Stateless device guess for a single non-modifier wheel event (rules b–g). */
@@ -165,6 +179,7 @@ export function createWheelIntentClassifier(): WheelIntentClassifier {
         lastTimeStamp = undefined;
         return zoomIntent(sample, looksLikeNotch(sample) ? 'modifier-wheel' : 'pinch');
       }
+      if (sample.shiftKey) return classifyWheelDevice(sample) === 'mouse' && sample.deltaX === 0 ? zoomIntent(sample, 'wheel') : panIntent(sample);
       if (lastTimeStamp === undefined || sample.timeStamp - lastTimeStamp > WHEEL_STREAM_GAP_MS || sample.timeStamp < lastTimeStamp) {
         latch = undefined;
       }
@@ -182,6 +197,25 @@ export function createWheelIntentClassifier(): WheelIntentClassifier {
       latch = undefined;
       lastTimeStamp = undefined;
     },
+  };
+}
+
+/**
+ * Reads a native wheel event into a sample. `deltaMode` is read first on purpose:
+ * Firefox converts line deltas to pixels if a page reads deltaX/deltaY first.
+ */
+export function wheelSampleFromEvent(event: WheelEvent): WheelSample {
+  const deltaMode = event.deltaMode;
+  const legacy = (event as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY;
+  return {
+    deltaMode,
+    deltaX: event.deltaX,
+    deltaY: event.deltaY,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    timeStamp: event.timeStamp,
+    ...(legacy === undefined ? {} : { wheelDeltaY: legacy }),
   };
 }
 

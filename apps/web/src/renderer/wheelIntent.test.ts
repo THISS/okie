@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chromeMacMouseNotches,
   chromeMouseNotches,
+  chromeTrackpadFlick,
   chromeTrackpadPinch,
   chromeTrackpadScroll,
   firefoxMouseNotches,
@@ -15,6 +17,7 @@ import {
   PINCH_ZOOM_GAIN,
   WHEEL_LINE_HEIGHT_PX,
   WHEEL_STREAM_GAP_MS,
+  wheelSampleFromEvent,
   wheelZoomFactor,
   type WheelIntent,
   type WheelSample,
@@ -51,8 +54,9 @@ describe('classifyWheelDevice (stateless rules)', () => {
     expect(classifyWheelDevice(sample({ deltaY: 2, deltaMode: 2 }))).toBe('mouse'); // (b) page
     expect(classifyWheelDevice(sample({ deltaY: 4, wheelDeltaY: -120 }))).toBe('mouse'); // (c) notch beats small magnitude
     expect(classifyWheelDevice(sample({ deltaY: 60, wheelDeltaY: -180 }))).toBe('trackpad'); // (c) −3·deltaY beats magnitude
-    expect(classifyWheelDevice(sample({ deltaY: 40, wheelDeltaY: -120 }))).toBe('trackpad'); // (c) inconclusive → (g)
-    expect(classifyWheelDevice(sample({ deltaY: 120, wheelDeltaY: -360 }))).toBe('mouse'); // (c) inconclusive → (f)
+    expect(classifyWheelDevice(sample({ deltaY: 40, wheelDeltaY: -120 }))).toBe('trackpad'); // (c) −3·deltaY, integer
+    expect(classifyWheelDevice(sample({ deltaY: 120, wheelDeltaY: -360 }))).toBe('trackpad'); // (c) fast flick, not a notch
+    expect(classifyWheelDevice(sample({ deltaY: 120, wheelDeltaY: -120 }))).toBe('mouse'); // (c) notch: not −3·deltaY
     expect(classifyWheelDevice(sample({ deltaX: 100, deltaY: 0 }))).toBe('trackpad'); // (d)
     expect(classifyWheelDevice(sample({ deltaY: 51.5 }))).toBe('trackpad'); // (e)
     expect(classifyWheelDevice(sample({ deltaY: -100 }))).toBe('mouse'); // (f)
@@ -98,6 +102,12 @@ describe('wheel intent classifier', () => {
     for (const intent of classifyAll(modifierMouseNotches)) expect(intent).toMatchObject({ kind: 'zoom', source: 'modifier-wheel' });
     const [, , firefoxLine] = classifyAll(modifierMouseNotches);
     expect(firefoxLine).toEqual({ kind: 'zoom', source: 'modifier-wheel', deltaY: -3 * WHEEL_LINE_HEIGHT_PX });
+  });
+
+  it('keeps small ctrlKey deltas on the pinch gain even when the legacy wheelDeltaY reads ±120', () => {
+    const classifier = createWheelIntentClassifier();
+    const intent = classifier.classify(sample({ ctrlKey: true, deltaY: -3, wheelDeltaY: 120 }));
+    expect(intent).toMatchObject({ kind: 'zoom', source: 'pinch' });
   });
 
   it('holds a trackpad latch through ambiguous large integer momentum events', () => {
@@ -160,5 +170,37 @@ describe('wheel zoom factor', () => {
       expect(wheelZoomFactor({ kind: 'zoom', source: 'wheel', deltaY })).toBe(Math.exp(-deltaY * 0.0012));
       expect(wheelZoomFactor({ kind: 'zoom', source: 'modifier-wheel', deltaY })).toBe(Math.exp(-deltaY * 0.0012));
     }
+  });
+});
+
+describe('review follow-ups (CLA-326)', () => {
+  it('zooms accelerated macOS Chrome mouse notches (fractional deltas, ±120·k legacy delta)', () => {
+    for (const intent of classifyAll(chromeMacMouseNotches)) expect(intent).toMatchObject({ kind: 'zoom', source: 'wheel' });
+  });
+
+  it('pans a fast Chrome trackpad flick whose deltas are multiples of 40', () => {
+    for (const intent of classifyAll(chromeTrackpadFlick)) expect(intent.kind).toBe('pan');
+  });
+
+  it('pans Shift+wheel horizontally without latching the mouse stream as trackpad', () => {
+    const intents = classifyAll([
+      sample({ deltaX: 100, shiftKey: true, wheelDeltaY: 0, timeStamp: 0 }),
+      sample({ deltaY: -100, wheelDeltaY: 120, timeStamp: 40 }),
+      sample({ deltaY: -100, wheelDeltaY: 120, timeStamp: 80 }),
+    ]);
+    expect(intents.map(intent => intent.kind)).toEqual(['pan', 'zoom', 'zoom']);
+    expect(intents[0]).toEqual({ kind: 'pan', dx: 100, dy: 0 });
+  });
+
+  it('reads deltaMode before the deltas (Firefox reports pixels once deltas are read first)', () => {
+    const reads: string[] = [];
+    const event = {} as WheelEvent;
+    for (const [key, value] of Object.entries({ deltaMode: 1, deltaX: 0, deltaY: 3, ctrlKey: false, metaKey: false, shiftKey: false, timeStamp: 5 })) {
+      Object.defineProperty(event, key, { get: () => { reads.push(key); return value; } });
+    }
+    const read = wheelSampleFromEvent(event);
+    expect(reads[0]).toBe('deltaMode');
+    expect(read).toMatchObject({ deltaMode: 1, deltaY: 3 });
+    expect(createWheelIntentClassifier().classify(read)).toMatchObject({ kind: 'zoom', source: 'wheel' });
   });
 });

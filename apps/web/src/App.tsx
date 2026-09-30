@@ -76,7 +76,7 @@ import { createDemandFrameScheduler, type DemandFrameScheduler } from './rendere
 import { createInspectorFlightFrameSink, type InspectorFlightFrameSink } from './renderer/inspectorFlightFrameSink';
 import { brandHomeLinkProps, EMBED_FRAME_IDLE_KICK_MS, initialInspectorOpen, isEmbedChrome, isEmbedQueryFlag, isFramedBrowsingContext, isUsableAtlasViewport, listenForWebGlContextLoss } from './renderer/gpuLoss';
 import { listenForGesturePinch, listenForWheel } from './renderer/wheelInput';
-import { createWheelIntentClassifier, PINCH_DELTA_CLAMP, PINCH_ZOOM_GAIN, wheelZoomFactor, type WheelIntent } from './renderer/wheelIntent';
+import { createWheelIntentClassifier, PINCH_DELTA_CLAMP, PINCH_ZOOM_GAIN, wheelSampleFromEvent, wheelZoomFactor, type WheelIntent } from './renderer/wheelIntent';
 import { presentBackend } from './renderer/backendPresentation';
 import { presentClaimProvenance } from './provenance/presentation';
 import { relationOrSetFocusPresentation, selectedProjectedRelationForFocus } from './relations/relationFocus';
@@ -693,13 +693,20 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
       if (semanticZoomSettleTimer !== undefined) window.clearTimeout(semanticZoomSettleTimer);
       semanticZoomSettleTimer = window.setTimeout(() => settleSemanticWheelZoom(true), 120);
     };
-    // Trackpad two-finger scroll pans like a pointer drag (no story interruption,
-    // same 160 ms lens settle). A pan arriving while a zoom burst is still
-    // unsettled lands that zoom first (without the glide, which the pan would
-    // cancel), so the semantic lens always receives its gestureSettled sample.
+    // Trackpad two-finger scroll pans with a pointer drag's 160 ms lens settle.
+    // Unlike drag-pan it interrupts a guided story, as wheel input always has
+    // (CLA-326): otherwise a running story flight overrides the user's scroll.
+    // A pan arriving while a zoom burst is still unsettled lands that zoom first
+    // (without the glide, which the pan would cancel), so the semantic lens
+    // always receives its gestureSettled sample.
     const wheelPan = (intent: Extract<WheelIntent, { kind: 'pan' }>) => {
       if (semanticZoomSettleTimer !== undefined) settleSemanticWheelZoom(false);
       cancelAssistAnimation();
+      // A scan zoom handoff's pending raw camera predates this pan; a later zoom
+      // adopting it would snap the camera back to the pre-pan position.
+      consumeScanZoomAdoptRaw();
+      setHoveredPick(undefined);
+      onInteractionStartRef.current('Scrolled the map', liveCameraRef.current);
       const next = panCamera(liveCameraRef.current, -intent.dx, -intent.dy);
       rawCameraRef.current = next;
       applyLiveCameraRef.current(next);
@@ -713,31 +720,26 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
       detachLossListener();
       detachWheelListener();
       detachGesturePinch();
+      gesturePinchActive = false;
+      wheelClassifier.reset();
       renderer = session.renderer;
       rendererRef.current = renderer;
       detachLossListener = listenForWebGlContextLoss(session.canvas, message => { void recoverFromLoss(message); });
       detachWheelListener = listenForWheel(session.canvas, event => {
-        const intent = wheelClassifier.classify({
-          deltaX: event.deltaX,
-          deltaY: event.deltaY,
-          deltaMode: event.deltaMode,
-          ctrlKey: event.ctrlKey,
-          metaKey: event.metaKey,
-          shiftKey: event.shiftKey,
-          timeStamp: event.timeStamp,
-          wheelDeltaY: (event as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY,
-        });
+        // Reads deltaMode first (Firefox reports pixels once the deltas are read).
+        const sample = wheelSampleFromEvent(event);
+        const intent = wheelClassifier.classify(sample);
         // Safari may pair its gesture events with ctrlKey wheels; the gesture owns that pinch.
-        if (gesturePinchActive && intent.kind === 'zoom' && intent.source === 'pinch') return;
+        if (gesturePinchActive && intent.kind === 'zoom' && (sample.ctrlKey || sample.metaKey)) return;
         beginCanvasWheelInput();
         const bounds = session.canvas.getBoundingClientRect();
         const pointer = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
         const zoomFactor = intent.kind === 'zoom' ? wheelZoomFactor(intent) : undefined;
         if (zoomMotionTrace.isRecording()) zoomMotionTrace.recordInput({
-          timeMs: event.timeStamp,
-          deltaX: event.deltaX,
-          deltaY: event.deltaY,
-          deltaMode: event.deltaMode,
+          timeMs: sample.timeStamp,
+          deltaX: sample.deltaX,
+          deltaY: sample.deltaY,
+          deltaMode: sample.deltaMode,
           pointerX: pointer.x,
           pointerY: pointer.y,
           ctrlKey: event.ctrlKey,
@@ -5972,7 +5974,7 @@ export function App() {
           )}
           {!currentStory && visibilityMode === 'isolate' && askMapFocus && !askOpen && <div className="ask-map-status" data-ask-map-status="" role="status">Showing {askMapFocus.entityIds.length} cited part{askMapFocus.entityIds.length === 1 ? '' : 's'} from Ask · <button onClick={restoreAskMapView} type="button">Restore full view</button></div>}
 
-          <div className="canvas-hint"><span>Scroll to zoom</span><i/>drag to pan<i/>click to inspect<i/>double-click to open inside</div>
+          <div className="canvas-hint"><span>Pinch or wheel to zoom</span><i/>drag to pan<i/>click to inspect<i/>double-click to open inside</div>
 
         </section>
 

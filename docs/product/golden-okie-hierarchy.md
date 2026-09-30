@@ -263,7 +263,7 @@ Relation projection rules:
 - Sibling containers outside the current root become compact boundary portals. They must not compete with local components.
 - Breadcrumb buttons render ancestry through the current root. The current root is marked as the page and is not a drill action. A selected descendant may appear after it as a non-navigational location label, for example `Okie / Architecture model / Hierarchy selectors / selectScopedView()` where `Hierarchy selectors` is the root and `selectScopedView()` is selected.
 - The level rail communicates representation detail only. Its labels are `L1 Context`, `L2 Containers`, `L3 Components`, and `L4 Code`.
-- The status hint is explicit: `Scroll to zoom · drag to pan · click to inspect · double-click to open inside`.
+- The status hint is explicit: `Pinch or wheel to zoom · drag to pan · click to inspect · double-click to open inside` (CLA-326: two-finger trackpad scroll pans; pinch, mouse wheel and Cmd/Ctrl+scroll zoom).
 
 ## Selection and drill copy
 
