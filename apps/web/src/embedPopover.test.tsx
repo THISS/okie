@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { copyEmbedSnippet, EMBED_COPY_FAILED_MESSAGE, EMBED_UNAVAILABLE_MESSAGE, EmbedAtlasControl, EmbedDialogBody, focusTrapTarget, type EmbedDialogProps } from './embedPopover';
+import { copyEmbedSnippet, EMBED_COPY_FAILED_MESSAGE, EMBED_LINK_COPY_FAILED_MESSAGE, restartTimer, type TimerApi, type TimerHandle, EMBED_UNAVAILABLE_MESSAGE, EmbedAtlasControl, EmbedDialogBody, focusTrapTarget, type EmbedDialogProps } from './embedPopover';
 import { EMBED_OEMBED_NOTE } from './embedSnippet';
 
 /**
@@ -78,7 +78,8 @@ describe('CLA-329 embed dialog: markup', () => {
     expect(html).toContain('<input data-testid="embed-link" readOnly="" spellCheck="false" type="text" value="https://sourcefor.dev/r/pmndrs/zustand"/>');
     expect(html).toMatch(/<button data-testid="embed-copy-link" type="button">Copy link<\/button>/);
     expect(body({ copyState: 'link-copied' })).toContain('Atlas link copied.');
-    expect(body({ copyState: 'link-failed' })).toContain(EMBED_COPY_FAILED_MESSAGE);
+    expect(body({ copyState: 'link-failed' })).toContain(EMBED_LINK_COPY_FAILED_MESSAGE);
+    expect(body({ copyState: 'link-failed' })).not.toContain('snippet above');
     expect(body({ link: '' })).toMatch(/<button data-testid="embed-copy-link" disabled="" type="button">/);
   });
 
@@ -119,3 +120,22 @@ describe('CLA-329 embed dialog: markup', () => {
     expect(phone).toMatch(/\.embed-popover \{ position: fixed;[^}]*right: 0; bottom: 0; left: 0; width: auto; max-height: [^;]+; overflow-y: auto;/);
   });
 });
+
+describe('CLA-329 embed dialog: copied-feedback timer', () => {
+  it('a second copy replaces the pending reset instead of leaving it to fire early', () => {
+    let next = 0;
+    const pending = new Map<number, () => void>();
+    const timers: TimerApi = {
+      set: callback => { next += 1; pending.set(next, callback); return next; },
+      clear: handle => { if (typeof handle === 'number') pending.delete(handle); },
+    };
+    const ref: { current: TimerHandle } = { current: undefined };
+    const resets: string[] = [];
+    restartTimer(ref, timers, () => resets.push('first'), 2400);
+    restartTimer(ref, timers, () => resets.push('second'), 2400);
+    expect([...pending.keys()]).toEqual([2]);
+    for (const callback of pending.values()) callback();
+    expect(resets).toEqual(['second']);
+  });
+});
+

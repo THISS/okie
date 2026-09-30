@@ -21,8 +21,11 @@ import type { PublicAtlasDisplayNames } from './oembed';
 
 export const EMBED_DIALOG_TITLE = 'Embed this atlas';
 export const EMBED_COPY_FAILED_MESSAGE = 'Could not access the clipboard. Select the snippet above and copy it manually.';
+/** The link field sits below the status line and is what gets selected on failure. */
+export const EMBED_LINK_COPY_FAILED_MESSAGE = 'Could not access the clipboard. The link below is selected; copy it manually.';
 export const EMBED_UNAVAILABLE_MESSAGE = "This atlas URL can't be embedded.";
 const COPIED_FEEDBACK_MS = 2400;
+const WINDOW_TIMERS: TimerApi = { set: (callback, ms) => window.setTimeout(callback, ms), clear: handle => window.clearTimeout(handle as number | undefined) };
 
 /** Where Tab/Shift+Tab should wrap to inside the dialog, or undefined to let the browser move focus. */
 export function focusTrapTarget(input: { index: number; count: number; shift: boolean }): number | undefined {
@@ -32,6 +35,18 @@ export function focusTrapTarget(input: { index: number; count: number; shift: bo
   if (shift && index === 0) return count - 1;
   if (!shift && index === count - 1) return 0;
   return undefined;
+}
+
+export type TimerHandle = ReturnType<typeof setTimeout> | number | undefined;
+export type TimerApi = { set(callback: () => void, ms: number): TimerHandle; clear(handle: TimerHandle): void };
+
+/**
+ * (Re)start the "Copied" reset timer. Clears any pending one first, at the moment a new one is set: two copies
+ * resolving back to back (Copy, then Copy link) must not leave the first timer to reset the second's feedback early.
+ */
+export function restartTimer(ref: { current: TimerHandle }, timers: TimerApi, callback: () => void, ms: number): void {
+  timers.clear(ref.current);
+  ref.current = timers.set(callback, ms);
 }
 
 export type EmbedClipboard = { writeText(text: string): Promise<void> } | undefined;
@@ -113,7 +128,7 @@ export function EmbedDialogBody(props: EmbedDialogProps) {
         {copyState === 'copied' ? <><CheckIcon size={14}/> Copied</> : 'Copy'}
       </button>
       <span aria-live="polite" className={`embed-copy-status ${copyState}`} role="status">
-        {copyState === 'failed' || copyState === 'link-failed' ? EMBED_COPY_FAILED_MESSAGE : copyState === 'copied' ? 'Embed code copied.' : copyState === 'link-copied' ? 'Atlas link copied.' : ''}
+        {copyState === 'failed' ? EMBED_COPY_FAILED_MESSAGE : copyState === 'link-failed' ? EMBED_LINK_COPY_FAILED_MESSAGE : copyState === 'copied' ? 'Embed code copied.' : copyState === 'link-copied' ? 'Atlas link copied.' : ''}
       </span>
     </div>
     <p className="embed-oembed-note">{EMBED_OEMBED_NOTE}</p>
@@ -146,7 +161,7 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
   const [copyState, setCopyState] = useState<EmbedCopyState>('idle');
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const copiedTimerRef = useRef<number | undefined>(undefined);
+  const copiedTimerRef = useRef<TimerHandle>(undefined);
 
   const snippetFor = useCallback(
     (href: string) => (href ? buildEmbedSnippet({ pageHref: href, startAtView, preset, ...(displayNames ? { displayNames } : {}) }) ?? '' : ''),
@@ -184,7 +199,7 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [open, close]);
 
-  useEffect(() => () => window.clearTimeout(copiedTimerRef.current), []);
+  useEffect(() => () => WINDOW_TIMERS.clear(copiedTimerRef.current), []);
 
   function onDialogKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     // The dialog owns its keystrokes: none reach the atlas shortcuts (Escape, +/- zoom, v/c tools) on window.
@@ -204,7 +219,7 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
   }
 
   async function onCopy() {
-    window.clearTimeout(copiedTimerRef.current);
+    WINDOW_TIMERS.clear(copiedTimerRef.current);
     // The camera may have moved since the dialog opened: copy the live view, and show exactly what was copied.
     let text = snippet;
     if (startAtView) {
@@ -215,12 +230,12 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
     if (!text) { setCopyState('idle'); return; } // the unavailable message already shows; nothing to copy
     const copied = await copyEmbedSnippet(text, clipboard ?? (typeof navigator === 'undefined' ? undefined : navigator.clipboard));
     setCopyState(copied ? 'copied' : 'failed');
-    if (copied) copiedTimerRef.current = window.setTimeout(() => setCopyState('idle'), COPIED_FEEDBACK_MS);
+    if (copied) restartTimer(copiedTimerRef, WINDOW_TIMERS, () => setCopyState('idle'), COPIED_FEEDBACK_MS);
     else dialogRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.select();
   }
 
   async function onCopyLink() {
-    window.clearTimeout(copiedTimerRef.current);
+    WINDOW_TIMERS.clear(copiedTimerRef.current);
     let text = link;
     if (startAtView) {
       const href = readPageHref();
@@ -230,7 +245,7 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
     if (!text) { setCopyState('idle'); return; }
     const copied = await copyEmbedSnippet(text, clipboard ?? (typeof navigator === 'undefined' ? undefined : navigator.clipboard));
     setCopyState(copied ? 'link-copied' : 'link-failed');
-    if (copied) copiedTimerRef.current = window.setTimeout(() => setCopyState('idle'), COPIED_FEEDBACK_MS);
+    if (copied) restartTimer(copiedTimerRef, WINDOW_TIMERS, () => setCopyState('idle'), COPIED_FEEDBACK_MS);
     else dialogRef.current?.querySelector<HTMLInputElement>('[data-testid="embed-link"]')?.select();
   }
 
