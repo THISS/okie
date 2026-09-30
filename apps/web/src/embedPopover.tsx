@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExtern
 import { getPublishedAtlasAttribution, onPublishedAtlasAttribution } from './atlasAttribution';
 import { isFramedBrowsingContext } from './embedCanvas';
 import {
+  buildEmbedLink,
   buildEmbedSnippet,
   DEFAULT_EMBED_PRESET,
   EMBED_OEMBED_NOTE,
@@ -67,12 +68,18 @@ export function useEmbedAtlasAvailability(portable: boolean): EmbedAvailability 
   }, [pathname, search, framed, portable, attribution]);
 }
 
+/** Which Copy last ran and how it went (the snippet's and the link's buttons share one status line). */
+export type EmbedCopyState = 'idle' | 'copied' | 'failed' | 'link-copied' | 'link-failed';
+
 export type EmbedDialogProps = {
   titleId: string;
   preset: EmbedSizePresetId;
   startAtView: boolean;
   snippet: string;
-  copyState: 'idle' | 'copied' | 'failed';
+  copyState: EmbedCopyState;
+  /** The plain atlas link (oEmbed discovery), '' when unavailable. */
+  link: string;
+  onCopyLink(): void;
   onPreset(preset: EmbedSizePresetId): void;
   onStartAtView(value: boolean): void;
   onCopy(): void;
@@ -80,7 +87,7 @@ export type EmbedDialogProps = {
 
 /** The dialog's contents (no behaviour of its own). */
 export function EmbedDialogBody(props: EmbedDialogProps) {
-  const { titleId, preset, startAtView, snippet, copyState } = props;
+  const { titleId, preset, startAtView, snippet, copyState, link } = props;
   return <>
     <h2 id={titleId}>{EMBED_DIALOG_TITLE}</h2>
     <fieldset className="embed-size-presets">
@@ -106,10 +113,19 @@ export function EmbedDialogBody(props: EmbedDialogProps) {
         {copyState === 'copied' ? <><CheckIcon size={14}/> Copied</> : 'Copy'}
       </button>
       <span aria-live="polite" className={`embed-copy-status ${copyState}`} role="status">
-        {copyState === 'failed' ? EMBED_COPY_FAILED_MESSAGE : copyState === 'copied' ? 'Embed code copied.' : ''}
+        {copyState === 'failed' || copyState === 'link-failed' ? EMBED_COPY_FAILED_MESSAGE : copyState === 'copied' ? 'Embed code copied.' : copyState === 'link-copied' ? 'Atlas link copied.' : ''}
       </span>
     </div>
     <p className="embed-oembed-note">{EMBED_OEMBED_NOTE}</p>
+    <div className="embed-link-row">
+      <label className="embed-link-field">
+        <span className="sr-only">Atlas link</span>
+        <input data-testid="embed-link" onFocus={event => event.currentTarget.select()} readOnly spellCheck={false} type="text" value={link}/>
+      </label>
+      <button className={copyState === 'link-copied' ? 'copied' : undefined} data-testid="embed-copy-link" disabled={!link} onClick={props.onCopyLink} type="button">
+        {copyState === 'link-copied' ? <><CheckIcon size={14}/> Copied</> : 'Copy link'}
+      </button>
+    </div>
   </>;
 }
 
@@ -127,7 +143,7 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
   const [preset, setPreset] = useState<EmbedSizePresetId>(DEFAULT_EMBED_PRESET);
   const [startAtView, setStartAtView] = useState(true);
   const [pageHref, setPageHref] = useState('');
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [copyState, setCopyState] = useState<EmbedCopyState>('idle');
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const copiedTimerRef = useRef<number | undefined>(undefined);
@@ -137,6 +153,8 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
     [startAtView, preset, displayNames],
   );
   const snippet = useMemo(() => snippetFor(pageHref), [snippetFor, pageHref]);
+  const linkFor = useCallback((href: string) => (href ? buildEmbedLink({ pageHref: href, startAtView }) ?? '' : ''), [startAtView]);
+  const link = useMemo(() => linkFor(pageHref), [linkFor, pageHref]);
 
   const refresh = useCallback(() => {
     setPageHref(readPageHref());
@@ -201,6 +219,21 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
     else dialogRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.select();
   }
 
+  async function onCopyLink() {
+    window.clearTimeout(copiedTimerRef.current);
+    let text = link;
+    if (startAtView) {
+      const href = readPageHref();
+      setPageHref(href);
+      text = linkFor(href);
+    }
+    if (!text) { setCopyState('idle'); return; }
+    const copied = await copyEmbedSnippet(text, clipboard ?? (typeof navigator === 'undefined' ? undefined : navigator.clipboard));
+    setCopyState(copied ? 'link-copied' : 'link-failed');
+    if (copied) copiedTimerRef.current = window.setTimeout(() => setCopyState('idle'), COPIED_FEEDBACK_MS);
+    else dialogRef.current?.querySelector<HTMLInputElement>('[data-testid="embed-link"]')?.select();
+  }
+
   return (
     <div className="embed-atlas-control">
       <button
@@ -224,6 +257,8 @@ export function EmbedAtlasControl({ readPageHref, displayNames, clipboard }: Emb
         <div aria-labelledby={titleId} aria-modal="true" className="embed-popover" data-testid="embed-dialog" onKeyDown={onDialogKeyDown} ref={dialogRef} role="dialog" tabIndex={-1}>
           <EmbedDialogBody
             copyState={copyState}
+            link={link}
+            onCopyLink={() => { void onCopyLink(); }}
             onCopy={() => { void onCopy(); }}
             onPreset={next => { setPreset(next); refresh(); }}
             onStartAtView={next => { setStartAtView(next); refresh(); }}

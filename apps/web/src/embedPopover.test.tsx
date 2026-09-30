@@ -11,7 +11,7 @@ import { EMBED_OEMBED_NOTE } from './embedSnippet';
 
 const noop = () => undefined;
 const body = (patch: Partial<EmbedDialogProps> = {}) => renderToStaticMarkup(
-  <EmbedDialogBody copyState="idle" onCopy={noop} onPreset={noop} onStartAtView={noop} preset="medium" snippet="<iframe></iframe>" startAtView titleId="t" {...patch}/>,
+  <EmbedDialogBody copyState="idle" link="https://sourcefor.dev/r/pmndrs/zustand" onCopy={noop} onCopyLink={noop} onPreset={noop} onStartAtView={noop} preset="medium" snippet="<iframe></iframe>" startAtView titleId="t" {...patch}/>,
 );
 
 describe('CLA-329 embed dialog: focus trap', () => {
@@ -70,7 +70,16 @@ describe('CLA-329 embed dialog: markup', () => {
     expect(html).toMatch(/<textarea data-testid="embed-snippet" readOnly="" rows="5" spellCheck="false">&lt;iframe&gt;&lt;\/iframe&gt;<\/textarea>/);
     expect(html).toContain('data-testid="embed-copy"');
     expect(html).toContain(EMBED_OEMBED_NOTE);
-    expect(EMBED_OEMBED_NOTE).toBe('Pasting the atlas link into oEmbed-aware tools (Notion, Ghost, WordPress…) embeds it automatically.');
+    expect(EMBED_OEMBED_NOTE).toBe('Or paste the link: tools that read oEmbed (like Ghost) embed the live atlas; others may show a preview card.');
+  });
+
+  it('offers the plain atlas link with its own Copy link (what link-embedding tools need, not the iframe src)', () => {
+    const html = body();
+    expect(html).toContain('<input data-testid="embed-link" readOnly="" spellCheck="false" type="text" value="https://sourcefor.dev/r/pmndrs/zustand"/>');
+    expect(html).toMatch(/<button data-testid="embed-copy-link" type="button">Copy link<\/button>/);
+    expect(body({ copyState: 'link-copied' })).toContain('Atlas link copied.');
+    expect(body({ copyState: 'link-failed' })).toContain(EMBED_COPY_FAILED_MESSAGE);
+    expect(body({ link: '' })).toMatch(/<button data-testid="embed-copy-link" disabled="" type="button">/);
   });
 
   it('copy feedback: "Copied" on success, a select-manually message on failure', () => {

@@ -34,7 +34,11 @@ export const EMBED_SIZE_PRESETS: readonly EmbedSizePreset[] = [
 
 export const DEFAULT_EMBED_PRESET: EmbedSizePresetId = 'medium';
 
-export const EMBED_OEMBED_NOTE = 'Pasting the atlas link into oEmbed-aware tools (Notion, Ghost, WordPress…) embeds it automatically.';
+/**
+ * Honest about reach: an oEmbed-discovering host (Ghost, WordPress for trusted authors) embeds the live atlas, but
+ * proxies such as Iframely (Notion, many CMSs) show a link card for domains they have not reviewed.
+ */
+export const EMBED_OEMBED_NOTE = 'Or paste the link: tools that read oEmbed (like Ghost) embed the live atlas; others may show a preview card.';
 
 function presetSize(preset: EmbedSizePreset): EmbedIframeSize {
   return typeof preset.width === 'number' && typeof preset.height === 'number'
@@ -81,6 +85,22 @@ export function buildEmbedSnippet(input: EmbedSnippetInput): string | undefined 
   if (!preset) return undefined;
   const search = input.startAtView ? viewSearch(page.search) : '';
   return buildOembedIframeHtml({ ...target, search }, presetSize(preset), input.displayNames ?? target, { chromeNote: false });
+}
+
+/**
+ * The plain atlas link to paste into link-embedding tools (oEmbed discovery): the page URL without `embed`, at the
+ * current view or the atlas root. Undefined when the page is not an embeddable `/r/owner/repo` page.
+ */
+export function buildEmbedLink(input: { pageHref: string; startAtView: boolean }): string | undefined {
+  let page: URL;
+  try {
+    page = new URL(input.pageHref);
+  } catch {
+    return undefined;
+  }
+  const target = parsePublicAtlasOembedUrl(`${page.origin}${page.pathname}`, page.origin, [page.origin]);
+  if (!target || page.username || page.password) return undefined;
+  return `${page.origin}${page.pathname}${input.startAtView ? viewSearch(page.search) : ''}`;
 }
 
 export type EmbedButtonInput = {

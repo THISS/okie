@@ -8,6 +8,7 @@ import {
   isAllowedOembedRequestOrigin,
   isLoopbackHostname,
   parsePublicAtlasOembedUrl,
+  publicAtlasEmbedHref,
   publicAtlasHref,
   publicAtlasOembedHref,
   publicAtlasOgImageHref,
@@ -73,7 +74,15 @@ export type OpenGraphTags = {
   canonical: string;
   /** oEmbed discovery link; share pages only. */
   oembedHref?: string;
+  /**
+   * CLA-329: the atlas's embed page (`?embed=1`) as an Iframely player (`<link rel="iframely player">`,
+   * https://iframely.com/oembed2/rels); share pages only. Iframely honours it once it has reviewed the domain.
+   */
+  playerHref?: string;
 };
+
+/** Aspect ratio of the advertised player: the embed dialog's responsive preset. */
+export const IFRAMELY_PLAYER_MEDIA = 'aspect-ratio: 16/9';
 
 export type ShareHtmlInput = {
   method: string;
@@ -273,6 +282,7 @@ export function buildOpenGraphTags(target: PublicAtlasOembedTarget, displayNames
     siteName: OEMBED_PROVIDER_NAME,
     canonical: canonicalHref(repoCanonicalPath(canonical.owner, canonical.repo)),
     oembedHref: publicAtlasOembedHref(pageHref),
+    playerHref: publicAtlasEmbedHref(canonical),
   };
 }
 
@@ -328,6 +338,9 @@ export function renderOpenGraphHead(tags: OpenGraphTags): string {
     `<link rel="canonical" href="${t(tags.canonical)}" />`,
     ...(tags.oembedHref
       ? [`<link rel="alternate" type="${OEMBED_JSON_TYPE}" href="${t(tags.oembedHref)}" title="${t(OEMBED_PROVIDER_NAME)} oEmbed" />`]
+      : []),
+    ...(tags.playerHref
+      ? [`<link rel="iframely player" type="text/html" href="${t(tags.playerHref)}" media="${IFRAMELY_PLAYER_MEDIA}" />`]
       : []),
   ].join('\n    ');
 }

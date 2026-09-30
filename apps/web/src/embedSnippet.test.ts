@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PublishedAtlasAttribution } from './atlasAttribution';
-import { buildEmbedSnippet, EMBED_SIZE_PRESETS, embedAvailabilityInput, embedButtonVisible, type EmbedButtonInput } from './embedSnippet';
+import { buildEmbedLink, buildEmbedSnippet, EMBED_SIZE_PRESETS, embedAvailabilityInput, embedButtonVisible, type EmbedButtonInput } from './embedSnippet';
 import { buildOembedIframeHtml, OEMBED_SNIPPET_CHROME_NOTE, parsePublicAtlasOembedUrl } from './oembed';
 
 const PAGE = 'https://sourcefor.dev/r/pmndrs/zustand?nav=1&z=0.75&sel=container%3Aapi';
@@ -139,5 +139,18 @@ describe('CLA-329 embed availability input (the hook\'s derivation)', () => {
     expect(embedButtonVisible(at({ portable: true }))).toBe(false);
     expect(at({ pathname: '/' })).toMatchObject({ routeIsRepo: false, dogfood: false });
     expect(embedButtonVisible(at({ pathname: '/new' }))).toBe(false);
+  });
+});
+
+describe('CLA-329 embed dialog link', () => {
+  const PAGE = 'https://sourcefor.dev/r/burnt-sushi/ripgrep?nav=1&z=0.75&embed=1';
+  it('is the atlas URL at the current view without embed, or the atlas root', () => {
+    expect(buildEmbedLink({ pageHref: PAGE, startAtView: true })).toBe('https://sourcefor.dev/r/burnt-sushi/ripgrep?nav=1&z=0.75');
+    expect(buildEmbedLink({ pageHref: PAGE, startAtView: false })).toBe('https://sourcefor.dev/r/burnt-sushi/ripgrep');
+    expect(buildEmbedLink({ pageHref: 'https://sourcefor.dev/r/burnt-sushi/ripgrep?embed=1', startAtView: true })).toBe('https://sourcefor.dev/r/burnt-sushi/ripgrep');
+  });
+  it('is undefined off an atlas route', () => {
+    expect(buildEmbedLink({ pageHref: 'https://sourcefor.dev/new', startAtView: true })).toBeUndefined();
+    expect(buildEmbedLink({ pageHref: 'not a url', startAtView: true })).toBeUndefined();
   });
 });
