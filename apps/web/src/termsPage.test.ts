@@ -44,11 +44,13 @@ describe('CLA-316 terms page', () => {
     expect(privacySource).not.toContain(PRIVACY_COPY_PENDING);
   });
 
-  it('keeps the owner-approved wording: acceptable use as a list, ACL carve-out, AUD 100 cap, Queensland law, a link to /privacy', () => {
+  it('keeps the owner-approved wording: acceptable use as a list, ACL carve-out, liability excluded as far as the law allows (no dollar cap), Queensland law, a link to /privacy', () => {
     expect(html).toContain('<p>Don’t:</p>\n        <ul><li>scrape or download the Service in bulk, or put load on it that degrades it for others;</li>');
     expect(html).toContain('<li>misrepresent an atlas as the official documentation of a project.</li></ul>');
     expect(html).toContain('<strong>Australian Consumer Law.</strong> Nothing in these terms excludes');
-    expect(html).toContain('our total liability for any claim relating to it is limited to AUD 100.');
+    expect(html).toContain('<p>The Service is free. To the maximum extent permitted by law, we are not liable for any loss or damage arising from your use of, or inability to use, the Service, including indirect or consequential loss, lost data or lost profits.</p>');
+    expect(html).toContain('<p>Where liability can’t be excluded (including under the Australian Consumer Law), our liability is limited, where the law allows, to supplying the Service again or paying the cost of having it supplied again.</p>');
+    expect(html).not.toContain('AUD');
     expect(html).toContain('These terms are governed by the laws of Queensland, Australia.');
     expect(html).toContain('Our <a href="/privacy">Privacy</a> page explains what we collect and why.');
     expect(html).toContain('Each atlas page shows the repository’s licence and a link back to its source.');

@@ -68,7 +68,8 @@ export const TERMS_COPY = {
     {
       heading: 'Limitation of liability',
       blocks: [
-        { kind: 'p', text: 'To the maximum extent permitted by law, we aren’t liable for any indirect, incidental, special, consequential or punitive damages, or for loss of data, profits or goodwill. The Service is free, and our total liability for any claim relating to it is limited to AUD 100.' },
+        { kind: 'p', text: 'The Service is free. To the maximum extent permitted by law, we are not liable for any loss or damage arising from your use of, or inability to use, the Service, including indirect or consequential loss, lost data or lost profits.' },
+        { kind: 'p', text: 'Where liability can’t be excluded (including under the Australian Consumer Law), our liability is limited, where the law allows, to supplying the Service again or paying the cost of having it supplied again.' },
       ],
     },
     {
