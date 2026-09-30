@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { compensateSemanticMorphCamera } from '../semantic/semanticLens';
-import { createCameraPublicationEchoGuard, createCameraPublisher, focusCameraPreservingAnchor, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAroundWorldAnchor, zoomCameraAt } from './cameraController';
+import { createCameraPublicationEchoGuard, createCameraPublisher, focusCameraPreservingAnchor, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAroundWorldAnchor, zoomCameraAt, zoomCameraByFactor } from './cameraController';
+import { ATLAS_CAMERA_BOUNDS } from './cameraBounds';
 
 describe('camera controls', () => {
   it('keeps the cursor over the same world point while zooming', () => {
@@ -19,6 +20,32 @@ describe('camera controls', () => {
     expect(after.x).toBeCloseTo(before.x);
     expect(after.y).toBeCloseTo(before.y);
     expect(panCamera(next, 20, -10)).toEqual({ ...next, x: next.x - 20 / next.zoom, y: next.y + 10 / next.zoom });
+  });
+
+  it('zooms by an explicit factor anchored at the cursor, matching the wheel path exactly', () => {
+    const viewport = { width: 800, height: 600 };
+    const current = { x: 50, y: 25, zoom: 0.5 };
+    for (const deltaY of [-100, -3, 0, 42, 100]) {
+      expect(zoomCameraByFactor(current, 650, 220, viewport, Math.exp(-deltaY * 0.0012)))
+        .toEqual(zoomCameraAt(current, 650, 220, viewport, deltaY));
+    }
+    const doubled = zoomCameraByFactor(current, 650, 220, viewport, 2);
+    expect(doubled.zoom).toBeCloseTo(1);
+    const worldBefore = current.x + 250 / current.zoom;
+    expect(doubled.x + 250 / doubled.zoom).toBeCloseTo(worldBefore);
+  });
+
+  it('clamps factor zoom to the atlas camera bounds', () => {
+    const viewport = { width: 800, height: 600 };
+    const current = { x: 0, y: 0, zoom: 1 };
+    expect(zoomCameraByFactor(current, 400, 300, viewport, 1e6).zoom).toBe(ATLAS_CAMERA_BOUNDS.maxZoom);
+    expect(zoomCameraByFactor(current, 400, 300, viewport, 1e-6).zoom).toBe(ATLAS_CAMERA_BOUNDS.minZoom);
+  });
+
+  it('pans the camera down (content moves up) for a positive scroll delta', () => {
+    const current = { x: 10, y: 10, zoom: 2 };
+    // The wheel handler pans with the negated scroll delta.
+    expect(panCamera(current, -0, -40).y).toBe(30);
   });
 });
 

@@ -70,4 +70,23 @@ describe('zoom motion trace', () => {
     expect(second.truncated).toBe(false);
     expect(trace.active).toBe(false);
   });
+
+  it('records the classified input intent and zoom factor only when supplied', () => {
+    const trace = createZoomMotionTrace();
+    trace.start(metadata);
+    const base = {
+      deltaX: 0, deltaY: -2, deltaMode: 0, pointerX: 1, pointerY: 2,
+      ctrlKey: true, metaKey: false, shiftKey: false, altKey: false,
+      viewport: { width: 800, height: 600 }, devicePixelRatio: 2,
+    };
+    trace.recordInput({ ...base, timeMs: 501, intent: 'pinch', zoomFactor: 1.02 });
+    trace.recordInput({ ...base, timeMs: 502, intent: 'pan' });
+    trace.recordInput({ ...base, timeMs: 503 });
+    const [pinch, pan, legacy] = trace.stop()!.samples;
+    expect(pinch).toMatchObject({ intent: 'pinch', zoomFactor: 1.02 });
+    expect(pan).toMatchObject({ intent: 'pan' });
+    expect(pan).not.toHaveProperty('zoomFactor');
+    expect(legacy).not.toHaveProperty('intent');
+    expect(legacy).not.toHaveProperty('zoomFactor');
+  });
 });
