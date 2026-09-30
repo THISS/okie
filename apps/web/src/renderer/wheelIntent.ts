@@ -14,8 +14,10 @@
  *       wheel notch (deltaMode ≠ pixel; or integer |deltaY| ≥ 50 with deltaX = 0)
  *       → `modifier-wheel`. The legacy wheelDeltaY is deliberately ignored here:
  *       synthetic/accelerated wheels can report ±120 with tiny deltas, and a pinch
- *       must never fall back to the slow notch gain on that signal (a small
- *       Ctrl+notch zooming at pinch gain is the harmless side). Modifier events
+ *       must never fall back to the slow notch gain on that signal. Trade-off:
+ *       accelerated macOS Cmd/Ctrl+mouse notches (fractional deltas) zoom at the
+ *       pinch gain, clamped to ×1.65 per event — noticeably faster than a plain
+ *       wheel notch, and a fast spin can cross several zoom bands. Modifier events
  *       always zoom, whatever the stream latch says, and end the current latch.
  *   (b) deltaMode LINE/PAGE → mouse. Line deltas are converted to CSS px at
  *       33 px/line so a Firefox 3-line notch (±3) ≈ Chrome's ±100 px notch; a

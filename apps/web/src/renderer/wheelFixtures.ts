@@ -100,8 +100,9 @@ export const modifierMouseNotches: WheelSample[] = [
 
 /**
  * (4b) Notched mouse, Chrome macOS: scroll acceleration makes each notch a fractional
- * pixel delta with a ±120·k legacy wheelDeltaY (shape per the logged macOS Chrome
- * values in github.com/ukonpower/OREngine/pull/210).
+ * pixel delta with a ±120·k legacy wheelDeltaY. Shape modelled on the logged macOS
+ * Chrome values in github.com/ukonpower/OREngine/pull/210; the numbers here are
+ * adjusted (rounded deltas, illustrative ±120·k multiples), not copied verbatim.
  */
 export const chromeMacMouseNotches: WheelSample[] = sequence(4500, 40, [
   { deltaX: 0, deltaY: -4.000244140625, deltaMode: 0, wheelDeltaY: 120 },

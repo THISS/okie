@@ -16,22 +16,27 @@ type FakeHistory = NavigationHistoryAdapter & {
   pushes: string[];
   replacements: string[];
   replacementTimes: number[];
+  throwOnReplace: boolean;
   pop(url: string): void;
+  hide(): void;
 };
 
 function fakeHistory(href: string): FakeHistory {
   let listener: (() => void) | undefined;
+  let hideListener: (() => void) | undefined;
   return {
     href,
     pushes: [],
     replacements: [],
     replacementTimes: [],
+    throwOnReplace: false,
     getHref() { return this.href; },
     pushState(_data, url) {
       this.href = url;
       this.pushes.push(url);
     },
     replaceState(_data, url) {
+      if (this.throwOnReplace) throw new DOMException('Attempt to use history.replaceState() more than 100 times per 10 seconds', 'SecurityError');
       this.href = url;
       this.replacements.push(url);
       this.replacementTimes.push(Date.now());
@@ -40,11 +45,16 @@ function fakeHistory(href: string): FakeHistory {
       listener = next;
       return () => { if (listener === next) listener = undefined; };
     },
+    addPageHideListener(next) {
+      hideListener = next;
+      return () => { if (hideListener === next) hideListener = undefined; };
+    },
     now: () => Date.now(),
     pop(url) {
       this.href = url;
       listener?.();
     },
+    hide() { hideListener?.(); },
   };
 }
 
@@ -134,6 +144,61 @@ describe('navigation history camera URL coalescing (CLA-326)', () => {
     vi.advanceTimersByTime(500);
     await Promise.resolve();
     expect(adapter.replacements.some(url => url.includes('cx=9'))).toBe(false);
+    controller.dispose();
+  });
+
+  it('flush() and flushUrl() write the current camera immediately (Copy link reads location.href next)', async () => {
+    const { adapter, controller } = await started();
+    controller.commitSettledCamera({ x: 1, y: 1, zoom: 1 });
+    controller.commitSettledCamera({ x: 7, y: 7, zoom: 1.4 });
+    expect(adapter.href).not.toContain('cx=7');
+    controller.flushUrl();
+    expect(adapter.href).toContain('cx=7');
+    controller.commitSettledCamera({ x: 8, y: 8, zoom: 1.5 });
+    controller.flush(state({ camera: { x: 9, y: 9, zoom: 1.6 } }));
+    expect(adapter.href).toContain('cx=9');
+    controller.dispose();
+  });
+
+  it('lands a deferred camera URL on dispose and on pagehide', async () => {
+    const first = await started();
+    first.controller.commitSettledCamera({ x: 1, y: 1, zoom: 1 });
+    first.controller.commitSettledCamera({ x: 7, y: 7, zoom: 1.4 });
+    first.controller.dispose();
+    expect(first.adapter.href).toContain('cx=7');
+
+    const second = await started();
+    second.controller.commitSettledCamera({ x: 1, y: 1, zoom: 1 });
+    second.controller.commitSettledCamera({ x: 6, y: 6, zoom: 1.3 });
+    second.adapter.hide();
+    expect(second.adapter.href).toContain('cx=6');
+    second.controller.dispose();
+  });
+
+  it('stays under 100 writes per 30 s (older Safari) through a minute of continuous camera motion', async () => {
+    const { adapter, controller } = await started();
+    for (let frame = 0; frame < 60 * 60; frame += 1) {
+      controller.commitSettledCamera({ x: frame, y: frame / 2, zoom: 1 + (frame % 300) / 300 });
+      vi.advanceTimersByTime(16);
+    }
+    vi.advanceTimersByTime(31_000);
+    for (let index = 0; index < adapter.replacementTimes.length; index += 1) {
+      const windowStart = adapter.replacementTimes[index];
+      expect(adapter.replacementTimes.filter(time => time >= windowStart && time < windowStart + 30_000).length).toBeLessThan(100);
+    }
+    expect(adapter.href).toContain(`cx=${60 * 60 - 1}`);
+    controller.dispose();
+  });
+
+  it('keeps committing when the browser rate-limits replaceState, and retries the URL', async () => {
+    const { adapter, controller, commits } = await started();
+    adapter.throwOnReplace = true;
+    expect(() => controller.replace(state({ selectedId: 'entity:orders' }))).not.toThrow();
+    expect(commits.at(-1)).toBe(2);
+    expect(controller.current().selectedId).toBe('entity:orders');
+    adapter.throwOnReplace = false;
+    vi.advanceTimersByTime(1_500);
+    expect(adapter.href).toContain('sel=entity%3Aorders');
     controller.dispose();
   });
 });

@@ -5283,6 +5283,8 @@ export function App() {
     // and canonical phase. Flushing the canvas publisher here could overwrite
     // that sample with its previous RAF camera.
     if (storyStep < 0) window.dispatchEvent(new Event('atlas:flush-navigation'));
+    // Camera-only URL writes are spaced (CLA-326); land any deferred one before reading it.
+    historyControllerRef.current?.flushUrl();
     const url = window.location.href;
     if (shareFeedbackTimerRef.current !== undefined) window.clearTimeout(shareFeedbackTimerRef.current);
     try {
