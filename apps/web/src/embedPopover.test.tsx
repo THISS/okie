@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { copyEmbedSnippet, EMBED_COPY_FAILED_MESSAGE, EMBED_UNAVAILABLE_MESSAGE, EmbedAtlasControl, EmbedDialogBody, focusTrapTarget, type EmbedDialogProps } from './embedPopover';
+import { copyEmbedSnippet, EMBED_COPY_FAILED_MESSAGE, EMBED_LINK_COPY_FAILED_MESSAGE, EMBED_UNAVAILABLE_MESSAGE, EmbedAtlasControl, EmbedDialogBody, focusTrapTarget, settleCopyFeedback, type EmbedDialogProps, type TimerApi, type TimerHandle } from './embedPopover';
 import { EMBED_OEMBED_NOTE } from './embedSnippet';
 
 /**
@@ -78,7 +78,8 @@ describe('CLA-329 embed dialog: markup', () => {
     expect(html).toContain('<input data-testid="embed-link" readOnly="" spellCheck="false" type="text" value="https://sourcefor.dev/r/pmndrs/zustand"/>');
     expect(html).toMatch(/<button data-testid="embed-copy-link" type="button">Copy link<\/button>/);
     expect(body({ copyState: 'link-copied' })).toContain('Atlas link copied.');
-    expect(body({ copyState: 'link-failed' })).toContain(EMBED_COPY_FAILED_MESSAGE);
+    expect(body({ copyState: 'link-failed' })).toContain(EMBED_LINK_COPY_FAILED_MESSAGE);
+    expect(body({ copyState: 'link-failed' })).not.toContain('snippet above');
     expect(body({ link: '' })).toMatch(/<button data-testid="embed-copy-link" disabled="" type="button">/);
   });
 
@@ -117,5 +118,46 @@ describe('CLA-329 embed dialog: markup', () => {
     const css = readFileSync(new URL('./app.css', import.meta.url), 'utf8');
     const phone = css.slice(css.indexOf('@media (max-width: 640px) {\n  /* backdrop-filter'));
     expect(phone).toMatch(/\.embed-popover \{ position: fixed;[^}]*right: 0; bottom: 0; left: 0; width: auto; max-height: [^;]+; overflow-y: auto;/);
+  });
+});
+
+describe('CLA-329 embed dialog: copied-feedback timer', () => {
+  function fakeTimers() {
+    let next = 0;
+    const pending = new Map<number, () => void>();
+    const timers: TimerApi = {
+      set: callback => { next += 1; pending.set(next, callback); return next; },
+      clear: handle => { if (handle !== undefined) pending.delete(handle); },
+    };
+    return { timers, pending, fire: () => { for (const callback of [...pending.values()]) callback(); } };
+  }
+
+  it('a second successful copy replaces the pending reset instead of leaving it to fire early', () => {
+    const { timers, pending, fire } = fakeTimers();
+    const ref: { current: TimerHandle } = { current: undefined };
+    const resets: string[] = [];
+    settleCopyFeedback(ref, timers, true, () => resets.push('first'), 2400);
+    settleCopyFeedback(ref, timers, true, () => resets.push('second'), 2400);
+    expect([...pending.keys()]).toEqual([2]);
+    fire();
+    expect(resets).toEqual(['second']);
+  });
+
+  it('a failed copy cancels an earlier copy\'s pending reset, so its failure message stays', () => {
+    const { timers, pending, fire } = fakeTimers();
+    const ref: { current: TimerHandle } = { current: undefined };
+    const resets: string[] = [];
+    settleCopyFeedback(ref, timers, true, () => resets.push('copied'), 2400);
+    settleCopyFeedback(ref, timers, false, () => resets.push('failed'), 2400);
+    expect(pending.size).toBe(0);
+    expect(ref.current).toBeUndefined();
+    fire();
+    expect(resets).toEqual([]);
+  });
+
+  it('both Copy handlers settle their feedback through the helper (no bare setTimeout in the component)', () => {
+    const source = readFileSync(new URL('./embedPopover.tsx', import.meta.url), 'utf8');
+    expect(source.match(/settleCopyFeedback\(copiedTimerRef, WINDOW_TIMERS, copied,/g)).toHaveLength(2);
+    expect(source.match(/window\.setTimeout\(/g)).toHaveLength(1); // only WINDOW_TIMERS.set
   });
 });
