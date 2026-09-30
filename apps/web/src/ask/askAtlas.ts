@@ -140,6 +140,8 @@ export type AskAuthView = {
   loginPath: string;
   logoutPath: string;
   testLoginPath?: string;
+  /** CLA-316 hosted accounts: the edge's `/account` page (email, product updates, delete). Absent on the local server. */
+  accountPath?: string;
   /**
    * CLA-266 hosted public mode (`/api/auth/me` answers `mode: "public"`): there is no sign-in route,
    * Ask is open to everyone (the edge Worker rate-limits and budgets it) and account chrome is hidden.
@@ -320,6 +322,7 @@ async function requestAskAuth(fetchImpl: AskFetch, signal: AbortSignal | undefin
     if (typeof body.testLoginPath === 'string' && body.testLoginPath.startsWith('/')) {
       view.testLoginPath = body.testLoginPath;
     }
+    if (typeof body.accountPath === 'string' && /^\/(?![/\\])/.test(body.accountPath)) view.accountPath = body.accountPath;
     if (body.mode === 'public') view.publicMode = true;
     if (body.ask === false) view.askEnabled = false;
     return view;

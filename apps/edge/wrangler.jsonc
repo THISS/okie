@@ -1,18 +1,25 @@
 // sourcefor.dev edge Worker (CLA-266). Top level = local dev (`pnpm --filter @okie/edge dev`);
 // `env.staging` / `env.production` are the deployed environments. Bindings, vars, containers,
-// durable_objects, r2_buckets and ratelimits are NOT inherited by named environments, so each env
+// durable_objects, r2_buckets, d1_databases and ratelimits are NOT inherited by named environments, so each env
 // repeats them.
 // Launch is BROWSE-ONLY: staging/production have no `containers` and no ATLAS_API binding, and
 // ASK_ENABLED is "0" (Ask/block-plan 404 at the edge; browsing is served entirely from R2). The top
 // level keeps the container so the signed-in-Ask follow-up stays testable locally; set ASK_ENABLED=1
-// in .dev.vars to try it. Secrets (OKIE_LLM_API_KEY, JEV_API, TURNSTILE_SECRET_KEY) are set with
-// `wrangler secret put --env <env>`; DEV_BACKEND_ORIGIN / DEV_STORE_ROUTE only ever come from a local
-// .dev.vars and must never appear here (asserted in test/config.test.ts).
+// in .dev.vars to try it. Secrets (OKIE_LLM_API_KEY, JEV_API, TURNSTILE_SECRET_KEY, plus the sign-in
+// secrets below) are set with `wrangler secret put --env <env>`; DEV_BACKEND_ORIGIN, DEV_STORE_ROUTE and
+// DEV_AUTH_TEST_LOGIN only ever come from a local .dev.vars and must never appear here (asserted in
+// test/config.test.ts).
 // Cloudflare Web Analytics (CLA-318): WEB_ANALYTICS_TOKEN (the dashboard's site token; public, it ships
 // in page HTML) turns on the beacon in every HTML page the Worker serves (src/analytics.ts). Production
 // only: it is set in env.production.vars; remove it and redeploy to turn analytics off. Unset, blank or
 // not /^[A-Za-z0-9]{16,64}$/ = no analytics. Staging and local dev stay without.
 // Use Web Analytics' manual JS-snippet install and keep its automatic injection off (else double counts).
+// GitHub sign-in (CLA-316, src/auth.ts): each env binds its own USERS_DB D1 database (schema in
+// migrations/, applied by scripts/deploy.mjs before every deploy). Sign-in stays OFF (auth/me answers the
+// public shape, /account 404s) until the env also has the secrets GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+// and SESSION_SIGNING_KEY (>= 32 chars), set with `wrangler secret put --env <env>`, never in vars
+// (asserted in test/config.test.ts). DEV_AUTH_TEST_LOGIN is local .dev.vars only. The top-level database
+// id is a local-only placeholder: `wrangler dev` and the tests keep D1 on disk and never contact Cloudflare.
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "sourcefor-atlas",
@@ -51,6 +58,14 @@
     "TURNSTILE_ENABLED": "0"
   },
   "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas-local" }],
+  "d1_databases": [
+    {
+      "binding": "USERS_DB",
+      "database_name": "sourcefor-atlas-local",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       { "name": "ATLAS_API", "class_name": "AtlasApiContainer" },
@@ -88,6 +103,14 @@
         "TURNSTILE_ENABLED": "0"
       },
       "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas-staging" }],
+      "d1_databases": [
+        {
+          "binding": "USERS_DB",
+          "database_name": "sourcefor-atlas-staging",
+          "database_id": "fd8be0a0-c9e3-4191-a8b3-86fb963f6447",
+          "migrations_dir": "migrations"
+        }
+      ],
       // No container at launch: only the budget Durable Object. The signed-in-Ask follow-up adds the
       // ATLAS_API binding and the `containers` entry. The v1 migration already created AtlasApiContainer (it
       // shipped in the first deploy), so it stays listed; don't add a new migration for it.
@@ -119,6 +142,14 @@
         "TURNSTILE_ENABLED": "0"
       },
       "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas" }],
+      "d1_databases": [
+        {
+          "binding": "USERS_DB",
+          "database_name": "sourcefor-atlas",
+          "database_id": "a6897908-09df-41f9-bad8-34660c00d2c7",
+          "migrations_dir": "migrations"
+        }
+      ],
       // No container at launch: only the budget Durable Object. The signed-in-Ask follow-up adds the
       // ATLAS_API binding and the `containers` entry. The v1 migration already created AtlasApiContainer (it
       // shipped in the first deploy), so it stays listed; don't add a new migration for it.

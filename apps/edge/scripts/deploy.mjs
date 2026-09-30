@@ -7,10 +7,12 @@
 // Credentials: `wrangler login` (OAuth). The account comes from `account_id` in wrangler.jsonc (or the
 // OAuth session); nothing is read from .env. CLOUDFLARE_API_TOKEN is removed from wrangler's env when
 // present, because a token overrides the OAuth login. The browse-only launch has no container, so no
-// Docker is needed; it requires a built apps/web/dist (`pnpm build`).
+// Docker is needed; it requires a built apps/web/dist (`pnpm build`). Pending USERS_DB (D1) migrations
+// are applied to the target first; the deploy stops if that fails.
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { appliesRemoteMigrations } from './deployCore.mjs';
 
 const ENVIRONMENTS = new Set(['staging', 'production']);
 const API_TOKEN = 'CLOUDFLARE_API_TOKEN';
@@ -32,6 +34,20 @@ if (env[API_TOKEN]) {
 if (!existsSync(`${repoRoot}apps/web/dist/index.html`)) {
   console.error('apps/web/dist is missing; run `pnpm build` first');
   process.exit(1);
+}
+// Accounts schema first (CLA-316): the new Worker must never run against an older USERS_DB schema.
+// Already-applied migrations are skipped; any failure stops the deploy before `wrangler deploy`.
+const dryRun = !appliesRemoteMigrations(process.argv.slice(3));
+if (dryRun) console.log('--dry-run: skipping the remote USERS_DB migrations');
+else console.log(`applying USERS_DB migrations to ${target} (remote D1)`);
+const migrations = dryRun ? { status: 0 } : spawnSync('pnpm', ['exec', 'wrangler', 'd1', 'migrations', 'apply', 'USERS_DB', '--env', target, '--remote'], {
+  cwd: edgeDir,
+  env: { ...env, CI: 'true' },
+  stdio: ['ignore', 'inherit', 'inherit'],
+});
+if (migrations.status !== 0) {
+  console.error('USERS_DB migrations failed; not deploying. See docs/deploy/cloudflare-runbook.md (Sign-in).');
+  process.exit(migrations.status ?? 1);
 }
 console.log(`deploying sourcefor-atlas to ${target} (browse-only, no container; OAuth login, account from wrangler.jsonc)`);
 const result = spawnSync('pnpm', ['exec', 'wrangler', 'deploy', '--env', target, ...process.argv.slice(3)], {

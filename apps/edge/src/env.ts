@@ -3,8 +3,9 @@ import type { AtlasApiContainer } from './container';
 
 /**
  * Bindings and vars of the `sourcefor-atlas` Worker (apps/edge/wrangler.jsonc). Secrets
- * (`OKIE_LLM_API_KEY`, `JEV_API`, `TURNSTILE_SECRET_KEY`) are set with `wrangler secret put`, never in
- * the config. `DEV_*` names only ever come from a local `.dev.vars`.
+ * (`OKIE_LLM_API_KEY`, `JEV_API`, `TURNSTILE_SECRET_KEY`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`,
+ * `SESSION_SIGNING_KEY`) are set with `wrangler secret put`, never in the config. `DEV_*` names only
+ * ever come from a local `.dev.vars`.
  */
 export interface EdgeEnv {
   /** Workers Static Assets: the apps/web build. */
@@ -21,6 +22,12 @@ export interface EdgeEnv {
   ATLAS_BUDGET?: DurableObjectNamespace<AtlasBudget>;
   /** Workers Rate Limiting binding; absent in some local setups (tolerated). */
   ASK_RATE_LIMITER?: RateLimit;
+
+  /**
+   * Accounts (CLA-316): one row per GitHub user who signed in (migrations/0001_users.sql). Sign-in is
+   * off unless this is bound AND the GitHub OAuth secrets and SESSION_SIGNING_KEY are set (auth.ts).
+   */
+  USERS_DB?: D1Database;
 
   /** "1" turns on Ask + block-plan. Anything else (the code default) = browse-only: those routes 404 at the edge. */
   ASK_ENABLED?: string;
@@ -55,9 +62,25 @@ export interface EdgeEnv {
   TURNSTILE_ENABLED?: string;
   TURNSTILE_SECRET_KEY?: string;
 
+  // GitHub sign-in (CLA-316; secrets, `wrangler secret put --env <env>`).
+  /** The GitHub OAuth app's client id (one app per environment; its callback is <origin>/api/auth/github/callback). */
+  GITHUB_CLIENT_ID?: string;
+  /** The GitHub OAuth app's client secret. */
+  GITHUB_CLIENT_SECRET?: string;
+  /**
+   * HMAC-SHA256 key for the session and OAuth-state cookies; at least 32 characters (shorter = sign-in
+   * stays off). Rotating it signs everyone out.
+   */
+  SESSION_SIGNING_KEY?: string;
+
   // Local-only escape hatches; must never be set in wrangler.jsonc.
   DEV_BACKEND_ORIGIN?: string;
   DEV_STORE_ROUTE?: string;
+  /**
+   * "1" (with SESSION_SIGNING_KEY + USERS_DB, and OKIE_PUBLIC_ORIGIN unset or loopback): GET
+   * /api/auth/github/test-login signs in a fixed test user without GitHub. Never honoured off loopback.
+   */
+  DEV_AUTH_TEST_LOGIN?: string;
 }
 
 /** Ask (and block-plan) are on only with `ASK_ENABLED=1`; the Worker's default is off. */

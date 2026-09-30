@@ -31,8 +31,13 @@ export function webAnalyticsSnippet(token: string): string {
   return `<script defer src="${WEB_ANALYTICS_BEACON_SRC}" data-cf-beacon='{"token":"${token}"}'></script>`;
 }
 
-/** Whether a page at `url` gets the beacon (every page, except embeds when `inEmbeds` is off). */
+/**
+ * Whether a page at `url` gets the beacon: every page, except embeds when `inEmbeds` is off, and never the
+ * signed-in account pages (`/account`, CLA-316) or HTML answered under `/api/` (the account forms' session-ended
+ * page). The CSP's analytics allowance follows this same predicate (index.ts withEdgeHeaders).
+ */
 export function injectsInto(url: URL, inEmbeds: boolean = WEB_ANALYTICS_IN_EMBEDS): boolean {
+  if (url.pathname === '/account' || url.pathname === '/account/' || url.pathname.startsWith('/api/')) return false;
   return inEmbeds || url.searchParams.get('embed') !== '1';
 }
 

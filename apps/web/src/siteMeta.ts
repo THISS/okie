@@ -146,3 +146,9 @@ export function applyPageMeta(doc: MetaDocument, pathname: string): PageMeta {
   }, 'href', canonicalHref(meta.canonicalPath));
   return meta;
 }
+
+/**
+ * The privacy policy version in force (CLA-316). Stored on each account row at sign-up
+ * (`users.privacy_version`, apps/edge) and shown on the privacy page; bump it when the policy changes.
+ */
+export const PRIVACY_POLICY_VERSION = '2026-09-30';

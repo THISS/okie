@@ -383,6 +383,19 @@ describe('Ask sign-in and thread identity', () => {
     expect(askSignInHref('/api/auth/github', '/r/THISS/okie')).toBe('/api/auth/github?return=%2Fr%2FTHISS%2Fokie');
   });
 
+  it('fetchAskAuth reads the edge accounts shape, keeping only a same-origin accountPath (CLA-316)', async () => {
+    const me = (body: unknown) => vi.fn(async () => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })) as unknown as typeof fetch;
+    const accounts = { authenticated: true, login: 'octo-cat', mode: 'accounts', oauthConfigured: true, loginPath: '/api/auth/github', logoutPath: '/api/auth/logout', accountPath: '/account', ask: false };
+    resetAskAuthMemory();
+    await expect(fetchAskAuth({ fetch: me(accounts) })).resolves.toEqual({
+      authenticated: true, login: 'octo-cat', loginPath: '/api/auth/github', logoutPath: '/api/auth/logout', accountPath: '/account', askEnabled: false,
+    });
+    for (const accountPath of ['//evil.example/account', 'https://evil.example/account', '/\\evil', 42]) {
+      resetAskAuthMemory();
+      expect((await fetchAskAuth({ fetch: me({ ...accounts, accountPath }) })).accountPath, String(accountPath)).toBeUndefined();
+    }
+  });
+
   it('fetchAskAuth flags the hosted public mode without claiming a session (CLA-266)', async () => {
     const publicMe = vi.fn(async () => new Response(JSON.stringify({ authenticated: false, mode: 'public' }), {
       status: 200,

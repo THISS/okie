@@ -406,6 +406,11 @@ export type HomePageInput = {
   /** The request's origin; og:url / og:image use it only when allowlisted, else production. */
   requestOrigin?: string;
   allowedOrigins?: readonly string[];
+  /**
+   * Sign-in is configured on this deployment (CLA-316): render the header's account slot and load /home.js
+   * to fill it. Off (the default), the page is exactly as before accounts existed.
+   */
+  accounts?: boolean;
 };
 
 const FAVICONS = `<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -472,8 +477,31 @@ const STYLE = `
       @media (min-width:720px){.hero{padding:5rem 1.5rem 3rem}.hero h1{font-size:2.6rem}.directory,.site-footer{padding-left:1.5rem;padding-right:1.5rem}.search-controls{flex:none}}
     `;
 
-/** The script that filters and re-sorts the cards in place (apps/web/public/home.js; the page works without it). */
+/**
+ * The script that filters and re-sorts the cards in place and fills the sign-in slot
+ * (apps/web/public/home.js; the page works without it).
+ */
 export const HOME_SCRIPT_PATH = '/home.js';
+
+/**
+ * The header's account links (CLA-316), rendered only when accounts are configured. Hidden and empty in
+ * the HTML (the page is shared-cached, so it never carries a user): home.js asks /api/auth/me and fills it
+ * with "Sign in with GitHub" or "@login · Account · Sign out". Without JavaScript it stays hidden.
+ */
+export const AUTH_SLOT_HTML = '<nav class="site-auth" aria-label="Account" data-auth-slot hidden></nav>';
+
+/** The slot's CSS, only on pages that render it (positioned over the hero, so filling it never shifts the layout). */
+const AUTH_STYLE = `
+      body{position:relative}
+      .site-header{position:absolute;top:0;left:0;right:0;max-width:1120px;margin:0 auto;padding:1rem 1rem 0;display:flex;justify-content:flex-end;pointer-events:none}
+      .site-header>*{pointer-events:auto}
+      .site-auth{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .75rem;font-size:.9rem;color:#97a5a0}
+      .site-auth[hidden]{display:none}
+      .site-auth a{color:#79dfd4}
+      .site-auth a:focus-visible{outline:2px solid #79dfd4;outline-offset:2px}
+      .site-auth .login{color:#eef4f2}
+      @media (min-width:720px){.site-header{padding:1.25rem 1.5rem 0}}
+    `;
 
 function directoryHtml(cards: readonly HomeAtlasCard[], q: string, sort: HomeSort): string {
   if (!cards.length) {
@@ -505,7 +533,13 @@ function renderHomePage(input: HomePageInput, cards: readonly HomeAtlasCard[]): 
   // The CTA ignores the search: it is the product atlas (or the first card by date) whatever is shown.
   const exploreHref = homeExploreHref(cards);
   const cta = exploreHref ? `<a class="cta" href="${escapeHtml(exploreHref)}">Explore an atlas</a>\n          ` : '';
-  const script = cards.length ? `\n    <script src="${HOME_SCRIPT_PATH}" defer></script>` : '';
+  // The search needs it when there are cards; the sign-in slot (CLA-316) whenever accounts are on.
+  const accounts = input.accounts === true;
+  const script = cards.length || accounts ? `\n    <script src="${HOME_SCRIPT_PATH}" defer></script>` : '';
+  const header = accounts ? `<header class="site-header">
+      ${AUTH_SLOT_HTML}
+    </header>
+    ` : '';
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -515,10 +549,10 @@ function renderHomePage(input: HomePageInput, cards: readonly HomeAtlasCard[]): 
     <meta name="color-scheme" content="dark" />
     ${renderOpenGraphHead(tags)}
     ${FAVICONS}
-    <style>${STYLE}</style>${script}
+    <style>${STYLE}${accounts ? AUTH_STYLE : ''}</style>${script}
   </head>
   <body>
-    <main data-home="true">
+    ${header}<main data-home="true">
       <section class="hero" aria-labelledby="home-heading">
         <h1 id="home-heading">${siteBrandLinkHtml('brand', true)}</h1>
         <p class="lede">${escapeHtml(HOME_DESCRIPTION)}</p>
