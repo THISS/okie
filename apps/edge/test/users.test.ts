@@ -85,9 +85,10 @@ describe('operator users scripts (CLA-316)', () => {
   it('deploy.mjs refuses production while the privacy or terms copy has an unfilled placeholder; staging still deploys', () => {
     expect(PRIVACY_PENDING_MARKER).toBe(PRIVACY_COPY_PENDING);
     const message = 'privacy copy has an unfilled placeholder (apps/web/src/privacyPage.ts)';
-    // Today's copy still has the operator placeholder (update when the owner fills it in).
-    expect(privacySource).toContain(PRIVACY_PENDING_MARKER);
-    expect(deployBlockedReason('production', sources(privacySource, termsSource))).toBe(message);
+    // The shipped copy is filled in: production deploys.
+    expect(privacySource).not.toContain(PRIVACY_PENDING_MARKER);
+    expect(deployBlockedReason('production', sources(privacySource, termsSource))).toBeUndefined();
+    expect(deployBlockedReason('production', sources('Run by [pending owner: operator legal name].', termsSource))).toBe(message);
     expect(deployBlockedReason('staging', () => { throw new Error('staging reads nothing'); })).toBeUndefined();
     const fill = (text: string) => text.replace(/\[pending owner[^\]]*\]/g, 'Example Ltd');
     expect(fill(privacySource)).not.toContain(PRIVACY_PENDING_MARKER);
@@ -126,14 +127,14 @@ describe('operator users scripts (CLA-316)', () => {
 
   it('deploy.mjs production stops at the privacy guard before running anything; a dry run only warns', () => {
     const message = 'privacy copy has an unfilled placeholder (apps/web/src/privacyPage.ts)';
-    const real = fakeDeploy(['production']);
+    const real = fakeDeploy(['production'], { privacy: 'Run by [pending owner: operator legal name].' });
     expect(real.code).toBe(1);
     expect(real.reads).toEqual(['/repo/apps/web/src/privacyPage.ts']);
     expect(real.err).toEqual([`refusing to deploy production: ${message}`]);
     expect(real.spawned).toEqual([]);
-    expect(fakeDeploy(['production', '--minify']).spawned).toEqual([]);
+    expect(fakeDeploy(['production', '--minify'], { privacy: '[pending owner]' }).spawned).toEqual([]);
 
-    const dry = fakeDeploy(['production', '--dry-run', '--outdir', 'x']);
+    const dry = fakeDeploy(['production', '--dry-run', '--outdir', 'x'], { privacy: 'Run by [pending owner].' });
     expect(dry.code).toBe(0);
     expect(dry.out).toContain(`warning: a real deploy to production would be refused: ${message}`);
     expect(dry.spawned.map(call => call.args)).toEqual([['exec', 'wrangler', 'deploy', '--env', 'production', '--dry-run', '--outdir', 'x']]);

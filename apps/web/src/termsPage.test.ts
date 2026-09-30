@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import privacySource from './privacyPage.ts?raw';
 import { PRIVACY_COPY_PENDING, SITE_OPERATOR } from './privacyPage';
-import { CONTACT_EMAIL, TERMS_VERSION } from './siteMeta';
+import { LEGAL_CONTACT_EMAIL as CONTACT_EMAIL, TERMS_VERSION } from './siteMeta';
 import termsSource from './termsPage.ts?raw';
 import { TERMS_COPY, termsHttpOutput, termsPageHtml } from './termsPage';
 
@@ -36,12 +36,12 @@ describe('CLA-316 terms page', () => {
     expect(html).not.toContain('data-cookie-notice');
   });
 
-  it('names the operator from the one SITE_OPERATOR constant (still the pending placeholder)', () => {
+  it('names the operator from the one SITE_OPERATOR constant (filled in: no pending marker left)', () => {
     expect(html).toContain(`<p>These terms are an agreement between you and ${SITE_OPERATOR} (&quot;we&quot;, &quot;us&quot;) and cover your use of Source For Atlas at sourcefor.dev (the &quot;Service&quot;).`);
-    expect(SITE_OPERATOR).toContain(PRIVACY_COPY_PENDING);
+    expect(SITE_OPERATOR).not.toContain(PRIVACY_COPY_PENDING);
     // The literal marker lives only in privacyPage.ts, which the deploy check searches (with termsPage.ts).
     expect(termsSource).not.toContain(PRIVACY_COPY_PENDING);
-    expect(privacySource).toContain(PRIVACY_COPY_PENDING);
+    expect(privacySource).not.toContain(PRIVACY_COPY_PENDING);
   });
 
   it('keeps the owner-approved wording: acceptable use as a list, ACL carve-out, AUD 100 cap, Queensland law, a link to /privacy', () => {

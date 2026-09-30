@@ -2,7 +2,7 @@ import { ACCOUNT_PAGE_STYLE } from './accountPage';
 import { escapeHtml } from './homePage';
 import { siteBrandLinkHtml, siteFooterHtml } from './notFoundPage';
 import { trustedPageOrigin } from './openGraph';
-import { CANONICAL_ORIGIN, CONTACT_EMAIL, PRIVACY_PATH, PRIVACY_POLICY_VERSION, SITE_NAME, TERMS_PATH } from './siteMeta';
+import { CANONICAL_ORIGIN, LEGAL_CONTACT_EMAIL, PRIVACY_PATH, PRIVACY_POLICY_VERSION, SITE_NAME, TERMS_PATH } from './siteMeta';
 
 /**
  * The privacy page's words (CLA-316), kept together so the owner can edit them in one place.
@@ -26,7 +26,7 @@ export const PRIVACY_COPY_PENDING = ['[pending', 'owner'].join(' ');
  * (termsPage.ts imports it). Filling it in is this one line. Until then it carries the marker, written out
  * literally for the deploy check.
  */
-export const SITE_OPERATOR = '[pending owner: operator legal name]';
+export const SITE_OPERATOR = 'Clabrate (clabrate.com), Queensland, Australia';
 
 export const PRIVACY_COPY = {
   title: 'Privacy',
@@ -170,7 +170,7 @@ export function privacyInlineHtml(text: string): string {
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\[([^\]]+)\]\((\/(?![\/\\])[^)\s"]*)\)/g, '<a href="$2">$1</a>')
-    .replace(/\[CONTACT_EMAIL\]/g, `<a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>`);
+    .replace(/\[CONTACT_EMAIL\]/g, `<a href="mailto:${LEGAL_CONTACT_EMAIL}">${LEGAL_CONTACT_EMAIL}</a>`);
 }
 
 function cookieTableHtml(input: PrivacyPageInput): string {

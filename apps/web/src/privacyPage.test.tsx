@@ -7,7 +7,7 @@ import privacySource from './privacyPage.ts?raw';
 import { formatLifetime, PRIVACY_COPY_PENDING, formatPolicyDate, PRIVACY_COPY, privacyHttpOutput, privacyInlineHtml, privacyPageHtml, SITE_OPERATOR } from './privacyPage';
 import { SiteFooter } from './siteFooter';
 import { termsPageHtml } from './termsPage';
-import { CONTACT_EMAIL, PRIVACY_POLICY_VERSION } from './siteMeta';
+import { LEGAL_CONTACT_EMAIL as CONTACT_EMAIL, PRIVACY_POLICY_VERSION } from './siteMeta';
 
 const COOKIES = {
   oauthState: { name: '__Host-sf_oauth_state', maxAgeSeconds: 600 },
@@ -34,10 +34,10 @@ describe('CLA-316 privacy page', () => {
     expect(html).not.toContain('noindex');
   });
 
-  it('puts "Who runs this site" right after the intro, naming the data controller, still a placeholder (update this test when the real name lands)', () => {
+  it('puts "Who runs this site" right after the intro, naming the data controller (the owner’s legal details, as on clabrate.com)', () => {
     expect(PRIVACY_COPY.sections[0]!.heading).toBe('Who runs this site');
-    expect(SITE_OPERATOR).toBe('[pending owner: operator legal name]');
-    expect(SITE_OPERATOR).toContain(PRIVACY_COPY_PENDING);
+    expect(SITE_OPERATOR).toBe('Clabrate (clabrate.com), Queensland, Australia');
+    expect(SITE_OPERATOR).not.toContain(PRIVACY_COPY_PENDING);
     expect(html).toContain(`<p>Source For Atlas is run by ${SITE_OPERATOR}, the data controller for the personal data described on this page.</p>`);
     expect(html.indexOf('Who runs this site')).toBeLessThan(html.indexOf('If you just browse'));
   });
@@ -47,7 +47,7 @@ describe('CLA-316 privacy page', () => {
     // The file contains the marker literally exactly as often as the rendered page does (the constant itself is split).
     const count = (text: string) => text.split(PRIVACY_COPY_PENDING).length - 1;
     expect(count(privacySource)).toBe(count(html));
-    expect(count(html)).toBe(1);
+    expect(count(html)).toBe(0);
     expect(privacySource).not.toMatch(/PRIVACY_COPY_PENDING = '\[pending owner/);
   });
 
