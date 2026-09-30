@@ -25,6 +25,10 @@ export type ZoomMotionInput = {
   altKey: boolean;
   viewport: { width: number; height: number };
   devicePixelRatio: number;
+  /** How the canvas interpreted this input (CLA-326); absent in older traces. */
+  intent?: 'pan' | 'pinch' | 'wheel' | 'modifier-wheel' | 'gesture';
+  /** Multiplicative zoom factor applied for zoom intents; absent for pan. */
+  zoomFactor?: number;
 };
 
 export type ZoomMotionFrame = {
@@ -164,6 +168,8 @@ export function createZoomMotionTrace(options: ZoomMotionTraceOptions = {}): Zoo
         altKey: input.altKey,
         viewport: { width: input.viewport.width, height: input.viewport.height },
         devicePixelRatio: input.devicePixelRatio,
+        ...(input.intent === undefined ? {} : { intent: input.intent }),
+        ...(input.zoomFactor === undefined ? {} : { zoomFactor: input.zoomFactor }),
       });
     },
     recordFrame(frame) {

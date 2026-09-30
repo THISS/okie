@@ -58,7 +58,18 @@ export function zoomCameraAt(
   viewport: { width: number; height: number },
   deltaY: number,
 ): Camera {
-  const zoom = clampAtlasCameraZoom(camera.zoom * Math.exp(-deltaY * 0.0012));
+  return zoomCameraByFactor(camera, screenX, screenY, viewport, Math.exp(-deltaY * 0.0012));
+}
+
+/** Multiplies the zoom by `factor` (> 1 zooms in), keeping the world point under the cursor fixed. */
+export function zoomCameraByFactor(
+  camera: Camera,
+  screenX: number,
+  screenY: number,
+  viewport: { width: number; height: number },
+  factor: number,
+): Camera {
+  const zoom = clampAtlasCameraZoom(camera.zoom * factor);
   const offsetX = screenX - viewport.width / 2;
   const offsetY = screenY - viewport.height / 2;
   const worldX = camera.x + offsetX / camera.zoom;

@@ -65,7 +65,7 @@ import { createGoldenC4Scene, goldenAppStory, scanDeeperBandHasPeerCards, scanDr
 import { cacheableNeighborhoodScene, scanCompileFocusForBand, scanEntityHasChildren, scanNextBand, scanPrefetchFocusIds } from './renderer/lazyBandCompile';
 import { getActiveScanFixture, scanKeepsResidentL3Landmarks } from './renderer/fixtureBundle';
 import { createRenderer, recoverRenderer, type RendererSession } from './renderer/createRenderer';
-import { createCameraPublisher, createCameraPublicationEchoGuard, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, type CameraPublisher, type CameraPublicationEchoGuard } from './renderer/cameraController';
+import { createCameraPublisher, createCameraPublicationEchoGuard, panCamera, shouldAdoptExternalCameraAsRaw, zoomCameraAt, zoomCameraByFactor, type CameraPublisher, type CameraPublicationEchoGuard } from './renderer/cameraController';
 import { semanticRenderFrame, type SemanticRenderPacket } from './renderer/semanticRenderPacket';
 import {
   ATLAS_CAMERA_BOUNDS,
@@ -75,7 +75,8 @@ import {
 import { createDemandFrameScheduler, type DemandFrameScheduler } from './renderer/demandFrameScheduler';
 import { createInspectorFlightFrameSink, type InspectorFlightFrameSink } from './renderer/inspectorFlightFrameSink';
 import { brandHomeLinkProps, EMBED_FRAME_IDLE_KICK_MS, initialInspectorOpen, isEmbedChrome, isEmbedQueryFlag, isFramedBrowsingContext, isUsableAtlasViewport, listenForWebGlContextLoss } from './renderer/gpuLoss';
-import { listenForWheel } from './renderer/wheelInput';
+import { listenForGesturePinch, listenForWheel } from './renderer/wheelInput';
+import { createWheelIntentClassifier, PINCH_DELTA_CLAMP, PINCH_ZOOM_GAIN, wheelZoomFactor, type WheelIntent } from './renderer/wheelIntent';
 import { presentBackend } from './renderer/backendPresentation';
 import { presentClaimProvenance } from './provenance/presentation';
 import { relationOrSetFocusPresentation, selectedProjectedRelationForFocus } from './relations/relationFocus';
@@ -507,6 +508,7 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
     const abortController = new AbortController();
     let detachLossListener = () => {};
     let detachWheelListener = () => {};
+    let detachGesturePinch = () => {};
     let semanticZoomSettleTimer: number | undefined;
     let lastSemanticPointer: LensPoint | undefined;
     let lastResize = { width: 0, height: 0, physicalWidth: 0, physicalHeight: 0 };
@@ -637,27 +639,100 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
     });
     observer.observe(host);
 
+    const wheelClassifier = createWheelIntentClassifier();
+    let gesturePinchActive = false;
+    // Every wheel/gesture sample is direct manipulation: it supersedes a pending
+    // drag/wheel pan settle, a settle glide and any transient inspector camera
+    // flight (cancelInspectorCameraFlight is a no-op when none is pending).
+    const beginCanvasWheelInput = () => {
+      if (panSettleTimerRef.current !== undefined) {
+        window.clearTimeout(panSettleTimerRef.current);
+        panSettleTimerRef.current = undefined;
+      }
+      cancelSettleGlide();
+      onCameraFlightCancelRef.current();
+    };
+    const settleSemanticWheelZoom = (glide: boolean) => {
+      if (semanticZoomSettleTimer !== undefined) window.clearTimeout(semanticZoomSettleTimer);
+      semanticZoomSettleTimer = undefined;
+      if (!lastSemanticPointer) return;
+      // The settle landing must be the gesture's only remaining camera writer:
+      // with the assist loop still running, its next frame re-applied the
+      // uncontained raw camera and reverted the landing (end-of-zoom flicker).
+      cancelAssistAnimation();
+      consumeScanZoomAdoptRaw();
+      const settled = onSemanticZoomRef.current({
+        camera: rawCameraRef.current,
+        renderedCamera: liveCameraRef.current,
+        pointer: lastSemanticPointer,
+        direction: 'none',
+        gestureSettled: true,
+        mobile: false,
+      });
+      if (glide) {
+        animateSettleGlide(settled);
+        return;
+      }
+      applyLiveCameraRef.current(settled);
+      rawCameraRef.current = { ...settled };
+    };
+    const semanticWheelZoom = (pointer: LensPoint, zoomFactor: number, direction: 'inward' | 'outward') => {
+      if (semanticZoomSettleTimer === undefined) {
+        cancelAssistAnimation();
+        semanticZoomBurstActiveRef.current = true;
+        rawCameraRef.current = onSemanticZoomBurstStartRef.current(liveCameraRef.current);
+      }
+      onInteractionStartRef.current('Zoomed the map', liveCameraRef.current);
+      const zoomed = zoomCameraByFactor(rawCameraRef.current, pointer.x, pointer.y, sizeRef.current, zoomFactor);
+      const next = onSemanticZoomRef.current({ camera: zoomed, renderedCamera: liveCameraRef.current, pointer, direction, gestureSettled: false, mobile: false });
+      const adopted = consumeScanZoomAdoptRaw(zoomed.zoom);
+      rawCameraRef.current = adopted ?? zoomed;
+      applyLiveCameraRef.current(adopted ?? next);
+      animateSemanticAssist(pointer, false);
+      lastSemanticPointer = pointer;
+      if (semanticZoomSettleTimer !== undefined) window.clearTimeout(semanticZoomSettleTimer);
+      semanticZoomSettleTimer = window.setTimeout(() => settleSemanticWheelZoom(true), 120);
+    };
+    // Trackpad two-finger scroll pans like a pointer drag (no story interruption,
+    // same 160 ms lens settle). A pan arriving while a zoom burst is still
+    // unsettled lands that zoom first (without the glide, which the pan would
+    // cancel), so the semantic lens always receives its gestureSettled sample.
+    const wheelPan = (intent: Extract<WheelIntent, { kind: 'pan' }>) => {
+      if (semanticZoomSettleTimer !== undefined) settleSemanticWheelZoom(false);
+      cancelAssistAnimation();
+      const next = panCamera(liveCameraRef.current, -intent.dx, -intent.dy);
+      rawCameraRef.current = next;
+      applyLiveCameraRef.current(next);
+      panSettleTimerRef.current = window.setTimeout(() => {
+        panSettleTimerRef.current = undefined;
+        onLensPanRef.current({ ...liveCameraRef.current });
+      }, 160);
+    };
+
     const installSession = (session: RendererSession) => {
       detachLossListener();
       detachWheelListener();
+      detachGesturePinch();
       renderer = session.renderer;
       rendererRef.current = renderer;
       detachLossListener = listenForWebGlContextLoss(session.canvas, message => { void recoverFromLoss(message); });
       detachWheelListener = listenForWheel(session.canvas, event => {
-        if (panSettleTimerRef.current !== undefined) {
-          window.clearTimeout(panSettleTimerRef.current);
-          panSettleTimerRef.current = undefined;
-        }
-        cancelSettleGlide();
-        if (semanticZoomSettleTimer === undefined) {
-          onCameraFlightCancelRef.current();
-          cancelAssistAnimation();
-          semanticZoomBurstActiveRef.current = true;
-          rawCameraRef.current = onSemanticZoomBurstStartRef.current(liveCameraRef.current);
-        }
-        onInteractionStartRef.current('Zoomed the map', liveCameraRef.current);
+        const intent = wheelClassifier.classify({
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+          deltaMode: event.deltaMode,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: event.shiftKey,
+          timeStamp: event.timeStamp,
+          wheelDeltaY: (event as WheelEvent & { wheelDeltaY?: number }).wheelDeltaY,
+        });
+        // Safari may pair its gesture events with ctrlKey wheels; the gesture owns that pinch.
+        if (gesturePinchActive && intent.kind === 'zoom' && intent.source === 'pinch') return;
+        beginCanvasWheelInput();
         const bounds = session.canvas.getBoundingClientRect();
         const pointer = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+        const zoomFactor = intent.kind === 'zoom' ? wheelZoomFactor(intent) : undefined;
         if (zoomMotionTrace.isRecording()) zoomMotionTrace.recordInput({
           timeMs: event.timeStamp,
           deltaX: event.deltaX,
@@ -671,40 +746,49 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
           altKey: event.altKey,
           viewport: sizeRef.current,
           devicePixelRatio: window.devicePixelRatio,
+          intent: intent.kind === 'pan' ? 'pan' : intent.source,
+          ...(zoomFactor === undefined ? {} : { zoomFactor }),
         });
-        const zoomed = zoomCameraAt(
-          rawCameraRef.current,
-          pointer.x,
-          pointer.y,
-          sizeRef.current,
-          event.deltaY,
-        );
-        const direction = event.deltaY < 0 ? 'inward' : 'outward';
-        const next = onSemanticZoomRef.current({ camera: zoomed, renderedCamera: liveCameraRef.current, pointer, direction, gestureSettled: false, mobile: false });
-        const adopted = consumeScanZoomAdoptRaw(zoomed.zoom);
-        rawCameraRef.current = adopted ?? zoomed;
-        applyLiveCameraRef.current(adopted ?? next);
-        animateSemanticAssist(pointer, false);
-        lastSemanticPointer = pointer;
-        if (semanticZoomSettleTimer !== undefined) window.clearTimeout(semanticZoomSettleTimer);
-        semanticZoomSettleTimer = window.setTimeout(() => {
-          if (!lastSemanticPointer) return;
-          // The settle landing must be the gesture's only remaining camera writer:
-          // with the assist loop still running, its next frame re-applied the
-          // uncontained raw camera and reverted the landing (end-of-zoom flicker).
-          cancelAssistAnimation();
-          consumeScanZoomAdoptRaw();
-          const settled = onSemanticZoomRef.current({
-            camera: rawCameraRef.current,
-            renderedCamera: liveCameraRef.current,
-            pointer: lastSemanticPointer,
-            direction: 'none',
-            gestureSettled: true,
-            mobile: false,
+        if (intent.kind === 'pan') wheelPan(intent);
+        else semanticWheelZoom(pointer, zoomFactor!, intent.deltaY < 0 ? 'inward' : 'outward');
+      });
+      let gestureLastScale = 1;
+      detachGesturePinch = listenForGesturePinch(session.canvas, {
+        onStart: () => {
+          gesturePinchActive = true;
+          gestureLastScale = 1;
+        },
+        onChange: sample => {
+          const rawFactor = sample.scale / gestureLastScale;
+          gestureLastScale = sample.scale;
+          if (!Number.isFinite(rawFactor) || rawFactor === 1) return;
+          const limit = Math.exp(PINCH_DELTA_CLAMP * PINCH_ZOOM_GAIN);
+          const zoomFactor = Math.min(limit, Math.max(1 / limit, rawFactor));
+          beginCanvasWheelInput();
+          const bounds = session.canvas.getBoundingClientRect();
+          const pointer = { x: sample.clientX - bounds.left, y: sample.clientY - bounds.top };
+          if (zoomMotionTrace.isRecording()) zoomMotionTrace.recordInput({
+            timeMs: sample.timeStamp,
+            deltaX: 0,
+            deltaY: 0,
+            deltaMode: 0,
+            pointerX: pointer.x,
+            pointerY: pointer.y,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: false,
+            altKey: false,
+            viewport: sizeRef.current,
+            devicePixelRatio: window.devicePixelRatio,
+            intent: 'gesture',
+            zoomFactor,
           });
-          animateSettleGlide(settled);
-          semanticZoomSettleTimer = undefined;
-        }, 120);
+          semanticWheelZoom(pointer, zoomFactor, zoomFactor > 1 ? 'inward' : 'outward');
+        },
+        onEnd: () => {
+          gesturePinchActive = false;
+          gestureLastScale = 1;
+        },
       });
       resizeRenderer();
       syncContinuousRendering();
@@ -720,8 +804,10 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
       const previousRenderer = renderer;
       detachLossListener();
       detachWheelListener();
+      detachGesturePinch();
       detachLossListener = () => {};
       detachWheelListener = () => {};
+      detachGesturePinch = () => {};
       renderer = undefined;
       rendererRef.current = undefined;
       lastDiagnostics = '';
@@ -849,6 +935,7 @@ function CanvasViewport({ cameraPublicationGuard, inspectorFlightCameraRef, sema
       observer.disconnect();
       detachLossListener();
       detachWheelListener();
+      detachGesturePinch();
       renderer?.dispose();
       rendererRef.current = undefined;
       if (schedulerRef.current === scheduler) schedulerRef.current = undefined;
