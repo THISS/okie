@@ -10,6 +10,7 @@
 // (its names) or a word start in a line of its `data-search-words` (description, language). Ranks for each sort
 // come from the server (`data-rank-recent`, `data-rank-az`), so the order rules live in one place.
 // Written with \u escapes only: the file holds no raw bidi or zero-width characters.
+// It also fills the header's sign-in slot from /api/auth/me when accounts are on (CLA-316; initAuth below).
 (function (root) {
   'use strict';
 
@@ -192,8 +193,74 @@
     return { update: update };
   }
 
-  var api = { QUERY_MAX: QUERY_MAX, SORTS: SORTS, URL_DELAY_MS: URL_DELAY_MS, supported: supported, matchesAtWordStart: matchesAtWordStart, normalizeQuery: normalizeQuery, sortFrom: sortFrom, matches: matches, countText: countText, searchFor: searchFor, view: view, init: init };
+  // ---- Sign-in slot (CLA-316) ----
+  // The header's `[data-auth-slot]` is hidden and empty in the (shared-cached) HTML. When /api/auth/me says
+  // sign-in is configured (`oauthConfigured: true`), it shows "Sign in with GitHub", or "@login · Account ·
+  // Sign out" when signed in. Accounts off, a failed request or no fetch: the slot stays hidden.
+  var AUTH_ME_PATH = '/api/auth/me';
+
+  // A same-origin path from /api/auth/me, else the fallback (never `//host` or a scheme).
+  function localPath(value, fallback) {
+    return typeof value === 'string' && /^\/(?![\/\\])[^\s]*$/.test(value) ? value : fallback;
+  }
+
+  // The links for an /api/auth/me answer ({ text, href? } in order), or null when there is nothing to show.
+  function authLinks(me) {
+    if (!me || typeof me !== 'object' || me.oauthConfigured !== true) return null;
+    if (me.authenticated === true && typeof me.login === 'string' && me.login) {
+      return [
+        { text: '@' + me.login },
+        { text: 'Account', href: localPath(me.accountPath, '/account') },
+        { text: 'Sign out', href: localPath(me.logoutPath, '/api/auth/logout') + '?return=/' },
+      ];
+    }
+    return [{ text: 'Sign in with GitHub', href: localPath(me.loginPath, '/api/auth/github') + '?return=/' }];
+  }
+
+  function renderAuth(doc, slot, links) {
+    while (slot.firstChild) slot.removeChild(slot.firstChild);
+    for (var i = 0; i < links.length; i += 1) {
+      if (i > 0) {
+        var separator = doc.createElement('span');
+        separator.setAttribute('aria-hidden', 'true');
+        separator.textContent = '\u00b7';
+        slot.appendChild(separator);
+      }
+      var link = links[i];
+      var node = doc.createElement(link.href ? 'a' : 'span');
+      if (link.href) node.setAttribute('href', link.href);
+      else node.setAttribute('class', 'login');
+      node.textContent = link.text;
+      slot.appendChild(node);
+    }
+    slot.hidden = false;
+  }
+
+  function initAuth(doc, win) {
+    if (!doc || typeof doc.querySelector !== 'function' || typeof doc.createElement !== 'function') return undefined;
+    var slot = doc.querySelector('[data-auth-slot]');
+    if (!slot || !win || typeof win.fetch !== 'function') return undefined;
+    var request;
+    try {
+      request = win.fetch(AUTH_ME_PATH, { credentials: 'same-origin', headers: { accept: 'application/json' } });
+    } catch (_) {
+      return undefined;
+    }
+    return Promise.resolve(request)
+      .then(function (response) { return response && response.ok ? response.json() : null; })
+      .then(function (me) {
+        var links = authLinks(me);
+        if (links) renderAuth(doc, slot, links);
+        return links;
+      })
+      .catch(function () { return null; });
+  }
+
+  var api = { AUTH_ME_PATH: AUTH_ME_PATH, authLinks: authLinks, initAuth: initAuth, QUERY_MAX: QUERY_MAX, SORTS: SORTS, URL_DELAY_MS: URL_DELAY_MS, supported: supported, matchesAtWordStart: matchesAtWordStart, normalizeQuery: normalizeQuery, sortFrom: sortFrom, matches: matches, countText: countText, searchFor: searchFor, view: view, init: init };
   // Tests evaluate this file with a `module` in scope; the browser has none and just runs it.
   if (typeof module === 'object' && module && module.exports) module.exports = api;
-  else if (root.document) init(root.document, root);
+  else if (root.document) {
+    init(root.document, root);
+    initAuth(root.document, root);
+  }
 })(typeof window !== 'undefined' ? window : this);

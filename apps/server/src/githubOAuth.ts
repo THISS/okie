@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { scrubGithubTokens } from "@okie/scan";
+import { buildGithubAuthorizeUrl, parseCookieHeader, safeReturnPath as sharedSafeReturnPath } from "./githubOAuthShared.js";
 
 /**
  * GitHub OAuth + optional App-install redirects for hosted scan (CLA-30).
@@ -153,30 +154,10 @@ export function createSessionStore(now: () => number = () => Date.now()): Sessio
   };
 }
 
-export function parseCookieHeader(header: string | string[] | undefined): Record<string, string> {
-  const raw = Array.isArray(header) ? header.join("; ") : header ?? "";
-  const out: Record<string, string> = {};
-  for (const part of raw.split(";")) {
-    const idx = part.indexOf("=");
-    if (idx <= 0) continue;
-    const key = part.slice(0, idx).trim();
-    const value = part.slice(idx + 1).trim();
-    if (!key) continue;
-    try {
-      out[key] = decodeURIComponent(value);
-    } catch {
-      out[key] = value;
-    }
-  }
-  return out;
-}
+export { parseCookieHeader };
 
 export function safeReturnPath(raw: string | null | undefined): string {
-  if (!raw) return DEFAULT_RETURN_PATH;
-  if (!raw.startsWith("/")) return DEFAULT_RETURN_PATH;
-  if (raw.startsWith("//") || raw.startsWith("/\\")) return DEFAULT_RETURN_PATH;
-  if (raw.includes("://") || raw.includes("\\")) return DEFAULT_RETURN_PATH;
-  return raw;
+  return sharedSafeReturnPath(raw, DEFAULT_RETURN_PATH);
 }
 
 export function oauthCallbackUrl(config: GithubOAuthConfig): string {
@@ -184,12 +165,7 @@ export function oauthCallbackUrl(config: GithubOAuthConfig): string {
 }
 
 export function githubAuthorizeUrl(config: GithubOAuthConfig, state: string): string {
-  const url = new URL("https://github.com/login/oauth/authorize");
-  url.searchParams.set("client_id", config.clientId ?? "");
-  url.searchParams.set("redirect_uri", oauthCallbackUrl(config));
-  url.searchParams.set("state", state);
-  url.searchParams.set("scope", config.scopes);
-  return url.toString();
+  return buildGithubAuthorizeUrl({ clientId: config.clientId ?? "", redirectUri: oauthCallbackUrl(config), state, scope: config.scopes });
 }
 
 export function githubAppInstallUrl(config: GithubOAuthConfig, state: string): string | undefined {

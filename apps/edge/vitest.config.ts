@@ -1,6 +1,6 @@
 import { appendFileSync, copyFileSync, cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { cloudflareTest } from '@cloudflare/vitest-plugin';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-plugin';
 import { defineConfig } from 'vitest/config';
 
 /** wrangler.jsonc uses full-line `//` comments only (asserted in test/config.test.ts). */
@@ -16,6 +16,8 @@ export function readWranglerConfig(path: string): Record<string, unknown> {
 //   - static assets come from a tiny fixture instead of ../web/dist, so `pnpm test` needs no web build.
 //     The home page's real /home.js (a plain file in ../web/public, no build step) and its `_headers`
 //     rule are copied in, so the tests serve the file that ships.
+// The USERS_DB D1 binding comes from wrangler.jsonc as-is (local, on-disk D1); test/setup.ts applies
+// migrations/ (read here, in Node) before each test file, so the tests run against the real schema.
 const root = fileURLToPath(new URL('.', import.meta.url));
 const config = readWranglerConfig(`${root}wrangler.jsonc`);
 const generatedDir = `${root}.wrangler/vitest`;
@@ -33,9 +35,15 @@ config.assets = { ...(config.assets as object), directory: assetsDir };
 mkdirSync(generatedDir, { recursive: true });
 writeFileSync(`${generatedDir}/wrangler.json`, `${JSON.stringify(config, null, 2)}\n`);
 
+const migrations = await readD1Migrations(`${root}migrations`);
+
 export default defineConfig({
-  plugins: [cloudflareTest({ wrangler: { configPath: `${generatedDir}/wrangler.json` } })],
+  plugins: [cloudflareTest({
+    wrangler: { configPath: `${generatedDir}/wrangler.json` },
+    miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
+  })],
   test: {
     include: ['test/**/*.test.ts'],
+    setupFiles: ['test/setup.ts'],
   },
 });

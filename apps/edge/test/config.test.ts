@@ -11,6 +11,7 @@ type Env = {
   durable_objects?: { bindings: Array<{ name: string; class_name: string }> };
   containers?: Array<Record<string, unknown>>;
   ratelimits?: Array<{ name: string }>;
+  d1_databases?: Array<{ binding: string; database_name: string; database_id: string; migrations_dir?: string }>;
   migrations?: Array<{ new_sqlite_classes?: string[] }>;
   routes?: Array<{ pattern: string; custom_domain?: boolean }>;
 };
@@ -42,6 +43,28 @@ describe('wrangler.jsonc', () => {
     }
     expect(devVarsExample).toContain('DEV_BACKEND_ORIGIN=');
     expect(devVarsExample).toContain('DEV_STORE_ROUTE=');
+  });
+
+  it('never puts the sign-in secrets or DEV_AUTH_TEST_LOGIN in a vars block (CLA-316)', () => {
+    const secrets = ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET', 'SESSION_SIGNING_KEY', 'DEV_AUTH_TEST_LOGIN'];
+    for (const env of [config, ...Object.values(config.env)]) {
+      for (const key of secrets) expect(env.vars ?? {}).not.toHaveProperty(key);
+    }
+    for (const key of secrets) expect(wranglerText).not.toContain(`"${key}"`);
+    expect(devVarsExample).toContain('DEV_AUTH_TEST_LOGIN=');
+    expect(devVarsExample).toContain('SESSION_SIGNING_KEY=');
+  });
+
+  it('binds USERS_DB (D1, migrations/) in every environment, each to its own database (CLA-316)', () => {
+    const expected = {
+      '': { name: 'sourcefor-atlas-local', id: '00000000-0000-0000-0000-000000000000' },
+      staging: { name: 'sourcefor-atlas-staging', id: 'fd8be0a0-c9e3-4191-a8b3-86fb963f6447' },
+      production: { name: 'sourcefor-atlas', id: 'a6897908-09df-41f9-bad8-34660c00d2c7' },
+    } as const;
+    for (const [name, want] of Object.entries(expected)) {
+      const env = name ? config.env[name]! : config;
+      expect(env.d1_databases, name).toEqual([{ binding: 'USERS_DB', database_name: want.name, database_id: want.id, migrations_dir: 'migrations' }]);
+    }
   });
 
   it('serves the web build as an SPA, with the Worker first on every path', () => {

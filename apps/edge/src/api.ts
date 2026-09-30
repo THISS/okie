@@ -1,26 +1,22 @@
 import { backendUnavailable, devBackendOrigin, proxiedRequest, publicBackendResponse, type Backend } from './backend';
 import type { BudgetBucket } from './budget';
+import { accountsEnabled, handleAuthRoute } from './auth';
 import { askEnabled, type EdgeEnv } from './env';
 import { budgetStub, reportedAskCost, runGuards, type Guard, type GuardContext } from './guards';
 import { jsonResponse, notFoundJson } from './http';
 
 /**
- * `/api/*` at the edge (CLA-266). The public deployment has no accounts, so `/api/auth/me` is answered
- * here without waking anything. Ask status and the (always empty) Ask thread are answered here too.
+ * `/api/*` at the edge (CLA-266). `/api/auth/*` and `/api/account/*` are GitHub sign-in (auth.ts, CLA-316):
+ * without its secrets and D1 binding `/api/auth/me` answers the public shape and the rest 404. Ask status and the (always empty) Ask thread are answered here too.
  * Only `POST /api/ask` and `POST /api/block-plan` can reach the container, behind the guard chain, and
  * only with `ASK_ENABLED=1`; otherwise (the browse-only launch) they 404. Every other `/api/*`
- * (operator, scans, auth flows) is a 404.
+ * (operator, scans) is a 404.
  */
 
-export function publicAuthMe(env: Pick<EdgeEnv, 'ASK_ENABLED'>) {
-  return { authenticated: false, mode: 'public', oauthConfigured: false, ask: askEnabled(env) } as const;
-}
-
-type ApiRoute = 'auth-me' | 'ask-status' | 'ask-thread' | { bucket: BudgetBucket };
+type ApiRoute = 'ask-status' | 'ask-thread' | { bucket: BudgetBucket };
 
 function apiRoute(method: string, pathname: string): ApiRoute | undefined {
   const read = method === 'GET' || method === 'HEAD';
-  if (method === 'GET' && pathname === '/api/auth/me') return 'auth-me';
   if (read && pathname === '/api/ask') return 'ask-status';
   if (read && pathname === '/api/ask/thread') return 'ask-thread';
   if (method === 'POST' && pathname === '/api/ask') return { bucket: 'ask' };
@@ -34,6 +30,8 @@ export type ApiRouteContext = {
   guards: readonly Guard[];
   now: () => Date;
   waitUntil(promise: Promise<unknown>): void;
+  /** Upstream fetch (GitHub OAuth in auth.ts); defaults to the global fetch. */
+  fetch?: typeof fetch;
 };
 
 /**
@@ -62,9 +60,15 @@ function askThreadIdentity(search: URLSearchParams): { owner: string; repo: stri
 
 export async function handleApiRoute(request: Request, env: EdgeEnv, context: ApiRouteContext): Promise<Response> {
   const url = new URL(request.url);
+  const auth = await handleAuthRoute(request, env, { now: context.now(), ...(context.fetch ? { fetch: context.fetch } : {}) });
+  if (auth) return auth;
+  // With accounts on, the signed-in SPA's account menu asks whether this user is an operator
+  // (OperatorMenuLink). The hosted deployment has no operators; without accounts it stays a 404 as before.
+  if (request.method.toUpperCase() === 'GET' && url.pathname === '/api/operator/session' && accountsEnabled(env, url)) {
+    return jsonResponse(200, { operator: false });
+  }
   const route = apiRoute(request.method.toUpperCase(), url.pathname);
   if (!route) return notFoundJson();
-  if (route === 'auth-me') return jsonResponse(200, publicAuthMe(env));
   if (route === 'ask-status') return jsonResponse(200, { connected: askConnected(env, context.backend) });
   if (!askEnabled(env)) return notFoundJson();
   if (route === 'ask-thread') {

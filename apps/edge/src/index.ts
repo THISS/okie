@@ -6,6 +6,7 @@ import { securityHeadersFor } from '../../web/src/securityHeaders';
 import { webMcpHostHeadersForFetchDest } from '../../web/src/webmcpHeaders';
 import { analyticsConditionalRequest, injectsInto, webAnalyticsToken, withWebAnalytics } from './analytics';
 import { handleApiRoute } from './api';
+import { ACCOUNT_PATH, accountsEnabled, handleAccountPage } from './auth';
 import { selectBackend, type Backend } from './backend';
 import type { EdgeEnv } from './env';
 import { defaultGuards, type Guard } from './guards';
@@ -34,8 +35,10 @@ export { ContainerProxy } from '@cloudflare/containers';
  *   /new, /new/               GET/HEAD: 301 to `/` keeping only the home's allowlisted query params
  *                             (homeSearchFrom; the directory moved to the home, CLA-269);
  *                             other methods as before (share.ts landing handler: 405, OPTIONS 204)
- *   /api/*                    auth/me + Ask status answered here; with ASK_ENABLED=1, Ask + block-plan →
- *                             container behind guards (api.ts), else 404
+ *   /api/*                    GitHub sign-in (/api/auth/*, /api/account/*; auth.ts, CLA-316: off without its
+ *                             secrets + USERS_DB, then auth/me is the public shape and the rest 404); Ask
+ *                             status answered here; with ASK_ENABLED=1, Ask + block-plan → container behind
+ *                             guards (api.ts), else 404
  *   /__store/*                DEV_STORE_ROUTE=1 only (local mirror for a locally run apps/server)
  *   /, /index.html            GET/HEAD with no query, or only `q`/`sort`/`utm_*`/`ref`/`fbclid`/`gclid`
  *                             (isHomeRequest): the server-rendered home page, hero + directory of published
@@ -43,6 +46,8 @@ export { ContainerProxy } from '@cloudflare/containers';
  *                             CLA-269; /home.js, a Static Asset, filters in place). Any other query
  *                             (`?fixture=okie`, `?portable=1`, `?embed=1`, deep-nav state) or method: the SPA
  *                             shell as before, so the golden demo stays at `/?fixture=okie`
+ *   /account                  signed-in account page (email, product-updates opt-in, delete; auth.ts +
+ *                             apps/web/src/accountPage.ts); while accounts are off, like any unknown path
  *   /operator                 the SPA shell (Static Assets)
  *   anything else             a real static file (favicons, robots.txt, og-default.png) from Static
  *                             Assets; otherwise the branded 404 page with a real 404 (CLA-318)
@@ -162,7 +167,7 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     });
   }
   if (pathname.startsWith('/api/')) {
-    return handleApiRoute(request, env, { backend: deps.backend, guards: deps.guards, now: deps.now, waitUntil });
+    return handleApiRoute(request, env, { backend: deps.backend, guards: deps.guards, now: deps.now, waitUntil, ...(deps.fetch ? { fetch: deps.fetch } : {}) });
   }
   if (pathname.startsWith(DEV_STORE_PREFIX)) {
     if (env.DEV_STORE_ROUTE !== '1') return notFoundJson();
@@ -176,6 +181,10 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     return new Response(null, { status: 301, headers: { location: `/${homeSearchFrom(url)}`, 'cache-control': 'public, max-age=3600' } });
   }
   if (readOnly && isHomeRequest(url)) return serveHome(request, url, env);
+  // Only while accounts are on; otherwise /account falls through like any unknown path (CLA-316).
+  if ((pathname === ACCOUNT_PATH || pathname === `${ACCOUNT_PATH}/`) && accountsEnabled(env, url)) {
+    return handleAccountPage(request, env, { now: deps.now(), ...(deps.fetch ? { fetch: deps.fetch } : {}) });
+  }
   if (isPublicAtlasRoutePath(pathname)) {
     const shared = await handleShareRoute(request, env, { waitUntil, ...('cache' in deps ? { cache: deps.cache } : {}) });
     if (shared) return shared;
@@ -207,6 +216,8 @@ async function serveHome(request: Request, url: URL, env: EdgeEnv): Promise<Resp
     sort: view.sort,
     requestOrigin: url.origin,
     allowedOrigins: oembedAllowedOriginsFromEnv({ OKIE_PUBLIC_ORIGIN: env.OKIE_PUBLIC_ORIGIN }),
+    // Config-dependent only (never the user), so the page stays shared-cacheable.
+    accounts: accountsEnabled(env, url),
   });
   if (page.skipped.length && index && typeof index === 'object' && !warnedHomeIndexes.has(index)) {
     warnedHomeIndexes.add(index);

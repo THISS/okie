@@ -259,3 +259,27 @@ describe('sitemap after the home page (CLA-269)', () => {
     expect(xml).toContain('<loc>https://sourcefor.dev/</loc>\n    <lastmod>2026-09-30T08:00:00.000Z</lastmod>');
   });
 });
+
+describe('home page sign-in slot (CLA-316)', () => {
+  it('changes nothing without the sign-in secrets: no slot and, on an empty directory, no script', async () => {
+    await seedHomeIndex([]);
+    const html = await (await edgeFetch('https://sourcefor.dev/', { env: { OKIE_PUBLIC_ORIGIN: 'https://sourcefor.dev' } })).text();
+    expect(html).not.toContain('data-auth-slot');
+    expect(html).not.toMatch(/<script/i);
+  });
+
+  it('ships the header slot hidden and user-free (the page stays shared-cacheable), and home.js drives it from /api/auth/me', async () => {
+    await seedHomeIndex([]);
+    const env = { OKIE_PUBLIC_ORIGIN: 'https://sourcefor.dev', GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret', SESSION_SIGNING_KEY: 'k'.repeat(32) };
+    const response = await edgeFetch('https://sourcefor.dev/', { env });
+    expect(response.headers.get('cache-control')).toBe('public, max-age=60');
+    const html = await response.text();
+    expect(html).toContain('<nav class="site-auth" aria-label="Account" data-auth-slot hidden></nav>');
+    // Even an empty directory loads /home.js now: it fills the slot.
+    expect(html.match(/<script\b[^>]*>/gi)).toEqual(['<script src="/home.js" defer>']);
+    expect(await (await edgeFetch('https://sourcefor.dev/api/auth/me', { env })).json()).toMatchObject({ oauthConfigured: true, loginPath: '/api/auth/github' });
+    const script = await (await edgeFetch('/home.js')).text();
+    expect(script).toContain("'/api/auth/me'");
+    expect(script).toContain('[data-auth-slot]');
+  });
+});

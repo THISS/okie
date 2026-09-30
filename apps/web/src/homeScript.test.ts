@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import source from '../public/home.js?raw';
-import { homeAtlasCards, homeCardMatches, homeCountText, homePageHtml, matchesAtWordStart, normalizeHomeQuery } from './homePage';
+import { AUTH_SLOT_HTML, homeAtlasCards, homeCardMatches, homeCountText, homePageHtml, matchesAtWordStart, normalizeHomeQuery } from './homePage';
 
 /**
  * CLA-269: apps/web/public/home.js, the home page's plain-script enhancement. The file is evaluated as the
@@ -18,6 +18,9 @@ type HomeScript = {
   countText(shown: number, total: number, filtered: boolean): string;
   searchFor(search: string, query: string, sort: string): string;
   init(doc: unknown, win: unknown): { update(): unknown } | undefined;
+  AUTH_ME_PATH: string;
+  authLinks(me: unknown): Array<{ text: string; href?: string }> | null;
+  initAuth(doc: unknown, win: unknown): Promise<unknown> | undefined;
 };
 
 function loadScript(): HomeScript {
@@ -305,5 +308,95 @@ describe('CLA-269 home.js: in the page', () => {
     expect(html).toContain('data-search-words="a hidden gem"');
     const page = fakePage(html, 'https://sourcefor.dev/');
     expect(page.visible()).toEqual(['/r/acme/app']);
+  });
+});
+
+/** A tiny DOM for the sign-in slot: elements that record children, attributes and text. */
+class SlotNode {
+  hidden = true;
+  textContent = '';
+  readonly attributes = new Map<string, string>();
+  children: SlotNode[] = [];
+  constructor(readonly tag: string) {}
+  get firstChild() { return this.children[0] ?? null; }
+  removeChild(child: SlotNode) { this.children = this.children.filter(existing => existing !== child); return child; }
+  appendChild(child: SlotNode) { this.children.push(child); return child; }
+  setAttribute(name: string, value: string) { this.attributes.set(name, value); }
+  text() { return this.children.map(child => child.textContent).join(' '); }
+}
+
+function authPage(me: unknown, options: { ok?: boolean; fail?: boolean; slot?: boolean } = {}) {
+  const slot = new SlotNode('nav');
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  const doc = {
+    querySelector: (selector: string) => (selector === '[data-auth-slot]' && options.slot !== false ? slot : null),
+    createElement: (tag: string) => new SlotNode(tag),
+  };
+  const win = {
+    fetch: async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      if (options.fail) throw new Error('offline');
+      return { ok: options.ok !== false, json: async () => me };
+    },
+  };
+  return { slot, doc, win, calls };
+}
+
+describe('CLA-316 home.js: the sign-in slot', () => {
+  it('ships hidden and empty in the home HTML when accounts are on (with or without atlases), so the page works without JS', () => {
+    expect(AUTH_SLOT_HTML).toBe('<nav class="site-auth" aria-label="Account" data-auth-slot hidden></nav>');
+    for (const index of [INDEX, undefined]) {
+      const html = homePageHtml({ index, accounts: true });
+      expect(html).toContain(`<header class="site-header">\n      ${AUTH_SLOT_HTML}\n    </header>`);
+      expect(html).toContain('.site-auth[hidden]{display:none}');
+      expect(html).toContain('<script src="/home.js" defer></script>');
+    }
+  });
+
+  it('leaves the home exactly as before when accounts are off: no slot, no slot CSS, no script on an empty directory', () => {
+    for (const index of [INDEX, undefined]) {
+      const html = homePageHtml({ index });
+      expect(html).toBe(homePageHtml({ index, accounts: false }));
+      expect(html).not.toContain('data-auth-slot');
+      expect(html).not.toContain('site-header');
+      expect(html).not.toContain('site-auth');
+    }
+    expect(homePageHtml({ index: undefined })).not.toMatch(/<script/i);
+  });
+
+  it('stays hidden when accounts are off, the request fails, or there is no slot', async () => {
+    for (const [me, options] of [
+      [{ authenticated: false, mode: 'public', oauthConfigured: false, ask: false }, {}],
+      [{ oauthConfigured: true }, { ok: false }],
+      [{ oauthConfigured: true }, { fail: true }],
+      ['<!doctype html>', {}],
+    ] as const) {
+      const page = authPage(me, options);
+      await script.initAuth(page.doc, page.win);
+      expect(page.slot.hidden).toBe(true);
+      expect(page.slot.children).toEqual([]);
+    }
+    const noSlot = authPage({ oauthConfigured: true }, { slot: false });
+    expect(script.initAuth(noSlot.doc, noSlot.win)).toBeUndefined();
+    expect(noSlot.calls).toEqual([]);
+    // The directory test pages (no createElement, no fetch) are left alone too.
+    expect(script.initAuth(new FakeElement(), {})).toBeUndefined();
+  });
+
+  it('shows "Sign in with GitHub" signed out, and "@login · Account · Sign out" signed in, from same-origin paths only', async () => {
+    const signedOut = authPage({ authenticated: false, mode: 'accounts', oauthConfigured: true, loginPath: '/api/auth/github', logoutPath: '/api/auth/logout', accountPath: '/account', ask: false });
+    await script.initAuth(signedOut.doc, signedOut.win);
+    expect(signedOut.calls).toEqual([{ url: '/api/auth/me', init: { credentials: 'same-origin', headers: { accept: 'application/json' } } }]);
+    expect(signedOut.slot.hidden).toBe(false);
+    expect(signedOut.slot.children.map(node => [node.tag, node.textContent, node.attributes.get('href')])).toEqual([['a', 'Sign in with GitHub', '/api/auth/github?return=/']]);
+
+    const signedIn = authPage({ authenticated: true, login: '<img src=x>', mode: 'accounts', oauthConfigured: true, loginPath: '/api/auth/github', logoutPath: '//evil.example', accountPath: 'https://evil.example/account' });
+    await script.initAuth(signedIn.doc, signedIn.win);
+    expect(signedIn.slot.children.filter(node => node.attributes.get('aria-hidden') !== 'true').map(node => [node.tag, node.textContent, node.attributes.get('href')])).toEqual([
+      // textContent, never HTML.
+      ['span', '@<img src=x>', undefined],
+      ['a', 'Account', '/account'],
+      ['a', 'Sign out', '/api/auth/logout?return=/'],
+    ]);
   });
 });

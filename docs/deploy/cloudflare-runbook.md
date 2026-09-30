@@ -313,6 +313,60 @@ pnpm --filter @okie/edge dev
 - To try the real container locally (Docker running), run
   `pnpm --filter @okie/edge exec wrangler dev --env='' --port 4197 --enable-containers`.
 
+## 6. Sign-in (CLA-316)
+
+GitHub sign-in and email capture live in the Worker (`apps/edge/src/auth.ts`); accounts are one D1 table
+(`apps/edge/migrations/0001_users.sql`). Sign-in is **off** in an env until all of these exist there: the `USERS_DB`
+binding (in `wrangler.jsonc` for every env), `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and a `SESSION_SIGNING_KEY` of
+at least 32 characters. While it is off, `/api/auth/me` answers the public shape unchanged, every other `/api/auth/*`
+and `/api/account/*` route is a 404, and `/account` is the 404 page. Deploying without the secrets changes nothing.
+
+| Env | GitHub OAuth app callback URL | D1 database (`USERS_DB`) |
+|---|---|---|
+| local | `http://127.0.0.1:4196/api/auth/github/callback` (optional; see below) | `sourcefor-atlas-local` (on disk) |
+| staging | `https://staging.sourcefor.dev/api/auth/github/callback` | `sourcefor-atlas-staging` |
+| production | `https://sourcefor.dev/api/auth/github/callback` | `sourcefor-atlas` |
+
+1. **GitHub OAuth app, one per env** (GitHub → Settings → Developer settings → OAuth Apps): the homepage is the env's origin
+   and the callback is the URL above. The Worker asks only for the `user:email` scope, reads the profile and the
+   primary verified email, and throws the token away (it is never stored or logged).
+2. **Secrets** (never in `wrangler.jsonc` vars; `test/config.test.ts` asserts it):
+
+   ```sh
+   cd apps/edge
+   pnpm exec wrangler secret put GITHUB_CLIENT_ID --env <env>
+   pnpm exec wrangler secret put GITHUB_CLIENT_SECRET --env <env>
+   openssl rand -base64 48 | pnpm exec wrangler secret put SESSION_SIGNING_KEY --env <env>
+   ```
+
+   Rotating `SESSION_SIGNING_KEY` signs everyone out (sessions are signed cookies); accounts and opt-ins are kept.
+
+   **Revocation limits (stateless 30-day sessions):** logout clears the cookie in that browser only, so a copied
+   cookie stays valid until it expires. Deleting an account signs every copy out (each request checks the D1 row), but
+   if the same GitHub user signs in again, old unexpired cookies for that id work again. Rotating
+   `SESSION_SIGNING_KEY` is the only way to revoke every session at once.
+3. **Schema:** `deploy:<env>` runs `wrangler d1 migrations apply USERS_DB --env <env> --remote` before every deploy
+   and stops if it fails. To apply by hand: the same command from `apps/edge`.
+4. **Check:** `/api/auth/me` answers `mode: "accounts"`, the home header shows "Sign in with GitHub", and signing in
+   lands on `/account?welcome=1` the first time (product updates unticked; ticking it is the only way to opt in).
+
+**Export and deletion.** The operator path, through `wrangler d1 execute --remote` with your `wrangler login` session
+(`--silent` keeps pnpm's banner out of the CSV):
+
+```sh
+pnpm --silent --filter @okie/edge users:export production > users.csv             # every account
+pnpm --silent --filter @okie/edge users:export production --opted-in > updates.csv # product-updates opt-ins with an email
+pnpm --silent --filter @okie/edge users:delete production --github-id 123456       # prints how many rows went
+pnpm --silent --filter @okie/edge users:delete production --email someone@example.com
+```
+
+Self-serve: a signed-in user can untick product updates, or tick the confirmation and "Delete my account", on
+`/account`. Deletion removes the row at once and signs them out.
+
+**Local:** in `apps/edge/.dev.vars` set `SESSION_SIGNING_KEY` (32+ characters) and either `DEV_AUTH_TEST_LOGIN=1` (a fixed
+test user `okie-test-user`; honoured only on a loopback origin) or a local OAuth app's `GITHUB_CLIENT_ID` /
+`GITHUB_CLIENT_SECRET`. Create the local table once with `pnpm --filter @okie/edge exec wrangler d1 migrations apply USERS_DB --local`.
+
 ## Container sizing (not deployed at launch)
 
 This applies once the signed-in-Ask follow-up adds the container back to staging/production (an `ATLAS_API` binding,

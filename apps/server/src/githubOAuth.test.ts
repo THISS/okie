@@ -84,6 +84,10 @@ test("OAuth authorize URL uses configured origin, not a Host header, and omits t
   assert.equal(safeReturnPath("https://evil.example/"), "/new");
   assert.equal(safeReturnPath("//evil.example"), "/new");
   assert.equal(safeReturnPath("/r/THISS/okie"), "/r/THISS/okie");
+  // CLA-316: only printable ASCII survives (a Location header must be a ByteString).
+  assert.equal(safeReturnPath("/中"), "/new");
+  assert.equal(safeReturnPath("/ "), "/new");
+  assert.equal(safeReturnPath("/a\r\nx"), "/new");
 });
 
 test("OAuth callback rejects a missing or mismatched CSRF state", async () => {

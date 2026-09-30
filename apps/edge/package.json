@@ -11,7 +11,9 @@
     "deploy:staging": "node scripts/deploy.mjs staging",
     "deploy:production": "node scripts/deploy.mjs production",
     "smoke:staging": "node scripts/smoke.mjs staging",
-    "smoke:production": "node scripts/smoke.mjs production"
+    "smoke:production": "node scripts/smoke.mjs production",
+    "users:export": "node scripts/users.mjs export",
+    "users:delete": "node scripts/users.mjs delete"
   },
   "devDependencies": {
     "@cloudflare/containers": "0.3.7",

@@ -19,3 +19,12 @@ DEV_STORE_ROUTE=1
 # wrangler.jsonc). A fake 16-64 character alphanumeric token shows the injected <script> locally; the
 # beacon then fails to report, which is expected.
 # WEB_ANALYTICS_TOKEN=0123456789abcdef0123456789abcdef
+
+# GitHub sign-in (CLA-316). Off unless SESSION_SIGNING_KEY (>= 32 chars) is set AND either a GitHub OAuth
+# app (GITHUB_CLIENT_ID + GITHUB_CLIENT_SECRET, callback http://127.0.0.1:4196/api/auth/github/callback) or
+# DEV_AUTH_TEST_LOGIN=1 (a fixed test user, loopback only). Accounts live in the local D1 database; create its
+# table once with `pnpm exec wrangler d1 migrations apply USERS_DB --local`.
+# SESSION_SIGNING_KEY=local-dev-signing-key-change-me-0123456789
+# DEV_AUTH_TEST_LOGIN=1
+# GITHUB_CLIENT_ID=
+# GITHUB_CLIENT_SECRET=
