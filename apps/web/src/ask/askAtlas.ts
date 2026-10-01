@@ -2,6 +2,7 @@ import { inspectorAcceptedSummary, CYCLOMATIC_FLAG_THRESHOLD } from '../inspecto
 import { DOGFOOD_ATLAS_OWNER, DOGFOOD_ATLAS_REPO } from '../hostedAtlas';
 import { readDemoQuery } from '../renderer/query';
 import { parseAppRoute } from '../renderer/route';
+import { readableAskAnswer } from './answerText';
 
 /**
  * Ask Atlas client (CLA-27 + CLA-69 + CLA-265): send the question with packets
@@ -460,7 +461,7 @@ export function parseAskThreadTurns(value: readonly unknown[]): AskThreadTurn[] 
     const turn: AskThreadTurn = {
       id: row.id,
       question: row.question,
-      answer: row.answer,
+      answer: readableAskAnswer(row.answer),
       citations: stringIds(row.citations),
       scopeIds: stringIds(row.scopeIds),
       createdAt: row.createdAt,
@@ -960,7 +961,7 @@ export async function submitAskQuestion(
     if ('answer' in body && typeof body.answer === 'string' && body.answer.trim()) {
       const result: AskAnswerResult = {
         connected: true,
-        answer: body.answer,
+        answer: readableAskAnswer(body.answer),
         citations: stringIds(body.citations),
         scopeIds: stringIds(body.scopeIds),
       };

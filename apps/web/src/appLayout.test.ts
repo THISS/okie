@@ -255,7 +255,9 @@ describe('compact inspector presentation', () => {
     expect(app).toContain('buildArchitectureBrief({');
     expect(app).toContain('<ArchitectureBriefView');
     expect(app).toContain("scanFixture ? 'overview' : 'details'");
-    expect(app).toContain("const tabs: InspectorTab[] = ['overview', 'source', 'details']");
+    expect(app).toContain("const tabs: (InspectorTab | 'ask')[] = ['overview', 'source', 'details',");
+    expect(app).toContain('id="ask-tab"');
+    expect(app).toContain("if (next === 'ask') openDockedAsk()");
     expect(app).toContain('id="source-tab"');
     expect(app).toContain('id="details-tab"');
     expect(app).toContain('Architecture brief');
@@ -598,9 +600,12 @@ describe('story launcher chrome (CLA-98)', () => {
     expect(app).toContain('className="ask-anchor"');
     expect(app.indexOf('className="ask-anchor"')).toBeLessThan(app.indexOf('className="ask-button"'));
     // The panel is a map-stage sibling of the launcher (not inside its transformed box).
-    expect(app.indexOf('<AskPanel')).toBeGreaterThan(app.indexOf('storyCatalog.length === 1'));
-    expect(app.indexOf('<AskPanel')).toBeLessThan(app.indexOf('className="canvas-hint"'));
-    expect(askPanel).toContain('className="ask-popover"');
+    const floatingMount = app.indexOf('{askPanelVisible && !askDocked ? askPanelView : null}');
+    expect(floatingMount).toBeGreaterThan(app.indexOf('className="story-launcher"'));
+    expect(floatingMount).toBeLessThan(app.indexOf('className="canvas-hint"'));
+    expect(app.match(/<AskPanel\s/g)).toHaveLength(1);
+    expect(app).toContain('className="inspector-ask-panel" id="ask-panel" role="tabpanel">{askPanelView}</div>');
+    expect(askPanel).toContain("data-ask-placement={props.placement ?? 'floating'}");
     expect(declarations(css, '.ask-anchor')).toContain('position: relative');
     const panel = declarations(askCss, '.ask-popover');
     expect(panel).toContain('position: absolute');

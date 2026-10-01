@@ -669,8 +669,8 @@
           "path": "apps/web/src/App.tsx",
           "commitSha": "golden-worktree-okie-2026-07-14-v1",
           "symbol": "CanvasViewport",
-          "startLine": 5772,
-          "endLine": 5777
+          "startLine": 5831,
+          "endLine": 5836
         }
       ],
       "sourceExcerpts": [
@@ -678,9 +678,9 @@
           "path": "apps/web/src/App.tsx",
           "symbol": "CanvasViewport",
           "language": "tsx",
-          "startLine": 5772,
-          "endLine": 5777,
-          "highlightLine": 5772,
+          "startLine": 5831,
+          "endLine": 5836,
+          "highlightLine": 5831,
           "frozenRevision": "golden-worktree-okie-2026-07-14-v1",
           "lines": [
             "          <CanvasViewport",

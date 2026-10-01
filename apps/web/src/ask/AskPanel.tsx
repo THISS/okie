@@ -33,6 +33,8 @@ export type AskTurnActions = {
 };
 
 export type AskPanelProps = AskTurnActions & {
+  placement?: 'floating' | 'docked';
+  onTogglePlacement?: () => void;
   signedIn: boolean;
   auth?: AskAuthView;
   returnPath: string;
@@ -58,7 +60,7 @@ export function AskPanel(props: AskPanelProps) {
   if (!props.signedIn) {
     const loginPath = props.auth?.loginPath ?? '/api/auth/github';
     return (
-      <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin">
+      <div className={`ask-popover ${props.placement === 'docked' ? 'ask-docked' : ''}`} data-ask-placement={props.placement ?? 'floating'} data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin">
         <p>{ASK_SIGNIN_COPY}</p>
         <a className="ask-signin" data-testid="ask-signin" href={askSignInHref(loginPath, props.returnPath)}>Sign in with GitHub</a>
         {props.auth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(props.auth.testLoginPath, props.returnPath)}>Use the local test sign-in</a> : null}
@@ -101,7 +103,7 @@ function AskThreadForm(props: AskPanelProps) {
   return (
     <form
       aria-label="Ask Atlas"
-      className="ask-popover"
+      className={`ask-popover ${props.placement === 'docked' ? 'ask-docked' : ''}`} data-ask-placement={props.placement ?? 'floating'}
       data-ask-auth={props.signedIn ? 'signed-in' : 'unknown'}
       data-ask-connected={props.connected ? 'true' : 'false'}
       data-ask-has-thread={hasThread ? 'true' : 'false'}
@@ -110,6 +112,7 @@ function AskThreadForm(props: AskPanelProps) {
     >
       <header className="ask-header">
         <label htmlFor="atlas-question">Ask about this codebase</label>
+        {props.onTogglePlacement ? <button aria-label={props.placement === 'docked' ? 'Float Ask Atlas' : 'Expand Ask into side panel'} className="ask-placement" onClick={props.onTogglePlacement} type="button">{props.placement === 'docked' ? 'Float' : 'Expand'}</button> : null}
         <button aria-label="Close Ask Atlas" className="ask-close" onClick={props.onClose} type="button"><CloseIcon size={14}/></button>
       </header>
       {hasThread ? (

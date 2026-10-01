@@ -1146,7 +1146,7 @@
           "recallFull": 1,
           "indexedExpected": 1,
           "variants": { "half": 0.5, "double": 1, "size-scaled": 1, "depth-scaled": 1 },
-          "answer": { "citedRecall": 1, "citationPrecision": 0.3333, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
+          "answer": { "citedRecall": 1, "citationPrecision": 0.4, "invalid": false, "declined": false, "correct": true, "mentions": 3, "mustMention": 3 }
         },
         {
           "id": "rg-binary-files",
@@ -1245,7 +1245,7 @@
         "half": { "recallFull": 0.3542, "meanBytes": 11789.625, "meanSections": 6.75 },
         "size-scaled": { "recallFull": 0.75, "meanBytes": 39468, "meanSections": 30.5 }
       },
-      "answers": { "answered": 8, "citedRecall": 0.6458, "citationPrecision": 0.2449, "invalidRate": 0, "declinedRate": 0, "correctness": 0.375, "costUsd": 0.0452 },
+      "answers": { "answered": 8, "citedRecall": 0.6458, "citationPrecision": 0.2533, "invalidRate": 0, "declinedRate": 0, "correctness": 0.375, "costUsd": 0.0452 },
       "blocks": {
         "labeled": 5,
         "default": { "tau": 0.7695, "top1": 1, "top3": 0.8, "top1Unrestricted": 1, "omittedRendered": 7, "keptDropped": 0 },
@@ -2351,11 +2351,11 @@
     "answers": {
       "answered": 126,
       "citedRecall": 0.3373,
-      "citationPrecision": 0.127,
+      "citationPrecision": 0.1275,
       "invalidRate": 0,
       "declinedRate": 0.3333,
       "correctness": 0.373,
-      "perRepoMean": { "repos": 15, "citedRecall": 0.3358, "citationPrecision": 0.126, "declinedRate": 0.3352, "correctness": 0.3685 }
+      "perRepoMean": { "repos": 15, "citedRecall": 0.3358, "citationPrecision": 0.1266, "declinedRate": 0.3352, "correctness": 0.3685 }
     },
     "blocks": {
       "labeled": 42,

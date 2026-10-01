@@ -354,6 +354,52 @@ test("parseAskCompletion keeps only ids from the current packets", () => {
   assert.deepEqual(parsed?.citations, ["component:web-shell"]);
 });
 
+test("Ask recovers the complete Markdown answer when the citation list hits the output limit", () => {
+  const answer = 'Ask answers questions over the atlas.\n\n- **Web side** — `apps/web/src/ask/AskPanel.tsx` renders the form.\n- The server says "use evidence". component:web-shell';
+  const truncated = `{"answer":${JSON.stringify(answer)},"citations":["component:web-shell","container:secret-other-repo","component:apps-server`;
+  assert.deepEqual(parseAskCompletion(JSON.parse(completion(truncated)), new Set(["component:web-shell"])), {
+    answer,
+    citations: ["component:web-shell"],
+  });
+});
+
+test("Ask decodes fenced and nested JSON answers without rendering their envelopes", () => {
+  const body = { answer: "A grounded answer.", citations: ["component:web-shell", "secret"] };
+  for (const content of [
+    `\u0060\u0060\u0060json\n${JSON.stringify(body)}\n\u0060\u0060\u0060`,
+    JSON.stringify(JSON.stringify(body)),
+    JSON.stringify({ answer: JSON.stringify(body), citations: ["secret"] }),
+  ]) {
+    assert.deepEqual(parseAskCompletion(JSON.parse(completion(content)), new Set(["component:web-shell"])), {
+      answer: body.answer,
+      citations: ["component:web-shell"],
+    });
+  }
+});
+
+test("Ask rejects incomplete answer strings and malformed envelopes rather than displaying JSON", () => {
+  for (const content of [
+    '{"answer":"An unfinished answer\\nwith an escaped quote \\"',
+    '{"citations":["component:web-shell"]}',
+    '{"answer":"bad\\q","citations":[',
+    '[{"answer":"not an answer envelope"}]',
+    '{}',
+  ]) {
+    assert.equal(parseAskCompletion(JSON.parse(completion(content)), new Set(["component:web-shell"])), undefined);
+  }
+  assert.deepEqual(parseAskCompletion(JSON.parse(completion("Plain Markdown still works.")), new Set()), {
+    answer: "Plain Markdown still works.", citations: [],
+  });
+});
+
+test("Ask preserves Markdown links and quoted prose at the start of an answer", () => {
+  for (const answer of ['[AskPanel](apps/web/src/ask/AskPanel.tsx) renders the form.', '"Ask" searches the current atlas.']) {
+    for (const content of [answer, JSON.stringify({ answer, citations: [] })]) {
+      assert.deepEqual(parseAskCompletion(JSON.parse(completion(content)), new Set()), { answer, citations: [] });
+    }
+  }
+});
+
 test("Ask times out against a hung fake HTTP gateway instead of hanging", async () => {
   const fake = await listenFakeGateway(() => {
     // Never respond — the client deadline must win.

@@ -1628,6 +1628,9 @@ export function App() {
   const [visibilityMode, setVisibilityMode] = useState<'all' | 'dim' | 'isolate'>('all');
   const [liveMessage, setLiveMessage] = useState('Architecture atlas loaded.');
   const [askOpen, setAskOpen] = useState(false);
+  const [askDocked, setAskDocked] = useState(false);
+  const [inspectorAskActive, setInspectorAskActive] = useState(false);
+  const askTabRef = useRef<HTMLButtonElement>(null);
   const [question, setQuestion] = useState('');
   const [askConnected, setAskConnected] = useState(false);
   const [askWarmingUp, setAskWarmingUp] = useState(false);
@@ -3184,6 +3187,7 @@ export function App() {
   }
 
   function selectInspectorTab(tab: InspectorTab, focus = true) {
+    setInspectorAskActive(false);
     setInspectorTab(tab);
     setSafeAreaEpoch(epoch => epoch + 1);
     if (focus) window.setTimeout(() => inspectorTabButtonRef(tab).current?.focus({ preventScroll: true }), 0);
@@ -3192,8 +3196,8 @@ export function App() {
   function navigateInspectorTabs(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
-    const tabs: InspectorTab[] = ['overview', 'source', 'details'];
-    const current = Math.max(0, tabs.indexOf(inspectorTab));
+    const tabs: (InspectorTab | 'ask')[] = ['overview', 'source', 'details', ...(!askHidden && !getActivePortableAtlas() ? ['ask' as const] : [])];
+    const current = Math.max(0, tabs.indexOf(inspectorAskActive && askOpen ? 'ask' : inspectorTab));
     const next = event.key === 'Home'
       ? tabs[0]
       : event.key === 'End'
@@ -3201,7 +3205,8 @@ export function App() {
         : event.key === 'ArrowRight'
           ? tabs[Math.min(tabs.length - 1, current + 1)]
           : tabs[Math.max(0, current - 1)];
-    if (next) selectInspectorTab(next);
+    if (next === 'ask') openDockedAsk();
+    else if (next) selectInspectorTab(next);
   }
 
   function reframeEntityAfterInspectorChange(entity: SceneEntity, force = false) {
@@ -4893,7 +4898,8 @@ export function App() {
       if (!getActivePortableAtlas() && !askHidden && shouldOpenAskAtlas(event, storyStep >= 0)) {
         event.preventDefault();
         if (!mainDiagramActive) activateDiagramView(MAIN_DIAGRAM_SURFACE_ID);
-        setAskOpen(true);
+        if (askDocked) openDockedAsk();
+        else setAskOpen(true);
         if (!askOpen) requestAskReframe();
         window.setTimeout(() => askInputRef.current?.focus(), 0);
       }
@@ -4920,7 +4926,7 @@ export function App() {
     }
     window.addEventListener('keydown', shortcut);
     return () => window.removeEventListener('keydown', shortcut);
-  }, [askHidden, askOpen, camera, detailsOpen, editingEnabled, mainDiagramActive, navigationIdentity.rootEntityId, pickedRelationId, searchOpen, semanticLensSession, storyStep, viewport]);
+  }, [askHidden, askOpen, askDocked, camera, detailsOpen, editingEnabled, mainDiagramActive, navigationIdentity.rootEntityId, pickedRelationId, searchOpen, semanticLensSession, storyStep, viewport]);
 
   useEffect(() => {
     if (getActivePortableAtlas()) return;
@@ -4978,7 +4984,7 @@ export function App() {
   // panel now covers the selected card, pan it into the unobstructed area with the same safe-area
   // reframe the inspector uses. An async thread load or the panel reappearing after a story never
   // moves the camera, and closing Ask never moves it back (askPanelReframeDue).
-  const askPanelLayout = !askOpen || askHidden || portableAtlas || currentStory || query.fixture === 'stress'
+  const askPanelLayout = askDocked || !askOpen || askHidden || portableAtlas || currentStory || query.fixture === 'stress'
     ? 'closed'
     : (askThread?.turns.length ?? 0) > 0 || askPending || askError ? 'thread' : 'empty';
   const askReframeHandledRef = useRef(0);
@@ -5661,6 +5667,59 @@ export function App() {
   const selectedLead = inspectorEntityLead({ summary: selectedSummary, honestyDetails: scanFixture?.enrichmentHonesty?.details });
   const selectedDiagramCount = inspectorDiagramCount({ hasCodeStructure: hasCodeStructureDiagram, hasDependency: hasDependencyDiagram, namedDiagramCount: namedDiagramStories.length });
 
+  function openDockedAsk() {
+    setAskDocked(true);
+    setInspectorAskActive(true);
+    setAskOpen(true);
+    setDetailsOpen(true);
+    setDetailsWidth(width => Math.max(width, clampInspectorWidth(520, window.innerWidth)));
+    setSafeAreaEpoch(epoch => epoch + 1);
+    window.setTimeout(() => askTabRef.current?.focus({ preventScroll: true }), 0);
+  }
+
+  const askPanelVisible = !currentStory && query.fixture !== 'stress' && !portableAtlas && !askHidden && askOpen;
+  const askPanelView = (
+    <AskPanel
+      placement={askDocked ? 'docked' : 'floating'}
+      onTogglePlacement={() => { if (askDocked) { setAskDocked(false); setInspectorAskActive(false); } else openDockedAsk(); }}
+      auth={askAuth}
+      citationsFor={turn => askCitationChips(turn, {
+        sceneEntity: id => scene.entities.find(entity => entity.id === id),
+        snapshotName: id => activeSnapshot.entities.find(entity => entity.id === id)?.name,
+      })}
+      connected={askConnected}
+      error={askError}
+      inputRef={askInputRef}
+      latestTurnId={askLatestTurnId}
+      mapTurnId={visibilityMode === 'isolate' ? askMapFocus?.turnId : undefined}
+      onClose={() => { setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); }}
+      onFocusCitation={id => {
+        // Same path as inspector Parent/Children/implementation links: load the neighborhood,
+        // land on the band that draws the cited entity (declarations enter their owner's L4),
+        // then frame it inside the map safe area (which accounts for this panel).
+        cancelAskMapShow();
+        setInspectorAskActive(false);
+        void openInspectorChild(id).then(() => frameAskCitationWhenSettled(id)).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.'));
+      }}
+      onOpenCitationSource={id => {
+        cancelAskMapShow();
+        // Only switch to Source if the drill actually landed on the cited part.
+        void openInspectorChild(id).then(() => { if (inspectorSelectionRef.current === id) selectInspectorTab('source', false); }).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.'));
+      }}
+      onQuestionChange={setQuestion}
+      onRestoreMap={restoreAskMapView}
+      onShowOnMap={(citedIds, turn) => { void showAskTurnOnMap(citedIds, turn.id); }}
+      onSubmit={submitQuestion}
+      pendingQuestion={askPending}
+      warmingUp={askWarmingUp}
+      question={question}
+      returnPath={askReturnPath}
+      signedIn={askSignedIn}
+      state={askState}
+      turns={askThread?.turns ?? []}
+            />
+  );
+
   return (
     <div className="app-shell" data-active-diagram-id={activeDiagramSurface.id} data-atlas-source={importedAtlas ? 'imported-mermaid' : scanFixture ? 'scan' : 'golden'} data-embed={isEmbedChrome({ framed: isFramedBrowsingContext(), embedQuery: isEmbedQueryFlag(window.location.search) }) ? 'true' : 'false'} data-atlas-enrichment-why={scanFixture?.enrichmentHonesty?.why ?? ''} data-authoring-history-future={authoringHistory.future.length} data-authoring-history-past={authoringHistory.past.length} data-authoring-tool={authoringTool} data-backend={query.backend} data-camera-settled-epoch={cameraSettledEpoch} data-detail={activeDetail} data-dev-mode={devMode ? 'true' : 'false'} data-fixture={query.fixture} data-interaction-mode={interactionMode} data-lens-phase={semanticLens.phase} data-lens-progress={semanticLens.progress.toFixed(3)} data-lens-target={semanticLens.targetId ?? ''} data-navigation-state={serializeNavigationState(settledNavigation)} data-projection-entity-count={activeProjectionEntityIds.length} data-projection-override-id={projectionOverride?.id ?? ''} data-projection-override-object-count={projectionOverride?.objects.length ?? 0} data-projection-override-path-count={projectionOverride?.paths.length ?? 0} data-projection-relation-count={activeProjectionRelationIds.length} data-renderer-replay-state={rendererReplayState} data-root-entity-id={navigationIdentity.rootEntityId} data-scan-boot={scanFixture?.boot ?? ''} data-seed={query.seed} data-selected-entity-id={selected.id} data-testid="atlas-app" data-visibility-mode={visibilityMode}>
       <a className="skip-link" href={mainDiagramActive ? '#entity-explorer' : '#derived-diagram-content'}>{mainDiagramActive ? 'Skip to entity explorer' : 'Skip to active diagram'}</a>
@@ -5950,7 +6009,7 @@ export function App() {
           ) : (
             <div className="story-launcher" data-story-catalog-count={storyCatalog.length}>
               <div className="ask-anchor">
-              {!portableAtlas && !askHidden && <button className="ask-button" onClick={() => { if (!askOpen) requestAskReframe(); setAskOpen(!askOpen); }} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>}
+              {!portableAtlas && !askHidden && <button className="ask-button" onClick={() => { if (!askOpen) requestAskReframe(); if (askDocked && (!askOpen || !inspectorAskActive || !detailsOpen)) openDockedAsk(); else setAskOpen(!askOpen); }} ref={askButtonRef}><SparkIcon/><span><b>Ask Atlas</b><small>Explain this codebase spatially</small></span><kbd>⌘ ↵</kbd></button>}
               </div>
               {storyCatalog.length === 1 ? storyCatalog.map(plan => (
                 <button
@@ -5984,65 +6043,29 @@ export function App() {
               )}
             </div>
           )}
-          {!currentStory && query.fixture !== 'stress' && !portableAtlas && !askHidden && askOpen && (
-            <AskPanel
-              auth={askAuth}
-              citationsFor={turn => askCitationChips(turn, {
-                sceneEntity: id => scene.entities.find(entity => entity.id === id),
-                snapshotName: id => activeSnapshot.entities.find(entity => entity.id === id)?.name,
-              })}
-              connected={askConnected}
-              error={askError}
-              inputRef={askInputRef}
-              latestTurnId={askLatestTurnId}
-              mapTurnId={visibilityMode === 'isolate' ? askMapFocus?.turnId : undefined}
-              onClose={() => { setAskOpen(false); window.setTimeout(() => askButtonRef.current?.focus(), 0); }}
-              onFocusCitation={id => {
-                // Same path as inspector Parent/Children/implementation links: load the neighborhood,
-                // land on the band that draws the cited entity (declarations enter their owner's L4),
-                // then frame it inside the map safe area (which accounts for this panel).
-                cancelAskMapShow();
-                void openInspectorChild(id).then(() => frameAskCitationWhenSettled(id)).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.'));
-              }}
-              onOpenCitationSource={id => {
-                cancelAskMapShow();
-                // Only switch to Source if the drill actually landed on the cited part.
-                void openInspectorChild(id).then(() => { if (inspectorSelectionRef.current === id) selectInspectorTab('source', false); }).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.'));
-              }}
-              onQuestionChange={setQuestion}
-              onRestoreMap={restoreAskMapView}
-              onShowOnMap={(citedIds, turn) => { void showAskTurnOnMap(citedIds, turn.id); }}
-              onSubmit={submitQuestion}
-              pendingQuestion={askPending}
-              warmingUp={askWarmingUp}
-              question={question}
-              returnPath={askReturnPath}
-              signedIn={askSignedIn}
-              state={askState}
-              turns={askThread?.turns ?? []}
-            />
-          )}
+          {askPanelVisible && !askDocked ? askPanelView : null}
           {!currentStory && visibilityMode === 'isolate' && askMapFocus && !askOpen && <div className="ask-map-status" data-ask-map-status="" role="status">Showing {askMapFocus.entityIds.length} cited part{askMapFocus.entityIds.length === 1 ? '' : 's'} from Ask · <button onClick={restoreAskMapView} type="button">Restore full view</button></div>}
 
           <div className="canvas-hint"><span>Pinch or wheel to zoom</span><i/>drag to pan<i/>click to inspect<i/>double-click to open inside</div>
 
         </section>
 
-        <aside aria-hidden={detailsOpen ? undefined : true} aria-label={pickedRelationPresentation ? 'Selected architecture relationship inspector' : 'Selected architecture entity inspector'} className={`details-panel ${detailsOpen ? 'open' : ''}`} id="architecture-inspector" inert={!detailsOpen} ref={detailsPanelRef}>
+        <aside aria-hidden={detailsOpen ? undefined : true} aria-label={pickedRelationPresentation ? 'Selected architecture relationship inspector' : 'Selected architecture entity inspector'} className={`details-panel ${detailsOpen ? 'open' : ''} ${inspectorAskActive && askPanelVisible ? 'has-ask' : ''}`} id="architecture-inspector" inert={!detailsOpen} ref={detailsPanelRef}>
           <div aria-label="Resize inspector" aria-orientation="vertical" aria-valuemax={detailsWidthRange.max} aria-valuemin={detailsWidthRange.min} aria-valuenow={detailsWidth} className="details-resizer" onDoubleClick={() => { setDetailsWidth(defaultInspectorWidth(window.innerWidth)); setSafeAreaEpoch(epoch => epoch + 1); window.setTimeout(() => reframeEntityAfterInspectorChange(selected), 0); }} onKeyDown={resizeInspectorWithKeyboard} onPointerDown={beginInspectorResize} role="separator" tabIndex={0}/>
           <header className="details-header">
-            <div className="details-header-title"><span>{inspectorTab === 'overview' ? 'OVERVIEW' : 'DETAILS'}</span><small>{inspectorTab === 'overview' ? 'Architecture brief' : 'Evidence-backed'}</small></div>
+            <div className="details-header-title"><span>{inspectorAskActive && askPanelVisible ? 'ASK' : inspectorTab === 'overview' ? 'OVERVIEW' : 'DETAILS'}</span><small>{inspectorAskActive && askPanelVisible ? 'Your codebase conversation' : inspectorTab === 'overview' ? 'Architecture brief' : 'Evidence-backed'}</small></div>
             <div className="details-header-actions">
               {inspectorHistory.length > 0 && <button aria-label="Back to previous inspector selection" data-testid="inspector-back" onClick={navigateInspectorBack} title="Back within details panel" type="button"><span aria-hidden="true">←</span></button>}
               <button aria-label="Close details panel" onClick={closeDetails}><CloseIcon/></button>
             </div>
           </header>
-          <div aria-label="Inspector view" className="inspector-tabs" data-inspector-tab={inspectorTab} onKeyDown={navigateInspectorTabs} role="tablist">
-            <button aria-controls="overview-panel" aria-selected={inspectorTab === 'overview'} id="overview-tab" onClick={() => selectInspectorTab('overview')} ref={overviewTabRef} role="tab" tabIndex={inspectorTab === 'overview' ? 0 : -1} type="button">Overview</button>
-            <button aria-controls="source-panel" aria-selected={inspectorTab === 'source'} id="source-tab" onClick={() => selectInspectorTab('source')} ref={sourceTabRef} role="tab" tabIndex={inspectorTab === 'source' ? 0 : -1} type="button">Source</button>
-            <button aria-controls="details-panel" aria-selected={inspectorTab === 'details'} id="details-tab" onClick={() => selectInspectorTab('details')} ref={detailsTabRef} role="tab" tabIndex={inspectorTab === 'details' ? 0 : -1} type="button">Details</button>
+          <div aria-label="Inspector view" className="inspector-tabs" data-inspector-tab={inspectorAskActive && askPanelVisible ? 'ask' : inspectorTab} onKeyDown={navigateInspectorTabs} role="tablist">
+            <button aria-controls="overview-panel" aria-selected={!(inspectorAskActive && askPanelVisible) && inspectorTab === 'overview'} id="overview-tab" onClick={() => selectInspectorTab('overview')} ref={overviewTabRef} role="tab" tabIndex={!(inspectorAskActive && askPanelVisible) && inspectorTab === 'overview' ? 0 : -1} type="button">Overview</button>
+            <button aria-controls="source-panel" aria-selected={!(inspectorAskActive && askPanelVisible) && inspectorTab === 'source'} id="source-tab" onClick={() => selectInspectorTab('source')} ref={sourceTabRef} role="tab" tabIndex={!(inspectorAskActive && askPanelVisible) && inspectorTab === 'source' ? 0 : -1} type="button">Source</button>
+            <button aria-controls="details-panel" aria-selected={!(inspectorAskActive && askPanelVisible) && inspectorTab === 'details'} id="details-tab" onClick={() => selectInspectorTab('details')} ref={detailsTabRef} role="tab" tabIndex={!(inspectorAskActive && askPanelVisible) && inspectorTab === 'details' ? 0 : -1} type="button">Details</button>
+            {!portableAtlas && !askHidden ? <button aria-controls="ask-panel" aria-selected={inspectorAskActive && askPanelVisible} id="ask-tab" onClick={openDockedAsk} ref={askTabRef} role="tab" tabIndex={inspectorAskActive && askPanelVisible ? 0 : -1} type="button">Ask</button> : null}
           </div>
-          {inspectorTab === 'overview' ? <div aria-labelledby="overview-tab" className="details-scroll overview-panel" data-testid="inspector-overview" id="overview-panel" role="tabpanel">
+          {inspectorAskActive && askPanelVisible ? <div aria-labelledby="ask-tab" className="inspector-ask-panel" id="ask-panel" role="tabpanel">{askPanelView}</div> : inspectorTab === 'overview' ? <div aria-labelledby="overview-tab" className="details-scroll overview-panel" data-testid="inspector-overview" id="overview-panel" role="tabpanel">
             <ContextualOverviewView key={contextualOverview?.entity.id} overview={contextualOverview} explanation={draftPreviewContext?.explanationsByEntityId.get(selected.id)} entityName={id => activeSnapshot.entities.find(entity => entity.id === id)?.name} onOpenEntity={id => { void openInspectorChild(id).catch(() => setLiveMessage('Unable to load this part of the map. Please try again.')); }}
               onOpenEvidence={evidence => { void resolveExplanationExcerpt(activeSnapshot, evidence, id => scanFixture?.ensureExcerpts(id)).then(found => { if (!found) { setLiveMessage(`A source excerpt for ${evidence.path ?? 'this evidence'} isn't available here.`); return; } openPathExcerptRef.current(found.entityId, found.excerpt); if (!found.exact) setLiveMessage(`Line ${evidence.startLine} of ${evidence.path} wasn't captured; showing the nearest captured excerpt.`); }).catch(() => setLiveMessage('Unable to open this source evidence. Please try again.')); }}/>
             {contextualOverview?.entity.id === scene.rootEntityId ? <ArchitectureBriefView

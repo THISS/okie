@@ -555,6 +555,78 @@ function unwrapJsonPayload(text: string): string {
   return fenced ? fenced[1]!.trim() : trimmed;
 }
 
+/** Recover only a complete top-level answer string when the token cap cuts off citations. */
+function completeAnswerFromTruncatedJson(text: string): string | undefined {
+  if (!text.startsWith("{")) return undefined;
+  let depth = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (character === "{" || character === "[") depth += 1;
+    else if (character === "}" || character === "]") depth -= 1;
+    else if (character === '"') {
+      const start = index;
+      for (index += 1; index < text.length; index += 1) {
+        if (text[index] === "\\") index += 1;
+        else if (text[index] === '"') break;
+      }
+      if (index >= text.length) return undefined;
+      if (depth !== 1) continue;
+      const key = JSON.parse(text.slice(start, index + 1)) as unknown;
+      if (key !== "answer") continue;
+      const valueStart = /^\s*:\s*/.exec(text.slice(index + 1));
+      if (!valueStart) continue;
+      const startOfAnswer = index + 1 + valueStart[0].length;
+      if (text[startOfAnswer] !== '"') return undefined;
+      let end = startOfAnswer + 1;
+      for (; end < text.length; end += 1) {
+        if (text[end] === "\\") end += 1;
+        else if (text[end] === '"') break;
+      }
+      if (end >= text.length) return undefined;
+      try {
+        return JSON.parse(text.slice(startOfAnswer, end + 1)) as string;
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
+}
+
+function askAnswerPayload(text: string, depth = 0): { answer: string; citations: string[] } | undefined {
+  if (depth > 2 || text.length > 100_000) return undefined;
+  const payload = unwrapJsonPayload(text);
+  if (!payload.startsWith("{") && !payload.startsWith("[") && !payload.startsWith('"')) {
+    return { answer: payload, citations: [] };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch {
+    // Markdown links and quoted opening phrases are prose, not JSON envelopes.
+    if (!payload.startsWith("{") && !/^\[\s*[{"]/.test(payload)) {
+      return { answer: payload, citations: [] };
+    }
+    // A complete answer survives a truncated citation list; incomplete answers never become raw JSON.
+    try {
+      const answer = completeAnswerFromTruncatedJson(payload);
+      return answer?.trim() ? askAnswerPayload(answer.trim(), depth + 1) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  if (typeof parsed === "string") return askAnswerPayload(parsed.trim(), depth + 1);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+  const body = parsed as Record<string, unknown>;
+  if (typeof body.answer !== "string" || !body.answer.trim()) return undefined;
+  const answer = askAnswerPayload(body.answer.trim(), depth + 1);
+  if (!answer) return undefined;
+  const citations = Array.isArray(body.citations)
+    ? body.citations.filter((id): id is string => typeof id === "string")
+    : [];
+  return { answer: answer.answer, citations: [...citations, ...answer.citations] };
+}
+
 export function parseAskCompletion(
   json: unknown,
   scopeIds: ReadonlySet<string>,
@@ -571,22 +643,9 @@ export function parseAskCompletion(
   const text = textFromContent(content)?.trim();
   if (!text) return undefined;
 
-  let answer = text;
-  let citations: string[] = [];
-  try {
-    const parsed = JSON.parse(unwrapJsonPayload(text)) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const body = parsed as Record<string, unknown>;
-      if (typeof body.answer === "string" && body.answer.trim()) {
-        answer = body.answer.trim();
-      }
-      if (Array.isArray(body.citations)) {
-        citations = body.citations.filter((id): id is string => typeof id === "string");
-      }
-    }
-  } catch {
-    // Prose fallback: keep the raw text and pick citations from ids that appear in it.
-  }
+  const payload = askAnswerPayload(text);
+  if (!payload) return undefined;
+  const { answer, citations } = payload;
 
   const allowed = [...scopeIds];
   const cited = citations
