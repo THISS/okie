@@ -4,7 +4,7 @@ import { SCAN_BAND_DEPTH_MIN_ENTITIES, SCAN_RESIDENT_NODES_PER_BAND } from './re
 import { VIEWPORT_TILE_WORLD_SIZE } from '@okie/architecture';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
-const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 
 describe('CLA-74: viewport neighborhood is camera-resident tiles', () => {
   it('pages L3/L4 through the camera tile window and inspector +N more', () => {

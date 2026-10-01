@@ -20,6 +20,8 @@ import {
   PUBLISHED_PACK_INDEX_SCHEMA,
   PUBLISHED_SOURCE_PATHS_SCHEMA,
   PUBLISHED_VERSION_SCHEMA,
+  isStructureCardRendererVersion,
+  publishedCardKey,
   publishedIndexKey,
   publishedLatestKey,
   publishedManifestKey,
@@ -72,8 +74,13 @@ export interface BuiltPublishedVersion {
   indexEntry: PublishedIndexEntry;
   /** CLA-318: GitHub's casing lookup (what landed in the index row, or why nothing did); set by preparePublishedVersion. */
   githubNames?: GithubNamesLookup;
-  /** Immutable version objects (public/, private/, packs/), manifest excluded: it is written after all of them. */
+  /** Immutable version objects (public/, private/, packs/, the card), manifest excluded: it is written after all of them. */
   objects: PublishObject[];
+  /**
+   * CLA-319: the share card (also in `objects`), or why there is none (no renderer given, or it failed: the publish
+   * goes ahead without a card and `/og` serves the generated one). Not in the manifest (see publishedStoreLayout.ts).
+   */
+  card?: PublishObject | { error: string };
   stats: {
     buildMs: number;
     packMs: number;
@@ -88,6 +95,43 @@ export interface BuiltPublishedVersion {
 }
 
 const JSON_TYPE = "application/json";
+const PNG_TYPE = "image/png";
+
+/**
+ * CLA-319: the publish-time structure card renderer. apps/server cannot import apps/web, so scripts/publish-atlas.mjs
+ * bundles apps/web/src/atlasStructureCard.ts and injects its `renderAtlasStructureCardPng` and
+ * `STRUCTURE_CARD_RENDERER_VERSION` here. `render` is pure (same input, same pixels) and may throw.
+ */
+export interface StructureCardRenderer {
+  version: string;
+  render: (input: { snapshot: ArchitectureSnapshot; view: ArchitectureView; label: { owner: string; repo: string } }) => Uint8Array;
+}
+
+export const STRUCTURE_CARD_WIDTH = 1200;
+export const STRUCTURE_CARD_HEIGHT = 630;
+
+/** True for PNG bytes whose IHDR says 1200×630 (what `/og` will serve). */
+export function isStructureCardPng(bytes: Uint8Array): boolean {
+  const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+  if (bytes.length < 24 || signature.some((value, i) => bytes[i] !== value)) return false;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return view.getUint32(16) === STRUCTURE_CARD_WIDTH && view.getUint32(20) === STRUCTURE_CARD_HEIGHT;
+}
+
+/**
+ * Renders one card; never throws. Anything off (a bad renderer version, a render that throws, bytes that are not a
+ * 1200×630 PNG) is `{ error }`, and the caller publishes without a card.
+ */
+export function renderStructureCardObject(renderer: StructureCardRenderer, input: { slug: string; versionId: string; snapshot: ArchitectureSnapshot; view: ArchitectureView; label: { owner: string; repo: string } }): PublishObject | { error: string } {
+  try {
+    if (!isStructureCardRendererVersion(renderer.version)) return { error: `invalid structure card renderer version ${JSON.stringify(renderer.version)}` };
+    const png = renderer.render({ snapshot: input.snapshot, view: input.view, label: input.label });
+    if (!isStructureCardPng(png)) return { error: "the structure card renderer did not return a 1200×630 PNG" };
+    return { key: publishedCardKey(input.slug, input.versionId, renderer.version), bytes: Buffer.from(png), contentType: PNG_TYPE };
+  } catch (cause) {
+    return { error: `the structure card could not be rendered (${cause instanceof Error ? cause.message : String(cause)})` };
+  }
+}
 const PACK_TYPE = "application/octet-stream";
 /**
  * One pack object must stay under wrangler's 315 MB per-object `r2 object put` limit. thiss/okie (4,048 entities) is
@@ -260,7 +304,7 @@ export function currentPublicationSource(input: { scanRoot: string; repo: string
   return { owner, repo, commitSha };
 }
 
-export function buildPublishedVersion(input: { scanRoot: string; repo: string; license: PublishedLicense; names?: GithubRepositoryInfo; now?: () => number; maxPackBytes?: number }): BuiltPublishedVersion {
+export function buildPublishedVersion(input: { scanRoot: string; repo: string; license: PublishedLicense; names?: GithubRepositoryInfo; now?: () => number; maxPackBytes?: number; structureCard?: StructureCardRenderer; log?: (line: string) => void }): BuiltPublishedVersion {
   const now = input.now ?? (() => performance.now());
   const started = now();
   const store = new ReadonlyOperatorStore(input.scanRoot);
@@ -304,6 +348,13 @@ export function buildPublishedVersion(input: { scanRoot: string; repo: string; l
   objects.push(...neighborhood.objects, ...excerpt.objects);
   const sourcePathsBytes = compactJsonBody(publishedSourcePathsFor(snapshot, owner, repo));
   objects.push({ key: publishedSourcePathsKey(slug, versionId), bytes: sourcePathsBytes, contentType: JSON_TYPE });
+  // CLA-319: the share card, printed with GitHub's casing when the lookup found it. A failure never fails the publish.
+  let card: BuiltPublishedVersion["card"];
+  if (input.structureCard) {
+    card = renderStructureCardObject(input.structureCard, { slug, versionId, snapshot, view, label: input.names ? { owner: input.names.ownerLogin, repo: input.names.repoName } : { owner, repo } });
+    if ("error" in card) input.log?.(`WARNING: publishing without a share card: ${card.error}; /og serves the generated card`);
+    else objects.push(card);
+  }
 
   const commitSha = artifact.sourceCommitSha ?? snapshot.commitSha;
   const publishedAt = new Date(publication.createdAt).toISOString();
@@ -335,6 +386,7 @@ export function buildPublishedVersion(input: { scanRoot: string; repo: string; l
     latestBytes: publishedLatestBytes(slug, versionId, publishedAt),
     indexEntry: withGithubNames(publishedIndexEntryFor(manifest), input.names),
     objects,
+    ...(card ? { card } : {}),
     stats: {
       buildMs: now() - started,
       packMs,
@@ -564,13 +616,25 @@ function recordedGithubNames(row: Partial<PublishedIndexEntry> | undefined): Git
 
 /**
  * Resolves the licence (a failure refuses the publish), then GitHub's casing of owner/repo (a failure only leaves the
- * row without it), then builds the version (what `pnpm publish:atlas` runs).
+ * row without it), then builds the version (what `pnpm publish:atlas` runs). The share card (CLA-319) is rendered only
+ * when the casing lookup succeeded.
  */
-export async function preparePublishedVersion(input: { scanRoot: string; repo: string; licenseOverride?: string; fetch?: typeof fetch }): Promise<BuiltPublishedVersion> {
+export async function preparePublishedVersion(input: { scanRoot: string; repo: string; licenseOverride?: string; fetch?: typeof fetch; structureCard?: StructureCardRenderer; log?: (line: string) => void }): Promise<BuiltPublishedVersion> {
   const source = currentPublicationSource(input);
   const license = await resolvePublishedLicense({ ...source, ...(input.licenseOverride !== undefined ? { override: input.licenseOverride } : {}), ...(input.fetch ? { fetch: input.fetch } : {}) });
   const githubNames = await resolveGithubRepositoryNames({ owner: source.owner, repo: source.repo, ...(input.fetch ? { fetch: input.fetch } : {}) });
-  const built = buildPublishedVersion({ scanRoot: input.scanRoot, repo: input.repo, license, ...(githubNames.ok ? { names: githubNames } : {}) });
+  const built = buildPublishedVersion({
+    scanRoot: input.scanRoot,
+    repo: input.repo,
+    license,
+    ...(githubNames.ok ? { names: githubNames } : {}),
+    // CLA-319: a stored card is permanent, so it is printed only with GitHub's own casing, never a guess.
+    ...(input.structureCard && githubNames.ok ? { structureCard: input.structureCard } : {}),
+    ...(input.log ? { log: input.log } : {}),
+  });
+  if (input.structureCard && !githubNames.ok) {
+    input.log?.(`no share card stored: GitHub's owner/repo casing is unknown (${githubNames.reason}); /og serves the generated card. Run --backfill-names, then --backfill-cards, to add one.`);
+  }
   return { ...built, githubNames };
 }
 
@@ -611,7 +675,9 @@ export interface PublishResultSummary {
 
 /**
  * Uploads a built version. Immutable: an existing version whose manifest differs is refused; the identical manifest
- * means the version is complete (manifest is written last), so only latest.json and index.json are rewritten.
+ * means the version is complete (manifest is written last), so only latest.json and index.json are rewritten — plus
+ * the share card (CLA-319) when that version has none for this renderer yet: a card on a completed version is never
+ * overwritten, and a card read/write failure there only warns.
  */
 export async function publishBuiltVersion(built: BuiltPublishedVersion, client: PublishStoreClient, log: (line: string) => void = () => undefined): Promise<PublishResultSummary> {
   const written: Array<{ key: string; bytes: number }> = [];
@@ -630,6 +696,16 @@ export async function publishBuiltVersion(built: BuiltPublishedVersion, client: 
     if (!existing.equals(built.manifestBytes)) throw new Error(`refusing to overwrite ${manifestKey}: an existing version with different contents is published there`);
     version = "unchanged";
     log(`version ${built.slug}@${built.versionId} already published (identical manifest); skipping version objects`);
+    const card = built.card && "key" in built.card ? built.card : undefined;
+    if (card) {
+      // Best effort: a card read/write failure must not stop latest.json and index.json moving.
+      try {
+        if (await client.get(card.key)) log(`share card ${card.key} already there; kept`);
+        else await put(card.key, card.bytes, card.contentType);
+      } catch (cause) {
+        log(`WARNING: share card ${card.key} not stored (${cause instanceof Error ? cause.message : String(cause)}); /og serves the generated card; --backfill-cards can add it`);
+      }
+    }
   } else {
     for (const object of built.objects) await put(object.key, object.bytes, object.contentType);
     await put(manifestKey, built.manifestBytes, JSON_TYPE);
@@ -1001,6 +1077,105 @@ export async function backfillPublishedMeta(input: BackfillIndexInput): Promise<
     if (written.backupPath) result.backupPath = written.backupPath;
     result.verified = written.verified;
     result.wrote = true;
+  }
+  return result;
+}
+
+export interface BackfillCardsResult {
+  /** One line per row: `<slug> <versionId> <bytes> <action>`. */
+  lines: string[];
+  /** Cards rendered (dry run and write alike). */
+  rendered: number;
+  /** Cards put into the store (write mode only). */
+  written: number;
+  /** Rows whose version already has this renderer's card (never overwritten). */
+  skippedExisting: number;
+  /** Rows without GitHub's owner/repo casing recorded (run --backfill-names first; a card is never printed with a guess). */
+  skippedNoNames: number;
+  failed: number;
+  /** Where the index.json bytes were saved before the first write (write mode with a `backup` only). */
+  backupPath?: string;
+}
+
+/**
+ * Backfill (CLA-319, `publish:atlas --backfill-cards`): for every index.json row (sorted by slug), renders the share card
+ * of the row's version from that version's stored `public/snapshot.json` + `public/view.json` and puts it at
+ * `versions/<v>/card-<renderer>.png` — only when that key is missing (an existing card is never overwritten; older
+ * renderers' cards are left where they are). Printed names: the row's GitHub casing; a row without it is skipped (a stored
+ * card is permanent, so it is never printed with a guess: run `--backfill-names` first). Never
+ * deletes and never writes index.json, latest.json or a manifest. Every rendered PNG is also written to `previewDir` (as
+ * `<slug>.png`) so a dry run can be looked at. `write: false` reads through a {@link readOnlyStoreClient}. Before the
+ * first write the index.json bytes are saved through `backup` (a record of which versions were carded). A row that fails
+ * (missing files, a render error) is reported and the rest continue.
+ */
+export async function backfillPublishedCards(input: {
+  client: PublishStoreClient;
+  write: boolean;
+  structureCard: StructureCardRenderer;
+  log?: (line: string) => void;
+  previewDir?: string;
+  backup?: IndexBackup;
+}): Promise<BackfillCardsResult> {
+  const log = input.log ?? (() => undefined);
+  const client = input.write ? input.client : readOnlyStoreClient(input.client);
+  const result: BackfillCardsResult = { lines: [], rendered: 0, written: 0, skippedExisting: 0, skippedNoNames: 0, failed: 0 };
+  const line = (text: string) => { result.lines.push(text); log(text); };
+  if (!isStructureCardRendererVersion(input.structureCard.version)) throw new Error(`invalid structure card renderer version ${JSON.stringify(input.structureCard.version)}`);
+  const read = await readIndexForBackfill(client);
+  if (!read) { line("no index.json in this store; nothing to backfill"); return result; }
+  if (input.previewDir) mkdirSync(input.previewDir, { recursive: true });
+  let backedUp = false;
+  const rows = read.index.repos
+    .filter(row => row && typeof row === "object")
+    .sort((a, b) => (String(a.slug) < String(b.slug) ? -1 : String(a.slug) > String(b.slug) ? 1 : 0));
+  for (const row of rows) {
+    const slug = typeof row.slug === "string" ? row.slug : "(no slug)";
+    const versionId = typeof row.versionId === "string" ? row.versionId : "(no version)";
+    const report = (bytes: number | "-", action: string) => line(`${slug} ${versionId} ${bytes} ${action}`);
+    const fail = (why: string) => { result.failed += 1; report("-", `failed (${why})`); };
+    let card: PublishObject;
+    try {
+      if (!isPublishedSlug(slug) || !isPublishedVersionId(versionId)) { fail("the row has no valid slug/versionId"); continue; }
+      const key = publishedCardKey(slug, versionId, input.structureCard.version);
+      const existing = await client.get(key);
+      if (existing) { result.skippedExisting += 1; report(existing.byteLength, "exists (kept)"); continue; }
+      const names = recordedGithubNames(row);
+      if (!names) { result.skippedNoNames += 1; report("-", "skipped (no GitHub owner/repo casing on the row; run --backfill-names first)"); continue; }
+      const snapshotBytes = await client.get(publishedPublicFileKey(slug, versionId, "snapshot.json"));
+      const viewBytes = await client.get(publishedPublicFileKey(slug, versionId, "view.json"));
+      if (!snapshotBytes || !viewBytes) { fail("the version has no public snapshot.json/view.json"); continue; }
+      const label = { owner: names.ownerLogin, repo: names.repoName };
+      const rendered = renderStructureCardObject(input.structureCard, {
+        slug,
+        versionId,
+        snapshot: JSON.parse(snapshotBytes.toString("utf8")) as ArchitectureSnapshot,
+        view: JSON.parse(viewBytes.toString("utf8")) as ArchitectureView,
+        label,
+      });
+      if ("error" in rendered) { fail(rendered.error); continue; }
+      card = rendered;
+    } catch (cause) {
+      fail(cause instanceof Error ? cause.message : String(cause));
+      continue;
+    }
+    result.rendered += 1;
+    const preview = input.previewDir ? join(input.previewDir, `${slug}.png`) : undefined;
+    if (preview) writeFileSync(preview, card.bytes);
+    if (!input.write) { report(card.bytes.byteLength, `rendered (dry run)${preview ? ` → ${preview}` : ""}`); continue; }
+    // Before the first write: a failed backup aborts the run with nothing written.
+    if (!backedUp && input.backup) {
+      result.backupPath = await input.backup(read.bytes);
+      line(`backup of the current index.json (${read.bytes.byteLength} bytes) saved to ${result.backupPath}`);
+    }
+    backedUp = true;
+    try {
+      await client.put(card.key, card.bytes, card.contentType);
+    } catch (cause) {
+      fail(cause instanceof Error ? cause.message : String(cause));
+      continue;
+    }
+    result.written += 1;
+    report(card.bytes.byteLength, `written ${card.key}${preview ? ` (preview ${preview})` : ""}`);
   }
   return result;
 }

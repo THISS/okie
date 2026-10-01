@@ -18,7 +18,7 @@ import { frameSemanticEntities, worldToScreen } from './storyFraming';
 import { storyStepSelectedId } from './storyFocus';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
-const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 
 const viewport = { width: 1_280, height: 720 };
 const storySafeArea = { top: 102, right: 66, bottom: 250, left: 82 };

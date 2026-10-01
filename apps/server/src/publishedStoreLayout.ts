@@ -13,6 +13,14 @@
  *   atlas/v1/repos/<slug>/versions/<versionId>/packs/<name>.pack     immutable packed precomputed packets
  *   atlas/v1/repos/<slug>/versions/<versionId>/packs/<name>.index.json  { encoding, entries: { key: [offset, length] } }
  *   atlas/v1/repos/<slug>/versions/<versionId>/packs/source-paths.json  paths the pinned source view may fetch
+ *   atlas/v1/repos/<slug>/versions/<versionId>/card-<renderer>.png      immutable share card (CLA-319), optional
+ *
+ * `card-<renderer>.png` is the 1200×630 Open Graph card showing the version's real structure, rendered at publish
+ * time (or by `publish:atlas --backfill-cards`) by apps/web/src/atlasStructureCard.ts; `<renderer>` is its
+ * STRUCTURE_CARD_RENDERER_VERSION (`r1`, `r2`, …), so a new layout is a new key beside the old one and nothing is ever
+ * overwritten. It is NOT listed in manifest.json: versions are immutable and a re-publish compares manifest bytes, so a
+ * new field would make every existing version refuse to re-publish. It is found by key; `/og` falls back to the
+ * generated owner/repo card when it is missing.
  *
  * A version is written completely (files, packs, manifest last) before `latest.json` moves, and
  * `index.json` is rewritten after that, so a reader that sees a pointer always finds its version.
@@ -150,10 +158,12 @@ export interface PublishedSourcePaths {
 }
 
 const SLUG = /^[a-z0-9][a-z0-9_-]{0,180}$/;
+const CARD_RENDERER = /^r[0-9]{1,4}$/;
 const VERSION = /^[A-Za-z0-9][A-Za-z0-9_-]{0,180}$/;
 
 export function isPublishedSlug(value: string): boolean { return SLUG.test(value); }
 export function isPublishedVersionId(value: string): boolean { return VERSION.test(value); }
+export function isStructureCardRendererVersion(value: string): boolean { return CARD_RENDERER.test(value); }
 
 function slugOk(slug: string): string { if (!isPublishedSlug(slug)) throw new Error("invalid published slug"); return slug; }
 function versionOk(versionId: string): string { if (!isPublishedVersionId(versionId)) throw new Error("invalid published version id"); return versionId; }
@@ -168,6 +178,11 @@ export const publishedPrivateFileKey = (slug: string, versionId: string, name: s
 export const publishedPackKey = (slug: string, versionId: string, pack: PublishedPackName): string => `${publishedVersionPrefix(slug, versionId)}packs/${pack}.pack`;
 export const publishedPackIndexKey = (slug: string, versionId: string, pack: PublishedPackName): string => `${publishedVersionPrefix(slug, versionId)}packs/${pack}.index.json`;
 export const publishedSourcePathsKey = (slug: string, versionId: string): string => `${publishedVersionPrefix(slug, versionId)}packs/source-paths.json`;
+/** CLA-319: the version's share card as rendered by structure card renderer `renderer` (`r1`, `r2`, …). */
+export const publishedCardKey = (slug: string, versionId: string, renderer: string): string => {
+  if (!CARD_RENDERER.test(renderer)) throw new Error("invalid structure card renderer version");
+  return `${publishedVersionPrefix(slug, versionId)}card-${renderer}.png`;
+};
 
 /** True for keys the edge Worker may return to the public (everything except `private/`). */
 export function isPublicStoreKey(key: string): boolean {

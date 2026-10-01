@@ -333,7 +333,7 @@ describe('architecture brief view (CLA-87)', () => {
 describe('CLA-87 does not rewrite hang-guard or healthz', () => {
   it('leaves the 2000 hang-guard and CLA-66 lazy compile in place', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
-    const fixture = readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8');
+    const fixture = (readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('../renderer/scanScene.ts', import.meta.url), 'utf8'));
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
   });
 

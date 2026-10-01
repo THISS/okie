@@ -4,7 +4,7 @@ import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 const main = readFileSync(new URL('./main.tsx', import.meta.url), 'utf8');
-const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 
 describe('CLA-73: slim boot fetches the neighborhood, not the whole snapshot', () => {
   it('boots /r and fixture=scan through neighborhood.json, not snapshot.json', () => {

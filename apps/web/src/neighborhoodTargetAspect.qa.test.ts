@@ -64,7 +64,7 @@ function componentBoxes(scene: ReturnType<typeof createC4Scene>, parentId: strin
 }
 
 describe('CLA-118: container-focus neighborhood packs landscape ~1.6, not a 3-col skyscraper', () => {
-  const fixtureSource = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+  const fixtureSource = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 
   it('does not raise the 2000 hang-guard', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);

@@ -206,6 +206,47 @@ pnpm publish:atlas --repo thiss/okie --env production --scan-root ~/sites/okie/f
 - The site picks up a new version without a redeploy:
   - latest-resolved responses cache for 60 s;
   - the container mirror polls `index.json` every 60 s and also fetches on demand.
+- Share cards (CLA-319): the publish also renders the version's structure card (system, containers, peers from the
+  public snapshot; apps/web/src/atlasStructureCard.ts, bundled for Node with esbuild at startup) and uploads it with the
+  version objects, before the manifest, as `versions/<v>/card-<renderer>.png`, where `<renderer>` is
+  `STRUCTURE_CARD_RENDERER_VERSION` (`r1`). It is **not** in `manifest.json` (versions are immutable and a re-publish
+  compares manifest bytes, so a new field would make every existing version refuse to re-publish); it is found by key.
+  - A stored card is permanent, so it is rendered only when the GitHub owner/repo casing lookup succeeded; otherwise
+    the publish logs `no share card stored` (fix with `--backfill-names`, then `--backfill-cards`).
+  - Before rendering, the script checks the renderer: the reference card must match
+    `STRUCTURE_CARD_REFERENCE_SHA256`. A mismatch (stale package build: `pnpm --filter './packages/*' build`; a
+    different Node/locale) or a bundle failure only warns, and the publish goes ahead without a card, as does a render
+    failure.
+  - Re-publishing an unchanged version adds the card only if the key is missing; a card on a completed version is
+    never overwritten, and a card read/write error there only warns (`latest.json`/`index.json` still move).
+- `/og/<owner>/<repo>` serves the card of the index row's `versionId` for the current renderer, if it is a
+  1200×630 PNG; otherwise (missing, older renderer only, unreadable) it renders the generated owner/repo card. The edge
+  cache key carries `&v=<versionId>&r=<renderer>`, so a re-publish or a `--set-latest` rollback switches cards within
+  the index cache's minute. A generated card served for a published version is edge-cached for 5 minutes only (a
+  day otherwise), so a card added later shows up quickly.
+- Backfill cards for versions published before CLA-319 (or after a renderer bump). **Run it before deploying the Worker
+  that reads the new key**: it is safe to run first, since the running Worker never reads `card-rN` keys it doesn't
+  know. Dry run first and look at the previews:
+
+  ```bash
+  pnpm publish:atlas --env staging --backfill-cards --dry-run --preview ./card-preview   # reads the env, writes nothing to the bucket
+  pnpm publish:atlas --env staging --backfill-cards
+  pnpm publish:atlas --env production --backfill-cards --dry-run --preview ./card-preview
+  pnpm publish:atlas --env production --backfill-cards --yes
+  ```
+
+  For every `index.json` row with GitHub's casing recorded (others are skipped: run `--backfill-names` first) it reads
+  that version's `public/snapshot.json` + `view.json`, renders the card, saves it to the preview directory
+  (`--preview <dir>`, default a new temp directory; the path is logged) and, unless a dry run, puts it, only when
+  `card-<renderer>.png` is missing. It never overwrites a card on a completed version, never deletes, and never touches
+  `index.json`, `latest.json` or manifests; before the first put it saves `index.json` like the other backfills (a
+  record of which versions were carded). It refuses to start if the bundle fails or the renderer self-check does not
+  match. One line per row: slug, versionId, bytes, action; a failed row is reported and the run continues (exit code
+  1). `--dry-run --out <dir>` runs against a directory store.
+- Changing the card layout: bump `STRUCTURE_CARD_RENDERER_VERSION` and re-pin `STRUCTURE_CARD_REFERENCE_SHA256`
+  (apps/web/src/atlasStructureCardVersion.ts, `r1` → `r2`; apps/web/src/atlasStructureCard.test.ts fails until you
+  do), run `--backfill-cards` for each env from that commit, then deploy the Worker. Versions without an `r2` card
+  serve the generated card; the `r1` cards stay in the bucket untouched.
 
 ## 3. Deploy the Worker
 

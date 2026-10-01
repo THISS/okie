@@ -18,7 +18,7 @@ import {
   type PublicAtlasDisplayNames,
   type PublicAtlasOembedTarget,
 } from './oembed';
-import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, renderAtlasCardPng } from './atlasCard';
+import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, pngDimensions, pngSignatureOk, renderAtlasCardPng } from './atlasCard';
 import {
   DEFAULT_OG_IMAGE_ALT,
   DEFAULT_OG_IMAGE_HEIGHT,
@@ -95,12 +95,36 @@ export type ShareHtmlInput = {
   displayNames?: PublicAtlasDisplayLookup;
 };
 
+/**
+ * CLA-319: the stored structure card for a public atlas (the published version's `card-<renderer>.png`), or undefined
+ * when there is none. The edge Worker reads it from R2; the Vite dev plugin passes nothing.
+ */
+export type StoredCardLookup = (owner: string, repo: string) => Promise<Uint8Array | undefined>;
+
 export type OgImageHttpInput = {
   method: string;
   pathname: string;
   isPublicAtlas?: PublicAtlasLookup;
   displayNames?: PublicAtlasDisplayLookup;
+  storedCard?: StoredCardLookup;
 };
+
+/** Stored card bytes `/og` may serve: a 1200×630 PNG with nothing secret-looking in it; anything else is ignored. */
+export function servableStoredCard(bytes: Uint8Array | undefined): bytes is Uint8Array {
+  if (!bytes || !pngSignatureOk(bytes)) return false;
+  const size = pngDimensions(bytes);
+  return size?.width === OG_IMAGE_WIDTH && size.height === OG_IMAGE_HEIGHT && !openGraphLeaksSecrets(latin1(bytes));
+}
+
+async function readStoredCard(parsed: { owner: string; repo: string }, lookup: StoredCardLookup | undefined): Promise<Uint8Array | undefined> {
+  if (!lookup) return undefined;
+  try {
+    const bytes = await lookup(parsed.owner, parsed.repo);
+    return servableStoredCard(bytes) ? bytes : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /** The display names for a public target (never throws: a failed lookup shows the URL's names). */
 export async function resolveDisplayNames(target: { owner: string; repo: string }, lookup: PublicAtlasDisplayLookup | undefined): Promise<PublicAtlasDisplayNames> {
@@ -116,6 +140,11 @@ export type PublicAtlasHttpOutput = {
   status: number;
   headers: Record<string, string>;
   body: string | Uint8Array;
+  /**
+   * CLA-319, `/og` 200s only, never sent to the client: whether the published version's stored structure card was
+   * served or the generated owner/repo card (the edge caches a fallback only briefly, so a card stored later shows up).
+   */
+  ogCard?: 'stored' | 'generated';
 };
 
 const CORS = {
@@ -454,8 +483,9 @@ export async function handleOgImageRequest(input: OgImageHttpInput): Promise<Pub
       body: 'not found',
     };
   }
-  const label = await resolveDisplayNames(parsed, input.displayNames);
-  const png = renderAtlasCardPng({ ...parsed, label });
+  // CLA-319: the published version's structure card when it is there and sound, else the generated owner/repo card.
+  const stored = await readStoredCard(parsed, input.storedCard);
+  const png = stored ?? renderAtlasCardPng({ ...parsed, label: await resolveDisplayNames(parsed, input.displayNames) });
   const asText = latin1(png);
   if (openGraphLeaksSecrets(asText)) {
     return {
@@ -473,6 +503,7 @@ export async function handleOgImageRequest(input: OgImageHttpInput): Promise<Pub
       'content-length': String(png.byteLength),
     },
     body: method === 'HEAD' ? '' : png,
+    ogCard: stored ? 'stored' : 'generated',
   };
 }
 

@@ -1,12 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { pngDimensions, pngSignatureOk } from '../../web/src/atlasCard';
+import { pngDimensions, pngSignatureOk, renderAtlasCardPng } from '../../web/src/atlasCard';
+import { STRUCTURE_CARD_RENDERER_VERSION } from '../../web/src/atlasStructureCardVersion';
 import { NOINDEX_ROBOTS_TXT } from '../src/http';
 import { canonicalHostRedirect } from '../src/index';
-import { publishedLatestKey } from '../../server/src/publishedStoreLayout';
-import { OG_CARD_CACHE_VERSION, OG_CARD_EDGE_TTL_SECONDS } from '../src/share';
+import { publishedCardKey, publishedLatestKey } from '../../server/src/publishedStoreLayout';
+import { OG_CARD_CACHE_VERSION, OG_CARD_EDGE_TTL_SECONDS, OG_CARD_FALLBACK_EDGE_TTL_SECONDS } from '../src/share';
 import { edgeEnv, edgeFetch, memoryCache, seedAtlas, seedIndex } from './helpers';
 
 const ORIGIN = 'http://127.0.0.1:4196';
+const R = STRUCTURE_CARD_RENDERER_VERSION;
+
+/** A valid 1200×630 PNG that is not the generated card for the atlas under test (stands in for a stored structure card). */
+function storedCardBytes(seed: string): Uint8Array {
+  return renderAtlasCardPng({ owner: 'stored', repo: seed });
+}
+
+/** A PNG signature + IHDR claiming `width`×`height` (never a card `/og` may serve unless 1200×630). */
+function pngHeader(width: number, height: number): Uint8Array {
+  const bytes = new Uint8Array(33);
+  bytes.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
+  new DataView(bytes.buffer).setUint32(16, width);
+  new DataView(bytes.buffer).setUint32(20, height);
+  return bytes;
+}
+
+async function pngBody(response: Response): Promise<Uint8Array> {
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toBe('image/png');
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  expect(response.headers.get('content-length')).toBe(String(bytes.byteLength));
+  expect(pngDimensions(bytes)).toEqual({ width: 1200, height: 630 });
+  return bytes;
+}
 
 describe('share pages at the edge', () => {
   it('injects Open Graph tags into the static index.html for a published slug', async () => {
@@ -117,7 +142,7 @@ describe('share pages at the edge', () => {
     const first = await edgeFetch('/og/acme/later', { cache });
     expect(first.status).toBe(200);
     const firstBytes = new Uint8Array(await first.arrayBuffer());
-    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=acme/later`]);
+    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=acme/later&v=v1&r=${R}`]);
 
     // A hit is served from the cache (the atlas is gone from R2, yet the card still answers) with the browser's cache-control.
     await edgeEnv.ATLAS_BUCKET.delete(publishedLatestKey('acme__later'));
@@ -135,9 +160,10 @@ describe('share pages at the edge', () => {
     const renamed = await edgeFetch('/og/acme/later', { cache });
     expect(renamed.status).toBe(200);
     expect(new Uint8Array(await renamed.arrayBuffer())).not.toEqual(firstBytes);
-    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=acme/later`, `${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=Acme/Later`]);
+    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=acme/later&v=v1&r=${R}`, `${ORIGIN}/og/acme/later?card=${OG_CARD_CACHE_VERSION}&names=Acme/Later&v=v2&r=${R}`]);
+    // v2 has no stored card yet, so this generated card is cached briefly (CLA-319); see the TTL tests below.
     const stored = await cache.match(cache.keys[1]!);
-    expect(stored?.headers.get('cache-control')).toBe(`public, max-age=${OG_CARD_EDGE_TTL_SECONDS}`);
+    expect(stored?.headers.get('cache-control')).toBe(`public, max-age=${OG_CARD_FALLBACK_EDGE_TTL_SECONDS}`);
   });
 
   it('never reads or writes the /og cache for HEAD, conditional or range requests (CLA-269)', async () => {
@@ -167,7 +193,7 @@ describe('share pages at the edge', () => {
     await seedAtlas({ slug: 'acme__keyed', versionId: 'v1', files: { 'snapshot.json': '{}' } });
     await seedIndex([{ slug: 'acme__keyed', versionId: 'v1' }]);
     const cache = memoryCache();
-    const key = `${ORIGIN}/og/acme/keyed?card=${OG_CARD_CACHE_VERSION}&names=acme/keyed`;
+    const key = `${ORIGIN}/og/acme/keyed?card=${OG_CARD_CACHE_VERSION}&names=acme/keyed&v=v1&r=${R}`;
     const first = await edgeFetch('/og/acme/keyed', { cache });
     expect(first.status).toBe(200);
     const bytes = new Uint8Array(await first.arrayBuffer());
@@ -185,7 +211,7 @@ describe('share pages at the edge', () => {
     expect(cache.keys).toEqual([key]);
     // The map preview is seeded from the URL's owner/repo case, so a differently cased path is its own entry.
     expect((await edgeFetch('/og/ACME/keyed', { cache })).status).toBe(200);
-    expect(cache.keys[1]).toBe(`${ORIGIN}/og/ACME/keyed?card=${OG_CARD_CACHE_VERSION}&names=acme/keyed`);
+    expect(cache.keys[1]).toBe(`${ORIGIN}/og/ACME/keyed?card=${OG_CARD_CACHE_VERSION}&names=acme/keyed&v=v1&r=${R}`);
   });
 
   it('renders the card when the Cache API fails (CLA-269)', async () => {
@@ -200,6 +226,95 @@ describe('share pages at the edge', () => {
       expect(cache.matches).toHaveLength(1);
       expect(cache.keys).toHaveLength(1);
     }
+  });
+
+  it('serves the published version\'s stored structure card, keyed on the version and renderer (CLA-319)', async () => {
+    const bucket = edgeEnv.ATLAS_BUCKET;
+    const generated = renderAtlasCardPng({ owner: 'acme', repo: 'structured' });
+    const v1Card = storedCardBytes('v1');
+    await seedAtlas({ slug: 'acme__structured', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__structured', versionId: 'v1' }]);
+    await bucket.put(publishedCardKey('acme__structured', 'v1', R), v1Card);
+    const cache = memoryCache();
+    expect(await pngBody(await edgeFetch('/og/acme/structured', { cache }))).toEqual(v1Card);
+    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/structured?card=${OG_CARD_CACHE_VERSION}&names=acme/structured&v=v1&r=${R}`]);
+    // Without the Cache API the version comes from the index row directly.
+    expect(await pngBody(await edgeFetch('/og/acme/structured', { cache: undefined }))).toEqual(v1Card);
+    // HEAD answers like GET, without the body.
+    const head = await edgeFetch('/og/acme/structured', { init: { method: 'HEAD' } });
+    expect(head.status).toBe(200);
+    expect(head.headers.get('content-length')).toBe(String(v1Card.byteLength));
+
+    // A re-publish moves the row to v2: a new key, and v2's own card.
+    const v2Card = storedCardBytes('v2');
+    await seedAtlas({ slug: 'acme__structured', versionId: 'v2', files: { 'snapshot.json': '{}' } });
+    await bucket.put(publishedCardKey('acme__structured', 'v2', R), v2Card);
+    await seedIndex([{ slug: 'acme__structured', versionId: 'v2' }]);
+    expect(await pngBody(await edgeFetch('/og/acme/structured', { cache }))).toEqual(v2Card);
+    expect(cache.keys[1]).toBe(`${ORIGIN}/og/acme/structured?card=${OG_CARD_CACHE_VERSION}&names=acme/structured&v=v2&r=${R}`);
+    expect(await pngBody(await edgeFetch('/og/acme/structured', { cache: undefined }))).toEqual(v2Card);
+
+    // A --set-latest rollback moves the row back to v1: v1's card again (its cache entry, or a fresh read).
+    await seedAtlas({ slug: 'acme__structured', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__structured', versionId: 'v1' }]);
+    expect(await pngBody(await edgeFetch('/og/acme/structured', { cache }))).toEqual(v1Card);
+    expect(await pngBody(await edgeFetch('/og/acme/structured', { cache: undefined }))).toEqual(v1Card);
+
+    // A version without a card for this renderer serves the generated card.
+    await seedAtlas({ slug: 'acme__structured', versionId: 'v3', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__structured', versionId: 'v3' }]);
+    expect(await pngBody(await edgeFetch('/og/acme/structured', { cache: undefined }))).toEqual(generated);
+  });
+
+  it('caches a fallback for a published version only briefly, so a card stored later is served (CLA-319)', async () => {
+    const bucket = edgeEnv.ATLAS_BUCKET;
+    await seedAtlas({ slug: 'acme__later-card', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__later-card', versionId: 'v1' }]);
+    const generated = renderAtlasCardPng({ owner: 'acme', repo: 'later-card' });
+    const key = `${ORIGIN}/og/acme/later-card?card=${OG_CARD_CACHE_VERSION}&names=acme/later-card&v=v1&r=${R}`;
+    const before = memoryCache();
+    expect(await pngBody(await edgeFetch('/og/acme/later-card', { cache: before }))).toEqual(generated);
+    expect(before.keys).toEqual([key]);
+    expect((await before.match(key))?.headers.get('cache-control')).toBe(`public, max-age=${OG_CARD_FALLBACK_EDGE_TTL_SECONDS}`);
+    // The marker never reaches the client.
+    const served = await edgeFetch('/og/acme/later-card', { cache: undefined });
+    expect([...served.headers.keys()].some(name => name.includes('og-card'))).toBe(false);
+
+    // --backfill-cards puts the card; once the short entry lapses (a fresh cache here) the stored card is served, for a day.
+    const card = storedCardBytes('later');
+    await bucket.put(publishedCardKey('acme__later-card', 'v1', R), card);
+    const after = memoryCache();
+    expect(await pngBody(await edgeFetch('/og/acme/later-card', { cache: after }))).toEqual(card);
+    expect((await after.match(key))?.headers.get('cache-control')).toBe(`public, max-age=${OG_CARD_EDGE_TTL_SECONDS}`);
+
+    // No published version (no index row): the generated card is the answer, cached for the day.
+    await seedIndex([]);
+    const unlisted = memoryCache();
+    await pngBody(await edgeFetch('/og/acme/later-card', { cache: unlisted }));
+    expect((await unlisted.match(unlisted.keys[0]!))?.headers.get('cache-control')).toBe(`public, max-age=${OG_CARD_EDGE_TTL_SECONDS}`);
+  });
+
+  it('falls back to the generated card when the stored card is missing, unsound or from another renderer (CLA-319)', async () => {
+    const bucket = edgeEnv.ATLAS_BUCKET;
+    await seedAtlas({ slug: 'acme__fallback', versionId: 'v1', files: { 'snapshot.json': '{}' } });
+    await seedIndex([{ slug: 'acme__fallback', versionId: 'v1' }]);
+    const generated = renderAtlasCardPng({ owner: 'acme', repo: 'fallback' });
+    const key = publishedCardKey('acme__fallback', 'v1', R);
+    // Missing.
+    expect(await pngBody(await edgeFetch('/og/acme/fallback', { cache: undefined }))).toEqual(generated);
+    // Only an older renderer's card (card-r0.png): never served.
+    await bucket.put(publishedCardKey('acme__fallback', 'v1', 'r0'), storedCardBytes('old-renderer'));
+    expect(await pngBody(await edgeFetch('/og/acme/fallback', { cache: undefined }))).toEqual(generated);
+    // Not a PNG, a PNG of the wrong size, a truncated header.
+    for (const bytes of [new TextEncoder().encode('not a png at all, just text'), pngHeader(1200, 600), pngHeader(630, 1200), pngHeader(1200, 630).subarray(0, 20)]) {
+      await bucket.put(key, bytes);
+      expect(await pngBody(await edgeFetch('/og/acme/fallback', { cache: undefined }))).toEqual(generated);
+    }
+    // No index row (so no version): the generated card, and the key says so.
+    await seedIndex([]);
+    const cache = memoryCache();
+    expect(await pngBody(await edgeFetch('/og/acme/fallback', { cache }))).toEqual(generated);
+    expect(cache.keys).toEqual([`${ORIGIN}/og/acme/fallback?card=${OG_CARD_CACHE_VERSION}&names=-&v=-&r=${R}`]);
   });
 
   it('answers oEmbed JSON for a published atlas and 404s others', async () => {
