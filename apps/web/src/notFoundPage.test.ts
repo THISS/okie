@@ -79,14 +79,13 @@ describe('CLA-318 site footer', () => {
 });
 
 describe('CLA-318 static files', () => {
-  it('apps/web/public ships no HTML file', () => {
+  it('public HTML is limited to the explicitly routed agent reference', () => {
     const html = (readdirSync(new URL('../public/', import.meta.url), { recursive: true }) as string[])
       .filter(name => /\.html?$/i.test(name));
     // The edge Worker (apps/edge/src/index.ts serveStaticFileOr404) treats any HTML that Static Assets
     // returns for an unrouted path as the SPA fallback and turns it into the branded 404. dist has no
-    // HTML besides index.html; a public/*.html would be served as a 404 page. Route it in the Worker
-    // (and isKnownAppPath) instead.
-    expect(html, 'HTML in apps/web/public would 404 at the edge').toEqual([]);
+    // Every public HTML file needs an explicit Worker route; other HTML is still treated as fallback.
+    expect(html, 'Public HTML needs an explicit edge route').toEqual(['docs/agents.html']);
   });
 });
 

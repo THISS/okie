@@ -4,7 +4,7 @@
 
 ## Documentation
 
-- [Agent tools reference](/docs/agents.html): Tool inventory, connection instructions, examples, availability, and limits.
+- [Agent tools reference](/docs/agents): Tool inventory, connection instructions, examples, availability, and limits.
 
 ## Availability and connection
 

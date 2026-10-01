@@ -51,4 +51,4 @@ Private repositories, richer claim-backed explanation sections, diagram export, 
 
 ## Published reference
 
-The user-facing tool inventory lives at `/docs/agents.html`; `/llms.txt` provides the same connection details and complete inventory in plain text for agents. Both are static public assets, independent of WebMCP browser support. They distinguish the five shared read tools from page-only controls and legacy landing tools, and explicitly mark the staging-only read preview. Update both references when changing tools or deployment availability. Runtime MCP discovery and browser registrations remain authoritative for tool schemas.
+The user-facing tool inventory lives at `/docs/agents`; `/llms.txt` provides the same connection details and complete inventory in plain text for agents. Both are static public assets, independent of WebMCP browser support. They distinguish the five shared read tools from page-only controls and legacy landing tools, and explicitly mark the staging-only read preview. Update both references when changing tools or deployment availability. Runtime MCP discovery and browser registrations remain authoritative for tool schemas.

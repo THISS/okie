@@ -161,7 +161,7 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     });
   }
   if (pathname === SITEMAP_PATH) return handleSitemapRequest(request, env);
-  if (pathname === '/docs/agents.html') return env.ASSETS.fetch(request);
+  if (pathname === '/docs/agents' || pathname === '/docs/agents.html') return env.ASSETS.fetch(request);
   if (pathname === '/mcp' || pathname === '/api/atlas/query') return handleAgentReadRequest(request, env);
   if (pathname.startsWith('/assets/')) return serveHashedAsset(request, env);
   if (pathname.startsWith('/scan/')) {
