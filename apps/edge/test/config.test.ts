@@ -90,7 +90,7 @@ describe('wrangler.jsonc', () => {
       const env = name ? config.env[name]! : config;
       expect(env.r2_buckets, name).toEqual([{ binding: 'ATLAS_BUCKET', bucket_name: want.bucket }]);
       expect(env.vars?.OKIE_PUBLIC_ORIGIN, name).toBe(want.origin);
-      expect(env.ratelimits?.map(r => r.name), name).toEqual(['ASK_RATE_LIMITER']);
+      expect(env.ratelimits?.map(r => r.name), name).toEqual(['ASK_RATE_LIMITER', 'AGENT_RATE_LIMITER']);
       expect(env.vars?.ASK_ENABLED, name).toBe(name === 'staging' ? '1' : '0');
       expect(env.vars?.BLOCK_PLAN_ENABLED, name).toBe('0');
       expect(env.vars?.ASK_DAILY_MAX_DOLLARS, name).toBe('5');

@@ -5,6 +5,8 @@ import {
   ASK_ATLAS_TOOL,
   ASK_ATLAS_TOOL_NAME,
   ATLAS_WEBMCP_TOOLS,
+  ATLAS_READ_WEBMCP_TOOLS,
+  executeAtlasReadTool,
   GET_ATLAS_CONTEXT_INPUT_SCHEMA,
   GET_ATLAS_CONTEXT_TOOL,
   GET_ATLAS_CONTEXT_TOOL_NAME,
@@ -482,7 +484,7 @@ describe('WebMCP atlas tools (CLA-42)', () => {
     const registerTool = vi.fn(async (tool: WebMcpTool) => tool);
     const status = await registerWebMcpAtlasTools({ document: { modelContext: { registerTool } } });
     expect(status).toBe('registered');
-    expect(registerTool).toHaveBeenCalledTimes(6);
+    expect(registerTool).toHaveBeenCalledTimes(11);
     const names = registerTool.mock.calls.map(call => call[0].name);
     expect(names).toEqual([
       SET_C4_LEVEL_TOOL_NAME,
@@ -491,6 +493,7 @@ describe('WebMCP atlas tools (CLA-42)', () => {
       START_OVERVIEW_TOUR_TOOL_NAME,
       ASK_ATLAS_TOOL_NAME,
       GET_ATLAS_CONTEXT_TOOL_NAME,
+      ...ATLAS_READ_WEBMCP_TOOLS.map(tool => tool.name),
     ]);
     expect(ATLAS_WEBMCP_TOOLS.map(tool => tool.name)).toEqual(names);
 
@@ -502,6 +505,7 @@ describe('WebMCP atlas tools (CLA-42)', () => {
     expect(tools[4]!.inputSchema).toEqual(ASK_ATLAS_INPUT_SCHEMA);
     expect(tools[5]!.inputSchema).toEqual(GET_ATLAS_CONTEXT_INPUT_SCHEMA);
     expect(tools[5]!.annotations.readOnlyHint).toBe(true);
+    expect(tools.slice(6).every(tool => tool.annotations.readOnlyHint)).toBe(true);
     for (const tool of tools.slice(0, 5)) {
       expect(tool.name).toMatch(/^[A-Za-z0-9._-]{1,128}$/);
       expect(tool.inputSchema.type).toBe('object');
@@ -1047,5 +1051,22 @@ describe('WebMCP page context (CLA-43)', () => {
       isError: true,
       error: { code: 'unavailable' },
     });
+  });
+});
+
+describe('public agent query tools', () => {
+  it('uses the shared query endpoint without account cookies or Ask submission', async () => {
+    const call = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ atlas: { commitSha: 'pinned' }, found: true })));
+    const args = { atlas: { owner: 'source-for', repo: 'atlas', versionId: 'immutable' }, entityId: 'system:okie' };
+    expect(await executeAtlasReadTool('get_entity', args)).toEqual({ atlas: { commitSha: 'pinned' }, found: true });
+    expect(call).toHaveBeenCalledWith('/api/atlas/query', expect.objectContaining({ credentials: 'omit', method: 'POST', body: JSON.stringify({ tool: 'get_entity', arguments: args }) }));
+    call.mockRestore();
+  });
+  it('reports unavailable deployment and rate limit without trying an Ask', async () => {
+    const call = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 404 }));
+    expect(await executeAtlasReadTool('list_atlases')).toMatchObject({ error: { code: 'unavailable' } });
+    call.mockResolvedValue(new Response('{}', { status: 429 }));
+    expect(JSON.stringify(await executeAtlasReadTool('list_atlases'))).toContain('read limit');
+    call.mockRestore();
   });
 });

@@ -43,6 +43,7 @@
 import { INSPECTOR_EMPTY_SUMMARY, CYCLOMATIC_FLAG_THRESHOLD } from './inspector/inspectorPanel';
 import { readDemoQuery } from './renderer/query';
 import { parseAppRoute } from './renderer/route';
+import { AGENT_TOOL_DESCRIPTORS } from './agentToolCatalog';
 
 // Host headers live in a tiny module so the edge Worker and Vite config need not import the inspector.
 export { WEBMCP_HOST_HEADERS, webMcpHostHeadersForFetchDest } from './webmcpHeaders';
@@ -895,6 +896,31 @@ export const GET_ATLAS_CONTEXT_TOOL: WebMcpTool = {
   annotations: { readOnlyHint: true },
 };
 
+/** Uses the same public query service as remote MCP; never submits an Ask or changes the page. */
+export async function executeAtlasReadTool(name: string, input?: Record<string, unknown>): Promise<unknown> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch('/api/atlas/query', {
+      method: 'POST',
+      credentials: 'omit',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tool: name, arguments: input ?? {} }),
+      signal: controller.signal,
+    });
+    if (!response.ok) return webMcpToolError('unavailable', response.status === 429 ? 'Atlas read limit reached. Try again shortly.' : 'Public atlas queries are unavailable on this deployment.');
+    return await response.json();
+  } catch { return webMcpToolError('unavailable', 'Could not read the published atlas.'); }
+  finally { clearTimeout(timeout); }
+}
+
+export const ATLAS_READ_WEBMCP_TOOLS: readonly WebMcpTool[] = AGENT_TOOL_DESCRIPTORS.map(tool => ({
+  ...tool,
+  inputSchema: tool.inputSchema as WebMcpJsonSchema,
+  execute: input => executeAtlasReadTool(tool.name, input),
+  annotations: { readOnlyHint: true },
+}));
+
 export const ATLAS_WEBMCP_TOOLS: readonly WebMcpTool[] = [
   SET_C4_LEVEL_TOOL,
   SELECT_ENTITY_TOOL,
@@ -902,6 +928,7 @@ export const ATLAS_WEBMCP_TOOLS: readonly WebMcpTool[] = [
   START_OVERVIEW_TOUR_TOOL,
   ASK_ATLAS_TOOL,
   GET_ATLAS_CONTEXT_TOOL,
+  ...ATLAS_READ_WEBMCP_TOOLS,
 ];
 
 function asModelContext(value: unknown): WebMcpModelContext | undefined {

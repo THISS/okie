@@ -1,6 +1,6 @@
 # MCP surface
 
-Status: proposed roadmap.
+Status: proposed roadmap, with a first public read-only slice implemented in CLA-353. See [agent access](../architecture/agent-access.md) for the current tools, transports, limits and remaining gaps. The richer claim/spec/write surface below is still proposed.
 
 An MCP server that exposes the structured, evidence-backed graph to agents — read-first, with a single guarded write. It shares one query layer with the viewing platform and never becomes a second, divergent path into the data. Provenance honesty and redaction follow [`../architecture/deterministic-first-ingestion.md`](../architecture/deterministic-first-ingestion.md) and [`../architecture/ingestion-golden-tests.md`](../architecture/ingestion-golden-tests.md) (release gate 8: no raw prompts, secrets, absolute paths, or private excerpts in any public surface).
 

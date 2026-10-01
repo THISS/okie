@@ -21,6 +21,10 @@ export interface EdgeEnv {
   ATLAS_BUDGET?: DurableObjectNamespace<AtlasBudget>;
   /** Workers Rate Limiting binding; absent in some local setups (tolerated). */
   ASK_RATE_LIMITER?: RateLimit;
+  /** Public agent reads: independent per-IP limiter, never charges Ask allowance. */
+  AGENT_RATE_LIMITER?: RateLimit;
+  /** "1" enables read-only /mcp and /api/atlas/query. */
+  AGENT_READS_ENABLED?: string;
 
   /**
    * Accounts (CLA-316): one row per GitHub user who signed in (migrations/0001_users.sql). Sign-in is

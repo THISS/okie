@@ -6,6 +6,7 @@ import { securityHeadersFor } from '../../web/src/securityHeaders';
 import { webMcpHostHeadersForFetchDest } from '../../web/src/webmcpHeaders';
 import { analyticsConditionalRequest, injectsInto, webAnalyticsToken, withWebAnalytics } from './analytics';
 import { handleApiRoute } from './api';
+import { handleAgentReadRequest } from './agentReadHttp';
 import { ACCOUNT_PATH, accountsEnabled, handleAccountPage, privacyCookies } from './auth';
 import { privacyHttpOutput } from '../../web/src/privacyPage';
 import { PRIVACY_PATH, TERMS_PATH } from '../../web/src/siteMeta';
@@ -160,6 +161,7 @@ async function routeEdgeRequest(request: Request, env: EdgeEnv, ctx: ExecutionCo
     });
   }
   if (pathname === SITEMAP_PATH) return handleSitemapRequest(request, env);
+  if (pathname === '/mcp' || pathname === '/api/atlas/query') return handleAgentReadRequest(request, env);
   if (pathname.startsWith('/assets/')) return serveHashedAsset(request, env);
   if (pathname.startsWith('/scan/')) {
     return handleScanRoute(request, {
