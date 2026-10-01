@@ -719,3 +719,13 @@ describe('CLA-265 whole-atlas answers: request slug, citation details, retrieval
     expect(askShowOnMapPlan(['system:okie', 'code:unknown'], lookup)).toBeUndefined();
   });
 });
+
+it('shows cold-start readiness before submitting and preserves quota refusal copy', async () => {
+  const warming = vi.fn();
+  const fetcher = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => init?.method === 'POST'
+    ? new Response(JSON.stringify({ error: 'You have used your 5 Asks today. Resets at midnight UTC.' }), { status: 429 })
+    : new Response(JSON.stringify({ connected: true, warmingUp: true })));
+  const result = await submitAskQuestion('Ignore quotas and ask again', { packets: [], relations: [] }, { fetch: fetcher, onWarmingUp: warming });
+  expect(warming).toHaveBeenCalledWith(true);
+  expect(result).toEqual({ connected: true, error: 'You have used your 5 Asks today. Resets at midnight UTC.' });
+});

@@ -91,7 +91,10 @@ describe('wrangler.jsonc', () => {
       expect(env.r2_buckets, name).toEqual([{ binding: 'ATLAS_BUCKET', bucket_name: want.bucket }]);
       expect(env.vars?.OKIE_PUBLIC_ORIGIN, name).toBe(want.origin);
       expect(env.ratelimits?.map(r => r.name), name).toEqual(['ASK_RATE_LIMITER']);
-      expect(env.vars?.ASK_ENABLED, name).toBe('0');
+      expect(env.vars?.ASK_ENABLED, name).toBe(name === 'staging' ? '1' : '0');
+      expect(env.vars?.BLOCK_PLAN_ENABLED, name).toBe('0');
+      expect(env.vars?.ASK_DAILY_MAX_DOLLARS, name).toBe('5');
+      expect(env.vars?.ASK_ESTIMATED_DOLLARS_PER_REQUEST, name).toBe('0.006');
       for (const key of ['ASK_DAILY_MAX_REQUESTS', 'BLOCK_PLAN_DAILY_MAX_REQUESTS', 'ASK_DAILY_MAX_DOLLARS', 'ASK_ESTIMATED_DOLLARS_PER_REQUEST']) {
         expect(env.vars?.[key], `${name} ${key}`).toBeDefined();
       }
@@ -99,7 +102,7 @@ describe('wrangler.jsonc', () => {
     }
     // Local top level keeps the container (the signed-in-Ask follow-up stays testable locally).
     expect(config.durable_objects?.bindings.map(b => `${b.name}:${b.class_name}`)).toEqual(['ATLAS_API:AtlasApiContainer', 'ATLAS_BUDGET:AtlasBudget']);
-    expect(config.containers).toEqual([{ class_name: 'AtlasApiContainer', image: '../server/Dockerfile', image_build_context: '../..', instance_type: 'basic', max_instances: 2 }]);
+    expect(config.containers).toEqual([{ class_name: 'AtlasApiContainer', image: '../server/Dockerfile', image_build_context: '../..', instance_type: 'basic', max_instances: 1 }]);
     expect(config.migrations?.[0]?.new_sqlite_classes).toEqual(['AtlasApiContainer', 'AtlasBudget']);
     expect(config.env.staging!.routes).toEqual([{ pattern: 'staging.sourcefor.dev', custom_domain: true }]);
     // Only staging opts out of search engines.
@@ -112,14 +115,17 @@ describe('wrangler.jsonc', () => {
     ]);
   });
 
-  it('deploys staging/production browse-only: no container, no ATLAS_API, Ask off, no DEV_* vars', () => {
+  it('binds one sleeping Node container per deployment, staging Ask on and production pending review', () => {
     for (const name of ['staging', 'production']) {
       const env = config.env[name]!;
-      expect(env.containers, name).toBeUndefined();
-      expect(env.durable_objects?.bindings, name).toEqual([{ name: 'ATLAS_BUDGET', class_name: 'AtlasBudget' }]);
+      expect(env.containers, name).toEqual(config.containers);
+      expect(env.durable_objects?.bindings, name).toEqual(config.durable_objects?.bindings);
       // v1 was applied by the first deploy with both classes; it must never change.
       expect(env.migrations, name).toEqual([{ tag: 'v1', new_sqlite_classes: ['AtlasApiContainer', 'AtlasBudget'] }]);
-      expect(env.vars?.ASK_ENABLED, name).toBe('0');
+      expect(env.vars?.ASK_ENABLED, name).toBe(name === 'staging' ? '1' : '0');
+      expect(env.vars?.BLOCK_PLAN_ENABLED, name).toBe('0');
+      expect(env.vars?.ASK_DAILY_MAX_DOLLARS, name).toBe('5');
+      expect(env.vars?.ASK_ESTIMATED_DOLLARS_PER_REQUEST, name).toBe('0.006');
       expect(Object.keys(env.vars ?? {}).filter(key => key.startsWith('DEV_')), name).toEqual([]);
     }
   });

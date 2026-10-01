@@ -415,10 +415,10 @@ async function githubIdentity(setup: AuthSetup, code: string, fetchImpl: typeof 
 // ---------------------------------------------------------------------------------------------------
 // Routes
 
-function authMeBody(env: EdgeEnv, setup: AuthSetup, login: string | undefined) {
+function authMeBody(env: EdgeEnv, setup: AuthSetup, login: string | undefined, accountId?: string) {
   return {
     authenticated: login !== undefined,
-    ...(login !== undefined ? { login } : {}),
+    ...(login !== undefined ? { login, accountId } : {}),
     mode: 'accounts',
     oauthConfigured: true,
     loginPath: LOGIN_PATH,
@@ -473,7 +473,7 @@ export async function handleAuthRoute(request: Request, env: EdgeEnv, context: A
 
   if (method === 'GET' && pathname === ME_PATH) {
     const current = await currentUser(request, setup, now);
-    return withCookies(jsonResponse(200, authMeBody(env, setup, current.signedIn?.user.github_login)), current.clear);
+    return withCookies(jsonResponse(200, authMeBody(env, setup, current.signedIn?.user.github_login, current.signedIn ? String(current.signedIn.user.github_id) : undefined)), current.clear);
   }
 
   if ((method === 'GET' || method === 'POST') && pathname === LOGOUT_PATH) {

@@ -195,3 +195,11 @@ describe('AskPanel (CLA-265)', () => {
     expect(html.indexOf('Ask failed (500).')).toBeGreaterThan(html.indexOf('data-ask-scroll=""'));
   });
 });
+
+it('explains a sleeping service and browser-local daily allowance', () => {
+  const html = renderToStaticMarkup(<AskPanel {...props({ pendingQuestion: 'How?', warmingUp: true })}/>);
+  expect(html).toContain('Warming up Ask');
+  expect(html).toContain('service sleeps when idle');
+  expect(html).toContain('5 Asks per signed-in user');
+  expect(html).toContain('not synced to your account');
+});

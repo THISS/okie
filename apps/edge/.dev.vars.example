@@ -4,8 +4,9 @@
 # Browsing (the whole launch scope) needs none of these: /scan, /r, /og, /oembed and source.json are
 # served from the local R2 bucket (and GitHub raw for source.json).
 
-# "1" turns Ask + block-plan on locally (they 404 otherwise, like staging/production).
+# "1" turns signed-in Ask on locally. Block-plan stays independently disabled.
 # ASK_ENABLED=1
+# BLOCK_PLAN_ENABLED=0
 
 # Proxy POST /api/ask, /api/block-plan and neighborhood pack misses to a locally running apps/server
 # instead of the (Docker) container. Leave empty for no backend (Ask answers 503, pack misses 404).

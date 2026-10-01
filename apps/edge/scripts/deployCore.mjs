@@ -94,7 +94,7 @@ export function runDeploy(deps) {
     error('USERS_DB migrations failed; not deploying. See docs/deploy/cloudflare-runbook.md (Sign-in).');
     return migrations.status ?? 1;
   }
-  log(`deploying sourcefor-atlas to ${target} (browse-only, no container; OAuth login, account from wrangler.jsonc)`);
+  log(`deploying sourcefor-atlas to ${target} (Worker + sleeping Node container; OAuth login, account from wrangler.jsonc)`);
   const result = spawn('pnpm', ['exec', 'wrangler', 'deploy', '--env', target, ...extraArgs], {
     cwd: edgeDir,
     env,

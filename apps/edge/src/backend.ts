@@ -4,14 +4,14 @@ import { jsonResponse } from './http';
 /**
  * The Ask / block-plan API behind the Worker: the `AtlasApiContainer` Durable Object (one named
  * instance) where the env binds it, or `DEV_BACKEND_ORIGIN` from `.dev.vars` for local QA without
- * Docker. The browse-only staging/production launch binds neither, so `selectBackend` returns
- * undefined there and every caller treats that as "backend unavailable". Routing code takes a
- * Backend so tests inject one.
+ * Docker. Browsing never requires a backend. Routing code takes a Backend so tests inject one.
  */
 export interface Backend {
   /** Origin proxied request URLs are built on (the container only reads path + query). */
   origin: string;
   fetch(request: Request): Promise<Response>;
+  /** Inspect the container without starting it; absent for already-running dev backends. */
+  warmingUp?(): Promise<boolean>;
 }
 
 /** The single v1 container instance every API request is routed to. */
@@ -21,6 +21,9 @@ export const CONTAINER_INSTANCE_NAME = 'atlas-api';
 const STRIPPED_REQUEST_HEADERS = [
   'cookie',
   'authorization',
+  'cf-access-client-id',
+  'cf-access-client-secret',
+  'cf-access-jwt-assertion',
   'x-forwarded-for',
   'x-forwarded-host',
   'x-forwarded-proto',
@@ -88,7 +91,7 @@ export function backendUnavailable(): Response {
 /** Container-internal origin used for proxied URLs. */
 export const CONTAINER_ORIGIN = 'http://atlas-api.internal';
 
-/** The dev origin, else the container binding, else undefined (browse-only deploy: no backend). */
+/** The dev origin, else the container binding, else undefined (backend unavailable). */
 export function selectBackend(env: EdgeEnv): Backend | undefined {
   const dev = devBackendOrigin(env);
   if (dev) return { origin: dev, fetch: request => fetch(request) };
@@ -97,6 +100,11 @@ export function selectBackend(env: EdgeEnv): Backend | undefined {
   return {
     origin: CONTAINER_ORIGIN,
     fetch: request => namespace.getByName(CONTAINER_INSTANCE_NAME).fetch(request),
+    warmingUp: async () => {
+      const state = await namespace.getByName(CONTAINER_INSTANCE_NAME).getState();
+      // 'running' precedes port readiness; only 'healthy' means the API can answer.
+      return state.status !== 'healthy';
+    },
   };
 }
 

@@ -41,6 +41,7 @@ export type AskPanelProps = AskTurnActions & {
   question: string;
   /** The question being answered right now, shown once as the thread's last turn. */
   pendingQuestion?: string;
+  warmingUp?: boolean;
   error?: string;
   turns: readonly AskThreadTurn[];
   /** Turn answered in this session; marks `data-ask-answer` and is announced. */
@@ -132,6 +133,7 @@ function AskThreadForm(props: AskPanelProps) {
         {!props.connected
           ? <p className="ask-note">{ASK_NOT_CONNECTED_COPY}</p>
           : props.turns.length === 0 && !props.pendingQuestion ? <p className="ask-note">{ASK_CONNECTED_COPY}</p> : null}
+        <p className="ask-note">5 Asks per signed-in user each day (resets at midnight UTC). Conversations stay in this browser and are not synced to your account.</p>
         <button className="ask-submit" disabled={!props.connected || !props.question.trim() || Boolean(props.pendingQuestion)} type="submit">
           {props.pendingQuestion ? 'Asking…' : props.connected ? ASK_CONNECTED_SUBMIT_LABEL : ASK_DISCONNECTED_SUBMIT_LABEL}
           {props.pendingQuestion || !props.connected ? null : <ArrowIcon size={15}/>}
@@ -142,7 +144,7 @@ function AskThreadForm(props: AskPanelProps) {
 }
 
 /** The one thread. Hook-free so tests can walk its element tree. */
-export function AskThreadList(props: Pick<AskPanelProps, 'turns' | 'pendingQuestion' | 'latestTurnId' | 'mapTurnId'> & AskTurnActions) {
+export function AskThreadList(props: Pick<AskPanelProps, 'turns' | 'pendingQuestion' | 'warmingUp' | 'latestTurnId' | 'mapTurnId'> & AskTurnActions) {
   if (props.turns.length === 0 && !props.pendingQuestion) return null;
   return (
     <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={props.turns.length}>
@@ -150,7 +152,7 @@ export function AskThreadList(props: Pick<AskPanelProps, 'turns' | 'pendingQuest
       {props.pendingQuestion ? (
         <li aria-busy="true" className="ask-turn" data-ask-thread-turn="pending">
           <p className="ask-thread-question">{props.pendingQuestion}</p>
-          <p className="ask-pending" role="status">Searching the atlas and source…</p>
+          <p className="ask-pending" role="status">{props.warmingUp ? 'Warming up Ask… The service sleeps when idle. Your question will run when it is ready.' : 'Searching the atlas and source…'}</p>
         </li>
       ) : null}
     </ol>

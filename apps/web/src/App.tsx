@@ -143,6 +143,7 @@ import {
   type AskAuthView,
   type AskThreadView,
 } from './ask/askAtlas';
+import { readLocalAskThread, writeLocalAskThread } from './ask/localAskThreads';
 import { askMapShouldCaptureReturn, askMapStepIsCurrent, askMapViewShouldReset, askPanelReframeDue } from './ask/askMapSession';
 // CLA-265: the Ask panel body; App owns its state and the map actions it triggers.
 import { AskPanel } from './ask/AskPanel';
@@ -1629,6 +1630,7 @@ export function App() {
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [askConnected, setAskConnected] = useState(false);
+  const [askWarmingUp, setAskWarmingUp] = useState(false);
   const [askPending, setAskPending] = useState<string>(); // the question in flight, shown once in the thread
   const [askLatestTurnId, setAskLatestTurnId] = useState<string>();
   const [askMapFocus, setAskMapFocus] = useState<{ key: string; turnId: string; entityIds: string[]; relationIds: string[] }>();
@@ -1643,6 +1645,10 @@ export function App() {
   const [askError, setAskError] = useState<string>();
   const [askAuth, setAskAuth] = useState<AskAuthView>();
   const [askThread, setAskThread] = useState<AskThreadView>();
+  const askAccountRef = useRef<string | undefined>(undefined);
+  askAccountRef.current = askAuth?.authenticated ? askAuth.accountId : undefined;
+  const askThreadRef = useRef<AskThreadView | undefined>(undefined);
+  askThreadRef.current = askThread;
   const [viewport, setViewport] = useState<ViewportSize>(() => ({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight - 68) }));
   const [measuredSafeArea, setMeasuredSafeArea] = useState<SafeArea>(() => storySafeArea({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight - 68) }));
   const [safeAreaEpoch, setSafeAreaEpoch] = useState(0);
@@ -2101,7 +2107,7 @@ export function App() {
   const sourceRepositoryUrl = portableAtlas ? portableRepositoryRevisionUrl(portableAtlas.repository) : atlasSourceRepositoryUrl(askAtlasIdentity);
   const embedAtlas = useEmbedAtlasAvailability(Boolean(portableAtlas)); // CLA-329: public atlases only; reacts to the publication index
   const askReturnPath = `${window.location.pathname}${window.location.search}`;
-  const askSignedIn = askAuth?.authenticated === true || askAuth?.publicMode === true; const askHidden = askAuth === undefined || askAuth.askEnabled === false; // CLA-266: no Ask affordance before /api/auth/me answers or when the deployment disables Ask
+  const askSignedIn = askAuth?.authenticated === true; const askHidden = askAuth === undefined || askAuth.askEnabled === false; // CLA-266: no Ask affordance before /api/auth/me answers or when the deployment disables Ask
   const isolatedRelationIds = useMemo(
     () => scene.relations
       .filter(relation => isolatedEntityIdSet.has(relation.from) && isolatedEntityIdSet.has(relation.to))
@@ -4604,7 +4610,7 @@ export function App() {
       setQuestion(question);
       window.setTimeout(() => askInputRef.current?.focus(), 0);
     },
-    askSignedIn: () => askAuth?.authenticated === true || askAuth?.publicMode === true, askEnabled: () => !askHidden,
+    askSignedIn: () => askAuth?.authenticated === true, askEnabled: () => !askHidden,
     readContext: () => ({
       atlas: atlasIdentityFromLocation(window.location.pathname, window.location.search),
       c4Level: activeDetail,
@@ -4935,25 +4941,38 @@ export function App() {
       return;
     }
     const controller = new AbortController();
-    void fetchAskAuth({ signal: controller.signal }).then(auth => {
+    void fetchAskAuth({ signal: controller.signal }).then(async auth => {
       if (controller.signal.aborted) return;
       setAskAuth(auth);
-      if (!auth.authenticated && auth.publicMode !== true) {
+      setAskConnected(false);
+      if (!auth.authenticated) {
         setAskConnected(false);
         setAskThread(undefined);
         return;
       }
       if (askAtlasIdentity) {
-        void loadAskThread(askAtlasIdentity, { signal: controller.signal }).then(thread => {
-          if (!controller.signal.aborted) setAskThread(current => keepNewerAskThread(current, thread));
-        });
+        const thread = await (auth.accountId ? readLocalAskThread(auth.accountId, askAtlasIdentity) : loadAskThread(askAtlasIdentity, { signal: controller.signal }));
+        if (controller.signal.aborted) return;
+        const next = keepNewerAskThread(askThreadRef.current, thread);
+        askThreadRef.current = next;
+        setAskThread(next);
       }
       void probeAskConnection({ signal: controller.signal, timeoutMs: ASK_PROBE_TIMEOUT_MS }).then(connected => {
         if (!controller.signal.aborted) setAskConnected(connected);
       });
     });
     return () => controller.abort();
-  }, [askHidden, askOpen, askSignedIn, askAtlasIdentity?.owner, askAtlasIdentity?.repo, askAtlasIdentity?.commitSha]);
+  }, [askHidden, askOpen, askSignedIn, askAuth?.accountId, askAtlasIdentity?.owner, askAtlasIdentity?.repo, askAtlasIdentity?.commitSha]);
+
+  // A different account must never inherit visible turns or an in-flight answer.
+  useEffect(() => {
+    askAbortRef.current?.abort();
+    setAskThread(undefined);
+    askThreadRef.current = undefined;
+    setAskLatestTurnId(undefined);
+    setAskPending(undefined);
+    setAskWarmingUp(false);
+  }, [askAuth?.accountId, askAuth?.authenticated, askAtlasIdentity?.owner, askAtlasIdentity?.repo, askAtlasIdentity?.commitSha]);
 
   // Opening Ask (click / shortcut / tour hand-off) and submitting a question are gestures: if the
   // panel now covers the selected card, pan it into the unobstructed area with the same safe-area
@@ -5198,6 +5217,8 @@ export function App() {
     const controller = new AbortController();
     askAbortRef.current = controller;
     // No scope gate on commit: the answered turn lands in the thread whatever is selected now.
+    const submittedAccount = askAccountRef.current;
+    setAskWarmingUp(false);
     setAskPending(text);
     setAskLatestTurnId(undefined);
     setAskError(undefined);
@@ -5205,9 +5226,10 @@ export function App() {
       const result = await submitAskQuestion(text, context, {
         signal: controller.signal,
         timeoutMs: ASK_REQUEST_TIMEOUT_MS,
+        onWarmingUp: warming => { if (!controller.signal.aborted) setAskWarmingUp(warming); },
         ...(askAtlasIdentity ? { atlas: askAtlasIdentity } : {}),
       });
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || submittedAccount !== askAccountRef.current) return;
       // (Scope changes no longer discard the answer; only close/unmount aborts it.)
       if (isAskUnauthorized(result)) {
         setAskAuth({
@@ -5235,14 +5257,26 @@ export function App() {
           ...(askAtlasIdentity ? { atlas: askAtlasIdentity } : {}),
           now: Date.now(),
         };
-        setAskThread(current => appendAskAnswer(current, answered).thread); // latest state: it may have loaded meanwhile
+        const thread = appendAskAnswer(askThreadRef.current, answered).thread;
+        askThreadRef.current = thread;
+        setAskThread(thread);
+        if (submittedAccount && thread) {
+          void writeLocalAskThread(submittedAccount, thread).then(saved => {
+            if (!saved && !controller.signal.aborted && submittedAccount === askAccountRef.current) {
+              setAskError('Your answer is available, but this browser could not save the conversation.');
+            }
+          });
+        }
         setAskLatestTurnId(appendAskAnswer(undefined, answered).latestTurnId);
         setQuestion(current => current.trim() === text ? '' : current); // keep a follow-up typed while waiting
         setLiveMessage(result.answer);
       }
     } finally {
-      if (askAbortRef.current === controller) askAbortRef.current = undefined;
-      setAskPending(undefined);
+      if (askAbortRef.current === controller) {
+        askAbortRef.current = undefined;
+        setAskPending(undefined);
+        setAskWarmingUp(false);
+      }
     }
   }
 
@@ -5980,6 +6014,7 @@ export function App() {
               onShowOnMap={(citedIds, turn) => { void showAskTurnOnMap(citedIds, turn.id); }}
               onSubmit={submitQuestion}
               pendingQuestion={askPending}
+              warmingUp={askWarmingUp}
               question={question}
               returnPath={askReturnPath}
               signedIn={askSignedIn}

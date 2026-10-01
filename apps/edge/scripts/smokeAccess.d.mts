@@ -11,5 +11,5 @@ export declare function smokeRequester(options: {
   origin: string;
   headers: Record<string, string>;
   fetch?: typeof fetch;
-}): (path: string, method?: 'GET' | 'HEAD') => Promise<Response>;
+}): (path: string, method?: 'GET' | 'HEAD' | 'POST', extra?: { headers?: Record<string, string>; body?: string; allowUnauthorized?: boolean }) => Promise<Response>;
 export declare function redactHeaderValues(text: string, headers: Record<string, string>): string;

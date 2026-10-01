@@ -18,8 +18,10 @@ export function containerEnvVars(env: Partial<EdgeEnv>): Record<string, string> 
     OKIE_SERVER_PORT: '8080',
     OKIE_TRUSTED_PROXY: 'cloudflare',
     OKIE_PUBLISHED_STORE_URL: `http://${STORE_HOST}`,
+    // Chat uses OpenRouter; the optional Jev Overview planner stays off.
+    OKIE_JEV_BLOCK_PLANNER: '0',
   };
-  for (const name of ['OKIE_LLM_API_KEY', 'JEV_API', 'OKIE_LLM_MODEL', 'OKIE_JEV_BLOCK_PLANNER', 'OKIE_ASK_PER_IP_WINDOW'] as const) {
+  for (const name of ['OKIE_LLM_API_KEY', 'JEV_API', 'OKIE_LLM_MODEL', 'OKIE_ASK_PER_IP_WINDOW'] as const) {
     const value = env[name];
     if (typeof value === 'string' && value !== '') vars[name] = value;
   }

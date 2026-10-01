@@ -50,6 +50,18 @@ describe('smoke checks behind Cloudflare Access (CLA-318)', () => {
     ]);
   });
 
+  it('permits the expected signed-out Ask 401 while preserving Access redirect detection', async () => {
+    let request: RequestInit | undefined;
+    const answers = [new Response(null, { status: 401 }), redirect('https://sourcefor.cloudflareaccess.com/cdn-cgi/access/login/staging.sourcefor.dev')];
+    const get = smokeRequester({ origin: 'https://staging.sourcefor.dev', headers: {}, fetch: (async (_url, init) => {
+      request = init;
+      return answers.shift()!;
+    }) as typeof fetch });
+    expect((await get('/api/ask', 'POST', { allowUnauthorized: true, headers: { origin: 'https://staging.sourcefor.dev' }, body: '{}' })).status).toBe(401);
+    expect(request).toMatchObject({ method: 'POST', body: '{}', redirect: 'manual', headers: { origin: 'https://staging.sourcefor.dev' } });
+    await expect(get('/api/ask', 'POST', { allowUnauthorized: true })).rejects.toBeInstanceOf(AccessChallengeError);
+  });
+
   it('redacts header values from printed errors', () => {
     expect(redactHeaderValues('bad value "shh-123" here', { 'CF-Access-Client-Secret': 'shh-123' })).toBe('bad value "[redacted]" here');
     expect(redactHeaderValues('nothing to hide', {})).toBe('nothing to hide');
