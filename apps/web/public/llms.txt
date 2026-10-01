@@ -24,7 +24,16 @@ All five read only public published atlases, make no model calls, and do not con
 - get_relations: atlas, entityId; optional limit, cursor. Returns incoming/outgoing relationships.
 - get_evidence: atlas, entityId. Returns captured source excerpts or an explicit missing-evidence status.
 
-atlas = {"owner":"source-for","repo":"atlas","versionId":"<from list_atlases>"}. Keep the same pin for an investigation. Entity IDs come from search results; do not invent them. Cursors are opaque and tied to their query/version. Default page size 20; maximum 50. Query length maximum 256 characters.
+Atlas version pin:
+
+```json
+{
+  "owner": "source-for",
+  "repo": "atlas",
+  "versionId": "<from list_atlases>"
+}
+```
+ Keep the same pin for an investigation. Entity IDs come from search results; do not invent them. Cursors are opaque and tied to their query/version. Default page size 20; maximum 50. Query length maximum 256 characters.
 
 Suggested sequence: list_atlases → search_atlas → get_entity → get_relations → get_evidence.
 
