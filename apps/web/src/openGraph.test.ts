@@ -17,7 +17,7 @@ import {
   trustedScanLookupOrigin,
   trustedShareOrigin,
 } from './openGraph';
-import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, pngDimensions, pngSignatureOk } from './atlasCard';
+import { OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH, pngDimensions, pngSignatureOk, renderAtlasCardPng } from './atlasCard';
 
 const ORIGIN = 'http://localhost:4173';
 const INDEX = `<!doctype html>
@@ -100,6 +100,30 @@ describe('Open Graph for public atlas URLs (CLA-39)', () => {
     expect(pngSignatureOk(png)).toBe(true);
     expect(pngDimensions(png)).toEqual({ width: 1200, height: 630 });
     expect(parseOgImagePath('/og/THISS/okie.png')).toEqual({ owner: 'THISS', repo: 'okie' });
+  });
+
+  it('serves a sound stored structure card, else the generated card (CLA-319)', async () => {
+    const generated = renderAtlasCardPng({ owner: 'THISS', repo: 'okie' });
+    const stored = renderAtlasCardPng({ owner: 'stored', repo: 'card' });
+    const og = (storedCard?: (owner: string, repo: string) => Promise<Uint8Array | undefined>) =>
+      handleOgImageRequest({ method: 'GET', pathname: '/og/THISS/okie', ...(storedCard ? { storedCard } : {}) });
+    const asked: string[] = [];
+    const served = await og(async (owner, repo) => { asked.push(`${owner}/${repo}`); return stored; });
+    expect(served.body).toEqual(stored);
+    expect(served.headers['content-length']).toBe(String(stored.byteLength));
+    expect(asked).toEqual(['THISS/okie']);
+    expect((await og()).body).toEqual(generated);
+    expect((await og(async () => undefined)).body).toEqual(generated);
+    expect((await og(async () => { throw new Error('r2 down'); })).body).toEqual(generated);
+    expect((await og(async () => new TextEncoder().encode('not a png'))).body).toEqual(generated);
+    const wrongSize = Uint8Array.from(stored);
+    new DataView(wrongSize.buffer).setUint32(20, 600);
+    expect((await og(async () => wrongSize)).body).toEqual(generated);
+    // A private atlas never reads the store.
+    asked.length = 0;
+    const closed = await handleOgImageRequest({ method: 'GET', pathname: '/og/secret-org/private-tree', isPublicAtlas: () => false, storedCard: async (owner, repo) => { asked.push(`${owner}/${repo}`); return stored; } });
+    expect(closed.status).toBe(404);
+    expect(asked).toEqual([]);
   });
 
   it('404s unpublished and private trees with the same generic body (no leak)', async () => {

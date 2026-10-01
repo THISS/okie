@@ -173,7 +173,7 @@ function fitAim(camera: { x: number; y: number; zoom: number }) {
 
 describe('CLA-79: Fit after Code rail frames resident L4 cards', () => {
   it('does not raise the 2000 hang-guard', () => {
-    expect(readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8'))
+    expect((readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('../renderer/scanScene.ts', import.meta.url), 'utf8')))
       .toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
     expect(SCAN_RESIDENT_NODES_PER_BAND).toBe(50);
   });
@@ -357,7 +357,7 @@ function reservedShellContextScene() {
 describe('CLA-82: scan L1 first paint and Fit frame readable card faces', () => {
   it('does not raise the 2000 hang-guard', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
-    expect(readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8'))
+    expect((readFileSync(new URL('../renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('../renderer/scanScene.ts', import.meta.url), 'utf8')))
       .toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
   });
 

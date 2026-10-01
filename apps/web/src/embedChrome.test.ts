@@ -72,7 +72,7 @@ describe('CLA-85 embed chrome vs Overview overlay', () => {
 
   it('does not raise the 2000 hang-guard or rewrite CLA-66', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
-    const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+    const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
   });
 });

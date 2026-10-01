@@ -67,7 +67,7 @@ function l2Scene(snapshot: ArchitectureSnapshot) {
 }
 
 describe('CLA-119: proportional L2 container footprints (soft √N, not a treemap)', () => {
-  const fixtureSource = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+  const fixtureSource = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 
   it('does not raise the 2000 hang-guard', () => {
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);

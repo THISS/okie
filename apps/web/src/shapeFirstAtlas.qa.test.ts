@@ -6,7 +6,7 @@ import { SCAN_BAND_DEPTH_MIN_ENTITIES } from './renderer/scanFixture';
 import { createC4Scene } from './renderer/goldenC4Scene';
 import { denseNeighborhoodSnapshot } from '@okie/scene-compiler';
 
-const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 
 describe('CLA-81: shape-first atlas reserves containment geometry', () => {
   it('does not raise the 2000 hang-guard or replace lazy band compile', () => {

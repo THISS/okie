@@ -30,7 +30,7 @@ import {
   scanKeepsResidentL3Landmarks,
 } from './renderer/scanFixture';
 
-const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 const neighborhood = readFileSync(new URL('../../../packages/architecture/src/neighborhood.ts', import.meta.url), 'utf8');
 
 describe('CLA-107: small-repo L2 pre-places L3 landmarks (no hollow shells)', () => {

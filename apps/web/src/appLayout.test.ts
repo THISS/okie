@@ -58,7 +58,7 @@ describe('map heading chrome shield (CLA-108)', () => {
     expect(app).toContain('className="semantic-breadcrumb"');
     expect(app).toContain("{ rect: rect('.map-heading'), edge: 'top' as const }");
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
-    const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+    const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
   });
 });
@@ -86,7 +86,7 @@ describe('canvas hint chrome shield (CLA-115)', () => {
     expect(app).toContain('double-click to open inside');
     expect(app).toContain("{ rect: rect('.canvas-hint'), edge: 'bottom' as const }");
     expect(SCAN_BAND_DEPTH_MIN_ENTITIES).toBe(2000);
-    const fixture = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+    const fixture = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
     expect(fixture).toContain('export const SCAN_BAND_DEPTH_MIN_ENTITIES = 2000;');
   });
 });

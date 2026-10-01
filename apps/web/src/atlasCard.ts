@@ -22,7 +22,10 @@ const BLUE = [124, 169, 255, 255] as const;
 const PURPLE = [185, 161, 255, 255] as const;
 const LINE = [40, 52, 50, 255] as const;
 
-type Rgba = readonly [number, number, number, number];
+export type Rgba = readonly [number, number, number, number];
+
+/** The card palette, shared with the CLA-319 structure card (apps/web/src/atlasStructureCard.ts). */
+export const CARD_COLORS = { BG, PANEL, TEXT, MUTED, ACCENT, CYAN, BLUE, PURPLE, LINE } as const;
 
 /** 5×7 glyphs for GitHub-legal names plus a few labels. Rows are 5-bit masks. */
 const GLYPHS: Record<string, readonly number[]> = {
@@ -67,6 +70,16 @@ const GLYPHS: Record<string, readonly number[]> = {
   Y: [0x11, 0x11, 0x0a, 0x04, 0x04, 0x04, 0x04],
   Z: [0x1f, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1f],
   _: [0, 0, 0, 0, 0, 0, 0x1f],
+  // CLA-319: punctuation seen in entity names on the structure card. GitHub names never use these, so
+  // the owner/repo card's pixels are unchanged (apps/edge/test/ogCardVersion.test.ts).
+  '@': [0x0e, 0x11, 0x17, 0x15, 0x17, 0x10, 0x0e],
+  ':': [0, 0x0c, 0x0c, 0, 0x0c, 0x0c, 0],
+  '(': [0x02, 0x04, 0x08, 0x08, 0x08, 0x04, 0x02],
+  ')': [0x08, 0x04, 0x02, 0x02, 0x02, 0x04, 0x08],
+  '+': [0, 0x04, 0x04, 0x1f, 0x04, 0x04, 0],
+  '&': [0x0c, 0x12, 0x14, 0x08, 0x15, 0x12, 0x0d],
+  ',': [0, 0, 0, 0, 0x0c, 0x04, 0x08],
+  "'": [0x04, 0x04, 0x08, 0, 0, 0, 0],
   a: [0, 0, 0x0e, 0x01, 0x0f, 0x11, 0x0f],
   b: [0x10, 0x10, 0x1e, 0x11, 0x11, 0x11, 0x1e],
   c: [0, 0, 0x0e, 0x11, 0x10, 0x11, 0x0e],
@@ -128,7 +141,7 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
   return header;
 }
 
-function encodePng(width: number, height: number, rgba: Uint8Array): Uint8Array {
+export function encodePng(width: number, height: number, rgba: Uint8Array): Uint8Array {
   const stride = width * 4;
   const filtered = new Uint8Array(height * (1 + stride));
   for (let y = 0; y < height; y += 1) {
@@ -174,7 +187,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function fillRect(
+export function fillRect(
   rgba: Uint8Array,
   width: number,
   height: number,
@@ -200,7 +213,7 @@ function fillRect(
   }
 }
 
-function fillRoundRect(
+export function fillRoundRect(
   rgba: Uint8Array,
   width: number,
   height: number,
@@ -227,7 +240,7 @@ function fillRoundRect(
   }
 }
 
-function drawLine(
+export function drawLine(
   rgba: Uint8Array,
   width: number,
   height: number,
@@ -249,7 +262,7 @@ function glyphFor(ch: string): readonly number[] {
   return GLYPHS[ch] ?? GLYPHS[ch.toUpperCase()] ?? GLYPHS['-']!;
 }
 
-function drawText(
+export function drawText(
   rgba: Uint8Array,
   width: number,
   height: number,
@@ -403,15 +416,20 @@ export function atlasCardLayout(input: AtlasCardInput): {
   };
 }
 
+/** The left column (brand, owner/repo title lines, subtitle) onto a card-sized RGBA buffer. */
+export function drawCardTextColumn(rgba: Uint8Array, layout: ReturnType<typeof atlasCardLayout>): void {
+  const { width, height } = layout;
+  drawText(rgba, width, height, layout.brand, CARD_TEXT_X, 72, 7, ACCENT);
+  for (const line of layout.titleLines) drawText(rgba, width, height, line.text, CARD_TEXT_X, line.y, line.scale, TEXT);
+  drawText(rgba, width, height, layout.subtitle, CARD_TEXT_X, layout.subtitleY, 4, MUTED);
+}
+
 /** PNG bytes for a public atlas card. No secrets, env, or scan payload. */
 export function renderAtlasCardPng(input: AtlasCardInput): Uint8Array {
   const { width, height } = { width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT };
   const rgba = new Uint8Array(width * height * 4);
   fillRect(rgba, width, height, 0, 0, width, height, BG);
-  const layout = atlasCardLayout(input);
-  drawText(rgba, width, height, layout.brand, CARD_TEXT_X, 72, 7, ACCENT);
-  for (const line of layout.titleLines) drawText(rgba, width, height, line.text, CARD_TEXT_X, line.y, line.scale, TEXT);
-  drawText(rgba, width, height, layout.subtitle, CARD_TEXT_X, layout.subtitleY, 4, MUTED);
+  drawCardTextColumn(rgba, atlasCardLayout(input));
   drawMapPreview(rgba, width, height, input.owner, input.repo);
   return encodePng(width, height, rgba);
 }

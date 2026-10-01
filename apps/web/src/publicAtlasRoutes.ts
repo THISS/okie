@@ -9,6 +9,7 @@ import {
   type PublicAtlasDisplayLookup,
   type PublicAtlasHttpOutput,
   type PublicAtlasLookup,
+  type StoredCardLookup,
 } from './openGraph';
 
 /**
@@ -28,6 +29,8 @@ export type PublicAtlasRouteInput = {
   isPublicAtlas: PublicAtlasLookup;
   /** CLA-318: GitHub's casing for a public atlas (titles, oEmbed, card text); omitted → the URL's names. */
   displayNames?: PublicAtlasDisplayLookup;
+  /** CLA-319: the stored structure card for `/og` (edge only); omitted → the generated card. */
+  storedCard?: StoredCardLookup;
   /** index.html to inject Open Graph tags into; only read for share HTML. */
   indexHtml: () => Promise<string>;
 };
@@ -76,7 +79,13 @@ export async function handlePublicAtlasRoute(input: PublicAtlasRouteInput): Prom
     });
   }
   if (isOgImagePath(pathname)) {
-    return handleOgImageRequest({ method: input.method, pathname, isPublicAtlas: input.isPublicAtlas, ...(input.displayNames ? { displayNames: input.displayNames } : {}) });
+    return handleOgImageRequest({
+      method: input.method,
+      pathname,
+      isPublicAtlas: input.isPublicAtlas,
+      ...(input.displayNames ? { displayNames: input.displayNames } : {}),
+      ...(input.storedCard ? { storedCard: input.storedCard } : {}),
+    });
   }
   if (isSharePath(pathname)) {
     const method = input.method.toUpperCase();

@@ -5,7 +5,7 @@ import { selectStoryPlan, storyDurationLabel } from './storyCatalog';
 import type { AppStoryPlan } from './renderer/goldenC4Scene';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
-const scan = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+const scan = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
 
 const overview: AppStoryPlan = {
   id: 'story:demo:overview',

@@ -49,7 +49,7 @@ function webServerNeighborhood(webCount = 79, serverCount = 8): ArchitectureSnap
 }
 
 describe('CLA-120: cap L2 resident preview pills +N more', () => {
-  const fixtureSource = readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8');
+  const fixtureSource = (readFileSync(new URL('./renderer/scanFixture.ts', import.meta.url), 'utf8') + readFileSync(new URL('./renderer/scanScene.ts', import.meta.url), 'utf8'));
   const appSource = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 
   it('does not raise the 2000 hang-guard', () => {

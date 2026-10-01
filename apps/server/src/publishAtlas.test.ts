@@ -16,6 +16,7 @@ import {
 } from "./publishedAtlas.fixture.js";
 import {
   backfillBackupPath,
+  backfillPublishedCards,
   backfillPublishedMeta,
   backfillPublishedNames,
   buildPublishedVersion,
@@ -34,9 +35,11 @@ import {
   setPublishedLatest,
   wranglerChildEnv,
   type PublishStoreClient,
+  type StructureCardRenderer,
   type WranglerRunner,
 } from "./publishAtlas.js";
 import {
+  publishedCardKey,
   publishedIndexKey,
   publishedLatestKey,
   publishedManifestKey,
@@ -890,4 +893,208 @@ test("CLA-269 publish: a backup that does not read back aborts the backfill befo
     await assert.rejects(backfillPublishedMeta({ client, write: true, fetch: githubApi(repoJsonWith("pmndrs", "zustand", { description: "Bears" })), backup }), /does not read back as written/);
     assert.deepEqual(client.order, []);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+/** A 1200×630 PNG header whose last bytes say which label it was rendered for (enough for isStructureCardPng). */
+function fakeCardPng(width = 1200, height = 630, tag = ""): Uint8Array {
+  const tail = Buffer.from(tag);
+  const bytes = new Uint8Array(33 + tail.byteLength);
+  bytes.set([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82]);
+  new DataView(bytes.buffer).setUint32(16, width);
+  new DataView(bytes.buffer).setUint32(20, height);
+  bytes.set(tail, 33);
+  return bytes;
+}
+
+function fakeRenderer(version = "r1", seen: Array<{ owner: string; repo: string; entities: number }> = []): StructureCardRenderer {
+  return {
+    version,
+    render: input => {
+      seen.push({ ...input.label, entities: input.snapshot.entities.length });
+      return fakeCardPng(1200, 630, `${input.label.owner}/${input.label.repo}@${input.view.rootEntityId}`);
+    },
+  };
+}
+
+test("CLA-319 publish: the share card is rendered into the version (before the manifest, never in it), named with GitHub's casing", async () => {
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-card-"));
+  try {
+    const { publication } = createPublishedOperatorFixture(scanRoot);
+    const cardKey = publishedCardKey(FIXTURE_SLUG, publication.versionId, "r1");
+    assert.match(cardKey, /\/versions\/[^/]+\/card-r1\.png$/);
+    assert.throws(() => publishedCardKey(FIXTURE_SLUG, publication.versionId, "latest"), /renderer version/);
+
+    // Without a renderer: exactly as before, no card.
+    const plain = buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE });
+    assert.equal(plain.card, undefined);
+    assert.equal(plain.objects.some(object => object.key.endsWith(".png")), false);
+
+    const seen: Array<{ owner: string; repo: string; entities: number }> = [];
+    const built = buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, names: { ownerLogin: "Acme", repoName: "Demo" }, structureCard: fakeRenderer("r1", seen) });
+    assert.deepEqual(seen, [{ owner: "Acme", repo: "Demo", entities: 19 }]);
+    assert.ok(built.card && "key" in built.card);
+    assert.equal(built.card.key, cardKey);
+    assert.equal(built.card.contentType, "image/png");
+    assert.ok(built.objects.includes(built.card));
+    assert.equal(built.manifestBytes.equals(plain.manifestBytes), true, "the manifest is unchanged by the card (re-publishing stays byte-identical)");
+    assert.equal(built.manifestBytes.toString().includes("card"), false);
+    const client = memoryStoreClient();
+    await publishBuiltVersion(built, client);
+    assert.ok(client.order.indexOf(cardKey) >= 0 && client.order.indexOf(cardKey) < client.order.indexOf(publishedManifestKey(FIXTURE_SLUG, publication.versionId)));
+    assert.equal(client.objects.get(cardKey)!.toString("latin1").endsWith("Acme/Demo@system:root"), true);
+
+    // No GitHub names: the stored owner/repo.
+    const unnamed: Array<{ owner: string; repo: string; entities: number }> = [];
+    buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, structureCard: fakeRenderer("r1", unnamed) });
+    assert.deepEqual(unnamed.map(value => [value.owner, value.repo]), [["acme", "demo"]]);
+    // preparePublishedVersion threads the renderer and the lookup's names through.
+    const prepared = await preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: githubApi(repoJson("Acme", "Demo")), structureCard: fakeRenderer() });
+    assert.ok(prepared.card && "key" in prepared.card);
+    assert.equal(prepared.card.bytes.toString("latin1").endsWith("Acme/Demo@system:root"), true);
+    // A failed casing lookup stores no card (it would be permanent), and says how to add one later.
+    const lines: string[] = [];
+    const guessed = await preparePublishedVersion({ scanRoot, repo: "acme/demo", fetch: githubApi(() => new Response("{}", { status: 500 })), structureCard: fakeRenderer(), log: line => lines.push(line) });
+    assert.equal(guessed.card, undefined);
+    assert.equal(guessed.objects.some(object => object.key.endsWith(".png")), false);
+    assert.match(lines.join("\n"), /no share card stored: GitHub's owner\/repo casing is unknown .*--backfill-names, then --backfill-cards/);
+  } finally { rmSync(scanRoot, { recursive: true, force: true }); }
+});
+
+test("CLA-319 publish: a card that fails to render (or is not a 1200×630 PNG) only warns; the version publishes without it", async () => {
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-card-fail-"));
+  try {
+    const { publication } = createPublishedOperatorFixture(scanRoot);
+    const failing: StructureCardRenderer[] = [
+      { version: "r1", render: () => { throw new Error("no projection"); } },
+      { version: "r1", render: () => fakeCardPng(1200, 600) },
+      { version: "r1", render: () => new Uint8Array([1, 2, 3]) },
+      { version: "v1", render: () => fakeCardPng() },
+    ];
+    for (const structureCard of failing) {
+      const lines: string[] = [];
+      const built = buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, structureCard, log: line => lines.push(line) });
+      assert.ok(built.card && "error" in built.card);
+      assert.equal(built.objects.some(object => object.key.endsWith(".png")), false);
+      assert.match(lines.join("\n"), /WARNING: publishing without a share card/);
+      const client = memoryStoreClient();
+      const result = await publishBuiltVersion(built, client);
+      assert.equal(result.version, "uploaded");
+      assert.equal([...client.objects.keys()].some(key => key.endsWith(".png")), false);
+      assert.ok(client.objects.get(publishedManifestKey(FIXTURE_SLUG, publication.versionId)));
+    }
+  } finally { rmSync(scanRoot, { recursive: true, force: true }); }
+});
+
+test("CLA-319 publish: re-publishing an unchanged version adds the card only when that version has none (never overwrites)", async () => {
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-card-unchanged-"));
+  try {
+    const { publication } = createPublishedOperatorFixture(scanRoot);
+    const cardKey = publishedCardKey(FIXTURE_SLUG, publication.versionId, "r1");
+    const client = memoryStoreClient();
+    // Published before cards existed.
+    await publishBuiltVersion(buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE }), client);
+    assert.equal(client.objects.has(cardKey), false);
+    client.order.length = 0;
+    const again = await publishBuiltVersion(buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, structureCard: fakeRenderer() }), client);
+    assert.equal(again.version, "unchanged");
+    assert.deepEqual(client.order, [cardKey, publishedLatestKey(FIXTURE_SLUG), publishedIndexKey()]);
+    // An existing card is kept, byte for byte.
+    client.objects.set(cardKey, Buffer.from("existing card"));
+    client.order.length = 0;
+    const lines: string[] = [];
+    await publishBuiltVersion(buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, structureCard: fakeRenderer() }), client, line => lines.push(line));
+    assert.deepEqual(client.order, [publishedLatestKey(FIXTURE_SLUG), publishedIndexKey()]);
+    assert.equal(client.objects.get(cardKey)!.toString(), "existing card");
+    assert.match(lines.join("\n"), /already there; kept/);
+    // A card read or write failure on a completed version only warns: latest.json and index.json still move.
+    for (const failOn of ["get", "put"] as const) {
+      client.objects.delete(cardKey);
+      client.order.length = 0;
+      const warnings: string[] = [];
+      const flaky: PublishStoreClient = {
+        get: async key => { if (failOn === "get" && key === cardKey) throw new Error("r2 get failed"); return client.get(key); },
+        put: async (key, bytes, type) => { if (failOn === "put" && key === cardKey) throw new Error("r2 put failed"); return client.put(key, bytes, type); },
+      };
+      const result = await publishBuiltVersion(buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, structureCard: fakeRenderer() }), flaky, line => warnings.push(line));
+      assert.equal(result.version, "unchanged");
+      assert.deepEqual(client.order, [publishedLatestKey(FIXTURE_SLUG), publishedIndexKey()], failOn);
+      assert.match(warnings.join("\n"), new RegExp(`WARNING: share card .* not stored \\(r2 ${failOn} failed\\)`));
+    }
+    client.objects.set(cardKey, Buffer.from("existing card"));
+    // A new renderer is a new key beside the old one.
+    client.order.length = 0;
+    await publishBuiltVersion(buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, structureCard: fakeRenderer("r2") }), client);
+    assert.deepEqual(client.order[0], publishedCardKey(FIXTURE_SLUG, publication.versionId, "r2"));
+    assert.equal(client.objects.get(cardKey)!.toString(), "existing card");
+  } finally { rmSync(scanRoot, { recursive: true, force: true }); }
+});
+
+test("CLA-319 publish: --backfill-cards renders each row's version card from the store; dry run writes nothing; skips existing; failures continue", async () => {
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-backfill-cards-"));
+  const previewDir = mkdtempSync(join(tmpdir(), "okie-backfill-cards-preview-"));
+  try {
+    createPublishedOperatorFixture(scanRoot);
+    const client = memoryStoreClient();
+    const built = buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE, names: { ownerLogin: "Acme", repoName: "Demo" } });
+    await publishBuiltVersion(built, client);
+    // Two more rows: one whose version already has a card, one whose version files are missing.
+    const index = JSON.parse(client.objects.get(publishedIndexKey())!.toString()) as { repos: Array<Record<string, unknown>> };
+    index.repos.push({ ...index.repos[0], slug: "zeta__carded", owner: "zeta", repo: "carded", versionId: "vz", ownerLogin: undefined, repoName: undefined });
+    index.repos.unshift({ ...index.repos[0], slug: "alpha__broken", owner: "alpha", repo: "broken", versionId: "va", ownerLogin: "Alpha", repoName: "broken" });
+    // A row without GitHub's casing is never carded (the card would be printed with a guess).
+    index.repos.push({ ...index.repos[0], slug: "mid__nonames", owner: "mid", repo: "nonames", versionId: built.versionId, ownerLogin: undefined, repoName: undefined });
+    client.objects.set(publishedIndexKey(), Buffer.from(`${JSON.stringify(index, null, 2)}\n`));
+    const existingKey = publishedCardKey("zeta__carded", "vz", "r1");
+    client.objects.set(existingKey, Buffer.from("already carded"));
+    const indexBefore = Buffer.from(client.objects.get(publishedIndexKey())!);
+    const before = new Map(client.objects);
+    const cardKey = publishedCardKey(FIXTURE_SLUG, built.versionId, "r1");
+
+    // Dry run: read-only client, previews only.
+    client.order.length = 0;
+    const seen: Array<{ owner: string; repo: string; entities: number }> = [];
+    const dry = await backfillPublishedCards({ client, write: false, structureCard: fakeRenderer("r1", seen), previewDir });
+    assert.deepEqual([dry.rendered, dry.written, dry.skippedExisting, dry.skippedNoNames, dry.failed], [1, 0, 1, 1, 1]);
+    assert.deepEqual(client.order, []);
+    assert.deepEqual(seen.map(value => [value.owner, value.repo]), [["Acme", "Demo"]]);
+    assert.ok(existsSync(join(previewDir, `${FIXTURE_SLUG}.png`)));
+    assert.deepEqual(dry.lines.map(line => line.split(" ").slice(0, 2).join(" ")), ["acme__demo " + built.versionId, "alpha__broken va", "mid__nonames " + built.versionId, "zeta__carded vz"].sort());
+    assert.match(dry.lines.find(line => line.startsWith("mid__nonames"))!, /skipped \(no GitHub owner\/repo casing on the row; run --backfill-names first\)/);
+    assert.match(dry.lines.find(line => line.startsWith("alpha__broken"))!, /failed \(the version has no public snapshot.json\/view.json\)/);
+    assert.match(dry.lines.find(line => line.startsWith("zeta__carded"))!, /exists \(kept\)/);
+
+    // Write: only the missing card key is put, after one backup of index.json.
+    const backups: Buffer[] = [];
+    const written = await backfillPublishedCards({ client, write: true, structureCard: fakeRenderer(), previewDir, backup: bytes => { backups.push(Buffer.from(bytes)); return "/tmp/backup.json"; } });
+    assert.deepEqual([written.rendered, written.written, written.skippedExisting, written.skippedNoNames, written.failed], [1, 1, 1, 1, 1]);
+    assert.deepEqual(client.order, [cardKey]);
+    assert.deepEqual(backups, [indexBefore]);
+    assert.equal(written.backupPath, "/tmp/backup.json");
+    assert.equal(client.objects.get(existingKey)!.toString(), "already carded", "never overwritten");
+    for (const [key, bytes] of before) assert.ok(client.objects.get(key)!.equals(bytes), `${key} untouched`);
+    assert.match(client.objects.get(cardKey)!.toString("latin1"), /Acme\/Demo@system:root$/);
+
+    // Idempotent: nothing left to write, and no backup taken.
+    client.order.length = 0;
+    backups.length = 0;
+    const again = await backfillPublishedCards({ client, write: true, structureCard: fakeRenderer(), backup: bytes => { backups.push(Buffer.from(bytes)); return "x"; } });
+    assert.deepEqual([again.rendered, again.written, again.skippedExisting, again.skippedNoNames, again.failed], [0, 0, 2, 1, 1]);
+    assert.deepEqual(client.order, []);
+    assert.deepEqual(backups, []);
+
+    // A render failure on one row does not stop the others; a failed backup aborts before any write.
+    client.objects.delete(cardKey);
+    const throwing: StructureCardRenderer = { version: "r1", render: () => { throw new Error("boom"); } };
+    const failed = await backfillPublishedCards({ client, write: true, structureCard: throwing });
+    assert.equal(failed.failed, 2);
+    assert.match(failed.lines.join("\n"), /failed \(the structure card could not be rendered \(boom\)\)/);
+    client.order.length = 0;
+    await assert.rejects(backfillPublishedCards({ client, write: true, structureCard: fakeRenderer(), backup: () => { throw new Error("disk full"); } }), /disk full/);
+    assert.deepEqual(client.order, []);
+    // No index: nothing to do.
+    assert.deepEqual((await backfillPublishedCards({ client: memoryStoreClient(), write: true, structureCard: fakeRenderer() })).lines, ["no index.json in this store; nothing to backfill"]);
+  } finally {
+    rmSync(scanRoot, { recursive: true, force: true });
+    rmSync(previewDir, { recursive: true, force: true });
+  }
 });
