@@ -48,3 +48,7 @@ Request bodies are capped at 16 KiB; raw snapshots at 64 MiB, with a streaming p
 Entity reads include the accepted public summary, key points and evidence references shown by the inspector, with explicit staleness and unknown origin. Legacy role/interactions are supported. Diagrams, tables and private claim mappings are excluded from this first projection.
 
 Private repositories, richer claim-backed explanation sections, diagram export, snapshot diffs, plugin packaging and guarded writes are follow-ups. The older MCP roadmap remains the longer-term direction.
+
+## Published reference
+
+The user-facing tool inventory lives at `/docs/agents.html`; `/llms.txt` provides the same connection details and complete inventory in plain text for agents. Both are static public assets, independent of WebMCP browser support. They distinguish the five shared read tools from page-only controls and legacy landing tools, and explicitly mark the staging-only read preview. Update both references when changing tools or deployment availability. Runtime MCP discovery and browser registrations remain authoritative for tool schemas.
