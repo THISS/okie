@@ -137,7 +137,8 @@
         "WEB_ANALYTICS_TOKEN": "4860cbb249bd46c09f74a249b18212ec",
         // Ask rollout flag; block planning remains separately disabled.
         "ASK_ENABLED": "0",
-        "AGENT_READS_ENABLED": "0",
+        // Public published-atlas reads; independent of paid Ask and container startup.
+        "AGENT_READS_ENABLED": "1",
         "BLOCK_PLAN_ENABLED": "0",
         // Global safety caps; the five-per-account daily quota is fixed in server code.
         "ASK_DAILY_MAX_REQUESTS": "500",

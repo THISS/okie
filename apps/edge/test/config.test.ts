@@ -92,6 +92,7 @@ describe('wrangler.jsonc', () => {
       expect(env.vars?.OKIE_PUBLIC_ORIGIN, name).toBe(want.origin);
       expect(env.ratelimits?.map(r => r.name), name).toEqual(['ASK_RATE_LIMITER', 'AGENT_RATE_LIMITER']);
       expect(env.vars?.ASK_ENABLED, name).toBe(name === 'staging' ? '1' : '0');
+      expect(env.vars?.AGENT_READS_ENABLED, name).toBe(name ? '1' : '0');
       expect(env.vars?.BLOCK_PLAN_ENABLED, name).toBe('0');
       expect(env.vars?.ASK_DAILY_MAX_DOLLARS, name).toBe('5');
       expect(env.vars?.ASK_ESTIMATED_DOLLARS_PER_REQUEST, name).toBe('0.006');

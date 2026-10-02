@@ -7,6 +7,15 @@ and published atlases in R2. For the design, measurements and costs, see
 **Signed-in Ask rollout (CLA-316).** Both environments bind a sleeping Node container. Staging enables
 Ask for review; production keeps `ASK_ENABLED="0"` until that review is approved. Browsing is always
 served by the Worker from R2, plus GitHub raw for `source.json`, without starting the container.
+
+Public agent reads (`/mcp` and `/api/atlas/query`) are enabled in staging and production by
+`AGENT_READS_ENABLED="1"`. They read published atlas data only, use the separate 60-request/IP/minute
+limiter, and never wake the Ask container. Local development defaults off; override the flag when
+testing. After deploying, verify MCP initialization and discovery with a Streamable HTTP client,
+then exercise listing, search, entity, relationships and captured evidence using one returned version
+pin. A static HTML 404 or empty POST 405 means the request did not reach the current MCP route;
+a JSON 404 can mean the feature is disabled. To disable agent access, set this flag to `"0"` and
+redeploy, independently of Ask.
 Enabled Ask requires a verified GitHub session and admits at most five requests per account per UTC day
 through the durable edge ledger before contacting the model. Missing authentication or budget storage
 fails closed. Threads stay in browser IndexedDB, partitioned by account and atlas commit; they do not sync.
