@@ -13,9 +13,8 @@ export interface EdgeEnv {
   /** Published atlases, keyed per apps/server/src/publishedStoreLayout.ts. */
   ATLAS_BUCKET: R2Bucket;
   /**
-   * The read-only Ask / block-plan API container (one named instance). Only the local top-level env
-   * binds it; the browse-only staging/production launch has no container, so every browse path must
-   * work without it (a missing binding = "backend unavailable").
+   * The read-only Ask API container (one named instance). Browse paths must work without it;
+   * a missing binding makes enabled Ask unavailable.
    */
   ATLAS_API?: DurableObjectNamespace<AtlasApiContainer>;
   /** Daily request + dollar budget (single SQLite Durable Object). */
@@ -29,8 +28,10 @@ export interface EdgeEnv {
    */
   USERS_DB?: D1Database;
 
-  /** "1" turns on Ask + block-plan. Anything else (the code default) = browse-only: those routes 404 at the edge. */
+  /** "1" turns on signed-in Ask. The optional planner has its own flag below; default is browse-only. */
   ASK_ENABLED?: string;
+  /** Independently opt in to the optional block ordering planner. */
+  BLOCK_PLAN_ENABLED?: string;
 
   /** "1" (staging only): every response carries `X-Robots-Tag: noindex, nofollow` and robots.txt disallows all. */
   ROBOTS_NOINDEX?: string;
@@ -52,7 +53,7 @@ export interface EdgeEnv {
   OKIE_JEV_BLOCK_PLANNER?: string;
   OKIE_ASK_PER_IP_WINDOW?: string;
 
-  // Edge budget knobs (placeholder defaults pending the final numbers; see BUDGET_DEFAULTS in guards.ts).
+  // Edge global budget knobs (the five requests per account per day are a hard code limit).
   ASK_DAILY_MAX_REQUESTS?: string;
   BLOCK_PLAN_DAILY_MAX_REQUESTS?: string;
   ASK_DAILY_MAX_DOLLARS?: string;
@@ -83,7 +84,7 @@ export interface EdgeEnv {
   DEV_AUTH_TEST_LOGIN?: string;
 }
 
-/** Ask (and block-plan) are on only with `ASK_ENABLED=1`; the Worker's default is off. */
+/** Ask is on only with `ASK_ENABLED=1`; the Worker's default is off. */
 export function askEnabled(env: Pick<EdgeEnv, 'ASK_ENABLED'>): boolean {
   return env.ASK_ENABLED?.trim() === '1';
 }

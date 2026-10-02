@@ -5,6 +5,7 @@ import type { EdgeEnv } from './env';
  * Durable daily budget for the paid routes (CLA-266). ONE instance (`getByName("global")`), SQLite-backed,
  * counters per UTC day:
  *
+ *   - five Ask admissions per verified GitHub account per UTC day;
  *   - requests per bucket (`ask`, `block-plan`), refused past the bucket's daily max;
  *   - an Ask dollar ledger: admission reserves an estimate and is refused when
  *     reserved + spent + estimate would exceed the daily dollar cap; once the container answers, the
@@ -23,11 +24,13 @@ export type AdmitInput = {
   maxRequests: number;
   /** Ask only: dollars reserved at admission and the day's dollar cap. */
   dollars?: { estimate: number; max: number };
+  /** Verified account identity, supplied by edge auth, never request JSON. */
+  accountId?: string;
 };
 
 export type AdmitResult =
   | { ok: true; reservationId?: string }
-  | { ok: false; reason: 'requests' | 'dollars' };
+  | { ok: false; reason: 'requests' | 'dollars' | 'user' | 'identity' };
 
 export type DayUsage = {
   day: string;
@@ -51,6 +54,7 @@ export class AtlasBudget extends DurableObject<EdgeEnv> {
   constructor(ctx: DurableObjectState, env: EdgeEnv) {
     super(ctx, env);
     this.sql = ctx.storage.sql;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS user_requests (day TEXT NOT NULL, account_id TEXT NOT NULL, requests INTEGER NOT NULL, PRIMARY KEY (day, account_id))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS request_counts (day TEXT NOT NULL, bucket TEXT NOT NULL, requests INTEGER NOT NULL, PRIMARY KEY (day, bucket))`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS dollar_spent (day TEXT PRIMARY KEY, spent REAL NOT NULL)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS dollar_reservations (id TEXT PRIMARY KEY, day TEXT NOT NULL, amount REAL NOT NULL)`);
@@ -70,7 +74,13 @@ export class AtlasBudget extends DurableObject<EdgeEnv> {
   }
 
   admit(input: AdmitInput): AdmitResult {
+    if (input.bucket === 'ask' && (!input.accountId || !/^(?:0|[1-9][0-9]*)$/.test(input.accountId))) return { ok: false, reason: 'identity' };
     const cutoff = dayMinus(input.day, KEEP_DAYS);
+    this.sql.exec('DELETE FROM user_requests WHERE day < ?', cutoff);
+    if (input.bucket === 'ask') {
+      const count = this.sql.exec<{ requests: number }>('SELECT requests FROM user_requests WHERE day = ? AND account_id = ?', input.day, input.accountId!).toArray()[0]?.requests ?? 0;
+      if (count >= 5) return { ok: false, reason: 'user' };
+    }
     this.sql.exec('DELETE FROM request_counts WHERE day < ?', cutoff);
     this.sql.exec('DELETE FROM dollar_spent WHERE day < ?', cutoff);
     this.sql.exec('DELETE FROM dollar_reservations WHERE day < ?', cutoff);
@@ -88,6 +98,7 @@ export class AtlasBudget extends DurableObject<EdgeEnv> {
       input.day,
       input.bucket,
     );
+    if (input.bucket === 'ask') this.sql.exec('INSERT INTO user_requests (day, account_id, requests) VALUES (?, ?, 1) ON CONFLICT (day, account_id) DO UPDATE SET requests = requests + 1', input.day, input.accountId!);
     return reservationId ? { ok: true, reservationId } : { ok: true };
   }
 

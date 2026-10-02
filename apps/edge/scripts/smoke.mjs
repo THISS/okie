@@ -66,6 +66,7 @@ function htmlProblems(response, body, status = 200) {
 }
 
 async function main() {
+  let askEnabled = false;
   console.log(`smoke checks against ${origin}`);
   // The first request doubles as the Access probe: a login redirect stops the run here.
   await check('/ (home)', async () => {
@@ -96,10 +97,24 @@ async function main() {
     const response = await get('/sitemap.xml');
     return response.status === 200 && (response.headers.get('content-type') ?? '').includes('application/xml') ? undefined : `status ${response.status}, content-type ${response.headers.get('content-type')}`;
   });
-  await check('/api/auth/me (browse-only)', async () => {
+  await check('/api/auth/me (signed out)', async () => {
     const response = await get('/api/auth/me');
     const body = await response.json();
-    return response.status === 200 && body.ask === false ? undefined : `status ${response.status}, ask ${body.ask}`;
+    askEnabled = body.ask === true;
+    return response.status === 200 && body.authenticated === false && typeof body.ask === 'boolean' ? undefined : `status ${response.status}, unexpected auth shape`;
+  });
+  await check('/api/ask (requires sign-in when enabled)', async () => {
+    const response = await get('/api/ask', 'POST', {
+      headers: { 'content-type': 'application/json', origin },
+      body: JSON.stringify({ question: 'smoke: this must never reach the model' }),
+      allowUnauthorized: true,
+    });
+    const expected = askEnabled ? 401 : 404;
+    return response.status === expected ? undefined : `status ${response.status}, want ${expected}`;
+  });
+  await check('/api/block-plan (disabled)', async () => {
+    const response = await get('/api/block-plan', 'POST', { headers: { 'content-type': 'application/json', origin }, body: '{}' });
+    return response.status === 404 ? undefined : `status ${response.status}, want 404`;
   });
   await check('/assets/missing.js (404)', async () => {
     const response = await get('/assets/missing.js', 'HEAD');

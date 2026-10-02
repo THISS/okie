@@ -106,7 +106,7 @@ test("eval retrieval is deterministic", () => {
   assert.deepEqual(again.map(run => run.after.sections), runs.map(run => run.after.sections));
 });
 
-test("recorded live answers (replay.json): AFTER cites the expected files and never declines", t => {
+test("recorded live answers (replay.json): usable AFTER answers cite expected files; incomplete answers are invalid", t => {
   const replay = JSON.parse(readFileSync(join(ASK_EVAL_DIR, "replay.json"), "utf8")) as AskEvalReplay;
   assert.equal(replay.schema, "ask-eval-replay/v1");
   assert.equal(replay.corpusCommitSha, fixture.snapshot.commitSha);
@@ -133,6 +133,15 @@ test("recorded live answers (replay.json): AFTER cites the expected files and ne
       return { recall: fileRecall(question.expectedFiles, files), files, declined: saysNotInEvidence(parsed.answer) };
     };
     const before = score(recorded.before, []);
+    // This historical response hit its token cap inside the answer string. The old prose
+    // fallback rendered the JSON envelope and incorrectly counted it as a usable answer.
+    // Preserve the live record and expose its invalid result instead of rewriting history.
+    if (question.id === "renderer-fallback-scan-code") {
+      assert.equal(parseAskCompletion(recorded.after.completion, new Set(recorded.after.allowedIds)), undefined, `${question.id}: incomplete answer must be invalid`);
+      rows.push(`| ${question.id} | ${before.recall.toFixed(2)} | ${before.declined ? "yes" : "no"} | 0.00 | invalid (truncated answer) |`);
+      rendererCited.push(0);
+      continue;
+    }
     const after = score(recorded.after, run.after.sections);
     rows.push(`| ${question.id}${question.heldOutSet ? ` (held-out ${question.heldOutSet})` : question.heldOut ? " (held-out v1)" : ""} | ${before.recall.toFixed(2)} | ${before.declined ? "yes" : "no"} | ${after.recall.toFixed(2)} | ${after.declined ? "yes" : "no"} |`);
     assert.ok(after.recall >= before.recall, `${question.id}: cited recall regressed`);

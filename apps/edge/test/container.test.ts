@@ -31,6 +31,7 @@ describe('AtlasApiContainer', () => {
       OKIE_SERVER_PORT: '8080',
       OKIE_TRUSTED_PROXY: 'cloudflare',
       OKIE_PUBLISHED_STORE_URL: 'http://atlas-store.internal',
+      OKIE_JEV_BLOCK_PLANNER: '0',
     });
     const vars = containerEnvVars({
       OKIE_LLM_API_KEY: 'k',
@@ -42,7 +43,7 @@ describe('AtlasApiContainer', () => {
       TURNSTILE_SECRET_KEY: 'never-forwarded',
       OKIE_PUBLIC_ORIGIN: 'https://sourcefor.dev',
     });
-    expect(vars).toMatchObject({ OKIE_LLM_API_KEY: 'k', JEV_API: 'j', OKIE_LLM_MODEL: 'm', OKIE_JEV_BLOCK_PLANNER: '1', OKIE_ASK_PER_IP_WINDOW: '20' });
+    expect(vars).toMatchObject({ OKIE_LLM_API_KEY: 'k', JEV_API: 'j', OKIE_LLM_MODEL: 'm', OKIE_JEV_BLOCK_PLANNER: '0', OKIE_ASK_PER_IP_WINDOW: '20' });
     expect(Object.keys(vars)).not.toContain('DEV_BACKEND_ORIGIN');
     expect(Object.keys(vars)).not.toContain('TURNSTILE_SECRET_KEY');
     expect(containerEnvVars({ OKIE_LLM_API_KEY: '' })).not.toHaveProperty('OKIE_LLM_API_KEY');
@@ -82,6 +83,27 @@ describe('AtlasApiContainer', () => {
     expect(devBackendOrigin({ DEV_BACKEND_ORIGIN: 'file:///etc/passwd' })).toBeUndefined();
     expect(devBackendOrigin({ DEV_BACKEND_ORIGIN: '' })).toBeUndefined();
   });
+  it('reports a sleeping container without forwarding a request or starting it', async () => {
+    let fetches = 0;
+    let stateReads = 0;
+    let status = 'stopped';
+    const namespace = { getByName: (name: string) => {
+      expect(name).toBe(CONTAINER_INSTANCE_NAME);
+      return {
+        getState: async () => { stateReads++; return { status, lastChange: 0 }; },
+        fetch: async () => { fetches++; return new Response(); },
+      };
+    } };
+    const backend = selectBackend({ ...edgeEnv, ATLAS_API: namespace as never });
+    expect(await backend!.warmingUp!()).toBe(true);
+    status = 'healthy';
+    expect(await backend!.warmingUp!()).toBe(false);
+    status = 'running';
+    expect(await backend!.warmingUp!()).toBe(true);
+    expect(stateReads).toBe(3);
+    expect(fetches).toBe(0);
+  });
+
 });
 
 describe('DEV_* gates', () => {

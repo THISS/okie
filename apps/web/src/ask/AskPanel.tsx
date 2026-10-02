@@ -33,6 +33,8 @@ export type AskTurnActions = {
 };
 
 export type AskPanelProps = AskTurnActions & {
+  placement?: 'floating' | 'docked';
+  onTogglePlacement?: () => void;
   signedIn: boolean;
   auth?: AskAuthView;
   returnPath: string;
@@ -41,6 +43,7 @@ export type AskPanelProps = AskTurnActions & {
   question: string;
   /** The question being answered right now, shown once as the thread's last turn. */
   pendingQuestion?: string;
+  warmingUp?: boolean;
   error?: string;
   turns: readonly AskThreadTurn[];
   /** Turn answered in this session; marks `data-ask-answer` and is announced. */
@@ -57,7 +60,7 @@ export function AskPanel(props: AskPanelProps) {
   if (!props.signedIn) {
     const loginPath = props.auth?.loginPath ?? '/api/auth/github';
     return (
-      <div className="ask-popover" data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin">
+      <div className={`ask-popover ${props.placement === 'docked' ? 'ask-docked' : ''}`} data-ask-placement={props.placement ?? 'floating'} data-ask-auth="signed-out" data-ask-connected="false" data-ask-state="signin">
         <p>{ASK_SIGNIN_COPY}</p>
         <a className="ask-signin" data-testid="ask-signin" href={askSignInHref(loginPath, props.returnPath)}>Sign in with GitHub</a>
         {props.auth?.testLoginPath ? <a className="ask-test-login" data-testid="ask-test-login" href={askSignInHref(props.auth.testLoginPath, props.returnPath)}>Use the local test sign-in</a> : null}
@@ -100,7 +103,7 @@ function AskThreadForm(props: AskPanelProps) {
   return (
     <form
       aria-label="Ask Atlas"
-      className="ask-popover"
+      className={`ask-popover ${props.placement === 'docked' ? 'ask-docked' : ''}`} data-ask-placement={props.placement ?? 'floating'}
       data-ask-auth={props.signedIn ? 'signed-in' : 'unknown'}
       data-ask-connected={props.connected ? 'true' : 'false'}
       data-ask-has-thread={hasThread ? 'true' : 'false'}
@@ -109,6 +112,7 @@ function AskThreadForm(props: AskPanelProps) {
     >
       <header className="ask-header">
         <label htmlFor="atlas-question">Ask about this codebase</label>
+        {props.onTogglePlacement ? <button aria-label={props.placement === 'docked' ? 'Float Ask Atlas' : 'Expand Ask into side panel'} className="ask-placement" onClick={props.onTogglePlacement} type="button">{props.placement === 'docked' ? 'Float' : 'Expand'}</button> : null}
         <button aria-label="Close Ask Atlas" className="ask-close" onClick={props.onClose} type="button"><CloseIcon size={14}/></button>
       </header>
       {hasThread ? (
@@ -132,6 +136,7 @@ function AskThreadForm(props: AskPanelProps) {
         {!props.connected
           ? <p className="ask-note">{ASK_NOT_CONNECTED_COPY}</p>
           : props.turns.length === 0 && !props.pendingQuestion ? <p className="ask-note">{ASK_CONNECTED_COPY}</p> : null}
+        <p className="ask-note">5 Asks per signed-in user each day (resets at midnight UTC). Conversations stay in this browser and are not synced to your account.</p>
         <button className="ask-submit" disabled={!props.connected || !props.question.trim() || Boolean(props.pendingQuestion)} type="submit">
           {props.pendingQuestion ? 'Asking…' : props.connected ? ASK_CONNECTED_SUBMIT_LABEL : ASK_DISCONNECTED_SUBMIT_LABEL}
           {props.pendingQuestion || !props.connected ? null : <ArrowIcon size={15}/>}
@@ -142,7 +147,7 @@ function AskThreadForm(props: AskPanelProps) {
 }
 
 /** The one thread. Hook-free so tests can walk its element tree. */
-export function AskThreadList(props: Pick<AskPanelProps, 'turns' | 'pendingQuestion' | 'latestTurnId' | 'mapTurnId'> & AskTurnActions) {
+export function AskThreadList(props: Pick<AskPanelProps, 'turns' | 'pendingQuestion' | 'warmingUp' | 'latestTurnId' | 'mapTurnId'> & AskTurnActions) {
   if (props.turns.length === 0 && !props.pendingQuestion) return null;
   return (
     <ol className="ask-thread" data-ask-thread="" data-ask-thread-count={props.turns.length}>
@@ -150,7 +155,7 @@ export function AskThreadList(props: Pick<AskPanelProps, 'turns' | 'pendingQuest
       {props.pendingQuestion ? (
         <li aria-busy="true" className="ask-turn" data-ask-thread-turn="pending">
           <p className="ask-thread-question">{props.pendingQuestion}</p>
-          <p className="ask-pending" role="status">Searching the atlas and source…</p>
+          <p className="ask-pending" role="status">{props.warmingUp ? 'Warming up Ask… The service sleeps when idle. Your question will run when it is ready.' : 'Searching the atlas and source…'}</p>
         </li>
       ) : null}
     </ol>

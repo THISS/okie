@@ -18,8 +18,8 @@ describe('CLA-316 privacy page', () => {
   const html = privacyPageHtml({ cookies: COOKIES });
 
   it('renders the copy: last-updated date from PRIVACY_POLICY_VERSION, every section, mailto links, no script', () => {
-    expect(PRIVACY_POLICY_VERSION).toBe('2026-09-30');
-    expect(html).toContain('Last updated <time datetime="2026-09-30">30 September 2026</time>');
+    expect(PRIVACY_POLICY_VERSION).toBe('2026-10-01');
+    expect(html).toContain('Last updated <time datetime="2026-10-01">1 October 2026</time>');
     for (const section of PRIVACY_COPY.sections) expect(html).toContain(`>${section.heading}</h2>`);
     expect(html).toContain(`<a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> from the address on your account`);
     expect(html).not.toContain('[CONTACT_EMAIL]');
@@ -56,7 +56,10 @@ describe('CLA-316 privacy page', () => {
     expect(html).toContain('and when you last changed that setting</li>');
     expect(html).toContain('<p>We use this to run your account, and to contact you about it if we need to.</p>');
     expect(html).not.toContain('fair-use');
-    expect(html).not.toContain('Ask');
+    expect(html).toContain('Ask requires sign-in.');
+    expect(html).toContain('this browser’s IndexedDB');
+    expect(html).toContain('five-Ask allowance');
+    expect(html).toContain('OpenRouter and its selected model provider');
     // The owner dropped inactivity deletion: kept until you delete the account or ask us to.
     expect(html).toContain('<p>We keep your account data until you delete your account, or ask us to.</p>');
     expect(html).not.toContain('24 months');

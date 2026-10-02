@@ -195,3 +195,28 @@ describe('AskPanel (CLA-265)', () => {
     expect(html.indexOf('Ask failed (500).')).toBeGreaterThan(html.indexOf('data-ask-scroll=""'));
   });
 });
+
+it('explains a sleeping service and browser-local daily allowance', () => {
+  const html = renderToStaticMarkup(<AskPanel {...props({ pendingQuestion: 'How?', warmingUp: true })}/>);
+  expect(html).toContain('Warming up Ask');
+  expect(html).toContain('service sleeps when idle');
+  expect(html).toContain('5 Asks per signed-in user');
+  expect(html).toContain('not synced to your account');
+});
+
+
+describe('Ask placement', () => {
+  it('offers an explicit expansion control with the existing thread and pending request', () => {
+    const html = renderToStaticMarkup(<AskPanel {...props({ onTogglePlacement: () => undefined, pendingQuestion: 'Still answering', question: 'Unsent draft' })}/>);
+    expect(html).toContain('Expand Ask into side panel');
+    expect(html).toContain('Still answering');
+    expect(html).toContain('Unsent draft');
+  });
+  it('renders one docked composer and a return-to-floating control', () => {
+    const html = renderToStaticMarkup(<AskPanel {...props({ placement: 'docked', onTogglePlacement: () => undefined })}/>);
+    expect(html).toContain('data-ask-placement="docked"');
+    expect(html).toContain('Float Ask Atlas');
+    expect(html.match(/id="atlas-question"/g)).toHaveLength(1);
+    expect(html).toContain('The <strong>renderer</strong>');
+  });
+});

@@ -4,12 +4,14 @@ This runbook covers how to set up, publish, deploy and roll back sourcefor.dev: 
 and published atlases in R2. For the design, measurements and costs, see
 [`../roadmap/cloudflare-deployment.md`](../roadmap/cloudflare-deployment.md).
 
-**Launch is browse-only.** Staging and production deploy the Worker without the Ask container: their `wrangler.jsonc`
-envs have no `containers` entry and no `ATLAS_API` binding, and `ASK_ENABLED` is `"0"`. Every browsing request (the
-atlas, packs, excerpts, `source.json`, share pages) is served by the Worker from R2, plus GitHub raw for
-`source.json`. `/api/auth/me` answers `ask: false`, and the web app hides Ask. `POST /api/ask` and
-`POST /api/block-plan` return 404 at the edge. The container class, guard chain and proxy code stay in the repo for the
-signed-in-Ask follow-up; only the local top-level env keeps the container.
+**Signed-in Ask rollout (CLA-316).** Both environments bind a sleeping Node container. Staging enables
+Ask for review; production keeps `ASK_ENABLED="0"` until that review is approved. Browsing is always
+served by the Worker from R2, plus GitHub raw for `source.json`, without starting the container.
+Enabled Ask requires a verified GitHub session and admits at most five requests per account per UTC day
+through the durable edge ledger before contacting the model. Missing authentication or budget storage
+fails closed. Threads stay in browser IndexedDB, partitioned by account and atlas commit; they do not sync.
+`BLOCK_PLAN_ENABLED="0"` and container `OKIE_JEV_BLOCK_PLANNER=0` keep the optional Overview ordering off.
+A non-waking container-state probe lets the panel explain a cold start; submitting the question wakes it.
 
 Environments:
 
@@ -27,14 +29,13 @@ print a one-line note if they found one.
 
 ## 1. First-time setup (once per environment)
 
-1. **Prerequisites:** Node 22+, pnpm 11.10+ and wasm-pack. Docker is not needed: the browse-only envs have no
-   container image. Then run `pnpm install && pnpm build`.
+1. **Prerequisites:** Node 22+, pnpm 11.10+, wasm-pack and running Docker for the container image. Then run `pnpm install && pnpm build`.
 2. **Buckets:**
    `pnpm --filter @okie/edge exec wrangler r2 bucket create sourcefor-atlas-staging` (and `sourcefor-atlas` for
    production). Leave them private: there is no public bucket URL, because the Worker is the only reader.
 3. **Rate-limit namespaces:** the `namespace_id` values in `apps/edge/wrangler.jsonc` (`2661` staging, `2662`
    production) are integers you choose, and each must be unique in the account. Change them if they collide.
-4. **Secrets:** none are needed for the browse-only launch. The table below is for when Ask is turned on later (names
+4. **Secrets:** Ask needs the gateway key below plus the sign-in secrets in the Sign-in section (names
    only; set each with `pnpm --filter @okie/edge exec wrangler secret put <NAME> --env <staging|production>`):
 
    | Secret | Used by | Required |
@@ -43,16 +44,16 @@ print a one-line note if they found one.
    | `JEV_API` | Jev block planner. Passed into the container env. | only with `OKIE_JEV_BLOCK_PLANNER=on` |
    | `TURNSTILE_SECRET_KEY` | Turnstile guard | only with `TURNSTILE_ENABLED=1` |
 
-   Optional non-secret vars (set in `wrangler.jsonc` per env): `ASK_ENABLED` (`"0"` at launch; `"1"` turns on Ask and
-   block-plan, which also needs the container back in the env), `OKIE_LLM_MODEL`, `OKIE_JEV_BLOCK_PLANNER`,
+   Optional non-secret vars (set in `wrangler.jsonc` per env): `ASK_ENABLED` (`"1"` enables signed-in Ask),
+   `BLOCK_PLAN_ENABLED` (keep `"0"`), `OKIE_LLM_MODEL`,
    `OKIE_ASK_PER_IP_WINDOW`, the budget caps below, and `TURNSTILE_ENABLED`. Nothing is baked into the image.
-5. **Budget caps** (per env `vars`; dormant while `ASK_ENABLED` is `"0"`; the values are placeholders until Brenton
-   sets the real ones). A cap of `0` refuses everything; an unset or invalid value uses the placeholder.
+5. **Budget caps** (per env `vars`; dormant while `ASK_ENABLED` is `"0"`). A cap of `0` refuses everything;
+   an unset or invalid value uses the default. The five-per-account quota is fixed in edge code.
 
-   | Var | Placeholder | Meaning |
+   | Var | Default | Meaning |
    |---|---|---|
-   | `ASK_DAILY_MAX_DOLLARS` | 2 | Ask dollar ledger per UTC day (estimate reserved, settled to the gateway-reported cost) |
-   | `ASK_ESTIMATED_DOLLARS_PER_REQUEST` | 0.01 | Reservation per Ask; kept when the gateway reports no cost |
+   | `ASK_DAILY_MAX_DOLLARS` | 5 | Ask dollar ledger per UTC day (estimate reserved, settled to the gateway-reported cost) |
+   | `ASK_ESTIMATED_DOLLARS_PER_REQUEST` | 0.006 | Reservation per Ask; kept when the gateway reports no cost |
    | `ASK_DAILY_MAX_REQUESTS` | 500 | Asks per UTC day |
    | `BLOCK_PLAN_DAILY_MAX_REQUESTS` | 200 | Block plans per UTC day (Jev reserves $0.003 each) |
 
@@ -252,12 +253,12 @@ pnpm publish:atlas --repo thiss/okie --env production --scan-root ~/sites/okie/f
 
 ```sh
 pnpm build                                    # apps/web/dist + gates
-pnpm --filter @okie/edge deploy:staging       # wrangler deploy --env staging (Worker + static assets; no container, no Docker)
+pnpm --filter @okie/edge deploy:staging       # wrangler deploy --env staging (Worker + static assets + Node container)
 ```
 
 To validate the config without deploying (no account calls, no Docker):
-`pnpm --filter @okie/edge exec wrangler deploy --dry-run --env staging --outdir <scratch dir>`. It prints warnings
-that the top-level `containers` and `ATLAS_API` binding aren't in the env; that is intended.
+`pnpm --filter @okie/edge exec wrangler deploy --dry-run --containers-rollout=none --env staging --outdir <scratch dir>`.
+Before a real deploy, validate the Linux amd64 image with Docker. Never print gateway or session secrets.
 
 Then run the smoke checks against staging:
 
@@ -411,10 +412,11 @@ Self-serve: a signed-in user can untick product updates, or tick the confirmatio
 test user `okie-test-user`; honoured only on a loopback origin) or a local OAuth app's `GITHUB_CLIENT_ID` /
 `GITHUB_CLIENT_SECRET`. Create the local table once with `pnpm --filter @okie/edge exec wrangler d1 migrations apply USERS_DB --local`.
 
-## Container sizing (not deployed at launch)
+## Container sizing
 
-This applies once the signed-in-Ask follow-up adds the container back to staging/production (an `ATLAS_API` binding,
-and the `containers` entry; the `v1` migration already created `AtlasApiContainer`). The instance is `basic` (1/4 vCPU, 1 GiB, 4 GB disk), `max_instances: 2`, and all traffic goes to one named instance.
+Both environments repeat the `ATLAS_API` binding and container configuration. The existing `v1` migration already
+created `AtlasApiContainer`; do not add another creation migration. The instance is `basic` (1/4 vCPU, 1 GiB, 4 GB disk),
+`max_instances: 1`, and all traffic goes to the named instance `atlas-api`.
 It sleeps after 10 minutes idle, and a sleeping container isn't billed.
 
 The image sets these memory defaults:

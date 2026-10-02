@@ -39,13 +39,13 @@ export class AccessChallengeError extends Error {}
  * A GET/HEAD against `origin` that never follows redirects, so an Access redirect is seen on every request
  * (and the token never goes to another host). Throws AccessChallengeError when Access answers.
  * @param {{ origin: string, headers: Record<string, string>, fetch?: typeof fetch }} options
- * @returns {(path: string, method?: 'GET' | 'HEAD') => Promise<Response>}
+ * @returns {(path: string, method?: 'GET' | 'HEAD' | 'POST', extra?: { headers?: Record<string, string>, body?: string, allowUnauthorized?: boolean }) => Promise<Response>}
  */
 export function smokeRequester({ origin, headers, fetch: fetchImpl = fetch }) {
   const sentToken = Object.keys(headers).length > 0;
-  return async (path, method = 'GET') => {
-    const response = await fetchImpl(`${origin}${path}`, { method, redirect: 'manual', headers });
-    if (isAccessChallenge(response)) throw new AccessChallengeError(accessChallengeMessage(sentToken));
+  return async (path, method = 'GET', extra = {}) => {
+    const response = await fetchImpl(`${origin}${path}`, { ...extra, method, redirect: 'manual', headers: { ...headers, ...extra.headers } });
+    if (isAccessChallenge(response) && !(extra.allowUnauthorized && response.status === 401)) throw new AccessChallengeError(accessChallengeMessage(sentToken));
     return response;
   };
 }
@@ -81,7 +81,8 @@ export function isAccessChallenge(response) {
     const host = url.hostname.toLowerCase();
     return host.endsWith('.cloudflareaccess.com') || url.pathname.startsWith('/cdn-cgi/access/');
   }
-  // 401: Access's "401 Response for Service Auth policies" option. The site never answers 401 on a smoke route.
+  // 401: Access's "401 Response for Service Auth policies" option. Expected Ask authorization refusals
+  // are exempted explicitly by smokeRequester after the initial home Access probe.
   if (response.status === 401) return true;
   if (response.status === 403) return response.headers.get('cf-access-domain') !== null;
   return false;

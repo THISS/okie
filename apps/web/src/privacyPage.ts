@@ -70,6 +70,14 @@ export const PRIVACY_COPY = {
       ],
     },
     {
+      heading: 'If you use Ask',
+      blocks: [
+        { kind: 'p', text: 'Ask requires sign-in. To answer your question, we send the question and a bounded selection of atlas evidence to OpenRouter and its selected model provider. We do not include your GitHub account details or sign-in cookies in the model request. Avoid putting private information in a question.' },
+        { kind: 'p', text: 'Saved questions and answers stay in this browser’s IndexedDB, separated by account and atlas. They are not synced to your account or other devices. Signing out hides the thread; it does not erase browser storage. Clearing this site’s browser data removes the saved threads.' },
+        { kind: 'p', text: 'We keep daily request counts linked to your GitHub user ID to enforce the five-Ask allowance and prevent abuse. These counts contain no questions or answers. When the allowance ledger is used, it removes counts older than 14 days. We also keep daily service spending totals.' },
+      ],
+    },
+    {
       heading: 'Cookies',
       blocks: [
         { kind: 'p', text: 'We only set cookies that are strictly necessary, and only when you sign in:' },
@@ -85,6 +93,7 @@ export const PRIVACY_COPY = {
           items: [
             '**Cloudflare** hosts the site, stores account data, and provides Web Analytics.',
             '**GitHub** handles sign-in.',
+            '**OpenRouter and its selected model provider** process the questions and atlas evidence you submit through Ask.',
           ],
         },
       ],
@@ -101,6 +110,7 @@ export const PRIVACY_COPY = {
       blocks: [
         { kind: 'p', text: 'You can delete your account yourself from the Account page. This removes your record immediately (and from backups within 30 days) and signs you out. Or email [CONTACT_EMAIL] from the address on your account and we’ll delete it within 30 days.' },
         { kind: 'p', text: 'You can also email us to ask what we hold about you, or to correct it.' },
+        { kind: 'p', text: 'Deleting your account does not erase threads saved on your device. Clear this site’s browser data to remove those. Recent request counts expire as described above; retaining them briefly prevents account deletion and sign-in from resetting the daily allowance.' },
       ],
     },
     {

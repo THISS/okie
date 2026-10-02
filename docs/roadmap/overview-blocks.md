@@ -223,6 +223,14 @@ Positions are 0-based; the summary (0) led every planned node in every run, and 
 
 ## Ask (CLA-265) reuse
 
+### Next ordering experiment: unique positions (2026-10-01)
+
+The user prefers one complete order with each candidate assigned to exactly one position, rather than lead/early/later/omit categories. Keep the existing planner off while the signed-in Ask increment ships.
+
+For the follow-up, evaluate a single batched Jev request with one position Choice per candidate. Its position probabilities form a block-by-slot score matrix; deterministic one-to-one assignment resolves collisions and yields a permutation. Every candidate appears exactly once. Do not omit content as a side effect of ordering. Preserve fixed summary placement unless explicitly changed, use the default recipe to break ties, and validate the resulting ids before rendering. Position classification alone does not enforce uniqueness; the assignment step must.
+
+Compare labelled expected orders, latency and cost against the default recipe and the current category-ranking experiment before enabling it. Block assembly and block ordering remain separate steps; progressive assembly is a separate UX choice.
+
 Ask renders answers with the same catalog, validator and registry. The composer builds candidates for the nodes the answer touches, and the planner is called with `context: { mode: 'ask', question }` so it can rank existing blocks by relevance to the question. The same validation, fallback and caching rules apply. Ask never gets a renderer or block type of its own.
 
 ## Security

@@ -2,13 +2,10 @@
 // `env.staging` / `env.production` are the deployed environments. Bindings, vars, containers,
 // durable_objects, r2_buckets, d1_databases and ratelimits are NOT inherited by named environments, so each env
 // repeats them.
-// Launch is BROWSE-ONLY: staging/production have no `containers` and no ATLAS_API binding, and
-// ASK_ENABLED is "0" (Ask/block-plan 404 at the edge; browsing is served entirely from R2). The top
-// level keeps the container so the signed-in-Ask follow-up stays testable locally; set ASK_ENABLED=1
-// in .dev.vars to try it. Secrets (OKIE_LLM_API_KEY, JEV_API, TURNSTILE_SECRET_KEY, plus the sign-in
-// secrets below) are set with `wrangler secret put --env <env>`; DEV_BACKEND_ORIGIN, DEV_STORE_ROUTE and
-// DEV_AUTH_TEST_LOGIN only ever come from a local .dev.vars and must never appear here (asserted in
-// test/config.test.ts).
+// Signed-in Ask runs the Node API in one sleeping Cloudflare Container per environment.
+// Staging enables Ask for review; production remains off until that review is approved.
+// Block planning remains off independently. Secrets are set with `wrangler secret put --env <env>`;
+// DEV_BACKEND_ORIGIN, DEV_STORE_ROUTE and DEV_AUTH_TEST_LOGIN are local .dev.vars only.
 // Cloudflare Web Analytics (CLA-318): WEB_ANALYTICS_TOKEN (the dashboard's site token; public, it ships
 // in page HTML) turns on the beacon in every HTML page the Worker serves (src/analytics.ts). Production
 // only: it is set in env.production.vars; remove it and redeploy to turn analytics off. Unset, blank or
@@ -51,10 +48,11 @@
   // ---- local dev ----
   "vars": {
     "ASK_ENABLED": "0",
+    "BLOCK_PLAN_ENABLED": "0",
     "ASK_DAILY_MAX_REQUESTS": "500",
     "BLOCK_PLAN_DAILY_MAX_REQUESTS": "200",
-    "ASK_DAILY_MAX_DOLLARS": "2",
-    "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.01",
+    "ASK_DAILY_MAX_DOLLARS": "5",
+    "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.006",
     "TURNSTILE_ENABLED": "0"
   },
   "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas-local" }],
@@ -79,7 +77,7 @@
       "image": "../server/Dockerfile",
       "image_build_context": "../..",
       "instance_type": "basic",
-      "max_instances": 2
+      "max_instances": 1
     }
   ],
   "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2660", "simple": { "limit": 10, "period": 60 } }],
@@ -93,13 +91,14 @@
         "OKIE_PUBLIC_ORIGIN": "https://staging.sourcefor.dev",
         // Keep staging out of search engines: X-Robots-Tag on every response + a disallow-all robots.txt.
         "ROBOTS_NOINDEX": "1",
-        // Browse-only launch: Ask and block-plan are off (and there is no container to serve them).
-        "ASK_ENABLED": "0",
-        // Placeholder caps pending Brenton's numbers (dormant while ASK_ENABLED is "0").
+        // Ask rollout flag; block planning remains separately disabled.
+        "ASK_ENABLED": "1",
+        "BLOCK_PLAN_ENABLED": "0",
+        // Global safety caps; the five-per-account daily quota is fixed in server code.
         "ASK_DAILY_MAX_REQUESTS": "500",
         "BLOCK_PLAN_DAILY_MAX_REQUESTS": "200",
-        "ASK_DAILY_MAX_DOLLARS": "2",
-        "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.01",
+        "ASK_DAILY_MAX_DOLLARS": "5",
+        "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.006",
         "TURNSTILE_ENABLED": "0"
       },
       "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas-staging" }],
@@ -111,12 +110,14 @@
           "migrations_dir": "migrations"
         }
       ],
-      // No container at launch: only the budget Durable Object. The signed-in-Ask follow-up adds the
-      // ATLAS_API binding and the `containers` entry. The v1 migration already created AtlasApiContainer (it
-      // shipped in the first deploy), so it stays listed; don't add a new migration for it.
+      // v1 already created both classes; enabling the existing container needs no new migration.
       "durable_objects": {
-        "bindings": [{ "name": "ATLAS_BUDGET", "class_name": "AtlasBudget" }]
+        "bindings": [
+          { "name": "ATLAS_API", "class_name": "AtlasApiContainer" },
+          { "name": "ATLAS_BUDGET", "class_name": "AtlasBudget" }
+        ]
       },
+      "containers": [{ "class_name": "AtlasApiContainer", "image": "../server/Dockerfile", "image_build_context": "../..", "instance_type": "basic", "max_instances": 1 }],
       "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AtlasApiContainer", "AtlasBudget"] }],
       "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2661", "simple": { "limit": 10, "period": 60 } }]
     },
@@ -132,13 +133,14 @@
         "OKIE_PUBLIC_ORIGIN": "https://sourcefor.dev",
         // Cloudflare Web Analytics site token (public; see top). Remove it and redeploy to turn analytics off.
         "WEB_ANALYTICS_TOKEN": "4860cbb249bd46c09f74a249b18212ec",
-        // Browse-only launch: Ask and block-plan are off (and there is no container to serve them).
+        // Ask rollout flag; block planning remains separately disabled.
         "ASK_ENABLED": "0",
-        // Placeholder caps pending Brenton's numbers (dormant while ASK_ENABLED is "0").
+        "BLOCK_PLAN_ENABLED": "0",
+        // Global safety caps; the five-per-account daily quota is fixed in server code.
         "ASK_DAILY_MAX_REQUESTS": "500",
         "BLOCK_PLAN_DAILY_MAX_REQUESTS": "200",
-        "ASK_DAILY_MAX_DOLLARS": "2",
-        "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.01",
+        "ASK_DAILY_MAX_DOLLARS": "5",
+        "ASK_ESTIMATED_DOLLARS_PER_REQUEST": "0.006",
         "TURNSTILE_ENABLED": "0"
       },
       "r2_buckets": [{ "binding": "ATLAS_BUCKET", "bucket_name": "sourcefor-atlas" }],
@@ -150,12 +152,14 @@
           "migrations_dir": "migrations"
         }
       ],
-      // No container at launch: only the budget Durable Object. The signed-in-Ask follow-up adds the
-      // ATLAS_API binding and the `containers` entry. The v1 migration already created AtlasApiContainer (it
-      // shipped in the first deploy), so it stays listed; don't add a new migration for it.
+      // v1 already created both classes; enabling the existing container needs no new migration.
       "durable_objects": {
-        "bindings": [{ "name": "ATLAS_BUDGET", "class_name": "AtlasBudget" }]
+        "bindings": [
+          { "name": "ATLAS_API", "class_name": "AtlasApiContainer" },
+          { "name": "ATLAS_BUDGET", "class_name": "AtlasBudget" }
+        ]
       },
+      "containers": [{ "class_name": "AtlasApiContainer", "image": "../server/Dockerfile", "image_build_context": "../..", "instance_type": "basic", "max_instances": 1 }],
       "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AtlasApiContainer", "AtlasBudget"] }],
       "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2662", "simple": { "limit": 10, "period": 60 } }]
     }

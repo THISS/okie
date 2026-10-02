@@ -97,3 +97,13 @@
 @media (max-width: 780px) {
   .ask-map-status { bottom: 124px; }
 }
+
+.ask-placement { margin-left: auto; padding: 3px 7px; border: 1px solid var(--atlas-line); border-radius: 5px; background: transparent; color: var(--atlas-muted); font: inherit; font-size: 11px; cursor: pointer; }
+.ask-placement:hover { color: var(--atlas-accent); border-color: var(--atlas-accent); }
+.inspector-ask-panel { min-height: 0; flex: 1; display: flex; overflow: hidden; }
+.inspector-ask-panel .ask-docked { position: static; inset: auto; width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; box-shadow: none; padding: 18px; }
+.inspector-ask-panel .ask-answer { font-size: 14px; line-height: 1.65; }
+.inspector-ask-panel .ask-thread-question { font-size: 14px; }
+.inspector-ask-panel .ask-answer-body { gap: 12px; }
+.inspector-ask-panel .ask-composer textarea { font-size: 13px; }
+.inspector-tabs:has(#ask-tab) { grid-template-columns: repeat(4, minmax(0, 1fr)); }

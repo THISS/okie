@@ -1,6 +1,6 @@
 import { backendUnavailable, devBackendOrigin, proxiedRequest, publicBackendResponse, type Backend } from './backend';
 import type { BudgetBucket } from './budget';
-import { accountsEnabled, handleAuthRoute } from './auth';
+import { accountsEnabled, currentUser, handleAuthRoute, resolveAuthSetup } from './auth';
 import { askEnabled, type EdgeEnv } from './env';
 import { budgetStub, reportedAskCost, runGuards, type Guard, type GuardContext } from './guards';
 import { jsonResponse, notFoundJson } from './http';
@@ -8,8 +8,8 @@ import { jsonResponse, notFoundJson } from './http';
 /**
  * `/api/*` at the edge (CLA-266). `/api/auth/*` and `/api/account/*` are GitHub sign-in (auth.ts, CLA-316):
  * without its secrets and D1 binding `/api/auth/me` answers the public shape and the rest 404. Ask status and the (always empty) Ask thread are answered here too.
- * Only `POST /api/ask` and `POST /api/block-plan` can reach the container, behind the guard chain, and
- * only with `ASK_ENABLED=1`; otherwise (the browse-only launch) they 404. Every other `/api/*`
+ * Signed-in `POST /api/ask` reaches the container behind durable quotas with `ASK_ENABLED=1`.
+ * The optional planner additionally requires `BLOCK_PLAN_ENABLED=1`; disabled routes 404. Every other `/api/*`
  * (operator, scans) is a 404.
  */
 
@@ -58,6 +58,43 @@ function askThreadIdentity(search: URLSearchParams): { owner: string; repo: stri
   return owner && repo && COMMIT_SHA.test(commitSha) ? { owner, repo, commitSha } : undefined;
 }
 
+/** Bound request memory and reject malformed questions before consuming a daily allowance. */
+async function validatedAskRequest(request: Request): Promise<Request | Response> {
+  const maxBytes = 48 * 1024; // same ceiling as the Node Ask endpoint
+  const declared = Number(request.headers.get('content-length'));
+  if (declared > maxBytes) return jsonResponse(413, { error: 'Ask request is too large.' });
+  const reader = request.body?.getReader();
+  if (!reader) return jsonResponse(400, { error: 'Ask needs a JSON question and atlas.' });
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.byteLength;
+      if (size > maxBytes) {
+        void reader.cancel().catch(() => undefined);
+        return jsonResponse(413, { error: 'Ask request is too large.' });
+      }
+      chunks.push(part.value);
+    }
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    const value: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    const record = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+    const atlas = record.atlas && typeof record.atlas === 'object' ? record.atlas as Record<string, unknown> : {};
+    const search = new URLSearchParams();
+    for (const key of ['owner', 'repo', 'commitSha']) if (typeof atlas[key] === 'string') search.set(key, atlas[key]);
+    if (typeof record.question !== 'string' || !record.question.trim() || !askThreadIdentity(search)) {
+      return jsonResponse(400, { error: 'Ask needs a question and atlas identity {owner, repo, commitSha}.' });
+    }
+    return new Request(request, { body: bytes });
+  } catch {
+    return jsonResponse(400, { error: 'Ask needs a valid JSON question and atlas.' });
+  }
+}
+
 export async function handleApiRoute(request: Request, env: EdgeEnv, context: ApiRouteContext): Promise<Response> {
   const url = new URL(request.url);
   const auth = await handleAuthRoute(request, env, { now: context.now(), ...(context.fetch ? { fetch: context.fetch } : {}) });
@@ -69,18 +106,44 @@ export async function handleApiRoute(request: Request, env: EdgeEnv, context: Ap
   }
   const route = apiRoute(request.method.toUpperCase(), url.pathname);
   if (!route) return notFoundJson();
-  if (route === 'ask-status') return jsonResponse(200, { connected: askConnected(env, context.backend) });
+  if (route === 'ask-status' && !askEnabled(env)) return jsonResponse(200, { connected: false });
   if (!askEnabled(env)) return notFoundJson();
+  if (typeof route === 'object' && route.bucket === 'block-plan' && env.BLOCK_PLAN_ENABLED !== '1') return notFoundJson();
+  const setup = resolveAuthSetup(env, url);
+  if (!setup) return jsonResponse(503, { error: 'Ask sign-in is unavailable right now.' });
+  const user = await currentUser(request, setup, context.now());
+  if (user.unavailable) return jsonResponse(503, { error: 'Ask sign-in is unavailable right now.' });
+  if (!user.signedIn) {
+    const response = jsonResponse(401, { error: 'Sign in to ask about this atlas.' });
+    for (const cookie of user.clear) response.headers.append('set-cookie', cookie);
+    return response;
+  }
+  if (route === 'ask-status') {
+    const connected = askConnected(env, context.backend);
+    let warmingUp = false;
+    if (connected && context.backend?.warmingUp) {
+      try { warmingUp = await Promise.race([context.backend.warmingUp(), new Promise<boolean>(resolve => setTimeout(() => resolve(false), 1000))]); } catch { /* unknown readiness */ }
+    }
+    return jsonResponse(200, { connected, ...(context.backend?.warmingUp ? { warmingUp } : {}) });
+  }
   if (route === 'ask-thread') {
-    // Public mode has no identity, so there is never a persisted thread (the client keeps its turns).
+    // Threads are account-partitioned in browser IndexedDB, never stored in D1 or this container.
     const atlas = askThreadIdentity(url.searchParams);
     if (!atlas) return jsonResponse(400, { error: 'Ask thread needs atlas identity {owner, repo, commitSha}.' });
     return jsonResponse(200, { thread: { ...atlas, turns: [] } });
   }
+  if (request.headers.get('origin') !== setup.origin) return jsonResponse(403, { error: 'Ask requests must come from this site.' });
+  if (request.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase() !== 'application/json') return jsonResponse(415, { error: 'Ask requests require JSON.' });
   if (!context.backend) return backendUnavailable();
+  if (route.bucket === 'ask') {
+    const validated = await validatedAskRequest(request);
+    if (validated instanceof Response) return validated;
+    request = validated;
+  }
 
   const guardContext: GuardContext = {
     bucket: route.bucket,
+    accountId: String(user.signedIn.user.github_id),
     clientIp: request.headers.get('cf-connecting-ip')?.trim() || 'unknown',
     now: context.now(),
   };
@@ -96,7 +159,7 @@ export async function handleApiRoute(request: Request, env: EdgeEnv, context: Ap
   try {
     response = await context.backend.fetch(proxiedRequest(request, context.backend.origin, url.pathname, url.search));
   } catch {
-    settle(0); // nothing was spent: the container never answered
+    settle(undefined); // A lost response does not prove the model incurred no cost.
     return backendUnavailable();
   }
   settle(reportedAskCost(response));

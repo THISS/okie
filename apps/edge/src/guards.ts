@@ -20,6 +20,7 @@ export type GuardContext = {
   /** CF-Connecting-IP ('unknown' when absent, e.g. local dev). */
   clientIp: string;
   now: Date;
+  accountId?: string;
   /** Set by the budget guard when an Ask dollar reservation was taken; settled after the proxy. */
   reservationId?: string;
 };
@@ -33,14 +34,14 @@ export const TURNSTILE_TOKEN_HEADER = 'cf-turnstile-response';
 export const BUDGET_INSTANCE_NAME = 'global';
 
 /**
- * Placeholder caps pending the final numbers from Brenton; override per environment with the vars of
- * the same name in wrangler.jsonc.
+ * Global safety caps; override per environment with the vars of the same name in wrangler.jsonc.
+ * The per-account five/day cap is hardcoded in the durable budget.
  */
 export const BUDGET_DEFAULTS = {
   ASK_DAILY_MAX_REQUESTS: 500,
   BLOCK_PLAN_DAILY_MAX_REQUESTS: 200,
-  ASK_DAILY_MAX_DOLLARS: 2,
-  ASK_ESTIMATED_DOLLARS_PER_REQUEST: 0.01,
+  ASK_DAILY_MAX_DOLLARS: 5,
+  ASK_ESTIMATED_DOLLARS_PER_REQUEST: 0.006,
 } as const;
 
 /** A configured number `>= min`; unset, blank or invalid → the fallback. */
@@ -173,17 +174,21 @@ export function budgetStub(env: EdgeEnv): DurableObjectStub<AtlasBudget> | undef
 
 /** Durable daily cap: requests per bucket, and for Ask the dollar ledger (reserve now, settle later). */
 export const budgetGuard: Guard = async (_request, env, context) => {
-  const stub = budgetStub(env);
-  if (!stub) return undefined;
+  const unavailable = () => refusal(context.bucket, { status: 503, error: 'Ask limits are unavailable right now. Try again shortly.' });
+  let stub: ReturnType<typeof budgetStub>;
+  try { stub = budgetStub(env); } catch { return unavailable(); }
+  if (!stub) return unavailable();
   const config = budgetConfig(env);
   const ask = context.bucket === 'ask';
-  const result = await stub.admit({
+  let result;
+  try { result = await stub.admit({
     bucket: context.bucket,
     day: utcDay(context.now),
     maxRequests: ask ? config.askMaxRequests : config.blockPlanMaxRequests,
-    ...(ask ? { dollars: { estimate: config.askEstimateDollars, max: config.askMaxDollars } } : {}),
-  });
-  if (!result.ok) return refusal(context.bucket, { retryAfterSeconds: secondsUntilNextUtcDay(context.now) });
+    ...(ask ? { accountId: context.accountId, dollars: { estimate: config.askEstimateDollars, max: config.askMaxDollars } } : {}),
+  }); } catch { return unavailable(); }
+  if (!result.ok && result.reason === 'identity') return unavailable();
+  if (!result.ok) return refusal(context.bucket, { ...(result.reason === 'user' ? { error: 'You have used your five Asks for today. Your allowance resets at midnight UTC.' } : {}), retryAfterSeconds: secondsUntilNextUtcDay(context.now) });
   if (result.reservationId) context.reservationId = result.reservationId;
   return undefined;
 };

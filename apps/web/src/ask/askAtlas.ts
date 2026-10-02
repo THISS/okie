@@ -2,6 +2,7 @@ import { inspectorAcceptedSummary, CYCLOMATIC_FLAG_THRESHOLD } from '../inspecto
 import { DOGFOOD_ATLAS_OWNER, DOGFOOD_ATLAS_REPO } from '../hostedAtlas';
 import { readDemoQuery } from '../renderer/query';
 import { parseAppRoute } from '../renderer/route';
+import { readableAskAnswer } from './answerText';
 
 /**
  * Ask Atlas client (CLA-27 + CLA-69 + CLA-265): send the question with packets
@@ -14,7 +15,7 @@ import { parseAppRoute } from '../renderer/route';
 
 export const MAX_ASK_PACKETS = 32;
 export const ASK_PROBE_TIMEOUT_MS = 2_000;
-export const ASK_REQUEST_TIMEOUT_MS = 60_000;
+export const ASK_REQUEST_TIMEOUT_MS = 120_000;
 export const ASK_THREAD_PATH = '/api/ask/thread';
 export const ASK_LOGIN_PATH = '/api/auth/github';
 
@@ -136,6 +137,8 @@ export type AskThreadView = {
 
 export type AskAuthView = {
   authenticated: boolean;
+  /** Stable account identity used to partition browser-local history. */
+  accountId?: string;
   login?: string;
   loginPath: string;
   logoutPath: string;
@@ -318,6 +321,7 @@ async function requestAskAuth(fetchImpl: AskFetch, signal: AbortSignal | undefin
       loginPath,
       logoutPath,
     };
+    if (view.authenticated && typeof body.accountId === 'string' && body.accountId) view.accountId = body.accountId;
     if (typeof body.login === 'string' && body.login) view.login = body.login;
     if (typeof body.testLoginPath === 'string' && body.testLoginPath.startsWith('/')) {
       view.testLoginPath = body.testLoginPath;
@@ -457,7 +461,7 @@ export function parseAskThreadTurns(value: readonly unknown[]): AskThreadTurn[] 
     const turn: AskThreadTurn = {
       id: row.id,
       question: row.question,
-      answer: row.answer,
+      answer: readableAskAnswer(row.answer),
       citations: stringIds(row.citations),
       scopeIds: stringIds(row.scopeIds),
       createdAt: row.createdAt,
@@ -884,6 +888,7 @@ export async function submitAskQuestion(
     timeoutMs?: number;
     signal?: AbortSignal;
     atlas?: AskAtlasIdentity;
+    onWarmingUp?: (warming: boolean) => void;
   } = {},
 ): Promise<AskSubmitResult> {
   const fetchImpl = options.fetch ?? fetch;
@@ -893,6 +898,25 @@ export async function submitAskQuestion(
   options.signal?.addEventListener('abort', onAbort, { once: true });
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    if (options.onWarmingUp) {
+      const statusController = new AbortController();
+      const abortStatus = () => statusController.abort();
+      controller.signal.addEventListener('abort', abortStatus, { once: true });
+      const statusTimer = setTimeout(abortStatus, ASK_PROBE_TIMEOUT_MS);
+      try {
+        const status = await fetchImpl('/api/ask', {
+          credentials: 'include', headers: { accept: 'application/json' }, signal: statusController.signal,
+        });
+        if (status.ok) {
+          const readiness = await status.json() as { warmingUp?: unknown };
+          if (!controller.signal.aborted) options.onWarmingUp(readiness.warmingUp === true);
+        }
+      } catch { /* Readiness is optional; the authenticated POST remains authoritative. */ }
+      finally {
+        clearTimeout(statusTimer);
+        controller.signal.removeEventListener('abort', abortStatus);
+      }
+    }
     const response = await fetchImpl('/api/ask', {
       method: 'POST',
       credentials: 'include',
@@ -923,7 +947,8 @@ export async function submitAskQuestion(
     }
     if (!response.ok) {
       if (response.status === 404) return { connected: false };
-      return { connected: true, error: `Ask failed (${response.status}).` };
+      const failure = await response.json().catch(() => ({})) as { error?: unknown };
+      return { connected: true, error: typeof failure.error === 'string' && failure.error ? failure.error.slice(0, 500) : `Ask failed (${response.status}).` };
     }
     const body = await response.json() as AskAnswer & { thread?: AskThreadView };
     if (!body || typeof body !== 'object' || (body.connected !== true && body.connected !== false)) {
@@ -936,7 +961,7 @@ export async function submitAskQuestion(
     if ('answer' in body && typeof body.answer === 'string' && body.answer.trim()) {
       const result: AskAnswerResult = {
         connected: true,
-        answer: body.answer,
+        answer: readableAskAnswer(body.answer),
         citations: stringIds(body.citations),
         scopeIds: stringIds(body.scopeIds),
       };
