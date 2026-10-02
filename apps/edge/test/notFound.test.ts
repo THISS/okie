@@ -4,6 +4,14 @@ import { edgeFetch, seedAtlas, seedIndex } from './helpers';
 
 /** CLA-318: unknown routes and unknown atlases are a branded page with a real 404; real files are untouched. */
 describe('branded 404 at the edge', () => {
+  it('serves the explicitly routed agent reference as HTML', async () => {
+    const response = await edgeFetch('/docs/agents', { env: {
+      ASSETS: { fetch: async () => new Response('<h1>Agent tools</h1>', { headers: { 'content-type': 'text/html; charset=utf-8' } }), connect: () => { throw new Error('No sockets in static docs test'); } },
+    } });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('<h1>Agent tools</h1>');
+    expect((await edgeFetch('/docs/missing.html')).status).toBe(404);
+  });
   it('404s paths the SPA does not route with the static branded page', async () => {
     for (const path of ['/zzz', '/new/extra', '/r', '/r/acme', '/R/acme/app', '/operator/x', '/about/', '/zzz.html', '/some/client/route?x=1']) {
       const response = await edgeFetch(path);

@@ -48,6 +48,7 @@
   // ---- local dev ----
   "vars": {
     "ASK_ENABLED": "0",
+    "AGENT_READS_ENABLED": "0",
     "BLOCK_PLAN_ENABLED": "0",
     "ASK_DAILY_MAX_REQUESTS": "500",
     "BLOCK_PLAN_DAILY_MAX_REQUESTS": "200",
@@ -80,7 +81,7 @@
       "max_instances": 1
     }
   ],
-  "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2660", "simple": { "limit": 10, "period": 60 } }],
+  "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2660", "simple": { "limit": 10, "period": 60 } }, { "name": "AGENT_RATE_LIMITER", "namespace_id": "3530", "simple": { "limit": 60, "period": 60 } }],
 
   "env": {
     "staging": {
@@ -93,6 +94,7 @@
         "ROBOTS_NOINDEX": "1",
         // Ask rollout flag; block planning remains separately disabled.
         "ASK_ENABLED": "1",
+        "AGENT_READS_ENABLED": "1",
         "BLOCK_PLAN_ENABLED": "0",
         // Global safety caps; the five-per-account daily quota is fixed in server code.
         "ASK_DAILY_MAX_REQUESTS": "500",
@@ -119,7 +121,7 @@
       },
       "containers": [{ "class_name": "AtlasApiContainer", "image": "../server/Dockerfile", "image_build_context": "../..", "instance_type": "basic", "max_instances": 1 }],
       "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AtlasApiContainer", "AtlasBudget"] }],
-      "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2661", "simple": { "limit": 10, "period": 60 } }]
+      "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2661", "simple": { "limit": 10, "period": 60 } }, { "name": "AGENT_RATE_LIMITER", "namespace_id": "3531", "simple": { "limit": 60, "period": 60 } }]
     },
     "production": {
       "workers_dev": false,
@@ -135,6 +137,7 @@
         "WEB_ANALYTICS_TOKEN": "4860cbb249bd46c09f74a249b18212ec",
         // Ask rollout flag; block planning remains separately disabled.
         "ASK_ENABLED": "0",
+        "AGENT_READS_ENABLED": "0",
         "BLOCK_PLAN_ENABLED": "0",
         // Global safety caps; the five-per-account daily quota is fixed in server code.
         "ASK_DAILY_MAX_REQUESTS": "500",
@@ -161,7 +164,7 @@
       },
       "containers": [{ "class_name": "AtlasApiContainer", "image": "../server/Dockerfile", "image_build_context": "../..", "instance_type": "basic", "max_instances": 1 }],
       "migrations": [{ "tag": "v1", "new_sqlite_classes": ["AtlasApiContainer", "AtlasBudget"] }],
-      "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2662", "simple": { "limit": 10, "period": 60 } }]
+      "ratelimits": [{ "name": "ASK_RATE_LIMITER", "namespace_id": "2662", "simple": { "limit": 10, "period": 60 } }, { "name": "AGENT_RATE_LIMITER", "namespace_id": "3532", "simple": { "limit": 60, "period": 60 } }]
     }
   }
 }
