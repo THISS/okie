@@ -19,7 +19,7 @@ Try: “Use Source For Atlas to find source-for/atlas and explain how Ask works.
 
 ## ChatGPT
 
-After the endpoint release, connect `https://sourcefor.dev/mcp` through ChatGPT developer mode and test tool discovery and representative workflows. A packaged plugin can be tested through a local/repo marketplace on supported desktop surfaces; public directory submission is separate and is not performed by this PR. Availability varies by product/account. No custom UI is bundled.
+After the endpoint release, connect `https://sourcefor.dev/mcp` through ChatGPT developer mode and test tool discovery and representative workflows. For archive installation, open ChatGPT Plugins → Add → Upload plugin archive, choose the ZIP built below, review the package and add it to your personal plugins. This upload entry point was observed in the test account; installation and tool execution there remain unverified. A local/repo marketplace is another option on supported desktop surfaces. Public directory submission is separate and is not performed by this PR. Availability varies by product/account. No custom UI is bundled.
 
 The intended public endpoint reads anonymous published data. Cloudflare Access on staging is a different boundary: ChatGPT's MCP OAuth flow does not automatically authenticate with an Access service-token pair or a browser Access cookie. Do not embed service tokens in a plugin manifest, ZIP, URL or prompt. The existing staging SDK smoke is not proof of an installed ChatGPT plugin connection.
 
