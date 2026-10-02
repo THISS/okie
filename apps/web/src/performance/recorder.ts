@@ -28,7 +28,7 @@ export function performanceQueryEnabled(search: string): boolean { return new UR
 export interface PerformanceHost {
   now(): number;
   supportedEntryTypes: readonly string[];
-  observe(type: string, callback: (entries: readonly Pick<PerformanceEntry, 'name' | 'startTime' | 'duration'>[]) => void): () => void;
+  observe(type: string, callback: (entries: readonly Pick<PerformanceEntry, 'name' | 'startTime' | 'duration'>[]) => void, buffered: boolean): () => void;
   requestFrame(callback: (time: number) => void): number;
   cancelFrame(id: number): void;
   hidden(): boolean;
@@ -36,13 +36,13 @@ export interface PerformanceHost {
 }
 
 /** All observers and the frame loop exist only while this explicit session is active. */
-export function startPerformanceSession(host: PerformanceHost, recorder = createPerformanceRecorder()) {
+export function startPerformanceSession(host: PerformanceHost, recorder = createPerformanceRecorder(), buffered = true) {
   let stopped = false;
   const cleanup: (() => void)[] = [];
   const observe = (type: Exclude<Capability, 'frames'>, consume: (entry: Pick<PerformanceEntry, 'name' | 'startTime' | 'duration'>) => void) => {
     if (!host.supportedEntryTypes.includes(type)) { recorder.capability(type, 'unsupported'); return; }
     try {
-      cleanup.push(host.observe(type, entries => { if (!stopped) entries.forEach(consume); }));
+      cleanup.push(host.observe(type, entries => { if (!stopped) entries.forEach(consume); }, buffered));
       recorder.capability(type, 'available');
     } catch { recorder.capability(type, 'failed'); }
   };

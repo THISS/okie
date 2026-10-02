@@ -91,8 +91,8 @@ describe('local performance recorder', () => {
     expect(createElement).not.toHaveBeenCalled();
     expect(requestAnimationFrame).not.toHaveBeenCalled();
     expect(setInterval).not.toHaveBeenCalled();
-    expect(addEventListener.mock.calls.map(call => call[0])).toEqual(['keydown', 'pagehide']);
+    expect(addEventListener.mock.calls.map(call => call[0])).toEqual(['keydown', 'pagehide', 'pageshow']);
     diagnostics.dispose();
-    expect(removeEventListener.mock.calls.map(call => call[0])).toEqual(['keydown', 'pagehide']);
+    expect(removeEventListener.mock.calls.map(call => call[0])).toEqual(['keydown', 'pagehide', 'pageshow']);
   });
 });

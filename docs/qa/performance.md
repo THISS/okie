@@ -6,7 +6,7 @@ Use the local performance panel to find startup and interaction stalls before ch
 
 Append `perf=1` to the page query before loading, for example `/?perf=1` or `/?fixture=stress&perf=1`. Alternatively press Shift+Alt+P to start or stop a session. Late activation cannot reconstruct the application bootstrap; reload with the query flag for that measurement. The panel appears outside the application root, including on `/new` and error pages.
 
-Choose **Export safe timing JSON** before **Stop recording**. Stopping discards the local session and removes observers, the frame loop and refresh timer. The query does not persist a preference. Recording is disabled by default and has no network endpoint or account synchronization.
+Choose **Export safe timing JSON** before **Stop recording**. Stopping discards the local session and removes observers, the frame loop and refresh timer. When a page enters the browser Back/Forward cache, collectors stop; an active session resumes on restoration, while a manually stopped session stays stopped. The query does not persist a preference. Recording is disabled by default and has no network endpoint or account synchronization.
 
 The export contains only a schema version, capability states, a dropped-sample count and at most 240 samples with fixed metric identifiers and numeric start/duration values. It does not collect resource URLs, event names/targets, question text, source excerpts, credentials, heap dumps or attribution. Review any separate DevTools trace before sharing: those traces can contain information excluded from this export.
 
@@ -14,7 +14,7 @@ The export contains only a schema version, capability states, a dropped-sample c
 
 Navigation duration is a browser document timing. First paint, first contentful paint and largest contentful paint are timestamps since navigation. They do not prove the atlas is usable. Bootstrap start/completion are application timestamps; completion means the bootstrap requested a render, rather than the renderer finished a frame or the inspector is ready.
 
-Interaction durations are sampled browser Event Timing entries, not a complete INP score. Long tasks are browser-reported main-thread work. Frame stalls are gaps above 50 milliseconds in visible-page animation callbacks, not renderer FPS; hidden-page time is excluded. The diagnostic panel and export themselves add work, so use the same instrumentation setting when comparing runs, then verify improvements with recording disabled too.
+Interaction durations are sampled browser Event Timing entries, not a complete INP score. Browser event durations are rounded to 8 ms, even though the export stores numbers rounded to 0.1 ms; that export formatting does not increase precision. See [PerformanceObserver options](https://developer.mozilla.org/en-US/docs/Web/API/PerformanceObserver/observe). Long tasks are browser-reported main-thread work. Frame stalls are gaps above 50 milliseconds in visible-page animation callbacks, not renderer FPS; hidden-page time is excluded. The diagnostic panel and export themselves add work, so use the same instrumentation setting when comparing runs, then verify improvements with recording disabled too.
 
 A capability marked unsupported or failed has no trustworthy zero result. An available capability with no samples means no matching entry was retained. Old samples roll out of the bounded buffer; inspect the dropped count and export short scenarios separately. The report has no event names, so keep a separate scenario note to identify which actions you performed.
 

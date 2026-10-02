@@ -5,9 +5,9 @@ function browserHost(win: Window & typeof globalThis, doc: Document): Performanc
   return {
     now: () => win.performance.now(),
     supportedEntryTypes: Observer?.supportedEntryTypes ?? [],
-    observe(type, callback) {
+    observe(type, callback, buffered) {
       const observer = new Observer(list => callback(list.getEntries()));
-      try { observer.observe({ type, buffered: true, ...(type === 'event' ? { durationThreshold: 16 } : {}) }); }
+      try { observer.observe({ type, buffered, ...(type === 'event' ? { durationThreshold: 16 } : {}) }); }
       catch (error) { observer.disconnect(); throw error; }
       return () => observer.disconnect();
     },
@@ -24,6 +24,7 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
   let panel: HTMLElement | undefined;
   let refresh: number | undefined;
   let disposed = false;
+  let resumeRecorder: ReturnType<typeof startPerformanceSession>['recorder'] | undefined;
   const stop = () => {
     active?.stop();
     active = undefined;
@@ -32,9 +33,10 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
     panel?.remove();
     panel = undefined;
   };
-  const start = () => {
+  const start = (recorder?: ReturnType<typeof startPerformanceSession>['recorder']) => {
     if (active || disposed) return;
-    active = startPerformanceSession(browserHost(win, doc));
+    // A retained BFCache recorder already contains buffered entries from the previous observer.
+    active = startPerformanceSession(browserHost(win, doc), recorder, recorder === undefined);
     panel = doc.createElement('section');
     panel.setAttribute('aria-label', 'Performance diagnostics');
     panel.dataset.performancePanel = 'true';
@@ -86,13 +88,30 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
     }
   };
   const dispose = () => {
+    if (disposed) return;
     disposed = true;
+    resumeRecorder = undefined;
     stop();
     win.removeEventListener('keydown', key);
-    win.removeEventListener('pagehide', dispose);
+    win.removeEventListener('pagehide', pageHide);
+    win.removeEventListener('pageshow', pageShow);
+  };
+  const pageHide = (event: PageTransitionEvent) => {
+    if (!event.persisted) { dispose(); return; }
+    // A cached document is suspended, not destroyed. Leave only activation/lifecycle listeners.
+    resumeRecorder = active?.recorder;
+    stop();
+  };
+  const pageShow = (event: PageTransitionEvent) => {
+    if (event.persisted && resumeRecorder && !disposed) {
+      const recorder = resumeRecorder;
+      resumeRecorder = undefined;
+      start(recorder);
+    }
   };
   win.addEventListener('keydown', key);
-  win.addEventListener('pagehide', dispose);
+  win.addEventListener('pagehide', pageHide);
+  win.addEventListener('pageshow', pageShow);
   if (performanceQueryEnabled(win.location.search)) start();
   return {
     mark(metric: Extract<Metric, 'bootstrap-start' | 'bootstrap-complete'>) { active?.recorder.record(metric, win.performance.now()); },
