@@ -1,4 +1,5 @@
 import { StrictMode } from 'react';
+import { installPerformanceDiagnostics } from './performance/install';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import '@fontsource/ibm-plex-sans/latin-400.css';
@@ -42,6 +43,10 @@ import {
   type ScanFixture,
   type ScanTrioLoader,
 } from './renderer/scanFixture';
+
+const performanceDiagnostics = installPerformanceDiagnostics();
+performanceDiagnostics.mark('bootstrap-start');
+import.meta.hot?.dispose(() => performanceDiagnostics.dispose());
 
 // CLA-149: read `?planner=jev` before anything can rewrite the URL.
 captureBlockPlannerQueryFlag(window.location.search);
@@ -379,4 +384,4 @@ async function boot() {
   if (route.kind === 'repo') void installPublishedAtlasAttribution(route.slug);
 }
 
-void boot();
+void boot().then(() => performanceDiagnostics.mark('bootstrap-complete'));
