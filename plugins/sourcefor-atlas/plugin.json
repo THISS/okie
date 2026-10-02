@@ -1,0 +1,27 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sourcefor-atlas",
+  "version": "0.1.0",
+  "description": "Find published software architecture atlases and explain systems with commit-pinned source evidence.",
+  "author": { "name": "Source For", "url": "https://sourcefor.dev" },
+  "homepage": "https://sourcefor.dev/docs/agents",
+  "repository": "https://github.com/source-for/atlas",
+  "license": "MIT",
+  "keywords": ["architecture", "code", "evidence"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Source For Atlas",
+        "shortDescription": "Understand codebases with source evidence",
+        "longDescription": "Explore public published software architecture, relationships and captured source evidence. Uses read-only tools and does not start scans or paid Ask answers.",
+        "developerName": "Source For",
+        "category": "Developer Tools",
+        "capabilities": ["Read"],
+        "websiteURL": "https://sourcefor.dev",
+        "privacyPolicyURL": "https://sourcefor.dev/privacy",
+        "termsOfServiceURL": "https://sourcefor.dev/terms",
+        "defaultPrompt": ["Find the Atlas for source-for/atlas and explain how Ask works, with source evidence."]
+      }
+    }
+  }
+}
