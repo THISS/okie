@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest';
+import { recordSearchTiming } from './workerTimings';
 import { installPerformanceDiagnostics } from './install';
 
 class ElementStub extends EventTarget {
@@ -105,5 +106,23 @@ it('keeps a default-disabled document disabled on cache restore and allows later
   expect(qa.frames.size).toBe(0);
   qa.keyboard();
   expect(qa.panels).toHaveLength(1);
+  qa.diagnostics.dispose();
+});
+
+it('records worker phase durations only while diagnostics are active', () => {
+  const qa = installation('');
+  recordSearchTiming('searchIndex', 99);
+  qa.keyboard();
+  recordSearchTiming('searchIndex', 4);
+  recordSearchTiming('searchQuery', 0);
+  qa.transition('pagehide', true);
+  recordSearchTiming('searchIndex', 88);
+  qa.transition('pageshow', true);
+  expect(qa.panels[1]!.children[2]!.textContent).toContain('search-index: 4 ms duration (1 retained)');
+  expect(qa.panels[1]!.children[2]!.textContent).toContain('search-query: 0 ms duration (1 retained)');
+  qa.keyboard();
+  recordSearchTiming('searchIndex', 77);
+  qa.keyboard();
+  expect(qa.panels[2]!.children[2]!.textContent).not.toContain('search-index:');
   qa.diagnostics.dispose();
 });
