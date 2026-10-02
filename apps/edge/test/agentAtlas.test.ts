@@ -80,6 +80,8 @@ describe('public agent atlas reads',()=>{
     await expect(executeAgentTool('get_entity',{atlas,entityId:'system'},{bucket})).rejects.toMatchObject({code:'unavailable'});
     expect(keys.some(key=>key.includes('/private/'))).toBe(false);
   });
+  // This is a large-input correctness test, including fixture creation, R2 storage
+  // and two reads. Its timeout is a safety bound, not a query latency budget.
   it('streams excerpt-heavy snapshots larger than 16MiB while retaining only bounded graph fields',async()=>{
     await seed();
     const values=Array.from({length:20000},(_,i)=>({...entity,id:`entity-${i}`,name:`Large entity ${i}`,sourceExcerpts:[{...entity,padding:'x'.repeat(1000)}],unknown:'not retained'}));
@@ -90,7 +92,7 @@ describe('public agent atlas reads',()=>{
     expect(found).toMatchObject({found:true,entity:{id:'entity-19999'}});
     expect(JSON.stringify(found)).not.toContain('padding');
     expect(await executeAgentTool('get_evidence',{atlas,entityId:'entity-19999'},context)).toMatchObject({status:'not-captured'});
-  });
+  }, 20_000);
   it('reads accepted understanding only from the version-matching public sidecar',async()=>{
     await seed();
     const key=publishedPublicFileKey(slug,'v1','operator-explanations.json');
