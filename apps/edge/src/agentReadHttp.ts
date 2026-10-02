@@ -39,7 +39,7 @@ export async function handleAgentReadRequest(request: Request, env: EdgeEnv): Pr
     if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonResponse(400, { error: 'Invalid atlas query.' });
     const { tool, arguments: args } = body as { tool?: unknown; arguments?: unknown };
     if (typeof tool !== 'string') return jsonResponse(400, { error: 'Invalid atlas query.' });
-    return jsonResponse(200, await executeAgentTool(tool, args ?? {}, { bucket: env.ATLAS_BUCKET }));
+    return jsonResponse(200, await executeAgentTool(tool, args ?? {}, { bucket: env.ATLAS_BUCKET, publicOrigin: allowedOrigin }));
   } catch (error) {
     if (error instanceof AgentAtlasError) return jsonResponse(error.code === 'invalid_arguments' ? 400 : error.code === 'not_found' ? 404 : 503, { error: error.message });
     return jsonResponse(400, { error: 'Invalid atlas query.' });

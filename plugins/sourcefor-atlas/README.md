@@ -2,7 +2,7 @@
 
 Portable OpenAI plugin packaging for the existing five read-only Atlas MCP tools. It supports finding a published repository, explaining its architecture and following captured source evidence. No scans, mutations, private repositories or paid Ask submissions are included.
 
-**Release state:** the package points at `https://sourcefor.dev/mcp`. The production configuration enables public read-only agent access on its next deployment, independently of paid Ask. Installing the package does not deploy or enable the service. Confirm live initialization and tool discovery before use; ChatGPT installation and end-to-end validation remain required before claiming a usable ChatGPT integration.
+**Release state:** the public read-only endpoint `https://sourcefor.dev/mcp` was deployed and validated on 2026-10-03. A custom MCP plugin was installed in ChatGPT and completed an Ask architecture explanation with six captured, frozen-commit citations. That connection does not install this bundled skill. Portable Codex installation was validated separately; the ChatGPT archive/skill installation remains a separate acceptance gate. Installing a package does not deploy the service or enable paid Ask.
 
 ## Local installation
 
@@ -19,7 +19,17 @@ Try: “Use Source For Atlas to find source-for/atlas and explain how Ask works.
 
 ## ChatGPT
 
-After the endpoint release, connect `https://sourcefor.dev/mcp` through ChatGPT developer mode and test tool discovery and representative workflows. For archive installation, open ChatGPT Plugins → Add → Upload plugin archive, choose the ZIP built below, review the package and add it to your personal plugins. This upload entry point was observed in the test account; installation and tool execution there remain unverified. A local/repo marketplace is another option on supported desktop surfaces. Public directory submission is separate and is not performed by this PR. Availability varies by product/account. No custom UI is bundled.
+For the tested tools-only connection, enable developer mode, open Plugins → Add → Create custom MCP server, enter `https://sourcefor.dev/mcp`, choose no authentication, and create the plugin. Select Source For Atlas in a new chat and run the example workflow above. An icon is optional for this personal connection. Check all five read tools are discovered.
+
+To bundle the skill with an existing registered ChatGPT connection, copy its technical ID from the plugin settings URL and build a personal archive:
+
+```sh
+node scripts/package-atlas-plugin.mjs /tmp/sourcefor-atlas-chatgpt.zip --chatgpt-app-id asdk_app_YOUR_REGISTERED_ID
+```
+
+The packager also accepts the settings URL's `plugin_asdk_app_...` identifier and removes only the `plugin_` wrapper. It generates `extensions.com.openai.apps` pointing at `./.app.json`, containing the registered server ID. It omits the portable MCP transport from this personal archive to avoid registering a second server. This ID is connection metadata, not a credential; do not commit a personal mapping to the shared package. The default archive remains portable and uses `mcp.json`.
+
+Open Plugins → Add → Upload plugin archive, select the personal ZIP, review it and add it to your personal plugins. This entry point exists in the test account, but successful bundled-skill import still needs validation. A supported local/repo marketplace is an alternative. Public directory submission is a separate workflow; registered connection mappings are for local/workspace packages, not public submission. Availability varies by account and surface. No custom UI is bundled.
 
 The intended public endpoint reads anonymous published data. Cloudflare Access on staging is a different boundary: ChatGPT's MCP OAuth flow does not automatically authenticate with an Access service-token pair or a browser Access cookie. Do not embed service tokens in a plugin manifest, ZIP, URL or prompt. The existing staging SDK smoke is not proof of an installed ChatGPT plugin connection.
 
@@ -50,14 +60,18 @@ References: [OpenAI packaging](https://developers.openai.com/plugins/build/plugi
 With the system `zip` command installed, run from the repository root:
 
 ```sh
-node scripts/package-atlas-plugin.mjs /tmp/sourcefor-atlas-0.1.0.zip
-unzip -l /tmp/sourcefor-atlas-0.1.0.zip
+node scripts/package-atlas-plugin.mjs /tmp/sourcefor-atlas-0.1.1.zip
+unzip -l /tmp/sourcefor-atlas-0.1.1.zip
 ```
 
 The packager copies only the manifests, README and skill into a fresh archive. It requires the public endpoint and rejects embedded transport authentication.
 
 ### Validation performed for this change
 
-Both manifests passed the published schema checks, and the skill passed its validator. An installed portable-only preview was tested in Codex CLI 0.159.3 against staging through a temporary loopback relay. The relay supplied Access headers outside the package and agent environment; the preview changed only the MCP URL. The full architecture workflow called all five tools and reused one immutable atlas pin. A citation audit found an initial response combining two disjoint excerpts into one wider link; the skill was tightened to require one captured excerpt per link. The installed-plugin rerun passed: all six source links fit retrieved excerpt ranges and frozen commits, with all five tools used and one pin reused. This validates the staging preview, not the disabled production endpoint or ChatGPT.
+Both manifests passed the published schema checks, and the skill passed its validator. An installed portable-only preview was tested in Codex CLI 0.159.3 against staging through a temporary loopback relay. The relay supplied Access headers outside the package and agent environment; the preview changed only the MCP URL. The full architecture workflow called all five tools and reused one immutable atlas pin. A citation audit found an initial response combining two disjoint excerpts into one wider link; the skill was tightened to require one captured excerpt per link. The installed-plugin rerun passed: all six source links fit retrieved excerpt ranges and frozen commits, with all five tools used and one pin reused. This validates the staging portable preview. After rollout, the production endpoint also passed initialization, all-five-tool discovery and a pinned evidence workflow.
 
-Do not install the preview alongside the production package: both register the `atlas` server name, which can select the wrong transport. Remove the test installation and relay after QA. ChatGPT validation remains pending: the authorized archive upload was attempted, but Add plugin returned a generic failure. At that time the canonical endpoint returned an empty POST 405 and HTML GET 404. Neither ZIP selection nor the generic error establishes successful installation or its failure's root cause. First establish a reachable MCP connection, inspect discovered tools, then retry the plugin and evidence workflow. For ChatGPT-specific registered connections, follow the current OpenAI setup flow and use the returned connection ID in the OpenAI mapping; never substitute credentials for that ID.
+Do not install the preview alongside the production package: both register the `atlas` server name, which can select the wrong transport. Remove the test installation and relay after QA. ChatGPT custom-connection validation passed on 2026-10-03: the installed plugin explained Ask using one publication pin and six source links. An independent `get_evidence` audit verified all six links fit captured excerpt ranges at the frozen commit. The activity panel showed investigation summaries rather than raw tool arguments, so the host's all-five-tool account is not a raw invocation trace. The response explicitly acknowledged missing component-level source evidence.
+
+The test also exposed a missing visual Atlas link: repository URLs were mistaken for app URLs. The follow-up tool metadata adds `atlasUrl` and `atlasUrlVersion: "latest"` to distinguish the browser's latest publication from the immutable evidence pin. The bundled skill requires that distinction. Do not claim these fields are deployed until a later reviewed release is deployed.
+
+The original portable archive upload returned a generic Add plugin failure before the endpoint rollout; its cause remains unknown. A personal archive with the registered connection mapping is prepared for another installation test. ZIP selection alone does not establish import, skill availability or tool execution. Complete a fresh-chat test of the installed package before marking that acceptance gate passed.
