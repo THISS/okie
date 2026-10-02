@@ -1,6 +1,6 @@
 # Atlas performance profiling
 
-Use the local performance panel to find startup and interaction stalls before choosing an optimization. This first slice records browser timings; it does not move work into threads or claim a speed improvement. Worker scheduling, progressive loading and repeated agent reads are follow-up work under CLA-357.
+Use the local performance panel to find startup and interaction stalls before choosing an optimization. The panel records browser timings and the first Web Worker slice adds atlas-search phase measurements. Progressive loading, additional worker processing and repeated agent reads remain follow-up work under CLA-357. No speed improvement is claimed without a controlled comparison.
 
 ## Enable recording
 
@@ -41,3 +41,24 @@ Benchmark cold and repeated version-pinned reads separately under CLA-361. Recor
 ## Delivery order
 
 CLA-358 supplies instrumentation and reproducible scenarios. CLA-359 schedules measured expensive browser processing in cancellable workers. CLA-360 prioritizes the first useful view and selected evidence while limiting speculative background loading. CLA-361 measures and optimizes repeated server/edge reads. Each optimization needs a before/after comparison and a regression check tied to the measured behavior.
+
+## Browser search worker (CLA-362)
+
+Opening search lazily starts a dedicated module worker. A minimal corpus containing IDs and the existing searchable fields (name, kind, responsibility and source label) is prepared in 256-row chunks with yields, encoded and transferred as ArrayBuffers once for that scene entity array. The worker retains its index until the scene changes or the app unmounts. Closing search cancels queries but keeps the index; subsequent keystrokes send only a query and limit, and replies contain at most seven IDs. The scene, geometry, evidence and excerpts remain in the UI; this slice does not move the full atlas or renderer into a worker and does not require SharedArrayBuffer or cross-origin isolation headers.
+
+There is at most one active query and one newest pending query. Superseded queries cancel cooperatively at worker yield boundaries, and the UI rejects results for obsolete queries or entity arrays. Worker errors, message errors and a 10-second handshake/query safety timeout switch the session to chunked main-thread fallback. The timeout is not a performance target. Changing scene or unmounting terminates the worker and cancels old preparation/fallback work. Preparation stops when its worker fails, rather than encoding an unused corpus alongside fallback search.
+
+Record with `?perf=1` or Shift+Alt+P. Shift+Alt+D exposes the search backend/status alongside the search popover. For development-only fallback exploration, reload with `searchWorker=0` in the query before opening search; production builds ignore this flag. Diagnostics record only these fixed names and numeric durations:
+
+| Metric | Meaning |
+| --- | --- |
+| `search-prepare` | UI-thread corpus preparation elapsed time, including yield waits and chunk encoding. |
+| `search-startup` | Client creation to index-ready acknowledgement, including preparation, worker startup, transfer and index build; these overlap the separate phase measurements. |
+| `search-index` | Worker decode, lowercase normalization and index construction elapsed time. |
+| `search-query` | Worker query elapsed time, including cooperative yield waits. |
+| `search-round-trip` | Dispatch to receipt on the UI thread, including worker work, message delivery and scheduling; it is not isolated transfer cost. |
+| `search-fallback` | Chunked main-thread fallback query elapsed time, including yield waits. |
+
+All search sample timestamps are receipt/recording times on the UI thread. Worker durations use that worker's own clock; clock origins are not subtracted across threads. Blank-query suggestions stay synchronous and location-aware. Search text, result IDs and corpus contents never enter the performance export; worker messages contain the query/index data needed for local search. Recording retains nothing while diagnostics are stopped.
+
+For repeated runs, record cold first-open preparation/readiness separately from warm-index searches. Use the same golden/stress/pinned publication and query sequence, including a no-match query that scans the whole index, rapid replacements, clear/close/reopen, scene changes and selecting a result with a populated inspector. Export short sessions before the 240-sample limit rolls over. A dev fallback run exercises correctness and capability recovery; it is not a controlled comparison against the previous synchronous implementation. Use a production build and a fixed browser/environment for performance claims, and verify input/pan/zoom while background work is pending.

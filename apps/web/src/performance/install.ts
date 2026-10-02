@@ -1,3 +1,4 @@
+import { subscribeSearchTiming } from './workerTimings';
 import { performanceQueryEnabled, startPerformanceSession, type Metric, type PerformanceHost } from './recorder';
 
 function browserHost(win: Window & typeof globalThis, doc: Document): PerformanceHost {
@@ -24,8 +25,11 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
   let panel: HTMLElement | undefined;
   let refresh: number | undefined;
   let disposed = false;
+  let unsubscribeTiming: (() => void) | undefined;
   let resumeRecorder: ReturnType<typeof startPerformanceSession>['recorder'] | undefined;
   const stop = () => {
+    unsubscribeTiming?.();
+    unsubscribeTiming = undefined;
     active?.stop();
     active = undefined;
     if (refresh !== undefined) win.clearInterval(refresh);
@@ -37,6 +41,7 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
     if (active || disposed) return;
     // A retained BFCache recorder already contains buffered entries from the previous observer.
     active = startPerformanceSession(browserHost(win, doc), recorder, recorder === undefined);
+    unsubscribeTiming = subscribeSearchTiming((metric, durationMs) => active?.recorder.record(metric, win.performance.now(), durationMs));
     panel = doc.createElement('section');
     panel.setAttribute('aria-label', 'Performance diagnostics');
     panel.dataset.performancePanel = 'true';
@@ -44,7 +49,7 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
     const heading = doc.createElement('strong');
     heading.textContent = 'Local performance diagnostics';
     const explanation = doc.createElement('p');
-    explanation.textContent = 'Paint is browser page paint, not atlas readiness. Bootstrap completion means render requested, not rendered. Interaction timings are sampled events, not INP. Frame gaps over 50 ms exclude hidden pages. Reload with ?perf=1 to capture bootstrap.';
+    explanation.textContent = 'Paint is browser page paint, not atlas readiness. Bootstrap completion means render requested, not rendered. Interaction timings are sampled events, not INP. Frame gaps over 50 ms exclude hidden pages. Reload with ?perf=1 to capture bootstrap. Search worker timings separate preparation, index build, query processing and round trip; their timestamps mark receipt on the UI thread.';
     const summary = doc.createElement('pre');
     summary.style.cssText = 'white-space:pre-wrap;font:12px/1.5 monospace';
     const update = () => {
@@ -54,7 +59,7 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
       for (const metric of [...new Set(report.samples.map(sample => sample.metric))]) {
         const samples = report.samples.filter(sample => sample.metric === metric);
         const latest = samples[samples.length - 1]!;
-        lines.push(`${metric}: ${latest.durationMs ? `${latest.durationMs} ms duration` : `${latest.startMs} ms since navigation`} (${samples.length} retained)`);
+        lines.push(`${metric}: ${metric === 'first-paint' || metric === 'first-contentful-paint' || metric === 'largest-contentful-paint' || metric === 'bootstrap-start' || metric === 'bootstrap-complete' ? `${latest.startMs} ms since navigation` : `${latest.durationMs} ms duration`} (${samples.length} retained)`);
       }
       lines.push(`Dropped samples: ${report.droppedSamples}`);
       summary.textContent = lines.join('\n');

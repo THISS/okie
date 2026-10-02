@@ -239,7 +239,7 @@ describe('App wires scoped browse and unscoped search', () => {
   it('uses the hierarchical explorer helper instead of the 200-row dump', () => {
     expect(app).toContain('explorerEntitiesForView(');
     expect(app).not.toContain('scene.entities.length > 200');
-    expect(app).toContain('searchArchitectureEntities(');
+    expect(app).toContain('useWorkerSearch(scene.entities, search, searchOpen');
   });
 });
 
