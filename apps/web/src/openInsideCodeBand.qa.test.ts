@@ -30,7 +30,14 @@ describe('CLA-78: Code rail after Open inside a container', () => {
     expect(app).toContain('function selectLevelLoaded(');
     expect(app).toContain('void fixture.ensureNeighborhood(initialFocus)');
     expect(app).toContain('return fixture.ensureNeighborhood(compileFocus)');
-    expect(app).toContain('if (fixture === scanFixture) selectLevelLoaded(index)');
+    const selectLevel = app.slice(app.indexOf('function selectLevel('), app.indexOf('function selectLevelLoaded('));
+    const neighborhoodReady = selectLevel.indexOf('return fixture.ensureNeighborhood(compileFocus)');
+    const cachedCompile = selectLevel.indexOf('await composeScanSceneAsync(');
+    expect(neighborhoodReady).toBeGreaterThanOrEqual(0);
+    expect(cachedCompile).toBeGreaterThanOrEqual(0);
+    expect(neighborhoodReady).toBeLessThan(cachedCompile);
+    expect(selectLevel).toContain('!controller.signal.aborted && fixture === scanFixture');
+    expect(selectLevel).toContain('selectLevelLoaded(index, prepared)');
   });
 
   it('does not raise the 2000 hang-guard', () => {
