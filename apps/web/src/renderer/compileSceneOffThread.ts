@@ -1,5 +1,5 @@
 import { recordAtlasWorkerCompile } from '../performance/loadTimings';
-import type { ScanSceneInput } from './scanScene';
+import { guardScanCompile, type ScanSceneInput } from './scanScene';
 import type { AtlasScene } from './types';
 import type { SceneCompileRequest, SceneCompileResponse } from './sceneCompileProtocol';
 
@@ -11,12 +11,13 @@ export type SceneCompileSession = {
 type Job = {
   id: number; input: ScanSceneInput; options: SceneCompileOptions;
   resolve(scene: AtlasScene | undefined): void; reject(reason: unknown): void;
-  abort: () => void; timer?: ReturnType<typeof setTimeout>;
+  abort: () => void; timer?: ReturnType<typeof setTimeout>; abandoned?: boolean; settled?: boolean;
 };
 
 /** One graph generation, two retained scenes and at most one queued job per priority.
  * A caller must advance generation after mutating its snapshot. Active synchronous
- * work can only be cancelled by terminating the worker; the next job reloads graph.
+ * selected work finishes after its caller is abandoned; only the latest queued
+ * request starts next. Speculative work may be terminated for selected work.
  * undefined requests the caller's existing fallback. Superseded work rejects AbortError.
  */
 export function createSceneCompileSession(): SceneCompileSession {
@@ -32,7 +33,9 @@ export function createSceneCompileSession(): SceneCompileSession {
   let nextId = 0;
   const scenes = new Map<AtlasScene, number>();
   const settle = (job: Job, scene?: AtlasScene, aborted = false) => {
-    clearTimeout(job.timer);
+    if (job.settled) return;
+    job.settled = true;
+    if (!job.abandoned) clearTimeout(job.timer);
     job.options.signal?.removeEventListener('abort', job.abort);
     if (aborted) job.reject(job.options.signal?.reason ?? new DOMException('Aborted', 'AbortError'));
     else job.resolve(scene);
@@ -48,7 +51,7 @@ export function createSceneCompileSession(): SceneCompileSession {
     active = job;
     const fail = () => {
       if (active !== job) return;
-      active = undefined; reset(); settle(job); pump();
+      clearTimeout(job.timer); active = undefined; reset(); settle(job); pump();
     };
     if (!worker) {
       if (typeof Worker === 'undefined') { fail(); return; }
@@ -60,7 +63,18 @@ export function createSceneCompileSession(): SceneCompileSession {
       if (worker !== currentWorker || active !== job) return;
       const result = event.data as SceneCompileResponse;
       if (result.id !== job.id || result.generation !== job.options.generation) return;
-      if (!result.ok || result.scene?.rootEntityId !== job.input.focusEntityId) { fail(); return; }
+      if (job.abandoned) { clearTimeout(job.timer); active = undefined; pump(); return; }
+      let validScope = result.scene?.rootEntityId === job.input.focusEntityId;
+      if (!validScope && result.scene?.scanGuardRefusal) {
+        const expected = guardScanCompile(job.input.snapshot, job.input.focusEntityId, job.input.view.rootEntityId);
+        const actual = result.scene.scanGuardRefusal;
+        validScope = Boolean(expected.refusal && result.scene.rootEntityId === expected.focusEntityId
+          && actual.requestedFocusId === expected.refusal.requestedFocusId
+          && actual.fallbackFocusId === expected.refusal.fallbackFocusId
+          && actual.entityCount === expected.refusal.entityCount
+          && actual.relationCount === expected.refusal.relationCount);
+      }
+      if (!result.ok || !result.scene || !validScope) { fail(); return; }
       if (typeof result.durationMs === 'number') recordAtlasWorkerCompile(result.durationMs);
       scenes.set(result.scene, job.id);
       while (scenes.size > 2) scenes.delete(scenes.keys().next().value!);
@@ -69,13 +83,13 @@ export function createSceneCompileSession(): SceneCompileSession {
     currentWorker.onerror = fail;
     currentWorker.onmessageerror = fail;
     job.timer = setTimeout(fail, 20_000);
-    const { snapshot, ...input } = job.input;
+    const { snapshot, view, childCounts, unpublishedChildren, ...input } = job.input;
     const needsGraph = workerGeneration !== job.options.generation || workerSnapshot !== snapshot;
     const previousId = needsGraph || !input.previous ? undefined : scenes.get(input.previous);
     if (previousId !== undefined) delete input.previous;
     const request: SceneCompileRequest = {
       id: job.id, generation: job.options.generation, input, previousId,
-      ...(needsGraph ? { graph: { snapshot } } : {}),
+      ...(needsGraph ? { graph: { snapshot, view, childCounts, unpublishedChildren } } : {}),
     };
     try {
       currentWorker.postMessage(request);
@@ -83,7 +97,12 @@ export function createSceneCompileSession(): SceneCompileSession {
     } catch { fail(); }
   };
   const cancel = (job: Job, aborted = true) => {
-    if (active === job) { active = undefined; reset(); }
+    if (active === job) {
+      if (!disposed && job.options.priority !== 'speculative') {
+        job.abandoned = true; settle(job, undefined, aborted); return;
+      }
+      clearTimeout(job.timer); active = undefined; reset();
+    }
     if (selected === job) selected = undefined;
     if (speculative === job) speculative = undefined;
     settle(job, undefined, aborted);
@@ -109,7 +128,8 @@ export function createSceneCompileSession(): SceneCompileSession {
           speculative = job;
         } else {
           if (selected) cancel(selected);
-          // Latest selected work supersedes any active work. Restarting interrupts CPU.
+          // Selected work abandons a caller without re-cloning its graph;
+          // speculative work can be interrupted to make room immediately.
           if (active) cancel(active);
           selected = job;
         }

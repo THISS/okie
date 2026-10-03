@@ -1,3 +1,5 @@
+import { finishLevelScenePreparation, levelScenePreparationPending, LEVEL_SCENE_PREPARING } from './renderer/levelScenePreparation';
+import { compileCurrentGeneration } from './renderer/compileCurrentGeneration';
 import { initialSceneBandsMatch } from './renderer/initialSceneCompatibility';
 import { recordAtlasFirstFrame } from './performance/loadTimings';
 import { DiagramActionHelp } from './diagram/DiagramActionHelp';
@@ -1508,9 +1510,7 @@ export function App() {
       fixture?.disposeSceneWorker();
     };
   }, []);
-  const neighborhoodScenesRef = useRef<Map<string, AtlasScene>>(new Map(
-    scanFixture ? [[scanFixture.navigation.rootEntityId, goldenScene]] : [],
-  ));
+  const neighborhoodScenesRef = useRef<Map<string, AtlasScene>>(new Map());
   const askButtonRef = useRef<HTMLButtonElement | null>(null);
   const askInputRef = useRef<HTMLTextAreaElement | null>(null);
   const askAbortRef = useRef<AbortController | undefined>(undefined);
@@ -3566,22 +3566,24 @@ export function App() {
     };
   }
 
-  async function composeScanSceneAsync(focusEntityId: string, previous: AtlasScene, signal: AbortSignal, cameraOverride?: Camera) {
+  async function composeScanSceneAsync(focusEntityId: string, previous: AtlasScene, signal: AbortSignal, cameraOverride?: Camera, keepEntityIds?: readonly string[]) {
     const fixture = scanFixture!;
-    const { residency, cacheKey } = scanSceneRequest(focusEntityId, cameraOverride);
-    const cached = readNeighborhoodScene(neighborhoodScenesRef.current, cacheKey);
-    if (cached) return cached;
-    const generation = fixture.getSceneGeneration();
-    const compiled = await fixture.createSceneAsync(focusEntityId, previous, residency, signal);
-    if (signal.aborted || fixture !== scanFixture || generation !== fixture.getSceneGeneration()) throw new DOMException('Scene request superseded', 'AbortError');
-    retainNeighborhoodScene(neighborhoodScenesRef.current, cacheKey, cacheableNeighborhoodScene(compiled));
-    return compiled;
+    return compileCurrentGeneration(() => fixture.getSceneGeneration(), async () => {
+      const { residency, cacheKey } = scanSceneRequest(focusEntityId, cameraOverride, keepEntityIds);
+      const cached = readNeighborhoodScene(neighborhoodScenesRef.current, cacheKey);
+      if (cached) return cached;
+      const generation = fixture.getSceneGeneration();
+      const compiled = await fixture.createSceneAsync(focusEntityId, previous, residency, signal);
+      if (signal.aborted || fixture !== scanFixture) throw new DOMException('Scene request superseded', 'AbortError');
+      if (generation === fixture.getSceneGeneration()) retainNeighborhoodScene(neighborhoodScenesRef.current, cacheKey, cacheableNeighborhoodScene(compiled));
+      return compiled;
+    }, signal);
   }
 
   /** Recompile the current C4 neighborhood for the camera tile window. Not a full-graph compile. */
   function refreshViewportNeighborhood(next: Camera) {
     // Foreground band handoffs own selected compilation until publication finishes.
-    if (!scanFixture || zoomHandoffInflightRef.current) return;
+    if (!scanFixture || levelScenePreparationPending(levelCompileAbortRef.current) || zoomHandoffInflightRef.current) return;
     const containerMorph = scanContainerMorphRef.current;
     // The terminal L3 frame remains an endpoint of the reversible L2↔L3
     // bridge. A camera-tile refresh here can compile only the owner shell and
@@ -3626,7 +3628,9 @@ export function App() {
         sceneRef.current = nextScene;
         setScene(nextScene);
       }
-    }).catch(() => { /* Cancellation preserves the visible scene and current camera. */ }).finally(() => {
+    }).catch(error => {
+      if (request.owns() && !(error instanceof DOMException && error.name === 'AbortError')) setLiveMessage('This map view could not be prepared. Try again.');
+    }).finally(() => {
       if (request.owns()) viewportRequestedTileRef.current = undefined;
     });
   }
@@ -3729,7 +3733,7 @@ export function App() {
     applyCamera: (next: Camera) => void,
     pointer?: LensPoint,
   ): boolean {
-    if (!scanFixture) return false;
+    if (!scanFixture || levelScenePreparationPending(levelCompileAbortRef.current)) return false;
     const containerMorph = scanContainerMorphRef.current;
     if (containerMorph && containerMorph.scene === sceneRef.current && containerMorph.progress < 1) return false;
     const currentDetail = semanticLensSessionDetail(semanticLensSessionRef.current);
@@ -3803,7 +3807,9 @@ export function App() {
       const still = scanZoomCompileHandoff(sourceScene, activeSnapshot, livePreferredId, viewRootId, liveDetail, sourceScene.rootEntityId ?? viewRootId);
       if (!still || still.compileFocus !== handoff.compileFocus || still.detail !== handoff.detail) return;
       applyCamera(applyScanZoomHandoff(still, liveCamera, livePreferredId, prepared));
-    }).catch(() => { /* A superseded handoff must never run a synchronous fallback. */ }).finally(() => {
+    }).catch(error => {
+      if (owns() && !(error instanceof DOMException && error.name === 'AbortError')) setLiveMessage('This detail level could not be prepared. Try again.');
+    }).finally(() => {
       if (token === zoomHandoffGenerationRef.current) zoomHandoffInflightRef.current = undefined;
     });
     return true;
@@ -4189,7 +4195,7 @@ export function App() {
       levelCompileAbortRef.current = controller;
       const initialScene = sceneRef.current;
       const initialSelection = inspectorSelectionRef.current;
-      setLiveMessage('Preparing the next detail level…');
+      setLiveMessage(LEVEL_SCENE_PREPARING);
       const detail = semanticDetails[index];
       const preferredId = selected.id;
       const initialFocus = scanCompileFocusForBand(
@@ -4212,10 +4218,14 @@ export function App() {
         const currentFocus = initialScene.rootEntityId ?? viewRootId;
         const handoff = scanZoomCompileHandoff(initialScene, activeSnapshot, initialSelection, viewRootId, detail, currentFocus);
         const compileFocus = handoff?.compileFocus ?? currentFocus;
-        const prepared = await fixture.createSceneAsync(compileFocus, initialScene, { keepEntityIds: initialSelection ? [initialSelection] : undefined }, controller.signal);
+        const prepared = await composeScanSceneAsync(compileFocus, initialScene, controller.signal, undefined, initialSelection ? [initialSelection] : undefined);
         if (!controller.signal.aborted && fixture === scanFixture && initialScene === sceneRef.current && initialSelection === inspectorSelectionRef.current) selectLevelLoaded(index, prepared);
-      }).catch(error => {
-        if (!controller.signal.aborted && !(error instanceof DOMException && error.name === 'AbortError')) setLiveMessage('This detail level could not be prepared. Try again.');
+      }).catch(() => {
+        if (levelCompileAbortRef.current === controller && !controller.signal.aborted) setLiveMessage('This detail level could not be prepared. Try again.');
+      }).finally(() => {
+        if (finishLevelScenePreparation(levelCompileAbortRef, controller)) {
+          setLiveMessage(current => current === LEVEL_SCENE_PREPARING ? 'Detail level preparation cancelled. Choose a level to try again.' : current);
+        }
       });
       return;
     }

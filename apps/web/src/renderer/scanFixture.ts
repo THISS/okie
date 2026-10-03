@@ -1,3 +1,4 @@
+import { compileCurrentGeneration } from './compileCurrentGeneration';
 import { createSceneCompileSession, type SceneCompileSession } from './compileSceneOffThread';
 import { measureAtlasPhase, measureAtlasAsyncPhase } from '../performance/loadTimings';
 import {
@@ -23,6 +24,7 @@ import { rememberPublishedChildCounts } from './lazyBandCompile';
 import type { AtlasScene } from './types';
 import {
   compileScanScene,
+  SCAN_BAND_DEPTH_MIN_ENTITIES,
   scanScopeCompileOptions,
   type ScanModeOptions,
   type ScanScopedOptions,
@@ -222,7 +224,6 @@ function buildLiveScanFixture(
     const generation = snapshotGeneration;
     const prepared = await measureAtlasAsyncPhase('atlas-worker-round-trip', () => workerSession().compile({ snapshot, view, focusEntityId: view.rootEntityId, boot: extras.boot, modeOptions: options, childCounts, unpublishedChildren }, { generation: fullWorkerGeneration(), priority: 'speculative', signal }));
     if (generation !== snapshotGeneration) return undefined;
-    if (prepared) initialScene = prepared;
     return prepared;
     })();
     enrichment = work;
@@ -251,10 +252,11 @@ function buildLiveScanFixture(
   };
 
   const createSceneAsync = async (focusEntityId: string, previous?: AtlasScene, residency?: ScanViewportResidency, signal?: AbortSignal): Promise<AtlasScene> => {
-    const generation = snapshotGeneration;
-    const prepared = await measureAtlasAsyncPhase('atlas-worker-round-trip', () => workerSession().compile({ snapshot, view, focusEntityId, boot: extras.boot, modeOptions: options, childCounts, unpublishedChildren, ...(previous ? { previous } : {}), ...(residency ? { residency } : {}) }, { generation: fullWorkerGeneration(), priority: 'selected', signal }));
-    if (signal?.aborted || generation !== snapshotGeneration) throw signal?.reason ?? new DOMException('Snapshot changed', 'AbortError');
-    return prepared ?? createScene(focusEntityId, previous, residency);
+    return compileCurrentGeneration(() => snapshotGeneration, async () => {
+      const prepared = await measureAtlasAsyncPhase('atlas-worker-round-trip', () => workerSession().compile({ snapshot, view, focusEntityId, boot: extras.boot, modeOptions: options, childCounts, unpublishedChildren, ...(previous ? { previous } : {}), ...(residency ? { residency } : {}) }, { generation: fullWorkerGeneration(), priority: 'selected', signal }));
+      if (!prepared && snapshot.entities.length > SCAN_BAND_DEPTH_MIN_ENTITIES) throw new Error('Background scene preparation is unavailable. Keep the current view and try again.');
+      return prepared ?? createScene(focusEntityId, previous, residency);
+    }, signal);
   };
 
   const ensureNeighborhood = async (focusEntityId: string): Promise<void> => {

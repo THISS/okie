@@ -1,9 +1,9 @@
-import { compileScanScene, type ScanSceneInput } from './scanScene';
+import { compileScanScene } from './scanScene';
 import type { AtlasScene } from './types';
 import type { SceneCompileRequest, SceneCompileResponse } from './sceneCompileProtocol';
 
 const worker = self as unknown as { onmessage: ((event: MessageEvent<SceneCompileRequest>) => void) | null; postMessage(value: SceneCompileResponse): void };
-let graph: Pick<ScanSceneInput, 'snapshot'> | undefined;
+let graph: SceneCompileRequest['graph'];
 let generation: number | undefined;
 const scenes = new Map<number, AtlasScene>();
 worker.onmessage = event => {

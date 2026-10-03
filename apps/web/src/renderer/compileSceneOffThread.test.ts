@@ -1,6 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { compileSceneOffThread, createSceneCompileSession } from './compileSceneOffThread';
-import type { ScanSceneInput } from './scanScene';
+import { compileScanScene, type ScanSceneInput } from './scanScene';
+import demoSnapshot from '../../../../fixtures/architecture/demo-snapshot.json';
+import demoView from '../../../../fixtures/architecture/demo-view.json';
 import type { AtlasScene } from './types';
 import type { SceneCompileRequest } from './sceneCompileProtocol';
 const input = { focusEntityId: 'root', snapshot: {} } as ScanSceneInput;
@@ -101,4 +103,119 @@ it('rejects disposed sessions without triggering synchronous fallback', async ()
   await rejected;
   await expect(session.compile(input, { generation: 0 })).rejects.toMatchObject({ name: 'AbortError' });
   expect(WorkerStub.latest.terminate).toHaveBeenCalledOnce();
+});
+
+it('finishes abandoned selected CPU and starts only the latest bounded queued request without restart', async () => {
+  vi.stubGlobal('Worker', WorkerStub);
+  const session = createSceneCompileSession();
+  const first = session.compile(input, { generation: 0 });
+  const rejectedFirst = expect(first).rejects.toMatchObject({ name: 'AbortError' });
+  const worker = WorkerStub.latest;
+  const second = session.compile(input, { generation: 0 });
+  const rejectedSecond = expect(second).rejects.toMatchObject({ name: 'AbortError' });
+  const latest = session.compile(input, { generation: 0 });
+  expect(worker.postMessage).toHaveBeenCalledTimes(1);
+  expect(worker.terminate).not.toHaveBeenCalled();
+  worker.reply();
+  expect(worker.postMessage).toHaveBeenCalledTimes(2);
+  expect(worker.postMessage.mock.lastCall![0].graph).toBeUndefined();
+  const scene = worker.reply(); expect(await latest).toBe(scene);
+  await rejectedFirst; await rejectedSecond; session.dispose();
+});
+
+it('retains generation-static view, counts and unpublished children rather than re-cloning them', async () => {
+  vi.stubGlobal('Worker', WorkerStub);
+  const session = createSceneCompileSession();
+  const graphInput = { ...input, view: { layout: { nodes: { root: {} } } }, childCounts: { root: 2000 }, unpublishedChildren: [{ id: 'pending' }] } as unknown as ScanSceneInput;
+  const first = session.compile(graphInput, { generation: 0 });
+  const worker = WorkerStub.latest;
+  expect(worker.postMessage.mock.lastCall![0].graph).toMatchObject({ view: graphInput.view, childCounts: graphInput.childCounts, unpublishedChildren: graphInput.unpublishedChildren });
+  worker.reply(); await first;
+  const second = session.compile(graphInput, { generation: 0 });
+  const request = worker.postMessage.mock.lastCall![0];
+  expect(request.graph).toBeUndefined();
+  for (const field of ['snapshot', 'view', 'childCounts', 'unpublishedChildren']) expect(request.input).not.toHaveProperty(field);
+  worker.reply(); await second; session.dispose();
+});
+
+it('an abandoned active selected job keeps its timeout and cannot starve the newest request', async () => {
+  vi.useFakeTimers(); vi.stubGlobal('Worker', WorkerStub);
+  const session = createSceneCompileSession();
+  const controller = new AbortController();
+  const first = session.compile(input, { generation: 0, signal: controller.signal });
+  const rejection = expect(first).rejects.toMatchObject({ name: 'AbortError' });
+  const old = WorkerStub.latest; controller.abort();
+  const latest = session.compile(input, { generation: 0 });
+  expect(old.terminate).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(20_000);
+  expect(old.terminate).toHaveBeenCalledOnce();
+  expect(WorkerStub.latest).not.toBe(old);
+  old.reply(); const scene = WorkerStub.latest.reply();
+  expect(await latest).toBe(scene); await rejection; session.dispose();
+});
+
+it('accepts the real compiler guard fallback above 2000 entities across structured clones', async () => {
+  const snapshot = structuredClone(demoSnapshot) as unknown as ScanSceneInput['snapshot'];
+  const view = structuredClone(demoView) as unknown as ScanSceneInput['view'];
+  snapshot.entities.push({ id: 'code:huge', name: 'huge', kind: 'code', parentId: view.rootEntityId, sourceRefs: [] },
+    ...Array.from({ length: 2001 }, (_, i) => ({ id: `code:huge-${i}`, name: `leaf${i}`, kind: 'code' as const, parentId: 'code:huge', sourceRefs: [] })));
+  const realInput: ScanSceneInput = { snapshot, view, focusEntityId: 'code:huge', boot: 'full', modeOptions: {}, childCounts: {}, unpublishedChildren: [] };
+  class RealCompilerWorker extends WorkerStub {
+    graph?: SceneCompileRequest['graph'];
+    postMessage = vi.fn((request: SceneCompileRequest) => {
+      const copy = structuredClone(request);
+      this.graph = copy.graph ?? this.graph;
+      queueMicrotask(() => {
+        const scene = compileScanScene({ ...copy.input, ...this.graph! });
+        this.onmessage?.({ data: structuredClone({ id: copy.id, generation: copy.generation, ok: true, scene, durationMs: 1 }) });
+      });
+    });
+  }
+  vi.stubGlobal('Worker', RealCompilerWorker);
+  const session = createSceneCompileSession();
+  const scene = await session.compile(realInput, { generation: 0 });
+  expect(scene?.rootEntityId).toBe(view.rootEntityId);
+  expect(scene?.scanGuardRefusal).toMatchObject({ requestedFocusId: 'code:huge', fallbackFocusId: view.rootEntityId, entityCount: 2002 });
+  expect(WorkerStub.latest.terminate).not.toHaveBeenCalled();
+  expect(await session.compile(realInput, { generation: 0 })).toEqual(scene);
+  expect(WorkerStub.latest.postMessage.mock.lastCall![0].graph).toBeUndefined();
+  session.dispose();
+  vi.stubGlobal('Worker', WorkerStub);
+  for (const patch of [{ requestedFocusId: 'other' }, { fallbackFocusId: 'other' }, { entityCount: 2001 }, { relationCount: 1 }]) {
+    const invalidSession = createSceneCompileSession();
+    const pending = invalidSession.compile(realInput, { generation: 0 });
+    WorkerStub.latest.reply({ ...scene!, scanGuardRefusal: { ...scene!.scanGuardRefusal!, ...patch } });
+    expect(await pending).toBeUndefined();
+    expect(WorkerStub.latest.terminate).toHaveBeenCalledOnce();
+    invalidSession.dispose();
+  }
+});
+
+it('generation changes abandon selected work without restart and transfer the newer graph after it finishes', async () => {
+  vi.stubGlobal('Worker', WorkerStub);
+  const session = createSceneCompileSession();
+  const first = session.compile(input, { generation: 0 });
+  const rejected = expect(first).rejects.toMatchObject({ name: 'AbortError' });
+  const worker = WorkerStub.latest;
+  const latest = session.compile(input, { generation: 1 });
+  expect(worker.terminate).not.toHaveBeenCalled();
+  worker.reply();
+  const request = worker.postMessage.mock.lastCall![0] as SceneCompileRequest;
+  expect(request.generation).toBe(1); expect(request.graph?.snapshot).toBe(input.snapshot);
+  const scene = worker.reply(); expect(await latest).toBe(scene);
+  await rejected; session.dispose();
+});
+
+it('ignores wrong request IDs and generations before accepting a selected response', async () => {
+  vi.stubGlobal('Worker', WorkerStub);
+  const session = createSceneCompileSession();
+  const pending = session.compile(input, { generation: 4 });
+  const worker = WorkerStub.latest;
+  const request = worker.postMessage.mock.lastCall![0] as SceneCompileRequest;
+  for (const [id, generation] of [[request.id + 1, 4], [request.id, 3]]) {
+    worker.onmessage?.({ data: { id, generation, ok: true, scene: { rootEntityId: 'root' } } });
+  }
+  expect(worker.terminate).not.toHaveBeenCalled();
+  expect(worker.postMessage).toHaveBeenCalledTimes(1);
+  const scene = worker.reply(); expect(await pending).toBe(scene); session.dispose();
 });
