@@ -1,5 +1,5 @@
 import { JSONParser, TokenType } from '@streamparser/json';
-import { agentPublicText, agentEntity, agentEvidence, agentRelations, agentSearch, type ArchitectureSnapshot } from '@okie/architecture';
+import { agentRepositoryPath, agentPublicText, agentEntity, agentEvidence, agentRelations, agentSearch, type ArchitectureSnapshot } from '@okie/architecture';
 import { isPublishedSlug, isPublishedVersionId, PUBLISHED_INDEX_SCHEMA, PUBLISHED_VERSION_SCHEMA, publishedIndexKey, publishedLatestKey, publishedManifestKey, publishedPublicFileKey } from '../../server/src/publishedStoreLayout';
 import { handleScanRoute } from './scan';
 import { canonicalAtlasPathForSlug } from '../../web/src/publishedNames';
@@ -143,6 +143,8 @@ async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOri
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid();
   const args = record(input);
   const pagination = page(args);
+  if (tool === 'get_evidence' && (args.sourcePath !== undefined && (typeof args.sourcePath !== 'string' || args.sourcePath.length > 512 || !agentRepositoryPath(args.sourcePath))
+    || args.sourceLine !== undefined && (typeof args.sourceLine !== 'number' || !Number.isSafeInteger(args.sourceLine) || args.sourceLine < 1))) invalid();
   const rows = await listing(bucket);
   if (tool === 'list_atlases') {
     const sorted = rows.sort((a,b) => `${a.owner}/${a.repo}`.localeCompare(`${b.owner}/${b.repo}`));
@@ -194,5 +196,8 @@ async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOri
       if (packet.entityId === args.entityId && Array.isArray(packet.sourceExcerpts)) entity.sourceExcerpts = packet.sourceExcerpts as typeof entity.sourceExcerpts;
     }
   }
-  return { atlas, ...agentEvidence(snapshot,args.entityId) };
+  return { atlas, ...agentEvidence(snapshot,args.entityId, {
+    ...(typeof args.sourcePath === 'string' ? { sourcePath: args.sourcePath } : {}),
+    ...(typeof args.sourceLine === 'number' ? { sourceLine: args.sourceLine } : {}),
+  }) };
 }

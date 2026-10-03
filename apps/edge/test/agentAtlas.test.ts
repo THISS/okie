@@ -8,9 +8,9 @@ const atlas = { owner:'agent-test',repo:'public',versionId:'v1' };
 const slug = 'agent-test__public';
 const entity = { id:'system',kind:'softwareSystem',name:'Public system',band:'L1',sourceRefs:[{path:'src/main.ts',commitSha:'abc123',startLine:1,endLine:2}], secret:'PRIVATE_FIELD' };
 function snapshot(commitSha = 'abc123') { return {schemaVersion:1,id:'snapshot-v1',repositoryId:'repo',commitSha,generatedAt:'2026-10-01',entities:[entity,{...entity,id:'deep',name:'Deep complete entity',band:'L4'}],relations:[]}; }
-async function seed(options: {manifestVersion?:string;snapshotCommit?:string;excerpt?:boolean} = {}) {
+async function seed(options: {manifestVersion?:string;snapshotCommit?:string;excerpt?:boolean;windows?:number} = {}) {
   await seedIndex([{slug,versionId:'v1'}]);
-  await seedAtlas({slug,versionId:'v1',files:{'snapshot.json':JSON.stringify(snapshot(options.snapshotCommit))},privateFiles:{'operator-explanations.json':'PRIVATE_OPERATOR_SECRET'},packs:{neighborhood:{'':JSON.stringify({snapshot:{...snapshot(),entities:[entity]}})},...(options.excerpt ? {excerpt:{system:JSON.stringify({entityId:'system',sourceExcerpts:[{path:'src/main.ts',language:'typescript',startLine:1,endLine:2,highlightLine:1,frozenRevision:'abc123',lines:['export const x = 1;','x();'],text:'export const x = 1;\nx();'}]})}} : {})}});
+  await seedAtlas({slug,versionId:'v1',files:{'snapshot.json':JSON.stringify(snapshot(options.snapshotCommit))},privateFiles:{'operator-explanations.json':'PRIVATE_OPERATOR_SECRET'},packs:{neighborhood:{'':JSON.stringify({snapshot:{...snapshot(),entities:[entity]}})},...(options.excerpt ? {excerpt:{system:JSON.stringify({entityId:'system',sourceExcerpts:Array.from({length:options.windows ?? 1},(_,i)=>({path:'src/main.ts',language:'typescript',startLine:1+i*100,endLine:2+i*100,highlightLine:1+i*100,frozenRevision:'abc123',lines:['export const x = 1;','x();'],text:'export const x = 1;\nx();'}))})}} : {})}});
   await context.bucket.put(publishedManifestKey(slug,'v1'),JSON.stringify({schema:PUBLISHED_VERSION_SCHEMA,slug,owner:'agent-test',repo:'public',versionId:options.manifestVersion ?? 'v1',commitSha:'abc123',private:{secret:'PRIVATE_MANIFEST_KEY'},artifactRevisionId:'/Users/private/path'}));
 }
 describe('public agent atlas reads',()=>{
@@ -50,6 +50,15 @@ describe('public agent atlas reads',()=>{
     expect(captured).toMatchObject({status:'captured',scanCoverage:'unknown'});
     expect(JSON.stringify(captured)).toContain('export const x = 1');
     expect(JSON.stringify(captured)).not.toContain('PRIVATE_OPERATOR_SECRET');
+  });
+  it('selects a late window from a pinned public pack and refuses invalid selectors',async()=>{
+    await seed({excerpt:true,windows:12});
+    const selected = await executeAgentTool('get_evidence',{atlas,entityId:'system',sourcePath:'src/main.ts',sourceLine:1102},context);
+    expect(selected).toMatchObject({atlas:{versionId:'v1',commitSha:'abc123'},status:'captured',excerpts:[{startLine:1101,endLine:1102}]});
+    expect(await executeAgentTool('get_evidence',{atlas,entityId:'system',sourceLine:5234},context)).toMatchObject({status:'not-captured',excerpts:[],scanCoverage:'unknown'});
+    for(const selection of [{sourceLine:0},{sourceLine:1.5},{sourceLine:'2'},{sourcePath:'../private.ts'},{sourcePath:'/Users/private/a.ts'}]) {
+      await expect(executeAgentTool('get_evidence',{atlas,entityId:'system',...selection},context)).rejects.toMatchObject({code:'invalid_arguments'});
+    }
   });
   it('returns commit-pinned attribution and scrubs free-form listing fields',async()=>{
     await seed();

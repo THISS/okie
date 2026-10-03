@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SOURCE_EXCERPT_LIMITS, validateSnapshot, normalizeArchitecture, selectArchitectureSnapshot } from "@okie/architecture";
+import { SOURCE_EXCERPT_LIMITS, validateSnapshot, normalizeArchitecture, selectArchitectureSnapshot, agentEvidence } from "@okie/architecture";
 import type { Discovery } from "./discover.js";
-import { attachPortableSourceExcerpts, languageForScanPath, portableSourceExcerpt } from "./excerpt.js";
+import { PORTABLE_CALL_CAPTURE_LIMITS, attachPortableSourceExcerpts, languageForScanPath, portableSourceExcerpt } from "./excerpt.js";
 import { extractArchitecture } from "./extract.js";
 import { buildScanArtifacts } from "./scan.js";
 
@@ -325,4 +325,74 @@ test("unknown or invalid declaration ends do not synthesize a captured reference
   for (const endLine of [0, Number.NaN, Number.POSITIVE_INFINITY]) {
     assert.equal(portableSourceExcerpt({ path: "a.ts", startLine: 1, endLine, frozenRevision: pin.commitSha, fileText: "source" }), undefined);
   }
+});
+
+test("observed calls beyond the entry excerpt retain frozen bounded windows and declaration identity", () => {
+  const original = buildScanArtifacts({ discovery: discovery(), pin, readFile: read, repositorySlug: "acme", systemName: "Acme" }).snapshot;
+  const entity = original.entities.find(row => row.name === "longFn")!;
+  const ref = entity.sourceRefs[0]!;
+  ref.startLine = 1; ref.endLine = 240;
+  const token = `gho_${"A".repeat(40)}`;
+  const lines = Array.from({ length: 240 }, (_, index) => `// line ${index + 1}`);
+  lines[74] = 'await submitAskQuestion();'; lines[144] = `await modelRequest("${token}");`;
+  const relation = (anchor: number, commitSha = pin.commitSha) => ({ id: `call:${anchor}:${commitSha}`, from: entity.id, to: entity.id, kind: "calls" as const, evidence: [{ source: { path: ref.path, commitSha, startLine: anchor, endLine: anchor } }] });
+  original.relations = [relation(145), relation(75), relation(220, "foreign")];
+  const attached = attachPortableSourceExcerpts(original, path => path === ref.path ? lines.join("\n") : read(path));
+  const result = attached.entities.find(row => row.id === entity.id)!;
+  assert.equal(result.sourceExcerpts?.length, 3);
+  for (const anchor of [75, 145]) assert.ok(result.sourceExcerpts!.some(window => window.highlightLine === anchor && window.startLine <= anchor && window.endLine >= anchor));
+  assert.ok(!result.sourceExcerpts!.some(window => window.startLine <= 220 && window.endLine >= 220));
+  assert.equal(result.sourceRefs.length, 1);
+  for (const window of result.sourceExcerpts!) {
+    assert.equal(window.frozenRevision, pin.commitSha);
+    assert.deepEqual([window.sourceStartLine, window.sourceEndLine], [1, 240]);
+    assert.ok(window.lines.length <= SOURCE_EXCERPT_LIMITS.maxLines);
+    assert.ok(!window.text.includes(token));
+  }
+  assert.deepEqual(validateSnapshot(attached), []);
+  const evidence = agentEvidence(attached, entity.id);
+  assert.equal(evidence.status, "captured");
+  assert.equal(evidence.truncated, true);
+  for (const anchor of [75, 145]) assert.ok(evidence.excerpts.some(window => window.startLine <= anchor && window.endLine >= anchor));
+  const reversed = attachPortableSourceExcerpts({ ...original, relations: [...original.relations].reverse() }, path => path === ref.path ? lines.join("\n") : read(path));
+  assert.deepEqual(reversed.entities, attached.entities);
+  const roundTrip = selectArchitectureSnapshot(normalizeArchitecture({ snapshot: attached }), attached.id);
+  assert.equal(roundTrip.entities.find(row => row.id === entity.id)?.sourceExcerpts?.length, 3);
+});
+
+test("call-site capture stays bounded and cannot reach outside the declaration", () => {
+  const original = buildScanArtifacts({ discovery: discovery(), pin, readFile: read, repositorySlug: "acme", systemName: "Acme" }).snapshot;
+  const entity = original.entities.find(row => row.name === "longFn")!;
+  const ref = entity.sourceRefs[0]!; ref.endLine = 400;
+  original.relations = [75, 145, 215, 285, 355, 500].map(anchor => ({ id: `call:${anchor}`, from: entity.id, to: entity.id, kind: "calls", evidence: [{ source: { path: ref.path, commitSha: pin.commitSha, startLine: anchor, endLine: anchor } }] }));
+  const attached = attachPortableSourceExcerpts(original, path => path === ref.path ? Array(600).fill('// source').join('\n') : read(path));
+  const windows = attached.entities.find(row => row.id === entity.id)!.sourceExcerpts!;
+  assert.equal(windows.length, 6);
+  assert.deepEqual(windows.map(window => window.highlightLine), [1, 75, 145, 215, 285, 355]);
+  assert.ok(windows.every(window => window.endLine <= 400));
+  for (const focusLine of [0, 401, NaN, 2.5]) assert.equal(portableSourceExcerpt({ path: ref.path, startLine: 1, endLine: 400, frozenRevision: pin.commitSha, fileText: '// source', focusLine }), undefined);
+});
+
+
+test("large callers capture late calls while enforcing serialized UTF8 budgets", () => {
+  const original = buildScanArtifacts({ discovery: discovery(), pin, readFile: read, repositorySlug: "acme", systemName: "Acme" }).snapshot;
+  const entity = original.entities.find(row => row.name === "longFn")!;
+  const ref = entity.sourceRefs[0]!; ref.endLine = 16000;
+  const anchors = Array.from({ length: 200 }, (_, index) => 75 + index * 70);
+  original.relations = anchors.map(anchor => ({ id: `call:${anchor}`, from: entity.id, to: entity.id, kind: "calls", evidence: [{ source: { path: ref.path, commitSha: pin.commitSha, startLine: anchor, endLine: anchor } }] }));
+  const capture = (line: string) => attachPortableSourceExcerpts(original, path => path === ref.path ? Array(16000).fill(line).join("\n") : read(path));
+  const small = capture("// call");
+  const windows = small.entities.find(row => row.id === entity.id)!.sourceExcerpts!;
+  assert.equal(windows.length, PORTABLE_CALL_CAPTURE_LIMITS.maxWindowsPerEntity);
+  assert.ok(agentEvidence(small, entity.id, { sourcePath: ref.path, sourceLine: 5255 }).excerpts.some(window => window.startLine <= 5255 && window.endLine >= 5255));
+  const large = capture("// " + "界".repeat(200));
+  const bounded = large.entities.find(row => row.id === entity.id)!.sourceExcerpts!;
+  assert.ok(bounded.length < PORTABLE_CALL_CAPTURE_LIMITS.maxWindowsPerEntity);
+  assert.ok(bounded.reduce((sum, window) => sum + Buffer.byteLength(JSON.stringify(window), "utf8"), 0) <= PORTABLE_CALL_CAPTURE_LIMITS.maxBytesPerEntity);
+  assert.deepEqual(validateSnapshot(large), []);
+  const many = { ...original, entities: Array.from({ length: 24 }, (_, index) => ({ ...entity, id: `caller:${index}` })), relations: Array.from({ length: 24 }, (_, index) => original.relations.map(row => ({ ...row, id: `${row.id}:${index}`, from: `caller:${index}`, to: `caller:${index}` }))).flat() };
+  const capped = attachPortableSourceExcerpts(many, () => Array(16000).fill("// " + "界".repeat(200)).join("\n"));
+  const extra = capped.entities.reduce((sum, row) => sum + (row.sourceExcerpts ?? []).slice(1).reduce((bytes, window) => bytes + Buffer.byteLength(JSON.stringify(window), "utf8"), 0), 0);
+  assert.ok(extra <= PORTABLE_CALL_CAPTURE_LIMITS.maxAdditionalBytesPerSnapshot);
+  assert.ok(capped.entities.every(row => row.sourceExcerpts?.length));
 });

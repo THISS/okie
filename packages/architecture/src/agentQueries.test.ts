@@ -269,3 +269,24 @@ test("maximum Unicode query and identity bounds produce a compact usable continu
   assert.equal(agentSearch(source, { query, rootEntityId: root, cursorNamespace: "other-version", cursor: first.nextCursor }).error, "invalid-cursor");
   assert.equal(agentSearch(source, { query, cursor: "a".repeat(8193) }).error, "invalid-cursor");
 });
+
+
+test("line selectors reach late captured windows without fabricating uncaptured source", () => {
+  const source = snapshot();
+  source.entities[0]!.sourceExcerpts = Array.from({ length: 12 }, (_, index) => ({ ...excerpt(), startLine: 1 + index * 100, endLine: 2 + index * 100, highlightLine: 1 + index * 100 }));
+  assert.equal(agentEvidence(source, "query").excerpts.length, AGENT_QUERY_LIMITS.maxExcerpts);
+  const result = agentEvidence(source, "query", { sourcePath: "src/query.ts", sourceLine: 1102 });
+  assert.equal(result.status, "captured");
+  assert.equal(result.excerpts.length, 1);
+  assert.equal(result.excerpts[0]!.startLine, 1101);
+  assert.equal(result.truncated, true);
+  for (const selection of [{ sourceLine: 55 }, { sourcePath: "src/other.ts", sourceLine: 1102 }]) {
+    const missing = agentEvidence(source, "query", selection);
+    assert.equal(missing.status, "not-captured");
+    assert.deepEqual(missing.excerpts, []);
+    assert.equal(missing.scanCoverage, "unknown");
+  }
+  for (const selection of [{ sourceLine: 0 }, { sourceLine: NaN }, { sourceLine: 1.5 }, { sourcePath: "../secret.ts" }]) {
+    assert.equal(agentEvidence(source, "query", selection).error, "invalid-query");
+  }
+});

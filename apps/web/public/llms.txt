@@ -8,9 +8,9 @@
 
 ## Availability and connection
 
-Remote MCP and the shared public atlas query service are currently enabled on staging only. Production defaults off. Staging requires Cloudflare Access authorization; do not embed credentials in prompts or URLs.
+Remote MCP and the shared public atlas query service are enabled for public published atlases in production. Staging requires Cloudflare Access authorization; do not embed credentials in prompts or URLs.
 
-Connect a Streamable HTTP MCP client to https://staging.sourcefor.dev/mcp. Discover schemas with tools/list. The endpoint supports POST initialization, discovery, and tool calls; it has no persistent sessions or GET event stream.
+Connect a Streamable HTTP MCP client to https://sourcefor.dev/mcp. Discover schemas with tools/list. The endpoint supports POST initialization, discovery, and tool calls; it has no persistent sessions or GET event stream.
 
 WebMCP tools are registered by an open atlas page when the browser provides document.modelContext (with a navigator.modelContext compatibility fallback). Browser/agent support is required. Tools differ by page. Registration alone does not mean an endpoint is enabled.
 
@@ -22,7 +22,7 @@ All five read only public published atlases, make no model calls, and do not con
 - search_atlas: atlas, query; optional rootEntityId, limit, cursor. Searches structure and accepted public summaries/key points.
 - get_entity: atlas, entityId. Returns structure, source references, and accepted public understanding when available.
 - get_relations: atlas, entityId; optional limit, cursor. Returns incoming/outgoing relationships.
-- get_evidence: atlas, entityId. Returns captured source excerpts or an explicit missing-evidence status.
+- get_evidence: atlas, entityId; optional sourcePath (repository-relative), sourceLine (positive integer) select a stored window. Returns captured source excerpts or an explicit missing-evidence status.
 
 Atlas version pin:
 
