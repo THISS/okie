@@ -24,6 +24,14 @@ import { semanticLensSessionDetail } from './semantic/semanticLens';
 
 const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
 
+it('retains both the requested Open-inside owner and deep child and rejects a missing prepared target', () => {
+  const prepare = app.slice(app.indexOf('async function prepareScanOpenInside'), app.indexOf('function scanSceneRequest'));
+  expect(prepare).toContain('[entityId, ...(codeChildId ? [codeChildId] : [])], request.generationFence');
+  const commit = app.slice(app.indexOf('function openInsideLoaded'), app.indexOf('function navigateRoot'));
+  expect(commit).toContain('preparedSceneEntity(preparedScene ?? scene, entityId)');
+  expect(commit).toContain("!requestedTarget) { setLiveMessage('This requested entity is unavailable in its prepared map.'); return; }");
+});
+
 describe('CLA-78: Code rail after Open inside a container', () => {
   it('fetches the L4 neighborhood before the level rail compiles', () => {
     expect(app).toContain('function selectLevel(');

@@ -34,6 +34,8 @@ export type NavigationHistoryController = {
   flush(state: NavigationState): void;
   /** Writes any deferred camera URL now (e.g. before reading location.href to share it). */
   flushUrl(): void;
+  /** Cancel a pending async restore without changing the current URL/state. */
+  cancelRestore(): void;
   dispose(): void;
 };
 
@@ -218,6 +220,7 @@ export function createNavigationHistoryController(options: NavigationHistoryOpti
       return state;
     },
     current: () => state,
+    cancelRestore() { restoreGeneration += 1; },
     push(next) {
       state = canonicalNavigationState(next, options.defaults);
       write('push', 'push');

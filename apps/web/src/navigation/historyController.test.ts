@@ -202,3 +202,17 @@ describe('navigation history camera URL coalescing (CLA-326)', () => {
     controller.dispose();
   });
 });
+
+it('cancelRestore prevents a late async restore from replacing the URL or committing state', async () => {
+  const adapter = fakeHistory('https://atlas.example/map?root=container%3Aapi&cx=200&cy=300&z=2');
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  const controller = createNavigationHistoryController({ defaults, adapter, restore: () => pending });
+  const startup = controller.start();
+  controller.cancelRestore();
+  finish(); await startup;
+  expect(adapter.replacements).toHaveLength(0);
+  expect(controller.current().rootEntityId).toBe(defaults.rootEntityId);
+  expect(adapter.href).toContain('root=container%3Aapi');
+  controller.dispose();
+});
