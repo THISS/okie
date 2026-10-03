@@ -141,3 +141,13 @@ The diagnostics panel overlapped the inspector target: DOM hit testing showed it
 
 
 An actual pointer drag during pending published child navigation cancelled it: “Loading view…” cleared, the root inspector remained, and a later observation retained the dragged root map rather than publishing the stale child. QA screenshot `/tmp/atlas-foreground-drag-cancellation.png`. The interaction checks were functional, not a timing comparison while other build/test processes were running.
+## Renderer attribution and compact diagnostics (CLA-357, in verification)
+
+Opt-in safe scalar timings now distinguish WASM initialization, GPU setup, protocol conversion and native scene installation. The initialization timings measure elapsed asynchronous setup, not continuous UI blocking or completed GPU presentation. Existing render-frame timings still measure synchronous submission only. The telemetry does not export source contents, entity IDs, resource URLs or errors.
+
+Diagnostics defaults to a compact panel; “Show live timings” reveals the explanation and summary, while safe JSON remains a separate disclosure snapshot. Recording continues when closed, without formatting the hidden live summary each second. Browser QA measured the compact panel at 114px tall versus the previous observed 678px overlap, confirmed a mouse click reaches the web-container child, verified expanded timings, and verified Stop recording removes the panel. All 17 performance tests passed, including BFCache observer lifecycle and collapsed recording behavior; the production web build passed before rebase.
+
+The slice is now based on foreground navigation commit 0b7592a. Normal fixture regeneration moved the WasmRendererAdapter anchor by one line, preserving excerpt content, with evidence hash 6c477f94. Full typecheck/test/Rust/build verification passed after the implementation rebase (1,692 web tests). The final parent amendment adds QA documentation only; implementation and source anchors are unchanged. Earlier exploratory startup trials are retained privately under `/tmp/atlas-perf-renderer-startup-*.json`; they are not an optimization benchmark or a guarantee that the previously observed long task is resolved.
+
+
+Final renderer-attribution build browser QA captured all four new renderer metrics in safe JSON, completed mouse child navigation with the compact panel recording, played the golden tour and jumped to the actual paused step 3 with the Hierarchy selectors inspector populated, and checked `/new` public catalog/access behavior. The private phase-verification report is `/tmp/atlas-renderer-final-verification.json`; observed values are functional instrumentation proof, not a controlled benchmark. No scan fixture or live scan/model call was used.
