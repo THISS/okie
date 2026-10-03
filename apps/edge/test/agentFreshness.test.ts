@@ -4,7 +4,7 @@ const now = Date.parse('2026-10-03T12:00:00Z');
 describe('public publication freshness',()=>{
   it('separates scan and publication instants and never claims to check repository HEAD',()=>{
     expect(agentPublicationFreshness({versionId:'v1',generatedAt:'2026-09-01T00:00:00Z',publishedAt:'2026-10-01T12:00:00Z'},now,'v1')).toEqual({
-      observedAt:'2026-10-03T12:00:00.000Z',generatedAt:'2026-09-01T00:00:00.000Z',publishedAt:'2026-10-01T12:00:00.000Z',publicationAgeSeconds:172800,publicationAgeContext:'Published 2 days ago.',latestPublishedVersionId:'v1',evidenceComparedWithLatestPublication:'matches',currentRepositoryRevision:'not-checked',
+      observedAt:'2026-10-03T12:00:00.000Z',generatedAt:'2026-09-01T00:00:00.000Z',publishedAt:'2026-10-01T12:00:00.000Z',generatedAtContext:'Recorded snapshot timestamp; not a verified scan or commit time.',publicationAgeSeconds:172800,publicationAgeContext:'Published 2 days ago.',latestPublishedVersionId:'v1',evidenceComparedWithLatestPublication:'matches',currentRepositoryRevision:'not-checked',
     });
     expect(agentPublicationFreshness({versionId:'v1'},now,'v2')).toMatchObject({publishedAt:null,generatedAt:null,publicationAgeSeconds:null,evidenceComparedWithLatestPublication:'differs',currentRepositoryRevision:'not-checked'});
     expect(agentPublicationFreshness({},now)).toMatchObject({publicationAgeContext:'Publication time unknown.',latestPublishedVersionId:null,evidenceComparedWithLatestPublication:'unknown'});

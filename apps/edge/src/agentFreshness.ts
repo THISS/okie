@@ -1,6 +1,6 @@
 import { isPublishedVersionId } from '../../server/src/publishedStoreLayout';
 
-/** Only recorded ISO instants qualify; never substitute scan or pointer time for publication time. */
+/** Only recorded ISO instants qualify; never substitute snapshot or pointer time for publication time. */
 export function publicationTimestamp(value: unknown): string | null {
   if (typeof value !== 'string' || value.length > 64 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
   const time = Date.parse(value);
@@ -27,6 +27,7 @@ export function agentPublicationFreshness(publication: Record<string, unknown>, 
   const latest = latestVersionId && isPublishedVersionId(latestVersionId) ? latestVersionId : null;
   return {
     observedAt: new Date(now).toISOString(), generatedAt, publishedAt,
+    generatedAtContext: 'Recorded snapshot timestamp; not a verified scan or commit time.',
     publicationAgeSeconds, publicationAgeContext: ageContext(publicationAgeSeconds, publishedAt),
     latestPublishedVersionId: latest,
     evidenceComparedWithLatestPublication: latest === null ? 'unknown' : publication.versionId === latest ? 'matches' : 'differs',

@@ -35,7 +35,7 @@ Content-Type: application/json</code></pre></figure><figure><figcaption>Request 
   }
 }</code></pre></figure>
 <h2>Publication freshness</h2>
-<p>All reads include <code>freshness</code>: observation time, scan generation time, publication time, age in seconds and readable age context. Missing or invalid times are unknown; future publication times have unknown age. Scan and publication times are distinct from commit time.</p>
+<p>All reads include <code>freshness</code>: observation time, recorded snapshot timestamp, publication time, age in seconds and readable age context. Missing or invalid times are unknown; future publication times have unknown age. The deterministic scanner derives the snapshot timestamp from the committer date; other producers may differ. <code>generatedAtContext</code> states that the field does not verify scan time or commit time. Publication age uses only publication time.</p>
 <p>Pinned reads compare their evidence version with the public store’s latest publication (<code>matches</code>, <code>differs</code> or <code>unknown</code>). Listings leave that comparison unknown. The visual Atlas link opens latest; retain the evidence pin separately. <code>currentRepositoryRevision</code> is always <code>not-checked</code>: these tools do not fetch upstream HEAD or live source.</p>
 <h2>Atlas-page WebMCP tools only</h2>
 <p class="tool"><code>get_atlas_context</code>: no arguments. Read current repository/fixture identity, <code>level</code>, selection, tour, enrichment, and available capabilities.</p>
