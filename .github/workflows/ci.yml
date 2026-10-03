@@ -80,5 +80,8 @@ jobs:
           TMPDIR: ${{ runner.temp }}
         run: pnpm test
 
+      - name: Audit offline Atlas planning corpus
+        run: pnpm eval:atlas
+
       - name: Test Rust workspace
         run: cargo test --workspace

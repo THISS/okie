@@ -21,7 +21,8 @@
     "prepare:generated:release": "pnpm generate:stress && pnpm generate:wasm:release",
     "package:cli": "node scripts/package-scan.mjs",
     "publish:atlas": "node scripts/publish-atlas.mjs",
-    "build:portable": "pnpm build && node scripts/build-portable-viewer.mjs"
+    "build:portable": "pnpm build && node scripts/build-portable-viewer.mjs",
+    "eval:atlas": "node --test scripts/atlas-planning-audit.test.mjs && node scripts/atlas-planning-audit.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
