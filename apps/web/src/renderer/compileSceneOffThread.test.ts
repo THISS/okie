@@ -241,3 +241,28 @@ it('reuses a retained patch-free cache copy but clones a modified copy', async (
     worker.reply(); await third;
   } finally { session.dispose(); }
 });
+
+it('retains an abandoned guarded result without comparing it to a subsequently merged snapshot', async () => {
+  vi.stubGlobal('Worker', WorkerStub);
+  const snapshot = structuredClone(demoSnapshot) as unknown as ScanSceneInput['snapshot'];
+  const view = structuredClone(demoView) as unknown as ScanSceneInput['view'];
+  snapshot.entities.push({ id: 'code:huge', name: 'huge', kind: 'code', parentId: view.rootEntityId, sourceRefs: [] },
+    ...Array.from({ length: 2001 }, (_, i) => ({ id: `code:huge-${i}`, name: `leaf${i}`, kind: 'code' as const, parentId: 'code:huge', sourceRefs: [] })));
+  const realInput: ScanSceneInput = { snapshot, view, focusEntityId: 'code:huge', boot: 'full', modeOptions: {}, childCounts: {}, unpublishedChildren: [] };
+  const session = createSceneCompileSession();
+  try {
+    const old = session.compile(realInput, { generation: 0 });
+    const rejected = expect(old).rejects.toMatchObject({ name: 'AbortError' });
+    const worker = WorkerStub.latest;
+    const oldScene = compileScanScene(structuredClone(realInput));
+    expect(oldScene.scanGuardRefusal).toBeDefined();
+    snapshot.entities.push({ id: 'code:merged', name: 'merged', kind: 'code', parentId: view.rootEntityId, sourceRefs: [] });
+    const current = session.compile({ ...realInput, focusEntityId: view.rootEntityId }, { generation: 1 });
+    worker.reply(oldScene);
+    expect(worker.terminate).not.toHaveBeenCalled();
+    expect(WorkerStub.latest).toBe(worker);
+    expect(worker.postMessage.mock.lastCall![0].graph).toBeDefined();
+    worker.reply({ rootEntityId: view.rootEntityId } as AtlasScene);
+    expect(await current).toBeDefined(); await rejected;
+  } finally { session.dispose(); }
+});

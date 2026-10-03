@@ -33,6 +33,10 @@ export function createSceneCompileSession(): SceneCompileSession {
   let disposed = false;
   let nextId = 0;
   const scenes = new Map<AtlasScene, number>();
+  const retainScene = (job: Job, scene: AtlasScene) => {
+    scenes.set(scene, job.id);
+    while (scenes.size > 2) scenes.delete(scenes.keys().next().value!);
+  };
   const settle = (job: Job, scene?: AtlasScene, aborted = false) => {
     if (job.settled) return;
     job.settled = true;
@@ -64,6 +68,12 @@ export function createSceneCompileSession(): SceneCompileSession {
       if (worker !== currentWorker || active !== job) return;
       const result = event.data as SceneCompileResponse;
       if (result.id !== job.id || result.generation !== job.options.generation) return;
+      // The caller is gone, but worker retention still advances. Do not validate
+      // an older guarded result against a snapshot that has since been merged.
+      if (job.abandoned) {
+        if (result.ok && result.scene) retainScene(job, result.scene);
+        clearTimeout(job.timer); active = undefined; pump(); return;
+      }
       let validScope = result.scene?.rootEntityId === job.input.focusEntityId;
       if (!validScope && result.scene?.scanGuardRefusal) {
         const expected = guardScanCompile(job.input.snapshot, job.input.focusEntityId, job.input.view.rootEntityId);
@@ -76,8 +86,7 @@ export function createSceneCompileSession(): SceneCompileSession {
       }
       if (!result.ok || !result.scene || !validScope) { fail(); return; }
       if (typeof result.durationMs === 'number') recordAtlasWorkerCompile(result.durationMs);
-      scenes.set(result.scene, job.id);
-      while (scenes.size > 2) scenes.delete(scenes.keys().next().value!);
+      retainScene(job, result.scene);
       clearTimeout(job.timer);
       active = undefined; settle(job, result.scene); pump();
     };
