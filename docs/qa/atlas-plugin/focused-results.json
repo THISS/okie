@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "scope": "offline-public-projection-fixture; not installed-host, deployment or current-code validation",
+  "fixtureVersionId": "fixture-self-43bcaaa",
+  "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+  "discovery": {
+    "commit": "43bcaaaf17cc60d669e4489571620d2594f79516",
+    "snapshotId": "snapshot:okie:43bcaaaf17cc",
+    "comparison": "Entry-point discovery only; non-target rows are not a judgment that they are useless for all planning.",
+    "targets": [
+      "submitAskQuestion",
+      "answerAskQuestion"
+    ],
+    "broad": {
+      "calls": 9,
+      "rows": 180,
+      "found": [
+        "code:apps-server-src-ask-ts:answer-ask-question",
+        "code:apps-web-src-ask-ask-atlas-ts:submit-ask-question"
+      ],
+      "nonTargetRows": 178
+    },
+    "focused": {
+      "calls": 2,
+      "rows": 2,
+      "found": [
+        "code:apps-web-src-ask-ask-atlas-ts:submit-ask-question",
+        "code:apps-server-src-ask-ts:answer-ask-question"
+      ]
+    },
+    "boundaries": [
+      {
+        "entry": "answerAskQuestion",
+        "caller": "createHandler",
+        "path": "apps/server/src/scanServer.ts",
+        "line": 347,
+        "status": "captured",
+        "ranges": [
+          [
+            325,
+            372
+          ]
+        ],
+        "relationPages": 1
+      },
+      {
+        "entry": "submitAskQuestion",
+        "caller": "App",
+        "path": "apps/web/src/App.tsx",
+        "line": 5234,
+        "status": "captured",
+        "ranges": [
+          [
+            5226,
+            5273
+          ]
+        ],
+        "relationPages": 1
+      }
+    ]
+  },
+  "trials": [
+    {
+      "report": "forward-report.md",
+      "successfulOperations": 21,
+      "toolCounts": {
+        "list_atlases": 1,
+        "search_atlas": 8,
+        "get_entity": 3,
+        "get_relations": 2,
+        "get_evidence": 7
+      },
+      "citations": 7,
+      "allCitationsFit": true,
+      "capturedEntities": [
+        "code:apps-server-src-ask-worker-ts:handle-ask-worker-request",
+        "code:apps-web-src-app-tsx:app",
+        "code:apps-web-src-ask-ask-atlas-ts:ask-submit-result",
+        "code:apps-web-src-ask-ask-atlas-ts:submit-ask-question"
+      ],
+      "audit": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 5183,
+          "endLine": 5230,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 5226,
+          "endLine": 5273,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/ask/askAtlas.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 883,
+          "endLine": 930,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/ask/askAtlas.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 956,
+          "endLine": 992,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/ask/askAtlas.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 174,
+          "endLine": 176,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 5270,
+          "endLine": 5317,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/server/src/askWorker.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 140,
+          "endLine": 187,
+          "fitsCapturedWindow": true
+        }
+      ]
+    },
+    {
+      "report": "rerun-report.md",
+      "successfulOperations": 34,
+      "toolCounts": {
+        "list_atlases": 1,
+        "search_atlas": 14,
+        "get_entity": 3,
+        "get_relations": 5,
+        "get_evidence": 11
+      },
+      "citations": 12,
+      "allCitationsFit": true,
+      "capturedEntities": [
+        "code:apps-server-src-ask-ts:answer-ask-question",
+        "code:apps-server-src-ask-worker-ts:create-ask-retrieval-worker",
+        "code:apps-server-src-llm-gateway-ts:create-llm-gateway-client",
+        "code:apps-server-src-main-ts:start-default",
+        "code:apps-server-src-scan-server-ts:create-handler",
+        "code:apps-web-src-app-tsx:app",
+        "code:apps-web-src-ask-ask-atlas-ts:submit-ask-question",
+        "code:apps-web-src-ask-ask-map-session-ts:ask-map-view-should-reset",
+        "code:apps-web-src-ask-ask-panel-tsx:ask-panel-props"
+      ],
+      "audit": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 5226,
+          "endLine": 5273,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 5270,
+          "endLine": 5317,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/ask/askAtlas.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 883,
+          "endLine": 930,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/ask/askAtlas.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 956,
+          "endLine": 992,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/ask/AskPanel.tsx",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 35,
+          "endLine": 57,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/web/src/ask/askMapSession.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 30,
+          "endLine": 32,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/server/src/scanServer.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 285,
+          "endLine": 332,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/server/src/scanServer.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 325,
+          "endLine": 372,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/server/src/ask.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 246,
+          "endLine": 293,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/server/src/ask.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 287,
+          "endLine": 334,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/server/src/askWorker.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 306,
+          "endLine": 353,
+          "fitsCapturedWindow": true
+        },
+        {
+          "path": "apps/server/src/askWorker.ts",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 356,
+          "endLine": 377,
+          "fitsCapturedWindow": true
+        }
+      ]
+    },
+    {
+      "report": "time-report.md",
+      "successfulOperations": 8,
+      "toolCounts": {
+        "list_atlases": 1,
+        "search_atlas": 2,
+        "get_entity": 2,
+        "get_relations": 1,
+        "get_evidence": 2
+      },
+      "citations": 1,
+      "allCitationsFit": true,
+      "audit": [
+        {
+          "path": "apps/web/src/App.tsx",
+          "commitSha": "43bcaaaf17cc60d669e4489571620d2594f79516",
+          "startLine": 5661,
+          "endLine": 5708,
+          "fitsCapturedWindow": true
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Precise-name discovery comparison assumes the two symbol names are known; prior discovery cost excluded.",
+    "Rerun covers more contracts but uses more reads; no whole-plan speed improvement established.",
+    "First two plans mislabeled generatedAt as scan time; final skill and timestamp-specific forward test correct this.",
+    "Map handlers and gateway transport cancellation remain incomplete evidence.",
+    "Current repository revision and runtime correctness are not checked."
+  ]
+}
