@@ -17,6 +17,14 @@ The repo marketplace is `.agents/plugins/marketplace.json`. The installed plugin
 
 Try: “Use Source For Atlas to find source-for/atlas and explain how Ask works. Include the atlas link, the version/commit, and captured source evidence.” The expected workflow is list → search → entity/relationships → evidence, with one immutable pin reused throughout.
 
+## Planning a change
+
+Try: “Use the source-for/atlas Atlas to plan cancellable Ask requests when I close the panel or switch maps. Identify affected contracts, implementation order, risks and validation.”
+
+The planning workflow distinguishes captured current behavior from proposed changes, follows adjacent callers and consumers, and checks evidence across affected boundaries. When an authorized current checkout is available, compare relevant contracts with the publication's pinned commit before prescribing edits. Otherwise the plan stays provisional and names the checks an implementer needs. Published evidence alone cannot establish the current branch or exhaustive impact coverage.
+
+Diagrams prefer short labels and top-to-bottom layout for chat width. Current behavior and proposed changes are shown separately. The 0.1.2 planning guidance requires updating the installed package; the prior ChatGPT installation validated 0.1.1. Updating repository files does not refresh ChatGPT's installed copy.
+
 ## ChatGPT
 
 For the tested tools-only connection, enable developer mode, open Plugins → Add → Create custom MCP server, enter `https://sourcefor.dev/mcp`, choose no authentication, and create the plugin. Select Source For Atlas in a new chat and run the example workflow above. An icon is optional for this personal connection. Check all five read tools are discovered.
@@ -60,8 +68,8 @@ References: [OpenAI packaging](https://developers.openai.com/plugins/build/plugi
 With the system `zip` command installed, run from the repository root:
 
 ```sh
-node scripts/package-atlas-plugin.mjs /tmp/sourcefor-atlas-0.1.1.zip
-unzip -l /tmp/sourcefor-atlas-0.1.1.zip
+node scripts/package-atlas-plugin.mjs /tmp/sourcefor-atlas-0.1.2.zip
+unzip -l /tmp/sourcefor-atlas-0.1.2.zip
 ```
 
 The packager copies only the manifests, README and skill into a fresh archive. It requires the public endpoint and rejects embedded transport authentication.
@@ -75,3 +83,5 @@ Do not install the preview alongside the production package: both register the `
 The test also exposed a missing visual Atlas link: repository URLs were mistaken for app URLs. The follow-up tool metadata adds `atlasUrl` and `atlasUrlVersion: "latest"` to distinguish the browser's latest publication from the immutable evidence pin. The bundled skill requires that distinction. Do not claim these fields are deployed until a later reviewed release is deployed.
 
 The original portable archive upload returned a generic Add plugin failure before the endpoint rollout; its cause remains unknown. The personal 0.1.1 archive with the registered connection mapping successfully imported and installed on 2026-10-03. Its detail page showed one connected app and the understand-atlas skill; Try in chat selected the packaged plugin rather than the separate tools-only connection. The fresh-chat test completed an Ask explanation, seven commit-pinned source citations and a rendered Mermaid flowchart. It correctly reported that the live endpoint lacked atlasUrl. The host activity panel exposed retrieval summaries, not raw tool arguments or an explicit skill-load trace; do not claim stronger invocation proof. The diagram rendered correctly, although its horizontal seven-node layout was small at normal chat width.
+
+Version 0.1.2 planning guidance passed an independent read-only evaluation against the public publication and current checkout: the agent distinguished existing browser abort behavior from proposed backend cancellation and found relevant drift. Broad-search noise led to container-narrowing guidance. See [the planning evaluation](../../docs/qa/atlas-plugin/planning.md) for scenarios, evidence and limits. This is separate from ChatGPT installation of 0.1.2, which remains pending.
