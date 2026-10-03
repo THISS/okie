@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sourcefor-atlas",
-  "version": "0.1.0",
-  "description": "Find published software architecture atlases and explain systems with commit-pinned source evidence.",
+  "version": "0.1.2",
+  "description": "Investigate published software architecture and plan changes with commit-pinned source evidence.",
   "author": { "name": "Source For", "url": "https://sourcefor.dev" },
   "homepage": "https://sourcefor.dev/docs/agents",
   "repository": "https://github.com/source-for/atlas",
@@ -12,15 +12,15 @@
     "com.openai": {
       "interface": {
         "displayName": "Source For Atlas",
-        "shortDescription": "Understand codebases with source evidence",
-        "longDescription": "Explore public published software architecture, relationships and captured source evidence. Uses read-only tools and does not start scans or paid Ask answers.",
+        "shortDescription": "Understand systems and plan changes with evidence",
+        "longDescription": "Explore public published software architecture, trace relationships and captured source evidence, and plan changes with explicit assumptions and validation. Uses read-only tools.",
         "developerName": "Source For",
         "category": "Developer Tools",
         "capabilities": ["Read"],
         "websiteURL": "https://sourcefor.dev",
         "privacyPolicyURL": "https://sourcefor.dev/privacy",
         "termsOfServiceURL": "https://sourcefor.dev/terms",
-        "defaultPrompt": ["Find the Atlas for source-for/atlas and explain how Ask works, with source evidence."]
+        "defaultPrompt": ["Find the Atlas for source-for/atlas and explain how Ask works, with source evidence.", "Use the Atlas for source-for/atlas to plan cancellable Ask requests. Identify affected contracts, assumptions, implementation order and validation; distinguish the pinned publication from current code."]
       }
     }
   }

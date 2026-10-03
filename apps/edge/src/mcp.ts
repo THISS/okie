@@ -39,7 +39,7 @@ export async function handleMcpRequest(request: Request, context: { bucket: R2Bu
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: AGENT_TOOL_DESCRIPTORS.map(tool => ({ ...tool, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } })) }));
   server.setRequestHandler(CallToolRequestSchema, async request => {
     try {
-      const result = await executeAgentTool(request.params.name, request.params.arguments ?? {}, { bucket: context.bucket });
+      const result = await executeAgentTool(request.params.name, request.params.arguments ?? {}, { bucket: context.bucket, publicOrigin: context.allowedOrigin });
       return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result };
     } catch (error) {
       return { isError: true, content: [{ type: 'text' as const, text: error instanceof AgentAtlasError ? error.message : 'Published atlas data is unavailable.' }] };

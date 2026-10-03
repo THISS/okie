@@ -16,6 +16,14 @@ async function seed(options: {manifestVersion?:string;snapshotCommit?:string;exc
 describe('public agent atlas reads',()=>{
   // Tests replace the same fixture version; real published versions and their pack indexes are immutable.
   beforeEach(() => resetPackIndexCache());
+  it('links the visual atlas separately from frozen source and labels the latest publication',async()=>{
+    await seed();
+    const local = { ...context, publicOrigin:'http://localhost:4316' };
+    expect(await executeAgentTool('list_atlases',{},local)).toMatchObject({atlases:[{atlasUrl:'http://localhost:4316/r/agent-test/public',atlasUrlVersion:'latest',versionId:'v1',repositoryUrl:'https://github.com/agent-test/public/tree/abc123'}]});
+    for (const tool of ['search_atlas','get_entity','get_relations','get_evidence']) {
+      expect(await executeAgentTool(tool,{atlas,entityId:'system',query:'Public'},local)).toMatchObject({atlas:{atlasUrl:'http://localhost:4316/r/agent-test/public',atlasUrlVersion:'latest',versionId:'v1',commitSha:'abc123'}});
+    }
+  });
   it('projects listing fields and reads the complete public snapshot, never the truncated neighborhood',async()=>{
     await seed();
     const list = await executeAgentTool('list_atlases',{},context);
