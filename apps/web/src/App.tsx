@@ -1,4 +1,4 @@
-import { finishLevelScenePreparation, levelScenePreparationPending, LEVEL_SCENE_PREPARING } from './renderer/levelScenePreparation';
+import { clearLevelScenePreparation, levelScenePreparationPending, runLevelSceneGesture, LEVEL_SCENE_PREPARING } from './renderer/levelScenePreparation';
 import { compileCurrentGeneration } from './renderer/compileCurrentGeneration';
 import { initialSceneBandsMatch } from './renderer/initialSceneCompatibility';
 import { recordAtlasFirstFrame } from './performance/loadTimings';
@@ -2866,6 +2866,7 @@ export function App() {
 
   function stabilizeSemanticLensForPan(reachedCamera: Camera) {
     scanViewportInteractionRef.current = 'pan';
+    if (levelScenePreparationPending(levelCompileAbortRef.current)) return;
     const current = semanticLensSessionRef.current;
     const plan = semanticPanFocusPlan(
       scene,
@@ -2936,7 +2937,13 @@ export function App() {
     return true;
   }
 
-  function handleSemanticZoom(sample: {
+  function handleSemanticZoom(sample: Parameters<typeof handleSemanticZoomReady>[0]): Camera {
+    scanZoomPointerRef.current = sample.pointer;
+    renderedCameraRef.current = sample.camera;
+    return runLevelSceneGesture(levelCompileAbortRef.current, sample.camera, () => handleSemanticZoomReady(sample));
+  }
+
+  function handleSemanticZoomReady(sample: {
     camera: Camera;
     pointer: LensPoint;
     direction: 'inward' | 'outward' | 'none';
@@ -4193,6 +4200,7 @@ export function App() {
     if (fixture) {
       const controller = new AbortController();
       levelCompileAbortRef.current = controller;
+      controller.signal.addEventListener('abort', () => clearLevelScenePreparation(levelCompileAbortRef, controller, setLiveMessage), { once: true });
       const initialScene = sceneRef.current;
       const initialSelection = inspectorSelectionRef.current;
       setLiveMessage(LEVEL_SCENE_PREPARING);
@@ -4223,9 +4231,7 @@ export function App() {
       }).catch(() => {
         if (levelCompileAbortRef.current === controller && !controller.signal.aborted) setLiveMessage('This detail level could not be prepared. Try again.');
       }).finally(() => {
-        if (finishLevelScenePreparation(levelCompileAbortRef, controller)) {
-          setLiveMessage(current => current === LEVEL_SCENE_PREPARING ? 'Detail level preparation cancelled. Choose a level to try again.' : current);
-        }
+        clearLevelScenePreparation(levelCompileAbortRef, controller, setLiveMessage);
       });
       return;
     }
