@@ -1,3 +1,4 @@
+import { cacheableNeighborhoodScene } from './lazyBandCompile';
 import { afterEach, expect, it, vi } from 'vitest';
 import { compileSceneOffThread, createSceneCompileSession } from './compileSceneOffThread';
 import { compileScanScene, type ScanSceneInput } from './scanScene';
@@ -218,4 +219,25 @@ it('ignores wrong request IDs and generations before accepting a selected respon
   expect(worker.terminate).not.toHaveBeenCalled();
   expect(worker.postMessage).toHaveBeenCalledTimes(1);
   const scene = worker.reply(); expect(await pending).toBe(scene); session.dispose();
+});
+
+it('reuses a retained patch-free cache copy but clones a modified copy', async () => {
+  vi.stubGlobal('Worker', WorkerStub);
+  const session = createSceneCompileSession();
+  try {
+    const first = session.compile(input, { generation: 0 });
+    const worker = WorkerStub.latest;
+    const original = worker.reply({ rootEntityId: 'root', protocolPatch: { revision: 1 } } as unknown as AtlasScene);
+    await first;
+    const copy = cacheableNeighborhoodScene(original) as AtlasScene;
+    const second = session.compile({ ...input, previous: copy }, { generation: 0 });
+    expect(worker.postMessage.mock.lastCall![0].previousId).toBe(1);
+    expect(worker.postMessage.mock.lastCall![0].input.previous).toBeUndefined();
+    worker.reply(); await second;
+    copy.rootEntityId = 'modified';
+    const third = session.compile({ ...input, previous: copy }, { generation: 0 });
+    expect(worker.postMessage.mock.lastCall![0].previousId).toBeUndefined();
+    expect(worker.postMessage.mock.lastCall![0].input.previous).toBe(copy);
+    worker.reply(); await third;
+  } finally { session.dispose(); }
 });

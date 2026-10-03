@@ -1,4 +1,4 @@
-import { clearLevelScenePreparation, levelScenePreparationPending, runLevelSceneGesture, LEVEL_SCENE_PREPARING } from './renderer/levelScenePreparation';
+import { prepareLoadedLevelScene, prepareLevelSceneWithDeadline, clearLevelScenePreparation, levelScenePreparationPending, runLevelSceneGesture, LEVEL_SCENE_PREPARING } from './renderer/levelScenePreparation';
 import { compileCurrentGeneration } from './renderer/compileCurrentGeneration';
 import { initialSceneBandsMatch } from './renderer/initialSceneCompatibility';
 import { recordAtlasFirstFrame } from './performance/loadTimings';
@@ -4212,22 +4212,22 @@ export function App() {
         detail,
         fixture.navigation.rootEntityId,
       );
-      void fixture.ensureNeighborhood(initialFocus).then(() => {
-        const compileFocus = scanCompileFocusForBand(
-          activeSnapshot,
-          preferredId,
-          detail,
-          fixture.navigation.rootEntityId,
-        );
-        return fixture.ensureNeighborhood(compileFocus);
-      }).then(async () => {
-        if (controller.signal.aborted || fixture !== scanFixture || initialScene !== sceneRef.current || initialSelection !== inspectorSelectionRef.current) return;
-        const viewRootId = fixture.navigation.rootEntityId;
-        const currentFocus = initialScene.rootEntityId ?? viewRootId;
-        const handoff = scanZoomCompileHandoff(initialScene, activeSnapshot, initialSelection, viewRootId, detail, currentFocus);
-        const compileFocus = handoff?.compileFocus ?? currentFocus;
-        const prepared = await composeScanSceneAsync(compileFocus, initialScene, controller.signal, undefined, initialSelection ? [initialSelection] : undefined);
-        if (!controller.signal.aborted && fixture === scanFixture && initialScene === sceneRef.current && initialSelection === inspectorSelectionRef.current) selectLevelLoaded(index, prepared);
+      void prepareLevelSceneWithDeadline(controller, () => prepareLoadedLevelScene({
+        signal: controller.signal,
+        initialFocus,
+        ensure: focus => fixture.ensureNeighborhood(focus),
+        recomputeFocus: () => scanCompileFocusForBand(activeSnapshot, preferredId, detail, fixture.navigation.rootEntityId),
+        owns: () => fixture === scanFixture && initialScene === sceneRef.current && initialSelection === inspectorSelectionRef.current,
+        compile: async () => {
+          const viewRootId = fixture.navigation.rootEntityId;
+          const currentFocus = initialScene.rootEntityId ?? viewRootId;
+          const handoff = scanZoomCompileHandoff(initialScene, activeSnapshot, initialSelection, viewRootId, detail, currentFocus);
+          const compileFocus = handoff?.compileFocus ?? currentFocus;
+          return composeScanSceneAsync(compileFocus, initialScene, controller.signal, undefined, initialSelection ? [initialSelection] : undefined);
+        },
+        publish: prepared => selectLevelLoaded(index, prepared),
+      }), () => {
+        if (levelCompileAbortRef.current === controller) setLiveMessage('Detail level preparation timed out. Choose a level to try again.');
       }).catch(() => {
         if (levelCompileAbortRef.current === controller && !controller.signal.aborted) setLiveMessage('This detail level could not be prepared. Try again.');
       }).finally(() => {

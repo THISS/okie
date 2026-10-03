@@ -18,6 +18,86 @@ function validTrio() {
 }
 
 describe('scan fixture loader', () => {
+  it('retries optional enrichment after worker failure without compiling large graphs on the UI thread', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const owner = snapshot.entities.find(entity => entity.kind === 'component')!;
+    snapshot.entities.push(...Array.from({ length: 2001 }, (_, i) => ({ id: `code:enrich-${i}`, name: `leaf${i}`, kind: 'code' as const, parentId: owner.id, sourceRefs: [] })));
+    const packet = { ...sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: view.rootEntityId }), snapshot, view };
+    const fixture = compileScanNeighborhoodFixture(packet, demoStory, { loadNeighborhood: async () => packet, loadExcerpts: async () => undefined, loadStory: async () => demoStory });
+    const compiler = vi.spyOn(scanSceneCompiler, 'compileScanScene');
+    vi.stubGlobal('Worker', undefined);
+    try {
+      expect(await fixture.enrichInitialScene()).toBeUndefined();
+      expect(compiler).not.toHaveBeenCalled();
+      let posts = 0;
+      class Worker {
+        onmessage: ((event: MessageEvent) => void) | null = null;
+        terminate() {}
+        postMessage(raw: SceneCompileRequest) {
+          posts++;
+          const request = structuredClone(raw);
+          const scene = compileScanScene({ ...request.input, ...request.graph! });
+          queueMicrotask(() => this.onmessage?.({ data: structuredClone({ id: request.id, generation: request.generation, ok: true, scene }) } as MessageEvent));
+        }
+      }
+      vi.stubGlobal('Worker', Worker);
+      expect(await fixture.enrichInitialScene()).toBeDefined();
+      expect(posts).toBe(1);
+    } finally { fixture.disposeSceneWorker(); compiler.mockRestore(); vi.unstubAllGlobals(); }
+  });
+
+  it('optional enrichment falls back synchronously for small graphs and remains separate from the shallow cache', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const owner = snapshot.entities.find(entity => entity.kind === 'component')!;
+    snapshot.entities.push(...Array.from({ length: 150 }, (_, i) => ({ id: `code:small-enrich-${i}`, name: `leaf${i}`, kind: 'code' as const, parentId: owner.id, sourceRefs: [] })));
+    const packet = { ...sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: view.rootEntityId }), snapshot, view };
+    const fixture = compileScanNeighborhoodFixture(packet, demoStory, { loadNeighborhood: async () => packet, loadExcerpts: async () => undefined, loadStory: async () => demoStory });
+    vi.stubGlobal('Worker', undefined);
+    try {
+      await fixture.prepareInitialScene();
+      const shallow = fixture.createScene(view.rootEntityId);
+      const expected = compileScanScene({ snapshot, view, focusEntityId: view.rootEntityId, boot: 'neighborhood', modeOptions: {}, childCounts: packet.childCounts, unpublishedChildren: packet.unpublishedChildren ?? [] });
+      expect(await fixture.enrichInitialScene()).toEqual(expected);
+      expect(fixture.createScene(view.rootEntityId)).toBe(shallow);
+    } finally { fixture.disposeSceneWorker(); vi.unstubAllGlobals(); }
+  });
+
+  it('retransmits the real graph with attached source excerpts after evidence advances its generation', async () => {
+    const snapshot = structuredClone(demoSnapshot) as unknown as ArchitectureSnapshot;
+    const view = structuredClone(demoView) as unknown as ArchitectureView;
+    const entity = snapshot.entities.find(entity => entity.id === 'code:web-shell:app')!;
+    const excerpts = entity.sourceExcerpts!;
+    expect(excerpts.length).toBeGreaterThan(0);
+    delete entity.sourceExcerpts;
+    const packet = { ...sliceArchitectureNeighborhood(snapshot, view, { focusEntityId: view.rootEntityId }), snapshot, view };
+    const fixture = compileScanNeighborhoodFixture(packet, demoStory, { loadNeighborhood: async () => packet, loadExcerpts: async () => structuredClone(excerpts), loadStory: async () => demoStory });
+    const requests: SceneCompileRequest[] = [];
+    let graph: SceneCompileRequest['graph'];
+    class Worker {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      terminate() {}
+      postMessage(raw: SceneCompileRequest) {
+        const request = structuredClone(raw); requests.push(request);
+        graph = request.graph ?? graph;
+        const scene = compileScanScene({ ...request.input, ...graph! });
+        queueMicrotask(() => this.onmessage?.({ data: structuredClone({ id: request.id, generation: request.generation, ok: true, scene }) } as MessageEvent));
+      }
+    }
+    vi.stubGlobal('Worker', Worker);
+    try {
+      await fixture.createSceneAsync(view.rootEntityId);
+      await fixture.ensureExcerpts(entity.id);
+      const scene = await fixture.createSceneAsync(entity.id);
+      expect(requests).toHaveLength(2);
+      expect(requests[1]!.generation).toBeGreaterThan(requests[0]!.generation);
+      expect(requests[0]!.graph!.snapshot.entities.find(candidate => candidate.id === entity.id)?.sourceExcerpts).toBeUndefined();
+      expect(requests[1]!.graph!.snapshot.entities.find(candidate => candidate.id === entity.id)?.sourceExcerpts).toEqual(excerpts);
+      expect(scene.entities.find(candidate => candidate.id === entity.id)?.sourceExcerpts).toEqual(excerpts);
+    } finally { fixture.disposeSceneWorker(); vi.unstubAllGlobals(); }
+  });
+
   it('keeps large navigation off the main thread when workers are unsupported or time out', async () => {
     const trio = validTrio();
     const snapshot = trio.snapshot as unknown as ArchitectureSnapshot;

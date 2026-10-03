@@ -1,3 +1,4 @@
+import { workerSceneOrigin } from './lazyBandCompile';
 import { recordAtlasWorkerCompile } from '../performance/loadTimings';
 import { guardScanCompile, type ScanSceneInput } from './scanScene';
 import type { AtlasScene } from './types';
@@ -63,7 +64,6 @@ export function createSceneCompileSession(): SceneCompileSession {
       if (worker !== currentWorker || active !== job) return;
       const result = event.data as SceneCompileResponse;
       if (result.id !== job.id || result.generation !== job.options.generation) return;
-      if (job.abandoned) { clearTimeout(job.timer); active = undefined; pump(); return; }
       let validScope = result.scene?.rootEntityId === job.input.focusEntityId;
       if (!validScope && result.scene?.scanGuardRefusal) {
         const expected = guardScanCompile(job.input.snapshot, job.input.focusEntityId, job.input.view.rootEntityId);
@@ -78,6 +78,7 @@ export function createSceneCompileSession(): SceneCompileSession {
       if (typeof result.durationMs === 'number') recordAtlasWorkerCompile(result.durationMs);
       scenes.set(result.scene, job.id);
       while (scenes.size > 2) scenes.delete(scenes.keys().next().value!);
+      clearTimeout(job.timer);
       active = undefined; settle(job, result.scene); pump();
     };
     currentWorker.onerror = fail;
@@ -85,7 +86,7 @@ export function createSceneCompileSession(): SceneCompileSession {
     job.timer = setTimeout(fail, 20_000);
     const { snapshot, view, childCounts, unpublishedChildren, ...input } = job.input;
     const needsGraph = workerGeneration !== job.options.generation || workerSnapshot !== snapshot;
-    const previousId = needsGraph || !input.previous ? undefined : scenes.get(input.previous);
+    const previousId = needsGraph || !input.previous ? undefined : scenes.get(workerSceneOrigin(input.previous));
     if (previousId !== undefined) delete input.previous;
     const request: SceneCompileRequest = {
       id: job.id, generation: job.options.generation, input, previousId,

@@ -221,15 +221,20 @@ function buildLiveScanFixture(
     if (enrichment) return enrichment;
     const work = (async () => {
     if (extras.boot !== 'neighborhood' || snapshot.entities.length <= 128) return undefined;
-    const generation = snapshotGeneration;
-    const prepared = await measureAtlasAsyncPhase('atlas-worker-round-trip', () => workerSession().compile({ snapshot, view, focusEntityId: view.rootEntityId, boot: extras.boot, modeOptions: options, childCounts, unpublishedChildren }, { generation: fullWorkerGeneration(), priority: 'speculative', signal }));
-    if (generation !== snapshotGeneration) return undefined;
-    return prepared;
+    return compileCurrentGeneration(() => snapshotGeneration, async () => {
+      const input = { snapshot, view, focusEntityId: view.rootEntityId, boot: extras.boot, modeOptions: options, childCounts, unpublishedChildren };
+      const prepared = await measureAtlasAsyncPhase('atlas-worker-round-trip', () => workerSession().compile(input, { generation: fullWorkerGeneration(), priority: 'speculative', signal }));
+      // Enrichment is optional. Never replace background work with a large UI
+      // compile; retain the shallow view and allow a subsequent retry instead.
+      if (!prepared && snapshot.entities.length > SCAN_BAND_DEPTH_MIN_ENTITIES) return undefined;
+      return prepared ?? measureAtlasPhase('atlas-compile', () => compileScanScene(input));
+    }, signal);
     })();
     enrichment = work;
     const reset = () => { if (enrichment === work) enrichment = undefined; };
     signal?.addEventListener('abort', reset, { once: true });
-    void work.finally(() => signal?.removeEventListener('abort', reset)).catch(() => undefined);
+    void work.then(result => { if (!result) reset(); }, reset)
+      .finally(() => signal?.removeEventListener('abort', reset)).catch(() => undefined);
     return work;
   };
   const createScene = (
@@ -286,6 +291,7 @@ function buildLiveScanFixture(
       const packetIssues = measureAtlasPhase('atlas-validate', () => validateNeighborhoodPacket(packet));
       if (packetIssues.length) throw new ScanFixtureError(packetIssues);
       snapshotGeneration++;
+      enrichment = undefined;
       initialScene = undefined;
       assignNeighborhoodSnapshot(snapshot, packet.snapshot);
       for (const id of packet.view.entityIds) {
@@ -335,6 +341,7 @@ function buildLiveScanFixture(
       existing.sourceExcerpts = excerpts;
       // Worker graphs include evidence, not only drawable geometry.
       snapshotGeneration++;
+      enrichment = undefined;
       initialScene = undefined;
     }
     return excerpts;
