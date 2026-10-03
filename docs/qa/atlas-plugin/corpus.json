@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "scope": "Offline regression corpus and human planning rubric; deterministic citation checks do not grade semantic correctness or installed-host behavior.",
+  "cases": [
+    {
+      "id": "cancel-ask",
+      "prompt": "Plan cancelling a pending Ask on panel close or map replacement. Explain affected contracts, evidence gaps and observable validation.",
+      "review": {
+        "dependencies": [
+          "App caller and finalizer ownership",
+          "HTTP dispatch, auth/quota and persistence",
+          "Worker admission/release and gateway transport gap"
+        ],
+        "validation": [
+          "Already-aborted signal",
+          "Late old result must not overwrite a new request",
+          "Shared worker remains usable"
+        ],
+        "unsupportedClaims": "Review each observed-behavior claim against a returned capture; label proposals and unknowns.",
+        "freshness": "Separate recorded timestamp, publication time, latest visual URL, frozen source and current-code comparison."
+      },
+      "execution": {
+        "status": "recorded-offline",
+        "captures": "fixtures/cancellation-captures.json",
+        "report": "fixtures/cancellation-plan.md",
+        "successfulOperations": 34,
+        "humanReview": {
+          "status": "needs-correction",
+          "unsupportedClaims": [
+            "Original report mislabeled generatedAt as scan generation; retain this known failure, do not call the trial a full pass."
+          ],
+          "missedDependencies": [
+            "Actual map replacement handlers",
+            "Gateway transport cancellation"
+          ],
+          "citationReview": "12 source links fit individual retrieved frozen windows; deterministic audit replays this check.",
+          "freshness": "Publication time/latest comparison unknown and current code unchecked; snapshot timestamp wording failed.",
+          "usefulValidation": "Delayed fake transport ignoring abort, request ownership races, admission/queue/worker accounting and persistence boundaries are proposed, not executed."
+        },
+        "inputProvenance": {
+          "prompt": "Maintained normalized request; exact original wording was not retained in this corpus.",
+          "skill": "Pre-final 0.1.3 guidance used in the second independent forward trial. Exact input bytes were not archived; final 0.1.3 includes a subsequent timestamp clarification.",
+          "toolCounts": "Successful offline operations recorded in focused-results.json; excludes CLI help and skill read.",
+          "replay": "Citations are replayable against retained captures; this does not reproduce the model run."
+        }
+      }
+    },
+    {
+      "id": "historical-pin",
+      "prompt": "Plan a change using an explicitly older publication while the visual Atlas points at latest.",
+      "review": {
+        "dependencies": [
+          "Keep every source citation on the requested frozen revision",
+          "Explain visual latest versus pinned source",
+          "Current revision remains unchecked"
+        ],
+        "validation": [
+          "Compare current code before exact edits",
+          "Publication difference is not proof of repository HEAD"
+        ],
+        "unsupportedClaims": "Review each observed-behavior claim against a returned capture; label proposals and unknowns.",
+        "freshness": "Separate recorded timestamp, publication time, latest visual URL, frozen source and current-code comparison."
+      },
+      "execution": {
+        "status": "not-run",
+        "reason": "Maintained prompt for the next independent forward/installed-host trial."
+      }
+    },
+    {
+      "id": "missing-capture",
+      "prompt": "A discovered caller has a sourceRef but no captured window at its call site. What can you safely plan?",
+      "review": {
+        "dependencies": [
+          "Try schema-supported sourcePath/sourceLine on the caller",
+          "Keep the uncaptured call-site gap explicit",
+          "Do not infer absent behavior from empty evidence"
+        ],
+        "validation": [
+          "No sourceRef-only claim represented as inspected code",
+          "No citation spanning disjoint windows"
+        ],
+        "unsupportedClaims": "Review each observed-behavior claim against a returned capture; label proposals and unknowns.",
+        "freshness": "Separate recorded timestamp, publication time, latest visual URL, frozen source and current-code comparison."
+      },
+      "execution": {
+        "status": "not-run",
+        "reason": "Maintained prompt for the next independent forward/installed-host trial."
+      }
+    },
+    {
+      "id": "unpublished-repository",
+      "prompt": "The requested repository is absent from list_atlases. Help plan its change.",
+      "review": {
+        "dependencies": [
+          "State that public Atlas evidence is unavailable",
+          "Do not substitute a similarly named repository",
+          "Keep read-only scope; no scan, write or paid call"
+        ],
+        "validation": [
+          "Describe authorized alternatives without claiming a completed scan",
+          "No invented entities or source citations"
+        ],
+        "unsupportedClaims": "Review each observed-behavior claim against a returned capture; label proposals and unknowns.",
+        "freshness": "Separate recorded timestamp, publication time, latest visual URL, frozen source and current-code comparison."
+      },
+      "execution": {
+        "status": "not-run",
+        "reason": "Maintained prompt for the next independent forward/installed-host trial."
+      }
+    },
+    {
+      "id": "recency-unknown",
+      "prompt": "Is this Atlas current enough to prescribe exact edits when publication time and upstream revision are unknown?",
+      "review": {
+        "dependencies": [
+          "generatedAt is a recorded snapshot timestamp, not verified scan/commit time",
+          "Publication age stays unknown",
+          "Latest publication comparison does not establish upstream HEAD"
+        ],
+        "validation": [
+          "Decline exact-edit readiness until current-code review",
+          "Preserve unknown rather than invent a date"
+        ],
+        "unsupportedClaims": "Review each observed-behavior claim against a returned capture; label proposals and unknowns.",
+        "freshness": "Separate recorded timestamp, publication time, latest visual URL, frozen source and current-code comparison."
+      },
+      "execution": {
+        "status": "not-run",
+        "reason": "Maintained prompt for the next independent forward/installed-host trial."
+      }
+    }
+  ]
+}
