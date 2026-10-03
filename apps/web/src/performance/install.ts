@@ -62,6 +62,10 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
     explanation.textContent = 'Paint is browser page paint, not atlas readiness. Bootstrap completion means render requested, not rendered. Interaction timings are sampled events, not INP. Frame gaps over 50 ms exclude hidden pages. Reload with ?perf=1 to capture bootstrap. Search worker timings separate preparation, index build, query processing and round trip; their timestamps mark receipt on the UI thread. Render phases measure synchronous UI work, not GPU completion; frames are sampled every 250 ms plus slow frames over 16 ms.';
     const summary = doc.createElement('pre');
     summary.style.cssText = 'white-space:pre-wrap;font:12px/1.5 monospace';
+    const liveDetails = doc.createElement('details');
+    const liveLabel = doc.createElement('summary');
+    liveLabel.textContent = 'Show live timings';
+    liveDetails.append(liveLabel, explanation, summary);
     const rawReport = doc.createElement('pre');
     rawReport.style.cssText = 'white-space:pre-wrap;font:11px/1.4 monospace';
     const reportDetails = doc.createElement('details');
@@ -69,7 +73,7 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
     reportLabel.textContent = 'Inspect safe timing JSON';
     reportDetails.append(reportLabel, rawReport);
     const update = () => {
-      if (!active) return;
+      if (!active || !liveDetails.open) return;
       const report = active.recorder.report();
       const lines = Object.entries(report.capabilities).map(([name, state]) => `${name}: ${state}`);
       for (const metric of [...new Set(report.samples.map(sample => sample.metric))]) {
@@ -81,6 +85,7 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
       summary.textContent = lines.join('\n');
 
     };
+    liveDetails.addEventListener('toggle', update);
     reportDetails.addEventListener('toggle', () => {
       if (reportDetails.open && active) rawReport.textContent = JSON.stringify(active.recorder.report(), null, 2);
     });
@@ -101,7 +106,7 @@ export function installPerformanceDiagnostics(win: Window & typeof globalThis = 
     close.textContent = 'Stop recording';
     close.style.marginLeft = '8px';
     close.addEventListener('click', stop);
-    panel.append(heading, explanation, summary, exportButton, close, reportDetails);
+    panel.append(heading, exportButton, close, liveDetails, reportDetails);
     doc.body.append(panel);
     update();
     refresh = win.setInterval(update, 1000);
