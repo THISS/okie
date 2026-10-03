@@ -18,7 +18,7 @@ Both routes require `AGENT_READS_ENABLED=1`. Local and production configuration 
 | `search_atlas` | `atlas`, `query`, optional `rootEntityId`, `limit`, `cursor` | Ranked entities from the complete published snapshot |
 | `get_entity` | `atlas`, `entityId` | Structure, published understanding, responsibility, technology and source references |
 | `get_relations` | `atlas`, `entityId`, optional `limit`, `cursor` | Incoming and outgoing relationships with source references |
-| `get_evidence` | `atlas`, `entityId` | Captured source excerpts or an explicit missing-evidence status |
+| `get_evidence` | `atlas`, `entityId`; optional `sourcePath`, `sourceLine` | Captured source excerpts or an explicit missing-evidence status |
 
 `atlas` is `{owner, repo, versionId}`. Obtain it with `list_atlases` and reuse that pin through the investigation. Results include the snapshot and commit identity. Search/relationship cursors bind the published version, snapshot and query; listing cursors bind the current directory contents and must be restarted after publication changes. Pages are capped at 50 records.
 
@@ -40,6 +40,10 @@ Use an entity ID from the search result with `get_entity`, `get_relations` and `
 ## Evidence and limits
 
 The current snapshot schema does not establish the origin of every structural fact or responsibility. Results therefore say `snapshot-recorded` and `origin-not-recorded`; they do not manufacture observed/inferred labels or confidence percentages. Missing excerpts mean `not-captured`, not that code is absent or tested. Scan coverage remains `unknown`. Captured excerpts are bounded and indicate truncation or partial ranges.
+
+New scans preserve the entry excerpt and add windows around recorded outgoing calls, capped at 128 windows and 512 KiB of serialized excerpt records per code entity, with at most 8 MiB of additional excerpt records across a snapshot. Each window still obeys the existing 48-line/4,096-character limits. Budget exhaustion and unsupported or overlong source lines can leave recorded calls uncaptured; existing publications are unchanged. These windows do not establish complete call or scan coverage.
+
+`get_evidence` returns at most eight windows. Use the repository-relative `sourcePath` and positive `sourceLine` from a relation's evidence to select a late captured window. Selectors filter stored captures only; an uncaptured line returns `not-captured`, never a live source fetch. `truncated` remains true when other windows or declaration lines are omitted.
 
 Readers only construct allowlisted public store keys. They require a listed, currently published repository and a matching immutable manifest/snapshot. They cannot read private operator sidecars or fetch arbitrary source URLs. Results project explicit fields, validate repository-relative paths, and scrub known credential/host-path shapes. This is defense in depth over published artifacts, not a promise that arbitrary repository text can never contain a secret.
 

@@ -4,9 +4,9 @@
 <h2>Documentation</h2>
 <p>This page lists connection instructions, available tools, examples, and limits. The <a href="/llms.txt">plain-text reference</a> contains the same inventory.</p>
 <h2>Availability and connection</h2>
-<p>Remote MCP and the shared public <code>atlas</code> <code>query</code> service are currently enabled on staging only. Production defaults off. Staging requires Cloudflare Access authorization; do not embed credentials in prompts or URLs.</p>
-<p>Connect a Streamable HTTP MCP client to the staging endpoint. Discover schemas with <code>tools/list</code>. The endpoint supports POST initialization, discovery, and tool calls; it has no persistent sessions or GET event stream.</p>
-<figure><figcaption>Streamable HTTP endpoint</figcaption><pre><code>https://staging.sourcefor.dev/mcp</code></pre></figure>
+<p>Remote MCP and the shared public <code>atlas</code> <code>query</code> service are enabled for public published atlases in production. Staging requires Cloudflare Access authorization; do not embed credentials in prompts or URLs.</p>
+<p>Connect a Streamable HTTP MCP client to the production endpoint. Discover schemas with <code>tools/list</code>. The endpoint supports POST initialization, discovery, and tool calls; it has no persistent sessions or GET event stream.</p>
+<figure><figcaption>Streamable HTTP endpoint</figcaption><pre><code>https://sourcefor.dev/mcp</code></pre></figure>
 <p>WebMCP tools are registered by an open <code>atlas</code> page when the browser provides <code>document.modelContext</code> (with a <code>navigator.modelContext</code> compatibility fallback). Browser/agent support is required. Tools differ by page. Registration alone does not mean an endpoint is enabled.</p>
 <h2>Shared read tools: remote MCP and atlas-page WebMCP</h2>
 <p>All five read only public published atlases, make no model calls, and do not consume the daily Ask quota.</p>
@@ -14,7 +14,7 @@
 <p class="tool"><code>search_atlas</code>: <code>atlas</code>, <code>query</code>; optional <code>rootEntityId</code>, <code>limit</code>, <code>cursor</code>. Searches structure and accepted public summaries/key points.</p>
 <p class="tool"><code>get_entity</code>: <code>atlas</code>, <code>entityId</code>. Returns structure, source references, and accepted public understanding when available.</p>
 <p class="tool"><code>get_relations</code>: <code>atlas</code>, <code>entityId</code>; optional <code>limit</code>, <code>cursor</code>. Returns incoming/outgoing relationships.</p>
-<p class="tool"><code>get_evidence</code>: <code>atlas</code>, <code>entityId</code>. Returns captured source excerpts or an explicit missing-evidence status.</p>
+<p class="tool"><code>get_evidence</code>: <code>atlas</code>, <code>entityId</code>; optional <code>sourcePath</code> (repository-relative) and <code>sourceLine</code> (positive integer) select a stored window. Returns captured source excerpts or an explicit missing-evidence status.</p>
 <p>Pass an <code>atlas</code> pin from <code>list_atlases</code> and keep it for the investigation. Entity IDs come from search results; do not invent them. Cursors are opaque and tied to their <code>query</code>/version. Default page size 20; maximum 50. Query length maximum 256 characters.</p><figure><figcaption>Atlas version pin · JSON</figcaption><pre><code>{
   <span class="json-key">&quot;owner&quot;</span>: <span class="json-string">&quot;source-for&quot;</span>,
   <span class="json-key">&quot;repo&quot;</span>: <span class="json-string">&quot;atlas&quot;</span>,

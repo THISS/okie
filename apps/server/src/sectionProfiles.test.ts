@@ -352,3 +352,25 @@ test("malformed sibling fails the whole sidecar closed without changing its prio
   assert.equal(ctx.calls(), 1, "no row salvage or speculative re-profiling");
   assert.equal(readSectionProfile(ctx.store, { ...ctx.pin, draftRevisionId: accepted.draftRevisionId }, "component:a").state, "ready");
 });
+
+
+test("call-site windows cannot crowd other declarations out of the section sample", () => {
+  const value = snapshot();
+  const template = value.entities[1]!;
+  value.entities = [value.entities[0]!, ...Array.from({ length: 10 }, (_, index) => ({
+    ...structuredClone(template), id: `code:member-${index}`, kind: "code" as const,
+    sourceRefs: [{ path: "a.ts", symbol: `member${index}`, startLine: index * 100 + 1, endLine: index * 100 + 90, commitSha: commit }],
+    sourceExcerpts: [{ ...template.sourceExcerpts![0]!, symbol: `member${index}`, startLine: index * 100 + 1, endLine: index * 100 + 1, highlightLine: index * 100 + 1, sourceStartLine: index * 100 + 1, sourceEndLine: index * 100 + 90 }],
+  }))];
+  const before = buildSectionState(value, "container:parent", commit);
+  const busy = value.entities[1]!;
+  busy.sourceExcerpts!.push(...Array.from({ length: 60 }, (_, index) => ({
+    ...busy.sourceExcerpts![0]!, startLine: index + 2, endLine: index + 2, highlightLine: index + 2,
+  })));
+  const after = buildSectionState(value, "container:parent", commit);
+  assert.equal(after.coverage.candidateExcerpts, 10);
+  assert.equal(new Set(after.evidence.map(item => item.entityId)).size, 6);
+  assert.deepEqual(after.evidence, before.evidence);
+  // Retain conservative invalidation: omitted capture changes still affect state.
+  assert.notEqual(after.scopeDigest, before.scopeDigest);
+});

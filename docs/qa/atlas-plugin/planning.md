@@ -40,3 +40,34 @@ Brenton added these improvements to the current goal on 2026-10-03. Keep them tr
 | 5 | Repeatable planning evaluations | Expand the scenarios above into a maintained evaluation corpus covering frontend lifecycle changes, server/retrieval boundaries, historical publications, missing evidence and unpublished repositories. Record unsupported claims, missed dependencies, citation validity, tool effort, current-code assumptions and whether proposed validation catches the intended failure. Establish a baseline before tuning and compare subsequent versions against it. Keep deterministic fixtures/checks in CI and perform installed ChatGPT/Codex host checks separately; no live OpenRouter in CI. |
 
 Each item needs observable evidence and an updated result, not only more skill instructions or a green schema check. Keep CLA-339 In Progress until the remaining items are implemented and validated, or Brenton explicitly changes their scope. The host's activity summaries are not raw invocation traces. A reviewed PR and a live deployment are separate states; do not mark the visual-link rollout complete merely because its code is tested.
+
+## Evidence coverage baseline experiment
+
+A deterministic quick self-scan of commit `43bcaaaf17cc60d669e4489571620d2594f79516` produced 6,785 entities and 6,479 recorded call-site evidence locations inside their caller declarations. The experimental scanner retained the entry excerpt plus up to three additional bounded windows around recorded outgoing calls. The baseline below uses the same graph with only each entity's entry excerpt, so graph changes do not confound the comparison.
+
+| Measure | Entry excerpt only | Four-window prototype |
+| --- | --- | --- |
+| Recorded call-site locations inside a captured caller excerpt | 4,787 / 6,479 | 5,813 / 6,479 |
+| Serialized snapshot bytes | 17,008,164 | 17,985,299 |
+| `createHandler` → `answerAskQuestion` call at line 347 | Not captured | Captured |
+| `App` → `submitAskQuestion` call at line 5234 | Not captured | Still not captured |
+
+These are static evidence-location counts, not runtime/test coverage, completeness of the scan, or installed-host results. The quick scan does not establish full language-analysis coverage. The extra serialized size is 977,135 bytes (about 0.93 MiB); it is below the current 64 MiB edge snapshot-read limit for this repository, not proof that every repository fits.
+
+The prototype demonstrates a useful improvement but is not ready to claim the planning-evidence goal complete: its first-call-site selection spends the window budget near the start of a large caller. The next iteration must support useful late-call-site evidence under explicit capture and response budgets, with deterministic selection and a way for an agent to reach the relevant captured window. Public reads must continue to use frozen captured data rather than silently fetch uncaptured source. File-level aggregation and omitted windows must remain explicit. Do not open a PR for this slice until the corrected behavior passes the required gates and running-app exploration.
+
+
+### Bounded call-window iteration
+
+Using the same committed input and quick-scan graph as the baseline, capture of recorded call-site locations rises to **6,363 / 6,479**. The snapshot is **18,649,175 bytes**, an increase of 1,641,011 bytes (about 1.56 MiB) over entry-only capture. `App` has 88 captured windows; selecting its recorded Ask call at line 5234 returns **5226–5273**. Selecting the server `createHandler` call at line 347 returns **325–372**. Default public evidence responses still return at most eight windows; optional repository-relative `sourcePath` and positive `sourceLine` select later stored windows.
+
+Capture is limited to 128 windows / 512 KiB of serialized excerpt records per code entity, plus an 8 MiB snapshot-wide budget for additional windows. Entry windows are preserved even after budget exhaustion. The tests cover late-window retrieval, omitted lines, invalid selectors, token redaction, deterministic relation ordering, UTF8 budgets, normalization and pinned public excerpt packs. Remaining missing locations and file-level aggregation are unresolved; this slice does not complete the overall evidence-coverage or planning-evaluation goal. No existing publication is rescanned or changed automatically.
+
+
+Validation for this iteration (2026-10-03): `pnpm check`, `pnpm test`, `cargo test --workspace` and `pnpm build` passed using Homebrew Git. Focused scanner/query tests passed 31/31; edge public-read/MCP/HTTP tests passed 24/24. Owned local ports 4316/4317 were used for running-app exploration: agent-reference inputs and production endpoint, guided story jumped to step four and awaited `data-playback-state="paused"`, populated inspector and source tab, explicit Architecture model selection, relationship inspection, and `/new`. No scan fixture was present for the conditional `?fixture=scan` check. The plain-text reference navigation was blocked by Chrome; its updated contents were checked on disk. Late-window behavior is verified through deterministic scanner and R2-backed edge tests, not an installed-host claim. Screenshot artifacts are `/tmp/atlas-evidence-browser-qa.png` and `/tmp/atlas-evidence-tool-reference.png`. Production and the installed plugin were unchanged.
+
+## PR 174 section-profile review correction
+
+Section profiles now sample one valid captured window per original source reference, preserving the scanner's entry-first ordering. Supplemental call-site captures no longer weight a busy declaration more heavily than other declarations; legacy entities with distinct source references still retain separate candidates. A regression with ten members and sixty extra captures on one member preserves the original six-member sample. All sixteen section-profile tests passed.
+
+`scopeDigest` deliberately still includes all captured evidence, including omitted windows: this preserves conservative cache invalidation, as required by the existing omitted-evidence regression. Extra capture data can therefore invalidate a profile even when its bounded semantic evidence sample is unchanged. No live Jev request is needed for the regression.

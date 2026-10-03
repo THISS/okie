@@ -76,6 +76,7 @@ export interface AgentEvidenceResult extends AgentSnapshotIdentity {
   found: boolean;
   status: "captured" | "not-captured" | "no-source-reference" | "entity-not-found";
   scanCoverage: "unknown";
+  error?: "invalid-query";
   sourceRefs: AgentSourceRef[];
   excerpts: AgentSourceExcerpt[];
   truncated: boolean;
@@ -327,14 +328,19 @@ function excerptSummary(excerpt: SourceExcerpt): AgentSourceExcerpt | undefined 
   return result;
 }
 
-export function agentEvidence(snapshot: ArchitectureSnapshot, entityId: string): AgentEvidenceResult {
+/** Select only captured source. A line outside these windows never triggers a source fetch. */
+export function agentEvidence(snapshot: ArchitectureSnapshot, entityId: string, selection: { sourcePath?: string; sourceLine?: number } = {}): AgentEvidenceResult {
   const result: AgentEvidenceResult = { ...identity(snapshot), found: false, status: "entity-not-found", scanCoverage: "unknown", sourceRefs: [], excerpts: [], truncated: false };
+  if (selection.sourcePath !== undefined && !agentRepositoryPath(selection.sourcePath)
+    || selection.sourceLine !== undefined && !positiveLine(selection.sourceLine)) return { ...result, error: "invalid-query" };
   const entity = snapshot.entities.find(candidate => candidate.id === entityId);
   if (!entity || !identifier(entity.id)) return result;
   const refs = sourceRefs(entity.sourceRefs);
   const captured = (entity.sourceExcerpts ?? []).map(excerptSummary).filter((excerpt): excerpt is AgentSourceExcerpt => Boolean(excerpt))
     .sort((a, b) => compare(a.path, b.path) || a.startLine - b.startLine || compare(JSON.stringify(a), JSON.stringify(b)));
-  const excerpts = captured.slice(0, AGENT_QUERY_LIMITS.maxExcerpts);
+  const matching = captured.filter(excerpt => (selection.sourcePath === undefined || excerpt.path === selection.sourcePath)
+    && (selection.sourceLine === undefined || excerpt.startLine <= selection.sourceLine && excerpt.endLine >= selection.sourceLine));
+  const excerpts = matching.slice(0, AGENT_QUERY_LIMITS.maxExcerpts);
   return { ...result, found: true, status: excerpts.length ? "captured" : refs.length ? "not-captured" : "no-source-reference", sourceRefs: refs, excerpts,
     truncated: captured.length > excerpts.length || entity.sourceRefs.length > refs.length || (entity.sourceExcerpts ?? []).length > captured.length || excerpts.some(excerpt => excerpt.partial) };
 }

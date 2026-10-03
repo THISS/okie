@@ -100,8 +100,16 @@ export function buildSectionState(snapshot: ArchitectureSnapshot, scopeId: strin
   const members = snapshot.entities.filter(item => ids.has(item.id)).sort((a, b) => a.id.localeCompare(b.id));
   const candidates: SectionEvidence[] = [];
   let invalidExcerpts = 0;
+  const representedRefs = new Set<string>();
   for (const member of members) for (const excerpt of member.sourceExcerpts ?? []) {
     if (!excerpt.path || !Number.isSafeInteger(excerpt.startLine) || !Number.isSafeInteger(excerpt.endLine) || excerpt.startLine < 1 || excerpt.endLine < excerpt.startLine || excerpt.lines.length !== excerpt.endLine - excerpt.startLine + 1 || !excerpt.lines.every(line => typeof line === "string") || excerpt.text !== excerpt.lines.join("\n") || excerpt.frozenRevision !== sourceCommitSha || !member.sourceRefs.some(ref => sourceExcerptMatchesRef(excerpt, ref))) { invalidExcerpts++; continue; }
+    // Supplemental call-site windows must not give one declaration extra votes
+    // in the finite section sample. Scanner order preserves its entry window first.
+    // Distinct source references on legacy entities still contribute separately.
+    const refIndex = member.sourceRefs.findIndex(ref => sourceExcerptMatchesRef(excerpt, ref));
+    const refKey = `${member.id}:${refIndex}`;
+    if (representedRefs.has(refKey)) continue;
+    representedRefs.add(refKey);
     candidates.push({ ...excerpt, lines: [...excerpt.lines], entityId: member.id, id: `e${hash([member.id, excerpt]).slice(0, 20)}` });
   }
   candidates.sort((a, b) => Number(b.entityId === scopeId) - Number(a.entityId === scopeId) || a.path.localeCompare(b.path) || a.startLine - b.startLine || a.id.localeCompare(b.id));

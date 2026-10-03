@@ -19,6 +19,13 @@ function unicodeLength(value: string): number {
   return [...value].length;
 }
 
+/** Additional capture budgets; the legacy entry window is always preserved. */
+export const PORTABLE_CALL_CAPTURE_LIMITS = {
+  maxWindowsPerEntity: 128,
+  maxBytesPerEntity: 512 * 1024,
+  maxAdditionalBytesPerSnapshot: 8 * 1024 * 1024,
+} as const;
+
 export type PortableExcerptInput = {
   path: string;
   symbol?: string;
@@ -26,6 +33,8 @@ export type PortableExcerptInput = {
   endLine: number;
   frozenRevision: string;
   fileText: string;
+  /** Optional observed call-site anchor within the declaration; original range stays intact. */
+  focusLine?: number;
 };
 
 /**
@@ -47,10 +56,13 @@ export function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerp
   }
   if (!Number.isSafeInteger(input.endLine) || input.endLine < originalStart) return undefined;
   const maxEnd = Math.min(fileLines.length, input.endLine);
+  const focusLine = input.focusLine;
+  if (focusLine !== undefined && (!Number.isSafeInteger(focusLine) || focusLine < originalStart || focusLine > maxEnd)) return undefined;
+  const windowStart = focusLine === undefined ? originalStart : Math.max(originalStart, focusLine - 8);
   const lines: string[] = [];
-  let startLine = originalStart;
+  let startLine = windowStart;
   let characters = 0;
-  for (let lineNumber = originalStart; lineNumber <= maxEnd; lineNumber += 1) {
+  for (let lineNumber = windowStart; lineNumber <= maxEnd; lineNumber += 1) {
     const line = scrubGithubTokens(fileLines[lineNumber - 1]!);
     const length = unicodeLength(line);
     if (length > SOURCE_EXCERPT_LIMITS.maxLineCharacters) {
@@ -70,7 +82,7 @@ export function portableSourceExcerpt(input: PortableExcerptInput): SourceExcerp
     ...(input.symbol ? { symbol: input.symbol } : {}),
     language, startLine, endLine: startLine + lines.length - 1,
     sourceStartLine: originalStart, sourceEndLine: input.endLine,
-    highlightLine: startLine, frozenRevision: input.frozenRevision,
+    highlightLine: Math.min(startLine + lines.length - 1, Math.max(startLine, focusLine ?? startLine)), frozenRevision: input.frozenRevision,
     lines, text: lines.join("\n"),
   };
 }
@@ -84,6 +96,16 @@ export function attachPortableSourceExcerpts(
   snapshot: ArchitectureSnapshot,
   readFile: (repoRelativePath: string) => string,
 ): ArchitectureSnapshot {
+  // Preserve the entry contract, then bounded windows around observed outgoing calls.
+  // These are captured at ingestion; public reads never fetch uncaptured repository text.
+  let additionalBytes = 0;
+  const calls = new Map<string, Array<{ path: string; commitSha: string; startLine?: number }>>();
+  for (const relation of snapshot.relations) {
+    if (relation.kind !== "calls") continue;
+    const sources = calls.get(relation.from) ?? [];
+    for (const evidence of relation.evidence) sources.push(evidence.source);
+    calls.set(relation.from, sources);
+  }
   const files = new Map<string, string | undefined>();
   const load = (path: string): string | undefined => {
     if (files.has(path)) return files.get(path);
@@ -114,10 +136,26 @@ export function attachPortableSourceExcerpts(
         fileText,
       });
       if (!excerpt) return entity;
-      return {
-        ...entity,
-        sourceExcerpts: [excerpt],
-      };
+      const excerpts = [excerpt];
+      let entityBytes = Buffer.byteLength(JSON.stringify(excerpt), "utf8");
+      const anchors = [...new Set((calls.get(entity.id) ?? [])
+        .filter(source => source.path === ref.path && source.commitSha === snapshot.commitSha
+          && Number.isSafeInteger(source.startLine) && source.startLine! >= ref.startLine! && source.startLine! <= ref.endLine!)
+        .map(source => source.startLine!))].sort((a, b) => a - b);
+      for (const anchor of anchors) {
+        if (excerpts.length >= PORTABLE_CALL_CAPTURE_LIMITS.maxWindowsPerEntity) break;
+        if (excerpts.some(window => window.startLine <= anchor && window.endLine >= anchor)) continue;
+        const window = portableSourceExcerpt({ path: ref.path, ...(ref.symbol ? { symbol: ref.symbol } : {}),
+          startLine: ref.startLine, endLine: ref.endLine, frozenRevision: snapshot.commitSha, fileText, focusLine: anchor });
+        if (!window || window.startLine > anchor || window.endLine < anchor) continue;
+        const bytes = Buffer.byteLength(JSON.stringify(window), "utf8");
+        if (entityBytes + bytes > PORTABLE_CALL_CAPTURE_LIMITS.maxBytesPerEntity
+          || additionalBytes + bytes > PORTABLE_CALL_CAPTURE_LIMITS.maxAdditionalBytesPerSnapshot) break;
+        excerpts.push(window);
+        entityBytes += bytes;
+        additionalBytes += bytes;
+      }
+      return { ...entity, sourceExcerpts: excerpts };
     }),
   };
 }
