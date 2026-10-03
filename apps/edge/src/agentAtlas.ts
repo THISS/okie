@@ -1,7 +1,8 @@
 import { JSONParser, TokenType } from '@streamparser/json';
 import { agentRepositoryPath, agentPublicText, agentEntity, agentEvidence, agentRelations, agentSearch, type ArchitectureSnapshot } from '@okie/architecture';
-import { isPublishedSlug, isPublishedVersionId, PUBLISHED_INDEX_SCHEMA, PUBLISHED_VERSION_SCHEMA, publishedIndexKey, publishedLatestKey, publishedManifestKey, publishedPublicFileKey } from '../../server/src/publishedStoreLayout';
+import { isPublishedSlug, isPublishedVersionId, PUBLISHED_LATEST_SCHEMA, PUBLISHED_INDEX_SCHEMA, PUBLISHED_VERSION_SCHEMA, publishedIndexKey, publishedLatestKey, publishedManifestKey, publishedPublicFileKey } from '../../server/src/publishedStoreLayout';
 import { handleScanRoute } from './scan';
+import { agentPublicationFreshness, publicationTimestamp } from './agentFreshness';
 import { canonicalAtlasPathForSlug } from '../../web/src/publishedNames';
 
 export class AgentAtlasError extends Error {
@@ -134,11 +135,11 @@ function publicAtlas(row: Record<string, unknown>, publicOrigin: string): Record
   return { owner: row.owner, repo: row.repo, versionId: row.versionId, commitSha: row.commitSha, ...atlasLink(row.slug, publicOrigin), ...attribution(row), ...(typeof row.description === 'string' ? { description: agentPublicText(row.description, 280) } : {}), ...(typeof row.language === 'string' ? { language: agentPublicText(row.language, 40) } : {}) };
 }
 /** Public read-only service: no container, gateway, private object or source network access. */
-export async function executeAgentTool(tool: string, input: unknown, context: { bucket: R2Bucket; publicOrigin?: string }): Promise<Record<string, unknown>> {
-  try { return await execute(tool, input, context.bucket, context.publicOrigin ?? 'https://sourcefor.dev'); }
+export async function executeAgentTool(tool: string, input: unknown, context: { bucket: R2Bucket; publicOrigin?: string; now?: number }): Promise<Record<string, unknown>> {
+  try { return await execute(tool, input, context.bucket, context.publicOrigin ?? 'https://sourcefor.dev', context.now ?? Date.now()); }
   catch (error) { if (error instanceof AgentAtlasError) throw error; throw new AgentAtlasError('unavailable', 'Published atlas data is unavailable.'); }
 }
-async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOrigin: string): Promise<Record<string, unknown>> {
+async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOrigin: string, now: number): Promise<Record<string, unknown>> {
   if (!AGENT_TOOL_DESCRIPTORS.some(item => item.name === tool)) invalid();
   if (!input || typeof input !== 'object' || Array.isArray(input)) invalid();
   const args = record(input);
@@ -148,11 +149,11 @@ async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOri
   const rows = await listing(bucket);
   if (tool === 'list_atlases') {
     const sorted = rows.sort((a,b) => `${a.owner}/${a.repo}`.localeCompare(`${b.owner}/${b.repo}`));
-    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(sorted.map(row => publicAtlas(row, publicOrigin))))))).map(byte => byte.toString(16).padStart(2,'0')).join('');
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(sorted.map(row => [publicAtlas(row, publicOrigin), publicationTimestamp(row.snapshotGeneratedAt), publicationTimestamp(row.publishedAt)])))))).map(byte => byte.toString(16).padStart(2,'0')).join('');
     const parts = typeof args.cursor === 'string' ? /^(\d{1,8}):([a-f0-9]{64})$/.exec(args.cursor) : undefined;
     if (args.cursor !== undefined && (!parts || parts[2] !== digest)) invalid();
     const cursor = parts ? Number(parts[1]) : 0;
-    const items = sorted.slice(cursor,cursor+pagination.limit).map(row => publicAtlas(row, publicOrigin));
+    const items = sorted.slice(cursor,cursor+pagination.limit).map(row => ({ ...publicAtlas(row, publicOrigin), freshness: agentPublicationFreshness({ ...row, generatedAt: row.snapshotGeneratedAt },now) }));
     return { atlases: items, ...(cursor+pagination.limit < sorted.length ? { nextCursor: `${cursor+pagination.limit}:${digest}` } : {}) };
   }
   const requested = record(args.atlas);
@@ -160,14 +161,23 @@ async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOri
   if (typeof requested.versionId !== 'string' || !isPublishedVersionId(requested.versionId)) invalid();
   const versionId = requested.versionId;
   const row = rows.find(item => String(item.owner).toLowerCase() === owner.toLowerCase() && String(item.repo).toLowerCase() === repo.toLowerCase());
-  if (!row || !(await bucket.head(publishedLatestKey(String(row.slug))))) missing();
+  if (!row) missing();
   const slug = String(row.slug);
+  // Existence remains the publication enablement gate; pointer contents only enrich freshness.
+  const latestKey = publishedLatestKey(slug);
+  if (!await bucket.head(latestKey)) missing();
+  let latestValue: unknown;
+  try { latestValue = await objectJson(bucket,latestKey,MAX_METADATA_BYTES); }
+  catch { /* An unreadable pointer cannot invalidate intact, explicitly pinned evidence. */ }
+  const latest = record(latestValue);
+  const latestVersionId = latest.schema === PUBLISHED_LATEST_SCHEMA && latest.slug === slug
+    && typeof latest.versionId === 'string' && isPublishedVersionId(latest.versionId) ? latest.versionId : undefined;
   const manifest = record(await objectJson(bucket,publishedManifestKey(slug,versionId),MAX_METADATA_BYTES));
   if (manifest.schema !== PUBLISHED_VERSION_SCHEMA || manifest.slug !== slug || manifest.versionId !== versionId || String(manifest.owner).toLowerCase() !== owner.toLowerCase() || String(manifest.repo).toLowerCase() !== repo.toLowerCase() || (typeof manifest.commitSha !== 'string' || !/^[A-Za-z0-9._-]{1,80}$/.test(manifest.commitSha))) missing();
   const snapshotValue = await publicSnapshot(bucket,publishedPublicFileKey(slug,versionId,'snapshot.json'));
   if (snapshotValue.schemaVersion !== 1 || !Array.isArray(snapshotValue.entities) || !Array.isArray(snapshotValue.relations) || snapshotValue.commitSha !== manifest.commitSha || typeof snapshotValue.id !== 'string') missing();
   const snapshot = snapshotValue as unknown as ArchitectureSnapshot;
-  const atlas = { owner: row.owner, repo: row.repo, versionId, commitSha: manifest.commitSha, ...atlasLink(slug, publicOrigin), ...attribution({ owner: row.owner, repo: row.repo, commitSha: manifest.commitSha, license: manifest.license }) };
+  const atlas = { owner: row.owner, repo: row.repo, versionId, commitSha: manifest.commitSha, freshness: agentPublicationFreshness({ versionId, publishedAt: manifest.publishedAt, generatedAt: snapshot.generatedAt },now,latestVersionId), ...atlasLink(slug, publicOrigin), ...attribution({ owner: row.owner, repo: row.repo, commitSha: manifest.commitSha, license: manifest.license }) };
   // Public accepted summaries are version-pinned alongside the graph. Never consult the private sidecar.
   const explanations = new Map<string,unknown>();
   if (tool === 'search_atlas' || tool === 'get_entity') {

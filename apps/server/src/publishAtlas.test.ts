@@ -29,6 +29,7 @@ import {
   preparePublishedVersion,
   PUBLISH_BUCKETS,
   publishBuiltVersion,
+  publishedIndexEntryFor,
   resolveGithubRepositoryNames,
   resolvePublishedLicense,
   sanitizeGithubText,
@@ -85,6 +86,27 @@ const slice = (pack: Buffer, index: PublishedPackIndex, key: string): string | u
   const entry = index.entries[key];
   return entry ? gunzipSync(pack.subarray(entry[0], entry[0] + entry[1])).toString("utf8") : undefined;
 };
+
+test("publication preserves explicit snapshot timestamp provenance without borrowing publication time", () => {
+  const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-timestamp-"));
+  try {
+    const { store, publication } = createPublishedOperatorFixture(scanRoot);
+    const built = buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE });
+    assert.equal(built.manifest.snapshotGeneratedAt, "2026-01-01T00:00:00.000Z");
+    assert.equal(built.indexEntry.snapshotGeneratedAt, built.manifest.snapshotGeneratedAt);
+    const legacy = { ...built.manifest };
+    delete legacy.snapshotGeneratedAt;
+    assert.equal(publishedIndexEntryFor(legacy).snapshotGeneratedAt, undefined, "rollback cannot manufacture provenance from a legacy manifest");
+    const path = store.artifactFilePath(publication.artifactRevisionId, "snapshot.json")!;
+    const snapshot = JSON.parse(readFileSync(path, "utf8"));
+    delete snapshot.generatedAt;
+    writeFileSync(path, JSON.stringify(snapshot));
+    const missing = buildPublishedVersion({ scanRoot, repo: "acme/demo", license: FIXTURE_LICENSE });
+    assert.equal(missing.manifest.generatedAt, missing.manifest.publishedAt, "preserve the landing reader's legacy fallback");
+    assert.equal(missing.manifest.snapshotGeneratedAt, undefined);
+    assert.equal(missing.indexEntry.snapshotGeneratedAt, undefined);
+  } finally { rmSync(scanRoot, { recursive: true, force: true }); }
+});
 
 test("CLA-266 publish: read-only over the operator store; packs are byte-identical to the server routes", async () => {
   const scanRoot = mkdtempSync(join(tmpdir(), "okie-publish-"));

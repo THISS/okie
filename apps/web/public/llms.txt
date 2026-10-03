@@ -39,6 +39,8 @@ Suggested sequence: list_atlases → search_atlas → get_entity → get_relatio
 
 HTTP adapter: POST /api/atlas/query, Content-Type: application/json, body {"tool":"search_atlas","arguments":{"atlas":{"owner":"source-for","repo":"atlas","versionId":"<pin>"},"query":"Ask","limit":10}}. WebMCP uses this same-origin adapter and omits account cookies.
 
+All read results include freshness: observedAt, generatedAt (recorded snapshot timestamp), generatedAtContext, publishedAt (publication instant), publicationAgeSeconds and readable publicationAgeContext. Unknown times/age are null; future publication time has unknown age. Pinned reads compare the evidence version with the public store’s latestPublishedVersionId using evidenceComparedWithLatestPublication (matches/differs/unknown); directory listings leave this comparison unknown. currentRepositoryRevision is always not-checked. The deterministic scanner derives generatedAt from the committer date; other producers may differ. This field alone does not verify scan time or commit time. This does not establish upstream HEAD. Keep latest visual-page identity separate from pinned evidence.
+
 ## Atlas-page WebMCP tools only
 
 - get_atlas_context: no arguments. Read current repository/fixture identity, level, selection, tour, enrichment, and available capabilities.
