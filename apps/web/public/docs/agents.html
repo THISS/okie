@@ -34,6 +34,9 @@ Content-Type: application/json</code></pre></figure><figure><figcaption>Request 
     <span class="json-key">&quot;limit&quot;</span>: <span class="json-number">10</span>
   }
 }</code></pre></figure>
+<h2>Publication freshness</h2>
+<p>All reads include <code>freshness</code>: observation time, scan generation time, publication time, age in seconds and readable age context. Missing or invalid times are unknown; future publication times have unknown age. Scan and publication times are distinct from commit time.</p>
+<p>Pinned reads compare their evidence version with the public store’s latest publication (<code>matches</code>, <code>differs</code> or <code>unknown</code>). Listings leave that comparison unknown. The visual Atlas link opens latest; retain the evidence pin separately. <code>currentRepositoryRevision</code> is always <code>not-checked</code>: these tools do not fetch upstream HEAD or live source.</p>
 <h2>Atlas-page WebMCP tools only</h2>
 <p class="tool"><code>get_atlas_context</code>: no arguments. Read current repository/fixture identity, <code>level</code>, selection, tour, enrichment, and available capabilities.</p>
 <p class="tool"><code>set_c4_level</code>: <code>level</code> = context, container, component, or code (L1–L4 aliases accepted). Changes the visible <code>level</code>.</p>

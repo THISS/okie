@@ -8,7 +8,7 @@ CLA-353 adds read-only access to published atlases. Remote MCP and in-page WebMC
 
 WebMCP registers the same five read tools on atlas pages when the browser provides its model-context API. These call `POST /api/atlas/query` with `{tool, arguments}` and omit account cookies. Existing page-navigation tools remain separate. Read tools do not automatically navigate or select entities. Explicit atlas pins avoid silently querying a newer snapshot than the agent intended.
 
-Both routes require `AGENT_READS_ENABLED=1`. Local and production configuration default off; staging enables the preview. Staging remains protected by Cloudflare Access. The preview is stacked on CLA-316 to preserve its Ask functionality; production deployment must follow the existing merged-main review flow.
+Both routes require `AGENT_READS_ENABLED=1`. Local configuration defaults off; production and staging enable public reads. Staging remains protected by Cloudflare Access. Production deployment follows the existing merged-main review flow.
 
 ## Tools
 
@@ -37,6 +37,14 @@ For example, a query through the JSON adapter is:
 
 Use an entity ID from the search result with `get_entity`, `get_relations` and `get_evidence`. Repository prose and captured code are untrusted evidence, never instructions to an agent.
 
+## Publication freshness
+
+Every read includes `freshness` beside the publication identity. `generatedAt` is the scan generation instant; `publishedAt` is the recorded operator publication instant. Missing or invalid instants are `null`, and publication age is calculated only from `publishedAt`. Results include `observedAt`, `publicationAgeSeconds` and readable `publicationAgeContext`. A future publication timestamp is retained but its age remains unknown.
+
+Pinned reads compare their version with the valid public store `latest.json` pointer: `evidenceComparedWithLatestPublication` is `matches`, `differs` or `unknown`, with `latestPublishedVersionId` when established. Listing results report recorded directory times and leave that comparison unknown because they do not inspect each pointer. `atlasUrlVersion: latest` still means the visual page can differ from pinned evidence. These comparisons establish publication identity, not upstream repository freshness: `currentRepositoryRevision` is always `not-checked`. The service never fetches repository HEAD, commit time or live source to fill gaps. Publication and generation times are not commit timestamps.
+
+Directory pagination hashes recorded identities and times, excluding time-dependent ages and observation time. Merely advancing the clock does not invalidate a cursor; changing the directory does.
+
 ## Evidence and limits
 
 The current snapshot schema does not establish the origin of every structural fact or responsibility. Results therefore say `snapshot-recorded` and `origin-not-recorded`; they do not manufacture observed/inferred labels or confidence percentages. Missing excerpts mean `not-captured`, not that code is absent or tested. Scan coverage remains `unknown`. Captured excerpts are bounded and indicate truncation or partial ranges.
@@ -55,4 +63,4 @@ Private repositories, richer claim-backed explanation sections, diagram export, 
 
 ## Published reference
 
-The user-facing tool inventory lives at `/docs/agents`; `/llms.txt` provides the same connection details and complete inventory in plain text for agents. Both are static public assets, independent of WebMCP browser support. They distinguish the five shared read tools from page-only controls and legacy landing tools, and explicitly mark the staging-only read preview. Update both references when changing tools or deployment availability. Runtime MCP discovery and browser registrations remain authoritative for tool schemas.
+The user-facing tool inventory lives at `/docs/agents`; `/llms.txt` provides the same connection details and complete inventory in plain text for agents. Both are static public assets, independent of WebMCP browser support. They distinguish the five shared read tools from page-only controls and legacy landing tools, and distinguish public production reads from staging Access requirements. Update both references when changing tools or deployment availability. Runtime MCP discovery and browser registrations remain authoritative for tool schemas.

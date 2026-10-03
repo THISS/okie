@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetPackIndexCache } from '../src/scan';
 import { executeAgentTool } from '../src/agentAtlas';
-import { PUBLISHED_VERSION_SCHEMA, publishedManifestKey, publishedIndexKey, publishedPublicFileKey } from '../../server/src/publishedStoreLayout';
+import { PUBLISHED_LATEST_SCHEMA, PUBLISHED_VERSION_SCHEMA, publishedLatestKey, publishedManifestKey, publishedIndexKey, publishedPublicFileKey } from '../../server/src/publishedStoreLayout';
 import { edgeEnv, seedAtlas, seedIndex } from './helpers';
 const context = { bucket: edgeEnv.ATLAS_BUCKET };
 const atlas = { owner:'agent-test',repo:'public',versionId:'v1' };
@@ -23,6 +23,38 @@ describe('public agent atlas reads',()=>{
     for (const tool of ['search_atlas','get_entity','get_relations','get_evidence']) {
       expect(await executeAgentTool(tool,{atlas,entityId:'system',query:'Public'},local)).toMatchObject({atlas:{atlasUrl:'http://localhost:4316/r/agent-test/public',atlasUrlVersion:'latest',versionId:'v1',commitSha:'abc123'}});
     }
+  });
+  it('reports pinned publication age independently of scan time across all reads',async()=>{
+    await seed();
+    const key=publishedManifestKey(slug,'v1');
+    const manifest=await (await context.bucket.get(key))!.json<Record<string,unknown>>();
+    manifest.publishedAt='2026-10-01T12:00:00Z';
+    await context.bucket.put(key,JSON.stringify(manifest));
+    await context.bucket.put(publishedPublicFileKey(slug,'v1','snapshot.json'),JSON.stringify({...snapshot(),generatedAt:'2026-09-01T00:00:00Z'}));
+    const fixed={...context,now:Date.parse('2026-10-03T12:00:00Z')};
+    for(const tool of ['search_atlas','get_entity','get_relations','get_evidence']) {
+      expect(await executeAgentTool(tool,{atlas,entityId:'system',query:'Public'},fixed)).toMatchObject({atlas:{versionId:'v1',commitSha:'abc123',freshness:{generatedAt:'2026-09-01T00:00:00.000Z',publishedAt:'2026-10-01T12:00:00.000Z',publicationAgeSeconds:172800,latestPublishedVersionId:'v1',evidenceComparedWithLatestPublication:'matches',currentRepositoryRevision:'not-checked'}}});
+    }
+    // A newer publication in the directory is not evidence of current upstream HEAD.
+    await context.bucket.put(publishedLatestKey(slug),JSON.stringify({schema:PUBLISHED_LATEST_SCHEMA,slug,versionId:'v2',publishedAt:'2026-10-03T11:00:00Z'}));
+    expect(await executeAgentTool('get_entity',{atlas,entityId:'system'},fixed)).toMatchObject({atlas:{versionId:'v1',freshness:{publishedAt:'2026-10-01T12:00:00.000Z',latestPublishedVersionId:'v2',evidenceComparedWithLatestPublication:'differs',currentRepositoryRevision:'not-checked'}}});
+  });
+  it('retains unknown times and latest identity without borrowing pointer or index dates',async()=>{
+    await seed();
+    expect(await executeAgentTool('get_entity',{atlas,entityId:'system'},context)).toMatchObject({atlas:{freshness:{publishedAt:null,generatedAt:null,publicationAgeSeconds:null}}});
+    await context.bucket.put(publishedLatestKey(slug),JSON.stringify({schema:PUBLISHED_LATEST_SCHEMA,slug:'wrong',versionId:'v2'}));
+    expect(await executeAgentTool('get_entity',{atlas,entityId:'system'},context)).toMatchObject({atlas:{freshness:{latestPublishedVersionId:null,evidenceComparedWithLatestPublication:'unknown',currentRepositoryRevision:'not-checked'}}});
+    expect(await executeAgentTool('list_atlases',{},context)).toMatchObject({atlases:[{freshness:{publishedAt:'2026-09-30T00:00:00.000Z',generatedAt:'2026-09-30T00:00:00.000Z',evidenceComparedWithLatestPublication:'unknown'}}]});
+  });
+  it('keeps directory pagination valid as ages change but invalidates changed recorded times',async()=>{
+    await seedIndex([{slug,versionId:'v1'},{slug:'second__repo',versionId:'v2'}]);
+    const now=Date.parse('2026-10-03T12:00:00Z');
+    const first=await executeAgentTool('list_atlases',{limit:1},{...context,now});
+    expect(await executeAgentTool('list_atlases',{limit:1,cursor:first.nextCursor},{...context,now:now+86400000})).toMatchObject({atlases:[{freshness:{publicationAgeContext:'Published 4 days ago.'}}]});
+    const index=await (await context.bucket.get(publishedIndexKey()))!.json<{repos:Record<string,unknown>[]}>();
+    index.repos[0]!.publishedAt='2026-10-02T00:00:00Z';
+    await context.bucket.put(publishedIndexKey(),JSON.stringify(index));
+    await expect(executeAgentTool('list_atlases',{limit:1,cursor:first.nextCursor},{...context,now})).rejects.toMatchObject({code:'invalid_arguments'});
   });
   it('projects listing fields and reads the complete public snapshot, never the truncated neighborhood',async()=>{
     await seed();
