@@ -149,11 +149,11 @@ async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOri
   const rows = await listing(bucket);
   if (tool === 'list_atlases') {
     const sorted = rows.sort((a,b) => `${a.owner}/${a.repo}`.localeCompare(`${b.owner}/${b.repo}`));
-    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(sorted.map(row => [publicAtlas(row, publicOrigin), publicationTimestamp(row.generatedAt), publicationTimestamp(row.publishedAt)])))))).map(byte => byte.toString(16).padStart(2,'0')).join('');
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(sorted.map(row => [publicAtlas(row, publicOrigin), publicationTimestamp(row.snapshotGeneratedAt), publicationTimestamp(row.publishedAt)])))))).map(byte => byte.toString(16).padStart(2,'0')).join('');
     const parts = typeof args.cursor === 'string' ? /^(\d{1,8}):([a-f0-9]{64})$/.exec(args.cursor) : undefined;
     if (args.cursor !== undefined && (!parts || parts[2] !== digest)) invalid();
     const cursor = parts ? Number(parts[1]) : 0;
-    const items = sorted.slice(cursor,cursor+pagination.limit).map(row => ({ ...publicAtlas(row, publicOrigin), freshness: agentPublicationFreshness(row,now) }));
+    const items = sorted.slice(cursor,cursor+pagination.limit).map(row => ({ ...publicAtlas(row, publicOrigin), freshness: agentPublicationFreshness({ ...row, generatedAt: row.snapshotGeneratedAt },now) }));
     return { atlases: items, ...(cursor+pagination.limit < sorted.length ? { nextCursor: `${cursor+pagination.limit}:${digest}` } : {}) };
   }
   const requested = record(args.atlas);
@@ -163,8 +163,12 @@ async function execute(tool: string, input: unknown, bucket: R2Bucket, publicOri
   const row = rows.find(item => String(item.owner).toLowerCase() === owner.toLowerCase() && String(item.repo).toLowerCase() === repo.toLowerCase());
   if (!row) missing();
   const slug = String(row.slug);
-  const latestValue = await objectJson(bucket,publishedLatestKey(slug),MAX_METADATA_BYTES);
-  if (latestValue === undefined) missing();
+  // Existence remains the publication enablement gate; pointer contents only enrich freshness.
+  const latestKey = publishedLatestKey(slug);
+  if (!await bucket.head(latestKey)) missing();
+  let latestValue: unknown;
+  try { latestValue = await objectJson(bucket,latestKey,MAX_METADATA_BYTES); }
+  catch { /* An unreadable pointer cannot invalidate intact, explicitly pinned evidence. */ }
   const latest = record(latestValue);
   const latestVersionId = latest.schema === PUBLISHED_LATEST_SCHEMA && latest.slug === slug
     && typeof latest.versionId === 'string' && isPublishedVersionId(latest.versionId) ? latest.versionId : undefined;

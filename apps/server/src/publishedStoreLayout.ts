@@ -91,9 +91,11 @@ export interface PublishedVersionManifest {
   publishedAt: string;
   previousVersionId?: string;
   entityCount: number;
-  /** The snapshot's own repositoryId and generatedAt: with the fields above, the version's index.json row (a rollback rebuilds it from the manifest alone). */
+  /** Snapshot identity and legacy landing timestamp fields used to rebuild the index on rollback. */
   snapshotRepositoryId: string;
   generatedAt: string;
+  /** Explicit snapshot timestamp provenance; absent in legacy rows or snapshots without a timestamp. */
+  snapshotGeneratedAt?: string;
   license: PublishedLicense;
   public: Record<string, PublishedFileEntry>;
   private: Record<string, PublishedFileEntry>;
@@ -110,6 +112,8 @@ export interface PublishedIndexEntry {
   commitSha: string;
   /** Kept for the `/new` landing's existing ScanManifest reader. */
   generatedAt: string;
+  /** Explicit snapshot timestamp provenance; absent in legacy rows or snapshots without a timestamp. */
+  snapshotGeneratedAt?: string;
   entityCount: number;
   publishedAt: string;
   license: PublishedLicense;
