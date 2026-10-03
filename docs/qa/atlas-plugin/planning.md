@@ -65,3 +65,9 @@ Capture is limited to 128 windows / 512 KiB of serialized excerpt records per co
 
 
 Validation for this iteration (2026-10-03): `pnpm check`, `pnpm test`, `cargo test --workspace` and `pnpm build` passed using Homebrew Git. Focused scanner/query tests passed 31/31; edge public-read/MCP/HTTP tests passed 24/24. Owned local ports 4316/4317 were used for running-app exploration: agent-reference inputs and production endpoint, guided story jumped to step four and awaited `data-playback-state="paused"`, populated inspector and source tab, explicit Architecture model selection, relationship inspection, and `/new`. No scan fixture was present for the conditional `?fixture=scan` check. The plain-text reference navigation was blocked by Chrome; its updated contents were checked on disk. Late-window behavior is verified through deterministic scanner and R2-backed edge tests, not an installed-host claim. Screenshot artifacts are `/tmp/atlas-evidence-browser-qa.png` and `/tmp/atlas-evidence-tool-reference.png`. Production and the installed plugin were unchanged.
+
+## PR 174 section-profile review correction
+
+Section profiles now sample one valid captured window per original source reference, preserving the scanner's entry-first ordering. Supplemental call-site captures no longer weight a busy declaration more heavily than other declarations; legacy entities with distinct source references still retain separate candidates. A regression with ten members and sixty extra captures on one member preserves the original six-member sample. All sixteen section-profile tests passed.
+
+`scopeDigest` deliberately still includes all captured evidence, including omitted windows: this preserves conservative cache invalidation, as required by the existing omitted-evidence regression. Extra capture data can therefore invalidate a profile even when its bounded semantic evidence sample is unchanged. No live Jev request is needed for the regression.
