@@ -1,3 +1,4 @@
+import { compileCurrentGeneration } from './compileCurrentGeneration';
 import { expect, it, vi } from 'vitest';
 import { prepareLoadedLevelScene, prepareLevelSceneWithDeadline, clearLevelScenePreparation, LEVEL_SCENE_PREPARING, finishLevelScenePreparation, levelScenePreparationPending, runLevelSceneGesture } from './levelScenePreparation';
 it('holds selected compile priority against pan and releases it on completion', () => {
@@ -104,4 +105,22 @@ it('does not compile after cancelled fetch and does not publish a late compiled 
     recomputeFocus: () => 'deep', owns: () => owns, compile: () => new Promise<string>(resolve => { release = () => resolve('late'); }), publish });
   await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   owns = false; release(); await late; expect(publish).not.toHaveBeenCalled();
+});
+
+it('rejects an already aborted deadline without starting work or orphaning cancellation promises', async () => {
+  const controller = new AbortController(); controller.abort(); const prepare = vi.fn();
+  await expect(prepareLevelSceneWithDeadline(controller, prepare, vi.fn())).rejects.toMatchObject({ name: 'AbortError' });
+  await Promise.resolve(); expect(prepare).not.toHaveBeenCalled();
+});
+
+it('rejects a merge after the stable compile callback but publishes a current recorded result', async () => {
+  let generation = 1; const scene = {}; const generations = new WeakMap<object, number>(); const publish = vi.fn();
+  const run = (merge: boolean) => prepareLoadedLevelScene({ signal: new AbortController().signal, initialFocus: 'scope',
+    ensure: async () => {}, recomputeFocus: () => 'scope', owns: () => true,
+    compile: () => compileCurrentGeneration(() => generation, async () => scene, undefined, (result, stableGeneration) => {
+      generations.set(result, stableGeneration);
+      if (merge) queueMicrotask(() => { generation++; });
+    }), isPreparedCurrent: result => generations.get(result) === generation, publish });
+  await expect(run(true)).rejects.toThrow('Atlas data changed'); expect(publish).not.toHaveBeenCalled();
+  await run(false); expect(publish).toHaveBeenCalledExactlyOnceWith(scene);
 });

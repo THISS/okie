@@ -1511,6 +1511,7 @@ export function App() {
     };
   }, []);
   const neighborhoodScenesRef = useRef<Map<string, AtlasScene>>(new Map());
+  const preparedSceneGenerationsRef = useRef(new WeakMap<AtlasScene, number>());
   const askButtonRef = useRef<HTMLButtonElement | null>(null);
   const askInputRef = useRef<HTMLTextAreaElement | null>(null);
   const askAbortRef = useRef<AbortController | undefined>(undefined);
@@ -3584,7 +3585,7 @@ export function App() {
       if (signal.aborted || fixture !== scanFixture) throw new DOMException('Scene request superseded', 'AbortError');
       if (generation === fixture.getSceneGeneration()) retainNeighborhoodScene(neighborhoodScenesRef.current, cacheKey, cacheableNeighborhoodScene(compiled));
       return compiled;
-    }, signal);
+    }, signal, (prepared, generation) => preparedSceneGenerationsRef.current.set(prepared, generation));
   }
 
   /** Recompile the current C4 neighborhood for the camera tile window. Not a full-graph compile. */
@@ -4225,6 +4226,7 @@ export function App() {
           const compileFocus = handoff?.compileFocus ?? currentFocus;
           return composeScanSceneAsync(compileFocus, initialScene, controller.signal, undefined, initialSelection ? [initialSelection] : undefined);
         },
+        isPreparedCurrent: prepared => preparedSceneGenerationsRef.current.get(prepared) === fixture.getSceneGeneration(),
         publish: prepared => selectLevelLoaded(index, prepared),
       }), () => {
         if (levelCompileAbortRef.current === controller) setLiveMessage('Detail level preparation timed out. Choose a level to try again.');

@@ -23,6 +23,7 @@ export const LEVEL_SCENE_PREPARATION_TIMEOUT_MS = 20_000;
 /** Bound the entire fetch/compile operation, including hosts without abortable fetch.
  * Late host replies remain fenced by the caller's aborted request before publication. */
 export async function prepareLevelSceneWithDeadline<T>(request: AbortController, prepare: () => Promise<T>, onTimeout: () => void, timeoutMs = LEVEL_SCENE_PREPARATION_TIMEOUT_MS): Promise<T> {
+  if (request.signal.aborted) throw new DOMException('Detail level preparation cancelled', 'AbortError');
   let timer: ReturnType<typeof setTimeout> | undefined;
   let abort: (() => void) | undefined;
   const cancelled = new Promise<never>((_resolve, reject) => {
@@ -57,6 +58,7 @@ export async function prepareLoadedLevelScene<T>(input: {
   owns: () => boolean;
   compile: () => Promise<T>;
   publish: (scene: T) => void;
+  isPreparedCurrent?: (scene: T) => boolean;
 }): Promise<void> {
   const current = () => !input.signal.aborted && input.owns();
   if (!current()) return;
@@ -65,5 +67,7 @@ export async function prepareLoadedLevelScene<T>(input: {
   await input.ensure(input.recomputeFocus());
   if (!current()) return;
   const prepared = await input.compile();
-  if (current()) input.publish(prepared);
+  if (!current()) return;
+  if (input.isPreparedCurrent && !input.isPreparedCurrent(prepared)) throw new Error('Atlas data changed during detail preparation. Try again.');
+  input.publish(prepared);
 }

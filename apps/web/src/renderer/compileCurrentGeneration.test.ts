@@ -20,3 +20,8 @@ it('never retries cancelled navigation or unrelated errors', async () => {
   expect(compile).toHaveBeenCalledTimes(1);
   await expect(compileCurrentGeneration(() => 1, async () => { throw new Error('broken'); })).rejects.toThrow('broken');
 });
+it('records only the successful stable generation, including immediate cached results', async () => {
+  let generation = 1; const stable = vi.fn(); const cached = {};
+  const result = await compileCurrentGeneration(() => generation, async () => { if (generation === 1) generation++; return cached; }, undefined, stable);
+  expect(result).toBe(cached); expect(stable).toHaveBeenCalledExactlyOnceWith(cached, 2);
+});
