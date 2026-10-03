@@ -13,6 +13,21 @@ const link = (range = 'L10-L20', revision = commit, file = 'src/app.ts') =>
 test('separate citations fit individual windows; latest visual URL is not frozen source', () => {
   assert.equal(auditCitations(`${link()} ${link('L30')} https://sourcefor.dev/r/example/app`, captures).citations, 2);
 });
+test('ordinary Markdown and sentence punctuation preserve valid citations', () => {
+  for (const rendered of [`${link()}.`, `${link()},`, `${link()};`, `${link()}:`,
+    `${link()}!`, `${link()}?`, '`' + link() + '`', `[${link()}]`, `[source](${link()})`]) {
+    assert.equal(auditCitations(rendered, captures).citations, 1);
+  }
+});
+test('line-anchored blame, tree and raw source links cannot hide beside valid citations', () => {
+  for (const url of [link('L900').replace('/blob/', '/blame/'),
+    link().replace('/blob/', '/tree/'),
+    `https://raw.githubusercontent.com/example/app/${commit}/uncaptured.ts#L10`,
+    `https://raw.githubusercontent.com/example/app/main/src/app.ts#L10`]) {
+    assert.throws(() => auditCitations(`${link()} ${url}`, captures), /Invalid frozen source citation/);
+  }
+  assert.equal(auditCitations(`${link()} https://github.com/example/app/tree/${commit}`, captures).citations, 1);
+});
 test('a citation cannot bridge disjoint captures or rely on an uncaptured sourceRef', () => {
   for (const range of ['L10-L40', 'L21-L29', 'L9-L20', 'L30-L41']) {
     assert.throws(() => auditCitations(link(range), captures), /one captured window/);

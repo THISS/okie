@@ -16,8 +16,11 @@ export function auditCitations(report, captures) {
         || !positive(window.startLine) || !positive(window.endLine) || window.endLine < window.startLine
         || typeof window.text !== 'string' || !window.text.trim()) throw new Error('Invalid captured window');
   }
-  const links = [...report.matchAll(/https?:\/\/[^\s)<>]+/g)].map(match => match[0]);
-  const citations = links.filter(link => /\/blob\//.test(link));
+  const links = [...report.matchAll(/https?:\/\/[^\s)<>]+/g)]
+    .map(match => match[0].replace(/[.,;:!?`\]]+$/, ''));
+  // Other GitHub source views must not evade validation alongside a valid blob link.
+  const citations = links.filter(link => /\/blob\//.test(link)
+    || /^https?:\/\/(?:github\.com|raw\.githubusercontent\.com)\//i.test(link) && /#L/i.test(link));
   if (!citations.length) throw new Error('Recorded evidence plan has no source citations');
   for (const link of citations) {
     const match = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([a-f0-9]{40})\/(.+)#L([1-9]\d*)(?:-L([1-9]\d*))?$/.exec(link);
